@@ -129,6 +129,14 @@ public interface HitQueries {
       TargetingState t, TargetView target, int sequenceIndex, boolean special) {}
 
   /**
+   * Whether the owner's buffs put a projectile in place of its hit's, which the launch then fires
+   * for every projectile of the hit. An owner without such a buff answers false.
+   */
+  default boolean projectileOverridden() {
+    return false;
+  }
+
+  /**
    * Whether the attack sequence's entry this hit reads runs an action in place of hitting: the hit
    * then neither launches nor deals a direct hit, and does not tell the owner's listening actions
    * that its attack ended. An owner without such an entry answers false.

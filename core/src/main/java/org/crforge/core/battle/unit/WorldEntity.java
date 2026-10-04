@@ -685,6 +685,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public boolean projectileOverridden() {
+        return buffs.overrideProjectile() != null;
+      }
+
+      @Override
       public boolean entryAction() {
         return attackAction() != null;
       }
@@ -2124,9 +2129,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * One hit the entity dealt that the target's hit points let through, past the battle's hold, the
    * untouchable test and the dedupe list and before the subtraction: one count per target per
-   * damage, a projectile's impact for its shooter. The counter goes up by one; then the row's hit
-   * action (OnHitTargetAction) is scheduled on the entity with the target as its cause, queued as
-   * the row's own delay asks and not run at once, so it runs in the entity's pending pass of the
+   * damage, a projectile's impact for its shooter. The counter goes up by one; then every listed
+   * buff instance of a row that sets RemoveOnAttack, without a parent, is removed; then the row's
+   * hit action (OnHitTargetAction) is scheduled on the entity with the target as its cause, queued
+   * as the row's own delay asks and not run at once, so it runs in the entity's pending pass of the
    * hit's tick, after the damage; then the BuffAfterHits entries are walked in order, an entry
    * whose count is not above the old counter skipped and the walk ended at the first above the new
    * one, so the entry picked is the one whose count the counter just reached; the last entry,
@@ -2142,6 +2148,19 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   void countHit(WorldEntity target, boolean buffHeld) {
     int old = hitCounter;
     hitCounter = old + 1;
+    // RemoveOnAttack: the instances of every listed row that sets it, without a parent, go before
+    // the hit action is scheduled; their remove actions are scheduled as they go.
+    if (buffs.removesOnAttack()) {
+      if (!buffHeld) {
+        throw new UnsupportedOperationException(
+            name()
+                + " hits "
+                + target.name()
+                + " carrying a buff removed on attack, by a typed hit or damage over time, which"
+                + " is not modelled");
+      }
+      buffs.removeOnAttack();
+    }
     runHitTargetAction(target, buffHeld);
     List<Integer> counts = data.buffAfterHitsCounts();
     if (counts.isEmpty()) {

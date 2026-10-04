@@ -151,6 +151,10 @@ public final class BattleRecords {
           // Read by the charge reset as an instance is listed, and by the post-move charge for a
           // unit whose row has no charge range.
           "OverrideChargeRange",
+          // Read by the targeting visit's hit, whose projectiles it replaces, and by the attacker's
+          // hit counter, which removes the instances of a row that sets RemoveOnAttack.
+          "OverrideProjectile",
+          "RemoveOnAttack",
           // Read by an instance's spawner, in the buff visit, and by the cleanup's fold, which
           // admits a child of a spawner that must be alive only while it is.
           "SpawnObject",
@@ -1683,6 +1687,9 @@ public final class BattleRecords {
         .attachedInheritAs(sets(row, "AttachedInheritAs") ? row.string("AttachedInheritAs") : null)
         .gameTagsToSet(tagBits(row.string("GameTagsToSet")))
         .overrideChargeRange(row.intValue("OverrideChargeRange"))
+        .overrideProjectile(
+            sets(row, "OverrideProjectile") ? row.string("OverrideProjectile") : null)
+        .removeOnAttack(row.bool("RemoveOnAttack"))
         .onStartAction(hookAction(row, "OnStartAction"))
         .onRemoveAction(hookAction(row, "OnRemoveAction"))
         .spawnObject(sets(row, "SpawnObject") ? row.string("SpawnObject") : null)

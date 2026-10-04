@@ -75,12 +75,17 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * a parent that leaves the battle removes its instances at once, where a source that leaves is only
  * forgotten. The not-attacking section removes only the instances of its row without a parent.
  *
+ * <p><b>Attacks.</b> A hit the carrier deals that the target's hit points let through removes, from
+ * the last listed instance to the first, every instance without a parent of each row that sets
+ * RemoveOnAttack. While listed, the first instance whose row names a projectile puts it in place of
+ * every projectile of the carrier's hits.
+ *
  * <p><b>Hooks.</b> A new instance schedules its row's start action as it is listed, a refresh
- * nothing; every removal - the expiry, the not-attacking section's, the stun cleanse, a parent
- * leaving - schedules its row's remove action before the counts drop, and a death removes nothing.
- * Each goes on the carrier's own holder with the carrier as its cause and the row's own delay,
- * starting at once only inside that holder's own pending pass. A clone's copy of an instance with
- * either is refused.
+ * nothing; every removal - the expiry, the not-attacking section's, an attack's, the stun cleanse,
+ * a parent leaving - schedules its row's remove action before the counts drop, and a death removes
+ * nothing. Each goes on the carrier's own holder with the carrier as its cause and the row's own
+ * delay, starting at once only inside that holder's own pending pass. A clone's copy of an instance
+ * with either is refused.
  *
  * <p><b>Tags.</b> The tags every listed instance's row sets join the carrier's tag word at its
  * pre-hook, from the one after the instance is listed to the last before it is removed.
@@ -144,7 +149,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " visit, linked into its carrier's group chain; translated but held by no run: an"
             + " interval, a wave and a pause past the first firing; refused: a firing with the"
             + " chain at the group's limit, a child released at the fold, a tower or building"
-            + " carrier.")
+            + " carrier. Held by ability_hero_mega_minion_vs_musketeer: an instance removed by"
+            + " its carrier's counted hit, its remove action scheduled, and the projectile of the"
+            + " first listed instance that names one fired in place of the carrier's.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -473,6 +480,49 @@ public final class BuffComponent implements BattleComponent {
         world.buffRemoved(entity, instance);
       }
     }
+  }
+
+  /**
+   * RemoveOnAttack, as a hit the carrier dealt is counted: from the last listed instance to the
+   * first, one whose row sets RemoveOnAttack removes every instance of its row without a parent,
+   * from the last to the first, itself included when it has none. A walk whose next index lies past
+   * the list the removals left, which would read a slot no longer listed, is refused.
+   */
+  void removeOnAttack() {
+    for (int i = items.size() - 1; i >= 0; i--) {
+      if (i >= items.size()) {
+        throw new UnsupportedOperationException(
+            entity.name()
+                + " removes buffs on attack past the end of its shortened list, not modelled");
+      }
+      BuffData buff = items.get(i).getBuff();
+      if (buff.removeOnAttack()) {
+        removeRow(buff.name());
+      }
+    }
+  }
+
+  /** Whether a listed instance's row sets RemoveOnAttack. */
+  boolean removesOnAttack() {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().removeOnAttack()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The projectile the listed buffs put in place of every projectile of the carrier's hits: the
+   * first listed instance's whose row names one, whatever comes after it; null for none.
+   */
+  public String overrideProjectile() {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().overrideProjectile() != null) {
+        return instance.getBuff().overrideProjectile();
+      }
+    }
+    return null;
   }
 
   /**

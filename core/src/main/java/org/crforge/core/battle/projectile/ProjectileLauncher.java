@@ -37,8 +37,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " hunter_point_blank and hunter_range. Held by no run: the circle's turn. Supplied, not"
             + " settled: the start radius and height are the unit's columns without an"
             + " attack sequence step's override. Settled too: the hand-over of the projectile to"
-            + " the launcher's runs, which only the dart choice answers. Not modelled: the special"
-            + " projectile column, the projectile a buff substitutes, a building target's edge"
+            + " the launcher's runs, which only the dart choice answers. Held by"
+            + " ability_hero_mega_minion_vs_musketeer: a buff's projectile in place of every"
+            + " projectile of the hit, after the launcher's runs; refused with several"
+            + " projectiles, a custom first one or a picked dart. Not modelled: the special"
+            + " projectile column, a building target's edge"
             + " adjustment, a burst that keeps its aim, and a line's fan without a target, which is"
             + " refused. The pushback a launch gives its owner is asked for after each launch.")
 public final class ProjectileLauncher {
@@ -72,6 +75,11 @@ public final class ProjectileLauncher {
             ? unit.projectileSpecial()
             : launcher.attackProjectile();
     if (regular == null) {
+      // A buff's projectile would be fired in place of none, which is not established.
+      if (overrideProjectile(launcher, world) != null) {
+        throw new UnsupportedOperationException(
+            launcher.name() + " fires a buff's projectile in place of none, not modelled");
+      }
       return;
     }
     ProjectileData first = unit.customFirstProjectile();
@@ -83,8 +91,25 @@ public final class ProjectileLauncher {
       throw new UnsupportedOperationException(
           launcher.name() + " has its dart picked and a custom first projectile, not modelled");
     }
+    // A buff's projectile replaces every projectile of the hit, the special one and the custom
+    // first one alike, after the launcher's listed runs have had it.
+    ProjectileData override = overrideProjectile(launcher, world);
+    if (override != null
+        && (first != null || unit.multipleProjectiles() > 1 || launcher.picksProjectile())) {
+      throw new UnsupportedOperationException(
+          launcher.name()
+              + " fires "
+              + override.name()
+              + " in place of its projectiles with several projectiles, a custom first one or a"
+              + " picked dart, which is not modelled");
+    }
     regular = launcher.handProjectile(regular, targetEntity);
-    refuseUnmodelled(launcher, regular);
+    if (override != null) {
+      override = launcher.handProjectile(override, targetEntity);
+      refuseUnmodelled(launcher, override);
+    } else {
+      refuseUnmodelled(launcher, regular);
+    }
     if (first != null) {
       refuseUnmodelled(launcher, first);
     }
@@ -95,7 +120,7 @@ public final class ProjectileLauncher {
     int angleBase = sequenceIndex == -1 ? 0 : sequenceIndex * 90 - 45;
     int half = count >>> 1;
     for (int k = 0; k < count; k++) {
-      ProjectileData data = first != null && k == 0 ? first : regular;
+      ProjectileData data = override != null ? override : first != null && k == 0 ? first : regular;
       int[] offset = {0, 0};
       int fan = 0;
       if (k != 0) {
@@ -120,6 +145,15 @@ public final class ProjectileLauncher {
       world.launch(projectile);
       launcher.launched(hx, hy);
     }
+  }
+
+  /**
+   * The projectile the launcher's buffs put in place of its hit's: the first listed instance's
+   * whose row names one, or null for none.
+   */
+  public static ProjectileData overrideProjectile(WorldEntity launcher, BattleWorld world) {
+    String name = launcher.getBuffs().overrideProjectile();
+    return name == null ? null : world.getRecords().projectile(name);
   }
 
   /**
