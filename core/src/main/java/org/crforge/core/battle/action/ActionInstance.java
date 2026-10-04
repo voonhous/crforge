@@ -46,6 +46,28 @@ public abstract class ActionInstance {
   protected void retrigger(ActionHolder holder) {}
 
   /**
+   * What a second start of a singleton row, caused by an entity, does to the run already listed. By
+   * default what {@link #retrigger(ActionHolder)} does, whatever caused it.
+   *
+   * @param holder the holder the run is listed on
+   * @param instigator the holder of the entity that caused the second start, or null for none
+   */
+  protected void retrigger(ActionHolder holder, ActionHolder instigator) {
+    retrigger(holder);
+  }
+
+  /**
+   * Whether a second start of a singleton row, caused by the given entity, is the same run as this
+   * one. By default any start of the row is: only the row is compared, as the base slot does. A
+   * class whose runs are told apart by what caused them answers for itself.
+   *
+   * @param instigator the holder of the entity that caused the start, or null for none
+   */
+  public boolean sameRun(ActionHolder instigator) {
+    return true;
+  }
+
+  /**
    * What the run does as an object leaves the battle. By default nothing: the run carries on as it
    * was, whatever it caused or held.
    *

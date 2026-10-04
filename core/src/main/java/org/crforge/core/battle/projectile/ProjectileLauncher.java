@@ -36,8 +36,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " projectile, the battle random draw of each further projectile and the line's fan by"
             + " hunter_point_blank and hunter_range. Held by no run: the circle's turn. Supplied, not"
             + " settled: the start radius and height are the unit's columns without an"
-            + " attack sequence step's override. Not modelled: the special projectile"
-            + " column, the projectile a buff substitutes, a building target's edge"
+            + " attack sequence step's override. Settled too: the hand-over of the projectile to"
+            + " the launcher's runs, which only the dart choice answers. Not modelled: the special"
+            + " projectile column, the projectile a buff substitutes, a building target's edge"
             + " adjustment, a burst that keeps its aim, and a line's fan without a target, which is"
             + " refused. The pushback a launch gives its owner is asked for after each launch.")
 public final class ProjectileLauncher {
@@ -74,11 +75,19 @@ public final class ProjectileLauncher {
       return;
     }
     ProjectileData first = unit.customFirstProjectile();
+    WorldEntity targetEntity = target == null ? null : world.entityOf(target.getEntity());
+    // The launcher's listed runs have the projectile before it flies: the evolved Dart Goblin's
+    // dart choice may pick its special dart. A custom first projectile would be handed to them
+    // too, before the hit's own, which no row with such a run has.
+    if (first != null && launcher.picksProjectile()) {
+      throw new UnsupportedOperationException(
+          launcher.name() + " has its dart picked and a custom first projectile, not modelled");
+    }
+    regular = launcher.handProjectile(regular, targetEntity);
     refuseUnmodelled(launcher, regular);
     if (first != null) {
       refuseUnmodelled(launcher, first);
     }
-    WorldEntity targetEntity = target == null ? null : world.entityOf(target.getEntity());
     int count = Math.max(unit.multipleProjectiles(), 1);
     int spread = unit.areaDamageRadius();
     int step = 360 / count;
