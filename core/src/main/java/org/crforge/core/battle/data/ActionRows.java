@@ -45,6 +45,7 @@ import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.GoblinDrillEvoRelocate;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GoblinsteinAbility;
+import org.crforge.core.battle.action.GroundToAir;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.Hide;
@@ -509,6 +510,22 @@ public final class ActionRows {
                   "CloneTriggersLandingActions",
                   "ActionOnLanding",
                   "ActionOnLandingEnd",
+                  "ActionOnGround")),
+          // Every column is read by the run; the descent's, which the run refuses, are loaded for
+          // it.
+          Map.entry(
+              "ActionGroundToAir",
+              Set.of(
+                  "FlyingHeight",
+                  "TransitionDuration",
+                  "TotalDuration",
+                  "ResetPathInAir",
+                  "ResetPathWhenBackToGround",
+                  "GameTagsToSetOnToAirState",
+                  "GameTagsToSetOnOnAirState",
+                  "GameTagsToSetOnToGroundState",
+                  "ActionOnFlyHeightReached",
+                  "ActionOnStartDescending",
                   "ActionOnGround")),
           // The follow-up dash's range, radius test and track are read only by the dash, which a
           // row
@@ -1295,6 +1312,7 @@ public final class ActionRows {
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
+            case "ActionGroundToAir" -> groundToAir(name, shared, f);
             case "ActionResetPath" -> new ResetPath(shared);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
@@ -1951,6 +1969,36 @@ public final class ActionRows {
           f.path("AllowIsGroundTagOnIdle").asBoolean(false),
           f.path("ResetPathAtEnd").asBoolean(true),
           action(f.get("ActionOnGround")));
+    }
+
+    /**
+     * A ground-to-air row's columns, a column it leaves out taking the loader's default: a flying
+     * height of 0, a transition of 200, a whole of 1000, no path reset, no tags and no actions. A
+     * row with a next action is refused. Its own tags are carried by its run as any row's are.
+     */
+    private GroundToAir groundToAir(String name, ActionRow shared, JsonNode f) {
+      if (sets(f, "NextAction")) {
+        throw new UnsupportedOperationException(
+            name + ", a ground-to-air row, sets NextAction, which is not modelled");
+      }
+      return new GroundToAir(
+          shared,
+          f.path("FlyingHeight").asInt(0),
+          f.path("TransitionDuration").asInt(200),
+          f.path("TotalDuration").asInt(1000),
+          f.path("ResetPathInAir").asBoolean(false),
+          f.path("ResetPathWhenBackToGround").asBoolean(false),
+          tags(f, "GameTagsToSetOnToAirState"),
+          tags(f, "GameTagsToSetOnOnAirState"),
+          tags(f, "GameTagsToSetOnToGroundState"),
+          action(f.get("ActionOnFlyHeightReached")),
+          action(f.get("ActionOnStartDescending")),
+          action(f.get("ActionOnGround")));
+    }
+
+    /** The mask of a tag list column, or 0 when the row leaves it out. */
+    private long tags(JsonNode f, String column) {
+      return f.has(column) ? tagMask(f.get(column).asText()) : 0;
     }
 
     /**
