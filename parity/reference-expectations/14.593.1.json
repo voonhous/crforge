@@ -6,7 +6,7 @@
   "ability-sweep-v2/ability_golden_knight": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_barb_log": {"outcome": "unsupported", "feature": "BarbLogHero_spawn_reroll is an ActionBarbBarrelHeroReRoll, which the battle does not have", "input": "the run"},
   "ability-sweep-v2/ability_hero_elite_archer": {"outcome": "unsupported", "feature": "cmd0_0 casts EliteArcherHero_Ability, whose activation no reference holds", "input": "the run"},
-  "ability-sweep-v2/ability_hero_goblins": {"outcome": "unsupported", "feature": "cmd0_3_0 casts GoblinHero_Ability as a building, which no reference holds", "input": "the run"},
+  "ability-sweep-v2/ability_hero_goblins": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "unsupported", "feature": "IceGolemiteHero_Spawn_Damage_AEO spawns IceGolemiteHero_Damage_AEO, which sets columns not modelled: [Shape, ParentLoopingEffectToSelf]", "input": "the run"},
   "ability-sweep-v2/ability_hero_knight": {"outcome": "unsupported", "feature": "Knight_hero_CreateTauntAEO spawns Knight_hero_TauntAEO, which sets columns not modelled: [OnHitAction]", "input": "the run"},
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
