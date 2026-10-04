@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
+import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
@@ -1534,6 +1535,42 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {
     world.instigatorGone(this, action.name(), scheduled.name());
+  }
+
+  @Override
+  public RunActionOnTroopDestroyed.Host troopDestroyedHost(RunActionOnTroopDestroyed action) {
+    WorldEntity self = this;
+    return new RunActionOnTroopDestroyed.Host() {
+      @Override
+      public void listen(RunActionOnTroopDestroyed.Listener listener) {
+        world.listenForDestroyed(self, action.name(), listener);
+      }
+
+      @Override
+      public void unlisten(RunActionOnTroopDestroyed.Listener listener) {
+        world.unlistenForDestroyed(self, action.name(), listener);
+      }
+
+      @Override
+      public int side() {
+        return self.side();
+      }
+
+      @Override
+      public int team() {
+        return self.side() & 1;
+      }
+
+      @Override
+      public String rowName() {
+        return data.name();
+      }
+    };
+  }
+
+  @Override
+  public IntSupplier actionClock(BattleAction action) {
+    return world::tick;
   }
 
   /** The tags of every action the entity lists, finished ones included. */

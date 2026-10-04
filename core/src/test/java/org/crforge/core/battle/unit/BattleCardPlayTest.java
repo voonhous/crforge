@@ -97,14 +97,14 @@ class BattleCardPlayTest {
   @DisplayName(
       "a played unit is started, and a starting action the battle does not have is refused")
   void aUnitWithAnUnknownStartingActionIsRefused(@TempDir Path folder) throws IOException {
-    // A Knight given the skeleton watch of the Witch's evolution, a class the battle does not have.
+    // A Knight given the hero Mini P.E.K.K.A.'s quest timer, a class the battle does not have.
     GameTables tables =
         GameData.altered(
             folder,
             "characters",
             rows ->
                 GameData.columns(rows, "Knight")
-                    .put("OnStartingAction", "Witch_EV1_On_Skeleton_Destroyed"));
+                    .put("OnStartingAction", "MiniPekkaHero_run_timer_continuous"));
     Standard1v1Battle match = new Standard1v1Battle(tables);
     match.play(
         0,
@@ -122,6 +122,6 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionRunActionOnTroopDestroyed");
+        .hasMessageContaining("ActionMiniPekkaHeroQuest");
   }
 }
