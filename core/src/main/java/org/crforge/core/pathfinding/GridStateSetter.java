@@ -52,10 +52,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * entry hook does; the pending duration is kept.
  *
  * <p>Entering the casting state, for a unit given its casting, raises the casting flag and seeds
- * the ability's two countdowns in whole ticks, and empties the route. Entering the ability's
- * follow-up state seeds the cast's countdown with the follow-up's duration in whole ticks. Leaving
- * it before the effect fired leaves the ability pending again, and a unit with a movement component
- * has its charge reset. A change into or out of the casting state ends with the unit's combat gate.
+ * the ability's two countdowns in whole ticks, and empties the route; a cast whose countdowns are
+ * both 0 then runs the ability's effect at once and, still casting with no cast time left, goes
+ * back to the state it came from, that change running its own exit, entry and combat gate in place
+ * of the casting change's gate. Entering the ability's follow-up state seeds the cast's countdown
+ * with the follow-up's duration in whole ticks. Leaving it before the effect fired leaves the
+ * ability pending again, and a unit with a movement component has its charge reset. A change into
+ * or out of the casting state ends with the unit's combat gate.
  *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state, chains a further dash on
@@ -87,7 +90,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Not modelled: switching components, the countdown seeded on entering the morphing"
             + " state, the chained dash and closing action on leaving the dashing state, whose"
             + " columns are refused, the following-state rewrites and the two notifications every"
-            + " change ends with. A cast with no countdowns at all is refused.")
+            + " change ends with. A cast with no countdowns at all fires in the casting state's"
+            + " entry and goes back to the state it came from, held by ability_hero_giant_slap;"
+            + " refused for a casting given no effect to run there.")
 public final class GridStateSetter implements StateSetter {
 
   /** Milliseconds per tick, which the casting countdowns are counted in. */
@@ -116,6 +121,9 @@ public final class GridStateSetter implements StateSetter {
    * @param combatGate the combat gate, run at the end of a change into or out of the casting state
    * @param abilityStateDurationMs how long the follow-up state lasts, which its entry seeds the
    *     cast's countdown with in whole ticks; 0 for an ability without one
+   * @param effect the ability's effect, which a cast with neither a cast time nor a trigger delay
+   *     runs in the casting state's entry itself; null for a casting that never needs it there,
+   *     whose cast with no countdowns is refused
    */
   public record Casting(
       StateTimers timers,
@@ -123,7 +131,8 @@ public final class GridStateSetter implements StateSetter {
       int triggerDelayMs,
       boolean championClone,
       Runnable combatGate,
-      int abilityStateDurationMs) {
+      int abilityStateDurationMs,
+      Runnable effect) {
 
     /** A casting whose ability has no follow-up state. */
     public Casting(
@@ -132,7 +141,25 @@ public final class GridStateSetter implements StateSetter {
         int triggerDelayMs,
         boolean championClone,
         Runnable combatGate) {
-      this(timers, castTimeMs, triggerDelayMs, championClone, combatGate, 0);
+      this(timers, castTimeMs, triggerDelayMs, championClone, combatGate, 0, null);
+    }
+
+    /** A casting whose ability's effect is never run by the casting state's entry. */
+    public Casting(
+        StateTimers timers,
+        int castTimeMs,
+        int triggerDelayMs,
+        boolean championClone,
+        Runnable combatGate,
+        int abilityStateDurationMs) {
+      this(
+          timers,
+          castTimeMs,
+          triggerDelayMs,
+          championClone,
+          combatGate,
+          abilityStateDurationMs,
+          null);
     }
   }
 
@@ -314,7 +341,11 @@ public final class GridStateSetter implements StateSetter {
     }
     exit(oldState, newState);
     owner.setState(newState);
-    enter(oldState, newState);
+    if (enter(oldState, newState)) {
+      // A cast with no countdowns fired in the entry and went back to the state it came from,
+      // whose own change ran the combat gate: this change ends without its own.
+      return;
+    }
     // A change into or out of the casting state, or the hook's states, ends with the combat gate;
     // every other change leaves the gate to the state visit's tail.
     if ((oldState == GridEntityState.CASTING || newState == GridEntityState.CASTING)
@@ -429,7 +460,7 @@ public final class GridStateSetter implements StateSetter {
   /**
    * Entering the casting state: the casting flag raised and the countdowns seeded in whole ticks,
    * the cast time's and the trigger delay's. A cast with neither, whose effect fires in the entry
-   * itself, is refused.
+   * itself, needs the casting's effect; without one it is refused.
    */
   private void enterCasting() {
     if (casting == null) {
@@ -439,12 +470,36 @@ public final class GridStateSetter implements StateSetter {
     owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.CASTING_ABILITY);
     int cast = casting.castTimeMs() / TICK_MS;
     int trigger = casting.triggerDelayMs() / TICK_MS;
-    if ((cast | trigger) == 0) {
+    if ((cast | trigger) == 0 && casting.effect() == null) {
       throw new UnsupportedOperationException(
           owner.getName() + " casts with no cast time and no trigger delay, not modelled");
     }
     casting.timers().setAbilityCountdown(cast);
     casting.timers().setAbilityWarningCountdown(trigger);
+  }
+
+  /**
+   * The end of the casting state's entry, after the route is emptied: a cast whose two countdowns
+   * are both 0 runs the ability's effect at once, as the state visit would on the step its trigger
+   * delay ran out; then, when the unit is still casting with no cast time left (the effect did not
+   * send it into the follow-up state), it goes back to the state it came from. That change runs its
+   * own exit, entry and combat gate.
+   *
+   * @param oldState the state the unit was in before it entered the casting state
+   * @return true when the unit went back, so the change into the casting state ends without its own
+   *     combat gate
+   */
+  private boolean castAtOnce(int oldState) {
+    StateTimers timers = casting.timers();
+    if ((timers.getAbilityCountdown() | timers.getAbilityWarningCountdown()) != 0) {
+      return false;
+    }
+    casting.effect().run();
+    if (timers.getAbilityCountdown() > 0 || owner.getState() != GridEntityState.CASTING) {
+      return false;
+    }
+    setState(owner, oldState);
+    return true;
   }
 
   /**
@@ -464,8 +519,13 @@ public final class GridStateSetter implements StateSetter {
     }
   }
 
-  /** The actions keyed by the state being entered, run after it is stored. */
-  private void enter(int oldState, int newState) {
+  /**
+   * The actions keyed by the state being entered, run after it is stored.
+   *
+   * @return true when a cast with no countdowns fired in the casting state's entry and the unit
+   *     went back to the state it came from, which ends the change without its own combat gate
+   */
+  private boolean enter(int oldState, int newState) {
     switch (newState) {
       case GridEntityState.STANDING -> resetRoute();
       case GridEntityState.ATTACKING -> {
@@ -495,6 +555,7 @@ public final class GridStateSetter implements StateSetter {
       case GridEntityState.CASTING -> {
         enterCasting();
         resetRoute();
+        return castAtOnce(oldState);
       }
       case GridEntityState.MOVING -> prepareRoute();
       case GridEntityState.DASHING -> enterDash();
@@ -528,6 +589,7 @@ public final class GridStateSetter implements StateSetter {
         // No ported action.
       }
     }
+    return false;
   }
 
   /**

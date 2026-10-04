@@ -144,13 +144,14 @@ public interface ActionOwner {
   }
 
   /**
-   * What a shape selector's run asks of the battle around the owner. Only an area effect runs one.
+   * What a shape selector's run asks of the battle around the owner. Only an area effect and a
+   * character run one.
    *
    * @return the owner's answers
    */
   default ShapeSelectorHost shapeSelectorHost() {
     throw new UnsupportedOperationException(
-        "a shape selector on an owner other than an area effect is not modelled");
+        "a shape selector on an owner other than an area effect or a character is not modelled");
   }
 
   /**
@@ -417,6 +418,20 @@ public interface ActionOwner {
    * @return the run
    */
   default ActionInstance uppercut(MegaKnightUppercut action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Starts a push of the owner away from the object that caused it.
+   *
+   * @param action the push
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @param instigator what caused it
+   * @return the run
+   */
+  default ActionInstance pushbackFromInstigator(
+      DoPushbackFromInstigator action, int phase, ActionOwner instigator) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a character, not modelled");
   }

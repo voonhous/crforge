@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -16,15 +17,17 @@ import org.crforge.core.pathfinding.move.MovementState;
  * <p>Each update raises DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS, and FORCE_IS_AIR while more
  * than 149 ms are left. For a unit with a movement component and a height it pushes the arc's next
  * height, with that height as the push's floor: half the duration rising to the top and half
- * falling. Once the counter is at 0 or below the unit lands - its route reset - and the run
- * finishes, the counter still taken down by 50 ms.
+ * falling. Once the counter is at 0 or below the unit lands - its route reset and, on the ground,
+ * the row's landing action scheduled on it - and the run finishes, the counter still taken down by
+ * 50 ms.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's tags and counter, each update's tags, the arc's"
             + " height in 32-bit arithmetic with its two divisions by 100, the landing's route"
-            + " reset and the finish; held by mega_knight_ev1_uppercut. Refused: a unit jumping,"
+            + " reset and the finish; held by mega_knight_ev1_uppercut. The landing action, with"
+            + " the cause passed on, held by ability_hero_giant_slap. Refused: a unit jumping,"
             + " dashing, charging or following a removed building, a clone, a rider or carrier,"
             + " and one with an ability.")
 final class KnockbackRun extends ActionInstance {
@@ -43,6 +46,9 @@ final class KnockbackRun extends ActionInstance {
 
   /** The height the last update pushed. */
   private int height;
+
+  /** What caused the knock, kept for the landing action when the row passes it on; else null. */
+  private final WorldEntity instigator;
 
   /**
    * The start: the ability postponed while the run is listed, the counter from the duration, and
@@ -63,6 +69,12 @@ final class KnockbackRun extends ActionInstance {
         || state == GridEntityState.DASHING) {
       throw new UnsupportedOperationException(
           row.name() + " knocks " + unit.name() + " in state " + state + ", not modelled");
+    }
+    // The cause is kept from the start, for the landing action that takes it.
+    this.instigator = row.isPassInstigator() ? instigator : null;
+    if (row.isPassInstigator() && instigator == null) {
+      throw new UnsupportedOperationException(
+          row.name() + " passes its cause on to its landing action but has none, not modelled");
     }
     addTags(EntityFlags.ABILITY_POSTPONED);
     counter = row.getDurationMs();
@@ -96,10 +108,36 @@ final class KnockbackRun extends ActionInstance {
       if (moving) {
         unit.resetRoute();
       }
+      // On the ground, the landing action runs on the unit: the kept cause as its cause, or the
+      // unit itself.
+      if (row.getLandingAction() != null && unit.layerGround()) {
+        land();
+      }
       finish();
     }
     counter -= STEP_MS;
     unit.world().knockbackStepped(unit, before, counter, height, tags, isFinished());
+  }
+
+  /**
+   * Schedules the landing action on the unit, built for it, with its cause: the knock's cause when
+   * the row passes it on - refused when that has left the battle, whose kept reference is not
+   * modelled - else the unit itself.
+   */
+  private void land() {
+    WorldEntity cause = row.isPassInstigator() ? instigator : unit;
+    if (row.isPassInstigator() && !instigator.actionAlive()) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " lands "
+              + unit.name()
+              + " after its cause "
+              + instigator.name()
+              + " has died, not modelled");
+    }
+    BattleAction action =
+        unit.world().getActions().build(row.getLandingAction(), unit.world().binding(unit));
+    unit.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, cause.actionHolder());
   }
 
   /**

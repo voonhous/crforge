@@ -21,6 +21,7 @@ import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamagingPushBack;
+import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
@@ -30,6 +31,8 @@ import org.crforge.core.battle.action.GroupChain;
 import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.TargetIndicatorHost;
@@ -619,7 +622,8 @@ public class CharacterEntity extends WorldEntity {
               data.ability().triggerDelayMs(),
               false,
               this::stateTailGate,
-              data.ability().abilityStateDurationMs()));
+              data.ability().abilityStateDurationMs(),
+              this::abilityFired));
     }
     // Going underground or across the arena, the unit is dropped by every projectile aimed at it.
     setter.setPathfindEntry(() -> world.pathfindEntered(this));
@@ -2089,6 +2093,50 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /**
+   * Starts a push of the character away from what caused it. A clone, a rider and a carrier are
+   * refused, as is a cause that is not an object of the battle.
+   */
+  @Override
+  public ActionInstance pushbackFromInstigator(
+      DoPushbackFromInstigator action, int phase, ActionOwner instigator) {
+    refuseRun(action.name());
+    WorldEntity cause = instigator(instigator);
+    if (cause == null) {
+      throw new UnsupportedOperationException(
+          action.name() + " on " + name() + " has a cause that is not an object, not modelled");
+    }
+    return new PushbackFromInstigatorRun(action, this, cause);
+  }
+
+  /**
+   * The push request of a push away from its cause, as the Giant hero form's slap asks it: the
+   * row's switches as the request's, the whole strength, and on its success nothing more here.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param columns the push's columns
+   * @return 1 when the setter ran, else 0
+   */
+  int pushedFromInstigator(int x, int y, DoPushbackFromInstigator.Columns columns) {
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            columns.strength(),
+            columns.forced(),
+            columns.attack(),
+            columns.proportional(),
+            columns.resetIfStronger(),
+            columns.invisible());
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    return ran;
   }
 
   /** Starts a carried push's run on the character. A clone, a rider and a carrier are refused. */
@@ -3829,6 +3877,77 @@ public class CharacterEntity extends WorldEntity {
   void resetTargetAfterWarp() {
     unit.targeting().setReference(null);
     unit.targeting().setKeptByPendingDamageCheck(false);
+  }
+
+  /**
+   * What a shape selector's run on the character asks of the battle, as the Giant hero form's slap
+   * selector runs on itself: the battle tick, the circle around its point that tests buildings by
+   * their squares, an object's hit points and shield, its own tag word, side and x and a pick's x,
+   * and the actions it schedules: on what it picked with itself as the cause, and on itself with
+   * the pick as the cause.
+   */
+  @Override
+  public ShapeSelectorHost shapeSelectorHost() {
+    return new ShapeSelectorHost() {
+      @Override
+      public int tick() {
+        return world.tick();
+      }
+
+      @Override
+      public List<Integer> collect(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public int score(int id, int mode) {
+        HitPoints hitPoints = ((WorldEntity) world.liveObject(id)).getHitPoints();
+        if (hitPoints == null) {
+          return 0;
+        }
+        return mode == ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS
+            ? hitPoints.getHitPoints() + hitPoints.getShield()
+            : hitPoints.getHitPoints();
+      }
+
+      @Override
+      public void schedule(int targetId, String action) {
+        WorldEntity target = (WorldEntity) world.liveObject(targetId);
+        BattleAction built = world.getActions().build(action, world.binding(target));
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder());
+      }
+
+      @Override
+      public long ownerTags() {
+        return getView().getFlags();
+      }
+
+      @Override
+      public int ownerSide() {
+        return side();
+      }
+
+      @Override
+      public int ownerX() {
+        return getView().getX();
+      }
+
+      @Override
+      public int x(int id) {
+        return ((WorldEntity) world.liveObject(id)).x();
+      }
+
+      @Override
+      public void scheduleOnOwner(String action, int causeId) {
+        WorldEntity cause = (WorldEntity) world.liveObject(causeId);
+        BattleAction built = world.getActions().build(action, world.binding(CharacterEntity.this));
+        actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause.actionHolder());
+      }
+    };
   }
 
   /**

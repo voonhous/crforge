@@ -84,15 +84,18 @@ org.crforge.core.battle/
     LaserBall         lasts on an area effect, and at a fixed rate runs on everything its query
                       finds around it the action their count picks
     LaserBallHost     what a laser ball asks of the battle around its area effect
-    ShapeSelector     lasts on an area effect, and on ticks set from its start runs an action on
-                      the object in its circle with the most hit points and shield
-    ShapeSelectorHost what a shape selector asks of the battle around its area effect
+    ShapeSelector     lasts on an area effect or a character, and on ticks set from its start,
+                      or from then on when it waits, runs an action on the object in its circle
+                      with the most hit points and shield, and one on its owner by the pick's side
+    ShapeSelectorHost what a shape selector asks of the battle around its owner
     SpawnGuard        makes a guard behind its area effect and sends it charging ahead after a
                       short deploy, pushing and hitting what it passes
     GuardHost         what a guard's run asks of the battle about its guard and around it
     BossBanditAbility locks its unit on itself and, a set number of battle ticks after it starts,
                       runs its warp on it
     WarpCharacter     moves its unit at once back toward its own side, off water and blocked cells
+    DoPushbackFromInstigator pushes its unit a delay later along the width, away from the side of
+                      the arena its cause stands on, and runs its success or failure actions
     AirToGround       lasts on its owner and holds it on the ground, pulling an air unit down and
                       letting it climb back
     TargetIndicatorAttack lasts on a character, marks the nearest enemy in its ring with a signal

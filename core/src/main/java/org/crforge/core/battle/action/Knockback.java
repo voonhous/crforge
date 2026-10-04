@@ -12,16 +12,20 @@ import org.crforge.core.fidelity.FidelityStatus;
  * height, which the owner folds into its live height at its next pre-hook. Once the duration has
  * run out the owner lands: its route is reset and the run finishes.
  *
- * <p>Refused as the row is built: a landing action, passing the cause on to it, the no-collision
- * tag and the shared columns its run does not read.
+ * <p>A landing on the ground schedules the row's landing action on the owner, with the knock's
+ * cause as the action's cause when the row passes it on, and the owner itself otherwise.
+ *
+ * <p>Refused as the row is built: the no-collision tag and the shared columns its run does not
+ * read.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's tags and duration, each step's tags, the arc's"
             + " height pushed, the landing's route reset and the finish; held by"
-            + " mega_knight_ev1_uppercut, a Knight knocked up by the evolved Mega Knight. Refused:"
-            + " a landing action, passing the cause on to it, the no-collision tag, an owner that"
+            + " mega_knight_ev1_uppercut, a Knight knocked up by the evolved Mega Knight; the"
+            + " landing action with the cause passed on, held by ability_hero_giant_slap. Refused:"
+            + " the no-collision tag, an owner that"
             + " is jumping, dashing, charging or dragged, and one with an ability, whose"
             + " postponing no run holds.")
 public final class Knockback extends RowAction {
@@ -32,15 +36,35 @@ public final class Knockback extends RowAction {
   /** How long the owner is in the air, in milliseconds. */
   @Getter private final int durationMs;
 
+  /** The row of the action a landing on the ground schedules on the owner, or null for none. */
+  @Getter private final String landingAction;
+
+  /** True when the landing action takes the knock's cause as its own. */
+  @Getter private final boolean passInstigator;
+
   /**
    * @param row the row's shared columns
    * @param height the top of the arc
    * @param durationMs how long the owner is in the air
    */
   public Knockback(ActionRow row, int height, int durationMs) {
+    this(row, height, durationMs, null, false);
+  }
+
+  /**
+   * @param row the row's shared columns
+   * @param height the top of the arc
+   * @param durationMs how long the owner is in the air
+   * @param landingAction the row of the action a landing on the ground schedules, or null
+   * @param passInstigator true when the landing action takes the knock's cause as its own
+   */
+  public Knockback(
+      ActionRow row, int height, int durationMs, String landingAction, boolean passInstigator) {
     super(row);
     this.height = height;
     this.durationMs = durationMs;
+    this.landingAction = landingAction;
+    this.passInstigator = passInstigator;
   }
 
   @Override

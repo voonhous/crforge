@@ -1276,9 +1276,14 @@ public final class BattleRecords {
     if (data.shaped()) {
       data = shaped(data, row.string("Shape"), unmodelled);
       // A shaped row's damage type is read only by its hits' damage, which a row without damage
-      // never deals.
+      // never deals; a circle's damage is queued with it as a typed hit.
       if (data.damage() == 0) {
         row.has("DamageType");
+      } else if (data.shapeRadius() >= 1 && sets(row, "DamageType")) {
+        data = data.toBuilder().damageType(row.string("DamageType")).build();
+      } else if (data.shapeRadius() >= 1) {
+        // A circle's damage without a damage type is not held.
+        unmodelled.add("Shape");
       }
     }
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
@@ -1357,6 +1362,9 @@ public final class BattleRecords {
    */
   private AreaEffectData shaped(AreaEffectData data, String shape, List<String> unmodelled) {
     GameTable table = tables.table(SHAPES);
+    if (table.has(shape) && table.row(shape).string("ClassType").equals("Circle")) {
+      return circle(data, table.row(shape), unmodelled);
+    }
     if (!table.has(shape) || !table.row(shape).string("ClassType").equals("Rectangle")) {
       unmodelled.add("Shape");
       return data;
@@ -1376,6 +1384,30 @@ public final class BattleRecords {
         .shapeWidth(row.intValue("Width"))
         .shapeHeight(row.intValue("Height"))
         .build();
+  }
+
+  /**
+   * A shaped row with its circle read, as the Giant hero form's landing has: a filter, a damage
+   * queued through a damage type as a typed hit, and nothing else a hit would do. Refused, by its
+   * Shape column: a circle without a filter, without damage or a damage type, with a hit action, a
+   * buff, a push, a launch, a spawner, a growth, one hit per target, shared damage or a crown tower
+   * share, none of which the circle's hit pass is held for.
+   */
+  private AreaEffectData circle(AreaEffectData data, GameRow row, List<String> unmodelled) {
+    if (data.filter() == null
+        || data.damage() == 0
+        || data.onHitAction() != null
+        || data.buff() != null
+        || data.pushback() != 0
+        || data.projectile() != null
+        || data.spawnCharacter() != null
+        || data.maxRadius() != 0
+        || data.oneHitPerTarget()
+        || data.sharedDamage()
+        || data.crownTowerDamagePercent() != 0) {
+      unmodelled.add("Shape");
+    }
+    return data.toBuilder().shapeRadius(row.intValue("Radius")).build();
   }
 
   /**
