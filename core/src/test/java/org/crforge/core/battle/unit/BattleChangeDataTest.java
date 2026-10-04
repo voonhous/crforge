@@ -124,7 +124,7 @@ class BattleChangeDataTest {
         .hasMessageContaining("movement component");
     assertThatThrownBy(() -> new Scene("SkeletonKing").knight.changeData("Knight", false))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("champion");
+        .hasMessageContaining("another ability");
     assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Prince", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a charge or a river jump");

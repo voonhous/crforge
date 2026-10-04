@@ -16,6 +16,10 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -28,9 +32,10 @@ import org.junit.jupiter.api.io.TempDir;
  * FORCE_IS_AIR and NO_ATTACK, turns to the hold at the height, where its path is reset and the
  * row's action at the height is scheduled on it, and is held there for 4600 ms. The activation's
  * instant hit, gated by the hero's target within 5500, raises the hero's instant-hit byte as the
- * run starts, and the hero's next attack visit lands a whole hit at once. The swap to the flying
- * row at the height is refused, so the hold is driven on a copy of the data whose action at the
- * height leaves it out.
+ * run starts, and the hero's next attack visit lands a whole hit at once. The action at the height
+ * swaps the hero onto its flying row, which its champion slot then no longer follows, and whose
+ * shot schedules its action on reaching its target on itself as it arrives: two area effects 1000
+ * beyond its point, in the impact's tick.
  */
 class BattleWizardHeroTest {
 
@@ -87,10 +92,10 @@ class BattleWizardHeroTest {
 
   @Test
   @DisplayName(
-      "held at the height without the swap, the hero's first attack visit after the instant hit"
+      "held at the height on its flying row, the hero's first attack visit after the instant hit"
           + " rounds its attack time up to a whole hit, which lands at once, and clears the byte")
-  void theInstantHitLandsOnTheFirstAttackVisit(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(withoutSwap(folder));
+  void theInstantHitLandsOnTheFirstAttackVisit() {
+    Scene scene = new Scene(GameData.tables());
     CharacterEntity hero = scene.abilityUsedAttacking();
     int cast = scene.stepUntilCasting(hero);
     scene.steps(3);
@@ -117,7 +122,7 @@ class BattleWizardHeroTest {
   @DisplayName(
       "the hero climbs to 3500 in five steps from 200 ms after its cast starts, in the air from"
           + " the pre-hook after the first, and the action at the height runs on the turn's step,"
-          + " where the swap to the flying row is refused")
+          + " where it swaps the hero onto its flying row")
   void theHeroClimbs() {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity hero = scene.abilityUsed();
@@ -145,13 +150,116 @@ class BattleWizardHeroTest {
             (start + 3) + " phase 1 1 counter 100 50 [1750]",
             (start + 4) + " phase 1 1 counter 50 0 [2625]");
     assertThat(hero.getTargetView().z()).as("folded a step behind the push").isEqualTo(1750);
+    int hitPoints = hero.getHitPoints().getHitPoints();
     // The turn's step schedules the action at the height, which runs in it: its swap to
-    // WizardHero_air, a flying row, is refused. That step would end in the eighth state after the
-    // cast's first, where the reference battle shows the hero as WizardHero_air.
-    assertThatThrownBy(() -> scene.steps(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("taking WizardHero_air asks for a building or a flying row");
+    // WizardHero_air, a flying row. That step ends in the eighth state after the cast's first,
+    // where the reference battle shows the hero as WizardHero_air.
     assertThat(scene.tick()).isEqualTo(cast + 7);
+    scene.steps(1);
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+    assertThat(hero.getHitPoints().getHitPoints()).as("kept").isEqualTo(hitPoints);
+    // The live height is the run's push, which the swap leaves alone: the row's own height is
+    // read nowhere while the run holds FORCE_IS_AIR.
+    scene.steps(1);
+    assertThat(hero.getView().isAir()).isTrue();
+    assertThat(hero.getTargetView().z()).isEqualTo(3500);
+  }
+
+  @Test
+  @DisplayName(
+      "the swap onto the flying row has the champion slot work its state out at once: the hero is"
+          + " no live copy of the row it follows any more, the slot finds none, and the state is"
+          + " the override the action at the height wrote")
+  void theSwapLeavesTheChampionSlot() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity hero = scene.abilityUsed();
+    int turn = scene.stepUntilCasting(hero) + 7;
+    ChampionController slot = scene.slotFollowing(HERO);
+    while (scene.tick() < turn) {
+      scene.steps(1);
+    }
+    assertThat(slot.champions()).containsExactly(hero);
+    assertThat(slot.getState()).isEqualTo(ChampionController.ON_COOLDOWN);
+    int cooldown = slot.getCooldownMs();
+    scene.steps(1);
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+    // The slot's own step ran before the swap, in the king's run pass; the swap's pass worked the
+    // state out again, the slot's copies rebuilt from the live list. The group at the height runs
+    // its parts from the last to the first, so its button override, its last part, was written
+    // before the swap and wins that working out.
+    assertThat(slot.champions()).isEmpty();
+    assertThat(slot.getOverride()).isEqualTo(ChampionController.ON_COOLDOWN);
+    assertThat(slot.getState()).isEqualTo(ChampionController.ON_COOLDOWN);
+    assertThat(slot.getCooldownMs())
+        .as("the slot's own step took 50 off; the swap leaves the cooldown")
+        .isEqualTo(cooldown - 50);
+    // The slot's next step finds no live copy either.
+    scene.steps(1);
+    assertThat(slot.champions()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "the flying row's shot schedules its action on reaching its target on itself as it arrives,"
+          + " which spawns the tornado and the damage area 1000 beyond its point, in the last"
+          + " pending pass of the impact's tick; the damage area hits the tower on the next tick,"
+          + " and the shot's buff keeps the tower's own side from pushing it")
+  void theAirShotSpawnsItsAreaEffects() {
+    Scene scene = new Scene(GameData.tables());
+    List<String> spawns = new ArrayList<>();
+    scene
+        .world()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaEffectSpawned(
+                  int tick,
+                  SpawnHost owner,
+                  String action,
+                  int phase,
+                  SpawnHost source,
+                  AreaEffectEntity areaEffect) {
+                if (owner instanceof ProjectileEntity shot) {
+                  spawns.add(
+                      "%d %s %s phase %d at %d %d from %d %d source %s"
+                          .formatted(
+                              tick,
+                              shot.getData().name(),
+                              areaEffect.getData().name(),
+                              phase,
+                              areaEffect.getX(),
+                              areaEffect.getY(),
+                              shot.x(),
+                              shot.y(),
+                              source == shot ? "itself" : source.name()));
+                }
+              }
+            });
+    CharacterEntity hero = scene.abilityUsedAttacking();
+    GridEntity aimed = hero.getTargeting().getReference().getEntity();
+    TowerEntity tower =
+        scene.world().getHolder().entities().stream()
+            .filter(TowerEntity.class::isInstance)
+            .map(TowerEntity.class::cast)
+            .filter(candidate -> candidate.getView() == aimed)
+            .findFirst()
+            .orElseThrow();
+    int limit = scene.tick() + 60;
+    while (spawns.isEmpty()) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.steps(1);
+    }
+    int impact = scene.tick() - 1;
+    String at = " phase 3 at %d %d from %d %d source itself";
+    String point = at.formatted(tower.x(), tower.y() + 1000, tower.x(), tower.y());
+    assertThat(spawns)
+        .containsExactly(
+            impact + " WizardHeroAbilityProjectile WizardHero_DamageAEO" + point,
+            impact + " WizardHeroAbilityProjectile WizardHero_MiniTornadoAEO" + point);
+    int before = tower.getHitPoints().getHitPoints();
+    scene.steps(1);
+    assertThat(tower.getHitPoints().getHitPoints()).as("the damage area's hit").isLessThan(before);
+    assertThat(tower.getView().getFlags() & EntityFlags.NO_PUSHED_BY_ALLY).isNotZero();
   }
 
   @Test
@@ -295,6 +403,18 @@ class BattleWizardHeroTest {
         steps(1);
       }
       return tick();
+    }
+
+    /** The side 0 king's champion slot that follows a row. */
+    ChampionController slotFollowing(String row) {
+      TowerEntity king = world().kingTower(0);
+      for (int n = 1; n <= 2; n++) {
+        ChampionController slot = king.championSlot(n);
+        if (slot.getChampion() != null && slot.getChampion().name().equals(row)) {
+          return slot;
+        }
+      }
+      throw new AssertionError("no slot follows " + row);
     }
 
     List<CharacterEntity> heroes() {
