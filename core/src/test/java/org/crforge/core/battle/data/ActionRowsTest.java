@@ -1327,24 +1327,32 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a taunt with another column, lasting past one step or with a buff not modelled is refused")
+      "a taunt reads its columns with the loader's defaults; one with the end by a stun or a buff"
+          + " not modelled is refused")
   void aTauntIsRefused(@TempDir Path folder) throws IOException {
-    assertThatThrownBy(() -> GameData.actions().build("Knight_hero_ApplyTaunt", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(" sets ");
+    Taunt knight = (Taunt) GameData.actions().build("Knight_hero_ApplyTaunt", INERT_BINDING);
+    assertThat(knight.isResetsOnDistance()).isFalse();
+    assertThat(knight.isResetOnExpiration()).isTrue();
+    assertThat(knight.isAllowBuildingRetargeting()).isTrue();
+    assertThat(knight.getValidDurationMs()).isEqualTo(4000);
+    assertThat(knight.getCrownTowerDurationMs()).isEqualTo(4000);
+    assertThat(knight.getCrownTowerBuff()).isEqualTo("Knight_hero_IsTauntedBuff");
+    assertThat(knight.isRemoveBuffOnDeath()).isTrue();
+    Taunt reset = (Taunt) GameData.actions().build("ResetTauntEffect", INERT_BINDING);
+    assertThat(reset.isResetsOnDistance()).isTrue();
+    assertThat(reset.getCrownTowerBuff()).isNull();
 
-    Files.createDirectories(folder.resolve("long"));
-    GameTables longer =
+    Files.createDirectories(folder.resolve("stun"));
+    GameTables stun =
         GameData.altered(
-            folder.resolve("long"),
+            folder.resolve("stun"),
             "actions",
             rows ->
-                ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
-                    .put("ValidDuration", 100));
-    ActionRows longerRows = new ActionRows(longer, new BattleRecords(longer));
-    assertThatThrownBy(() -> longerRows.build("ResetTauntEffect", INERT_BINDING))
+                ((ObjectNode) rows.get("ResetTauntEffect").get("fields")).put("ResetOnStun", true));
+    ActionRows stunRows = new ActionRows(stun, new BattleRecords(stun));
+    assertThatThrownBy(() -> stunRows.build("ResetTauntEffect", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("past one step");
+        .hasMessageContaining(" sets ");
 
     Files.createDirectories(folder.resolve("buff"));
     GameTables buff =
@@ -1368,9 +1376,10 @@ class ActionRowsTest {
     assertThatThrownBy(() -> GameData.actions().build("ElectroWizardAOE", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("to a location");
-    assertThatThrownBy(() -> GameData.actions().build("Knight_hero_CreateTauntAEO", INERT_BINDING))
+    assertThatThrownBy(
+            () -> GameData.actions().build("IceGolemiteHero_Spawn_Damage_AEO", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Knight_hero_TauntAEO, which sets columns not modelled");
+        .hasMessageContaining("IceGolemiteHero_Damage_AEO, which sets columns not modelled");
 
     Files.createDirectories(folder.resolve("offset"));
     GameTables offset =
@@ -1478,12 +1487,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 863 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 867 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(863);
+    assertThat(built).as("rows built").isEqualTo(867);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 17, "column", 55, "spawn type", 11));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 17, "column", 51, "spawn type", 11));
   }
 }

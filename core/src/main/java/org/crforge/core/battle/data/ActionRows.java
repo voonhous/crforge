@@ -154,9 +154,6 @@ public final class ActionRows {
   /** The table of target resolvers. */
   private static final String TARGET_RESOLVERS = "target_resolvers";
 
-  /** Milliseconds one step of a taunt's run takes off its duration. */
-  private static final int TAUNT_STEP_MS = 50;
-
   /** The four classes that override none of the runtime's three places. */
   private static final Set<String> INERT =
       Set.of(
@@ -456,11 +453,22 @@ public final class ActionRows {
                   "MinWobble",
                   "MaxWobble",
                   "FlipPivotOffsetIfTopBottom")),
-          // Every other column a taunt has keeps the loader's default here: the reach by
-          // distance, the end as the duration runs out with no falloff, no end by a stun, no
-          // building retargeting, the buff removed as it finishes, and no invalid or crown tower
-          // duration or buff.
-          Map.entry("ActionTaunt", Set.of("ValidDuration", "ValidTargetBuff")),
+          // A taunt's end by a stun and its visual effect keep the loader's defaults here: no
+          // end by a stun and no effect.
+          Map.entry(
+              "ActionTaunt",
+              Set.of(
+                  "ResetsOnDistance",
+                  "ResetOnExpiration",
+                  "AllowBuildingRetargeting",
+                  "FalloffDelay",
+                  "ValidDuration",
+                  "ValidTargetBuff",
+                  "InvalidDuration",
+                  "InvalidTargetBuff",
+                  "CrownTowerDuration",
+                  "CrownTowerBuff",
+                  "RemoveBuffOnDeath")),
           Map.entry(
               "ActionLumberjackGhostWaitUntilLooseBuff",
               Set.of(
@@ -2768,16 +2776,33 @@ public final class ActionRows {
     }
 
     /**
-     * A taunt row. One that lasts past a step reaches the parts of its update that re-check and
-     * mark its reference, which are not modelled, and its buff must read as a modelled buff.
+     * A taunt row, each column with the default the game's loader gives a column the row leaves
+     * out: the reach tested by distance, the falloff run down as the duration expires and the buffs
+     * removed as the run finishes all on. Each buff it names must read as a modelled buff.
      */
     private Taunt taunt(String name, ActionRow shared, JsonNode f) {
-      int duration = integer(f, "ValidDuration");
-      if (duration > TAUNT_STEP_MS) {
-        throw new UnsupportedOperationException(
-            name + " taunts for " + duration + " ms, past one step, which is not modelled");
-      }
-      String buff = f.hasNonNull("ValidTargetBuff") ? f.get("ValidTargetBuff").asText() : null;
+      String valid = buffName(name, f, "ValidTargetBuff");
+      String invalid = buffName(name, f, "InvalidTargetBuff");
+      String crown = buffName(name, f, "CrownTowerBuff");
+      return Taunt.builder()
+          .row(shared)
+          .resetsOnDistance(f.path("ResetsOnDistance").asBoolean(true))
+          .resetOnExpiration(f.path("ResetOnExpiration").asBoolean(true))
+          .allowBuildingRetargeting(bool(f, "AllowBuildingRetargeting"))
+          .falloffDelayMs(integer(f, "FalloffDelay"))
+          .validDurationMs(integer(f, "ValidDuration"))
+          .validTargetBuff(valid)
+          .invalidDurationMs(integer(f, "InvalidDuration"))
+          .invalidTargetBuff(invalid)
+          .crownTowerDurationMs(integer(f, "CrownTowerDuration"))
+          .crownTowerBuff(crown)
+          .removeBuffOnDeath(f.path("RemoveBuffOnDeath").asBoolean(true))
+          .build();
+    }
+
+    /** A buff a taunt row names, or null for none; one setting a column not modelled is refused. */
+    private String buffName(String name, JsonNode f, String column) {
+      String buff = f.hasNonNull(column) ? f.get(column).asText() : null;
       if (buff != null && !records.buff(buff).unmodelledColumns().isEmpty()) {
         throw new UnsupportedOperationException(
             name
@@ -2786,7 +2811,7 @@ public final class ActionRows {
                 + ", which sets columns not modelled: "
                 + records.buff(buff).unmodelledColumns());
       }
-      return new Taunt(shared, duration, buff);
+      return buff;
     }
 
     /**

@@ -2936,7 +2936,7 @@ class BattleActionSpawnRunTest {
       @Override
       public void tauntPerformed(
           int tick,
-          CharacterEntity unit,
+          WorldEntity unit,
           String action,
           int phase,
           ActionOwner instigator,
@@ -2955,7 +2955,7 @@ class BattleActionSpawnRunTest {
       @Override
       public void tauntStepped(
           int tick,
-          CharacterEntity unit,
+          WorldEntity unit,
           WorldEntity forced,
           int durationMs,
           int falloffMs,
