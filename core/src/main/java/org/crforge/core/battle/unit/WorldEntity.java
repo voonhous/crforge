@@ -468,16 +468,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Runs when a hit takes the entity's hit points to zero, in the pass that lands it. The entity is
-   * still visited by the rest of the tick and leaves the holder only in its closing cleanup; its
-   * own death handler switches off what it no longer does.
+   * The death slot's component switches: what the dying entity no longer does, switched off once
+   * what its buffs leave has been made and before its death damage. The entity is still visited by
+   * the rest of the tick and leaves the holder only in its closing cleanup.
    */
-  protected void died() {}
+  protected void deathSwitches() {}
 
   /**
    * The death of the entity, in the pass whose hit took its hit points to zero, once the battle has
-   * told its observers of that hit: first what the entity itself switches off, then the battle's
-   * death slot and death handler. The killing side is the attacker's, and none without one.
+   * told its observers of that hit: the battle's death slot, which switches off what the entity no
+   * longer does, and its death handler. The killing side is the attacker's, and none without one.
    *
    * @param attacker what killed it, or null for nothing
    */
@@ -493,7 +493,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param killingSide the side of the killing hit, or -1 for none
    */
   void die(BattleEntity attacker, int killingSide) {
-    died();
     world.entityDied(this, attacker, killingSide);
   }
 

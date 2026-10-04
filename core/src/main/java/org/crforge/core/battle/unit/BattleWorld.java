@@ -2484,8 +2484,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The death of an object without hit points that its state visit removes - a bomb as its deploy
-   * ends: what the object switches off, then its death slot, with no death handler after it, so no
-   * hooks. It leaves at a later cleanup, once the visit has asked for its removal.
+   * ends: its death slot, with no death handler after it, so no hooks. It leaves at a later
+   * cleanup, once the visit has asked for its removal.
    *
    * @param dying the object
    */
@@ -2493,15 +2493,14 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.diedAtRemoval(tick, dying);
     }
-    dying.died();
     deathSlot(dying, dying.getData());
   }
 
   /**
    * The death of a character whose lifetime decay took its last hit point, in its hit-points visit:
-   * what it switches off, then its death slot, with no death handler after it. It leaves at the
-   * closing cleanup of the tick. Then its death action, and not its killed action, is scheduled on
-   * it with itself as the cause, and runs in the tick's next pending pass.
+   * its death slot, with no death handler after it. It leaves at the closing cleanup of the tick.
+   * Then its death action, and not its killed action, is scheduled on it with itself as the cause,
+   * and runs in the tick's next pending pass.
    *
    * @param dying the character
    * @param hitPointsBefore its hit points before the decay's last step
@@ -2511,7 +2510,6 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.decayDied(tick, dying, hitPointsBefore);
     }
-    dying.died();
     deathSlot(dying, data);
     if (data.onDeathAction() != null) {
       // The death action alone, on itself with itself as the cause, taken by the tick's next
@@ -3700,10 +3698,11 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The death slot: what a dying object's row does as it dies, in order - its area effect at its
-   * point, for its side and at its level; what its buffs leave; its death damage; its death spawn;
-   * its death projectiles. A death whose row sets a column of the slot the battle does not model is
-   * refused, and so is the death of one whose area object is still in the battle, which would end
-   * it.
+   * point, for its side and at its level; what its buffs leave; what the object switches off; its
+   * death damage; its death spawn; its death projectiles. The switches come after the buffs: a
+   * child a buff leaves is visited as it is made, and finds the dying object still moving. A death
+   * whose row sets a column of the slot the battle does not model is refused, and so is the death
+   * of one whose area object is still in the battle, which would end it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -3735,6 +3734,7 @@ public class BattleWorld implements HolderPasses {
           dying.name());
     }
     buffDeathSpawns(dying);
+    dying.deathSwitches();
     deathDamage(dying, data);
     deathSpawn(dying, data);
     deathProjectiles(dying, data);

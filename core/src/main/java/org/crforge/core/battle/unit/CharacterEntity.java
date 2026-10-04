@@ -1850,10 +1850,12 @@ public class CharacterEntity extends WorldEntity {
    * A character's death switches its movement component off, so the rest of the tick skips its
    * movement visit and an area effect's pull passes it over. Its targeting component stays on, so a
    * hit it has due in the same tick still lands; the standard game switches that off too only under
-   * a global setting it leaves off.
+   * a global setting it leaves off. The death slot does this after the buffs have ended: a goblin a
+   * Goblin Curse leaves, visited as it is made, still sees the dying character moving, and takes
+   * the side its avoidance blend steers by.
    */
   @Override
-  protected void died() {
+  protected void deathSwitches() {
     if (getView().isMovementComponent()) {
       switchComponent(MOVEMENT_SLOT, false);
     } else {
