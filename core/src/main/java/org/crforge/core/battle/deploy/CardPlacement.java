@@ -221,7 +221,8 @@ public final class CardPlacement {
                   first.deployTimeMs(),
                   card.summonDeployDelayMs(),
                   card.summonDeployDelaySecondMs(),
-                  firstIsBuilding);
+                  firstIsBuilding,
+                  k < groups ? 0 : card.listed().get(k - groups).delayMs());
       units.add(new Unit(k, unit, offset[0], offset[1], cx, cy, lane, start));
     }
     return new Result(0, px, py, interval, originLane, units);
