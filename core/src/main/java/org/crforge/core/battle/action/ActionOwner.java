@@ -250,6 +250,28 @@ public interface ActionOwner {
   }
 
   /**
+   * Writes a button state override, and refills the charges when it asks, into the champion slot of
+   * the owner's player that follows the row's champion; nothing when no slot follows it. Only a
+   * character or a building, which is its own player's, answers it; an owner that hands the
+   * question to another object is not modelled.
+   *
+   * @param action the row
+   */
+  default void overrideAbilityButton(OverrideAbilityButtonState action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * The owner's group chain, for the actions that check or run over its group. Only a character
+   * keeps one.
+   */
+  default GroupChain groupChain() {
+    throw new UnsupportedOperationException(
+        "a group check on an owner other than a character is not modelled");
+  }
+
+  /**
    * What a Goblin Hut's life state asks of the battle around the owner.
    *
    * @return the owner's answers

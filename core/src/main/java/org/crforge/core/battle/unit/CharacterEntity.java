@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.GroupChain;
 import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.MegaKnightUppercut;
@@ -328,6 +329,9 @@ public class CharacterEntity extends WorldEntity {
    * asked for none, as a standing or deploying character's visit does.
    */
   @Getter private int speedBudget;
+
+  /** True for a spawned character the holder's fold starts as it admits it. */
+  private boolean startOnAdmission;
 
   /** The children linked into this character's group, newest first. */
   private final List<CharacterEntity> group = new ArrayList<>();
@@ -1081,6 +1085,28 @@ public class CharacterEntity extends WorldEntity {
     if (getData().onStartingAction() == null) {
       return;
     }
+    startingAction();
+  }
+
+  /**
+   * Marks a character a spawn made, which the holder admits at its next cleanup's fold: the fold
+   * starts it, scheduling its row's starting action then.
+   */
+  void startOnAdmission() {
+    startOnAdmission = getData().onStartingAction() != null;
+  }
+
+  @Override
+  protected void onRegistered() {
+    super.onRegistered();
+    if (startOnAdmission) {
+      startOnAdmission = false;
+      startingAction();
+    }
+  }
+
+  /** Schedules the row's starting action, built for the character, the character as its cause. */
+  private void startingAction() {
     BattleAction starting =
         world.getActions().build(getData().onStartingAction(), world.binding(this));
     actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
@@ -1368,7 +1394,42 @@ public class CharacterEntity extends WorldEntity {
     CharacterEntity linked = (CharacterEntity) child;
     group.add(0, linked);
     linked.groupSource = this;
+    // The same link the card's construction makes: the child right after this character in its
+    // chain, ahead of the one that followed it, and the child marked as in a group. This character
+    // keeps its own mark, which a lone source never gets.
+    linked.chained = true;
+    linked.chainPrevious = this;
+    linked.chainNext = chainNext;
+    if (chainNext != null) {
+      chainNext.chainPrevious = linked;
+    }
+    chainNext = linked;
     world.groupLinked(this, linked);
+  }
+
+  /**
+   * The character's group chain for the group checks: its mark, and the chain from its first unit,
+   * walking back along the links, then forward to the last.
+   */
+  @Override
+  public GroupChain groupChain() {
+    List<GroupChain.Member> members = new ArrayList<>();
+    if (chained) {
+      CharacterEntity head = this;
+      while (head.chainPrevious != null) {
+        head = head.chainPrevious;
+      }
+      for (CharacterEntity member = head; member != null; member = member.chainNext) {
+        CharacterEntity built = member;
+        members.add(
+            new GroupChain.Member(
+                new EntityFilterSubject(member),
+                member.actionHolder(),
+                member == this,
+                row -> world.getActions().build(row, world.binding(built))));
+      }
+    }
+    return new GroupChain(chained, members, side() & 1, getData().name());
   }
 
   /**
@@ -1414,7 +1475,8 @@ public class CharacterEntity extends WorldEntity {
    * @return true when it was in a chain
    */
   boolean leaveChain() {
-    if (!chained) {
+    // A lone source a child was linked after holds links without a group mark of its own.
+    if (!chained && chainPrevious == null && chainNext == null) {
       return false;
     }
     if (chainPrevious != null) {
@@ -2937,6 +2999,12 @@ public class CharacterEntity extends WorldEntity {
               + ability.name()
               + ", which sets columns the battle does not model: "
               + ability.unmodelledColumns());
+    }
+    // Only the Goblins hero's banner is a building with an ability; its cast, the second wave of
+    // goblins, is held by no reference.
+    if (getData().building()) {
+      throw new UnsupportedOperationException(
+          name() + " casts " + ability.name() + " as a building, which no reference holds");
     }
     if (ability.switchLanes() && getData().ingamePathfindVisible()) {
       throw new UnsupportedOperationException(

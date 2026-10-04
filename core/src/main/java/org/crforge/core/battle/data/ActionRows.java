@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
@@ -46,6 +47,7 @@ import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RollingProjectile;
@@ -53,7 +55,9 @@ import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunIfInstigatorMatches;
+import org.crforge.core.battle.action.RunIfUnitGroupContains;
 import org.crforge.core.battle.action.RunOnInstigator;
+import org.crforge.core.battle.action.RunOnMatchingUnitsInGroup;
 import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
@@ -65,15 +69,18 @@ import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
+import org.crforge.core.battle.action.TimerQuest;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.action.WithDuration;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnProjectile;
 import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.battle.unit.AreaEffectData;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -197,6 +204,41 @@ public final class ActionRows {
               Set.of("CardGroup", "EvaluateDeployedCard", "OnActivateAction", "ElixirCost")),
           // The champion slot's row: whether a slot may follow another champion.
           Map.entry("ActionChampionAbilityData", Set.of("AllowDynamicReassignments")),
+          // The group checks: the filter and the actions. A walk limited to a range is refused.
+          Map.entry(
+              "ActionRunActionIfUnitGroupContains",
+              Set.of("Action", "ActionIfNoMatch", "ObjectFilter")),
+          Map.entry("ActionRunOnMatchingUnitsInGroup", Set.of("ObjectFilter", "ActionToRun")),
+          // The timer: its intervals, start, count, action, bar type and hit speed switch. Its
+          // bar's names, file, inversion and the interval the other player sees only show
+          // something.
+          Map.entry(
+              "ActionTimerQuest",
+              Set.of(
+                  "Intervals",
+                  "IntervalStartAt",
+                  "MaxResets",
+                  "OnIntervalReachedAction",
+                  "Type",
+                  "AffectedByHitSpeed",
+                  "BarIndicatorName",
+                  "BarNamesList",
+                  "ContainerName",
+                  "ExportNameAtFull",
+                  "InvertBar",
+                  "OpponentVisualInterval")),
+          // The button state override: the champion whose slot it writes into, the state, the
+          // refill and whether its run lasts. Its immediate and highlight switches are stored and
+          // read by nothing.
+          Map.entry(
+              "ActionOverrideAbilityButtonState",
+              Set.of(
+                  "ChampionCharacterData",
+                  "StateToSet",
+                  "ResetCharges",
+                  "Persistent",
+                  "ApplyImmediate",
+                  "EnableChampionHighlight")),
           // The tether's columns; the tags it sets on both ends are read by no battle code, and
           // the effects only show something.
           Map.entry(
@@ -836,6 +878,49 @@ public final class ActionRows {
                   shared,
                   !f.hasNonNull("AllowDynamicReassignments")
                       || f.get("AllowDynamicReassignments").asBoolean());
+            }
+            case "ActionOverrideAbilityButtonState" -> {
+              String champion = rowName(f.get("ChampionCharacterData"));
+              if (champion == null) {
+                throw new UnsupportedOperationException(
+                    name + " names no champion, which is not modelled");
+              }
+              String state = f.path("StateToSet").asText("");
+              yield new OverrideAbilityButtonState(
+                  shared,
+                  champion,
+                  state.isEmpty() ? 0 : ChampionController.stateNamed(state),
+                  bool(f, "ResetCharges"),
+                  f.path("Persistent").asBoolean(true));
+            }
+            case "ActionRunActionIfUnitGroupContains" ->
+                new RunIfUnitGroupContains(
+                    shared,
+                    objectFilter(name, f),
+                    action(f.get("Action")),
+                    action(f.get("ActionIfNoMatch")));
+            case "ActionRunOnMatchingUnitsInGroup" -> {
+              // Built here so that what it runs is checked with the tree; each run builds it
+              // afresh for the object it runs on.
+              action(f.get("ActionToRun"));
+              yield new RunOnMatchingUnitsInGroup(
+                  shared, objectFilter(name, f), rowName(f.get("ActionToRun")));
+            }
+            case "ActionTimerQuest" -> {
+              String barType = f.path("Type").asText("Continuous");
+              if (!barType.equals("Continuous")) {
+                throw new UnsupportedOperationException(
+                    name + " sets Type " + barType + ", a segmented bar, which is not modelled");
+              }
+              boolean affected = f.path("AffectedByHitSpeed").asBoolean(true);
+              BooleanSupplier buffed = binding.hitSpeedBuffed();
+              yield new TimerQuest(
+                  shared,
+                  ints(f.get("Intervals")),
+                  integer(f, "IntervalStartAt"),
+                  integer(f, "MaxResets"),
+                  action(f.get("OnIntervalReachedAction")),
+                  affected ? buffed : () -> false);
             }
             case "ActionGoblinsteinAbility" -> {
               refuseShared(
@@ -2313,6 +2398,16 @@ public final class ActionRows {
   private static int integer(JsonNode fields, String column) {
     JsonNode value = fields.get(column);
     return value == null || value.isNull() ? 0 : value.asInt();
+  }
+
+  /** A group check's filter, which it must name. */
+  private GameObjectFilter objectFilter(String name, JsonNode fields) {
+    String filter = fields.path("ObjectFilter").asText("");
+    if (filter.isEmpty()) {
+      throw new UnsupportedOperationException(
+          name + " checks its group with no filter, which is not modelled");
+    }
+    return records.filter(filter);
   }
 
   private static boolean bool(JsonNode fields, String column) {

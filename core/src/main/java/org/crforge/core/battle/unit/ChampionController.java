@@ -33,18 +33,25 @@ import org.crforge.core.pathfinding.GridEntityState;
  * ability's trigger delay, starts the full cooldown and spends a charge if it counts them. With no
  * live copy it does nothing more.
  *
- * <p>The button state's other inputs - an override another action writes, a limited availability
- * and a reservation of elixir the player's own client files - are never set in a battle here: no
- * row that writes them is played, and the reserving pass belongs to the issuing client.
+ * <p>An action may write a button state for the step, which wins the next working out outright, and
+ * refill the charges; the slot clears that state at the end of each of its own steps. The state is
+ * read by nothing else in the battle: the activation and the ability command's gates never look at
+ * it. A champion an action spawns is handed to the slots too: the slot that follows its row follows
+ * its play, as a card play's would.
+ *
+ * <p>The button state's last two inputs - a limited availability and a reservation of elixir the
+ * player's own client files - are never set in a battle here: only a saved battle's state sets the
+ * first, and the reserving pass belongs to the issuing client.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the live copies, the state, the step's cooldown and its pauses,"
             + " the refund window and the refund, the activation, the deck pass, the follow of a"
-            + " play; held by archer_queen_ability and archer_queen_ability_refused. Not carried:"
-            + " the button state's override, the limited availability and the reservation, which"
-            + " nothing in a battle here sets.")
+            + " play; held by archer_queen_ability and archer_queen_ability_refused. The state"
+            + " override an action writes, cleared each step, the charges refill and the follow of"
+            + " a spawned champion, held by hero_goblins. Not carried: the limited availability and"
+            + " the reservation, which nothing in a battle here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
@@ -58,6 +65,9 @@ public final class ChampionController extends ActionInstance {
 
   /** The champion's play is followed and its copies deploy. */
   public static final int DEPLOYING = 3;
+
+  /** The ability is available for a limited time: written only by an action here. */
+  public static final int LIMITED_AVAILABILITY = 4;
 
   /** No charge is left. */
   public static final int ALL_CHARGES_CONSUMED = 6;
@@ -76,6 +86,34 @@ public final class ChampionController extends ActionInstance {
 
   /** A live copy carries the tag that disables the ability. */
   public static final int DISABLED = 11;
+
+  /** The ability is out of reach for a while: written only by an action. */
+  public static final int TEMPORARILY_UNAVAILABLE = 12;
+
+  /** The ability is not available yet: written only by an action. */
+  public static final int NO_YET_AVAILABLE = 13;
+
+  /**
+   * The button states by their names, as an action row spells them, matched exactly: the states the
+   * slot works out and the ones only an action writes, with the two markers that bound the reasons.
+   */
+  private static final List<String> STATE_NAMES =
+      List.of(
+          "ChampionUnknown",
+          "ChampionAbsent",
+          "Ready",
+          "ChampionDeploying",
+          "LimitedAvailability",
+          "ERR_START",
+          "AllChargesConsumed",
+          "ChampionPending",
+          "OnCooldown",
+          "NotEnoughElixir",
+          "ChampionCasting",
+          "Disabled",
+          "TemporarilyUnavailable",
+          "NoYetAvailable",
+          "ERR_MAX");
 
   /** Milliseconds one step takes off the cooldown and the refund window. */
   private static final int STEP_MS = 50;
@@ -113,6 +151,9 @@ public final class ChampionController extends ActionInstance {
 
   /** The button state. */
   @Getter private int state = ABSENT;
+
+  /** A state an action wrote for this step, which wins the next working out; 0 for none. */
+  @Getter private int override;
 
   /** The refund window: the trigger delay left since the last use, in milliseconds. */
   @Getter private int triggerMs;
@@ -153,6 +194,11 @@ public final class ChampionController extends ActionInstance {
         && !unit.isClone();
   }
 
+  /** Whether the slot may follow another champion its player plays or spawns. */
+  boolean allowsReassignment() {
+    return row.isAllowDynamicReassignments();
+  }
+
   /** Rebuilds the live copies from the live list, from the last to the first. */
   private void refresh() {
     champions.clear();
@@ -167,9 +213,26 @@ public final class ChampionController extends ActionInstance {
     }
   }
 
-  /** Works out the button state: the first reason in a fixed order. */
+  /**
+   * The button state a name spells, matched exactly; 0, the unknown state, for any other name.
+   *
+   * @param name the state's name
+   */
+  public static int stateNamed(String name) {
+    int index = STATE_NAMES.indexOf(name);
+    return Math.max(index, UNKNOWN);
+  }
+
+  /**
+   * Works out the button state: a state an action wrote for the step outright, else the first
+   * reason in a fixed order.
+   */
   private int compute() {
     refresh();
+    if (override != 0) {
+      state = override;
+      return state;
+    }
     if (champion == null) {
       state = UNKNOWN;
       return state;
@@ -243,6 +306,32 @@ public final class ChampionController extends ActionInstance {
     if (champion != null) {
       world.championStepped(this, elixir, views);
     }
+    // A state an action wrote lasts the one step.
+    override = 0;
+  }
+
+  /**
+   * A state an action writes for the step: it wins the slot's next working out, and the slot's step
+   * clears it.
+   *
+   * @param written the state
+   */
+  void override(int written) {
+    override = written;
+  }
+
+  /** Refills the charges to the champion's most, as an action asks: its row's value as it is. */
+  void refillCharges() {
+    charges = champion.ability().maxCharges();
+  }
+
+  /**
+   * A champion an action spawned, of the row this slot follows: the slot follows the unit's play.
+   *
+   * @param index the unit's deploy count
+   */
+  void followSpawned(int index) {
+    follow(index);
   }
 
   /**

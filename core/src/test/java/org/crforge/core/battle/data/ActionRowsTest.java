@@ -33,6 +33,7 @@ import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RollingProjectile;
@@ -46,6 +47,7 @@ import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnProjectile;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -858,6 +860,29 @@ class ActionRowsTest {
   }
 
   @Test
+  @DisplayName(
+      "a button state override reads its champion, its state by its exact name, its refill and"
+          + " whether it lasts, which it does unless the row says otherwise")
+  void theButtonOverrideReadsItsColumns() {
+    OverrideAbilityButtonState shown =
+        (OverrideAbilityButtonState)
+            GameData.actions().build("GoblinHero_Show_Disabled_Button", INERT_BINDING);
+    assertThat(shown.getChampion()).isEqualTo("GoblinHero_Flag_Building");
+    assertThat(shown.getState()).isEqualTo(ChampionController.NO_YET_AVAILABLE);
+    assertThat(shown.isPersistent()).isTrue();
+    assertThat(shown.isResetCharges()).isFalse();
+    OverrideAbilityButtonState reset =
+        (OverrideAbilityButtonState)
+            GameData.actions().build("GoblinHero_Reset_Ability_Charges", INERT_BINDING);
+    assertThat(reset.getState()).isZero();
+    assertThat(reset.isResetCharges()).isTrue();
+    assertThat(reset.isPersistent()).isFalse();
+    assertThat(ChampionController.stateNamed("ChampionPending"))
+        .isEqualTo(ChampionController.PENDING);
+    assertThat(ChampionController.stateNamed("championpending")).isZero();
+  }
+
+  @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
     assertThatThrownBy(() -> GameData.actions().build("BarbLog_hero_reset_target", INERT_BINDING))
@@ -1218,12 +1243,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 790 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 810 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(790);
+    assertThat(built).as("rows built").isEqualTo(810);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 74, "column", 69, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 54, "column", 69, "spawn type", 13));
   }
 }

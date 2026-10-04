@@ -330,14 +330,14 @@ public class Standard1v1Battle {
       MatchSide matchSide = ladder.side(side);
       for (int index = 0; index < matchSide.deck().size(); index++) {
         // The Mirror and a variant card summon nothing of their own. A hero slot's card is asked
-        // in its hero form.
+        // in its hero form, whose linked champion comes first.
         MatchCard matchCard = matchSide.deck().get(index);
         boolean hero = (matchSide.slotFlags(index) & MatchSide.HERO_SLOT) != 0;
         String form = matchCard.formRow(hero ? MatchCard.HERO_FORM : MatchCard.BASIC_FORM).name();
         UnitData champion =
             matchCard.mirror() || matchCard.variant() != null
                 ? null
-                : world.getRecords().card(form).champion();
+                : world.getRecords().cardChampion(form);
         champions.add(champion);
         if (champion != null) {
           championCards++;
@@ -541,7 +541,7 @@ public class Standard1v1Battle {
       return;
     }
     DeployCard repeated = world.getRecords().card(item.repeats().name());
-    if (repeated.summonsChampion()) {
+    if (world.getRecords().cardChampion(repeated.name()) != null) {
       throw new UnsupportedOperationException(
           name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
     }
@@ -843,7 +843,8 @@ public class Standard1v1Battle {
     }
     // In a match the champion slots hear the play after its cast.
     if (match != null && result.placed()) {
-      world.championCardPlayed(side, card.champion(), deployIndex, name);
+      world.championCardPlayed(
+          side, world.getRecords().cardChampion(card.name()), deployIndex, name);
     }
     plays.add(
         new Play(
