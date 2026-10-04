@@ -152,6 +152,15 @@ public final class BattleRecords {
           // Read by the charge reset as an instance is listed, and by the post-move charge for a
           // unit whose row has no charge range.
           "OverrideChargeRange",
+          // Read by an instance's spawner, in the buff visit, and by the cleanup's fold, which
+          // admits a child of a spawner that must be alive only while it is.
+          "SpawnObject",
+          "SpawnStartTime",
+          "SpawnInterval",
+          "SpawnLimit",
+          "SpawnNumber",
+          "SpawnPauseTime",
+          "SpawnerAliveRequired",
           // Resolved when the tables are derived: a row that names a base already carries every
           // column it inherits.
           "Base");
@@ -1595,6 +1604,13 @@ public final class BattleRecords {
         .overrideChargeRange(row.intValue("OverrideChargeRange"))
         .onStartAction(hookAction(row, "OnStartAction"))
         .onRemoveAction(hookAction(row, "OnRemoveAction"))
+        .spawnObject(sets(row, "SpawnObject") ? row.string("SpawnObject") : null)
+        .spawnStartTimeMs(row.intValue("SpawnStartTime"))
+        .spawnIntervalMs(row.intValue("SpawnInterval"))
+        .spawnLimit(row.intValue("SpawnLimit"))
+        .spawnNumber(row.intValue("SpawnNumber"))
+        .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
+        .spawnerAliveRequired(row.bool("SpawnerAliveRequired"))
         .unmodelledColumns(unmodelled)
         .build();
   }

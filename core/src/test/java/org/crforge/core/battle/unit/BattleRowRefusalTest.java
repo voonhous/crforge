@@ -29,15 +29,16 @@ class BattleRowRefusalTest {
           + " counts")
   void aBuffAfterHitsIsRefusedAtTheFirstHit() {
     Standard1v1Battle match = passiveTowers();
-    UnitData skeleton = GameData.unit("Skeleton_EV1");
-    assertThat(skeleton.buffAfterHits()).containsExactly("SkeletonDuplication_EV1");
+    // The evolved Skeleton's own buff is modelled; one that shields its carrier is not.
+    UnitData skeleton =
+        GameData.unit("Skeleton_EV1").toBuilder().buffAfterHits(List.of("ShieldBoost")).build();
     assertThat(skeleton.unmodelledColumns()).isEmpty();
     // Before the enemy's princess tower, which does not fight back: a Knight would kill it first.
     match.deploy(0, skeleton, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 22000, "Skeleton");
 
     assertThatThrownBy(() -> run(match, 200))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("the buff SkeletonDuplication_EV1 sets columns not modelled");
+        .hasMessageContaining("the buff ShieldBoost sets columns not modelled");
   }
 
   @Test

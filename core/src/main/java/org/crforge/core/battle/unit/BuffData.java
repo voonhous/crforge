@@ -70,6 +70,16 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     cause; a refresh schedules nothing; null for none
  * @param onRemoveAction the action every removal of an instance but a death's schedules on its
  *     carrier, the carrier its cause; null for none
+ * @param spawnObject the character an instance's spawner makes in front of its carrier, or null for
+ *     none
+ * @param spawnStartTimeMs the spawner's timer as an instance is listed, in milliseconds
+ * @param spawnIntervalMs the time between two firings within a wave; below 1 the spawner never
+ *     fires
+ * @param spawnLimit how many firings an instance's spawner makes; below 1 it makes none
+ * @param spawnNumber how many firings make a wave, after which the pause follows
+ * @param spawnPauseTimeMs the time after a wave, in milliseconds
+ * @param spawnerAliveRequired true when a child joins the battle only while its carrier is still
+ *     listed and not removable as the cleanup folds it in
  * @param unmodelledColumns the columns its row sets that the battle does not model
  */
 @Builder
@@ -118,6 +128,13 @@ public record BuffData(
     int overrideChargeRange,
     String onStartAction,
     String onRemoveAction,
+    String spawnObject,
+    int spawnStartTimeMs,
+    int spawnIntervalMs,
+    int spawnLimit,
+    int spawnNumber,
+    int spawnPauseTimeMs,
+    boolean spawnerAliveRequired,
     List<String> unmodelledColumns) {
 
   public BuffData {
