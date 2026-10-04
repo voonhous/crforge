@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -189,17 +190,30 @@ public final class ReplaySmokeRun {
         plan.accounts().get(1)[1],
         plan.slotFlags().get(0),
         plan.slotFlags().get(1));
+    // The commands are queued in the scenario's order, plays and ability commands alike: within a
+    // tick they run in the order they were queued.
     Map<String, ScenarioPlan.Play> planned = new LinkedHashMap<>();
-    for (ScenarioPlan.Play play : plan.plays()) {
-      planned.put("cmd" + play.index(), play);
-      battle.play(
-          play.runTick(),
-          battle.getWorld().getRecords().card(play.card()),
-          play.level(),
-          play.side(),
-          play.x(),
-          play.y(),
-          "cmd" + play.index());
+    Map<Integer, ScenarioPlan.Play> playsByIndex = new HashMap<>();
+    Map<Integer, ScenarioPlan.Ability> abilitiesByIndex = new HashMap<>();
+    plan.plays().forEach(play -> playsByIndex.put(play.index(), play));
+    plan.abilities().forEach(ability -> abilitiesByIndex.put(ability.index(), ability));
+    int commands = plan.plays().size() + plan.abilities().size();
+    for (int index = 0; index < commands; index++) {
+      ScenarioPlan.Play play = playsByIndex.get(index);
+      ScenarioPlan.Ability ability = abilitiesByIndex.get(index);
+      if (play != null) {
+        planned.put("cmd" + index, play);
+        battle.play(
+            play.runTick(),
+            battle.getWorld().getRecords().card(play.card()),
+            play.level(),
+            play.side(),
+            play.x(),
+            play.y(),
+            "cmd" + index);
+      } else {
+        battle.useAbility(ability.runTick(), ability.side(), ability.objectId(), "cmd" + index);
+      }
     }
 
     ByteArrayOutputStream trace = new ByteArrayOutputStream();
@@ -240,6 +254,22 @@ public final class ReplaySmokeRun {
       plays.add(entry);
     }
     manifest.put("plays_run", plays);
+    // Each ability command that ran and what it came to: 0 when it paid, else its refusal code.
+    List<Map<String, Object>> abilities = new ArrayList<>();
+    for (Standard1v1Battle.AbilityUse use : battle.getAbilityUses()) {
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("name", use.name());
+      entry.put("tick", use.tick());
+      entry.put("side", use.side());
+      entry.put("unit", use.unit());
+      entry.put("code", use.outcome().code());
+      entry.put("elixir_before", use.outcome().elixirBefore());
+      entry.put("elixir_after", use.outcome().elixirAfter());
+      abilities.add(entry);
+    }
+    if (!abilities.isEmpty()) {
+      manifest.put("abilities_run", abilities);
+    }
     // A play that never ran had no item built: when its item depends on the battle (an evolution
     // slot's card, or an evolved or hero field), the parts the run checks are listed as unchecked.
     List<String> unchecked = new ArrayList<>();
