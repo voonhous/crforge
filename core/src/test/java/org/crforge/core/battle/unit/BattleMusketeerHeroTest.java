@@ -3,13 +3,16 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +20,8 @@ import org.junit.jupiter.api.Test;
  * The Musketeer's hero form played from the hero slot and its ability used: the ability places a
  * dummy building five half tiles ahead of the hero, and the dummy, a building, places the turret on
  * its own point. The building placement passes the object that runs the row by, so the dummy does
- * not block the point it stands on; any other building there still does. The turret's start, a
- * knockback projectile spawned from its cause, is refused.
+ * not block the point it stands on; any other building there still does. The turret's start
+ * launches its knockback projectile from its cause, the turret itself, on its own point.
  */
 class BattleMusketeerHeroTest {
 
@@ -70,18 +73,83 @@ class BattleMusketeerHeroTest {
 
   @Test
   @DisplayName(
-      "the dummy building's start places the turret; the turret's start, a knockback projectile"
-          + " spawned from its cause, is refused")
-  void theTurretsKnockbackIsRefused() {
+      "the turret's start launches its knockback from the turret, its own cause, on its own point"
+          + " and at its own point, at no height and at no target, in the turret's first pending"
+          + " pass")
+  void theTurretsStartLaunchesItsKnockback() {
     Standard1v1Battle battle = abilityUsed();
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < 60; i++) {
-                step(battle);
+    List<String> launches = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void actionProjectileLaunched(
+                  int tick,
+                  WorldEntity owner,
+                  String action,
+                  int phase,
+                  ProjectileEntity projectile) {
+                launches.add(
+                    "%d %s %s %d %s %d %d %d %d %d %s %s %d"
+                        .formatted(
+                            tick,
+                            owner.getData().name(),
+                            action,
+                            phase,
+                            projectile.getData().name(),
+                            projectile.getStartX(),
+                            projectile.getStartY(),
+                            projectile.getStartZ(),
+                            projectile.getAimX(),
+                            projectile.getAimY(),
+                            projectile.launcherName(),
+                            projectile.targetName(),
+                            projectile.getSide()));
               }
-            })
+            });
+    int limit = battle.getBattle().getTick() + 60;
+    while (named(battle, TURRET).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    CharacterEntity turret = named(battle, TURRET).get(0);
+    int listed = battle.getBattle().getTick();
+    for (int i = 0; i < 40; i++) {
+      step(battle);
+    }
+    int x = turret.getView().getX();
+    int y = turret.getView().getY();
+    // Listed at the cleanup of the tick the dummy placed it, the turret runs its start in its
+    // phase-1 pending pass of the next tick.
+    assertThat(launches)
+        .containsExactly(
+            "%d %s MusketeerTurret_SpawnKnockBack 1 MusketeerTurret_KnockBack %d %d 0 %d %d %s null 0"
+                .formatted(listed, TURRET, x, y, x, y, turret.name()));
+  }
+
+  @Test
+  @DisplayName(
+      "the knockback spawn row's source is its cause: one other than the object that runs it is"
+          + " refused")
+  void aKnockbackFromAnotherCauseIsRefused() {
+    Standard1v1Battle battle = abilityUsed();
+    int limit = battle.getBattle().getTick() + 60;
+    while (named(battle, DUMMY).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    CharacterEntity hero = named(battle, HERO).get(0);
+    CharacterEntity dummy = named(battle, DUMMY).get(0);
+    BattleWorld world = battle.getWorld();
+    BattleAction knockback =
+        world.getActions().build("MusketeerTurret_SpawnKnockBack", world.binding(hero));
+    // Run on the hero with the dummy as its cause.
+    assertThatThrownBy(() -> hero.actionHolder().start(knockback, dummy.actionHolder()))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("MusketeerTurret_SpawnKnockBack spawns a projectile from its cause");
+        .hasMessageContaining(
+            "MusketeerTurret_SpawnKnockBack spawns a projectile from a cause other than its"
+                + " owner");
   }
 
   /**
