@@ -34,6 +34,7 @@ import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.WarpCharacter;
@@ -2938,6 +2939,55 @@ public class BattleWorld implements HolderPasses {
     projectile.castMirrored(source, tileMap.width() * TileMap.CELL_UNITS - aimX, aimY);
     holder.add(projectile);
     registrationPass(projectile);
+  }
+
+  /**
+   * The projectiles a projectile shoots across its line, as the hero Elite Archer's ability shot
+   * shoots its side shots from its starting action, before its first step. The line runs from where
+   * the source stands to its aim - its target's position when it homes onto one - and its travel is
+   * that line set to the row's ProjectileRange, or kept at its own length without one. The offsets
+   * across it start at minus half the action's distance and grow by the distance over one less than
+   * the count (at least 2); each is the line turned a quarter to the right ({@code (-dy, dx)}) set
+   * to that offset, a negative offset to the other side. Each projectile starts at the source's
+   * point moved by its offset and is shot at its start plus the travel, in order, each handed to
+   * the holder as it is made, as a cast projectile's are.
+   *
+   * @param source the projectile that shoots them
+   * @param action the action, which names the row, the count and the spread
+   */
+  public void shootProjectilesAcross(
+      ProjectileEntity source, ShootProjectilesInCharacterDirection action) {
+    ProjectileData data = records.projectile(action.getProjectile());
+    if (!data.unmodelledColumns().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " shoots "
+              + data.name()
+              + ", which sets columns its flight does not model: "
+              + data.unmodelledColumns());
+    }
+    WorldEntity sourceTarget = source.getTarget();
+    boolean homing = sourceTarget != null && source.getData().homing();
+    int dx = (homing ? sourceTarget.getView().getX() : source.getAimX()) - source.getX();
+    int dy = (homing ? sourceTarget.getView().getY() : source.getAimY()) - source.getY();
+    int[] travel = {dx, dy};
+    FixedMath.normalize(
+        travel,
+        data.projectileRange() >= 1 ? data.projectileRange() : FixedMath.guardedDistance(dx, dy));
+    int count = action.getCount();
+    int spacing = action.getDistance() / (Math.max(count, 2) - 1);
+    int offset = -(action.getDistance() / 2);
+    for (int k = 0; k < count; k++) {
+      int[] across = {-dy, dx};
+      FixedMath.normalize(across, offset);
+      int sx = source.getX() + across[0];
+      int sy = source.getY() + across[1];
+      ProjectileEntity projectile = new ProjectileEntity(this, data, source.side());
+      projectile.launchAcross(source, sx, sy, sx + travel[0], sy + travel[1]);
+      holder.add(projectile);
+      registrationPass(projectile);
+      offset += spacing;
+    }
   }
 
   /**

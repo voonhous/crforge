@@ -20,6 +20,7 @@ import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RollingProjectile;
+import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -452,6 +453,36 @@ public class ProjectileEntity extends BattleEntity
         hy,
         source.x,
         source.y);
+    this.delayMs = 0;
+    this.deployIndex = source.deployIndex;
+  }
+
+  /**
+   * Places a projectile another one shoots across its line as it sets off, as the hero Elite
+   * Archer's ability shot shoots its side shots: from the given start, on the ground but for a
+   * constant height, with no target and no delay, at the source's packed level re-based on this
+   * row's rarity, carrying the source's play, aimed from where the source stands. The source is its
+   * launcher and owner, and the source's root, a unit or tower, its root. A projectile owns no
+   * projectile here: the owner is left empty, which is what every reader of a projectile's owner
+   * makes of one that is not a character - the shooter that counts its hits, the initial collision
+   * check's segment, the hooks - and the source has no running action that hears of it.
+   *
+   * @param source the projectile that shoots it
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param hx the point it is shot at along the arena's width
+   * @param hy the point it is shot at along the arena's length
+   */
+  public void launchAcross(ProjectileEntity source, int sx, int sy, int hx, int hy) {
+    refuseUnitOnly("shot by a projectile");
+    if (source.root == null) {
+      throw new UnsupportedOperationException(
+          data.name()
+              + " is shot by "
+              + source.name()
+              + ", which has no root, so the shooter would be its root, not modelled");
+    }
+    place(null, source.root, null, source.packedLevel, sx, sy, 0, hx, hy, source.x, source.y);
     this.delayMs = 0;
     this.deployIndex = source.deployIndex;
   }
@@ -905,6 +936,12 @@ public class ProjectileEntity extends BattleEntity
   @Override
   public void mirroredExtraSpell(MirroredExtraSpell action) {
     world.castMirroredExtraSpell(this, action.getProjectile(), action.name());
+  }
+
+  /** Shoots the action's projectiles across the line from this projectile to its aim. */
+  @Override
+  public void shootProjectilesAcross(ShootProjectilesInCharacterDirection action) {
+    world.shootProjectilesAcross(this, action);
   }
 
   /**
