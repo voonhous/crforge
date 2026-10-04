@@ -67,6 +67,15 @@ final class AirToGroundRun extends ActionInstance {
       phase = GROUND;
       counter = row.getTotalDurationMs();
     }
+    // The start schedules the action once on the ground at once unless the unit descends; no
+    // reference holds a run with that action that starts on the ground.
+    if (phase != DESCENDING && row.getOnGround() != null) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " starts on the ground on "
+              + unit.name()
+              + ", scheduling its action once on the ground at the start, which is not modelled");
+    }
   }
 
   int phase() {
@@ -98,7 +107,7 @@ final class AirToGroundRun extends ActionInstance {
           counter -= STEP_MS;
         }
       }
-      case DESCENDING -> descend(pushes);
+      case DESCENDING -> descend(holder, pushes);
       case HELD -> hold(pushes);
       case CLIMBING -> {
         int t = row.getTransitionDurationMs();
@@ -128,9 +137,10 @@ final class AirToGroundRun extends ActionInstance {
 
   /**
    * The descent: the height from the flying height toward 0 over the transition; at its end the
-   * hold for the whole less two transitions.
+   * hold for the whole less two transitions, and the action once on the ground scheduled on the
+   * unit with the unit as its cause.
    */
-  private void descend(List<Integer> pushes) {
+  private void descend(ActionHolder holder, List<Integer> pushes) {
     int t = row.getTransitionDurationMs();
     int now;
     if (counter < 0) {
@@ -147,6 +157,9 @@ final class AirToGroundRun extends ActionInstance {
     }
     phase = HELD;
     counter = row.getTotalDurationMs() - 2 * t;
+    if (row.getOnGround() != null) {
+      holder.schedule(row.getOnGround(), ActionHolder.OWN_DELAY, false, holder);
+    }
   }
 
   /** The hold: FORCE_IS_GROUND and the height at 0; at its end the climb. */

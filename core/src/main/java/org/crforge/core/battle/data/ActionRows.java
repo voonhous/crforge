@@ -61,6 +61,7 @@ import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
@@ -163,6 +164,8 @@ public final class ActionRows {
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
           Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
+          // The path reset reads no column of its own.
+          Map.entry("ActionResetPath", Set.of()),
           // The Royal Chef's cooking. Its animation share, view indicator, AI state name, full-bar
           // hold and throw duration only show something; any other column of the class (an
           // overflow, the king's own shot, a cooking-done action, single buffs, deploying troops
@@ -1209,6 +1212,7 @@ public final class ActionRows {
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
+            case "ActionResetPath" -> new ResetPath(shared);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
             case "ActionDoPushbackFromInstigator" -> pushbackFromInstigator(name, shared, f);
@@ -1842,18 +1846,13 @@ public final class ActionRows {
 
     /**
      * An air-to-ground row's columns, a column it leaves out taking the loader's default: a
-     * transition of 200, a whole of 1000, the path reset at the end and no ground tag on idle. A
-     * row with a landing action, a path reset at landing, a next action or tags is refused.
+     * transition of 200, a whole of 1000, the path reset at the end, no ground tag on idle and no
+     * action once on the ground. A row with a landing action or a landing end action, a path reset
+     * at landing or a next action is refused. Its tags are carried by its run as any row's are.
      */
     private AirToGround airToGround(String name, ActionRow shared, JsonNode f) {
       for (String column :
-          List.of(
-              "ActionOnLanding",
-              "ActionOnLandingEnd",
-              "ActionOnGround",
-              "ResetPathAtLanding",
-              "NextAction",
-              "GameTagsToSet")) {
+          List.of("ActionOnLanding", "ActionOnLandingEnd", "ResetPathAtLanding", "NextAction")) {
         if (sets(f, column)) {
           throw new UnsupportedOperationException(
               name + ", an air-to-ground row, sets " + column + ", which is not modelled");
@@ -1864,7 +1863,8 @@ public final class ActionRows {
           f.path("TransitionDuration").asInt(200),
           f.path("TotalDuration").asInt(1000),
           f.path("AllowIsGroundTagOnIdle").asBoolean(false),
-          f.path("ResetPathAtEnd").asBoolean(true));
+          f.path("ResetPathAtEnd").asBoolean(true),
+          action(f.get("ActionOnGround")));
     }
 
     /**
