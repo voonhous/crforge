@@ -4444,11 +4444,17 @@ public class BattleWorld implements HolderPasses {
    * <p>A creation that ignores effects is the same creation: the flag only skips the spawn effect,
    * which is presentation.
    *
-   * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
-   * pushback, a ring around a character source, which reads its own spawn columns, and a unit that
-   * paths to its spawn point. A child without a speed stands where it is made, and one without hit
-   * points is taken like any other. A child with a starting action of its own starts it as the
-   * cleanup's fold admits it: the action is scheduled then, outside every pending pass.
+   * <p>A ring whose children take a fixed priority asks the lane of the point before each child and
+   * is turned over across the width in lane 1 and along the length for the top team, and the i-th
+   * child is taken as (80i)^2 nearer by a selection; a ring that pushes its children puts each on
+   * the point and flies it back to its ring point. A child of a source other than a character made
+   * with a deploy time faces along the length toward the enemy, a vector of length 1.
+   *
+   * <p>Refused rather than guessed: a morph, a spawn for the other side, a ring around a character
+   * source, which reads its own spawn columns, and a unit that paths to its spawn point. A child
+   * without a speed stands where it is made, and one without hit points is taken like any other. A
+   * child with a starting action of its own starts it as the cleanup's fold admits it: the action
+   * is scheduled then, outside every pending pass.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -4468,6 +4474,24 @@ public class BattleWorld implements HolderPasses {
               arguments.noOffset(),
               arguments.radius(),
               (x, y) -> SpawnPassable.passable(tileMap, x, y, data.collisionRadius()));
+      if (arguments.radius() != 0 && arguments.constPriority()) {
+        // A ring whose children take a fixed priority asks the lane of the point before each
+        // child, and is turned over by it and by the source's team.
+        int lane =
+            LaneAssignment.lane(
+                tileMap.width(),
+                tileMap.height(),
+                tileMap.width(),
+                arguments.x(),
+                arguments.y(),
+                -1,
+                0,
+                tileMap::bits);
+        for (WorldObserver observer : observers) {
+          observer.ringLaneAsked(tick, source, arguments.x(), arguments.y(), lane);
+        }
+        at = SpawnPlacement.mirrored(at, arguments.x(), arguments.y(), lane, source.side() & 1);
+      }
       int x = inset(at[0], tileMap.width());
       int y = inset(at[1], tileMap.height());
       int level =
@@ -4482,16 +4506,29 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(level, data.rarity())));
+      if (arguments.radius() != 0 && arguments.spawnPushback()) {
+        // On the point, flying back to its ring point; a character source, whose own death spawn
+        // pushback would decide when the row does not push, is refused above.
+        child.flyBackFrom(arguments.x(), arguments.y());
+      }
+      // A fixed priority per child: the i-th is taken as (80i)^2 nearer by a selection.
+      if (arguments.constPriority()) {
+        child.getView().setSquaredDistanceReduction((i * 80) * (i * 80));
+      }
       if (arguments.useDeploy() || deploysWithoutAsking(data, arguments.deployTimeMs())) {
         child.startDeploying();
       }
       if (arguments.deployTimeMs() != 0) {
         child.deployFor(arguments.deployTimeMs());
         // A spawn with a deploy time of its own hands the child a character source's facing, as
-        // the evolved Goblin Drill's hide goblins face where the drill faced.
+        // the evolved Goblin Drill's hide goblins face where the drill faced. Any other source
+        // hands it a vector of its team's direction along the length, of length 1, not 256.
         if (source instanceof CharacterEntity character) {
           child.getView().setDirX(character.getView().getDirX());
           child.getView().setDirY(character.getView().getDirY());
+        } else {
+          child.getView().setDirX(0);
+          child.getView().setDirY(AreaEffectEntity.yDirection(source.side()));
         }
       }
       // The child is registered now and joins the live list at the next cleanup's fold, which
@@ -5928,6 +5965,43 @@ public class BattleWorld implements HolderPasses {
     return area;
   }
 
+  /**
+   * Makes a container a balloon pop drops at a point: for the character's side and at its level,
+   * re-based on the area effect's own rarity, the character kept as its parent, alive or just dead,
+   * and following nothing; handed to the holder in the pass that ran the pop, so it is admitted at
+   * that tick's closing cleanup and first updates on the next tick. Refused: a clone, whose clone
+   * byte the container would carry, and a row that follows its parent.
+   *
+   * @param owner the character the pop runs on
+   * @param action the pop row's name
+   * @param row the container's area effect row
+   * @param x the point along the width
+   * @param y the point along the length
+   * @return the area effect
+   */
+  AreaEffectEntity containerAreaEffect(
+      CharacterEntity owner, String action, String row, int x, int y) {
+    if (owner.isClone()) {
+      throw new UnsupportedOperationException(
+          "a clone's " + action + " drops " + row + ", whose clone byte nothing modelled reads");
+    }
+    if (records.areaEffect(row).followsParent()) {
+      throw new UnsupportedOperationException(
+          action + " drops " + row + ", which follows its parent, not modelled");
+    }
+    return createAreaEffect(
+        row,
+        x,
+        y,
+        owner.side(),
+        owner.getPackedLevel(),
+        null,
+        "pop_balloon",
+        owner.name(),
+        owner,
+        null);
+  }
+
   /** Tells the observers an evolved Royal Ghost's hit summoned. */
   void ghostSummoned(CharacterEntity ghost, WorldEntity reference, int x, int y, int countdownMs) {
     for (WorldObserver observer : observers) {
@@ -6736,10 +6810,6 @@ public class BattleWorld implements HolderPasses {
       refused = "a morph";
     } else if (arguments.enemy()) {
       refused = "a spawn for the other side";
-    } else if (arguments.constPriority()) {
-      refused = "the ring's lane mirror and fixed priority";
-    } else if (arguments.radius() != 0 && arguments.spawnPushback()) {
-      refused = "the pushback of a ring";
     } else if (arguments.radius() != 0 && source.isCharacter()) {
       refused = "a ring around a character, which reads the character's own spawn columns";
     } else if (data.spawnPathfindSpeed() != 0) {

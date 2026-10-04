@@ -37,6 +37,7 @@ import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.NetAttackHost;
+import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
@@ -2280,6 +2281,17 @@ public class CharacterEntity extends WorldEntity {
       SpawnResetableAreaEffect action, int phase, ActionOwner instigator) {
     refuseRun(action.name());
     return new ResetableAreaEffectRun(action, this, phase, instigator(instigator));
+  }
+
+  /**
+   * Drops a container of a balloon pop at the character's point moved by the offsets, the one along
+   * the length times the team's direction, whether the character lives or has just died.
+   */
+  @Override
+  public void dropContainer(PopBalloons action, String areaEffect, int offsetX, int offsetY) {
+    int x = getView().getX() + offsetX;
+    int y = AreaEffectEntity.yDirection(side()) * offsetY + getView().getY();
+    world().containerAreaEffect(this, action.name(), areaEffect, x, y);
   }
 
   /** Refuses a run of the evolved Mega Knight's or Baby Dragon's on a clone, rider or carrier. */
