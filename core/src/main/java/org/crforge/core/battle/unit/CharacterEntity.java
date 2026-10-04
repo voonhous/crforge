@@ -46,7 +46,6 @@ import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.filter.GameObjectFilter;
-import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.CaptureHost;
 import org.crforge.core.battle.projectile.CaptureRun;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -3946,15 +3945,31 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * What a mark's run, or its hand-over's, on the character asks of the battle: the battle's
-   * objects, the cooldown of the champion slot that follows the character, and its state.
+   * What a mark's run, or its hand-over's, on the character asks of the battle: the objects its
+   * resolver's filter lets through, the character's position, the cooldown of the champion slot
+   * that follows the character, and its state.
    */
   @Override
   public SetIndicatorOnTarget.Host markHost(BattleAction action) {
     return new SetIndicatorOnTarget.Host() {
       @Override
-      public ObjectCensus census() {
-        return CharacterEntity.this.census();
+      public List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter) {
+        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+        for (WorldEntity entity :
+            world.resolverCandidates(filter, side() & 1, getData().name(), action.name())) {
+          out.add(new MarkCandidate(entity, action.name()));
+        }
+        return out;
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int y() {
+        return getView().getY();
       }
 
       @Override
