@@ -7,16 +7,8 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import lombok.Getter;
-import org.crforge.core.card.Card;
-import org.crforge.core.engine.GameEngine;
-import org.crforge.core.entity.base.Entity;
-import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
-import org.crforge.data.card.CardRegistry;
 
 /**
  * One reference deployment the visualizer can replay and compare against.
@@ -24,14 +16,15 @@ import org.crforge.data.card.CardRegistry;
  * <p>Three cases are bundled with the module: a Knight deployed on the left, on the right and in
  * the centre of the blue half of the standard arena. Each case is a reference trajectory - one
  * position, state, target and route length per 50 ms tick - produced by a model of the game's
- * movement and targeting rules, not a capture of the shipped game. The visualizer deploys the same
- * unit at the same place through the same public spawn path the grid pathfinding tests use, draws
- * the reference trajectory as a ghost, and remembers the first tick on which the live unit is
- * anywhere other than where the reference says it should be.
+ * movement and targeting rules, not a capture of the shipped game. The visualizer places the same
+ * unit at the same place on the battle core, as its own golden trajectory test does (see {@code
+ * BattleSession#scenario}), draws the reference trajectory as a ghost, and remembers the first tick
+ * on which the live unit is anywhere other than where the reference says it should be.
  *
- * <p>Tick alignment: a spawn is queued and flushed at the head of the following tick, so the first
- * engine tick after the spawn is the first tick the unit exists in, which is the reference's tick
- * 0. {@link #referenceTick(int)} is that conversion and nothing else.
+ * <p>Tick alignment: the unit is placed by a command due on the battle's tick 0, which runs at the
+ * head of the first step, and the step's opening cleanup admits it, so it is first visited in that
+ * step. The battle as the first step leaves it, its tick count 1, is the reference's tick 0. {@link
+ * #referenceTick(int)} is that conversion and nothing else.
  *
  * <p>This class does no drawing and holds no graphics resources; {@link
  * org.crforge.desktop.render.GoldenTrajectoryRenderer} draws what it exposes.
@@ -87,7 +80,7 @@ public final class GoldenScenario {
   /** Index into {@link #CASE_NAMES} of the case the next press selects. */
   private int nextIndex;
 
-  /** The engine's tick count at the moment the unit was spawned. */
+  /** The battle's tick count at the moment the unit was placed: the tick its command is due on. */
   private int spawnFrame;
 
   /** The reference tick of the first sample that did not match, or null while none has. */
@@ -110,12 +103,12 @@ public final class GoldenScenario {
    * Starts replaying a case.
    *
    * @param replayedCase the case to replay
-   * @param engineFrameCount the engine's tick count at the moment the unit was spawned, which is
-   *     the tick the reference's tick 0 follows
+   * @param battleTick the battle's tick count at the moment the unit was placed, the tick its
+   *     placement command is due on, which is the step the reference's tick 0 is read after
    */
-  public void begin(Case replayedCase, int engineFrameCount) {
+  public void begin(Case replayedCase, int battleTick) {
     this.activeCase = replayedCase;
-    this.spawnFrame = engineFrameCount;
+    this.spawnFrame = battleTick;
     this.firstDeviationTick = null;
     this.firstDeviationDistance = 0;
     this.deviationPoint = null;
@@ -136,30 +129,30 @@ public final class GoldenScenario {
   }
 
   /**
-   * The reference tick the engine's tick count corresponds to. Negative before the unit exists.
+   * The reference tick the battle's tick count corresponds to. Negative before the unit exists.
    *
-   * @param engineFrameCount the engine's tick count, read after the tick has run
+   * @param battleTick the battle's tick count, read after the step has run
    */
-  public int referenceTick(int engineFrameCount) {
-    return engineFrameCount - spawnFrame - 1;
+  public int referenceTick(int battleTick) {
+    return battleTick - spawnFrame - 1;
   }
 
   /**
    * Compares one tick of the live unit with the reference and remembers the first tick that differs
    * by anything at all.
    *
-   * <p>Called once per engine tick from inside the visualizer's tick loop, so that a frame covering
-   * several ticks compares every one of them.
+   * <p>Called once per battle step from inside the visualizer's step loop, so that a frame covering
+   * several steps compares every one of them.
    *
-   * @param engineFrameCount the engine's tick count after the tick that just ran
+   * @param battleTick the battle's tick count after the step that just ran
    * @param liveX the live unit's position along the arena's width in game units
    * @param liveY the live unit's position along the arena's length in game units
    */
-  public void sample(int engineFrameCount, int liveX, int liveY) {
+  public void sample(int battleTick, int liveX, int liveY) {
     if (activeCase == null || firstDeviationTick != null) {
       return;
     }
-    int tick = referenceTick(engineFrameCount);
+    int tick = referenceTick(battleTick);
     int[] golden = goldenAt(tick);
     if (golden == null) {
       return;
@@ -233,52 +226,6 @@ public final class GoldenScenario {
     return List.of("scenario: " + activeCase.name(), deviation);
   }
 
-  /**
-   * Deploys the case's unit at the case's position, through the public spawn path.
-   *
-   * <p>The unit is spawned rather than played from a hand: that skips the placement sync delay and
-   * the elixir cost, so its first countdown tick is the engine's next tick, which is what the tick
-   * alignment above assumes. The card's own deploy time is passed so the simulator's deploy timer
-   * and the grid deploy countdown run for the same twenty ticks.
-   *
-   * @param engine the engine to deploy into, already reset and set up for the run
-   * @param deployedCase the case whose card, position and side are deployed
-   * @return the engine's tick count at the moment of the spawn, to pass to {@link #begin}
-   */
-  public int deploy(GameEngine engine, Case deployedCase) {
-    Card card = CardRegistry.get(cardId(deployedCase.card()));
-    Objects.requireNonNull(card, () -> "Unknown card " + deployedCase.card());
-    engine
-        .getSpawnerSystem()
-        .spawnUnit(
-            deployedCase.deployX(),
-            deployedCase.deployY(),
-            deployedCase.side() == 0 ? Team.BLUE : Team.RED,
-            card.getUnitStats(),
-            LEVEL,
-            card.getUnitStats().getDeployTime());
-    return engine.getGameState().getFrameCount();
-  }
-
-  /**
-   * The live troop of the active case: the first alive troop of the case's side carrying the case's
-   * card name. Null when no case is active or the unit has died.
-   */
-  public Troop findUnit(GameEngine engine) {
-    if (activeCase == null) {
-      return null;
-    }
-    Team team = activeCase.side() == 0 ? Team.BLUE : Team.RED;
-    for (Entity entity : engine.getGameState().getAliveEntities()) {
-      if (entity instanceof Troop troop
-          && troop.getTeam() == team
-          && activeCase.card().equals(troop.getName())) {
-        return troop;
-      }
-    }
-    return null;
-  }
-
   /** Reads one bundled case. */
   public static Case load(String caseName) {
     String resource = RESOURCE_PREFIX + caseName + ".json";
@@ -310,10 +257,5 @@ public final class GoldenScenario {
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to read " + resource, e);
     }
-  }
-
-  /** The card registry's id of a card name: the name lower-cased with its spaces removed. */
-  private static String cardId(String cardName) {
-    return cardName.toLowerCase(Locale.ROOT).replace(" ", "");
   }
 }

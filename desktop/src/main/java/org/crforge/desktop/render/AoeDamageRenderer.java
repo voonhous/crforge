@@ -35,15 +35,34 @@ public class AoeDamageRenderer {
    * frame (even when rendering is toggled off) to keep indicators current.
    */
   public void update(GameState state) {
-    float deltaTime = Gdx.graphics.getDeltaTime();
-
     // Consume new events
     for (AoeDamageEvent event : state.getAoeDamageEvents()) {
-      float worldX = unitsToPixels(event.centerX());
-      float worldY = unitsToPixels(event.centerY()) + BOTTOM_UI_HEIGHT;
-      float worldRadius = unitsToPixels(event.radius());
-      activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, event.sourceTeam()));
+      add(event.centerX(), event.centerY(), event.radius(), event.sourceTeam());
     }
+    age();
+  }
+
+  /**
+   * Starts one indicator, whichever engine dealt the area hit.
+   *
+   * @param centerX the circle's centre along the width, in game units
+   * @param centerY the circle's centre along the length, in game units
+   * @param radius the circle's radius, in game units
+   * @param sourceTeam the team whose hit it was, which colours it
+   */
+  public void add(float centerX, float centerY, float radius, Team sourceTeam) {
+    float worldX = unitsToPixels(centerX);
+    float worldY = unitsToPixels(centerY) + BOTTOM_UI_HEIGHT;
+    float worldRadius = unitsToPixels(radius);
+    activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, sourceTeam));
+  }
+
+  /**
+   * Ages the indicators by the frame's time and drops the expired ones. Call once a frame, after
+   * the frame's new indicators are added.
+   */
+  public void age() {
+    float deltaTime = Gdx.graphics.getDeltaTime();
 
     // Age existing indicators and remove expired ones
     Iterator<AoeIndicator> it = activeIndicators.iterator();

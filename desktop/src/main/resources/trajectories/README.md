@@ -41,4 +41,4 @@ immediately afterwards.
 | --- | --- | --- | --- |
 | `knight_left` | (3500, 10000) | PrincessTower_1_1 | tick 235 |
 | `knight_right` | (14500, 10000) | PrincessTower_1_2 | tick 235 |
-| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 82 | tick 242 |
+| `knight_centre` | (9000, 12000) | KingTower_1_0, then PrincessTower_1_2 from tick 20 | tick 245 |
