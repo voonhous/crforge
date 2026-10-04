@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameRow;
@@ -49,14 +50,16 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * #checkMirrorItem}). A variant card's item names the option it is played as in the option field
  * and carries that option's cost; the option the player's client picks depends on the battle, and
  * is checked against the variant item the simulator builds ({@link #checkVariantItem}).
+ *
+ * <p>The command type numbers are the data version's ({@link CommandTypes}): a scenario read
+ * against tables of a version whose command types are not established has every command refused.
+ *
+ * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
+ * scenario the same way and lists every refusal it meets instead: each field and pinned value it
+ * refuses, and each command it cannot read, going on to the next. A refusal that leaves nothing to
+ * read on with, such as a row the tables do not hold, ends the survey and is listed last.
  */
 public final class ReplayScenario {
-
-  /** The command type of a card play in the scenario's protocol version. */
-  public static final int PLACE_CARD = 124;
-
-  /** The command type of an ability command, the tap on a champion's button. */
-  public static final int ABILITY = 178;
 
   /** Ids per table. */
   private static final int IDS_PER_TABLE = 1_000_000;
@@ -161,12 +164,37 @@ public final class ReplayScenario {
 
   private final Map<String, String> mapping = new LinkedHashMap<>();
 
+  /** The command types of the tables' data version, or null when they are not established. */
+  private final CommandTypes commandTypes;
+
+  /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
+  private List<Refusal> refusals;
+
   /**
+   * One input a survey refused.
+   *
+   * @param feature the production feature the input needs, or why it cannot be read
+   * @param input the scenario field and value
+   */
+  public record Refusal(String feature, String input) {}
+
+  /**
+   * A translator with the command types of the tables' data version ({@link CommandTypes#of}).
+   *
    * @param tables the game tables the ids are resolved against
    */
   public ReplayScenario(GameTables tables) {
+    this(tables, CommandTypes.of(tables.version()).orElse(null));
+  }
+
+  /**
+   * @param tables the game tables the ids are resolved against
+   * @param commandTypes the command types the commands are read by, or null for none established
+   */
+  public ReplayScenario(GameTables tables, CommandTypes commandTypes) {
     this.tables = tables;
     this.records = new BattleRecords(tables);
+    this.commandTypes = commandTypes;
   }
 
   /** What became of each scenario field, in the order they were read. */
@@ -185,8 +213,12 @@ public final class ReplayScenario {
     int seed = required(scenario, "rndSeed").asInt();
     mapping.put("rndSeed", "consumed: BattleWorld.seed, the battle stream's seed");
     mapping.put("time", "carried: the replay's wall clock, no battle input");
+    if (scenario.has("endTick")) {
+      mapping.put(
+          "endTick", "carried: the replay's last tick, where a viewer stops; no battle input");
+    }
     pin(scenario, "evt", "[]");
-    onlyFields(scenario, "$", "rndSeed", "time", "battle", "cmd", "evt");
+    onlyFields(scenario, "$", "rndSeed", "time", "endTick", "battle", "cmd", "evt");
     JsonNode battle = required(scenario, "battle");
     onlyFields(
         battle,
@@ -259,30 +291,36 @@ public final class ReplayScenario {
             + " slot, Standard1v1Battle.startLadderMatch's slots; absent is 0, and any other bit is"
             + " unsupported");
     if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
-      throw new UnsupportedScenarioException(
-          "two sides of one account, whose commands name no side", "battle.avatarN.accountID");
+      refuse("two sides of one account, whose commands name no side", "battle.avatarN.accountID");
     }
     List<ScenarioPlan.Play> plays = new ArrayList<>();
     List<ScenarioPlan.Ability> abilities = new ArrayList<>();
     int index = 0;
     for (JsonNode command : required(scenario, "cmd")) {
-      String field = "cmd[" + index + "]";
-      int type = required(command, "ct").asInt();
-      if (type == PLACE_CARD) {
-        plays.add(play(command, index, decks, deckLevels, slotFlags, accounts));
-      } else if (type == ABILITY) {
-        abilities.add(ability(command, index, accounts));
-      } else {
-        throw new UnsupportedScenarioException("the command type " + type, field + ".ct");
+      try {
+        command(command, index, decks, deckLevels, slotFlags, accounts, plays, abilities);
+      } catch (UnsupportedScenarioException e) {
+        // A survey lists a command it cannot read and goes on to the next one.
+        if (refusals == null) {
+          throw e;
+        }
+        refusals.add(new Refusal(e.feature(), e.input()));
+      } catch (IllegalArgumentException e) {
+        if (refusals == null) {
+          throw e;
+        }
+        refusals.add(new Refusal(e.getMessage(), "cmd[" + index + "]"));
       }
       index++;
     }
+    int play = commandTypes == null ? -1 : commandTypes.play();
+    int ability = commandTypes == null ? -1 : commandTypes.ability();
     mapping.put(
         "cmd[i].ct",
         "consumed: "
-            + PLACE_CARD
+            + play
             + ", a card play, or "
-            + ABILITY
+            + ability
             + ", an ability command; any other is unsupported. Both kinds run in the scenario's"
             + " order within a tick");
     mapping.put("cmd[i].c.t", "carried: the tick the command was given on");
@@ -329,6 +367,69 @@ public final class ReplayScenario {
   }
 
   /**
+   * Reads a scenario as {@link #translate} does, listing every refusal instead of stopping at the
+   * first: each refused field and pinned value, and each command that cannot be read, going on to
+   * the next. A refusal that leaves nothing to read on with ends the survey and is listed last.
+   *
+   * @param scenario the scenario document
+   * @return the refusals in the order they were met; empty when {@link #translate} maps it all
+   */
+  public List<Refusal> survey(JsonNode scenario) {
+    refusals = new ArrayList<>();
+    try {
+      translate(scenario);
+    } catch (UnsupportedScenarioException e) {
+      refusals.add(new Refusal(e.feature(), e.input()));
+    } catch (RuntimeException e) {
+      refusals.add(new Refusal(String.valueOf(e.getMessage()), "the reading stops here"));
+    }
+    List<Refusal> found = refusals;
+    refusals = null;
+    return found;
+  }
+
+  /**
+   * Refuses an input: thrown as {@link UnsupportedScenarioException}, or in a survey listed, the
+   * reading going on.
+   */
+  private void refuse(String feature, String input) {
+    if (refusals == null) {
+      throw new UnsupportedScenarioException(feature, input);
+    }
+    refusals.add(new Refusal(feature, input));
+  }
+
+  /** One command, read by its type: a play or an ability command, any other type refused. */
+  private void command(
+      JsonNode command,
+      int index,
+      List<List<String>> decks,
+      List<int[]> deckLevels,
+      List<int[]> slotFlags,
+      List<int[]> accounts,
+      List<ScenarioPlan.Play> plays,
+      List<ScenarioPlan.Ability> abilities) {
+    String field = "cmd[" + index + "]";
+    int type = required(command, "ct").asInt();
+    if (commandTypes == null) {
+      throw new UnsupportedScenarioException(
+          "the command type "
+              + type
+              + " of data version "
+              + tables.version()
+              + ", whose command types are not established",
+          field + ".ct");
+    }
+    if (type == commandTypes.play()) {
+      plays.add(play(command, index, decks, deckLevels, slotFlags, accounts));
+    } else if (type == commandTypes.ability()) {
+      abilities.add(ability(command, index, accounts));
+    } else {
+      throw new UnsupportedScenarioException("the command type " + type, field + ".ct");
+    }
+  }
+
+  /**
    * The players' data, one entry each: only the entry with no emotes listed is known, whose data
    * the game builds with one choice.
    *
@@ -338,7 +439,7 @@ public final class ReplayScenario {
     List<Integer> choices = new ArrayList<>();
     for (JsonNode entry : required(battle, "hbd")) {
       if (!entry.toString().equals(NO_EMOTES)) {
-        throw new UnsupportedScenarioException(
+        refuse(
             "a player's data other than one with no emotes listed, whose number of choices is not"
                 + " established",
             "battle.hbd=" + entry);
@@ -359,19 +460,21 @@ public final class ReplayScenario {
    * A deck card's slot flags, its {@code el}: 0 when absent, and only the evolution and hero slots'
    * bits, which the simulator models.
    */
-  private static int slotFlags(JsonNode entry, String field) {
+  private int slotFlags(JsonNode entry, String field) {
     JsonNode value = entry.get("el");
     if (value == null) {
       return 0;
     }
     if (!value.isInt() || (value.asInt() & ~MODELLED_SLOT_FLAGS) != 0) {
-      throw new UnsupportedScenarioException(
+      refuse(
           "slot flags other than the evolution slot ("
               + MatchSide.EVOLUTION_SLOT
               + ") and the hero slot ("
               + MatchSide.HERO_SLOT
               + "), which the simulator has no input for",
           field + ".el=" + value);
+      // A survey reads on with the bits the simulator models.
+      return value.asInt() & MODELLED_SLOT_FLAGS;
     }
     return value.asInt();
   }
@@ -380,8 +483,7 @@ public final class ReplayScenario {
   private void gameMode(JsonNode battle) {
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
     if (!mode.name().equals(LadderMatch.GAME_MODE)) {
-      throw new UnsupportedScenarioException(
-          "the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
+      refuse("the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
     }
     mapping.put(
         "battle.gamemode", "consumed: the game mode row, which must be " + LadderMatch.GAME_MODE);
@@ -392,7 +494,7 @@ public final class ReplayScenario {
     GameRow location = row(required(battle, "location").asInt(), "battle.location");
     String tileMap = location.string("TileDataFileName");
     if (!STANDARD_TILE_MAP.equals(tileMap)) {
-      throw new UnsupportedScenarioException(
+      refuse(
           "the map " + tileMap + " of location " + location.name(),
           "battle.location=" + battle.get("location"));
     }
@@ -428,7 +530,7 @@ public final class ReplayScenario {
     }
     GameRow card = row(id, field + "[0].d");
     if (!BUILT_TOWER_SELECTIONS.contains(card.name())) {
-      throw new UnsupportedScenarioException(
+      refuse(
           "the tower selection "
               + card.name()
               + ", "
@@ -442,7 +544,7 @@ public final class ReplayScenario {
     int levelIndex = required(selection, "l").asInt();
     int levelCount = rarity.intValue("LevelCount");
     if (levelIndex < 0 || levelIndex >= levelCount) {
-      throw new UnsupportedScenarioException(
+      refuse(
           "a tower level index outside the "
               + levelCount
               + " levels of the selection's rarity "
@@ -734,7 +836,7 @@ public final class ReplayScenario {
    * account, and one unit, by its game object id ({@code cgid}); the command carries no row and no
    * play of the unit, so only the live unit with that id answers it.
    */
-  private static ScenarioPlan.Ability ability(JsonNode command, int index, List<int[]> accounts) {
+  private ScenarioPlan.Ability ability(JsonNode command, int index, List<int[]> accounts) {
     String field = "cmd[" + index + "]";
     JsonNode body = required(command, "c");
     onlyFields(command, field, "ct", "c");
@@ -957,10 +1059,28 @@ public final class ReplayScenario {
     GameRow row = row(id, field);
     int tableId = id / IDS_PER_TABLE;
     if (tableId != 26 && tableId != 27 && tableId != 28) {
-      throw new UnsupportedScenarioException(
-          "a deck card of table " + tableId + " (" + row.name() + ")", field + "=" + id);
+      refuse("a deck card of table " + tableId + " (" + row.name() + ")", field + "=" + id);
     }
     return row;
+  }
+
+  /**
+   * The row a data id names, for presenting a scenario: its table's id times a million plus the
+   * row's index.
+   *
+   * @param id the data id
+   * @return the row, or empty when the tables hold no such row
+   */
+  public Optional<GameRow> find(int id) {
+    String tableId = Integer.toString(id / IDS_PER_TABLE);
+    int index = id % IDS_PER_TABLE;
+    for (String name : tables.tableNames()) {
+      GameTable table = tables.table(name);
+      if (table.id().equals(tableId)) {
+        return table.rows().stream().filter(row -> row.index() == index).findFirst();
+      }
+    }
+    return Optional.empty();
   }
 
   /** The row of a data id: its table's id times a million plus the row's index. */
@@ -987,7 +1107,7 @@ public final class ReplayScenario {
   private void pin(JsonNode node, String field, String expected) {
     JsonNode value = required(node, field);
     if (!value.toString().equals(expected)) {
-      throw new UnsupportedScenarioException(
+      refuse(
           "a value of " + field + " other than " + expected + ", which has no production input",
           field + "=" + value);
     }
@@ -995,13 +1115,12 @@ public final class ReplayScenario {
   }
 
   /** Refuses a field the mapping does not know. */
-  private static void onlyFields(JsonNode node, String where, String... known) {
+  private void onlyFields(JsonNode node, String where, String... known) {
     List<String> names = List.of(known);
     for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
       String name = it.next();
       if (!names.contains(name)) {
-        throw new UnsupportedScenarioException(
-            "the field " + name + ", which has no mapping", where + "." + name);
+        refuse("the field " + name + ", which has no mapping", where + "." + name);
       }
     }
   }

@@ -3,7 +3,9 @@ package org.crforge.parity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
@@ -463,5 +465,81 @@ class ReplayScenarioTest {
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessageContaining("battle.gamemode=72000000");
+  }
+
+  @Test
+  void refusesEveryCommandOfADataVersionWhoseCommandTypesAreNotEstablished() {
+    // The tables' own version has its command types; none given is a version without them.
+    assertThatThrownBy(() -> new ReplayScenario(tables, null).translate(Scenarios.knight()))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessage(
+            "the command type 124 of data version "
+                + tables.version()
+                + ", whose command types are not established: cmd[0].ct");
+  }
+
+  @Test
+  void carriesTheReplaysLastTick() {
+    ObjectNode scenario = Scenarios.knight();
+    scenario.put("endTick", 3681);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    assertThat(plan.plays()).hasSize(1);
+    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
+  }
+
+  @Test
+  void surveysAScenarioTheMappingReadsWithNoRefusal() {
+    assertThat(new ReplayScenario(tables).survey(Scenarios.archerQueenAbility())).isEmpty();
+  }
+
+  @Test
+  void surveyListsEveryRefusalWhereTranslateStopsAtTheFirst() {
+    ObjectNode scenario = Scenarios.knight();
+    scenario.putArray("srq");
+    ((ObjectNode) scenario.path("battle")).put("rrb", false);
+    ((ObjectNode) scenario.path("battle").path("avatar1")).put("expLevel", 14);
+    ArrayNode commands = (ArrayNode) scenario.path("cmd");
+    commands.add(commands.get(0).deepCopy());
+    ((ObjectNode) commands.get(0)).put("ct", 153);
+    ((ObjectNode) commands.get(1)).put("ct", 153);
+
+    ReplayScenario surveyed = new ReplayScenario(tables);
+    List<ReplayScenario.Refusal> refusals = surveyed.survey(scenario);
+
+    assertThat(refusals)
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("$.srq", "battle.rrb", "expLevel=14", "cmd[0].ct", "cmd[1].ct");
+    assertThat(refusals.get(3).feature()).isEqualTo("the command type 153");
+    // Translating the same scenario stops at the first refusal the survey lists.
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessage(refusals.get(0).feature() + ": " + refusals.get(0).input());
+  }
+
+  @Test
+  void surveyListsAPlayItCannotReadAndGoesOnToTheNextCommand() {
+    ObjectNode scenario = Scenarios.archerQueenAbility();
+    // The Knight is not in the decks: the play names a card its side cannot play.
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("os", 26000000);
+    ((ObjectNode) scenario.path("cmd").get(1).path("c")).put("px", 3500);
+
+    List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
+
+    assertThat(refusals).hasSize(2);
+    assertThat(refusals.get(0).feature()).contains("Knight, which is not in side 0's deck");
+    assertThat(refusals.get(1).input()).isEqualTo("cmd[1].c.px");
+  }
+
+  @Test
+  void findsTheRowADataIdNamesOrNothing() {
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    assertThat(mapping.find(26000000)).map(row -> row.name()).contains("Knight");
+    assertThat(mapping.find(72000006)).map(row -> row.name()).contains("Ladder");
+    // No table 99, and no row 999999 of the characters' card table.
+    assertThat(mapping.find(99000000)).isEmpty();
+    assertThat(mapping.find(26999999)).isEmpty();
   }
 }

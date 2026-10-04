@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.utils.Align;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -839,6 +840,28 @@ public class BattleRenderer {
 
   private static float py(int y) {
     return unitsToPixels(y) + BOTTOM_UI_HEIGHT;
+  }
+
+  /**
+   * Draws lines of text from the top left with no battle, each wrapped to the window's width: the
+   * screen a replay shows when it is not played, with the reasons.
+   */
+  public void renderLines(OrthographicCamera camera, List<String> lines) {
+    ctx.setProjection(camera);
+    float width = camera.viewportWidth - 20;
+    float y = camera.viewportHeight - 12;
+    ctx.getSpriteBatch().begin();
+    for (int line = 0; line < lines.size(); line++) {
+      // The first line is the heading.
+      ctx.getFont().setColor(line == 0 ? COLOR_HEALTH_RED : Color.WHITE);
+      ctx.getGlyphLayout()
+          .setText(
+              ctx.getFont(), lines.get(line), ctx.getFont().getColor(), width, Align.left, true);
+      ctx.getFont().draw(ctx.getSpriteBatch(), ctx.getGlyphLayout(), 10, y);
+      y -= Math.max(LINE_HEIGHT, ctx.getGlyphLayout().height + 4);
+    }
+    ctx.getFont().setColor(Color.WHITE);
+    ctx.getSpriteBatch().end();
   }
 
   public void dispose() {
