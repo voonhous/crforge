@@ -343,14 +343,17 @@ public class Standard1v1Battle {
           championCards++;
         }
       }
-      // A Ladder deck holds one champion card; a second slot's champion is in no reference.
-      if (championCards > 1) {
+      // A deck may hold two champion cards - a hero slot's card counts as one, so a hero next to a
+      // champion card, or two hero slots, as Ladder decks of 16.402.18 do - and the deck pass gives
+      // each a slot. The pass stops after the second, so a third would get none, which no
+      // reference holds.
+      if (championCards > 2) {
         throw new UnsupportedOperationException(
             "side "
                 + side
                 + "'s deck holds "
                 + championCards
-                + " champion cards, which no reference holds");
+                + " champion cards, more than the king's two slots, which no reference holds");
       }
       world.kingTower(side).championDeckPass(champions);
     }
