@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 import static org.crforge.core.util.ValidationUtils.checkState;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -42,7 +43,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: tower positions, the top side mirrored along the arena's length, the creation"
+        "Settled: tower positions, each side's from the spawn group of its tower selection, its"
+            + " king row at the king's level and its other rows at the selection's level, the top"
+            + " side mirrored along the arena's length, the creation"
             + " order, and the towers standing at their hit points at the level they are"
             + " created at and fighting from the first tick; a card play run as a command at the"
             + " head of its step, stamped with the battle's tick counter and run 20 ticks later,"
@@ -72,8 +75,25 @@ public class Standard1v1Battle {
   /** The level the reference runs are played at, and the towers' level when none is given. */
   public static final int DEFAULT_LEVEL = 11;
 
-  /** Tower placements of the bottom side, in routing cells: king, then the princess towers. */
-  private static final int[][] TOWER_CELLS = {{18, 6}, {7, 13}, {29, 13}};
+  /** The spawn group of the default tower selection: the king tower and two princess towers. */
+  public static final String PRINCESS_TOWERS = "King_PrincessTowers";
+
+  /** The table of the spawn groups a side's towers are placed from. */
+  private static final String SPAWN_GROUPS = "spawn_groups";
+
+  /** The column of a spawn group that lists its objects: each a row name and a routing cell. */
+  private static final String SPAWN_GROUP_OBJECTS = "Objects";
+
+  /**
+   * One side's towers: the spawn group they are placed from, with the level of its king row and the
+   * level of its other rows, the princess slots.
+   *
+   * @param spawnGroup the spawn group's row name, whose objects are the towers in creation order,
+   *     each a row of the characters or buildings and a routing cell on the bottom side
+   * @param kingLevel the level the group's king row is created at, counted from 1
+   * @param level the level the group's other rows are created at, counted from 1
+   */
+  public record Towers(String spawnGroup, int kingLevel, int level) {}
 
   @Getter private final BattleWorld world;
   @Getter private final Battle battle;
@@ -107,21 +127,49 @@ public class Standard1v1Battle {
    *     target or fires, as in the reference runs made without the towers fighting
    */
   public Standard1v1Battle(GameTables tables, int towerLevel, boolean towersAttack) {
+    this(
+        tables,
+        List.of(
+            new Towers(PRINCESS_TOWERS, towerLevel, towerLevel),
+            new Towers(PRINCESS_TOWERS, towerLevel, towerLevel)),
+        towersAttack);
+  }
+
+  /**
+   * A battle on the game's tables with each side's towers placed from its own spawn group.
+   *
+   * <p>A side's towers are its spawn group's objects in their order, each the row it names at the
+   * routing cell it gives: the king row (the one {@link UnitData#king()} answers for) at the side's
+   * king level and every other row at the side's level.
+   *
+   * @param tables the game tables the battle reads its rows from: its variables and game tags are
+   *     declared, its records and action rows are kept for the entities, and its spawn groups give
+   *     the towers
+   * @param sides the towers of side 0 and side 1
+   * @param towersAttack false to keep every tower passive for the whole battle: none selects a
+   *     target or fires, as in the reference runs made without the towers fighting
+   */
+  public Standard1v1Battle(GameTables tables, List<Towers> sides, boolean towersAttack) {
+    checkArgument(sides.size() == 2, () -> "two sides' towers, got " + sides.size());
     TileMap tileMap = TileMap.standard1v1();
     this.world = new BattleWorld(tileMap);
     world.load(tables);
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
     for (int side : new int[] {WorldEntity.SIDE_BOTTOM, WorldEntity.SIDE_TOP}) {
-      for (int i = 0; i < TOWER_CELLS.length; i++) {
-        // Both towers are the game's own rows: the king tower and the princess tower.
-        UnitData data = world.getRecords().unit(i == 0 ? "KingTower" : "PrincessTower");
-        int x = TOWER_CELLS[i][0] * TileMap.CELL_UNITS;
-        int row = TOWER_CELLS[i][1];
+      Towers towers = sides.get(side);
+      JsonNode objects =
+          tables.table(SPAWN_GROUPS).row(towers.spawnGroup()).value(SPAWN_GROUP_OBJECTS);
+      for (int i = 0; i < objects.size(); i++) {
+        JsonNode object = objects.get(i);
+        // Each tower is the game's own row: the king tower and the princess slots' row.
+        UnitData data = world.getRecords().unit(object.path("Data").asText());
+        int x = object.path("x").asInt() * TileMap.CELL_UNITS;
+        int row = object.path("y").asInt();
         // The top side is the bottom side mirrored along the arena's length.
         int y = (side == WorldEntity.SIDE_TOP ? tileMap.height() - row : row) * TileMap.CELL_UNITS;
+        int level = data.king() ? towers.kingLevel() : towers.level();
         TowerEntity tower =
-            new TowerEntity(
-                world, data, data.name() + "_" + side + "_" + i, side, x, y, towerLevel);
+            new TowerEntity(world, data, data.name() + "_" + side + "_" + i, side, x, y, level);
         if (!towersAttack) {
           tower.holdFire();
         }
@@ -282,14 +330,14 @@ public class Standard1v1Battle {
       MatchSide matchSide = ladder.side(side);
       for (int index = 0; index < matchSide.deck().size(); index++) {
         // The Mirror and a variant card summon nothing of their own. A hero slot's card is asked
-        // in its hero form.
+        // in its hero form, whose linked champion comes first.
         MatchCard matchCard = matchSide.deck().get(index);
         boolean hero = (matchSide.slotFlags(index) & MatchSide.HERO_SLOT) != 0;
         String form = matchCard.formRow(hero ? MatchCard.HERO_FORM : MatchCard.BASIC_FORM).name();
         UnitData champion =
             matchCard.mirror() || matchCard.variant() != null
                 ? null
-                : world.getRecords().card(form).champion();
+                : world.getRecords().cardChampion(form);
         champions.add(champion);
         if (champion != null) {
           championCards++;
@@ -534,7 +582,7 @@ public class Standard1v1Battle {
       return;
     }
     DeployCard repeated = world.getRecords().card(item.repeats().name());
-    if (repeated.summonsChampion()) {
+    if (world.getRecords().cardChampion(repeated.name()) != null) {
       throw new UnsupportedOperationException(
           name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
     }
@@ -836,7 +884,8 @@ public class Standard1v1Battle {
     }
     // In a match the champion slots hear the play after its cast.
     if (match != null && result.placed()) {
-      world.championCardPlayed(side, card.champion(), deployIndex, name);
+      world.championCardPlayed(
+          side, world.getRecords().cardChampion(card.name()), deployIndex, name);
     }
     plays.add(
         new Play(

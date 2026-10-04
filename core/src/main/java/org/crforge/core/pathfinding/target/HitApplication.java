@@ -32,7 +32,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  *       cancelled or not, and the buff on damage follows a hit that was not;
  *   <li>a pending special load is cleared;
  *   <li>a hit not cancelled for distance schedules the action the row runs as it attacks on the
- *       owner, with the target as its cause; a hit with no target schedules nothing.
+ *       owner, with the target as its cause; a hit with no target schedules nothing. It then
+ *       schedules the action the row runs on the owner itself, with the owner as its cause, target
+ *       or not.
  * </ul>
  *
  * <p>The damage chosen here reaches the target only through the direct hit. A projectile computes
@@ -53,9 +55,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
             + " the targeted hit effect and its"
             + " pushback, the attacking flag on the owner, the buff on"
-            + " damage of a hit every so many or over an area, the action an attack runs on the"
-            + " owner as its own cause, whose rows are refused, and the notifications it ends"
-            + " with. The action a hit runs on the owner with its target as cause, after a direct"
+            + " damage of a hit every so many or over an area, and the notifications it ends"
+            + " with. The action a hit runs on the owner as its own cause, after the one with its"
+            + " target as cause, is held by the hero Elite Archer's index reset, whose run puts"
+            + " its sequence back on 0 at every hit. The action a hit runs on the owner with its"
+            + " target as cause, after a direct"
             + " hit and at a launch, is held by valkyrie_ev1_barbarians and"
             + " royal_giant_ev1_knights. The buff on damage after a direct hit is"
             + " held by electro_wizard_tower_defence and mini_sparkys_knight. An attack sequence"
@@ -165,6 +169,8 @@ public final class HitApplication {
     // launch: once for each hit, at the launch for a unit that fires and never at the impact.
     if (!missed) {
       queries.runAttackAction(target);
+      // Then the action the row runs on the owner itself, its own cause, target or not.
+      queries.runAttackSelfAction();
     }
     // A landed hit that ends a single-target attack, not a special one and not an entry's action,
     // is counted by the owner's listening actions.

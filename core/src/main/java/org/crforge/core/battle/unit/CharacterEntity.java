@@ -4,8 +4,10 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.battle.BattleComponent;
@@ -18,11 +20,13 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.GroupChain;
 import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.MegaKnightUppercut;
@@ -284,6 +288,13 @@ public class CharacterEntity extends WorldEntity {
   /** The length the targeting visit's turn scales the facing to. */
   private static final int FACING_LENGTH = 256;
 
+  /**
+   * The abilities whose activation no reference holds, refused as they are requested: the hero
+   * Elite Archer's, whose group warps it back, sets its attack sequence onto the ability's shot,
+   * tags it for the triple shot and leaves a decoy, none of which is established.
+   */
+  private static final Set<String> UNHELD_ABILITIES = Set.of("EliteArcherHero_Ability");
+
   /** How far beyond its attack range a dash's single landing hit still reaches its reference. */
   private static final int DASH_HIT_EXTENSION = 500;
 
@@ -327,6 +338,9 @@ public class CharacterEntity extends WorldEntity {
    * asked for none, as a standing or deploying character's visit does.
    */
   @Getter private int speedBudget;
+
+  /** True for a spawned character the holder's fold starts as it admits it. */
+  private boolean startOnAdmission;
 
   /** The children linked into this character's group, newest first. */
   private final List<CharacterEntity> group = new ArrayList<>();
@@ -406,8 +420,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The character's answers to its movement pass's requests: a state change goes to its state
-   * setter at once, and a completed charge is told to the world's observers. The action a completed
-   * charge runs is refused with its row.
+   * setter at once, and a completed charge is told to the world's observers and schedules the
+   * action the row runs on it.
    */
   private final MovementRequests movementRequests =
       new MovementRequests() {
@@ -421,6 +435,7 @@ public class CharacterEntity extends WorldEntity {
         @Override
         public void chargeCompleted() {
           world.chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
+          runChargeAction();
         }
 
         @Override
@@ -764,11 +779,29 @@ public class CharacterEntity extends WorldEntity {
    */
   static CharacterEntity spawned(
       BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    return spawned(world, data, name, side, x, y, level, -1);
+  }
+
+  /**
+   * Creates a character as a spawn creates it, in a lane its spawner works out for it, and
+   * otherwise as {@link #spawned(BattleWorld, UnitData, String, int, int, int, int)} does.
+   *
+   * @param world the battle's shared arena state
+   * @param data the child's published columns; only ground units are supported
+   * @param name the child's unique name within the battle
+   * @param side the side that owns the child, its source's
+   * @param x position in game units, already inside the arena
+   * @param y position in game units, already inside the arena
+   * @param level the child's level, counted from 1
+   * @param lane the lane the spawner gives it, or -1 for the lane of the road nearest to it
+   */
+  static CharacterEntity spawned(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level, int lane) {
     if (data.spawnAttach()) {
       throw new UnsupportedOperationException(
           data.name() + " is spawned and would make its riders as it deploys, which is not held");
     }
-    CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level);
+    CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level, lane, -1);
     // The level setter leaves a unit with a speed walking and one without standing.
     child.getView().setState(data.speed() >= 1 ? GridEntityState.MOVING : GridEntityState.STANDING);
     child.getView().setDeployCountdown(0);
@@ -1079,6 +1112,28 @@ public class CharacterEntity extends WorldEntity {
     if (getData().onStartingAction() == null) {
       return;
     }
+    startingAction();
+  }
+
+  /**
+   * Marks a character a spawn made, which the holder admits at its next cleanup's fold: the fold
+   * starts it, scheduling its row's starting action then.
+   */
+  void startOnAdmission() {
+    startOnAdmission = getData().onStartingAction() != null;
+  }
+
+  @Override
+  protected void onRegistered() {
+    super.onRegistered();
+    if (startOnAdmission) {
+      startOnAdmission = false;
+      startingAction();
+    }
+  }
+
+  /** Schedules the row's starting action, built for the character, the character as its cause. */
+  private void startingAction() {
     BattleAction starting =
         world.getActions().build(getData().onStartingAction(), world.binding(this));
     actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
@@ -1310,11 +1365,12 @@ public class CharacterEntity extends WorldEntity {
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
    * mode moves the index by itself other than a continuous-damage attacker's and a static loop's,
-   * an entry that sets more than its damage, its projectile, its action and its direct hit's
-   * pushback (and, for a continuous-damage attacker, its window), and an entry without a projectile
-   * or an action on a unit that fires. An entry's action is established in place of a projectile,
-   * read from an order of two or more by an index only actions move; one with a projectile, in a
-   * sequence of one, in a continuous-damage attacker's or on a charging row is refused.
+   * an entry that sets more than its damage, its projectile, its action, its direct hit's pushback
+   * and its attack range and minimum range (and, for a continuous-damage attacker, its window), and
+   * an entry without a projectile or an action on a unit that fires. An entry's action is
+   * established in place of a projectile, read from an order of two or more by an index only
+   * actions move; one with a projectile, in a sequence of one, in a continuous-damage attacker's or
+   * on a charging row is refused.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1366,7 +1422,42 @@ public class CharacterEntity extends WorldEntity {
     CharacterEntity linked = (CharacterEntity) child;
     group.add(0, linked);
     linked.groupSource = this;
+    // The same link the card's construction makes: the child right after this character in its
+    // chain, ahead of the one that followed it, and the child marked as in a group. This character
+    // keeps its own mark, which a lone source never gets.
+    linked.chained = true;
+    linked.chainPrevious = this;
+    linked.chainNext = chainNext;
+    if (chainNext != null) {
+      chainNext.chainPrevious = linked;
+    }
+    chainNext = linked;
     world.groupLinked(this, linked);
+  }
+
+  /**
+   * The character's group chain for the group checks: its mark, and the chain from its first unit,
+   * walking back along the links, then forward to the last.
+   */
+  @Override
+  public GroupChain groupChain() {
+    List<GroupChain.Member> members = new ArrayList<>();
+    if (chained) {
+      CharacterEntity head = this;
+      while (head.chainPrevious != null) {
+        head = head.chainPrevious;
+      }
+      for (CharacterEntity member = head; member != null; member = member.chainNext) {
+        CharacterEntity built = member;
+        members.add(
+            new GroupChain.Member(
+                new EntityFilterSubject(member),
+                member.actionHolder(),
+                member == this,
+                row -> world.getActions().build(row, world.binding(built))));
+      }
+    }
+    return new GroupChain(chained, members, side() & 1, getData().name());
   }
 
   /**
@@ -1412,7 +1503,8 @@ public class CharacterEntity extends WorldEntity {
    * @return true when it was in a chain
    */
   boolean leaveChain() {
-    if (!chained) {
+    // A lone source a child was linked after holds links without a group mark of its own.
+    if (!chained && chainPrevious == null && chainNext == null) {
       return false;
     }
     if (chainPrevious != null) {
@@ -1629,6 +1721,10 @@ public class CharacterEntity extends WorldEntity {
         .allTargetsHit(data.allTargetsHit())
         .attackSequenceMode(data.attackSequence().mode())
         .attackSequenceLength(data.attackSequence().order().size())
+        // The range helpers read the entry the index selects: its attack range and minimum range
+        // replace the row's at any length of the order.
+        .attackSequenceStepIds(data.attackSequence().order())
+        .attackSequenceEntries(data.attackSequence().targetingEntries())
         .hasOnStartingAttackAction(data.onStartingAttackAction() != null)
         .crownTowerDamagePercent(data.crownTowerDamagePercent())
         .hasProjectile(data.hasProjectile())
@@ -1690,6 +1786,20 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public void launched(int aimX, int aimY) {
+    recoil(aimX, aimY);
+  }
+
+  /**
+   * The unit's recoil by its row's attack pushback, away from a point: after each projectile it
+   * launches, away from the projectile's aim, and after a direct hit, away from where its reference
+   * stood. The same request either way: the gates lifted, as an attack's pushback, the whole
+   * distance, and refused while a pushback is still in flight. A row without an attack pushback
+   * does not recoil.
+   *
+   * @param aimX the point it recoils from, along the width
+   * @param aimY the point it recoils from, along the length
+   */
+  void recoil(int aimX, int aimY) {
     int distance = getData().attackPushBack();
     if (distance < 1) {
       return;
@@ -1859,10 +1969,10 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * A guard's push: asked only of a character whose movement component is on and that is not
-   * waiting to deploy; refused while a pushback is in flight unless the longer one is to be kept;
-   * otherwise the pushback setter itself, every gate the request has skipped, so neither the row's
-   * ignoring of pushback nor a flag or state stops it.
+   * A guard's push, or a carried push's: asked only of a character whose movement component is on
+   * and that is not waiting to deploy; refused while a pushback is in flight unless the longer one
+   * is to be kept; otherwise the pushback setter itself, every gate the request has skipped, so
+   * neither the row's ignoring of pushback nor a flag or state stops it.
    *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
@@ -1979,6 +2089,46 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /** Starts a carried push's run on the character. A clone, a rider and a carrier are refused. */
+  @Override
+  public ActionInstance damagingPushBack(DamagingPushBack action, int phase) {
+    refuseRun(action.name());
+    return new DamagingPushBackRun(action, this);
+  }
+
+  /** The row the character's completed charge runs, built once; null before the first. */
+  private BattleAction chargeActionRow;
+
+  /**
+   * Schedules the row's action for a completed charge on the character, the character its own
+   * cause, queued as the row's own delay asks and never started at once: each time the charge
+   * progress reaches complete from below. Nothing for a row without one.
+   */
+  private void runChargeAction() {
+    String name = getData().onStartChargingAction();
+    if (name == null) {
+      return;
+    }
+    if (chargeActionRow == null) {
+      chargeActionRow = world.getActions().build(name, world.binding(this));
+    }
+    actionHolder().schedule(chargeActionRow, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /**
+   * A damage at the character's level, as its own row's rarity scales a card's damage.
+   *
+   * @param base the damage at the first level
+   */
+  int damageAtLevel(int base) {
+    return LevelScaling.scale(
+        ScalingGlobals.standard(),
+        base,
+        getPackedLevel(),
+        ScalingMode.CARD_DAMAGE,
+        getData().rarity());
   }
 
   /** Starts a barrage's run on the character. A clone, a rider and a carrier are refused. */
@@ -2866,8 +3016,8 @@ public class CharacterEntity extends WorldEntity {
    * casting state now, through its setter; shut, the ability is left pending, which the state
    * visit's pending branch turns into the cast on the first visit the gate opens. A unit without an
    * ability does nothing. An ability whose columns the battle does not model, or that keeps a buff
-   * on a unit waiting to cast, is refused, and so is a lane switch for a row that stays visible
-   * while it routes across, which no reference holds.
+   * on a unit waiting to cast, is refused, and so is one whose activation no reference holds and a
+   * lane switch for a row that stays visible while it routes across, which no reference holds.
    */
   public void requestAbility() {
     AbilityData ability = getData().ability();
@@ -2881,6 +3031,16 @@ public class CharacterEntity extends WorldEntity {
               + ability.name()
               + ", which sets columns the battle does not model: "
               + ability.unmodelledColumns());
+    }
+    if (UNHELD_ABILITIES.contains(ability.name())) {
+      throw new UnsupportedOperationException(
+          name() + " casts " + ability.name() + ", whose activation no reference holds");
+    }
+    // Only the Goblins hero's banner is a building with an ability; its cast, the second wave of
+    // goblins, is held by no reference.
+    if (getData().building()) {
+      throw new UnsupportedOperationException(
+          name() + " casts " + ability.name() + " as a building, which no reference holds");
     }
     if (ability.switchLanes() && getData().ingamePathfindVisible()) {
       throw new UnsupportedOperationException(
@@ -3329,6 +3489,39 @@ public class CharacterEntity extends WorldEntity {
         world.launchAt(CharacterEntity.this, projectile, (WorldEntity) world.liveObject(friendId));
       }
     };
+  }
+
+  /**
+   * The candidates a snipe's look lists around the character: the box query about where it stands,
+   * less the objects inside the minimum range, nearest first.
+   */
+  @Override
+  public List<Integer> snipeCandidates(
+      int halfWidth, int halfLength, int minimumRange, GameObjectFilter filter) {
+    GridEntity at = getView();
+    long reach = (long) at.getCollisionRadius() + minimumRange;
+    long reachSquared = reach * reach;
+    List<long[]> kept = new ArrayList<>();
+    for (WorldEntity object :
+        world.rectangleQuery(
+            side(), getData().name(), at.getX(), at.getY(), halfWidth, halfLength, filter)) {
+      GridEntity view = object.getView();
+      long dx = view.getX() - at.getX();
+      long dy = view.getY() - at.getY();
+      long radius = view.getCollisionRadius();
+      long beyond = Math.max(0, dx * dx + dy * dy - radius * radius);
+      if (minimumRange >= 1 && reachSquared > beyond) {
+        continue;
+      }
+      kept.add(new long[] {dx * dx + dy * dy, object.getId()});
+    }
+    // Nearest first; the sort is stable, so objects at one distance keep the box's order.
+    kept.sort(Comparator.comparingLong(candidate -> candidate[0]));
+    List<Integer> ids = new ArrayList<>();
+    for (long[] candidate : kept) {
+      ids.add((int) candidate[1]);
+    }
+    return ids;
   }
 
   /**

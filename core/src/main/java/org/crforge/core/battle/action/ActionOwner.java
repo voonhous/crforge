@@ -1,5 +1,7 @@
 package org.crforge.core.battle.action;
 
+import java.util.List;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -110,6 +112,38 @@ public interface ActionOwner {
   }
 
   /**
+   * What a Royal Chef's cooking run asks of the battle around the owner. Only a king tower runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default CookingHost cookingHost() {
+    throw new UnsupportedOperationException(
+        "a Royal Chef's cooking on an owner other than a king tower is not modelled");
+  }
+
+  /**
+   * The candidates a snipe's look lists around the owner: the objects in the box about the owner's
+   * position, as wide as twice the half width and as long as twice the half length, that pass the
+   * filter for the owner's team and row, a building by its square overlapping the box and anything
+   * else by its circle meeting it; less those standing closer than the minimum range, which keeps
+   * an object only while its squared distance from the owner, less its collision radius squared and
+   * never below 0, is at least the square of the minimum range plus the owner's collision radius.
+   * Only a character runs a snipe.
+   *
+   * @param halfWidth half the box's width
+   * @param halfLength half the box's length
+   * @param minimumRange the minimum range, the owner's collision radius added
+   * @param filter the filter
+   * @return the candidates' ids, nearest first, objects at the same distance in the box's order
+   */
+  default List<Integer> snipeCandidates(
+      int halfWidth, int halfLength, int minimumRange, GameObjectFilter filter) {
+    throw new UnsupportedOperationException(
+        "a snipe on an owner other than a character is not modelled");
+  }
+
+  /**
    * What a shape selector's run asks of the battle around the owner. Only an area effect runs one.
    *
    * @return the owner's answers
@@ -185,6 +219,17 @@ public interface ActionOwner {
         action.name() + " runs on " + actionRowName() + ", which is not a character, not modelled");
   }
 
+  /**
+   * What a charge counter's run reads of and does to this owner. Only an entity with a targeting
+   * component and an attack sequence runs one.
+   *
+   * @param action the row
+   */
+  default BurstAttack.Host burstAttackHost(BurstAttack action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on " + actionRowName() + ", which does not attack, not modelled");
+  }
+
   /** What a summon area's run asks of the battle about this owner. Only an area effect runs one. */
   default GhostEvo.SummonHost ghostSummonHost() {
     throw new UnsupportedOperationException(
@@ -225,6 +270,28 @@ public interface ActionOwner {
   default ActionInstance championAbility(ChampionAbility action) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a king, not modelled");
+  }
+
+  /**
+   * Writes a button state override, and refills the charges when it asks, into the champion slot of
+   * the owner's player that follows the row's champion; nothing when no slot follows it. Only a
+   * character or a building, which is its own player's, answers it; an owner that hands the
+   * question to another object is not modelled.
+   *
+   * @param action the row
+   */
+  default void overrideAbilityButton(OverrideAbilityButtonState action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * The owner's group chain, for the actions that check or run over its group. Only a character
+   * keeps one.
+   */
+  default GroupChain groupChain() {
+    throw new UnsupportedOperationException(
+        "a group check on an owner other than a character is not modelled");
   }
 
   /**
@@ -363,6 +430,19 @@ public interface ActionOwner {
    * @return the run
    */
   default ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Starts a push the owner carries ahead of itself, as the evolved Battle Ram's completed charge
+   * runs it.
+   *
+   * @param action the push
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance damagingPushBack(DamagingPushBack action, int phase) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a character, not modelled");
   }

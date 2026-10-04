@@ -27,11 +27,13 @@ import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
+import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.RollingProjectile;
@@ -45,6 +47,7 @@ import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
 import org.crforge.core.battle.spawn.SpawnCharacters;
 import org.crforge.core.battle.spawn.SpawnProjectile;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -595,6 +598,28 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
+      "the evolved Battle Ram's carried push reads its push, its damage, its side push, its offset"
+          + " and both filters, with its delay and stop gate shared")
+  void aCarriedPushIsBuilt() {
+    BattleAction built = GameData.actions().build("BattleRam_EV1_PushBack", INERT_BINDING);
+    assertThat(built).isInstanceOf(DamagingPushBack.class);
+    assertThat(built.delayMs()).isEqualTo(825);
+    assertThat(built.forceStopIf()).isNotNull();
+    assertThat(built.singleton()).isFalse();
+    DamagingPushBack.Columns columns = ((DamagingPushBack) built).getColumns();
+    assertThat(columns.pushBackStrength()).isEqualTo(2500);
+    assertThat(columns.pushBackRadius()).isEqualTo(1000);
+    assertThat(columns.continuousPushBack()).isTrue();
+    assertThat(columns.distanceProportionalPush()).isFalse();
+    assertThat(columns.pushBackDamage()).isEqualTo(83);
+    assertThat(columns.pushToSide()).isTrue();
+    assertThat(columns.pushRadiusDirectionalOffset()).isEqualTo(800);
+    assertThat(columns.gameObjectFilter()).isNotNull();
+    assertThat(columns.pushFilter()).isNotNull();
+  }
+
+  @Test
+  @DisplayName(
       "the Little Prince's guard spawn reads its guard, where it appears and charges to, its push"
           + " and damage, its filter, and the tags of its run on the guard")
   void aGuardSpawnIsBuilt() {
@@ -832,6 +857,29 @@ class ActionRowsTest {
     tower.actionHolder().start(row);
     int key = match.getWorld().binding(tower).variableKey("MiniPekkaHero_ability_played");
     assertThat(tower.variable(key)).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a button state override reads its champion, its state by its exact name, its refill and"
+          + " whether it lasts, which it does unless the row says otherwise")
+  void theButtonOverrideReadsItsColumns() {
+    OverrideAbilityButtonState shown =
+        (OverrideAbilityButtonState)
+            GameData.actions().build("GoblinHero_Show_Disabled_Button", INERT_BINDING);
+    assertThat(shown.getChampion()).isEqualTo("GoblinHero_Flag_Building");
+    assertThat(shown.getState()).isEqualTo(ChampionController.NO_YET_AVAILABLE);
+    assertThat(shown.isPersistent()).isTrue();
+    assertThat(shown.isResetCharges()).isFalse();
+    OverrideAbilityButtonState reset =
+        (OverrideAbilityButtonState)
+            GameData.actions().build("GoblinHero_Reset_Ability_Charges", INERT_BINDING);
+    assertThat(reset.getState()).isZero();
+    assertThat(reset.isResetCharges()).isTrue();
+    assertThat(reset.isPersistent()).isFalse();
+    assertThat(ChampionController.stateNamed("ChampionPending"))
+        .isEqualTo(ChampionController.PENDING);
+    assertThat(ChampionController.stateNamed("championpending")).isZero();
   }
 
   @Test
@@ -1195,12 +1243,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 785 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 812 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(785);
+    assertThat(built).as("rows built").isEqualTo(812);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 79, "column", 69, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 52, "column", 69, "spawn type", 13));
   }
 }

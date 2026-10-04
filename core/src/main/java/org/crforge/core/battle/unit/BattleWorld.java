@@ -8,6 +8,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
@@ -30,6 +31,7 @@ import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
+import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -54,6 +56,7 @@ import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.spawn.SpawnPassable;
+import org.crforge.core.battle.spawn.SpawnPerform;
 import org.crforge.core.battle.spawn.SpawnPlacement;
 import org.crforge.core.battle.spawn.SpawnRow;
 import org.crforge.core.fidelity.Fidelity;
@@ -184,6 +187,12 @@ public class BattleWorld implements HolderPasses {
 
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
+
+  /**
+   * The battle's projectile group counter, apart from the hit counter: a projectile that shares a
+   * group with the ones its impact spawns takes the next id from it as it is launched.
+   */
+  private int projectileGroupCounter;
 
   /** How many buff instances the battle has listed, which names the next. */
   private int buffKeys;
@@ -380,6 +389,9 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** A step its buffs would scale, to tell whether any buff changes an entity's hit speed. */
+  private static final int HIT_SPEED_PROBE_MS = 1000;
+
   /**
    * What an action row built for an arena entity reads from it: its expressions compiled for it and
    * evaluated afresh each time, the battle's variable keys, its tag word and its spawn rate.
@@ -410,6 +422,11 @@ public class BattleWorld implements HolderPasses {
       @Override
       public IntSupplier spawnRate() {
         return () -> owner.getBuffs().spawnRate();
+      }
+
+      @Override
+      public BooleanSupplier hitSpeedBuffed() {
+        return () -> owner.getBuffs().hitSpeed(HIT_SPEED_PROBE_MS) != HIT_SPEED_PROBE_MS;
       }
     };
   }
@@ -496,6 +513,14 @@ public class BattleWorld implements HolderPasses {
     return ++hitCounter;
   }
 
+  /**
+   * The group id of the next projectile that shares one with the projectiles its impact spawns,
+   * counted from one by a counter of its own.
+   */
+  public int nextProjectileGroupId() {
+    return ++projectileGroupCounter;
+  }
+
   /** Attaches an observer; it is told about every tick and every hit from the next one on. */
   public void addObserver(WorldObserver observer) {
     observers.add(observer);
@@ -528,13 +553,39 @@ public class BattleWorld implements HolderPasses {
    */
   public DamageResult dealDamage(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
+    return dealDamage(attacker, target, damage, directionX, directionY, false);
+  }
+
+  /**
+   * Deals the damage of a carried push's hit to an entity, as {@link #dealDamage(WorldEntity,
+   * TargetView, int, int, int)} deals a direct hit's, but past the hidden test.
+   *
+   * @param attacker the entity carrying the push
+   * @param target the entity hit
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   * @return what the damage did to the target
+   */
+  public DamageResult dealCarriedPushDamage(
+      WorldEntity attacker, WorldEntity target, int damage, int directionX, int directionY) {
+    return dealDamage(attacker, target.getTargetView(), damage, directionX, directionY, true);
+  }
+
+  private DamageResult dealDamage(
+      WorldEntity attacker,
+      TargetView target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean passesHidden) {
     WorldEntity entity = known.get(target.getEntity());
     if (entity == null) {
       return DamageResult.NOTHING;
     }
     int before = hitPointsOf(entity);
     DamageResult result =
-        entity.takeDamage(damage, 0, directionX, directionY, false, attacker, attacker);
+        entity.takeDamage(damage, 0, directionX, directionY, passesHidden, attacker, attacker);
     reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
@@ -899,6 +950,23 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The object query around a given point, accepted as {@link #objectQuery(WorldEntity, int,
+   * GameObjectFilter)} accepts around the asking entity's own, the filter asked for its team and
+   * row name.
+   *
+   * @param asking the entity running the query
+   * @param x the circle's centre along the width
+   * @param y the circle's centre along the length
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> objectQuery(
+      WorldEntity asking, int x, int y, int radius, GameObjectFilter filter) {
+    return objectQuery(x, y, asking.side(), asking.getData().name(), radius, filter, false);
+  }
+
+  /**
    * The object query around a point that tests a building by its square: as {@link
    * #objectQuery(WorldEntity, int, GameObjectFilter)}, but a building is accepted when the point
    * clamped into its square lies strictly within the radius, and anything else strictly within the
@@ -1117,9 +1185,20 @@ public class BattleWorld implements HolderPasses {
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
    * established, so a morph of a unit such an attacker references is refused.
    *
+   * <p>The new object starts no action of its row here, so a morph whose row has a starting action
+   * - the evolved Goblin Drill's relocation, which takes the place of its area object - is refused.
+   *
    * @param old the unit that surfaced
    */
   void morph(CharacterEntity old) {
+    UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
+    if (data.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          old.getData().name()
+              + " morphs into "
+              + data.name()
+              + ", which starts an action, which a morph does not start and is not modelled");
+    }
     for (WorldEntity entity : present) {
       if (entity.getData().attackSequence().mode() != AttackSequence.MODE_NONE
           && entity.getTargeting().getReference() == old.getTargetView()) {
@@ -1130,7 +1209,6 @@ public class BattleWorld implements HolderPasses {
                 + " as it morphs, whose replacement is not modelled");
       }
     }
-    UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
     holder.addRegistered(made);
     made.startDeployingAfterMorph();
@@ -1334,7 +1412,8 @@ public class BattleWorld implements HolderPasses {
     if (target == null || known.get(target.getView()) != target) {
       return DamageResult.NOTHING;
     }
-    // A projectile carries no dedupe id unless it belongs to a group, which none here does.
+    // A projectile's hit carries its group id as the dedupe id: 0 for one of no group, which lands
+    // every time; the projectiles of one group land on the target once.
     int before = hitPointsOf(target);
     // The impact counts for the projectile's shooter, while it is in the battle.
     // A projectile with an action holder has its listening runs hear of the hit in the
@@ -1342,7 +1421,7 @@ public class BattleWorld implements HolderPasses {
     DamageResult result =
         target.takeDamage(
             damage,
-            0,
+            projectile.getGroupId(),
             directionX,
             directionY,
             false,
@@ -1608,6 +1687,25 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The live list's arena entities a game object filter lets through, asked for a team and a row
+   * name, in the holder's order. Any other object is left out: none has hit points.
+   *
+   * @param filter the filter row
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   */
+  List<WorldEntity> filteredEntities(GameObjectFilter filter, int team, String rowName) {
+    List<WorldEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof WorldEntity arena
+          && filter.matches(arena.filterSubject(), team, rowName)) {
+        out.add(arena);
+      }
+    }
+    return out;
+  }
+
+  /**
    * Sends a card play to every card-play listener on the live and the queued objects, in that
    * order: each hears it as its row says, and an activating play schedules the row's action on the
    * listener's owner, the owner its cause, to run in its next pending pass.
@@ -1783,11 +1881,19 @@ public class BattleWorld implements HolderPasses {
    */
   List<WorldEntity> segmentQuery(
       AreaEffectEntity owner, int ax, int ay, int bx, int by, int width, GameObjectFilter filter) {
+    return segmentQuery(owner.side() & 1, owner.getData().name(), ax, ay, bx, by, width, filter);
+  }
+
+  /**
+   * The segment query for an owner of the given team and row name, which the filter is asked for.
+   *
+   * @return the objects, in the query's order; null with no filter or no free result list
+   */
+  private List<WorldEntity> segmentQuery(
+      int team, String name, int ax, int ay, int bx, int by, int width, GameObjectFilter filter) {
     if (filter == null) {
       return null;
     }
-    int team = owner.side() & 1;
-    String name = owner.getData().name();
     List<GridEntity> found =
         index.segmentQuery(
             ax,
@@ -2697,6 +2803,10 @@ public class BattleWorld implements HolderPasses {
               Standard1v1Battle.LANE_BASED_DEPLOY_SEQUENCE);
       int cx = inset(x + offset[0], w);
       int cy = inset(y + offset[1], h);
+      // The creation takes the child's lane from where it is made with the impact point's x as
+      // the reference and no flag (0xe36d9c..0xe36dc4): a child made across the centre column
+      // from the impact, whose nearest road is the impact's own, is swapped to the impact's side.
+      int childLane = LaneAssignment.lane(w, h, w, cx, cy, x, 0, tileMap::bits);
       int made = spawnCounts.merge(projectile.name(), 1, Integer::sum) - 1;
       CharacterEntity spawned =
           CharacterEntity.spawned(
@@ -2706,7 +2816,8 @@ public class BattleWorld implements HolderPasses {
               projectile.side(),
               cx,
               cy,
-              PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())));
+              PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())),
+              childLane);
       // A fixed priority per child: the k-th is taken as (20k)^2 nearer by a selection.
       if (data.spawnConstPriority()) {
         spawned.getView().setSquaredDistanceReduction((i * 20) * (i * 20));
@@ -2818,6 +2929,48 @@ public class BattleWorld implements HolderPasses {
       }
     }
     index.release(found);
+  }
+
+  /**
+   * The initial collision check of a projectile's first flight step, for a row with an initial
+   * collision check filter and an owner of the character kind: the segment query from the owner's
+   * position to the projectile's, with no width beyond the objects' own radii (a projectile's own
+   * radius slot answers 0), the filter asked for the owner's team and row name. When the query
+   * answers, one fresh hit id is drawn, even for an empty answer, and everything of the character
+   * kind found, in the query's order, takes the projectile's travelling hit measured from the
+   * owner's position, until one finishes the projectile. A projectile without the filter or without
+   * an owner checks nothing.
+   *
+   * @param projectile the projectile on its first flight step
+   */
+  public void initialCollisionCheck(ProjectileEntity projectile) {
+    GameObjectFilter filter = projectile.getData().initialCollisionCheckFilter();
+    WorldEntity owner = projectile.getOwner();
+    if (filter == null || owner == null || owner.kind() != BattleEntity.KIND_CHARACTER) {
+      return;
+    }
+    int ox = owner.getView().getX();
+    int oy = owner.getView().getY();
+    List<WorldEntity> found =
+        segmentQuery(
+            owner.side() & 1,
+            owner.getData().name(),
+            ox,
+            oy,
+            projectile.getX(),
+            projectile.getY(),
+            0,
+            filter);
+    if (found == null) {
+      return;
+    }
+    int hitId = nextHitId();
+    for (WorldEntity entity : found) {
+      if (entity.kind() == BattleEntity.KIND_CHARACTER
+          && travellingHit(projectile, entity, ox, oy, hitId)) {
+        break;
+      }
+    }
   }
 
   /**
@@ -3934,10 +4087,10 @@ public class BattleWorld implements HolderPasses {
    * which is presentation.
    *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, the ring's lane mirror and
-   * pushback, a ring around a character source, which reads its own spawn columns, a unit that
-   * paths to its spawn point, and a unit with a starting action of its own, which a child starts as
-   * it joins the live list. A child without a speed stands where it is made, and one without hit
-   * points is taken like any other.
+   * pushback, a ring around a character source, which reads its own spawn columns, and a unit that
+   * paths to its spawn point. A child without a speed stands where it is made, and one without hit
+   * points is taken like any other. A child with a starting action of its own starts it as the
+   * cleanup's fold admits it: the action is scheduled then, outside every pending pass.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -3977,6 +4130,9 @@ public class BattleWorld implements HolderPasses {
       if (arguments.deployTimeMs() != 0) {
         child.deployFor(arguments.deployTimeMs());
       }
+      // The child is registered now and joins the live list at the next cleanup's fold, which
+      // starts it: its row's starting action is scheduled then.
+      child.startOnAdmission();
       holder.addRegistered(child);
       if (arguments.deathSpawn() && DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         child.startSpawnImmunity();
@@ -4199,8 +4355,27 @@ public class BattleWorld implements HolderPasses {
       int halfWidth,
       int halfHeight,
       GameObjectFilter filter) {
-    int team = owner.side() & 1;
-    String name = owner.getData().name();
+    return rectangleQuery(
+        owner.side(), owner.getData().name(), x, y, halfWidth, halfHeight, filter);
+  }
+
+  /**
+   * The objects in the rectangle about a point that pass the filter for the given side's team and
+   * row name, as {@link #rectangleQuery(AreaEffectEntity, int, int, int, int, GameObjectFilter)}
+   * lists them for an area effect.
+   *
+   * @param side the asking object's side
+   * @param name the asking object's row name
+   * @param x the rectangle's centre along the width
+   * @param y the rectangle's centre along the length
+   * @param halfWidth half its width
+   * @param halfHeight half its height
+   * @param filter the filter
+   * @return the objects, in the query's order
+   */
+  List<WorldEntity> rectangleQuery(
+      int side, String name, int x, int y, int halfWidth, int halfHeight, GameObjectFilter filter) {
+    int team = side & 1;
     List<WorldEntity> out = new ArrayList<>();
     for (GridEntity view :
         index.boxQuery(
@@ -4505,6 +4680,41 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The building placement a spawn row that validates its point as a building's asks for: the point
+   * clamped into the arena, kept when no building of the live list overlaps the child's circle
+   * there and its cell can be stood on. A blocked point is refused: the search over the rows toward
+   * or away from the side that would follow is not modelled. An owner that is itself a building,
+   * which the overlap query may leave out, is refused too.
+   *
+   * @param owner the object whose action spawns the child
+   * @param child the row of the child
+   * @return the search
+   */
+  SpawnPerform.PlacementSearch buildingPlacement(WorldEntity owner, UnitData child) {
+    if (owner.getTargetView().building()) {
+      throw new UnsupportedOperationException(
+          owner.name()
+              + " places a building it spawns while it is a building itself, which the overlap"
+              + " query may leave out; not established");
+    }
+    return (x, y) -> {
+      int clampedX = Math.max(0, Math.min(x, tileMap.width() * TileMap.CELL_UNITS - 1));
+      int clampedY = Math.max(0, Math.min(y, tileMap.height() * TileMap.CELL_UNITS - 1));
+      if (!buildingOver(clampedX, clampedY, child.collisionRadius())
+          && CellTests.cellBlocked(grid, clampedX, clampedY) == 0) {
+        return new int[] {clampedX, clampedY};
+      }
+      throw new UnsupportedOperationException(
+          child.name()
+              + " is placed as a building at ("
+              + x
+              + ", "
+              + y
+              + "), which is blocked; the search for a free row is not modelled");
+    };
+  }
+
+  /**
    * Whether a building of the live list has a circle that overlaps a circle: its collision radius
    * and the given one together reach further than its centre lies from the point. The squares are
    * taken in 32 bits and compared unsigned; a square distance of the largest integer is passed by.
@@ -4563,16 +4773,76 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Hands a champion a spawn made to its side's champion controllers. The observers are told, and
-   * nothing about the unit changes: no ability is modelled, so no controller acts on it.
+   * Hands a champion a spawn made to its side's champion slots: in a match the king's slot that
+   * follows its row follows its play, or a slot takes it ({@link TowerEntity#championSpawned}). The
+   * observers are told; nothing about the unit itself changes. A battle outside a match has no
+   * slots, and only the observers hear of it.
    *
    * @param source the object the champion was spawned from
    * @param child the champion
    */
   void handOverChampion(SpawnHost source, SpawnHost child) {
     CharacterEntity champion = (CharacterEntity) child;
+    TowerEntity king = kingTower(champion.side());
+    if (king != null && king.championSlot(1) != null) {
+      king.championSpawned(champion);
+    }
     for (WorldObserver observer : observers) {
       observer.championHandedOver(tick, source, champion);
+    }
+  }
+
+  /**
+   * Whether a champion slot of a character's side follows it: the character is no clone and the
+   * first or the second slot follows its row and its play's deploy count. Its hit points and
+   * whether the slot's last working out listed it are not asked. Outside a match no slot exists and
+   * no character is followed.
+   *
+   * @param unit the character
+   */
+  boolean followedChampion(CharacterEntity unit) {
+    if (unit.isClone()) {
+      return false;
+    }
+    TowerEntity king = kingTower(unit.side());
+    if (king == null || king.championSlot(1) == null) {
+      return false;
+    }
+    for (int slot = 1; slot <= 2; slot++) {
+      ChampionController controller = king.championSlot(slot);
+      UnitData followed = controller.getChampion();
+      if (followed != null
+          && followed.name().equals(unit.getData().name())
+          && controller.getDeployIndex() == unit.getDeployIndex()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Writes a button state override, and refills the charges when the row asks, into the slot of the
+   * owner's side that follows the row's champion; nothing when no slot follows it. The owner
+   * decides only the side.
+   *
+   * @param owner the object the row runs on
+   * @param action the row
+   */
+  void overrideAbilityButton(WorldEntity owner, OverrideAbilityButtonState action) {
+    TowerEntity king = kingTower(owner.side());
+    if (king == null || king.championSlot(1) == null) {
+      throw new UnsupportedOperationException(
+          action.name() + " outside a match, which has no champion slots");
+    }
+    ChampionController slot = king.championSlotFollowing(action.getChampion());
+    if (slot == null) {
+      return;
+    }
+    if (action.getState() != 0) {
+      slot.override(action.getState());
+    }
+    if (action.isResetCharges()) {
+      slot.refillCharges();
     }
   }
 
@@ -6047,8 +6317,6 @@ public class BattleWorld implements HolderPasses {
       refused = "a ring around a character, which reads the character's own spawn columns";
     } else if (data.spawnPathfindSpeed() != 0) {
       refused = "a unit that paths to its spawn point";
-    } else if (data.onStartingAction() != null) {
-      refused = "a child with a starting action, started as it joins the live list";
     } else if (data.groupMaxSize() > 0
         && !(source instanceof CharacterEntity character
             && !character.getData().name().equals(data.name()))) {

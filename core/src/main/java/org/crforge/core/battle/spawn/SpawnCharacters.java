@@ -14,21 +14,23 @@ import org.crforge.core.fidelity.FidelityStatus;
  * it, the battle's spawner creates the children, and each child is linked into its source's group
  * when the row asks and the source is a character; it does not last.
  *
- * <p>A champion it spawns is then handed to its side's champion controllers, which changes nothing
- * about the unit: no ability is modelled.
+ * <p>A champion it spawns is then handed to its side's champion slots, which follow its play.
  *
- * <p>Refused rather than guessed: a row that asks for a building's placement, a row with no source,
- * and a row whose spawn would make any other call after it - the shared-target schedule or the
- * clone - neither of which is modelled.
+ * <p>A row that validates its point as a building's places its child where the point is free of
+ * buildings and its cell can be stood on; a blocked point, whose search for another row is not
+ * modelled, is refused.
+ *
+ * <p>Refused rather than guessed: a row with no source, and a row whose spawn would make any other
+ * call after it - the shared-target schedule or the clone - neither of which is modelled.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the perform's block from the owner and the cause, handed to the battle's"
-            + " spawner, the group link after the spawn and the champion hand-over after it. Not"
-            + " modelled: the action's target, the building placement search, the other calls"
-            + " after the spawn, and what the champion controllers do with a champion; a row that"
-            + " needs one of the first three is refused.")
+            + " spawner, the group link after the spawn and the champion hand-over after it; a"
+            + " building placement's free point kept, held by hero_goblins. Not modelled: the"
+            + " action's target, the building placement's search off a blocked point and the other"
+            + " calls after the spawn; a row that needs one of them is refused.")
 public final class SpawnCharacters extends RowAction {
 
   private final SpawnRow spawn;
@@ -54,11 +56,11 @@ public final class SpawnCharacters extends RowAction {
     }
     SpawnHost cause =
         instigator != null && instigator.getOwner() instanceof SpawnHost host ? host : null;
-    if (spawn.validatePlacementAsBuilding()) {
-      throw new UnsupportedOperationException(
-          name() + " asks for a building's placement, which is not modelled");
-    }
-    SpawnArguments arguments = SpawnPerform.arguments(spawn, owner, cause, false, false, null);
+    // A row that validates its point as a building's asks its owner for the placement, for the
+    // row it spawns: the point is kept when it is free; a blocked one is refused.
+    SpawnPerform.PlacementSearch placement =
+        spawn.validatePlacementAsBuilding() ? owner.buildingPlacement(spawn.spawnData()) : null;
+    SpawnArguments arguments = SpawnPerform.arguments(spawn, owner, cause, false, false, placement);
     if (arguments.source() == null) {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
     }

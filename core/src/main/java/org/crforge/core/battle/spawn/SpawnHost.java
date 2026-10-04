@@ -3,6 +3,7 @@ package org.crforge.core.battle.spawn;
 import java.util.List;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.unit.UnitData;
 
 /**
  * An object of the battle a spawn can come from: it answers as a spawn object, it has an action
@@ -75,5 +76,16 @@ public interface SpawnHost extends SpawnObject {
    */
   default void handOverChampion(SpawnHost child) {
     throw new UnsupportedOperationException(name() + " cannot hand over a champion");
+  }
+
+  /**
+   * The building placement a spawn row that validates its point as a building's asks for, for a
+   * child of the given row: the point kept when it is free, else refused.
+   *
+   * @param child the row of the child it would place
+   * @return the search
+   */
+  default SpawnPerform.PlacementSearch buildingPlacement(UnitData child) {
+    throw new UnsupportedOperationException(name() + " cannot place a building it spawns");
   }
 }

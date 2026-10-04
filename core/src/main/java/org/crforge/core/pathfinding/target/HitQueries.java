@@ -72,6 +72,24 @@ public interface HitQueries {
    */
   default void directHitDealt() {}
 
+  /**
+   * Whether the owner's movement component is there and switched on, as a direct hit reads it
+   * before its damage: only such an owner recoils after the hit.
+   */
+  default boolean ownerMovementOn() {
+    return false;
+  }
+
+  /**
+   * The owner's recoil after a direct hit landed on its one target, the hit's last step: an owner
+   * whose row pushes it back asks for that pushback away from the point, as after a launch.
+   *
+   * @param x the point it recoils from, along the width: where its reference stood at the start of
+   *     the visit
+   * @param y the point it recoils from, along the length
+   */
+  default void attackRecoil(int x, int y) {}
+
   /** True when the owner may not attack at all, which discards the hit before any other step. */
   default boolean attackForbidden() {
     return false;
@@ -136,6 +154,14 @@ public interface HitQueries {
    * @param target what the hit was aimed at, or null when the owner had given it up
    */
   default void runAttackAction(TargetView target) {}
+
+  /**
+   * Schedules the action the owner's row runs on itself as it attacks on the owner, with the owner
+   * as its own cause, after a hit that was not cancelled for distance and after the action the row
+   * runs with the hit's target as cause. It is scheduled whether or not the hit has a target. An
+   * owner whose row names none schedules nothing.
+   */
+  default void runAttackSelfAction() {}
 
   /**
    * Deals the damage of a landed hit to everything in a circle rather than to its target alone,

@@ -139,15 +139,49 @@ final class Scenarios {
     body.put("cgid", objectId);
   }
 
+  /**
+   * The {@link #knight()} battle with side 1 on the Royal Chef's towers (support card 159000004,
+   * level index 0) and one play of side 1's own: its Giant, run on tick 450 in its back left
+   * corner, at (3500, 29000), where it stands as the king's cooking fills.
+   */
+  static ObjectNode knightAgainstTheRoyalChef() {
+    ObjectNode scenario = knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
+    addPlay((ArrayNode) scenario.path("cmd"), 1, 450, 26000003, 0x51000800, 3500, 29000);
+    return scenario;
+  }
+
+  /**
+   * The {@link #knight()} battle with side 1's towers the Dagger Duchess's (support card 159000002)
+   * and side 0's Giant in place of its Knight: the Giant takes deck index 0 and the Knight index 3,
+   * so the Giant is in the opening hand, and it is played where the Knight was, on tick 220.
+   */
+  static ObjectNode giantVsDuchessTower() {
+    ObjectNode scenario = knight();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    ((ObjectNode) battle.path("deck1").path("sc").get(0)).put("d", 159000002);
+    ((ObjectNode) battle.path("deck0").path("sp").get(0)).put("d", 26000003);
+    ((ObjectNode) battle.path("deck0").path("sp").get(3)).put("d", 26000000);
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 220, 26000003, 0x50400800, 3500, 14000);
+    return scenario;
+  }
+
   /** Adds side 0's play of a card, given 20 ticks before the tick it runs on. */
   private static void addPlay(ArrayNode commands, int runTick, int card, int item, int x, int y) {
+    addPlay(commands, 0, runTick, card, item, x, y);
+  }
+
+  /** Adds a side's play of a card, given 20 ticks before the tick it runs on. */
+  private static void addPlay(
+      ArrayNode commands, int side, int runTick, int card, int item, int x, int y) {
     ObjectNode command = commands.addObject();
     command.put("ct", 124);
     ObjectNode body = command.putObject("c");
     body.put("t", runTick - 20);
     body.put("t2", runTick);
     body.put("idHi", 0);
-    body.put("idLo", 1);
+    body.put("idLo", side + 1);
     body.put("px", x);
     body.put("py", y);
     body.put("sid", -1);

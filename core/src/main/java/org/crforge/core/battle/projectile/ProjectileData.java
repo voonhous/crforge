@@ -2,6 +2,7 @@ package org.crforge.core.battle.projectile;
 
 import java.util.List;
 import lombok.Builder;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.combat.PackedLevel;
@@ -65,6 +66,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param onStartingAction the action row the projectile runs on itself as it is admitted, or null
  * @param spawnChain how many links of spawned projectiles are left: at least one when the row names
  *     a spawned projectile, else 0
+ * @param chainIsNewProjectile true when the projectiles its impact spawns do not share its group
+ *     id, each taking a group of its own as it is launched
  * @param constantHeight the height the projectile starts at and aims at, in place of its
  *     launcher's, and lands at; 0 for none
  * @param targetBuff the buff its impact applies to what its area holds, or to its one target, or
@@ -113,6 +116,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     run on it moves instead, as the evolved Snowball's rolling snowball rolls
  * @param spawnAxisY true for a projectile whose impact aims the projectile it spawns straight
  *     forward for its side, its minimum distance beyond the aim, in place of the fan
+ * @param initialCollisionCheckFilter the filter of the check its first flight step makes along the
+ *     segment from its owner to where it was launched, or null for no check
  * @param unmodelledColumns the columns its row sets that the impact does not model, which refuse it
  *     as a spell casts it
  */
@@ -161,6 +166,7 @@ public record ProjectileData(
     String spawnProjectile,
     String onStartingAction,
     int spawnChain,
+    boolean chainIsNewProjectile,
     int constantHeight,
     String targetBuff,
     boolean applyBuffBeforeDamage,
@@ -189,6 +195,7 @@ public record ProjectileData(
     String customDeflectAction,
     boolean useCustomMovement,
     boolean spawnAxisY,
+    GameObjectFilter initialCollisionCheckFilter,
     List<String> unmodelledColumns) {
 
   /** The deflection bit of a projectile no deflecting area effect turns around. */
