@@ -17,6 +17,8 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * @param accounts each side's account id, high word then low word
  * @param playerDataChoices how many choices each player's data lists, in the scenario's order
  * @param plays the card plays, in the scenario's order
+ * @param abilities the ability commands, in the scenario's order; with the plays they run in the
+ *     scenario's order within a tick
  */
 public record ScenarioPlan(
     int seed,
@@ -26,7 +28,8 @@ public record ScenarioPlan(
     List<int[]> slotFlags,
     List<int[]> accounts,
     List<Integer> playerDataChoices,
-    List<Play> plays) {
+    List<Play> plays,
+    List<Ability> abilities) {
 
   /**
    * One place-card command.
@@ -53,4 +56,16 @@ public record ScenarioPlan(
       int x,
       int y,
       int item) {}
+
+  /**
+   * One ability command: the tap on a champion's button, naming one unit by its game object id. The
+   * command names no row and no play, so only the live unit with that id answers it.
+   *
+   * @param index the command's index in the scenario
+   * @param givenTick the tick the command was given on
+   * @param runTick the tick the command runs on
+   * @param side the commanding side
+   * @param objectId the game object id of the unit it names
+   */
+  public record Ability(int index, int givenTick, int runTick, int side, int objectId) {}
 }

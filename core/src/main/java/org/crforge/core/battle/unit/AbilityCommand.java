@@ -117,6 +117,32 @@ public final class AbilityCommand {
     return new Outcome(OK, before, world.elixir(side), List.copyOf(requested));
   }
 
+  /**
+   * Runs a command of a side naming a unit by its game object id alone, as a command read from a
+   * replay does: it names no row and no play, so only the live entity holding that id answers it. A
+   * live character runs the command as {@link #run(BattleWorld, int, CharacterEntity)} does; no
+   * live entity with the id, or one that is not a character, is refused: no champion found, or the
+   * king dead, whose gate comes first.
+   *
+   * @param world the battle's world, in a match
+   * @param side the commanding side
+   * @param objectId the game object id the command names
+   * @return what it came to
+   */
+  public static Outcome run(BattleWorld world, int side, int objectId) {
+    for (BattleEntity entity : world.getHolder().entities()) {
+      if (entity.getId() == objectId) {
+        if (entity instanceof CharacterEntity unit) {
+          return run(world, side, unit);
+        }
+        break;
+      }
+    }
+    int before = world.elixir(side);
+    int code = HitPoints.alive(world.kingTower(side).getHitPoints()) ? NO_CHAMPION : KING_GONE;
+    return new Outcome(code, before, before, List.of());
+  }
+
   /** The gates in order: 0 when the command may pay, else the code it is refused with. */
   private static int gates(BattleWorld world, TowerEntity king, int side, CharacterEntity named) {
     if (!HitPoints.alive(king.getHitPoints())) {

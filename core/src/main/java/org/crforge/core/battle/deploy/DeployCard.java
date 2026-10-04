@@ -52,6 +52,8 @@ import org.crforge.core.battle.unit.UnitData;
  *     side's play on the right half of the arena
  * @param group whether the card is a group: its construction links each unit it makes into a chain
  *     after the one made before it
+ * @param onExecuteAction the action a spell's cast runs on its side's king tower as its last step,
+ *     with the first object the cast made as its cause, or null for none
  */
 public record DeployCard(
     String name,
@@ -82,10 +84,75 @@ public record DeployCard(
     int projectileIntervalMs,
     List<Listed> listed,
     boolean listOffsetsXMirrored,
-    boolean group) {
+    boolean group,
+    String onExecuteAction) {
 
   public DeployCard {
     listed = List.copyOf(listed);
+  }
+
+  /** A card whose cast runs no action as its last step. */
+  public DeployCard(
+      String name,
+      UnitData unit,
+      int count,
+      UnitData secondary,
+      int secondaryCount,
+      int summonRadius,
+      int summonWidth,
+      int summonDeployDelayMs,
+      int summonDeployDelaySecondMs,
+      boolean canDeployOnEnemySide,
+      boolean canPlaceOnBuildings,
+      boolean canPlaceOnWater,
+      boolean fullLaneDeploy,
+      boolean touchdownLimitedDeploy,
+      int deployWTileMargin,
+      int deployStartY,
+      int deployEndY,
+      String projectile,
+      String areaEffect,
+      UnitData searchUnit,
+      boolean spellAsDeploy,
+      int radius,
+      int multipleProjectiles,
+      int projectileWaves,
+      int projectileWaveIntervalMs,
+      int projectileIntervalMs,
+      List<Listed> listed,
+      boolean listOffsetsXMirrored,
+      boolean group) {
+    this(
+        name,
+        unit,
+        count,
+        secondary,
+        secondaryCount,
+        summonRadius,
+        summonWidth,
+        summonDeployDelayMs,
+        summonDeployDelaySecondMs,
+        canDeployOnEnemySide,
+        canPlaceOnBuildings,
+        canPlaceOnWater,
+        fullLaneDeploy,
+        touchdownLimitedDeploy,
+        deployWTileMargin,
+        deployStartY,
+        deployEndY,
+        projectile,
+        areaEffect,
+        searchUnit,
+        spellAsDeploy,
+        radius,
+        multipleProjectiles,
+        projectileWaves,
+        projectileWaveIntervalMs,
+        projectileIntervalMs,
+        listed,
+        listOffsetsXMirrored,
+        group,
+        null);
   }
 
   /**

@@ -15,6 +15,7 @@ import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -153,6 +154,12 @@ public class ProjectileEntity extends BattleEntity
    * another projectile's impact spawned.
    */
   @Getter private WorldEntity owner;
+
+  /**
+   * The id of the entity that launched the projectile, kept after it leaves the battle; 0 for none.
+   * The evolved Dart Goblin's poison controller tells its darts by it.
+   */
+  @Getter private int ownerId;
 
   /** The launcher, or the launcher's own root for a projectile fired by a projectile. */
   @Getter private WorldEntity root;
@@ -371,6 +378,38 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Places the projectile a mirrored extra spell throws for a cast projectile: owned by the cast's
+   * owner, which is its root as well, with no target and no delay, at the cast's packed level
+   * re-based on this row's rarity, from where the cast stands and at its height, to the given
+   * point.
+   *
+   * @param source the cast projectile the extra spell mirrors
+   * @param hx the point it is thrown to along the arena's width
+   * @param hy the point it is thrown to along the arena's length
+   */
+  public void castMirrored(ProjectileEntity source, int hx, int hy) {
+    refuseUnitOnly("thrown by a mirrored extra spell");
+    if (source.owner == null) {
+      throw new UnsupportedOperationException(
+          data.name() + " mirrors " + source.name() + ", which has no owner, not modelled");
+    }
+    // Like the cast, it has no launcher: it aims from its start.
+    place(
+        source.owner,
+        source.owner,
+        null,
+        source.packedLevel,
+        source.x,
+        source.y,
+        source.z,
+        hx,
+        hy,
+        source.x,
+        source.y);
+    this.delayMs = 0;
+  }
+
+  /**
    * Places a projectile an area effect launches: with the area effect as its launcher, owner and
    * root, at the area effect's level re-based on the row's rarity, from the start to the hit
    * position, at a target or none.
@@ -550,6 +589,7 @@ public class ProjectileEntity extends BattleEntity
     this.z = sz;
     this.target = target;
     this.owner = launcher;
+    this.ownerId = launcher == null ? 0 : launcher.getId();
     this.root = rootOwner;
     this.spawnChain = data.spawnChain();
     aim(originX, originY, hx, hy);
@@ -782,6 +822,15 @@ public class ProjectileEntity extends BattleEntity
       actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     registerPending();
+  }
+
+  /**
+   * Throws the mirrored extra spell with this projectile as its cause, as the evolved Goblin
+   * Barrel's cast runs it on its king.
+   */
+  @Override
+  public void mirroredExtraSpell(MirroredExtraSpell action) {
+    world.castMirroredExtraSpell(this, action.getProjectile(), action.name());
   }
 
   /**

@@ -72,18 +72,13 @@ public final class BattleRecords {
 
   /**
    * The columns of a spell card the cast does not model yet: a Mirror, which a match plays as the
-   * card it repeats instead, a first projectile of its own, a variant card's class and its
-   * projected summon, which a match plays as the option picked instead, and an action run as the
-   * spell is cast, which only the evolved Goblin Barrel sets (its decoy barrel). A spell that sets
-   * one is refused.
+   * card it repeats instead, a first projectile of its own, and a variant card's class and its
+   * projected summon, which a match plays as the option picked instead. A spell that sets one is
+   * refused. The action run as the spell is cast, which only the evolved Goblin Barrel sets (its
+   * decoy barrel), is read: the cast runs it, and its row is built or refused then.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
-      List.of(
-          "Mirror",
-          "CustomFirstProjectile",
-          "CustomClassType",
-          "UseProjectedTimeSummon",
-          "OnExecuteAction");
+      List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
    * The columns of a projectile the impact does not model: the action on reaching its target,
@@ -1289,7 +1284,8 @@ public final class BattleRecords {
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
     // a Clone's whose hit action is a buff spawn, as the evolved Tesla's ring's is, a group of buff
-    // spawns, as the Goblin Curse's base is, or a taunt, as the Goblin Demolisher's is.
+    // spawns, as the Goblin Curse's base is, a taunt, as the Goblin Demolisher's is, or the evolved
+    // Dart Goblin's poison damage.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
@@ -1297,6 +1293,13 @@ public final class BattleRecords {
     boolean taunt =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionTaunt");
+    // The evolved Dart Goblin's poison areas start its poison damage on what they reach.
+    boolean poison =
+        data.onHitAction() != null
+            && tables
+                .action(data.onHitAction())
+                .classType()
+                .equals("ActionBlowdartGoblinEvoDamage");
     // A shaped row's hit pass schedules a choice by team, as the evolved Baby Dragon's wind does.
     boolean byTeam =
         data.onHitAction() != null
@@ -1304,7 +1307,7 @@ public final class BattleRecords {
             && tables.action(data.onHitAction()).classType().equals("ActionFilterByEnemy");
     if (data.onHitAction() != null
         && !(data.cloning() && cloning)
-        && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt))
+        && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt || poison))
         && !byTeam) {
       unmodelled.add("OnHitAction");
     }
@@ -2006,7 +2009,8 @@ public final class BattleRecords {
         row.intValue("ProjectileInterval"),
         List.of(),
         false,
-        false);
+        false,
+        set(row, "OnExecuteAction") ? row.string("OnExecuteAction") : null);
   }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */
