@@ -88,7 +88,23 @@ public class CellCostOverlayRenderer {
    * @param hoverRow the row under the mouse
    */
   public void render(GameEngine engine, int hoverCol, int hoverRow) {
-    Snapshot snapshot = snapshot(engine);
+    render(snapshot(engine), hoverCol, hoverRow);
+  }
+
+  /**
+   * Fills every cell of a live routing grid, such as the battle core's, and outlines the one under
+   * the mouse. The grid's stamps are read from the slot the end of a tick rotates them into, as for
+   * the original engine's grid rules.
+   *
+   * @param grid the live grid, between two ticks
+   * @param hoverCol the column under the mouse, or a value outside the grid when there is none
+   * @param hoverRow the row under the mouse
+   */
+  public void render(CellGrid grid, int hoverCol, int hoverRow) {
+    render(live(grid), hoverCol, hoverRow);
+  }
+
+  private void render(Snapshot snapshot, int hoverCol, int hoverRow) {
     CellGrid grid = snapshot.grid();
 
     Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -121,7 +137,15 @@ public class CellCostOverlayRenderer {
    * and why. Never null; a cell outside the arena says so.
    */
   public String hoverStatus(GameEngine engine, int hoverCol, int hoverRow) {
-    Snapshot snapshot = snapshot(engine);
+    return hoverStatus(snapshot(engine), hoverCol, hoverRow);
+  }
+
+  /** The status line for the cell under the mouse on a live routing grid, as for an engine's. */
+  public String hoverStatus(CellGrid grid, int hoverCol, int hoverRow) {
+    return hoverStatus(live(grid), hoverCol, hoverRow);
+  }
+
+  private static String hoverStatus(Snapshot snapshot, int hoverCol, int hoverRow) {
     String where = "cell (" + hoverCol + ", " + hoverRow + ")";
     if (!snapshot.inside(hoverCol, hoverRow)) {
       return where + " " + CellCostClass.OUT_OF_ARENA.name().toLowerCase(Locale.ROOT);
@@ -137,11 +161,15 @@ public class CellCostOverlayRenderer {
   private Snapshot snapshot(GameEngine engine) {
     GridPathfindingSystem system = engine.getGridPathfindingSystem();
     if (system != null) {
-      CellGrid grid = system.getGrid();
-      return new Snapshot(costs, grid, grid.getPrevious(), grid.getActive() != 0);
+      return live(system.getGrid());
     }
     CellGrid grid = staticGrid(engine.getGameState());
     return new Snapshot(costs, grid, grid.getCurrent(), grid.getActive() != 0);
+  }
+
+  /** A live grid between two ticks: its stamps are in the slot the tick's end rotated them into. */
+  private Snapshot live(CellGrid grid) {
+    return new Snapshot(costs, grid, grid.getPrevious(), grid.getActive() != 0);
   }
 
   /**

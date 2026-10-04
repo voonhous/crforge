@@ -2,7 +2,7 @@
 
 The battle core is a second simulation engine, growing beside the original `GameEngine`. It exists because the two are built on different footings. The original engine was written from observation and a reference port, and the fidelity ledger lists nearly all of it as a guess. The battle core only takes in behaviour that is established, and every class in it says which parts are settled and which are not.
 
-The original engine stays as it is and keeps serving the visualizer and the current Python bridge. The battle core takes over a milestone at a time; when it covers a whole match, the visualizer switches to it and the original engine is retired. The current bridge is not carried over: a new one will be built on the battle core separately. Run `./gradlew :core:fidelityReport` to see how far that has come.
+The original engine stays as it is and keeps serving the AI visualizer and the current Python bridge; the debug visualizer runs on the battle core (see [Debug Visualizer](architecture.md#debug-visualizer)). The battle core takes over a milestone at a time; when it covers a whole match, the visualizer switches to it and the original engine is retired. The current bridge is not carried over: a new one will be built on the battle core separately. Run `./gradlew :core:fidelityReport` to see how far that has come.
 
 ## Why a second engine and not a refit
 

@@ -44,9 +44,9 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
 
-The visualizer prints its key map on startup; see
-[Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the grid
-pathfinding overlays (`M`, `G`, `N`), the golden scenarios (`S`) and the trajectory export (`E`).
+The debug visualizer runs the battle core, which needs the game tables: set `crforge.gameTables=<folder>` in `~/.gradle/gradle.properties` (or pass `-Pcrforge.gameTables=<folder>`, or set `CRFORGE_GAME_TABLES`). It prints the tables folder, data version and content sha at startup, and its key map; see
+[Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing
+overlays (`G`, `N`), the golden scenarios (`S`) and the trajectory export (`E`).
 
 ### Python / RL Training
 
