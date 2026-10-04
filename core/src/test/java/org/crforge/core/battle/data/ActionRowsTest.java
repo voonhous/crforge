@@ -1017,24 +1017,24 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a Skeleton Barrel pop that drops containers is refused for its columns, and a singleton one"
-          + " for its second start")
-  void aContainerPopIsRefused(@TempDir Path folder) throws IOException {
-    assertThatThrownBy(
-            () -> GameData.actions().build("skeleton_balloon_evo_pop_balloon", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ContainerAeoList");
-    GameTables singleton =
+      "the evolved Skeleton Balloon's singleton pop, which drops containers, is built; one with"
+          + " more balloons than containers is refused")
+  void aContainerPopIsBuiltWithinItsLists(@TempDir Path folder) throws IOException {
+    assertThat(GameData.actions().build("skeleton_balloon_evo_pop_balloon", INERT_BINDING))
+        .isInstanceOf(PopBalloons.class);
+    GameTables more =
         GameData.altered(
             folder,
             "actions",
             rows ->
-                ((ObjectNode) rows.get("skeleton_balloon_pop_balloons").get("fields"))
-                    .put("Singleton", true));
-    ActionRows rows = new ActionRows(singleton, new BattleRecords(singleton));
-    assertThatThrownBy(() -> rows.build("skeleton_balloon_pop_balloons", INERT_BINDING))
+                ((ObjectNode) rows.get("skeleton_balloon_evo_pop_balloon").get("fields"))
+                    .put("TotalBalloons", 3));
+    ActionRows rows = new ActionRows(more, new BattleRecords(more));
+    assertThatThrownBy(() -> rows.build("skeleton_balloon_evo_pop_balloon", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("singleton");
+        .hasMessage(
+            "skeleton_balloon_evo_pop_balloon has 3 balloons for 2 containers and 2 / 2 offsets,"
+                + " whose index would fall outside the lists; not modelled");
   }
 
   @Test
@@ -1354,12 +1354,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 842 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 845 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(842);
+    assertThat(built).as("rows built").isEqualTo(845);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 29, "column", 64, "spawn type", 11));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 29, "column", 61, "spawn type", 11));
   }
 }
