@@ -72,7 +72,11 @@ public final class EntityFlags {
   /** The entity's ability waits: a request leaves it pending. */
   public static final long ABILITY_POSTPONED = 1L << 29;
 
-  /** The entity's spawner may not summon: raised on a unit a capture without a buff holds. */
+  /**
+   * The entity's spawner may not summon: raised on a unit a capture without a buff holds, and on
+   * the evolved Goblin Drill while it is underground. The spawner holds its timer while it is up; a
+   * firing already due still fires.
+   */
   public static final long NO_SUMMON = 1L << 31;
 
   /** The entity may not use its special attack. */
