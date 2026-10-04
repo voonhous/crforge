@@ -48,6 +48,7 @@ import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
+import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -283,6 +284,29 @@ class ActionRowsTest {
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessageContaining(change.getKey());
     }
+  }
+
+  @Test
+  @DisplayName(
+      "the hero Elite Archer's triple shot reads its projectile row, its count and its spread; one"
+          + " that names a shooter row is refused")
+  void theTripleShotReadsItsRowCountAndSpread(@TempDir Path folder) throws IOException {
+    String row = "EliteArcherHero_Triple_Shot_Action";
+    BattleAction action = GameData.actions().build(row, INERT_BINDING);
+    assertThat(action).isInstanceOf(ShootProjectilesInCharacterDirection.class);
+    ShootProjectilesInCharacterDirection shot = (ShootProjectilesInCharacterDirection) action;
+    assertThat(shot.getProjectile()).isEqualTo("EliteArcherHero_Ability_Triple_Shot_Projectile");
+    assertThat(shot.getCount()).isEqualTo(2);
+    assertThat(shot.getDistance()).isEqualTo(1500);
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> ((ObjectNode) rows.get(row).get("fields")).put("ShooterData", "Archer"));
+    ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+    assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("sets ShooterData");
   }
 
   @Test
@@ -1649,12 +1673,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 894 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 895 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(894);
+    assertThat(built).as("rows built").isEqualTo(895);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 35, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 7, "column", 35, "spawn type", 9));
   }
 }
