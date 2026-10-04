@@ -34,6 +34,7 @@ import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GroupChain;
 import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
+import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -3789,6 +3790,45 @@ public class CharacterEntity extends WorldEntity {
     FixedMath.normalize(vector, FACING_LENGTH);
     getView().setDirX(vector[0]);
     getView().setDirY(vector[1]);
+  }
+
+  /**
+   * What the evolved Rage Barbarian's ghost wait asks of the battle about the unit: whether its row
+   * sets NO_DAMAGE, its spawned-child immunity renewed, and its buff instances.
+   */
+  @Override
+  public LumberjackGhostWait.Host lumberjackGhostHost(LumberjackGhostWait action) {
+    return new LumberjackGhostWait.Host() {
+      @Override
+      public String name() {
+        return CharacterEntity.this.name();
+      }
+
+      @Override
+      public boolean rowSetsNoDamage() {
+        return (getData().gameTagsToSet() & EntityFlags.NO_DAMAGE) != 0;
+      }
+
+      @Override
+      public void renewSpawnImmunity() {
+        startSpawnImmunity();
+      }
+
+      @Override
+      public int firstRemainingMs(String buff) {
+        for (BuffInstance instance : getBuffs().items()) {
+          if (instance.getBuff().name().equals(buff)) {
+            return instance.getRemaining();
+          }
+        }
+        return -1;
+      }
+
+      @Override
+      public boolean carries(String buff) {
+        return getBuffs().carries(buff);
+      }
+    };
   }
 
   /**

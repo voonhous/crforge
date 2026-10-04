@@ -1583,6 +1583,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return 0;
   }
 
+  /** The entity's action holder if one was made already, else null; this makes none. */
+  ActionHolder madeActionHolder() {
+    return actionHolder;
+  }
+
   /**
    * The entity's action holder, made on first use as the standard game makes it. Its pending passes
    * are the battle's, so it reads the battle's in-pass flag.
