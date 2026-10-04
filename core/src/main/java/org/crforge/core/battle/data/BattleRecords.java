@@ -1959,9 +1959,10 @@ public final class BattleRecords {
 
   /**
    * The action row a unit's OnStartingAction names; null for none. One written inline as a bare
-   * ActionBerserk, as the Berserker's is, or as a spawn of an area effect and nothing more, as
-   * Goblinstein's doctor's is, or as a group of named rows, as the Royal Chef's king tower's is, is
-   * the actions table's row named after the unit and the column. Any other inline row is refused.
+   * ActionBerserk, as the Berserker's is, as a charge counter (ActionBurstAttack), as the Dagger
+   * Duchess's is, or as a spawn of an area effect and nothing more, as Goblinstein's doctor's is,
+   * or as a group of named rows, as the Royal Chef's king tower's is, is the actions table's row
+   * named after the unit and the column. Any other inline row is refused.
    */
   private String startingActionName(GameRow row) {
     JsonNode value = row.value("OnStartingAction");
@@ -1977,12 +1978,16 @@ public final class BattleRecords {
             && value.path("ClassType").asText().equals("ActionSpawn")
             && value.path("SpawnType").asText().equals("AreaEffectType")
             && value.path("SpawnData").isTextual();
+    boolean burstAttack =
+        value != null
+            && value.isObject()
+            && value.path("ClassType").asText().equals("ActionBurstAttack");
     boolean namedGroup =
         value != null
             && value.isObject()
             && value.path("ClassType").asText().equals("ActionGroup")
             && namesOnly(value.path("SubActions"));
-    return berserk || areaEffect || namedGroup
+    return berserk || burstAttack || areaEffect || namedGroup
         ? inlineActionName(row, "OnStartingAction")
         : actionName(row, "OnStartingAction");
   }
