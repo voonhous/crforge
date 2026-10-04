@@ -1333,15 +1333,13 @@ public final class BattleRecords {
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
     // a Clone's whose hit action is a buff spawn, as the evolved Tesla's ring's is, a group of buff
-    // spawns, as the Goblin Curse's base is, a taunt, as the Goblin Demolisher's is, or the evolved
-    // Dart Goblin's poison damage.
+    // spawns, as the Goblin Curse's base is, a taunt, as the Goblin Demolisher's is, a group of
+    // taunts, as the hero Knight's is, or the evolved Dart Goblin's poison damage.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
     boolean buffSpawns = data.onHitAction() != null && buffSpawnGroup(data.onHitAction());
-    boolean taunt =
-        data.onHitAction() != null
-            && tables.action(data.onHitAction()).classType().equals("ActionTaunt");
+    boolean taunt = data.onHitAction() != null && tauntGroup(data.onHitAction());
     // The evolved Dart Goblin's poison areas start its poison damage on what they reach.
     boolean poison =
         data.onHitAction() != null
@@ -1460,6 +1458,26 @@ public final class BattleRecords {
       unmodelled.add("Shape");
     }
     return data.toBuilder().shapeRadius(row.intValue("Radius")).build();
+  }
+
+  /**
+   * Whether a hit action is a taunt, or a group whose every part is a taunt: the hero Knight's
+   * checks its start gate on the unit it reaches, then schedules its taunt there.
+   */
+  private boolean tauntGroup(String action) {
+    GameAction row = tables.action(action);
+    if (row.classType().equals("ActionTaunt")) {
+      return true;
+    }
+    if (!row.classType().equals("ActionGroup")) {
+      return false;
+    }
+    for (JsonNode part : row.fields().path("SubActions")) {
+      if (!tables.action(part.path("action").asText()).classType().equals("ActionTaunt")) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

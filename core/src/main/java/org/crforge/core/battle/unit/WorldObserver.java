@@ -546,10 +546,10 @@ public interface WorldObserver {
   default void championHandedOver(int tick, SpawnHost source, CharacterEntity child) {}
 
   /**
-   * A taunt's perform reached a unit, just before its run is armed.
+   * A taunt's perform reached a character, a unit or a crown tower, just before its run is armed.
    *
    * @param tick the battle tick
-   * @param unit the taunted unit
+   * @param unit the taunted character
    * @param action the taunt's name
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    * @param instigator the area effect that caused it
@@ -557,7 +557,7 @@ public interface WorldObserver {
    */
   default void tauntPerformed(
       int tick,
-      CharacterEntity unit,
+      WorldEntity unit,
       String action,
       int phase,
       ActionOwner instigator,
@@ -567,7 +567,7 @@ public interface WorldObserver {
    * A taunt's run was armed or stepped, or ended as its forced object left.
    *
    * @param tick the battle tick
-   * @param unit the taunted unit
+   * @param unit the taunted character
    * @param forced the object it is forced onto, or null once that object has left
    * @param durationMs what is left of the taunt
    * @param falloffMs what is left of its falloff
@@ -575,7 +575,7 @@ public interface WorldObserver {
    */
   default void tauntStepped(
       int tick,
-      CharacterEntity unit,
+      WorldEntity unit,
       WorldEntity forced,
       int durationMs,
       int falloffMs,

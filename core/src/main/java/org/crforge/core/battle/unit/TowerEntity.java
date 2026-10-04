@@ -5,11 +5,13 @@ import java.util.List;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.CookingHost;
 import org.crforge.core.battle.action.Filter;
 import org.crforge.core.battle.action.GameTags;
+import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.expression.BattleFunctions;
@@ -354,6 +356,29 @@ public class TowerEntity extends WorldEntity {
     }
     championSlots[free] = new ChampionController(world, this, action, free + 1);
     return championSlots[free];
+  }
+
+  /**
+   * Taunts the tower onto an object, as a taunt's perform does: the run, armed at once, which the
+   * holder lists. Every tower is a crown tower, so the arming tries the crown tower branch first.
+   * The perform is told to the observers first.
+   *
+   * <p>Refused rather than guessed: an object to force onto that is not in the battle or flies,
+   * which a tag may count as on the ground.
+   */
+  @Override
+  public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
+    if (!(forced instanceof WorldEntity onto) || onto.getTargetView().air()) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " taunts "
+              + name()
+              + " onto a flying object or one not in the battle, which is not modelled");
+    }
+    world.tauntPerformed(this, action.name(), phase, instigator, onto);
+    TauntRun run = new TauntRun(action, this, onto);
+    run.start();
+    return run;
   }
 
   /**
