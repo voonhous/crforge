@@ -16,7 +16,10 @@ public interface ActionOwner {
   /** The owner's hit points, or null for an owner without them. */
   HitPoints actionHitPoints();
 
-  /** The value a variable holds for the owner; 0 for one never written. */
+  /**
+   * The value a variable holds for the owner; for one never written, the variable's start value
+   * (its row's DefaultValue, 0 when the row sets none).
+   */
   int variable(int key);
 
   /** Writes a variable for the owner, replacing what it held. */

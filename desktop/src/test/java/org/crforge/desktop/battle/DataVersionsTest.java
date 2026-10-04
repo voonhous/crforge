@@ -79,7 +79,7 @@ class DataVersionsTest {
     assertThat(switched.refusal())
         .contains("data version 2.0.0")
         .contains("refuses a battle")
-        .contains("sets DefaultValue, which is not modelled")
+        .contains("sets Tid, which is not modelled")
         .contains("V tries the next")
         .contains("R resets on " + first.version());
     assertThat(versions.current()).isSameAs(first);

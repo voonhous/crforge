@@ -179,7 +179,7 @@ class DesktopLauncherTest {
     assertThat(session).isNull();
     assertThat(errBytes.toString(StandardCharsets.UTF_8))
         .contains("The battle core refuses a battle on data version")
-        .contains("sets DefaultValue, which is not modelled")
+        .contains("sets Tid, which is not modelled")
         .contains("--data-version");
   }
 
