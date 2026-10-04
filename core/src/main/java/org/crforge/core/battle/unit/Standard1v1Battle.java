@@ -480,8 +480,8 @@ public class Standard1v1Battle {
    * against the battle as it stands, and its units are handed to the holder in creation order, so
    * the tick's entity tick admits and visits them. A spell's play casts instead, at the placed
    * point: its area effect, or its projectile from the side's king tower. A troop card with a
-   * projectile casts it onto the placed point before its units are made. A refused play creates
-   * nothing.
+   * projectile casts it onto the placed point before its units are made; one with an area effect
+   * makes it at the placed point after them. A refused play creates nothing.
    *
    * @param tick the tick the play runs on
    * @param card the card
@@ -853,6 +853,11 @@ public class Standard1v1Battle {
       world.characterPlayed(character);
       character.start();
       units.add(character);
+    }
+    // A troop card that makes an area effect as well makes it at the placed point after its units,
+    // at the card's level, as the cast's construction comes before its area effect.
+    if (!card.spell() && card.areaEffect() != null && result.placed()) {
+      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex);
     }
     // The play is sent to every listener of a card play after its units are made: never to those
     // its own units start, which are listed only in their pending pass.

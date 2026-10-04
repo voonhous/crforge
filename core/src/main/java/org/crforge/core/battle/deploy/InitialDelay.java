@@ -6,10 +6,12 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * How the index-th unit of a card starts: deploying at once, or waiting its turn first.
  *
- * <p>A unit with a deploy time waits when its card staggers its units: every unit of a card whose
- * first unit is a building waits the card's stagger, any later unit of the first group waits its
- * index times the stagger, and a unit of the second group waits the second stagger times its place
- * in that group, counted from one. Every other unit starts deploying at once.
+ * <p>A unit with a deploy time waits when its card's delay list gives it a wait: a listed character
+ * waits its entry of the list, before any other rule. Otherwise it waits when its card staggers its
+ * units: every unit of a card whose first unit is a building waits the card's stagger, any later
+ * unit of the first group waits its index times the stagger, and a unit of the second group waits
+ * the second stagger times its place in that group, counted from one. Every other unit starts
+ * deploying at once.
  *
  * @param state the state the unit is created in: waiting to deploy or deploying
  * @param waitMs the wait, in milliseconds, or -1 for none
@@ -37,6 +39,7 @@ public record InitialDelay(int state, int waitMs) {
    * @param summonDelayMs the card's stagger
    * @param secondaryDelayMs the card's second stagger
    * @param firstUnitIsBuilding whether the card's first unit is a building
+   * @param listDelayMs a listed character's entry of its card's delay list; 0 for none
    */
   public static InitialDelay select(
       int index,
@@ -44,9 +47,13 @@ public record InitialDelay(int state, int waitMs) {
       int deployTimeMs,
       int summonDelayMs,
       int secondaryDelayMs,
-      boolean firstUnitIsBuilding) {
+      boolean firstUnitIsBuilding,
+      int listDelayMs) {
     if (deployTimeMs < 1) {
       return new InitialDelay(-1, -1);
+    }
+    if (listDelayMs >= 1) {
+      return new InitialDelay(WAITING, listDelayMs);
     }
     if (summonDelayMs >= 1 && firstUnitIsBuilding) {
       return new InitialDelay(WAITING, summonDelayMs);

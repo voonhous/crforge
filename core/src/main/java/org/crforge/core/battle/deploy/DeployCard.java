@@ -37,12 +37,14 @@ import org.crforge.core.battle.unit.UnitData;
  * @param deployEndY the row from which the rows close again
  * @param projectile the projectile a spell casts from the king tower, or the one a troop card casts
  *     onto its placed point as it plays; null for none
- * @param areaEffect the area effect a spell casts at the placed point, or null
+ * @param areaEffect the area effect a spell casts at the placed point, or the one a troop card
+ *     makes there after its units; null for none
  * @param searchUnit the unit the placement is searched for in place of the card's own: a spell's
  *     projectile's spawned character, and for either the row a unit that tunnels morphs into as it
  *     surfaces; null for none
- * @param spellAsDeploy true for a spell thrown as a projectile at the placed point, which snaps to
- *     the tile centre whatever it spawns
+ * @param spellAsDeploy true for a card deployed as a spell that casts: a spell thrown as a
+ *     projectile at the placed point, or a troop card that makes an area effect as well as its
+ *     units; its placement snaps to the tile centre whatever it searches for
  * @param radius a casting card's radius: the circle Arrows' ring and jitter are drawn in
  * @param multipleProjectiles how many projectiles a spell casts in one wave; 0 for one
  * @param projectileWaves how many waves; 0 for one
@@ -167,13 +169,21 @@ public record DeployCard(
 
   /**
    * One character of a card's list, with its offset from the placed point as the row lists it; the
-   * placement turns it by the playing side and the half of the arena.
+   * placement turns it by the playing side and the half of the arena, and the wait its card's delay
+   * list gives it before it deploys.
    *
    * @param unit the character
    * @param offsetX its listed offset across the width
    * @param offsetY its listed offset along the length
+   * @param delayMs its wait before it deploys, from the card's delay list; 0 for none
    */
-  public record Listed(UnitData unit, int offsetX, int offsetY) {}
+  public record Listed(UnitData unit, int offsetX, int offsetY, int delayMs) {
+
+    /** A listed character its card gives no wait of its own. */
+    public Listed(UnitData unit, int offsetX, int offsetY) {
+      this(unit, offsetX, offsetY, 0);
+    }
+  }
 
   /** True for a spell card, which summons no unit and casts instead. */
   public boolean spell() {
