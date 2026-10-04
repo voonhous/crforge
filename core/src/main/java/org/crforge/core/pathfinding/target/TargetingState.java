@@ -113,15 +113,17 @@ public class TargetingState {
    * that completed the charge, and anything that drops the charge clears it. While it is set, the
    * next attack-timer advance rounds the attack time up to the next multiple of the hit speed
    * instead of stepping it, so the charged hit lands on the first attack visit; that advance clears
-   * it, together with {@link #restoredRoundUp}.
+   * it, together with {@link #instantHit}.
    */
   private boolean chargeStrike;
 
   /**
-   * A second flag with the same effect on the attack-timer advance, which a component restored from
-   * a saved battle may carry. Nothing in a live battle is known to set it.
+   * The instant-hit byte: a second flag with the same effect on the attack-timer advance. An
+   * instant-hit action sets it, with the component on or off, and only the next attack-timer
+   * advance clears it (a component restored from a saved battle may carry it too); switching the
+   * component off leaves it set.
    */
-  private boolean restoredRoundUp;
+  private boolean instantHit;
 
   /** True when the last attack-timer advance rounded the attack time up. Read by nothing. */
   private boolean attackTimeRoundedUp;

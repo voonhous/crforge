@@ -2287,6 +2287,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
   }
 
+  /**
+   * Raises the instant-hit byte of the entity's targeting component, as an instant-hit action does,
+   * whether the component is switched on or not; the next attack-timer advance reads and clears it.
+   */
+  @Override
+  public void setInstantHit() {
+    targeting.setInstantHit(true);
+  }
+
   @Override
   public int attackSequenceIndex() {
     return targeting.getAttackSequenceIndex();

@@ -17,6 +17,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -26,8 +27,10 @@ import org.junit.jupiter.api.io.TempDir;
  * lifts the hero off the ground with a ground-to-air run: it climbs to 3500 over 200 ms, raising
  * FORCE_IS_AIR and NO_ATTACK, turns to the hold at the height, where its path is reset and the
  * row's action at the height is scheduled on it, and is held there for 4600 ms. The activation's
- * instant hit, a class the battle does not have, is refused; so the run is driven here on a copy of
- * the data whose activation leaves it out.
+ * instant hit, gated by the hero's target within 5500, raises the hero's instant-hit byte as the
+ * run starts, and the hero's next attack visit lands a whole hit at once. The swap to the flying
+ * row at the height is refused, so the hold is driven on a copy of the data whose action at the
+ * height leaves it out.
  */
 class BattleWizardHeroTest {
 
@@ -42,14 +45,72 @@ class BattleWizardHeroTest {
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   @Test
-  @DisplayName("the ability's activation is refused at its instant hit")
-  void theInstantHitIsRefused() {
+  @DisplayName(
+      "used while the hero attacks a tower in range, the activation's instant hit raises the"
+          + " hero's instant-hit byte in the step its run starts, and the byte is kept through the"
+          + " climb")
+  void theInstantHitIsSet() {
     Scene scene = new Scene(GameData.tables());
-    scene.abilityUsed();
-    assertThatThrownBy(() -> scene.steps(20))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "WizardHero_first_hit is an ActionSetInstantHit, which the battle does not have");
+    CharacterEntity hero = scene.abilityUsedAttacking();
+    int cast = scene.stepUntilCasting(hero);
+    scene.steps(2);
+    assertThat(hero.getTargeting().isInstantHit()).isFalse();
+    scene.steps(1);
+    assertThat(scene.runs).containsExactly((cast + 2) + " start phase 1 counter 200");
+    assertThat(hero.getTargeting().isInstantHit()).isTrue();
+    // The climb raises NO_ATTACK: no attack visit takes the byte before the turn.
+    for (int i = 0; i < 4; i++) {
+      scene.steps(1);
+      assertThat(hero.getTargeting().isInstantHit()).isTrue();
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "used while the hero's target is out of 5500, the instant hit's gate is false and the byte"
+          + " is not raised")
+  void theInstantHitIsGated() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity hero = scene.abilityUsed();
+    scene.stepUntilCasting(hero);
+    scene.steps(3);
+    assertThat(scene.runs).hasSize(1);
+    TargetView target = hero.getTargeting().getReference();
+    assertThat(target).as("a princess tower, out of reach").isNotNull();
+    long dx = target.getEntity().getX() - hero.getView().getX();
+    long dy = target.getEntity().getY() - hero.getView().getY();
+    long reach =
+        target.getEntity().getCollisionRadius() + 5500L + hero.getView().getCollisionRadius();
+    assertThat(dx * dx + dy * dy).isGreaterThan(reach * reach);
+    assertThat(hero.getTargeting().isInstantHit()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "held at the height without the swap, the hero's first attack visit after the instant hit"
+          + " rounds its attack time up to a whole hit, which lands at once, and clears the byte")
+  void theInstantHitLandsOnTheFirstAttackVisit(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(withoutSwap(folder));
+    CharacterEntity hero = scene.abilityUsedAttacking();
+    int cast = scene.stepUntilCasting(hero);
+    scene.steps(3);
+    assertThat(hero.getTargeting().isInstantHit()).isTrue();
+    int hitSpeed = hero.getTargeting().getConfig().hitSpeed();
+    int before = hero.getTargeting().getAttackTimerMs();
+    // The byte waits, through the climb, the turn and the rest of the cast, for the next attack.
+    while (hero.getView().getState() != GridEntityState.ATTACKING) {
+      assertThat(hero.getTargeting().isInstantHit()).isTrue();
+      assertThat(hero.getTargeting().getAttackTimerMs()).isEqualTo(before);
+      assertThat(scene.tick()).isLessThan(cast + 40);
+      scene.steps(1);
+    }
+    assertThat(hero.getTargeting().isInstantHit()).isFalse();
+    assertThat(hero.getTargeting().isAttackTimeRoundedUp()).isTrue();
+    int after = hero.getTargeting().getAttackTimerMs();
+    assertThat(after).as("the next whole hit").isEqualTo((before / hitSpeed + 1) * hitSpeed);
+    scene.steps(1);
+    assertThat(hero.getTargeting().isAttackTimeRoundedUp()).isFalse();
+    assertThat(hero.getTargeting().getAttackTimerMs()).as("then one tick").isEqualTo(after + 50);
   }
 
   @Test
@@ -57,8 +118,8 @@ class BattleWizardHeroTest {
       "the hero climbs to 3500 in five steps from 200 ms after its cast starts, in the air from"
           + " the pre-hook after the first, and the action at the height runs on the turn's step,"
           + " where the swap to the flying row is refused")
-  void theHeroClimbs(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(withoutInstantHit(folder, false));
+  void theHeroClimbs() {
+    Scene scene = new Scene(GameData.tables());
     CharacterEntity hero = scene.abilityUsed();
     // The tick count after the step whose state is the cast's first.
     int cast = scene.stepUntilCasting(hero);
@@ -98,7 +159,7 @@ class BattleWizardHeroTest {
       "held at the height the hero carries FORCE_IS_AIR and pushes 3500 on each step for 4600 ms;"
           + " the descent that follows is refused")
   void theHeroIsHeld(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(withoutInstantHit(folder, true));
+    Scene scene = new Scene(withoutSwap(folder));
     CharacterEntity hero = scene.abilityUsed();
     int turn = scene.stepUntilCasting(hero) + 7;
     scene.steps(8);
@@ -120,25 +181,16 @@ class BattleWizardHeroTest {
         .hasMessageContaining("back down, which is not modelled");
   }
 
-  /**
-   * A copy of the data whose ability activation leaves out the instant hit, and, when asked, whose
-   * action at the height leaves out the swap to the flying row.
-   */
-  private static GameTables withoutInstantHit(Path folder, boolean withoutSwap) throws IOException {
+  /** A copy of the data whose action at the height leaves out the swap to the flying row. */
+  private static GameTables withoutSwap(Path folder) throws IOException {
     return GameData.altered(
         folder,
         "actions",
         rows -> {
-          ObjectNode activation =
-              (ObjectNode) rows.get("WizardHero_ability_activation").get("fields");
-          ((ArrayNode) activation.get("SubActions")).remove(2);
-          ((ArrayNode) activation.get("SubActionsDelay")).remove(2);
-          if (withoutSwap) {
-            ObjectNode reached =
-                (ObjectNode) rows.get("WizardHero_on_max_height_reached").get("fields");
-            ((ArrayNode) reached.get("SubActions")).remove(1);
-            ((ArrayNode) reached.get("SubActionsDelay")).remove(1);
-          }
+          ObjectNode reached =
+              (ObjectNode) rows.get("WizardHero_on_max_height_reached").get("fields");
+          ((ArrayNode) reached.get("SubActions")).remove(1);
+          ((ArrayNode) reached.get("SubActionsDelay")).remove(1);
         });
   }
 
@@ -206,6 +258,28 @@ class BattleWizardHeroTest {
         steps(1);
       }
       for (int i = 0; i < 40 || match.side(0).wholeElixir() < 1; i++) {
+        steps(1);
+      }
+      CharacterEntity hero = heroes().get(0);
+      battle.useAbility(tick(), 0, hero.name(), "a");
+      return hero;
+    }
+
+    /**
+     * Plays the hero Wizard as {@link #abilityUsed} does, and uses its ability on the first step it
+     * attacks, as the reference battle does while the hero attacks a princess tower.
+     */
+    CharacterEntity abilityUsedAttacking() {
+      int cost = GameData.records().matchCard("Wizard").cost();
+      while (match.side(0).wholeElixir() < cost) {
+        steps(1);
+      }
+      battle.play(tick(), GameData.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
+      int limit = tick() + 600;
+      while (heroes().isEmpty()
+          || heroes().get(0).getView().getState() != GridEntityState.ATTACKING
+          || match.side(0).wholeElixir() < 1) {
+        assertThat(tick()).isLessThan(limit);
         steps(1);
       }
       CharacterEntity hero = heroes().get(0);

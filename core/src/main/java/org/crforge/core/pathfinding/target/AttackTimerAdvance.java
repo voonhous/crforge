@@ -22,10 +22,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *       load, and one that hit a moment ago only what has recharged since. A load time longer than
  *       the hit speed credits nothing: the countdown is cleared when it is no longer than the hit
  *       speed, and the advance ends without a step when it is longer.
- *   <li>A fully charged unit's strike-now byte, or a flag a component restored from a saved battle
- *       may carry, instead rounds the attack time up to the next multiple of the hit speed, once,
- *       clearing both: from zero that is one whole hit, so a charged unit hits on the first visit
- *       it attacks.
+ *   <li>A fully charged unit's strike-now byte, or the instant-hit byte an instant-hit action sets,
+ *       instead rounds the attack time up to the next multiple of the hit speed, once, clearing
+ *       both: from zero that is one whole hit, so a charged unit hits on the first visit it
+ *       attacks.
  *   <li>Otherwise the burst timer takes the step while it is running, and then the attack time
  *       takes it too, unless a running burst freezes the attack time under the
  *       burst-affects-animation column.
@@ -86,7 +86,7 @@ public final class AttackTimerAdvance {
     }
 
     int attackTime = t.getAttackTimerMs();
-    boolean roundUp = t.isChargeStrike() || t.isRestoredRoundUp();
+    boolean roundUp = t.isChargeStrike() || t.isInstantHit();
     if (attackTime == 0 && !roundUp) {
       int loadTime = cfg.loadTime();
       int countdown = t.getLoadTimerMs();
@@ -116,7 +116,7 @@ public final class AttackTimerAdvance {
 
     if (roundUp) {
       t.setChargeStrike(false);
-      t.setRestoredRoundUp(false);
+      t.setInstantHit(false);
       t.setAttackTimeRoundedUp(true);
       int wholeHits = FixedMath.divOrZero(attackTime, hitSpeed) * hitSpeed;
       t.setAttackTimerMs(attackTime + hitSpeed + (wholeHits - attackTime));
