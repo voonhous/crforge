@@ -129,6 +129,30 @@ public final class ProjectileLauncher {
   }
 
   /**
+   * Places a projectile thrown at an object from a given start and launches it at the object: the
+   * launcher, at its level, as launcher and owner, aimed at where the object stands now. The Royal
+   * Chef's king throws its pancakes so, from a point beside one of its towers.
+   *
+   * @param projectile the projectile, not yet launched
+   * @param launcher the entity throwing it
+   * @param target the object it flies to
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   */
+  public static void launchThrown(
+      ProjectileEntity projectile,
+      WorldEntity launcher,
+      WorldEntity target,
+      int sx,
+      int sy,
+      int sz) {
+    refuseUnmodelled(launcher, projectile.getData());
+    GridEntity at = target.getView();
+    projectile.launch(launcher, target, sx, sy, sz, at.getX(), at.getY());
+  }
+
+  /**
    * Places a projectile a dying object launches and aims it: from the object's point and height,
    * with the object as launcher and owner and no target, at the given point. Refused: a pingpong or
    * hooking row, which its launcher's targeting component would hold.

@@ -129,6 +129,21 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void buildsTheRoyalChefTowersOfASidesTowerSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 4 of the tower selections, King_ChefTowers, a Legendary selection: its ChefTower rows
+    // stand eight levels above the first, its king row at the first.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_ChefTowers", 1, 9));
+  }
+
+  @Test
   void readsEachSidesTowerLevelFromItsOwnSelection() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
@@ -178,8 +193,8 @@ class ReplayScenarioTest {
 
   @Test
   void refusesATowerSelectionTheSimulatorDoesNotBuild() {
-    // The Dagger Duchess, the Goblin Queen's towers and the Royal Chef.
-    for (int id : new int[] {159000002, 159000003, 159000004}) {
+    // The Dagger Duchess and the Goblin Queen's towers.
+    for (int id : new int[] {159000002, 159000003}) {
       ObjectNode scenario = Scenarios.knight();
       ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", id);
 
