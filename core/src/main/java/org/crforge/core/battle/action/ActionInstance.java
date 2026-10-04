@@ -16,7 +16,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the finished flag a step sets, the removal it leads to at the next run pass,"
             + " the row's tags the holder sets on the run as it starts, and the re-trigger a"
             + " singleton row's second start sends it, and the notices of an object leaving and"
-            + " of an attack that landed, the owner-leave before any notice and the stop as the"
+            + " of an attack that landed, the notice of a character its entity's spawner made, the"
+            + " owner-leave before any notice and the stop as the"
             + " entity leaves after them, and the notice of an ability its player paid for, which"
             + " do nothing unless"
             + " the class overrides them. Not modelled: the start and on-finish hooks some classes"
@@ -74,6 +75,14 @@ public abstract class ActionInstance {
    * @param leftId the id of the object that left
    */
   protected void objectLeft(int leftId) {}
+
+  /**
+   * What the run does as its entity's spawner makes a character. By default nothing, as the base
+   * slot does; only a run listening for destroyed objects answers it.
+   *
+   * @param childId the id of the character made
+   */
+  protected void childSpawned(int childId) {}
 
   /**
    * What the run does as its entity leaves the battle, before any entity hears of it. By default

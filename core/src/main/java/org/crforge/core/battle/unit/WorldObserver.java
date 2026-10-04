@@ -476,6 +476,25 @@ public interface WorldObserver {
       int tick, SpawnHost source, CharacterEntity child, int createdX, int createdY) {}
 
   /**
+   * A run started or stopped listening for destroyed objects.
+   *
+   * @param tick the tick it happened on
+   * @param owner the object the run is on
+   * @param action the run's row name
+   * @param listening true as it starts listening, false as it is let go
+   */
+  default void destroyedListening(int tick, WorldEntity owner, String action, boolean listening) {}
+
+  /**
+   * An object's death slot started with runs listening for destroyed objects, which hear of it.
+   *
+   * @param tick the tick it happened on
+   * @param dying the object dying
+   * @param listeners how many runs hear of it
+   */
+  default void destroyedNoticed(int tick, WorldEntity dying, int listeners) {}
+
+  /**
    * A rider was attached to the parent whose spawner made it, after its registration visit.
    *
    * @param tick the tick it was made on

@@ -32,6 +32,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
+import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -235,6 +236,12 @@ public class BattleWorld implements HolderPasses {
 
   /** Those watching the arena from outside the tick, in the order they were added. */
   private final List<WorldObserver> observers = new ArrayList<>();
+
+  /**
+   * The runs listening for destroyed objects, in the order they started listening: each hears of
+   * every object whose death slot starts until it is let go.
+   */
+  private final List<RunActionOnTroopDestroyed.Listener> destroyedListeners = new ArrayList<>();
 
   /** The variables the battle's expressions may name, by name, each with its key. */
   private final Map<String, Integer> variableKeys = new HashMap<>();
@@ -2530,6 +2537,8 @@ public class BattleWorld implements HolderPasses {
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, spawner, spawned, x, y);
       }
+      // The spawner's last act on each child: its running actions hear of it.
+      spawner.actions().childSpawned(spawned.getId());
     }
   }
 
@@ -3558,6 +3567,7 @@ public class BattleWorld implements HolderPasses {
               + " died, and what its row does as it dies is not modelled: "
               + data.unmodelledDeathColumns());
     }
+    destroyedNotice(dying);
     if (data.spawnAreaObject() != null) {
       for (BattleEntity entity : holder.entities()) {
         if (entity instanceof AreaEffectEntity area
@@ -3584,6 +3594,54 @@ public class BattleWorld implements HolderPasses {
     deathSpawn(dying, data);
     deathProjectiles(dying, data);
     deathNotice(dying);
+  }
+
+  /**
+   * The death slot's first act: every run listening for destroyed objects hears of the dying
+   * object, in the order the runs started listening, before anything else the slot does.
+   *
+   * @param dying the object dying
+   */
+  private void destroyedNotice(WorldEntity dying) {
+    if (destroyedListeners.isEmpty()) {
+      return;
+    }
+    for (WorldObserver observer : observers) {
+      observer.destroyedNoticed(tick, dying, destroyedListeners.size());
+    }
+    for (RunActionOnTroopDestroyed.Listener listener : new ArrayList<>(destroyedListeners)) {
+      listener.destroyed(dying.filterSubject(), dying.getId(), dying.side(), dying.actionHolder());
+    }
+  }
+
+  /**
+   * A run starts listening for destroyed objects.
+   *
+   * @param owner the object the run is on
+   * @param action the run's row name
+   * @param listener the run
+   */
+  void listenForDestroyed(
+      WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
+    destroyedListeners.add(listener);
+    for (WorldObserver observer : observers) {
+      observer.destroyedListening(tick, owner, action, true);
+    }
+  }
+
+  /**
+   * A run stops listening for destroyed objects, as it is let go.
+   *
+   * @param owner the object the run is on
+   * @param action the run's row name
+   * @param listener the run
+   */
+  void unlistenForDestroyed(
+      WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
+    destroyedListeners.remove(listener);
+    for (WorldObserver observer : observers) {
+      observer.destroyedListening(tick, owner, action, false);
+    }
   }
 
   /**

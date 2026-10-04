@@ -434,6 +434,20 @@ public class ActionHolder implements EntityActions {
     }
   }
 
+  /**
+   * Tells every running instance, from the last to the first, that the entity's spawner made a
+   * character, as the spawner finishes dressing it.
+   *
+   * @param childId the id of the character made
+   */
+  @Override
+  public void childSpawned(int childId) {
+    List<ActionInstance> instances = new ArrayList<>(running);
+    for (int i = instances.size() - 1; i >= 0; i--) {
+      instances.get(i).childSpawned(childId);
+    }
+  }
+
   /** Tells every running instance, in its listed order, of an object that left the battle. */
   @Override
   public void objectLeft(int leftId) {
