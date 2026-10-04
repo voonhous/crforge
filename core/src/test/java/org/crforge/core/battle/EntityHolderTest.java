@@ -230,6 +230,42 @@ class EntityHolderTest {
 
   @Test
   @DisplayName(
+      "an entity filed with the id of an object that is still listed and not removable is"
+          + " admitted at the fold")
+  void anEntityNeedingALiveSpawnerIsAdmitted() {
+    EntityHolder holder = new EntityHolder(HolderPasses.NONE);
+    RecordingEntity spawner = new RecordingEntity("spawner");
+    RecordingEntity child = new RecordingEntity("child");
+    spawner.duringPostHook = () -> holder.addRegistered(child, spawner.getId());
+    holder.add(spawner);
+
+    holder.tick(0);
+
+    assertThat(holder.entities()).containsExactly(spawner, child);
+  }
+
+  @Test
+  @DisplayName(
+      "an entity filed with the id of an object that leaves in the same cleanup is refused at the"
+          + " fold, whose release is not modelled")
+  void anEntityNeedingASpawnerThatLeftIsRefused() {
+    EntityHolder holder = new EntityHolder(HolderPasses.NONE);
+    RecordingEntity spawner = new RecordingEntity("spawner");
+    RecordingEntity child = new RecordingEntity("child");
+    spawner.duringPostHook =
+        () -> {
+          holder.addRegistered(child, spawner.getId());
+          spawner.removable = true;
+        };
+    holder.add(spawner);
+
+    assertThatThrownBy(() -> holder.tick(0))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("needs the object 5000000 listed as it is admitted");
+  }
+
+  @Test
+  @DisplayName(
       "an entity that becomes removable is visited to the end of its tick and then dropped")
   void removalWaitsForTheCleanup() {
     EntityHolder holder = new EntityHolder(HolderPasses.NONE);
