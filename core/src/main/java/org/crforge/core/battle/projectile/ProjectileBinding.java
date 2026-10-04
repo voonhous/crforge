@@ -18,19 +18,25 @@ import org.crforge.core.fidelity.FidelityStatus;
  * word, and expressions whose context is the projectile itself.
  *
  * <p>get_ping_pong_projectile_distance answers how far a pingpong projectile stood from its start
- * before its last sweep step. Any other name is refused when the row is built: what it would read
- * of a projectile is not established.
+ * before its last sweep step. A name the function table does not know that names one of the
+ * battle's variables reads it from the projectile's own map, as the battle's one expression
+ * environment reads any context object's. Any other name is refused when the row is built: what it
+ * would read of a projectile is not established.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the projectile as the context of its actions' expressions, and"
             + " get_ping_pong_projectile_distance as the distance its sweep stored, held by"
-            + " ice_axe_barbarians. Not modelled: every other name, refused as the row is built.")
+            + " ice_axe_barbarians; a variable's name as the projectile's own variable, held by"
+            + " hero_barb_log. Not modelled: every other name, refused as the row is built.")
 final class ProjectileBinding implements ActionBinding {
 
   private static final int PINGPONG_DISTANCE =
       BattleFunctions.id("get_ping_pong_projectile_distance");
+
+  /** The id a variable's key is added to, above every function id. */
+  private static final int VARIABLE_BASE = 20000;
 
   private final BattleWorld world;
   private final ProjectileEntity projectile;
@@ -50,13 +56,21 @@ final class ProjectileBinding implements ActionBinding {
           @Override
           public Function resolve(String symbol) {
             BattleFunctions.Entry entry = BattleFunctions.byName(symbol);
-            return entry != null && entry.id() == PINGPONG_DISTANCE
-                ? new Function(entry.id(), entry.minArguments(), entry.maxArguments())
-                : null;
+            if (entry != null) {
+              return entry.id() == PINGPONG_DISTANCE
+                  ? new Function(entry.id(), entry.minArguments(), entry.maxArguments())
+                  : null;
+            }
+            // A name the function table does not know may be one of the battle's variables.
+            Integer key = world.variableKey(symbol);
+            return key != null ? new Function(VARIABLE_BASE + key, 0, 0) : null;
           }
 
           @Override
           public int call(int id, int[] arguments) {
+            if (id >= VARIABLE_BASE) {
+              return ProjectileBinding.this.projectile.variable(id - VARIABLE_BASE);
+            }
             return ProjectileBinding.this.projectile.getPingpongDistance();
           }
         };
@@ -71,7 +85,8 @@ final class ProjectileBinding implements ActionBinding {
       throw new UnsupportedOperationException(
           projectile.name()
               + " is a projectile, whose expressions answer only"
-              + " get_ping_pong_projectile_distance, not the expression: "
+              + " get_ping_pong_projectile_distance and the battle's variables, not the"
+              + " expression: "
               + text,
           e);
     }

@@ -54,6 +54,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  * @param spawnCharacter the character the impact spawns around the impact point, or null
  * @param spawnCharacterCount how many of it: at least one when the row names one, else 0
  * @param spawnCharacterDeployTimeMs the deploy time the impact gives its children; 0 for none
+ * @param deflectedCharacterSpawn the character the impact spawns in place of the spawned character
+ *     once the projectile has been deflected, or null for none
  * @param spawnConstPriority true when the impact gives its k-th child a fixed priority, (20k)^2 off
  *     its squared distance as a candidate
  * @param radiusY the half height of the area of the impact, which makes it a box; 0 for a circle
@@ -158,6 +160,7 @@ public record ProjectileData(
     String spawnCharacter,
     int spawnCharacterCount,
     int spawnCharacterDeployTimeMs,
+    String deflectedCharacterSpawn,
     boolean spawnConstPriority,
     int radiusY,
     int projectileRadiusY,

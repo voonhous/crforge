@@ -302,7 +302,7 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** The key of a variable an expression may name, or null for a name that is none. */
-  Integer variableKey(String name) {
+  public Integer variableKey(String name) {
     return variableKeys.get(name);
   }
 
@@ -2793,8 +2793,11 @@ public class BattleWorld implements HolderPasses {
    * @param x the placed point along the width
    * @param y the placed point along the length
    * @param name the play's name, which a cast area effect names as its source
+   * @param play the play, by its king's count of card plays before it, which each projectile cast
+   *     carries; -1 outside a match
    */
-  public void castSpell(DeployCard card, int cardLevel, int side, int x, int y, String name) {
+  public void castSpell(
+      DeployCard card, int cardLevel, int side, int x, int y, String name, int play) {
     AreaEffectEntity areaEffect = null;
     if (card.areaEffect() != null) {
       areaEffect = createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
@@ -2812,7 +2815,7 @@ public class BattleWorld implements HolderPasses {
       }
       TowerEntity king = kingTower(side);
       checkState(king != null, () -> "side " + side + " has no king tower to cast from");
-      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y);
+      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y, play);
     }
     if (card.onExecuteAction() != null) {
       // The cast's last step: the action runs on the king at once, with the first object the cast
@@ -2873,7 +2876,7 @@ public class BattleWorld implements HolderPasses {
    * radius turned by a battle random below 359, the offset from the placed point kept within nine
    * tenths of the spell's radius, and starts at the king tower plus a quarter of that offset across
    * and the whole of it along. A chain shares its circle, the placed point and the spell's radius,
-   * and the ids it has hit.
+   * and the ids it has hit. Each carries the play that cast it.
    *
    * @return the first projectile cast
    */
@@ -2884,7 +2887,8 @@ public class BattleWorld implements HolderPasses {
       int cardLevel,
       int side,
       int x,
-      int y) {
+      int y,
+      int play) {
     int count = Math.max(card.multipleProjectiles(), 1);
     int waves = Math.max(card.projectileWaves(), 1);
     boolean ring = card.name().equals(ARROWS) && !DEFLECT_ARROWS_AS_WHOLE;
@@ -2947,14 +2951,16 @@ public class BattleWorld implements HolderPasses {
               5 * radiusOrDefault,
               tx,
               ty,
-              delay);
+              delay,
+              play);
         } else if (!card.spell()) {
           // A troop card's: from the point less five times the king's collision radius along the
           // length, whichever side plays, at three times it, onto the point.
           int collision = king.getData().collisionRadius();
-          projectile.cast(king, cardLevel, tx, ty - 5 * collision, height, tx, ty, delay);
+          projectile.cast(king, cardLevel, tx, ty - 5 * collision, height, tx, ty, delay, play);
         } else {
-          projectile.cast(king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay);
+          projectile.cast(
+              king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay, play);
         }
         holder.add(projectile);
         registrationPass(projectile);
@@ -3019,7 +3025,9 @@ public class BattleWorld implements HolderPasses {
    * inside the arena, at the projectile's level, deploying for the row's deploy time when it has
    * one, and registered with its registration visit; only then is a child on the ground moved off
    * the water, onto the point the relocation gives where the child then stands, so the step its
-   * registration visit took is kept.
+   * registration visit took is kept. Each child joins the live list at the next cleanup's fold,
+   * which starts it: its row's starting action is scheduled then. A deflected projectile with a
+   * deflected spawn is refused.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -3027,17 +3035,25 @@ public class BattleWorld implements HolderPasses {
    */
   public void impactSpawn(ProjectileEntity projectile, int x, int y) {
     ProjectileData data = projectile.getData();
+    if (projectile.getDeflections() >= 1 && data.deflectedCharacterSpawn() != null) {
+      // A deflected projectile's impact makes its deflected spawn in place of its spawned
+      // character, as many of them (0xe36c98..0xe36ccc); that spawn is held by no reference.
+      throw new UnsupportedOperationException(
+          data.name()
+              + " is deflected and its impact makes "
+              + data.deflectedCharacterSpawn()
+              + " in place of "
+              + data.spawnCharacter()
+              + ", which is not modelled");
+    }
     UnitData child = spawnedRow(data.spawnCharacter());
-    if (child.hitpoints() <= 0
-        || child.building()
-        || child.spawnPathfindSpeed() != 0
-        || child.onStartingAction() != null) {
+    if (child.hitpoints() <= 0 || child.building() || child.spawnPathfindSpeed() != 0) {
       throw new UnsupportedOperationException(
           data.name()
               + "'s impact makes "
               + child.name()
-              + ", without hit points, a building, pathing to its point or starting an action,"
-              + " which is not modelled");
+              + ", without hit points, a building or pathing to its point, which is not"
+              + " modelled");
     }
     int count = data.spawnCharacterCount();
     int w = tileMap.width();
@@ -3080,6 +3096,12 @@ public class BattleWorld implements HolderPasses {
       if (data.spawnCharacterDeployTimeMs() >= 1) {
         spawned.deployFor(data.spawnCharacterDeployTimeMs());
       }
+      // The child is queued (0xe36e98, the add that registers it now): it joins the live list at
+      // the next cleanup's fold, which starts it, scheduling its row's starting action then.
+      // It carries the projectile's play (0xe36df4..0xe36e18), so a champion slot that follows the
+      // play follows it.
+      spawned.setDeployIndex(projectile.getDeployIndex());
+      spawned.startOnAdmission();
       holder.addRegistered(spawned);
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, projectile, spawned, cx, cy);
@@ -5243,15 +5265,15 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Writes a button state override, and refills the charges when the row asks, into the slot of the
-   * owner's side that follows the row's champion; nothing when no slot follows it. The owner
-   * decides only the side.
+   * Writes a button state override, and refills the charges when the row asks, into the slot of a
+   * side that follows the row's champion; nothing when no slot follows it. The object the row runs
+   * on decides only the side.
    *
-   * @param owner the object the row runs on
+   * @param side the side whose slots the row writes into
    * @param action the row
    */
-  void overrideAbilityButton(WorldEntity owner, OverrideAbilityButtonState action) {
-    TowerEntity king = kingTower(owner.side());
+  public void overrideAbilityButton(int side, OverrideAbilityButtonState action) {
+    TowerEntity king = kingTower(side);
     if (king == null || king.championSlot(1) == null) {
       throw new UnsupportedOperationException(
           action.name() + " outside a match, which has no champion slots");

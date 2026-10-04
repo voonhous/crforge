@@ -343,6 +343,18 @@ public interface ActionOwner {
   }
 
   /**
+   * The button state override's first write, as the row is performed: the same as every later write
+   * of its run for an owner that is its own player's, a character or a building. A projectile hands
+   * the question to the object that launched it, and writes nothing unless that is a character or a
+   * building; the run's later writes go by the projectile's own side.
+   *
+   * @param action the row
+   */
+  default void performAbilityButtonOverride(OverrideAbilityButtonState action) {
+    overrideAbilityButton(action);
+  }
+
+  /**
    * The owner's group chain, for the actions that check or run over its group. Only a character
    * keeps one.
    */

@@ -181,7 +181,7 @@
   "evo-sweep-v2/evo_wizard_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_zap_on_musketeer": {"outcome": "diagnostic_match"},
   "evolution-v2/knight_evolved_third_play": {"outcome": "diagnostic_match"},
-  "hero-sweep-v2/hero_barb_log": {"outcome": "unsupported", "feature": "BarbLog in an evolution or hero slot, which is not a troop card, is held by no reference", "input": "the run"},
+  "hero-sweep-v2/hero_barb_log": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_elite_archer": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_giant": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_goblins": {"outcome": "diagnostic_match"},
