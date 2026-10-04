@@ -8,7 +8,7 @@
   "ability-sweep-v2/ability_hero_elite_archer": {"outcome": "unsupported", "feature": "cmd0_0 casts EliteArcherHero_Ability, whose activation no reference holds", "input": "the run"},
   "ability-sweep-v2/ability_hero_goblins": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "unsupported", "feature": "IceGolemiteHero_Spawn_Damage_AEO spawns IceGolemiteHero_Damage_AEO, which sets columns not modelled: [Shape, ParentLoopingEffectToSelf]", "input": "the run"},
-  "ability-sweep-v2/ability_hero_knight": {"outcome": "unsupported", "feature": "Knight_hero_CreateTauntAEO spawns Knight_hero_TauntAEO, which sets columns not modelled: [OnHitAction]", "input": "the run"},
+  "ability-sweep-v2/ability_hero_knight": {"outcome": "mismatch", "first_divergent_tick": 403, "path": "$.entities[8].shield"},
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target finds [Musketeer] through MegaMinion_hero_target_resolver: the pick by [RESOLVER_STRATEGY_LOWEST_MAX_HP, RESOLVER_STRATEGY_FURTHEST_TARGET], the mark and MegaMinion_hero_give_bot_buff_to_targets are not modelled", "input": "the run"},
   "ability-sweep-v2/ability_hero_mini_pekka": {"outcome": "diagnostic_match"},

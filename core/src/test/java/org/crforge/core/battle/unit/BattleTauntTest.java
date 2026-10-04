@@ -51,7 +51,7 @@ class BattleTauntTest {
                 @Override
                 public void tauntPerformed(
                     int tick,
-                    CharacterEntity unit,
+                    WorldEntity unit,
                     String action,
                     int phase,
                     ActionOwner instigator,
@@ -62,7 +62,7 @@ class BattleTauntTest {
                 @Override
                 public void tauntStepped(
                     int tick,
-                    CharacterEntity unit,
+                    WorldEntity unit,
                     WorldEntity forced,
                     int durationMs,
                     int falloffMs,
@@ -274,6 +274,33 @@ class BattleTauntTest {
     scene.demolisher.killBy(null);
     scene.match.getBattle().step();
     assertThat(removed).containsExactly("demolisher", "CancelTauntAEO 0");
+  }
+
+  @Test
+  @DisplayName("a unit's taunt that outlasts its first step is refused as it steps")
+  void aLongerTauntOnAUnit(@TempDir Path folder) throws IOException {
+    Files.createDirectories(folder);
+    GameTables longer =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
+                    .put("ValidDuration", 100));
+    Scene scene = new Scene(longer);
+    scene.match.getBattle().step();
+    BattleAction spawn =
+        scene
+            .match
+            .getWorld()
+            .getActions()
+            .build("SpawnCancelTauntAEO", scene.match.getWorld().binding(scene.demolisher));
+    scene.demolisher.actionHolder().start(spawn, scene.demolisher.actionHolder());
+    scene.match.getBattle().step();
+    assertThat(scene.taunts).contains("demolisher performed onto demolisher");
+    assertThatThrownBy(() -> scene.match.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("ResetTauntEffect lasts past its first step");
   }
 
   @Test

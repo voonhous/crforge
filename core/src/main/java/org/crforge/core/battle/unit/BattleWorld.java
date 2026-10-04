@@ -6180,9 +6180,9 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Tells the observers a taunt's perform reached a unit. */
+  /** Tells the observers a taunt's perform reached a character. */
   void tauntPerformed(
-      CharacterEntity unit, String action, int phase, ActionOwner instigator, WorldEntity forced) {
+      WorldEntity unit, String action, int phase, ActionOwner instigator, WorldEntity forced) {
     for (WorldObserver observer : observers) {
       observer.tauntPerformed(tick, unit, action, phase, instigator, forced);
     }
@@ -6190,7 +6190,7 @@ public class BattleWorld implements HolderPasses {
 
   /** Tells the observers what a taunt's arming or step did. */
   void tauntStepped(
-      CharacterEntity unit, WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
+      WorldEntity unit, WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
     for (WorldObserver observer : observers) {
       observer.tauntStepped(tick, unit, forced, durationMs, falloffMs, calls);
     }

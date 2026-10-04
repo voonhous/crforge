@@ -56,6 +56,7 @@ import org.crforge.core.pathfinding.target.DefaultSelectionQueries;
 import org.crforge.core.pathfinding.target.DefaultTargetSelection;
 import org.crforge.core.pathfinding.target.HitApplication;
 import org.crforge.core.pathfinding.target.HitQueries;
+import org.crforge.core.pathfinding.target.ReferenceSetter;
 import org.crforge.core.pathfinding.target.RemovalNotice;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -1839,13 +1840,58 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * A taunt reaching an entity other than a unit: a tower, a building whose reach test is not
-   * modelled.
+   * A taunt reaching an entity that is neither a unit nor a tower, which none is: refused, as such
+   * an entity is not established.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
     throw new UnsupportedOperationException(
         action.name() + " taunts the building " + name() + ", which is not modelled");
+  }
+
+  /**
+   * Forces the entity's reference onto an object, as a taunt's arming and its building steps do.
+   *
+   * @param forced the object
+   * @param skipRecheck true to set the reference without the setter's re-check
+   */
+  void tauntReference(WorldEntity forced, boolean skipRecheck) {
+    ReferenceSetter.setReference(
+        getTargeting(),
+        forced.getTargetView(),
+        false,
+        false,
+        skipRecheck,
+        selection,
+        selection.getOutcome());
+  }
+
+  /**
+   * Gives the entity's reference up, as a taunt's end does.
+   *
+   * @param keepWindUp true to keep the wind-up as it is, as the end of its duration does
+   */
+  void tauntDrop(boolean keepWindUp) {
+    ReferenceSetter.setReference(
+        getTargeting(), null, false, keepWindUp, false, selection, selection.getOutcome());
+  }
+
+  /** Locks the entity's selector from its next pre-hook, for one step. */
+  void raiseLockTarget() {
+    getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.LOCK_TARGET);
+  }
+
+  /**
+   * Puts a taunt's buff on the entity, the forced object its source, at that object's level and for
+   * its side.
+   */
+  void tauntBuff(String buff, int timeMs, WorldEntity source) {
+    getBuffs().apply(world.buffData(buff), timeMs, source.packedLevel(), source, source.side());
+  }
+
+  /** Tells the observers what a taunt's arming or step did. */
+  void tauntStepped(WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
+    world.tauntStepped(this, forced, durationMs, falloffMs, calls);
   }
 
   /**

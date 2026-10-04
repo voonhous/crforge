@@ -753,12 +753,11 @@ class BattleRecordsTest {
     assertThat(clone.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").cloning()).isFalse();
     // The Goblin Curse's base spawns two buffs with each hit and the Blowdart Goblin's evolution
-    // starts its poison damage; the Knight's hero taunts with its group, which is not modelled.
+    // starts its poison damage; the Knight's hero taunts with a group of taunts.
     AreaEffectData curse = records.areaEffect("GoblinCurseBase");
     assertThat(curse.onHitAction()).isEqualTo("GoblinCurseCreateBuffs");
     assertThat(curse.unmodelledColumns()).isEmpty();
-    assertThat(records.areaEffect("Knight_hero_TauntAEO").unmodelledColumns())
-        .contains("OnHitAction");
+    assertThat(records.areaEffect("Knight_hero_TauntAEO").unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns()).isEmpty();
     assertThat(records.unit("Recruit_Chess").ignoreClone()).isTrue();
     assertThat(records.unit("Knight").ignoreClone()).isFalse();
