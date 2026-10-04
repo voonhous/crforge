@@ -691,6 +691,22 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
+      "a buff's projectile in place of its carrier's and its removal on attack are read: the hero"
+          + " Mega Minion's arrival buff sets both, its crown tower buff only the projectile")
+  void aBuffsProjectileAndRemovalOnAttackAreRead() {
+    BuffData arrival = records.buff("MegaMinion_hero_Damage_Buff");
+    assertThat(arrival.overrideProjectile()).isEqualTo("MegaMinionSpit_DoubleDamage");
+    assertThat(arrival.removeOnAttack()).isTrue();
+    assertThat(arrival.onRemoveAction()).isEqualTo("MegaMinion_hero_CrownTowerBuff_Spawn");
+    assertThat(arrival.unmodelledColumns()).isEmpty();
+    BuffData crownTower = records.buff("MegaMinion_hero_CrownTower_Buff");
+    assertThat(crownTower.overrideProjectile()).isEqualTo("MegaMinionSpit_CrownTowerDamage");
+    assertThat(crownTower.removeOnAttack()).isFalse();
+    assertThat(records.buff("Rage").overrideProjectile()).isNull();
+  }
+
+  @Test
+  @DisplayName(
       "a buff's tags are read when the only one is the one that keeps enemies from pushing its"
           + " carrier, and listed as not modelled otherwise")
   void aBuffSetsOnlyTheTagThePushPassReads(@TempDir Path folder) throws IOException {

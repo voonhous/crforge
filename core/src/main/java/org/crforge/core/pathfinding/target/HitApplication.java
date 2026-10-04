@@ -52,8 +52,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " settled: the owner may always attack. Not modelled: special hits by interval or"
             + " while hidden and the columns they read, the attack sequence step's own damage"
             + " and projectile, the charged hit of a unit that fires, whose rows are refused, the"
-            + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes,"
-            + " the targeted hit effect and its"
+            + " charged-hit byte, which nothing ported reads, the projectile a buff substitutes"
+            + " in a hit that would not fire otherwise, refused, the targeted hit effect and its"
             + " pushback, the attacking flag on the owner, the buff on"
             + " damage of a hit every so many or over an area, and the notifications it ends"
             + " with. The action a hit runs on the owner as its own cause, after the one with its"
@@ -148,6 +148,13 @@ public final class HitApplication {
     // even for a hit cancelled for distance; the buff on damage follows one that landed, as the
     // entry has no projectile.
     boolean entryAction = queries.entryAction();
+    // A buff's projectile makes a hit fire, in place of a direct hit or beside an entry's action;
+    // only its place in a hit that already fires is modelled.
+    if (queries.projectileOverridden() && (!fires || entryAction)) {
+      throw new UnsupportedOperationException(
+          "a buff's projectile in place of a direct hit or an attack sequence entry's action is"
+              + " not modelled");
+    }
     if (entryAction) {
       queries.runEntryAction(target);
       if (!missed) {

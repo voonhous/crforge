@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.List;
@@ -11,6 +10,7 @@ import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +35,14 @@ class BattleMegaMinionHeroTest {
   private static final String BOT_BUFF = "MegaMinionHeroBuffForBots";
 
   private static final String TELEPORT = "MegaMinion_hero_teleport_action";
+
+  private static final String DAMAGE_BUFF = "MegaMinion_hero_Damage_Buff";
+
+  private static final String CROWN_TOWER_BUFF = "MegaMinion_hero_CrownTower_Buff";
+
+  private static final String DOUBLE = "MegaMinionSpit_DoubleDamage";
+
+  private static final String CROWN = "MegaMinionSpit_CrownTowerDamage";
 
   /** The Mega Minion first, in the hero slot, and seven other cards. */
   private static final List<String> DECK =
@@ -144,11 +152,85 @@ class BattleMegaMinionHeroTest {
       "the ability flies the hero to its marked target: the warp follows the target, gaining 400 a"
           + " step up to 1500 and braking before it; each step raises the warp's tags for the next"
           + " one, which stop the mark and the hand-over; on arrival the hero stands on the"
-          + " target's point and keeps it as its reference, and its end action's damage buff is"
-          + " refused")
+          + " target's point, keeps it as its reference and takes its end action's damage buff")
   void theAbilityWarpsTheHeroToItsTarget() {
     Standard1v1Battle battle = heroPlayed();
     CharacterEntity hero = named(battle, HERO).get(0);
+    CharacterEntity knight = launchedAtKnight(battle, hero);
+    long warpTags =
+        EntityFlags.NO_ATTACK
+            | EntityFlags.DISABLE_PHYSICAL
+            | EntityFlags.NO_DAMAGE
+            | EntityFlags.UNTARGETABLE
+            | EntityFlags.WARP;
+    // The launch step ran the warp's first update: its tags are in the word from the next step.
+    assertThat(hero.getView().getPendingFlags() & warpTags).isEqualTo(warpTags);
+    step(battle);
+    assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
+    // WARP stops the mark and the hand-over.
+    assertThat(runs(hero)).doesNotContain(MARK, HAND_OVER).contains(TELEPORT);
+    // The arrival places the hero and keeps its target, then runs the end action, whose first
+    // part lists the damage buff.
+    int limit = battle.getBattle().getTick() + 40;
+    while (!hero.getBuffs().carries(DAMAGE_BUFF)) {
+      assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    assertThat(hero.getView().getX()).isEqualTo(knight.getView().getX());
+    assertThat(hero.getView().getY()).isEqualTo(knight.getView().getY());
+    assertThat(hero.getUnit().targeting().getReference()).isSameAs(knight.getTargetView());
+  }
+
+  @Test
+  @DisplayName(
+      "the arrival's damage buff swaps the hero's first spit for the double damage one, which the"
+          + " instant hit fires on the next step; the spit's impact removes the buff, whose remove"
+          + " action lists the crown tower buff, and the next spit is the crown tower one")
+  void theArrivalBuffSwapsTheFirstSpitUntilItLands() {
+    Standard1v1Battle battle = heroPlayed();
+    CharacterEntity hero = named(battle, HERO).get(0);
+    launchedAtKnight(battle, hero);
+    int limit = battle.getBattle().getTick() + 40;
+    while (!hero.getBuffs().carries(DAMAGE_BUFF)) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    assertThat(heroSpits(battle)).isEmpty();
+    // The instant hit lands the first attack on the next step, with the buff's projectile.
+    step(battle);
+    assertThat(heroSpits(battle)).extracting(p -> p.getData().name()).containsExactly(DOUBLE);
+    assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isTrue();
+    // The buff stays until the spit lands, and goes with its impact.
+    limit = battle.getBattle().getTick() + 20;
+    while (!heroSpits(battle).isEmpty()) {
+      assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isTrue();
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isFalse();
+    // The remove action waits its own delay, then lists the crown tower buff.
+    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isFalse();
+    step(battle);
+    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isTrue();
+    limit = battle.getBattle().getTick() + 60;
+    while (heroSpits(battle).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    assertThat(heroSpits(battle)).extracting(p -> p.getData().name()).containsExactly(CROWN);
+    // The crown tower buff is not removed by an attack.
+    while (!heroSpits(battle).isEmpty()) {
+      step(battle);
+    }
+    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isTrue();
+  }
+
+  /**
+   * Plays a Knight for the other side, waits for the mark to take it and uses the ability once the
+   * side has the elixir; returns the Knight once the hero's warp runs.
+   */
+  private static CharacterEntity launchedAtKnight(Standard1v1Battle battle, CharacterEntity hero) {
     int tick = battle.getBattle().getTick();
     battle.play(tick, GameData.card("Knight"), LEVEL, 1, 14500, 25500, "k");
     int limit = tick + 60;
@@ -167,34 +249,16 @@ class BattleMegaMinionHeroTest {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
       step(battle);
     }
-    long warpTags =
-        EntityFlags.NO_ATTACK
-            | EntityFlags.DISABLE_PHYSICAL
-            | EntityFlags.NO_DAMAGE
-            | EntityFlags.UNTARGETABLE
-            | EntityFlags.WARP;
-    // The launch step ran the warp's first update: its tags are in the word from the next step.
-    assertThat(hero.getView().getPendingFlags() & warpTags).isEqualTo(warpTags);
-    step(battle);
-    assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
-    // WARP stops the mark and the hand-over.
-    assertThat(runs(hero)).doesNotContain(MARK, HAND_OVER).contains(TELEPORT);
-    // The arrival places the hero and keeps its target, then builds the end action, whose damage
-    // buff is not modelled.
-    Standard1v1Battle flying = battle;
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < 40; i++) {
-                step(flying);
-                assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "MegaMinion_hero_DamageBuff_Spawn spawns MegaMinion_hero_Damage_Buff");
-    assertThat(hero.getView().getX()).isEqualTo(knight.getView().getX());
-    assertThat(hero.getView().getY()).isEqualTo(knight.getView().getY());
-    assertThat(hero.getUnit().targeting().getReference()).isSameAs(knight.getTargetView());
+    return knight;
+  }
+
+  /** The projectiles of the hero's side the holder lists. */
+  private static List<ProjectileEntity> heroSpits(Standard1v1Battle battle) {
+    return battle.getWorld().getHolder().entities().stream()
+        .filter(ProjectileEntity.class::isInstance)
+        .map(ProjectileEntity.class::cast)
+        .filter(p -> p.side() == 0)
+        .toList();
   }
 
   private static long distanceSquared(CharacterEntity a, CharacterEntity b) {
