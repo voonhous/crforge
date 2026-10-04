@@ -7,8 +7,10 @@ import org.crforge.core.battle.unit.UnitData;
  * The columns of a card that its placement reads: the units a troop card summons and how many, the
  * shape and stagger of their formation, where the card may be placed, and what a spell card casts.
  *
- * <p>A troop card may summon a list of characters in place of its groups: each at an offset of its
- * own, after the groups' units in creation order. Only the Three Musketeers' does.
+ * <p>A troop card may summon a list of characters, in place of its groups or besides them: each at
+ * an offset of its own, after the groups' units in creation order. The Three Musketeers' lists its
+ * characters in place of its groups; the evolved Skeleton Army's lists its general after its first
+ * group.
  *
  * <p>A spell card summons no unit: it casts a projectile from its side's king tower or an area
  * effect at the placed point. A troop card may cast a projectile too, before its units are made.
@@ -54,6 +56,9 @@ import org.crforge.core.battle.unit.UnitData;
  *     after the one made before it
  * @param onExecuteAction the action a spell's cast runs on its side's king tower as its last step,
  *     with the first object the cast made as its cause, or null for none
+ * @param namesCharacter whether the card names its summoned character, which alone makes its first
+ *     group count: a card that only lists its characters places no first group, and one that does
+ *     both places its first group and then its list, as the evolved Skeleton Army's does
  */
 public record DeployCard(
     String name,
@@ -85,13 +90,17 @@ public record DeployCard(
     List<Listed> listed,
     boolean listOffsetsXMirrored,
     boolean group,
-    String onExecuteAction) {
+    String onExecuteAction,
+    boolean namesCharacter) {
 
   public DeployCard {
     listed = List.copyOf(listed);
   }
 
-  /** A card whose cast runs no action as its last step. */
+  /**
+   * A card whose cast runs no action as its last step and that names its summoned character unless
+   * it lists its characters.
+   */
   public DeployCard(
       String name,
       UnitData unit,
@@ -152,7 +161,8 @@ public record DeployCard(
         listed,
         listOffsetsXMirrored,
         group,
-        null);
+        null,
+        listed.isEmpty());
   }
 
   /**
@@ -180,7 +190,7 @@ public record DeployCard(
    * none for a card that only lists its characters.
    */
   public int primaryCount() {
-    return listed.isEmpty() ? count : 0;
+    return namesCharacter ? count : 0;
   }
 
   /** How many units the second group places: its count when it has a unit, else none. */
