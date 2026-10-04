@@ -205,27 +205,28 @@ class BattleTunnelTest {
 
   @Test
   @DisplayName(
-      "a dig whose morph's row starts an action, the evolved Goblin Drill's relocation, is refused"
-          + " as it surfaces: a morph starts no action of the row it is made from")
-  void aMorphThatStartsAnActionIsRefused() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+      "a dig whose morph's row starts an action, the evolved Goblin Drill's relocation, has it"
+          + " started at the fold: its first-appear area is made in the next tick's pending pass")
+  void aMorphStartsItsRowsActionAtTheFold() {
+    Standard1v1Battle match = passiveTowers();
     match.play(
         0,
         GameData.card("GoblinDrill_EV1"),
         Standard1v1Battle.DEFAULT_LEVEL,
         0,
-        3500,
-        25500,
+        14000,
+        23000,
         "Drill");
+    CharacterEntity drill = null;
+    for (int step = 0; step < 200 && drill == null; step++) {
+      match.getBattle().step();
+      drill = BattleGoblinDrillEvoTest.drill(match);
+    }
+    assertThat(drill).as("the dig surfaced").isNotNull();
+    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamage")).isZero();
 
-    assertThatThrownBy(
-            () -> {
-              for (int step = 0; step < 100; step++) {
-                match.getBattle().step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "GoblinDrill_EV1_Dig morphs into GoblinDrill_EV1, which starts an action");
+    match.getBattle().step();
+
+    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamage")).isEqualTo(1);
   }
 }

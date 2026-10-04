@@ -42,6 +42,7 @@ import org.crforge.core.battle.action.FilterByEnemy;
 import org.crforge.core.battle.action.FlipFlop;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.GoblinDrillEvoRelocate;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.Group;
@@ -290,6 +291,27 @@ public final class ActionRows {
           Map.entry("ActionSetVariable", Set.of("Variable", "Value")),
           Map.entry("ActionSetShield", Set.of("ShieldPercent")),
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
+          // The evolved Goblin Drill's relocation. Its hide, reappear and target effects only show
+          // something; the spawn deploy time and radius only feed the character spawns.
+          Map.entry(
+              "ActionGoblinDrillEvoRelocate",
+              Set.of(
+                  "UseDistanceBasedPositioning",
+                  "StepsToMove",
+                  "HideTime",
+                  "SpawnCharacterOnHide",
+                  "SpawnCharacterOnHideCounts",
+                  "SpawnCharacterOnReappear",
+                  "SpawnCharacterOnReappearCounts",
+                  "OnHideEffect",
+                  "OnReappearEffect",
+                  "TargetEffectList",
+                  "HideHpThresholds",
+                  "FirstAppearAction",
+                  "ReappearActions",
+                  "HideActions",
+                  "SpawnCharacterDeployTime",
+                  "SpawnCharaterRadius")),
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
           Map.entry(
@@ -1119,6 +1141,7 @@ public final class ActionRows {
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
             case "ActionDoPushbackFromInstigator" -> pushbackFromInstigator(name, shared, f);
+            case "ActionGoblinDrillEvoRelocate" -> goblinDrillRelocate(name, shared, f);
             case "ActionDamagingPushBack" -> damagingPushBack(name, shared, f);
             case "ActionCannonBarrage" -> cannonBarrage(name, shared, f);
             case "ActionCannonProjectileSpawn" -> cannonProjectileSpawn(name, shared, f);
@@ -1869,6 +1892,38 @@ public final class ActionRows {
           integer(f, "Duration"),
           landing,
           f.path("PassInstigatorToLandingAction").asBoolean(false));
+    }
+
+    /**
+     * The evolved Goblin Drill's relocation, StepsToMove taking the loader's 5 when left out.
+     * Refused: the shared columns its run does not read, a character spawned on a hide or a
+     * reappearance, and reappear actions, which no shipped row sets.
+     */
+    private GoblinDrillEvoRelocate goblinDrillRelocate(String name, ActionRow shared, JsonNode f) {
+      refuseUnread(name, f, true);
+      for (String column :
+          List.of(
+              "SpawnCharacterOnHide",
+              "SpawnCharacterOnHideCounts",
+              "SpawnCharacterOnReappear",
+              "SpawnCharacterOnReappearCounts",
+              "ReappearActions")) {
+        if (sets(f, column)) {
+          throw new UnsupportedOperationException(
+              name + ", a relocation, sets " + column + ", which is not modelled");
+        }
+      }
+      return new GoblinDrillEvoRelocate(
+          shared,
+          GoblinDrillEvoRelocate.Columns.builder()
+              .distanceBased(bool(f, "UseDistanceBasedPositioning"))
+              .stepsToMove(f.hasNonNull("StepsToMove") ? integer(f, "StepsToMove") : 5)
+              .hideTimeMs(integer(f, "HideTime"))
+              .hideHpThresholds(ints(f.get("HideHpThresholds")))
+              .firstAppearAction(action(f.get("FirstAppearAction")))
+              .hideActions(actions(f.get("HideActions")))
+              .reappearActions(List.of())
+              .build());
     }
 
     /**

@@ -28,6 +28,7 @@ import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
+import org.crforge.core.battle.action.GoblinDrillEvoRelocate;
 import org.crforge.core.battle.action.GoblinHutLife;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.GroupChain;
@@ -2110,6 +2111,16 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /** Starts the evolved Goblin Drill's relocation on the character, which must be a building. */
+  @Override
+  public ActionInstance goblinDrillRelocate(GoblinDrillEvoRelocate action, ActionHolder holder) {
+    if (!getData().building()) {
+      throw new UnsupportedOperationException(
+          action.name() + " on " + name() + ", which is not a building, not modelled");
+    }
+    return new GoblinDrillRelocateRun(action, this, holder);
   }
 
   /**
@@ -4408,7 +4419,10 @@ public class CharacterEntity extends WorldEntity {
     if (data.spawnCharacter() == null || !due) {
       return;
     }
-    spawnTimer -= getBuffs().spawnRate() / 2;
+    // A spawner under NO_SUMMON holds its timer; a firing already due still fires.
+    if ((getView().getFlags() & EntityFlags.NO_SUMMON) == 0) {
+      spawnTimer -= getBuffs().spawnRate() / 2;
+    }
     if (spawnTimer > 0) {
       return;
     }

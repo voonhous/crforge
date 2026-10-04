@@ -461,6 +461,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts the evolved Goblin Drill's relocation on the owner.
+   *
+   * @param action the relocation
+   * @param holder the owner's holder, which schedules the first-appear action
+   * @return the run
+   */
+  default ActionInstance goblinDrillRelocate(GoblinDrillEvoRelocate action, ActionHolder holder) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Starts the evolved Dart Goblin's dart choice on the owner. Only a character runs one.
    *
    * @param action the row

@@ -1256,20 +1256,14 @@ public class BattleWorld implements HolderPasses {
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
    * established, so a morph of a unit such an attacker references is refused.
    *
-   * <p>The new object starts no action of its row here, so a morph whose row has a starting action
-   * - the evolved Goblin Drill's relocation, which takes the place of its area object - is refused.
+   * <p>Like any object the holder admits, the new object is started at the closing cleanup's fold:
+   * its row's starting action - the evolved Goblin Drill's relocation, which takes the place of its
+   * area object - is scheduled then, and runs in its first pending pass of the next tick.
    *
    * @param old the unit that surfaced
    */
   void morph(CharacterEntity old) {
     UnitData data = spawnedRow(old.getData().spawnPathfindMorph());
-    if (data.onStartingAction() != null) {
-      throw new UnsupportedOperationException(
-          old.getData().name()
-              + " morphs into "
-              + data.name()
-              + ", which starts an action, which a morph does not start and is not modelled");
-    }
     for (WorldEntity entity : present) {
       if (entity.getData().attackSequence().mode() != AttackSequence.MODE_NONE
           && entity.getTargeting().getReference() == old.getTargetView()) {
@@ -1281,6 +1275,7 @@ public class BattleWorld implements HolderPasses {
       }
     }
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
+    made.startOnAdmission();
     holder.addRegistered(made);
     made.startDeployingAfterMorph();
     old.morphedAway();
@@ -1525,6 +1520,20 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return count;
+  }
+
+  /**
+   * Every tower of a side still in the battle, in the order the holder lists them: the side's list
+   * of map objects. A destroyed one is listed until the cleanup that removes it.
+   */
+  List<TowerEntity> towers(int side) {
+    List<TowerEntity> out = new ArrayList<>();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof TowerEntity tower && tower.side() == side) {
+        out.add(tower);
+      }
+    }
+    return out;
   }
 
   /**
@@ -4313,6 +4322,12 @@ public class BattleWorld implements HolderPasses {
       }
       if (arguments.deployTimeMs() != 0) {
         child.deployFor(arguments.deployTimeMs());
+        // A spawn with a deploy time of its own hands the child a character source's facing, as
+        // the evolved Goblin Drill's hide goblins face where the drill faced.
+        if (source instanceof CharacterEntity character) {
+          child.getView().setDirX(character.getView().getDirX());
+          child.getView().setDirY(character.getView().getDirY());
+        }
       }
       // The child is registered now and joins the live list at the next cleanup's fold, which
       // starts it: its row's starting action is scheduled then.
