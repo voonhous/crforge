@@ -110,7 +110,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Clone row kept from them, a rider's own refusal and the parent's removal leaving"
             + " the riders' instances. A buff applied to a rider other than through its parent is"
             + " refused. Refused by"
-            + " the row: projectiles, chains, spawns, morphs, an action other than a start or"
+            + " the row: projectiles, chains, morphs, an action other than a start or"
             + " remove action that names its row, tags other than the one"
             + " that keeps enemies from pushing the carrier, switching team,"
             + " shields, hit point and damage multipliers, and an action on a reduction. The"
@@ -135,7 +135,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " by valkyrie_ev1_barbarians and BattleAttackActionTest. The start action on a new"
             + " instance and the remove action on a removal, held by buff_after_hits_ghost_evo"
             + " and buff_after_hits_barbarians_bats; none on a refresh, the cleanse's and none at"
-            + " a death by BattleBuffAfterHitsTest.")
+            + " a death by BattleBuffAfterHitsTest. Held by evo_skeletons_vs_musketeer: an"
+            + " instance's spawner, one child in front of its carrier on the instance's first"
+            + " visit, linked into its carrier's group chain; translated but held by no run: an"
+            + " interval, a wave and a pause past the first firing; refused: a firing with the"
+            + " chain at the group's limit, a child released at the fold, a tower or building"
+            + " carrier.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -417,6 +422,13 @@ public final class BuffComponent implements BattleComponent {
                 + instance.getBuff().name()
                 + ", which gives a charge range, not modelled");
       }
+      if (instance.getBuff().spawnObject() != null) {
+        throw new UnsupportedOperationException(
+            original.entity.name()
+                + " is cloned carrying "
+                + instance.getBuff().name()
+                + ", whose spawner's copy is not modelled");
+      }
       if (instance.getBuff().notCloned()) {
         throw new UnsupportedOperationException(
             original.entity.name()
@@ -546,6 +558,12 @@ public final class BuffComponent implements BattleComponent {
       instance.step(STEP_MS);
       askLifeCondition(instance);
       followSource(instance);
+      // The spawner comes after the source's clock and before the damage over time
+      // (0xe2c6f4..0xe2c820); its child is made at once, inside the visit.
+      if (instance.stepSpawner(spawnRate())) {
+        world.buffSpawn(entity, instance);
+        instance.spawnerFired();
+      }
       int period = instance.countHit(STEP_MS);
       if (period != 0) {
         hitting.add(instance);

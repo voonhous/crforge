@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,13 @@ public class EntityHolder {
   /** Entities handed over since the last cleanup, in the order they arrived. */
   private final List<BattleEntity> pendingAdditions = new ArrayList<>();
 
+  /**
+   * The id filed beside an entity handed over, for those handed over with one: the id of the object
+   * that must still be listed, and not removable, when the fold admits it (the int vector +0x48
+   * beside the queue).
+   */
+  private final Map<BattleEntity, Integer> requiredIds = new IdentityHashMap<>();
+
   /** How many entities of each kind have been handed over so far, indexed by kind. */
   private final Map<Integer, Integer> handedOverByKind = new HashMap<>();
 
@@ -120,6 +128,23 @@ public class EntityHolder {
     entity.registrationVisit();
   }
 
+  /**
+   * Hands an entity to the holder and registers it on the spot, with the id of another object filed
+   * beside it, as a buff's spawner hands over a child that needs its spawner alive (0xe31164): the
+   * fold admits it only while an object with that id is listed and not removable. Releasing it
+   * otherwise is not modelled: that fold is refused.
+   *
+   * @param entity the entity
+   * @param requiredId the id of the object it needs, or 0 for none
+   */
+  public void addRegistered(BattleEntity entity, int requiredId) {
+    add(entity);
+    if (requiredId != 0) {
+      requiredIds.put(entity, requiredId);
+    }
+    entity.registrationVisit();
+  }
+
   /** The entities handed over since the last cleanup, in the order they arrived. */
   public List<BattleEntity> queued() {
     return Collections.unmodifiableList(pendingAdditions);
@@ -161,6 +186,21 @@ public class EntityHolder {
     if (pendingAdditions.isEmpty()) {
       return;
     }
+    // An entity filed with another object's id is admitted only while that object is listed and
+    // not removable (0xe31260); the release of one that fails the test is refused.
+    for (BattleEntity entity : pendingAdditions) {
+      Integer required = requiredIds.get(entity);
+      if (required != null && !listedAndNotRemovable(required)) {
+        throw new UnsupportedOperationException(
+            "the object "
+                + entity.getId()
+                + " needs the object "
+                + required
+                + " listed as it is admitted, which has left or is leaving; its release is not"
+                + " modelled");
+      }
+    }
+    requiredIds.clear();
     List<BattleEntity> admitted = new ArrayList<>(pendingAdditions);
     pendingAdditions.clear();
     live.addAll(admitted);
@@ -169,6 +209,16 @@ public class EntityHolder {
     for (BattleEntity entity : admitted) {
       entity.onRegistered();
     }
+  }
+
+  /** Whether an object with an id is in the live list and its removal test answers false. */
+  private boolean listedAndNotRemovable(int id) {
+    for (BattleEntity entity : live) {
+      if (entity.getId() == id) {
+        return !entity.isRemovable();
+      }
+    }
+    return false;
   }
 
   /**
@@ -202,6 +252,7 @@ public class EntityHolder {
       int last = pendingAdditions.size() - 1;
       pendingAdditions.set(i, pendingAdditions.get(last));
       pendingAdditions.remove(last);
+      requiredIds.remove(gone);
       i--;
       gone.actions().released();
     }

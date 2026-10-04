@@ -1516,6 +1516,45 @@ public class CharacterEntity extends WorldEntity {
     return head;
   }
 
+  /** Whether the character carries the group mark: it is in a card's or a spawn's group chain. */
+  boolean inChain() {
+    return chained;
+  }
+
+  /**
+   * How many units the character's chain holds, from its first unit, walking back along the links,
+   * to its last (0xe25738..0xe25750).
+   */
+  int chainSize() {
+    CharacterEntity head = this;
+    while (head.chainPrevious != null) {
+      head = head.chainPrevious;
+    }
+    int size = 0;
+    for (CharacterEntity member = head; member != null; member = member.chainNext) {
+      size++;
+    }
+    return size;
+  }
+
+  /**
+   * Links a child the character's spawner made into its chain right after it, ahead of the unit
+   * that followed it, and marks the child as in a group (0xe257b4..0xe257f4). Unlike a spawn row's
+   * group link, nothing else is recorded.
+   *
+   * @param child the child just made
+   */
+  void linkSpawnIntoChain(CharacterEntity child) {
+    child.chained = true;
+    child.chainPrevious = this;
+    child.chainNext = chainNext;
+    if (chainNext != null) {
+      chainNext.chainPrevious = child;
+    }
+    chainNext = child;
+    world.chainLinked(child, this);
+  }
+
   /** The unit after the character in its card group chain, or null for none. */
   CharacterEntity chainNext() {
     return chainNext;

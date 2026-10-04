@@ -43,6 +43,18 @@ public final class BuffInstance {
    */
   private BattleEntity parent;
 
+  /**
+   * The spawner's timer: what is left before its next firing, in milliseconds, from the buff's
+   * start time as the instance is listed.
+   */
+  private int spawnTimer;
+
+  /** How many firings of the current wave the spawner has made. */
+  private int spawnWaveMade;
+
+  /** How many firings the spawner has left, from the buff's limit as the instance is listed. */
+  private int spawnsLeft;
+
   BuffInstance(String key, BuffData buff, int time, int packedLevel, SpawnHost source, int side) {
     this(key, buff, time, packedLevel, source, side, null);
   }
@@ -64,6 +76,9 @@ public final class BuffInstance {
     this.side = side;
     // The instance keeps a parent only for a buff that stacks.
     this.parent = buff.enableStacking() ? parent : null;
+    // The new instance's spawner: its start time and its limit (0xe2cd74).
+    this.spawnTimer = buff.spawnStartTimeMs();
+    this.spawnsLeft = buff.spawnLimit();
   }
 
   /**
@@ -165,6 +180,44 @@ public final class BuffInstance {
     int frequency = Math.max(buff.hitFrequency(), 0);
     // The remainder of a division by 0 is the dividend, as the game's own division answers it.
     hitCounter = (frequency == 0 ? ageMs : ageMs % frequency) / stepMs;
+  }
+
+  /**
+   * One visit's step of the spawner's timer (0xe2c6f4..0xe2c744): for a buff with a spawn, an
+   * interval of at least 1 and firings left, the timer loses half the carrier's spawn rate; it
+   * fires when that leaves it at 0 or below.
+   *
+   * @param spawnRate the carrier's spawn time percent, 100 without a buff
+   * @return true when the spawner fires on this visit
+   */
+  boolean stepSpawner(int spawnRate) {
+    if (buff.spawnObject() == null || buff.spawnIntervalMs() < 1 || spawnsLeft < 1) {
+      return false;
+    }
+    // Halved toward zero, as the game's signed shift after adding the sign bit does.
+    spawnTimer -= spawnRate / 2;
+    return spawnTimer <= 0;
+  }
+
+  /**
+   * What a firing leaves of the spawner (0xe2c7cc..0xe2c820): one more of the wave made and one
+   * firing fewer for a limited spawner; the next firing the interval away within a wave, or the
+   * pause away once the wave is made, and never less than 1 ms away; a timer that went below 0
+   * carries.
+   */
+  void spawnerFired() {
+    spawnWaveMade++;
+    if (buff.spawnLimit() >= 1) {
+      spawnsLeft--;
+    }
+    int next;
+    if (spawnWaveMade < buff.spawnNumber()) {
+      next = buff.spawnIntervalMs();
+    } else {
+      spawnWaveMade = 0;
+      next = buff.spawnPauseTimeMs();
+    }
+    spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
   }
 
   /** The source that left the battle is forgotten; the instance stays. */

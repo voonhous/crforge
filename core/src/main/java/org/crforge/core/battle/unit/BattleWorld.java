@@ -2533,6 +2533,101 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * One firing of a buff's spawner (0xe2c748..0xe2c7c8, the character spawner 0xe2506c): one child
+   * of the buff's spawn object, made for its carrier's side at the carrier's level re-based on the
+   * child's rarity, in front of the carrier as a character's spawner places it - the carrier's
+   * collision radius and its own away toward the enemy, at the first quarter turn the in-front test
+   * accepts - with no deploy and no first-tick immunity, registered at once with its registration
+   * visit, and joining the live list at the next cleanup's fold. A clone carrier's child is a
+   * clone.
+   *
+   * <p>A child of the carrier's own row whose row limits its group, made by a carrier in a group,
+   * is linked into the carrier's chain right after it. A buff whose spawner needs its carrier alive
+   * files the carrier's id with the child: the fold admits it only while the carrier is listed and
+   * not removable.
+   *
+   * <p>Refused rather than guessed: a carrier that is a tower or a building; a child without hit
+   * points, a building, one that paths to its point or one with a starting action of its own; a
+   * firing with the chain already at the group's limit, where the game makes nothing; and, at the
+   * fold, a child whose carrier has left or is leaving, which the game releases.
+   *
+   * @param carrier the entity that carries the buff
+   * @param instance the instance whose spawner fires
+   */
+  void buffSpawn(WorldEntity carrier, BuffInstance instance) {
+    BuffData buff = instance.getBuff();
+    if (!(carrier instanceof CharacterEntity spawner) || spawner.getData().building()) {
+      throw new UnsupportedOperationException(
+          carrier.name()
+              + " carries "
+              + buff.name()
+              + ", whose spawner fires on a tower or a building, which is not modelled");
+    }
+    UnitData data = spawner.getData();
+    UnitData child = records.unit(buff.spawnObject());
+    if (child.hitpoints() <= 0
+        || child.building()
+        || child.spawnPathfindSpeed() != 0
+        || child.onStartingAction() != null) {
+      throw new UnsupportedOperationException(
+          buff.name()
+              + "'s spawner makes "
+              + child.name()
+              + ", without hit points, a building, pathing to its point or starting an action,"
+              + " which is not modelled");
+    }
+    // The group (0xe250a4..0xe250dc, 0xe25728..0xe25770): a carrier of the child's own row that is
+    // in a group counts its chain, and the call ends once the chain holds the limit.
+    boolean grouped =
+        child.groupMaxSize() >= 1 && spawner.inChain() && data.name().equals(child.name());
+    if (grouped && spawner.chainSize() >= child.groupMaxSize()) {
+      // The spawner makes nothing then and the firing still counts (0xe25754..0xe25760), but
+      // whether a unit that died has left the chain it is counted in is not established.
+      throw new UnsupportedOperationException(
+          spawner.name()
+              + "'s "
+              + buff.name()
+              + " fires with its group chain at the limit of "
+              + child.groupMaxSize()
+              + ", which holds the spawn and is not modelled");
+    }
+    int[] at =
+        SpawnPlacement.position(
+            spawner.getView().getX(),
+            spawner.getView().getY(),
+            0,
+            1,
+            false,
+            0,
+            data.collisionRadius() + child.collisionRadius(),
+            spawner.side() & 1,
+            tileMap.width() * TileMap.CELL_UNITS,
+            (px, py) -> SpawnPassable.passable(tileMap, px, py, child.collisionRadius()));
+    int x = inset(at[0], tileMap.width());
+    int y = inset(at[1], tileMap.height());
+    int made = spawnCounts.merge(spawner.name(), 1, Integer::sum) - 1;
+    CharacterEntity spawned =
+        CharacterEntity.spawned(
+            this,
+            child,
+            spawner.name() + "_" + made,
+            spawner.side(),
+            x,
+            y,
+            PackedLevel.level(PackedLevel.pack(spawner.getPackedLevel(), child.rarity())));
+    if (grouped) {
+      spawner.linkSpawnIntoChain(spawned);
+    }
+    cloneSpawn(spawner, spawned);
+    // With SpawnerAliveRequired the spawner's id is filed beside the child (the stack argument
+    // with_id, 0xe25af0..0xe25b08), which the fold reads.
+    holder.addRegistered(spawned, buff.spawnerAliveRequired() ? spawner.getId() : 0);
+    for (WorldObserver observer : observers) {
+      observer.characterSpawned(tick, spawner, spawned, x, y);
+    }
+  }
+
   void destroyedAtLimit(CharacterEntity spawner) {
     for (WorldObserver observer : observers) {
       observer.destroyedAtLimit(tick, spawner);
