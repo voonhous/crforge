@@ -2815,11 +2815,12 @@ public final class ActionRows {
     }
 
     /**
-     * A projectile spawn row: of the location class aimed by at least one target expression, or of
-     * the plain class, which starts it from the owner's own point and height and, aimed by neither
-     * expression, launches it at the owner's current target, refused as it starts while the owner
-     * holds one; the owner as its source. Any other spawn column but the action to run on what it
-     * spawned, which this branch does not read, is refused.
+     * A projectile spawn row of either class, the location class starting it from the source's
+     * point at the row's start height, the plain class from the source's point and live height;
+     * aimed by neither expression, it is launched at the source's current target, refused as it
+     * starts while the source holds one. The source is the owner, or the cause without
+     * ParentGOAsSource, refused as it starts when the cause is not the owner. Any other spawn
+     * column but the action to run on what it spawned, which this branch does not read, is refused.
      */
     private SpawnProjectile spawnProjectile(
         String name, String type, ActionRow shared, JsonNode f) {
@@ -2840,16 +2841,8 @@ public final class ActionRows {
               name + " spawns a projectile and sets " + column + ", which is not modelled");
         }
       }
-      if (!bool(f, "ParentGOAsSource")) {
-        throw new UnsupportedOperationException(
-            name + " spawns a projectile from its cause, which is not modelled");
-      }
       IntSupplier aimX = expression(f.get("TargetExprX"));
       IntSupplier aimY = expression(f.get("TargetExprY"));
-      if (aimX == null && aimY == null && !spawnClass) {
-        throw new UnsupportedOperationException(
-            name + " spawns a projectile at its owner's target, which is not modelled");
-      }
       if (!f.path("SpawnData").isTextual()) {
         throw new UnsupportedOperationException(
             name + " spawns a projectile written inline, which is not modelled");
@@ -2860,7 +2853,8 @@ public final class ActionRows {
           integer(f, "StartPositionZOffset"),
           aimX,
           aimY,
-          spawnClass);
+          spawnClass,
+          bool(f, "ParentGOAsSource"));
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */

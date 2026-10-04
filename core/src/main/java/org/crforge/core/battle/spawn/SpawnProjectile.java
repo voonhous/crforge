@@ -20,17 +20,23 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>The two classes differ in the height. A row of the location class starts it at the row's start
  * height, a row of the plain class at the row's start height above the owner's live height. A row
- * of the plain class aimed by neither expression launches it at the owner's current target, still
+ * of either class aimed by neither expression launches it at the owner's current target, still
  * aimed at the owner's point; a dying unit's combat gate has switched its targeting off before its
- * killed action runs, so the evolved Wall Breaker's barrel has none.
+ * killed action runs, so the evolved Wall Breaker's barrel has none, and the hero Musketeer's
+ * turret holds none as its start launches its knockback.
  *
- * <p>Refused rather than guessed, as the row is built: a row whose source is the cause rather than
- * the owner, a row of the location class with neither target expression, which would aim at the
- * owner's target, and one that sets any spawn column besides its data, its type, the start height,
- * the two expressions and the action to run on what it spawned, which this branch does not read.
- * Refused as it starts: an owner that is a clone, whose answer the projectile would copy; a row of
- * the plain class aimed by neither expression on an owner that is not a character or whose
- * targeting component is on and holds a reference, which the projectile would be launched at.
+ * <p>A row without ParentGOAsSource takes its cause as the source in place of the owner. A
+ * character's start schedules its starting action with the character as its own cause, so the
+ * source of the turret's knockback is the turret itself, the same object, side and level as the
+ * owner.
+ *
+ * <p>Refused rather than guessed, as the row is built: one that sets any spawn column besides its
+ * data, its type, the start height, the two expressions, the source switch and the action to run on
+ * what it spawned, which this branch does not read. Refused as it starts: a row without
+ * ParentGOAsSource whose cause is missing or is not the owner; an owner that is a clone, whose
+ * answer the projectile would copy; a row aimed by neither expression on an owner that is not a
+ * character or whose targeting component is on and holds a reference, which the projectile would be
+ * launched at.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -41,8 +47,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " launches its spirits behind it to either side. The plain class's owner height and"
             + " a target dropped by the gate are held by evo_wallbreakers_vs_musketeer, where the"
             + " evolved Wall Breaker, shot dead on its way, launches its barrel on its own point."
-            + " Refused: the cause as the source, an aim at a held target of either class, the"
-            + " count, the positions, the offsets and a clone as the owner.")
+            + " The cause as the source when it is the owner, and the location class aimed by"
+            + " neither expression at no target, are held by ability_hero_musketeer, where the"
+            + " hero Musketeer's turret launches its knockback on its own point as it starts."
+            + " Refused: a cause other than the owner, an aim at a held target of either class,"
+            + " the count, the positions, the offsets and a clone as the owner.")
 public final class SpawnProjectile extends RowAction {
 
   /** The projectile row's name. */
@@ -63,6 +72,9 @@ public final class SpawnProjectile extends RowAction {
    */
   @Getter private final boolean spawnClass;
 
+  /** True to take the owner as the source; false to take the cause, which must be the owner. */
+  @Getter private final boolean parentGoAsSource;
+
   /**
    * @param row the row's shared columns
    * @param projectile the projectile row's name
@@ -70,6 +82,7 @@ public final class SpawnProjectile extends RowAction {
    * @param aimX the aim along the arena's width, or null for the owner's own coordinate
    * @param aimY the aim along the arena's length, or null for the owner's own coordinate
    * @param spawnClass true for a row of the plain spawn class, false for the location class
+   * @param parentGoAsSource true to take the owner as the source in place of the cause
    */
   public SpawnProjectile(
       ActionRow row,
@@ -77,19 +90,32 @@ public final class SpawnProjectile extends RowAction {
       int startHeight,
       IntSupplier aimX,
       IntSupplier aimY,
-      boolean spawnClass) {
+      boolean spawnClass,
+      boolean parentGoAsSource) {
     super(row);
     this.projectile = projectile;
     this.startHeight = startHeight;
     this.aimX = aimX;
     this.aimY = aimY;
     this.spawnClass = spawnClass;
+    this.parentGoAsSource = parentGoAsSource;
   }
 
   @Override
   public ActionInstance start(ActionHolder holder) {
+    return start(holder, null);
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
     if (!(holder.getOwner() instanceof SpawnHost owner)) {
       throw new UnsupportedOperationException(name() + " runs on an object that cannot spawn");
+    }
+    // Without ParentGOAsSource the source is the cause. Its reference is made from the cause as
+    // the owner's is made from the owner, so a cause that is the owner launches as the owner.
+    if (!parentGoAsSource && (instigator == null || instigator.getOwner() != holder.getOwner())) {
+      throw new UnsupportedOperationException(
+          name() + " spawns a projectile from a cause other than its owner, which is not modelled");
     }
     owner.spawnProjectile(
         name(), projectile, startHeight, aimX, aimY, spawnClass, holder.passPhase());
