@@ -220,6 +220,21 @@ class BattleRecordsTest {
   }
 
   @Test
+  @DisplayName(
+      "a projectile's spawn chain is carried, and whether its spawns share its group or are new"
+          + " projectiles")
+  void aProjectileSpawnChain() {
+    ProjectileData bomb = records.projectile("BombSkeletonProjectile_EV1");
+    assertThat(bomb.spawnProjectile()).isEqualTo("BombSkeletonProjectile_2_EV1");
+    assertThat(bomb.spawnChain()).isEqualTo(2);
+    assertThat(bomb.chainIsNewProjectile()).isFalse();
+    assertThat(bomb.unmodelledColumns()).isEmpty();
+    ProjectileData rocket = records.projectile("RocketSpell_crazy_1");
+    assertThat(rocket.spawnChain()).isEqualTo(4);
+    assertThat(rocket.chainIsNewProjectile()).isTrue();
+  }
+
+  @Test
   @DisplayName("a buff's death spawn is carried")
   void aBuffDeathSpawn() {
     BuffData curse = records.buff("VoodooCurse");
