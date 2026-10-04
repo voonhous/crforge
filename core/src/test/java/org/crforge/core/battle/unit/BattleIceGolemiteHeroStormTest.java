@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -18,7 +17,8 @@ import org.junit.jupiter.api.Test;
  * that follows the Golemite and, every 1500 ms from its first update, queues its level-scaled
  * damage as a typed hit on every enemy it reaches, a crown tower taking only its 5 percent share,
  * rounded up. Its life ends on its 61st update, after its third hit, with an action that spawns the
- * freeze circle, which is not modelled.
+ * freeze circle, whose one hit gives each enemy it reaches the freeze buff its row and radius
+ * choose.
  */
 class BattleIceGolemiteHeroStormTest {
 
@@ -30,7 +30,7 @@ class BattleIceGolemiteHeroStormTest {
   @Test
   @DisplayName(
       "the damage circle hits an enemy Knight and an enemy princess tower on its first update and"
-          + " every 30 steps after, the tower taking its share; its life-end freeze is refused")
+          + " every 30 steps after, the tower taking its share; its life end freezes them")
   void theStormHitsEveryThirtySteps() {
     Twin storm = new Twin();
     Twin quiet = new Twin();
@@ -77,16 +77,26 @@ class BattleIceGolemiteHeroStormTest {
       assertThat(towerLost[k]).as("tower, step %d", k).isEqualTo(hits * share);
       assertThat(knightLost[k]).as("knight, step %d", k).isEqualTo(hits * damage);
     }
-    // The 61st update hits a third time and ends the life: the freeze circle it spawns is refused.
+    // The 61st update hits a third time and ends the life, spawning the freeze circle; that one is
+    // first updated in the next step, its one hit choosing a freeze buff for each object it
+    // reaches.
     int last = first + 60;
-    assertThatThrownBy(
-            () -> {
-              for (int k = 60; k <= last; k++) {
-                storm.match.getBattle().step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("IceGolemiteHero_Freeze_AEO");
+    for (int k = 60; k <= last; k++) {
+      storm.match.getBattle().step();
+    }
+    assertThat(freezes(storm.tower)).isEmpty();
+    storm.match.getBattle().step();
+    assertThat(freezes(storm.tower)).containsExactly("IceGolemiteHero_Freeze_Buff_Tower");
+    assertThat(freezes(storm.knight)).containsExactly("IceGolemiteHero_Freeze_Buff_Small");
+    assertThat(freezes(storm.golemite)).isEmpty();
+  }
+
+  /** The names of the Ice Golemite hero freeze buffs an entity carries, in its list's order. */
+  private static List<String> freezes(WorldEntity entity) {
+    return entity.getBuffs().items().stream()
+        .map(instance -> instance.getBuff().name())
+        .filter(name -> name.startsWith("IceGolemiteHero_Freeze"))
+        .toList();
   }
 
   /** One battle: a side-0 Ice Golemite hero form, an enemy Knight beside it, towers that hold. */

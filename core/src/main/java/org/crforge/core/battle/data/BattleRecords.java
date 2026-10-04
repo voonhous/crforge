@@ -1357,10 +1357,18 @@ public final class BattleRecords {
         data.onHitAction() != null
             && data.shaped()
             && tables.action(data.onHitAction()).classType().equals("ActionFilterByEnemy");
+    // A circle's hit pass schedules a choice between buff spawns, as the Ice Golemite hero form's
+    // slow circle does; the circle's load refuses anything else it would schedule.
+    boolean circleBuffs =
+        data.onHitAction() != null
+            && data.shaped()
+            && data.shapeRadius() >= 1
+            && buffSelect(data.onHitAction());
     if (data.onHitAction() != null
         && !(data.cloning() && cloning)
         && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt || poison))
-        && !byTeam) {
+        && !byTeam
+        && !circleBuffs) {
       unmodelled.add("OnHitAction");
     }
     // One hit per target is read by the hit action's loop; whether anything else reads it is not
@@ -1443,17 +1451,19 @@ public final class BattleRecords {
 
   /**
    * A shaped row with its circle read, as the Giant hero form's landing and the Ice Golemite hero
-   * form's damage and knockback circles have: a filter, a damage queued through a damage type as a
-   * typed hit, a crown tower taking its share of it, a push away from its point, and nothing else a
-   * hit would do. Refused, by its Shape column: a circle without a filter, with neither damage nor
-   * a push, with damage but no damage type, with a hit action, a buff, a launch, a spawner, a
-   * growth, one hit per target or shared damage, none of which the circle's hit pass is held for.
-   * The push's floor and gate lift are refused for every area effect.
+   * form's damage, knockback and slow circles have: a filter, a hit action that chooses a buff to
+   * spawn, a damage queued through a damage type as a typed hit, a crown tower taking its share of
+   * it, a push away from its point, and nothing else a hit would do. Refused, by its Shape column:
+   * a circle without a filter, with neither a hit action, damage nor a push, with damage but no
+   * damage type, with any other hit action, a buff, a launch, a spawner, a growth, one hit per
+   * target or shared damage, none of which the circle's hit pass is held for. The push's floor and
+   * gate lift are refused for every area effect.
    */
   private AreaEffectData circle(AreaEffectData data, GameRow row, List<String> unmodelled) {
+    boolean buffSelect = data.onHitAction() != null && buffSelect(data.onHitAction());
     if (data.filter() == null
-        || (data.damage() == 0 && data.pushback() < 1)
-        || data.onHitAction() != null
+        || (data.damage() == 0 && data.pushback() < 1 && !buffSelect)
+        || (data.onHitAction() != null && !buffSelect)
         || data.buff() != null
         || data.projectile() != null
         || data.spawnCharacter() != null
@@ -1495,6 +1505,26 @@ public final class BattleRecords {
       return row.fields().path("SpawnType").asText("").equals("BuffType");
     }
     if (!row.classType().equals("ActionGroup")) {
+      return false;
+    }
+    for (JsonNode part : row.fields().path("SubActions")) {
+      GameAction sub = tables.action(part.path("action").asText());
+      if (!sub.classType().equals("ActionSpawn")
+          || !sub.fields().path("SpawnType").asText("").equals("BuffType")) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Whether a hit action is a choice between buff spawns, as the Ice Golemite hero form's slow
+   * circle has: a select whose every part spawns a buff. Scheduled on the object a hit reaches, its
+   * conditions are read on that object, and the part it chooses is scheduled there.
+   */
+  private boolean buffSelect(String action) {
+    GameAction row = tables.action(action);
+    if (!row.classType().equals("ActionSelect") || row.fields().path("SubActions").isEmpty()) {
       return false;
     }
     for (JsonNode part : row.fields().path("SubActions")) {

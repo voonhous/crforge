@@ -556,8 +556,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * The hits of a row shaped as a circle, as the Giant hero form's landing is: the objects in the
    * circle around its point that pass its filter, listed once for the update - a building when its
    * square comes within the radius, anything else when its centre lies strictly within the radius
-   * plus its collision radius - and, for each hit, every one of them in turn takes the hit's damage
-   * and then its push.
+   * plus its collision radius - and, for each hit, every one of them in turn gets the hit action,
+   * then takes the hit's damage and then its push.
+   *
+   * <p>The hit action, as the Ice Golemite hero form's slow circle has, is built for the target and
+   * scheduled on it with the area effect as the cause, on every hit: a choice between buff spawns,
+   * whose conditions read the target and whose chosen buff the target gets.
    *
    * <p>The damage is the level-scaled damage queued as a typed hit of the row's damage type, the
    * area effect its source, with no direction; a crown tower takes the row's crown tower share of
@@ -582,6 +586,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     int tower = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
     for (int i = 0; i < hits; i++) {
       for (WorldEntity target : listed) {
+        // The hit action first, on every hit: built for the target and scheduled there, the area
+        // effect as the cause.
+        if (data.onHitAction() != null) {
+          BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
+          target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
+        }
         if (damage >= 1) {
           world.queueTypedHit(
               this, target, type, target.getTargetView().crownTower() ? tower : damage);
