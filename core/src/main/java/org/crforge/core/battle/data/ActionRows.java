@@ -165,6 +165,33 @@ public final class ActionRows {
           "ActionVisualActionGroup",
           "ChampionLogicAbilityButtonAnimatorData");
 
+  /** The columns the timer reads besides the shared ones; the bar's own columns only show. */
+  private static final Set<String> TIMER_QUEST_READS =
+      Set.of(
+          "Intervals",
+          "IntervalStartAt",
+          "StartTimerDelay",
+          "MaxResets",
+          "UpgradeBarIfTrue",
+          "AmountToIncreaseOnUpgradeBarList",
+          "OnIntervalReachedAction",
+          "OnMaxResetsReachedAction",
+          "Type",
+          "AffectedByHitSpeed",
+          "BarIndicatorName",
+          "BarNamesList",
+          "ContainerName",
+          "ExportNameAtFull",
+          "InvertBar",
+          "OpponentVisualInterval");
+
+  /** Both sets of columns in one. */
+  private static Set<String> union(Set<String> first, Set<String> second) {
+    Set<String> both = new HashSet<>(first);
+    both.addAll(second);
+    return Set.copyOf(both);
+  }
+
   /** The columns each class reads besides the shared ones. */
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
@@ -230,24 +257,20 @@ public final class ActionRows {
               "ActionRunActionIfUnitGroupContains",
               Set.of("Action", "ActionIfNoMatch", "ObjectFilter")),
           Map.entry("ActionRunOnMatchingUnitsInGroup", Set.of("ObjectFilter", "ActionToRun")),
-          // The timer: its intervals, start, count, action, bar type and hit speed switch. Its
-          // bar's names, file, inversion and the interval the other player sees only show
-          // something.
+          // The timer: its intervals, start, start delay, count, upgrade gate and amounts, the
+          // actions, bar type and hit speed switch. Its bar's names, file, inversion and the
+          // interval the other player sees only show something.
+          Map.entry("ActionTimerQuest", TIMER_QUEST_READS),
+          // The hero Mini Pekka's ability level timer: the timer's columns and run, and the
+          // ability button's labels and values, which only the button shows.
           Map.entry(
-              "ActionTimerQuest",
-              Set.of(
-                  "Intervals",
-                  "IntervalStartAt",
-                  "MaxResets",
-                  "OnIntervalReachedAction",
-                  "Type",
-                  "AffectedByHitSpeed",
-                  "BarIndicatorName",
-                  "BarNamesList",
-                  "ContainerName",
-                  "ExportNameAtFull",
-                  "InvertBar",
-                  "OpponentVisualInterval")),
+              "ActionMiniPekkaHeroQuest",
+              union(
+                  TIMER_QUEST_READS,
+                  Set.of(
+                      "AbilityButtonStartLabel",
+                      "AbilityButtonEndLabel",
+                      "AbilityButtonTextFieldValues"))),
           // The button state override: the champion whose slot it writes into, the state, the
           // refill and whether its run lasts. Its immediate and highlight switches are stored and
           // read by nothing.
@@ -1159,11 +1182,19 @@ public final class ActionRows {
               yield new RunOnMatchingUnitsInGroup(
                   shared, objectFilter(name, f), rowName(f.get("ActionToRun")));
             }
-            case "ActionTimerQuest" -> {
+            // The hero Mini Pekka's quest builds the timer's own run: its instance starts and
+            // steps as the timer's does.
+            case "ActionTimerQuest", "ActionMiniPekkaHeroQuest" -> {
               String barType = f.path("Type").asText("Continuous");
               if (!barType.equals("Continuous")) {
                 throw new UnsupportedOperationException(
                     name + " sets Type " + barType + ", a segmented bar, which is not modelled");
+              }
+              if (f.hasNonNull("OnMaxResetsReachedAction")) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " sets OnMaxResetsReachedAction, the action after its last interval,"
+                        + " which is not modelled");
               }
               boolean affected = f.path("AffectedByHitSpeed").asBoolean(true);
               BooleanSupplier buffed = binding.hitSpeedBuffed();
@@ -1171,7 +1202,10 @@ public final class ActionRows {
                   shared,
                   ints(f.get("Intervals")),
                   integer(f, "IntervalStartAt"),
+                  integer(f, "StartTimerDelay"),
                   integer(f, "MaxResets"),
+                  expression(f.get("UpgradeBarIfTrue")),
+                  ints(f.get("AmountToIncreaseOnUpgradeBarList")),
                   action(f.get("OnIntervalReachedAction")),
                   affected ? buffed : () -> false);
             }

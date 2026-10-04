@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
@@ -22,8 +23,8 @@ class BattleHitTargetActionTest {
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /**
-   * The hero Mini Pekka's row without its starting action, the timer its ability's level runs on,
-   * which the battle does not have; nothing the hits run reads it without the ability.
+   * The hero Mini Pekka's row without its starting action, the timer its ability's level runs on;
+   * nothing the hits run reads it without the ability.
    */
   private static UnitData heroWithoutTimer() {
     return GameData.unit("MiniPekkaHero").toBuilder().onStartingAction(null).build();
@@ -124,18 +125,15 @@ class BattleHitTargetActionTest {
 
   @Test
   @DisplayName(
-      "the hero Mini Pekka as the game ships it is refused for its ability level timer, which the"
-          + " battle does not have")
-  void theShippedHeroIsRefusedForItsTimer() {
+      "the hero Mini Pekka as the game ships it starts, its ability level timer included, which"
+          + " BattleMiniPekkaHeroQuestTest follows")
+  void theShippedHeroStartsWithItsTimer() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
 
-    assertThatThrownBy(
+    assertThatCode(
             () -> {
               battle.deploy(0, GameData.unit("MiniPekkaHero"), LEVEL, 0, 3500, 14000, "p").start();
             })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "MiniPekkaHero_run_timer_continuous is an ActionMiniPekkaHeroQuest, which the battle"
-                + " does not have");
+        .doesNotThrowAnyException();
   }
 }

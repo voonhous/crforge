@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
+import java.util.function.IntSupplier;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -17,6 +18,16 @@ import org.crforge.core.fidelity.FidelityStatus;
  * every time; a row with several takes the one at the count done, the last once past them. A row
  * with no intervals counts to 1000.
  *
+ * <p>A row with a start delay spends its first steps taking 50 off the delay, counting nothing,
+ * while the delay is 1 or more. A row with an upgrade gate asks it on each counting step, on the
+ * owner, before anything is added: while it holds, the step adds the row's upgrade amount instead
+ * of 50 (one amount for every interval, or the one at the count done, the last once past them; none
+ * listed is 0), and a negative amount fills the progress to the interval at once. At most one
+ * interval is counted out per step.
+ *
+ * <p>The hero Mini Pekka's ability level timer is the same run: its row adds the labels and values
+ * of the ability button, which only the button shows.
+ *
  * <p>Its bar's names, files, inversion and the interval the other player is shown are read only by
  * what the bar shows. Refused rather than guessed: a step taken while a buff changes the owner's
  * hit speed, which the progress follows by a scaling not established.
@@ -26,9 +37,12 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the start value floored at 0, 50 a step, the action scheduled on the owner as"
             + " the progress reaches the interval, the interval taken off while intervals are"
-            + " left, idle after the last, and no end of its own; held by hero_goblins. Refused: a"
-            + " step under a hit speed buff, and the start delay, the upgrade, the action after the"
-            + " last interval and the segmented bar, as columns.")
+            + " left, idle after the last, and no end of its own; held by hero_goblins. The start"
+            + " delay counted down 50 a step before any counting, and the upgrade gate asked on"
+            + " the owner each counting step, adding the upgrade amount instead of 50 or filling"
+            + " the progress for a negative one; held by hero_mini_pekka. Refused: a step under a"
+            + " hit speed buff, and the action after the last interval and the segmented bar, as"
+            + " columns.")
 public final class TimerQuest extends RowAction {
 
   /** What a row with no intervals counts to. */
@@ -39,7 +53,10 @@ public final class TimerQuest extends RowAction {
 
   private final List<Integer> intervalsMs;
   private final int startAtMs;
+  private final int startDelayMs;
   private final int maxResets;
+  private final IntSupplier upgradeIf;
+  private final List<Integer> upgradeAmountsMs;
   private final BattleAction onIntervalReached;
   private final BooleanSupplier hitSpeedBuffed;
 
@@ -48,8 +65,12 @@ public final class TimerQuest extends RowAction {
    * @param intervalsMs the intervals, each in milliseconds; empty counts to {@link
    *     #DEFAULT_INTERVAL_MS}
    * @param startAtMs the progress it starts at
+   * @param startDelayMs the delay its first steps count down before it counts, 0 for none
    * @param maxResets how many intervals it counts out; with several intervals, no more than there
    *     are
+   * @param upgradeIf the upgrade gate, asked on the owner each counting step, or null for none
+   * @param upgradeAmountsMs what a step adds while the gate holds, each in milliseconds; empty adds
+   *     0; with several, no fewer than the intervals counted out
    * @param onIntervalReached scheduled as each interval is reached, or null
    * @param hitSpeedBuffed whether a buff changes the owner's hit speed as it stands
    */
@@ -57,7 +78,10 @@ public final class TimerQuest extends RowAction {
       ActionRow row,
       List<Integer> intervalsMs,
       int startAtMs,
+      int startDelayMs,
       int maxResets,
+      IntSupplier upgradeIf,
+      List<Integer> upgradeAmountsMs,
       BattleAction onIntervalReached,
       BooleanSupplier hitSpeedBuffed) {
     super(row);
@@ -65,10 +89,18 @@ public final class TimerQuest extends RowAction {
       throw new UnsupportedOperationException(
           row.name() + " counts out more intervals than it lists, which reads past them");
     }
+    if (upgradeAmountsMs.size() > 1 && maxResets > upgradeAmountsMs.size()) {
+      throw new UnsupportedOperationException(
+          row.name() + " counts out more intervals than it lists upgrades, which reads past them");
+    }
     this.intervalsMs =
         intervalsMs.isEmpty() ? List.of(DEFAULT_INTERVAL_MS) : List.copyOf(intervalsMs);
     this.startAtMs = startAtMs;
+    this.startDelayMs = startDelayMs;
     this.maxResets = maxResets;
+    this.upgradeIf = upgradeIf;
+    // The game's loader lists one amount of 0 for a row that lists none.
+    this.upgradeAmountsMs = upgradeAmountsMs.isEmpty() ? List.of(0) : List.copyOf(upgradeAmountsMs);
     this.onIntervalReached = onIntervalReached;
     this.hitSpeedBuffed = hitSpeedBuffed;
   }
@@ -80,6 +112,7 @@ public final class TimerQuest extends RowAction {
 
   private final class Run extends ActionInstance implements CountingRun {
     private int progress = Math.max(startAtMs, 0);
+    private int delay = startDelayMs;
     private int done;
 
     private Run() {
@@ -93,18 +126,28 @@ public final class TimerQuest extends RowAction {
 
     @Override
     protected void update(ActionHolder holder) {
+      // The start delay: while 1 or more is left, a step only takes 50 off it.
+      if (delay >= 1) {
+        delay -= STEP_MS;
+        return;
+      }
       if (done >= maxResets) {
         return;
       }
-      int interval =
-          intervalsMs.size() == 1
-              ? intervalsMs.get(0)
-              : intervalsMs.get(Math.min(done, maxResets - 1));
-      if (hitSpeedBuffed.getAsBoolean()) {
-        throw new UnsupportedOperationException(
-            name() + " steps under a buff on its owner's hit speed, whose scaling is not modelled");
+      // Asked on every counting step, before the interval is chosen.
+      boolean upgrade = upgradeIf != null && upgradeIf.getAsInt() != 0;
+      int interval = pick(intervalsMs);
+      if (upgrade) {
+        int amount = pick(upgradeAmountsMs);
+        progress = amount < 0 ? interval : progress + amount;
+      } else {
+        if (hitSpeedBuffed.getAsBoolean()) {
+          throw new UnsupportedOperationException(
+              name()
+                  + " steps under a buff on its owner's hit speed, whose scaling is not modelled");
+        }
+        progress += STEP_MS;
       }
-      progress += STEP_MS;
       if (progress >= interval) {
         if (onIntervalReached != null) {
           holder.schedule(onIntervalReached, ActionHolder.OWN_DELAY, false, holder);
@@ -114,6 +157,11 @@ public final class TimerQuest extends RowAction {
           progress -= interval;
         }
       }
+    }
+
+    /** The entry of a list for this interval: the only one, else the one at the count done. */
+    private int pick(List<Integer> values) {
+      return values.size() == 1 ? values.get(0) : values.get(Math.min(done, maxResets - 1));
     }
   }
 }
