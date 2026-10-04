@@ -36,6 +36,7 @@ import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.state.StateTimers;
 import org.crforge.core.pathfinding.state.StateVisitConfig;
 import org.crforge.core.pathfinding.state.StateVisitGlobals;
+import org.crforge.core.pathfinding.target.AttackSequenceEntry;
 import org.crforge.core.pathfinding.target.SelectionChain;
 import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingVisit;
@@ -131,13 +132,50 @@ public class TowerEntity extends WorldEntity {
     selection.setBuildingKeepsAttacking(data.hitpoints() != 0);
     attach(new TargetingComponent());
 
-    if (data.king() && data.onStartingAction() != null) {
-      // The king's starting action is its row's: a group around the wait for its activation.
-      // The placement queues it; with no pending pass running it waits for the first one.
+    refuseAttack(data);
+    if (data.onStartingAction() != null) {
+      // A tower's starting action is its row's, which its placement queues; with no pending pass
+      // running it waits for the first one. The king's is a group around the wait for its
+      // activation; the Dagger Duchess's is its charge counter.
       BattleAction starting =
           world.getActions().build(data.onStartingAction(), world.binding(this));
-      actionHolder().setListener(new ActivationListener());
+      if (data.king()) {
+        actionHolder().setListener(new ActivationListener());
+      }
       actionHolder().schedule(starting, ActionHolder.OWN_DELAY);
+    }
+  }
+
+  /**
+   * Refuses the parts of a tower's attack sequence that are not established: a mode that moves the
+   * index by itself, and an entry that sets anything but its damage, its projectile and its pace
+   * (the hit speed multiplier the attack timer steps at). Only an action moves a tower's index.
+   */
+  private static void refuseAttack(UnitData data) {
+    AttackSequence sequence = data.attackSequence();
+    String refused = null;
+    if (sequence.mode() != AttackSequence.MODE_NONE) {
+      refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
+    }
+    for (AttackSequence.Entry entry : sequence.entries()) {
+      boolean more =
+          entry.variableDamageTime() != 0
+              || entry.customRange() != -1
+              || entry.customSightRange() != -1
+              || entry.customMinimumRange() != -1
+              || entry.customProjectileStartZ() != -1
+              || entry.customProjectileStartRadius() != -1
+              || entry.meleePushback() != 0
+              || entry.meleePushbackAll()
+              || entry.doAttackAction() != null;
+      if (more) {
+        refused = "an attack sequence entry that sets more than its damage, projectile and pace";
+      } else if (sequence.replacesAttack() && entry.projectile() == null && data.hasProjectile()) {
+        refused = "an attack sequence entry without a projectile on a tower that fires";
+      }
+    }
+    if (refused != null) {
+      throw new UnsupportedOperationException(data.name() + " has " + refused + ", not modelled");
     }
   }
 
@@ -229,7 +267,32 @@ public class TowerEntity extends WorldEntity {
         .sightClip(data.sightClip())
         .sightClipSide(data.sightClipSide())
         .keepTargetWithPendingDamage(data.keepTargetWithPendingDamage())
+        .attackSequenceMode(data.attackSequence().mode())
+        .attackSequenceLength(data.attackSequence().order().size())
+        .attackSequenceStepIds(data.attackSequence().order())
+        .attackSequenceEntries(sequenceEntries(data.attackSequence()))
         .build();
+  }
+
+  /**
+   * The steps the targeting reads of a tower's attack sequence: each entry's pace, the hit speed
+   * multiplier the attack timer steps at, and no range of its own. A tower without a sequence has
+   * the one ordinary step.
+   */
+  private static List<AttackSequenceEntry> sequenceEntries(AttackSequence sequence) {
+    if (sequence.entries().isEmpty()) {
+      return List.of(AttackSequenceEntry.none());
+    }
+    List<AttackSequenceEntry> steps = new ArrayList<>();
+    for (AttackSequence.Entry entry : sequence.entries()) {
+      steps.add(
+          new AttackSequenceEntry(
+              AttackSequenceEntry.NO_OVERRIDE,
+              AttackSequenceEntry.NO_OVERRIDE,
+              AttackSequenceEntry.NO_OVERRIDE,
+              entry.hitSpeedMultiplier()));
+    }
+    return steps;
   }
 
   /**

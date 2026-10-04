@@ -129,6 +129,21 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void buildsTheDaggerDuchessTowersOfASidesTowerSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000002);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 2 of the tower selections, King_KnifeTowers, a Legendary selection: its DaggerDuchess
+    // rows stand eight levels above the first, its king tower at the first.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_KnifeTowers", 1, 9));
+  }
+
+  @Test
   void buildsTheRoyalChefTowersOfASidesTowerSelection() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
@@ -193,16 +208,14 @@ class ReplayScenarioTest {
 
   @Test
   void refusesATowerSelectionTheSimulatorDoesNotBuild() {
-    // The Dagger Duchess and the Goblin Queen's towers.
-    for (int id : new int[] {159000002, 159000003}) {
-      ObjectNode scenario = Scenarios.knight();
-      ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", id);
+    // The Goblin Queen's towers, the one selection left unbuilt.
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000003);
 
-      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
-          .isInstanceOf(UnsupportedScenarioException.class)
-          .hasMessageContaining("battle.deck1.sc[0].d=" + id)
-          .hasMessageNotContaining("hold no table");
-    }
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("battle.deck1.sc[0].d=159000003")
+        .hasMessageNotContaining("hold no table");
   }
 
   @Test
