@@ -4435,8 +4435,9 @@ public class BattleWorld implements HolderPasses {
    * arena; a landing cell the row avoids replaced by the nearest allowed cell of its column within
    * four rows, the nearer half-row neighbour first at each distance, at that cell's centre, or by
    * the landing row's centre when none is allowed; the position written once; then the pending
-   * damage reset, the route emptied and the reference dropped, as the row asks. A projectile aimed
-   * at the unit, which the reset would make drop its target, is refused: no reference holds it.
+   * damage reset, the route emptied and the reference dropped, as the row asks. The reset drops the
+   * unit as the target of every projectile aimed at it, as entering a pathfinding state does; one
+   * whose row keeps its target through it is refused: no reference holds it.
    *
    * @param unit the unit
    * @param action the row
@@ -4498,26 +4499,32 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A warp's pending damage reset, the instant warp's and the flying warp's start alike: the damage
-   * on its way to the unit is set to 0. A projectile aimed at the unit, which the reset would make
-   * drop its target, is refused: no reference holds it.
+   * A warp's pending damage reset, the instant warp's and the flying warp's start alike: the unit's
+   * reset hook, the same as entering a pathfinding state. The damage on its way to the unit is set
+   * to 0, then every projectile aimed at it whose row allows it loses it as its target, handing
+   * nothing back; each flies on to its aim, where the unit last stood for it, and lands on nothing.
+   * A projectile aimed at the unit whose row keeps its target through the reset, which would hand
+   * its damage back from the emptied amount on its arrival, is refused: no reference holds it.
    *
    * @param unit the unit
    * @param action the warp row's name
    */
   void resetPendingDamageAtWarp(CharacterEntity unit, String action) {
     for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof ProjectileEntity p && p.getTarget() == unit) {
+      if (entity instanceof ProjectileEntity p
+          && p.getTarget() == unit
+          && !p.getData().allowResetTarget()) {
         throw new UnsupportedOperationException(
             action
                 + " warps "
                 + unit.name()
                 + " with "
                 + p.name()
-                + " aimed at it, whose drop no reference holds, not modelled");
+                + " aimed at it, whose row keeps its target through the reset, not modelled");
       }
     }
     unit.getView().setPendingDamageAmount(0);
+    dropProjectilesAimedAt(unit);
   }
 
   /**
@@ -4795,6 +4802,17 @@ public class BattleWorld implements HolderPasses {
    * @param unit the unit
    */
   void pathfindEntered(CharacterEntity unit) {
+    dropProjectilesAimedAt(unit);
+  }
+
+  /**
+   * The drop of the unit's reset hook, which entering either pathfinding state and a warp's pending
+   * damage reset run: every projectile of the live list aimed at the unit whose row allows it loses
+   * it as its target, handing no damage back; it flies on to its aim and lands on nothing.
+   *
+   * @param unit the unit
+   */
+  private void dropProjectilesAimedAt(CharacterEntity unit) {
     List<String> dropped = new ArrayList<>();
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof ProjectileEntity p
