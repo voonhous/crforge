@@ -91,8 +91,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * row, the evolved Baby Dragon's wind, lists in each update the characters its filter passes in the
  * rectangle about its point, a building by its square and anything else by its circle, and each hit
  * schedules its hit action, a choice by team, on every one of them with itself as the cause, and
- * does nothing else. When the countdown reaches 0 its life-end action is scheduled on itself; it
- * leaves at the cleanup that finds the countdown below 1.
+ * does nothing else. A row shaped as a circle, the Giant hero form's landing or the Ice Golemite
+ * hero form's damage and knockback circles, lists what its filter passes in the circle about its
+ * point, and each hit queues its damage on every one of them and pushes each away from its point.
+ * When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at the cleanup
+ * that finds the countdown below 1.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -553,25 +556,39 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * The hits of a row shaped as a circle, as the Giant hero form's landing is: the objects in the
    * circle around its point that pass its filter, listed once for the update - a building when its
    * square comes within the radius, anything else when its centre lies strictly within the radius
-   * plus its collision radius - and, for each hit, the level-scaled damage queued on every one of
-   * them as a typed hit of the row's damage type, the area effect its source, with no direction; a
-   * crown tower takes the row's crown tower share of it instead, rounded up. The queue is dealt
-   * after the tick's post-hooks. The row's load refuses a circle whose hits would do more, or split
-   * their damage among what they reach.
+   * plus its collision radius - and, for each hit, every one of them in turn takes the hit's damage
+   * and then its push.
+   *
+   * <p>The damage is the level-scaled damage queued as a typed hit of the row's damage type, the
+   * area effect its source, with no direction; a crown tower takes the row's crown tower share of
+   * it instead, rounded up. The queue is dealt after the tick's post-hooks, so a damage below 1
+   * queues nothing but the push still runs.
+   *
+   * <p>The push, with a pushback of at least 1, as the Ice Golemite hero form's knockback has, is
+   * the area push away from the area effect's point: a character without a movement component (a
+   * tower), whose row ignores pushback or that is dead is left where it is; any other is woken and
+   * asked for the whole pushback, every gate in place. The pushback wave the update shows after the
+   * hits is the view's.
+   *
+   * <p>The row's load refuses a circle whose hits would do more, split their damage among what they
+   * reach, or push with a floor or with the gates lifted.
    */
   private void circleShapeHits(int hits, int damage) {
     List<WorldEntity> listed =
         world.shapeQuery(this, data.shapeRadius(), world.getRecords().filter(data.filter()));
     world.shapeListed(this, listed);
-    if (damage < 1) {
-      return;
-    }
-    DamageType type = world.getActions().damageType(data.damageType(), binding());
+    DamageType type =
+        damage >= 1 ? world.getActions().damageType(data.damageType(), binding()) : null;
     int tower = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
     for (int i = 0; i < hits; i++) {
       for (WorldEntity target : listed) {
-        world.queueTypedHit(
-            this, target, type, target.getTargetView().crownTower() ? tower : damage);
+        if (damage >= 1) {
+          world.queueTypedHit(
+              this, target, type, target.getTargetView().crownTower() ? tower : damage);
+        }
+        if (data.pushback() >= 1 && target instanceof CharacterEntity character) {
+          character.pushedByArea(x, y, data.pushback());
+        }
       }
     }
   }
