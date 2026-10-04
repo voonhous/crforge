@@ -274,13 +274,18 @@ public final class LadderMatch implements BattleMode {
 
   /**
    * Refuses the slot flags no reference holds: flags on the Mirror or a variant card, a hero slot
-   * on a card other than a troop card, an evolution slot on a card that is not a troop, spell or
+   * on a building card or on a spell card with no hero form, a hero slot on a card that is not a
+   * troop, spell or building card, an evolution slot on a card that is not a troop, spell or
    * building card, and two copies of an evolution slot's card in a deck, whose counts the play's
    * deck index would mix.
    *
    * <p>A spell or building card in the evolution slot is counted and cast as a troop card is: the
    * item, the count and the row cast do not ask which kind of card it is. The evolved row it is
    * cast as is refused as it is cast when it sets something its kind's cast does not model.
+   *
+   * <p>A spell card in the hero slot is played as a troop card there is: its item names the hero
+   * form, and the play casts the card's hero row, as a spell is cast; the deck's champion slots
+   * follow the champion the hero row links, which the cast's projectile leaves behind.
    */
   private static void checkSlots(
       int side, List<MatchCard> deck, int[] flags, BattleRecords records) {
@@ -303,12 +308,18 @@ public final class LadderMatch implements BattleMode {
                 + " by no reference");
       }
       if (!records.troopCard(card.name())) {
-        // A hero form of a spell or building card: its cast and its ability are not modelled.
-        if ((flag & MatchSide.HERO_SLOT) != 0) {
+        if ((flag & MatchSide.HERO_SLOT) != 0 && !records.spellCard(card.name())) {
           throw new UnsupportedOperationException(
               card.name()
-                  + " in an evolution or hero slot, which is not a troop card, is held by no"
-                  + " reference");
+                  + " in a hero slot, which is neither a troop card nor a spell card, is held by"
+                  + " no reference");
+        }
+        if ((flag & MatchSide.HERO_SLOT) != 0
+            && card.evolvedSpells().stream().noneMatch(f -> f.form() == MatchCard.HERO_FORM)) {
+          // The play would cast the base row with the hero bit set, which no reference holds.
+          throw new UnsupportedOperationException(
+              card.name()
+                  + " in a hero slot, a spell card with no hero form, is held by no reference");
         }
         if (!records.spellOrBuildingCard(card.name())) {
           throw new UnsupportedOperationException(

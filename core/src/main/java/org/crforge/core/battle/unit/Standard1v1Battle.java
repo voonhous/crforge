@@ -812,7 +812,7 @@ public class Standard1v1Battle {
     // The cast comes before the units are made: a troop card's projectile is queued ahead of them.
     if (card.casts() && result.placed()) {
       // The card item's level field; the hand is not modelled, so it is the level played, less 1.
-      world.castSpell(card, level - 1, side, result.x(), result.y(), name);
+      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex);
     }
     List<CharacterEntity> units = new ArrayList<>();
     // A card that is a group links each unit it makes after the one made before it.

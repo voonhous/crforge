@@ -508,6 +508,7 @@ public final class BattleRecords {
           "HitEffect",
           "HitSoundWhenParentAlive",
           "PingpongDeathEffect",
+          "PrefabAsset",
           "PrestigeExportName",
           "PrestigeExportName2",
           "PrestigeExportName3",
@@ -1804,6 +1805,8 @@ public final class BattleRecords {
             .spawnCharacterCount(
                 set(row, "SpawnCharacter") ? Math.max(row.intValue("SpawnCharacterCount"), 1) : 0)
             .spawnCharacterDeployTimeMs(row.intValue("SpawnCharacterDeployTime"))
+            .deflectedCharacterSpawn(
+                set(row, "DeflectedCharacterSpawn") ? row.string("DeflectedCharacterSpawn") : null)
             .spawnConstPriority(row.bool("SpawnConstPriority"))
             .radiusY(row.intValue("RadiusY"))
             .projectileRadiusY(row.intValue("ProjectileRadiusY"))
@@ -1864,6 +1867,11 @@ public final class BattleRecords {
       if (!spawned.unmodelledColumns().isEmpty() || spawned.followsParent()) {
         unmodelled.add("SpawnAreaEffectObject");
       }
+    }
+    // A deflected spawn without a spawned character: how many of it the impact makes is not
+    // established. No shipped row has one.
+    if (data.deflectedCharacterSpawn() != null && data.spawnCharacter() == null) {
+      unmodelled.add("DeflectedCharacterSpawn");
     }
     // A hook's impacts carry its hooked flag, whose effect on a damage is not established: no
     // hooking row deals any.
@@ -2336,6 +2344,15 @@ public final class BattleRecords {
    */
   public boolean troopCard(String name) {
     return tables.table(SPELLS_CHARACTERS).has(name);
+  }
+
+  /**
+   * Whether a card is a spell card: a row of the other spells' cards.
+   *
+   * @param name the card row's name
+   */
+  public boolean spellCard(String name) {
+    return tables.table(SPELLS_OTHER).has(name);
   }
 
   /**

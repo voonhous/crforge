@@ -15,6 +15,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * its own steps, so the state holds only while something writes it. A row that is not persistent
  * writes once.
  *
+ * <p>On a projectile the row's perform asks the object that launched it instead, and writes nothing
+ * when that is gone or is not a character or a building; a spell's projectile is launched by its
+ * side's king. The persistent run's later writes go straight by the projectile's own side.
+ *
  * <p>The state is the champion button's: what the player's client draws and the order its reasons
  * are tried in. The slot's activation, the ability command's gates and the cast never read it; the
  * charges are read by the command's gate on a use.
@@ -25,7 +29,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the slot of the owner's player that follows the named row, the state written"
             + " when the row gives one, the charges refilled to the most, the persistent run"
             + " writing both every step, and nothing without a following slot; held by"
-            + " hero_goblins.")
+            + " hero_goblins. A projectile's perform handing over to its launcher and its run"
+            + " writing by its own side: held by hero_barb_log.")
 public final class OverrideAbilityButtonState extends RowAction {
 
   /** The champion row whose slot it writes into. */
@@ -58,7 +63,8 @@ public final class OverrideAbilityButtonState extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder) {
-    write(holder);
+    // The perform's write may hand the question to another object; the run's later writes do not.
+    holder.getOwner().performAbilityButtonOverride(this);
     if (!persistent) {
       return null;
     }
