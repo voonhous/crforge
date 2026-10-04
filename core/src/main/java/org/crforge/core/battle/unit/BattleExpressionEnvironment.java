@@ -49,6 +49,8 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " alike as a character, no clone, that a champion slot of its side follows by its"
             + " row and play, held by hero_goblins; is_deploying as a character in the"
             + " deploying state, 0 for any other object, held by hero_mega_minion;"
+            + " is_combat_enabled as the context's targeting component switched on, held by"
+            + " ability_hero_mega_minion_vs_musketeer;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -61,7 +63,7 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
             + " would read first, refused; target_max_hp on a tower or on a reference that has"
-            + " left the battle, refused; the other 22 functions, which fail"
+            + " left the battle, refused; the other 21 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -89,6 +91,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       BattleFunctions.id("is_active_or_secondary_champion");
   private static final int IS_CHAMPION = BattleFunctions.id("is_champion");
   private static final int IS_DEPLOYING = BattleFunctions.id("is_deploying");
+  private static final int IS_COMBAT_ENABLED = BattleFunctions.id("is_combat_enabled");
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -288,6 +291,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
             "is_clone on " + context.name() + ", which is not a character, is not modelled");
       }
       return character.isClone() ? 1 : 0;
+    }
+    if (id == IS_COMBAT_ENABLED) {
+      // The context's targeting component switched on: the low bit of its active word, read with
+      // no class test.
+      return context.isActive(0) ? 1 : 0;
     }
     if (id == IS_MOVING) {
       // A character's movement component on and its speed budget above 0; every other object's
