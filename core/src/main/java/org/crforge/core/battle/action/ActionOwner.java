@@ -260,6 +260,16 @@ public interface ActionOwner {
   }
 
   /**
+   * What a net attack's run asks of the battle around the owner. Only a character runs one.
+   *
+   * @return the owner's answers
+   */
+  default NetAttackHost netAttackHost() {
+    throw new UnsupportedOperationException(
+        "a net attack on an owner other than a character is not modelled");
+  }
+
+  /**
    * Makes the run of Goblinstein's ability action on the owner. Only an area effect that follows
    * its parent runs one.
    *

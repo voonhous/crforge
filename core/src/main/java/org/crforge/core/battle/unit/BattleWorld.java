@@ -937,6 +937,18 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Whether an object other than the owner holds a target lock on the target and channel, asked
+   * without making the locks: false while no collector has made them.
+   *
+   * @param owner the id of the object asking
+   * @param target the target's id
+   * @param channel the lock channel
+   */
+  public boolean lockHeldByOther(int owner, int target, int channel) {
+    return locks != null && locks.heldByOther(owner, target, channel);
+  }
+
+  /**
    * The object query around a point: the index's buckets over the circle, in their order, each
    * entity once, accepted on where it stands now - its centre closer than its collision radius plus
    * the radius - and by the filter, asked for the team and row name of the entity asking.

@@ -47,6 +47,7 @@ import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Heal;
 import org.crforge.core.battle.action.Hide;
+import org.crforge.core.battle.action.HunterNetAttack;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.Interval;
 import org.crforge.core.battle.action.Kill;
@@ -753,6 +754,24 @@ public final class ActionRows {
                   "MaximumTargetsToRememberForRepeatChecks",
                   "MaxTime",
                   "ChainDelays")),
+          // The net's columns; the prepare action is read only to refuse a row that sets it.
+          Map.entry(
+              "ActionHunterNetAttack",
+              Set.of(
+                  "Cooldown",
+                  "InitialCooldown",
+                  "Range",
+                  "MinRange",
+                  "ProjectileStartZ",
+                  "ActionOnCooldownReady",
+                  "ActionOnPrepareShot",
+                  "ActionOnShot",
+                  "TargetFilter",
+                  "Projectile",
+                  "TrapCastTime",
+                  "ForbidNetShotIfAttackWithin",
+                  "ForbidNetShotIfAttackedIn",
+                  "ProjectileStartExtraRadius")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -1334,6 +1353,7 @@ public final class ActionRows {
                       .build());
             }
             case "ActionChainProjectileAttack" -> chainProjectileAttack(name, shared, f);
+            case "ActionHunterNetAttack" -> hunterNetAttack(name, shared, f);
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained
               // action on such a run is held by no reference.
@@ -1483,6 +1503,44 @@ public final class ActionRows {
               .maxRemembered(f.path("MaximumTargetsToRememberForRepeatChecks").asInt(-1))
               .maxTimeMs(f.path("MaxTime").asInt(-1))
               .chainDelaysMs(ints(f.get("ChainDelays")))
+              .build());
+    }
+
+    /**
+     * A net attack's columns, each with the default the game's loader gives a column the row leaves
+     * out. A row with a MinRange of 1 or more, whose finder would pass over close objects, or with
+     * an ActionOnPrepareShot is refused: no shipped row sets either. So is one without a filter or
+     * a projectile.
+     */
+    private HunterNetAttack hunterNetAttack(String name, ActionRow shared, JsonNode f) {
+      if (f.path("MinRange").asInt(100) >= 1) {
+        throw new UnsupportedOperationException(
+            name + " is a net attack with a MinRange of 1 or more, which is not modelled");
+      }
+      if (sets(f, "ActionOnPrepareShot")) {
+        throw new UnsupportedOperationException(
+            name + " is a net attack that sets ActionOnPrepareShot, which is not modelled");
+      }
+      if (f.path("TargetFilter").asText("").isEmpty()
+          || f.path("Projectile").asText("").isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " is a net attack without a filter or a projectile, which is not modelled");
+      }
+      return new HunterNetAttack(
+          shared,
+          HunterNetAttack.Columns.builder()
+              .cooldownMs(f.path("Cooldown").asInt(4000))
+              .initialCooldownMs(f.path("InitialCooldown").asInt(0))
+              .range(f.path("Range").asInt(2000))
+              .projectile(records.projectile(f.get("Projectile").asText()).name())
+              .projectileStartZ(f.path("ProjectileStartZ").asInt(1000))
+              .projectileStartExtraRadius(f.path("ProjectileStartExtraRadius").asInt(0))
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              .trapCastTimeMs(f.path("TrapCastTime").asInt(0))
+              .forbidIfAttackWithinMs(f.path("ForbidNetShotIfAttackWithin").asInt(200))
+              .forbidIfAttackedInMs(f.path("ForbidNetShotIfAttackedIn").asInt(200))
+              .onCooldownReady(action(f.get("ActionOnCooldownReady")))
+              .onShot(action(f.get("ActionOnShot")))
               .build());
     }
 
