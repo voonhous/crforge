@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -113,7 +115,8 @@ class BattleChargeTest {
   }
 
   @Test
-  @DisplayName("the evolved Battle Ram's push run ends with its charge")
+  @DisplayName(
+      "the evolved Battle Ram's push run goes on through its recoil and ends with its charge")
   void thePushRunEndsWithTheCharge() {
     Standard1v1Battle match = passiveTowers();
     // Just short of the red princess tower: it charges, hits the tower and keeps hitting it.
@@ -130,11 +133,82 @@ class BattleChargeTest {
       }
     }
     assertThat(ran).isTrue();
-    // A few steps standing at the tower: no charged displacement, so the stop gate holds.
+    // Its hit recoils it and it keeps its charge, so the run goes on through the recoil.
     for (int tick = 0; tick < 5; tick++) {
       match.getBattle().step();
     }
     assertThat(ram.actionHolder().running())
+        .anyMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
+    // A Zap's stun takes its charge away once the recoil has flown: no charged displacement
+    // follows, so the stop gate holds.
+    int tick = match.getWorld().tick() + 1;
+    match.placeAreaEffect(tick, "Zap", 11, 1, ram.getView().getX(), ram.getView().getY(), "zap");
+    for (int i = 0; i < 20; i++) {
+      match.getBattle().step();
+    }
+    assertThat(ram.actionHolder().running())
         .noneMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Battle Ram's direct hit on a tower recoils it by its AttackPushBack, away from"
+          + " where the tower stood, in the tick the hit lands")
+  void theEvolvedRamRecoilsAfterItsHit() {
+    Standard1v1Battle match = passiveTowers();
+    // Just short of the red princess tower on the right lane: it charges and hits the tower.
+    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam_EV1"), 11, 0, 14500, 17000);
+    // The towers are present from the first step on.
+    match.getBattle().step();
+    WorldEntity tower =
+        match.getWorld().present().stream()
+            .filter(e -> e.side() == 1 && e.name().startsWith("PrincessTower"))
+            .filter(e -> e.getView().getX() > 9000)
+            .findFirst()
+            .orElseThrow();
+    // Every pushback asked for the ram: the tick, whether it started, and the point it is pushed
+    // away from.
+    List<int[]> recoils = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void pushbackRequested(
+                  int t,
+                  WorldEntity unit,
+                  boolean started,
+                  int fromX,
+                  int fromY,
+                  MovementState pushback) {
+                if (unit == ram) {
+                  recoils.add(new int[] {t, started ? 1 : 0, fromX, fromY});
+                }
+              }
+            });
+    int full = tower.getHitPoints().getHitPoints();
+    int hitTick = -1;
+    int hitY = 0;
+    for (int tick = 0; tick < 200 && hitTick < 0; tick++) {
+      match.getBattle().step();
+      if (tower.getHitPoints().getHitPoints() < full) {
+        hitTick = match.getWorld().tick();
+        hitY = ram.getView().getY();
+      }
+    }
+    assertThat(hitTick).as("the ram's first hit on the tower").isPositive();
+
+    // One request, in the hit's tick, started, away from the tower it hit.
+    assertThat(recoils).hasSize(1);
+    assertThat(recoils.get(0))
+        .containsExactly(hitTick, 1, tower.getView().getX(), tower.getView().getY());
+    MovementState movement = ram.getUnit().movement();
+    assertThat(movement.getPushbackInFlight()).isEqualTo(1);
+    assertThat(movement.getAttackPushback()).as("an attack's pushback").isEqualTo(1);
+    // The pushback flies it back along the lane, away from the tower ahead of it.
+    for (int i = 0; i < 10; i++) {
+      match.getBattle().step();
+    }
+    assertThat(ram.getView().getY()).isLessThan(hitY - 1000);
   }
 }

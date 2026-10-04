@@ -72,6 +72,24 @@ public interface HitQueries {
    */
   default void directHitDealt() {}
 
+  /**
+   * Whether the owner's movement component is there and switched on, as a direct hit reads it
+   * before its damage: only such an owner recoils after the hit.
+   */
+  default boolean ownerMovementOn() {
+    return false;
+  }
+
+  /**
+   * The owner's recoil after a direct hit landed on its one target, the hit's last step: an owner
+   * whose row pushes it back asks for that pushback away from the point, as after a launch.
+   *
+   * @param x the point it recoils from, along the width: where its reference stood at the start of
+   *     the visit
+   * @param y the point it recoils from, along the length
+   */
+  default void attackRecoil(int x, int y) {}
+
   /** True when the owner may not attack at all, which discards the hit before any other step. */
   default boolean attackForbidden() {
     return false;
