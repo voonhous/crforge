@@ -643,6 +643,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public boolean ownerMovementOn() {
+        return WorldEntity.this instanceof CharacterEntity c && c.movementOn();
+      }
+
+      @Override
+      public void attackRecoil(int x, int y) {
+        if (WorldEntity.this instanceof CharacterEntity c) {
+          c.recoil(x, y);
+        }
+      }
+
+      @Override
       public int nextHitId() {
         return world.nextHitId();
       }
