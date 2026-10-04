@@ -93,6 +93,51 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aCannoneerTowerSelectionBuildsItsSidesTowersAndTheyFireAtTheirLevel() throws IOException {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000001);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, identity, 300);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    // Side 0 keeps the princess towers; side 1 stands its king and two Cannoneer rows in the
+    // princess slots, five levels above their first.
+    assertThat(first.get(1).path("row").asText()).isEqualTo("PrincessTower");
+    assertThat(first.get(1).path("hp").asInt()).isEqualTo(1400);
+    assertThat(first.get(3).path("row").asText()).isEqualTo("KingTower");
+    assertThat(first.get(3).path("hp").asInt()).isEqualTo(2400);
+    for (int i = 4; i <= 5; i++) {
+      JsonNode cannoneer = first.get(i);
+      assertThat(cannoneer.path("row").asText()).isEqualTo("Cannoneer");
+      assertThat(cannoneer.path("side").asInt()).isEqualTo(1);
+      assertThat(cannoneer.path("y").asInt()).isEqualTo(25500);
+      assertThat(cannoneer.path("hp").asInt()).isEqualTo(1740);
+    }
+    assertThat(first.get(4).path("x").asInt()).isEqualTo(3500);
+    assertThat(first.get(5).path("x").asInt()).isEqualTo(14500);
+    // Side 0's Knight walks up the left lane into the low Cannoneer's range: its first shot takes
+    // 200, the projectile's 125 at the tower's level, on tick 299.
+    int firstHit = -1;
+    for (String line : lines) {
+      JsonNode observation = MAPPER.readTree(line);
+      for (JsonNode entity : observation.path("entities")) {
+        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < 690) {
+          assertThat(entity.path("hp").asInt()).isEqualTo(490);
+          firstHit = observation.path("tick").asInt();
+          break;
+        }
+      }
+      if (firstHit >= 0) {
+        break;
+      }
+    }
+    assertThat(firstHit).isEqualTo(299);
+  }
+
+  @Test
   void anUnknownSchemaOrAScopeOfAnotherSchemaIsAnInvalidRun() throws IOException {
     Path unknown = identity("unknown.json", "test-schema", SmokeSchema.V1.observationScope());
     Path crossed = identity("crossed.json", SmokeSchema.V2.id(), SmokeSchema.V1.observationScope());
