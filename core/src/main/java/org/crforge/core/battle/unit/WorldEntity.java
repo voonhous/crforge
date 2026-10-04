@@ -2588,7 +2588,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public int variable(int key) {
-    return variables.getOrDefault(key, 0);
+    return variables.getOrDefault(key, world.variableStart(key));
   }
 
   @Override

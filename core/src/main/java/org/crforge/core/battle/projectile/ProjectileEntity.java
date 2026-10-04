@@ -1406,11 +1406,12 @@ public class ProjectileEntity extends BattleEntity
 
   /**
    * A variable as the projectile's own map holds it: every game object has one, empty when it is
-   * made, so a variable never written for the projectile reads 0.
+   * made, so a variable never written for the projectile reads its start value (its row's
+   * DefaultValue, 0 when the row sets none).
    */
   @Override
   public int variable(int key) {
-    return variables.getOrDefault(key, 0);
+    return variables.getOrDefault(key, world.variableStart(key));
   }
 
   /** Writes a variable into the projectile's own map, replacing what it held. */

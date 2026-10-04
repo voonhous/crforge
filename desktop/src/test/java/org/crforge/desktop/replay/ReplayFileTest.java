@@ -141,7 +141,7 @@ class ReplayFileTest {
             "the battle core refuses the game tables of data version "
                 + refusedTables.version()
                 + ": UnsupportedOperationException: the variables row")
-        .contains("sets DefaultValue, which is not modelled");
+        .contains("sets Tid, which is not modelled");
   }
 
   @Test
@@ -155,7 +155,7 @@ class ReplayFileTest {
         .singleElement()
         .asString()
         .startsWith("the battle core refuses to set up the replay's battle:")
-        .contains("DefaultValue");
+        .contains("sets Tid");
   }
 
   @Test

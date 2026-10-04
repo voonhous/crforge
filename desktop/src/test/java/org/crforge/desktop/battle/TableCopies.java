@@ -37,8 +37,8 @@ public final class TableCopies {
   }
 
   /**
-   * A copy whose first variables row sets DefaultValue, a start value the battle core does not
-   * model: its tables load, and a battle on them is refused as it is built.
+   * A copy whose first variables row sets Tid, a column the battle core does not model: its tables
+   * load, and a battle on them is refused as it is built.
    *
    * @param root the data root
    * @param version the version folder's name
@@ -50,7 +50,7 @@ public final class TableCopies {
     Path variables = folder.resolve("variables.json");
     ObjectNode document = (ObjectNode) mapper.readTree(variables.toFile());
     ObjectNode firstRow = (ObjectNode) document.path("rows").elements().next();
-    ((ObjectNode) firstRow.path("columns")).put("DefaultValue", 1);
+    ((ObjectNode) firstRow.path("columns")).put("Tid", "TID_REFUSED");
     mapper.writeValue(variables.toFile(), document);
     return folder;
   }
