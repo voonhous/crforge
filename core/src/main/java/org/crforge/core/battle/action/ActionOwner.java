@@ -110,6 +110,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a Royal Chef's cooking run asks of the battle around the owner. Only a king tower runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default CookingHost cookingHost() {
+    throw new UnsupportedOperationException(
+        "a Royal Chef's cooking on an owner other than a king tower is not modelled");
+  }
+
+  /**
    * What a shape selector's run asks of the battle around the owner. Only an area effect runs one.
    *
    * @return the owner's answers
@@ -374,6 +385,19 @@ public interface ActionOwner {
    * @return the run
    */
   default ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Starts a push the owner carries ahead of itself, as the evolved Battle Ram's completed charge
+   * runs it.
+   *
+   * @param action the push
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the run
+   */
+  default ActionInstance damagingPushBack(DamagingPushBack action, int phase) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a character, not modelled");
   }

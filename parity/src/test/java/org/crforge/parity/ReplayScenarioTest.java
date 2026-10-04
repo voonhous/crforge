@@ -144,6 +144,21 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void buildsTheRoyalChefTowersOfASidesTowerSelection() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // Row 4 of the tower selections, King_ChefTowers, a Legendary selection: its ChefTower rows
+    // stand eight levels above the first, its king row at the first.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+            new Standard1v1Battle.Towers("King_ChefTowers", 1, 9));
+  }
+
+  @Test
   void readsEachSidesTowerLevelFromItsOwnSelection() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
@@ -156,6 +171,24 @@ class ReplayScenarioTest {
     // The level index plus the selection rarity's RelativeLevel plus 1: Common 0, Epic 5.
     assertThat(plan.towers().get(0).level()).isEqualTo(3);
     assertThat(plan.towers().get(1).level()).isEqualTo(16);
+  }
+
+  @Test
+  void buildsEachKingTowerAtTheAvatarsLevelWhateverTheSelectionLevel() {
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
+        .put("d", 159000001)
+        .put("l", 10);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    // The king row's level comes from the avatar's exp level, not from the tower selection: the
+    // first level at exp level 1, the only exp level the adapter accepts.
+    assertThat(plan.towers())
+        .containsExactly(
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 3),
+            new Standard1v1Battle.Towers("King_CannonTowers", 1, 16));
   }
 
   @Test
@@ -175,16 +208,14 @@ class ReplayScenarioTest {
 
   @Test
   void refusesATowerSelectionTheSimulatorDoesNotBuild() {
-    // The Goblin Queen's towers and the Royal Chef.
-    for (int id : new int[] {159000003, 159000004}) {
-      ObjectNode scenario = Scenarios.knight();
-      ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", id);
+    // The Goblin Queen's towers, the one selection left unbuilt.
+    ObjectNode scenario = Scenarios.knight();
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000003);
 
-      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
-          .isInstanceOf(UnsupportedScenarioException.class)
-          .hasMessageContaining("battle.deck1.sc[0].d=" + id)
-          .hasMessageNotContaining("hold no table");
-    }
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("battle.deck1.sc[0].d=159000003")
+        .hasMessageNotContaining("hold no table");
   }
 
   @Test

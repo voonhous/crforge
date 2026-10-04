@@ -235,16 +235,16 @@ public final class BattleRecords {
   /**
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield's push as it breaks, hiding before the first hit, a buff at
-   * a share of its hit points, the action a completed charge runs, a dash's contact damage, fixed
-   * distance, area effect and closing action, a limit on the elixir a collector makes, a spawner's
-   * launches, and its second and third characters.
+   * a share of its hit points, a dash's contact damage, fixed distance, area effect and closing
+   * action, a limit on the elixir a collector makes, a spawner's launches, and its second and third
+   * characters. The action a completed charge runs is refused apart, unless it is of a class whose
+   * run is established.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
           "ShieldDiePushback",
           "HideBeforeFirstHit",
           "BuffOnXHP",
-          "OnStartChargingAction",
           "DashingDamage",
           "DashDistance",
           "AreaEffectOnDash",
@@ -442,6 +442,13 @@ public final class BattleRecords {
           // Read only by the character view, where it offsets the attached object's sprite, and by
           // a by-name getter nothing calls.
           "AttachedCharacterOffsetY",
+          // The same offset per side, stored beside it and read with it by the same view function;
+          // the battle loads of the same offsets are another object's serialised fields.
+          "AttachedCharacterOffsetYBlue",
+          "AttachedCharacterOffsetYRed",
+          // The name suffix of the Royal Chef tower's attack animation: outside its row's loader,
+          // constructor, destructor and by-name getter, no battle code reaches its field.
+          "CustomAnimationPostfix",
           // Stored and never read.
           "TurretMovement",
           // The evolved Cannon's shadows: the by-name getter that answers them runs in no battle
@@ -654,6 +661,7 @@ public final class BattleRecords {
             .attackSequence(attackSequence(row))
             .onStartingAttackAction(actionName(row, "OnStartingAttackAction"))
             .onAttackAction(actionName(row, "OnAttackAction"))
+            .onStartChargingAction(actionName(row, "OnStartChargingAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
@@ -752,7 +760,7 @@ public final class BattleRecords {
             .projectileSpecial(
                 set(row, "ProjectileSpecial") ? projectile(row.string("ProjectileSpecial")) : null)
             .specialIgnoreBuildings(row.bool("SpecialIgnoreBuildings"))
-            .unmodelledColumns(withAttackAction(unmodelledColumns(row), row))
+            .unmodelledColumns(withChargeAction(withAttackAction(unmodelledColumns(row), row), row))
             .build();
     return data.toBuilder()
         .unmodelledColumns(
@@ -834,6 +842,24 @@ public final class BattleRecords {
   /** The classes of the actions a unit's hits run whose runs are established. */
   private static final Set<String> ATTACK_ACTION_CLASSES =
       Set.of("ActionSpawn", "ActionMegaKnightUppercut", "ActionSpawnResetableAeO");
+
+  /** The classes of the actions a completed charge runs whose runs are established. */
+  private static final Set<String> CHARGE_ACTION_CLASSES = Set.of("ActionDamagingPushBack");
+
+  /**
+   * The unmodelled columns with OnStartChargingAction added when the row names an action a
+   * completed charge runs whose run is not established: only the evolved Battle Ram's push is.
+   */
+  private List<String> withChargeAction(List<String> columns, GameRow row) {
+    if (!sets(row, "OnStartChargingAction")
+        || CHARGE_ACTION_CLASSES.contains(
+            tables.action(row.string("OnStartChargingAction")).classType())) {
+      return columns;
+    }
+    List<String> out = new ArrayList<>(columns);
+    out.add("OnStartChargingAction");
+    return out;
+  }
 
   /**
    * The unmodelled columns with OnAttackAction added when the row names an action its hits run
@@ -1373,11 +1399,35 @@ public final class BattleRecords {
   }
 
   /**
-   * A buff's start or remove action: the row the column names, or null for none and for one written
-   * inline, which is listed as not modelled instead.
+   * A buff's start or remove action: the row the column names, or the row of an inline group of
+   * named rows; null for none and for any other one written inline, which is listed as not modelled
+   * instead.
    */
-  private static String hookAction(GameRow row, String column) {
+  private String hookAction(GameRow row, String column) {
+    if (inlineNamedGroup(row, column)) {
+      return inlineActionName(row, column);
+    }
     return namedAction(row.value(column)) ? actionName(row, column) : null;
+  }
+
+  /**
+   * Whether the battle reads a buff's start or remove action: one that names a row, or a group of
+   * named rows written inline, as the Royal Chef's level-up buff's is, which is the actions table's
+   * row named after the buff and the column.
+   */
+  private boolean readHook(GameRow row, String column) {
+    return namedAction(row.value(column)) || inlineNamedGroup(row, column);
+  }
+
+  /** Whether a column holds an inline group of named rows that the actions table has a row for. */
+  private boolean inlineNamedGroup(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    return value != null
+        && value.isObject()
+        && !value.has("action")
+        && value.path("ClassType").asText().equals("ActionGroup")
+        && namesOnly(value.path("SubActions"))
+        && tables.actionNames().contains(row.name() + "_" + column);
   }
 
   /**
@@ -1415,14 +1465,16 @@ public final class BattleRecords {
           && sets(row, column)
           && !inertDamageReductionAction(row, column)
           && !modelledBuffTags(row, column)
-          && !(BUFF_HOOK_COLUMNS.contains(column) && namedAction(row.value(column)))) {
+          && !(BUFF_HOOK_COLUMNS.contains(column) && readHook(row, column))) {
         unmodelled.add(column);
       }
     }
-    // A start or remove action written inline is a row of its own, which the battle does not read.
+    // A start or remove action written inline is a row of its own, which the battle does not read
+    // unless it is a group of named rows the actions table holds under the buff's and column's
+    // name.
     for (String column : BUFF_HOOK_COLUMNS) {
       JsonNode value = row.value(column);
-      if (value != null && value.isObject() && !namedAction(value)) {
+      if (value != null && value.isObject() && !readHook(row, column)) {
         unmodelled.add(column);
       }
     }
@@ -1928,8 +1980,8 @@ public final class BattleRecords {
    * The action row a unit's OnStartingAction names; null for none. One written inline as a bare
    * ActionBerserk, as the Berserker's is, as a charge counter (ActionBurstAttack), as the Dagger
    * Duchess's is, or as a spawn of an area effect and nothing more, as Goblinstein's doctor's is,
-   * is the actions table's row named after the unit and the column. Any other inline row is
-   * refused.
+   * or as a group of named rows, as the Royal Chef's king tower's is, is the actions table's row
+   * named after the unit and the column. Any other inline row is refused.
    */
   private String startingActionName(GameRow row) {
     JsonNode value = row.value("OnStartingAction");
@@ -1949,9 +2001,31 @@ public final class BattleRecords {
         value != null
             && value.isObject()
             && value.path("ClassType").asText().equals("ActionBurstAttack");
-    return berserk || burstAttack || areaEffect
+    boolean namedGroup =
+        value != null
+            && value.isObject()
+            && value.path("ClassType").asText().equals("ActionGroup")
+            && namesOnly(value.path("SubActions"));
+    return berserk || burstAttack || areaEffect || namedGroup
         ? inlineActionName(row, "OnStartingAction")
         : actionName(row, "OnStartingAction");
+  }
+
+  /**
+   * Whether every element of a group's sub-actions names an action row, none written inline: such a
+   * group is the actions table's row named after its unit and column, sub-actions and all.
+   */
+  private static boolean namesOnly(JsonNode subActions) {
+    if (!subActions.isArray() || subActions.isEmpty()) {
+      return false;
+    }
+    for (JsonNode sub : subActions) {
+      if (!sub.isTextual()
+          && !(sub.isObject() && sub.size() == 1 && sub.path("action").isTextual())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
