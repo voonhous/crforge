@@ -119,6 +119,8 @@ org.crforge.core.battle/
     GoblinHutLife     what a Goblin Hut's life state asks of the battle around its building
     GiantBufferBuff   lasts, and adds damage to every so many of its unit's hits, a projectile's
                       through the copy it carries
+    LumberjackGhostWait lasts on the evolved Rage Barbarian's ghost, swaps a buff applied to it
+                      for the one it considers, and once armed kills the ghost when that is gone
     GameTags          the tag bits an action sets, bits of the entity's one tag word
   data/
     GameTables        a folder of the game's own tables, one data version, and its action graph

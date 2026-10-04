@@ -222,6 +222,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What the evolved Rage Barbarian's ghost wait asks of the battle about this owner. Only a
+   * character runs one.
+   *
+   * @param action the row
+   */
+  default LumberjackGhostWait.Host lumberjackGhostHost(LumberjackGhostWait action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on " + actionRowName() + ", which is not a character, not modelled");
+  }
+
+  /**
    * What a charge counter's run reads of and does to this owner. Only an entity with a targeting
    * component and an attack sequence runs one.
    *

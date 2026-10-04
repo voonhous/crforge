@@ -457,6 +457,21 @@ public class ActionHolder implements EntityActions {
   }
 
   /**
+   * Offers a buff about to be applied to the entity to every running instance, from the last to the
+   * first, each handed what the one after it answered; finished runs still listed are asked too.
+   *
+   * @param buff the buff's row name
+   * @return the buff to apply in its place
+   */
+  public String offerBuff(String buff) {
+    String offered = buff;
+    for (int i = running.size() - 1; i >= 0; i--) {
+      offered = running.get(i).offeredBuff(offered);
+    }
+    return offered;
+  }
+
+  /**
    * Tells every running instance, from the last to the first, that the entity's player paid for a
    * unit's ability.
    *
