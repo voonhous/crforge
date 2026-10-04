@@ -1,0 +1,33 @@
+package org.crforge.parity;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+/** The command type numbers of each data version, established from that version's replays. */
+class CommandTypesTest {
+
+  @Test
+  void dataVersion14_593_1PlaysWith124AndTapsAbilitiesWith178() {
+    CommandTypes types = CommandTypes.of("14.593.1").orElseThrow();
+
+    assertThat(types.play()).isEqualTo(124);
+    assertThat(types.ability()).isEqualTo(178);
+    assertThat(types.dataVersion()).isEqualTo("14.593.1");
+  }
+
+  @Test
+  void aDataVersionWhoseCommandTypesAreNotEstablishedHasNone() {
+    assertThat(CommandTypes.of("16.402.18")).isEmpty();
+    assertThat(CommandTypes.of(null)).isEmpty();
+  }
+
+  @Test
+  void namesWhatEachTypeIs() {
+    CommandTypes types = CommandTypes.of("14.593.1").orElseThrow();
+
+    assertThat(types.describe(124)).isEqualTo("a card play");
+    assertThat(types.describe(178)).isEqualTo("an ability command");
+    assertThat(types.describe(153)).isNull();
+  }
+}

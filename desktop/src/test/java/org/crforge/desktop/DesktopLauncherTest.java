@@ -1,11 +1,14 @@
 package org.crforge.desktop;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +16,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.TableCopies;
+import org.crforge.desktop.replay.ReplayFile;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,7 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * The launcher's game tables: which setting names the folder, what it prints about the tables it
  * loaded and the data root they came from, and the message it stops with when there are none or the
- * battle core refuses a battle on them.
+ * battle core refuses a battle on them; and the replay it is given to open.
  */
 class DesktopLauncherTest {
 
@@ -194,5 +198,46 @@ class DesktopLauncherTest {
   private static DataSelection.Choice choice(
       DataSelection.DataRoot root, GameTablesSetting.Configured tables) {
     return new DataSelection.Choice(root, null, tables, null);
+  }
+
+  @Test
+  @DisplayName("--replay names the replay file, and without a file it is refused")
+  void theReplayArgument() {
+    assertThat(DesktopLauncher.replayArgument(new String[] {})).isEmpty();
+    assertThat(DesktopLauncher.replayArgument(new String[] {"--replay", "/r/replay.json"}))
+        .contains(Path.of("/r/replay.json"));
+    assertThatThrownBy(() -> DesktopLauncher.replayArgument(new String[] {"--replay"}))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("--replay names no replay file");
+  }
+
+  @Test
+  @DisplayName("a replay is printed with its header and what its mapping refused")
+  void aReplayIsPrinted(@TempDir Path folder) throws IOException {
+    Path file = folder.resolve("replay.json");
+    try (InputStream in = getClass().getResourceAsStream("/replays/archer_queen_ability.json")) {
+      Files.copy(in, file);
+    }
+    GameTables tables = GameTables.loadConfigured();
+
+    ReplayFile replay = DesktopLauncher.loadReplay(file, tables, out, err);
+
+    assertThat(replay).isNotNull();
+    assertThat(outBytes.toString(StandardCharsets.UTF_8).lines().toList())
+        .isEqualTo(replay.describe());
+    assertThat(errBytes.size()).isZero();
+  }
+
+  @Test
+  @DisplayName("a replay file that cannot be read is refused with a message naming it")
+  void anUnreadableReplay(@TempDir Path folder) {
+    Path missing = folder.resolve("nowhere.json");
+
+    ReplayFile replay = DesktopLauncher.loadReplay(missing, GameTables.loadConfigured(), out, err);
+
+    assertThat(replay).isNull();
+    assertThat(errBytes.toString(StandardCharsets.UTF_8))
+        .startsWith("Cannot read the replay at " + missing.toAbsolutePath().normalize());
+    assertThat(outBytes.size()).isZero();
   }
 }
