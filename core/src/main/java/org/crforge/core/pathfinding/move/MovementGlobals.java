@@ -14,13 +14,18 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     change flag rather than both
  * @param spawnPathfindReachedRadiusFromSpeed whether the arrival threshold of the two pathfind
  *     states is the matching pathfind speed rather than the fixed 1000 units
+ * @param pushbackEndDropsRoute whether the end of a pushback's flight drops the route the entity
+ *     held, so that its next walk searches a fresh one from where the pushback left it; a rule of
+ *     the game's version rather than a published value, off in the standard game of data version
+ *     14.593.1
  */
 public record MovementGlobals(
     int width,
     boolean touchdownRestrictedSideMovement,
     int samePathEpsilon,
     boolean friendlyOnlyOcclusions,
-    boolean spawnPathfindReachedRadiusFromSpeed) {
+    boolean spawnPathfindReachedRadiusFromSpeed,
+    boolean pushbackEndDropsRoute) {
 
   /**
    * The settings of the standard game over a grid of the given width.
@@ -33,6 +38,23 @@ public record MovementGlobals(
         PathfindingGlobals.LOGIC_TOUCHDOWN_RESTRICTED_SIDE_MOVEMENT,
         PathfindingGlobals.PATHFINDING_SAMEPATH_EPSILON,
         PathfindingGlobals.PATHFINDING_FRIENDLYONLY_OCCLUSIONS,
-        PathfindingGlobals.LOGIC_SPAWN_PATHFIND_REACHED_RADIUS_FROM_SPEED);
+        PathfindingGlobals.LOGIC_SPAWN_PATHFIND_REACHED_RADIUS_FROM_SPEED,
+        false);
+  }
+
+  /**
+   * These settings with the end of a pushback dropping the held route, or keeping it.
+   *
+   * @param drops true to drop the route when a pushback's flight ends
+   * @return the settings with that rule
+   */
+  public MovementGlobals withPushbackEndDropsRoute(boolean drops) {
+    return new MovementGlobals(
+        width,
+        touchdownRestrictedSideMovement,
+        samePathEpsilon,
+        friendlyOnlyOcclusions,
+        spawnPathfindReachedRadiusFromSpeed,
+        drops);
   }
 }
