@@ -490,7 +490,7 @@ public interface ActionOwner {
    */
   default ActionInstance captureCharacter(CaptureCharacter action, int phase) {
     throw new UnsupportedOperationException(
-        action.name() + " on an owner other than a projectile, not modelled");
+        action.name() + " on an owner other than a projectile or a character, not modelled");
   }
 
   /**
