@@ -6,6 +6,7 @@ import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.CaptureCharacter;
+import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -14,9 +15,9 @@ import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
- * One run of a capture on its projectile: the ids it has captured, with the time and the distance
- * of each capture, the ids whose drag is complete, and the ids it claimed on its last step. See
- * {@link CaptureCharacter}.
+ * One run of a capture on the object it runs on, a projectile or a character: the ids it has
+ * captured, with the time and the distance of each capture, the ids whose drag is complete, the ids
+ * it claimed on its last step, its cooldown and its hit timer. See {@link CaptureCharacter}.
  *
  * <p>A capture that leaves its list takes its time with it but leaves its distance behind, so the
  * distances of the captures after it pair with the wrong ones from then on, as the standard game
@@ -30,10 +31,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " by the guarded distance, the drag's eased step from the angle of its share of the"
             + " drag time, and the put on the point once the drag time has passed or the unit is"
             + " within the hide distance; held by firecracker_snowball_goblins and"
-            + " snowball_ev1_goblins. Held by no run: a capture that leaves the battle or dies, and"
+            + " snowball_ev1_goblins. On a character, as the evolved Goblin Cage: the claims only"
+            + " while its targeting component is on, the grants and the capture distances from the"
+            + " pull centre, the drag delay and the pause before the drag, the cooldown after a"
+            + " capture leaves, the action on each completed capture, the hit per hit frequency at"
+            + " the owner's level with its hit-speed scaled timer, and the hold tags without a"
+            + " capture buff; held by evo_goblincage_vs_giant. Held by no run: a capture that leaves the battle or dies, and"
             + " the distances it leaves behind, a claim whose lock another holds, two units equally"
             + " near, and a unit within the hide distance before the drag time has passed.")
-final class CaptureRun extends ActionInstance {
+public final class CaptureRun extends ActionInstance {
 
   /** The step every timer takes, in milliseconds. */
   private static final int STEP_MS = 50;
@@ -45,7 +51,7 @@ final class CaptureRun extends ActionInstance {
   static final int CAPTURE_BUFF_MS = 99999;
 
   private final CaptureCharacter.Columns columns;
-  private final ProjectileEntity projectile;
+  private final CaptureHost host;
 
   private final List<Integer> captured = new ArrayList<>();
   private final List<Integer> timesMs = new ArrayList<>();
@@ -59,14 +65,17 @@ final class CaptureRun extends ActionInstance {
   /** The time toward the next hit on its captures. */
   private int hitTimerMs;
 
+  /** The time left before it claims again after a capture left its list. */
+  private int cooldownMs;
+
   /**
    * @param row the capture
-   * @param projectile the projectile it runs on
+   * @param host what the capture runs on
    */
-  CaptureRun(CaptureCharacter row, ProjectileEntity projectile) {
+  public CaptureRun(CaptureCharacter row, CaptureHost host) {
     super(row);
     this.columns = row.getColumns();
-    this.projectile = projectile;
+    this.host = host;
   }
 
   /** The ids it has captured, in its list's order. */
@@ -86,35 +95,52 @@ final class CaptureRun extends ActionInstance {
 
   @Override
   protected void update(ActionHolder holder) {
-    BattleWorld world = projectile.world();
-    // The captures that have left the battle or died, from the last.
+    BattleWorld world = host.world();
+    // The captures that have left the battle or died, from the last: each starts the cooldown.
     for (int k = captured.size() - 1; k >= 0; k--) {
       if (!world.listedAndAlive(captured.get(k))) {
         int id = captured.remove(k);
         timesMs.remove(k);
+        cooldownMs = columns.captureCooldownMs();
         complete.remove(Integer.valueOf(id));
       }
     }
-    int x = projectile.getX();
-    int y = projectile.getY();
+    if (host.claims()) {
+      claims(world);
+    }
+    drags();
+    if (cooldownMs >= 1) {
+      cooldownMs -= STEP_MS;
+    }
+    world.captureStepped(host.owner(), captured, complete, timesMs);
+  }
+
+  /**
+   * Last step's claims granted at the pull centre, then new claims around the owner's point while
+   * the run holds fewer captures than its count and its cooldown has run out.
+   */
+  private void claims(BattleWorld world) {
+    int x = host.x();
+    int y = host.y();
     TargetLocks locks = world.locks();
-    // Last step's claims, from the last: each whose lock the projectile holds and that passes the
-    // filter is captured; then every claim is forgotten.
+    // Last step's claims, from the last: each whose lock the owner holds and that passes the
+    // filter is captured at the pull centre; then every claim is forgotten.
+    int centreX = x + columns.pullCenterOffsetX();
+    int centreY = y + columns.pullCenterOffsetY();
     for (int k = claimed.size() - 1; k >= 0; k--) {
       int id = claimed.get(k);
-      if (!locks.claim(projectile.getId(), id, CHANNEL)) {
+      if (!locks.claim(host.id(), id, CHANNEL)) {
         continue;
       }
       WorldEntity unit = world.liveEntity(id);
-      if (unit != null && world.capturePasses(projectile, unit, columns.targetFilter())) {
-        capture(unit, x, y);
+      if (unit != null && host.passes(unit, columns.targetFilter())) {
+        capture(unit, centreX, centreY);
       }
     }
     claimed.clear();
-    if (captured.size() < columns.numberOfUnitsToCapture()) {
+    if (captured.size() < columns.numberOfUnitsToCapture() && cooldownMs <= 0) {
       List<WorldEntity> found =
-          new ArrayList<>(
-              world.captureQuery(projectile, columns.captureRadius(), columns.targetFilter()));
+          new ArrayList<>(host.query(columns.captureRadius(), columns.targetFilter()));
       while (!found.isEmpty()
           && captured.size() + claimed.size() < columns.numberOfUnitsToCapture()) {
         WorldEntity pick = nearest(found, x, y);
@@ -126,13 +152,11 @@ final class CaptureRun extends ActionInstance {
         int priority =
             (columns.capturePriority() << 16)
                 - FixedMath.guardedDistance(x - at.getX(), y - at.getY());
-        boolean answer = locks.request(projectile.getId(), pick.getId(), CHANNEL, priority, 0);
-        world.captureRequested(projectile, pick, priority, answer);
+        boolean answer = locks.request(host.id(), pick.getId(), CHANNEL, priority, 0);
+        world.captureRequested(host.owner(), pick, priority, answer);
         claimed.add(pick.getId());
       }
     }
-    drags();
-    world.captureStepped(projectile, captured, complete, timesMs);
   }
 
   /** Every capture's drag, with the hit timer around it. */
@@ -145,108 +169,117 @@ final class CaptureRun extends ActionInstance {
     if (timer >= columns.hitFrequencyMs()) {
       hitTimerMs = 0;
     }
-    BattleWorld world = projectile.world();
+    BattleWorld world = host.world();
+    boolean reached = false;
     for (int k = 0; k < captured.size(); k++) {
       WorldEntity unit = world.liveEntity(captured.get(k));
       int t = timesMs.get(k);
-      if (drag(unit, t, lengths.get(k))
+      boolean delayed = t >= columns.dragDelayMs();
+      if (delayed
+          && drag(unit, t - columns.dragDelayMs(), lengths.get(k))
           && columns.hideAction() != null
           && !world.taggedHidden(unit)) {
         scheduleOnUnit(unit, columns.hideAction());
       }
       timesMs.set(k, t + STEP_MS);
       if (timer >= columns.hitFrequencyMs()) {
-        throw new UnsupportedOperationException(
-            projectile.name() + " hits its capture " + unit.name() + ", not modelled");
+        host.hit(unit, columns.damagePerHit());
       }
+      reached |= delayed;
     }
-    // Without a drag delay every capture has reached its drag, and a projectile has no buffs to
-    // scale the step.
-    hitTimerMs += STEP_MS;
+    // The timer runs while a capture has reached its drag, at the owner's hit speed.
+    hitTimerMs = reached ? hitTimerMs + host.hitStep(STEP_MS) : 0;
   }
 
   /**
-   * A capture: listed with time 0 and its distance from the point; the first of the run schedules
-   * the first-capture action on the projectile, the unit its cause; the action on the captured
-   * object is scheduled on the unit, the projectile its cause; and the unit takes the capture buff,
-   * the projectile its parent and source.
+   * A capture: listed with time 0 and its distance from the pull centre; the first of the run
+   * schedules the first-capture action on the owner, the unit its cause; the action on the captured
+   * object is scheduled on the unit, the owner its cause; and the unit takes the capture buff, when
+   * the row has one, the owner its parent and source.
    */
   private void capture(WorldEntity unit, int x, int y) {
     GridEntity at = unit.getView();
     captured.add(unit.getId());
     timesMs.add(0);
     lengths.add(FixedMath.guardedDistance(x - at.getX(), y - at.getY()));
-    BattleWorld world = projectile.world();
     if (!firstCaptured) {
       firstCaptured = true;
       if (columns.onFirstCaptureAction() != null) {
-        scheduleOnProjectile(unit, columns.onFirstCaptureAction());
+        scheduleOnOwner(unit, columns.onFirstCaptureAction());
       }
     }
     if (columns.actionOnCapturedObject() != null) {
       scheduleOnUnit(unit, columns.actionOnCapturedObject());
     }
-    world.captureBuff(projectile, unit, columns.buffDuringCapture(), CAPTURE_BUFF_MS);
+    if (columns.buffDuringCapture() != null) {
+      host.buff(unit, columns.buffDuringCapture(), CAPTURE_BUFF_MS);
+    }
   }
 
   /**
-   * One step of a capture's drag toward the projectile's point; true once it is complete: the drag
-   * time has passed, or the unit stands within the hide distance, and it has been put on the point.
+   * One step of a capture's drag toward the owner's point, its time counted from the drag delay;
+   * true once it is complete: the drag time has passed since the pause, or the unit stands within
+   * the hide distance, and it has been put on the point. During the pause it is only turned to the
+   * point.
    */
   private boolean drag(WorldEntity unit, int t, int length) {
-    BattleWorld world = projectile.world();
-    world.captureTagged(unit);
-    int x = projectile.getX();
-    int y = projectile.getY();
+    BattleWorld world = host.world();
+    world.captureTagged(unit, columns.buffDuringCapture() == null);
+    int x = host.x();
+    int y = host.y();
     GridEntity at = unit.getView();
     int distance = FixedMath.guardedDistance(x - at.getX(), y - at.getY());
+    int paused = t - columns.timePausedWhenGrabbingMs();
+    if (paused < 0) {
+      world.captureFaced(host.name(), unit, x, y);
+      return false;
+    }
     int dragTime = columns.captureDragTimeMs();
-    if (t >= dragTime || distance < columns.hideDistance()) {
-      world.capturePutOn(projectile, unit, x, y);
+    if (paused >= dragTime || distance < columns.hideDistance()) {
+      host.hasCapture();
+      world.capturePutOn(
+          host.name(), unit, x, y, columns.heightModifier(), columns.heightModifierCap());
       if (!complete.contains(unit.getId())) {
         complete.add(unit.getId());
+        if (columns.onCaptureAction() != null) {
+          scheduleOnOwner(unit, columns.onCaptureAction());
+        }
       }
       return true;
     }
     // An eased share: the sine of the drag's share of a quarter turn, in whole degrees.
-    int angle = t * 100000 / dragTime * 90 / 100000;
+    int angle = paused * 100000 / dragTime * 90 / 100000;
     int sine = FixedMath.sine1024(angle);
     int step = (length - columns.hideDistance()) * sine * 50 / 1048 / dragTime;
     int[] vec = {x - at.getX(), y - at.getY()};
     FixedMath.normalize(vec, step);
-    world.captureDragged(projectile, unit, at.getX() + vec[0], at.getY() + vec[1], x, y);
+    world.captureDragged(host.name(), unit, at.getX() + vec[0], at.getY() + vec[1], x, y);
     return false;
   }
 
   /**
-   * Schedules an action, built on the projectile, on the projectile with a unit as its cause: from
-   * the run pass, so it waits for the next pending pass.
+   * Schedules an action on the owner with a unit as its cause: from the run pass, so it waits for
+   * the next pending pass.
    */
-  private void scheduleOnProjectile(WorldEntity cause, String action) {
-    BattleWorld world = projectile.world();
-    world.captureScheduled(projectile, cause, action);
-    projectile
-        .actionHolder()
-        .schedule(
-            world.getActions().build(action, new ProjectileBinding(world, projectile)),
-            ActionHolder.OWN_DELAY,
-            false,
-            cause.actionHolder());
+  private void scheduleOnOwner(WorldEntity cause, String action) {
+    host.world().captureScheduled(host.owner(), cause, action);
+    host.scheduleOnOwner(cause, action);
   }
 
   /**
-   * Schedules an action, built on a unit, on the unit with the projectile as its cause: from the
-   * run pass, so it waits for the next pending pass.
+   * Schedules an action, built on a unit, on the unit with the owner as its cause: from the run
+   * pass, so it waits for the next pending pass.
    */
   private void scheduleOnUnit(WorldEntity unit, String action) {
-    BattleWorld world = projectile.world();
-    world.captureScheduled(unit, projectile, action);
+    BattleWorld world = host.world();
+    world.captureScheduled(unit, host.owner(), action);
+    ActionBinding binding = world.binding(unit);
     unit.actionHolder()
         .schedule(
-            world.getActions().build(action, world.binding(unit)),
+            world.getActions().build(action, binding),
             ActionHolder.OWN_DELAY,
             false,
-            projectile.actionHolder());
+            host.actionHolder());
   }
 
   /**
