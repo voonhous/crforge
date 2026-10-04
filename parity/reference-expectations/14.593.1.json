@@ -254,6 +254,19 @@
   "tower-level-v2/knight_princess_towers_l1_l1": {"outcome": "diagnostic_match"},
   "tower-v2/knight_vs_cannon_tower": {"outcome": "diagnostic_match"},
   "tower-v2/knight_vs_chef_tower": {"outcome": "diagnostic_match"},
-  "tower-v2/knight_vs_duchess_tower": {"outcome": "diagnostic_match"}
+  "tower-v2/knight_vs_duchess_tower": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_air_vs_air_targeting": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_cannon_pulls_hog": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_giant_passes_defenders": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_golem_dies_mid_fight": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_hog_and_balloon_pass_defenders": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_knight_vs_valkyrie": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_lavahound_and_giant_skeleton_deaths": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_left_bridge_crowd": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_minipekka_vs_pekka": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_musketeer_vs_archer_and_spears": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_skeletons_pull_knight": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_valkyrie_into_skeleton_army": {"outcome": "diagnostic_match"},
+  "troop-interaction-v2/troops_wizard_into_gang_and_minions": {"outcome": "diagnostic_match"}
  }
 }
