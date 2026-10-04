@@ -188,7 +188,7 @@
   "hero-sweep-v2/hero_ice_golemite": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_knight": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_mega_minion": {"outcome": "diagnostic_match"},
-  "hero-sweep-v2/hero_mini_pekka": {"outcome": "unsupported", "feature": "MiniPekkaHero_run_timer_continuous is an ActionMiniPekkaHeroQuest, which the battle does not have", "input": "the run"},
+  "hero-sweep-v2/hero_mini_pekka": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_musketeer": {"outcome": "diagnostic_match"},
   "hero-sweep-v2/hero_wizard": {"outcome": "diagnostic_match"},
   "launch-recoil-v2/zap_machine_fireballed_on_launch": {"outcome": "diagnostic_match"},
