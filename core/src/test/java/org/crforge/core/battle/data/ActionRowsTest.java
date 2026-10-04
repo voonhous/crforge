@@ -36,12 +36,14 @@ import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
+import org.crforge.core.battle.action.MegaMinionHeroAbility;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
+import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -54,6 +56,7 @@ import org.crforge.core.battle.spawn.SpawnProjectile;
 import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -1029,6 +1032,43 @@ class ActionRowsTest {
   }
 
   @Test
+  @DisplayName(
+      "the Mega Minion hero's mark reads its resolver, tags, pause and delay, and its next action"
+          + " is the hand-over with its two deploy actions")
+  void theMarkReadsItsColumns() {
+    SetIndicatorOnTarget mark =
+        (SetIndicatorOnTarget)
+            GameData.actions().build("MegaMinion_hero_mark_target", INERT_BINDING);
+    SetIndicatorOnTarget.Columns columns = mark.columns();
+    assertThat(columns.resolver()).isEqualTo("MegaMinion_hero_target_resolver");
+    assertThat(columns.filter()).isNotNull();
+    assertThat(columns.filter().isMatchTeamEnemy()).isTrue();
+    assertThat(columns.filter().isFilterTowers()).isTrue();
+    assertThat(columns.strategies())
+        .containsExactly("RESOLVER_STRATEGY_LOWEST_MAX_HP", "RESOLVER_STRATEGY_FURTHEST_TARGET");
+    assertThat(columns.onPickNewTarget()).isEqualTo("MegaMinion_hero_give_bot_buff_to_targets");
+    assertThat(columns.onTargetDied()).isEqualTo("MegaMinion_hero_reset_ability");
+    assertThat(columns.tagsWithoutTarget()).isEqualTo(EntityFlags.ABILITY_DISABLED);
+    assertThat(columns.tagsWithTarget()).isZero();
+    assertThat(columns.pauseIfInCooldown()).isTrue();
+    assertThat(columns.delayBeforeSearchMs()).isEqualTo(1000);
+    assertThat(mark.singleton()).isTrue();
+    assertThat(mark.forceStopIf()).isNotNull();
+    MegaMinionHeroAbility handOver = (MegaMinionHeroAbility) mark.nextAction();
+    assertThat(handOver.name()).isEqualTo("MegaMinion_hero_ability_action");
+    assertThat(handOver.nextActionWait()).isFalse();
+    assertThat(mark.nextActionWait()).isFalse();
+    assertThat(handOver.columns().markRow()).isEqualTo("MegaMinion_hero_mark_target");
+    assertThat(handOver.columns().actionToExecute()).isEqualTo("MegaMinion_hero_teleport_action");
+    OverrideAbilityButtonState disable =
+        (OverrideAbilityButtonState) handOver.columns().noTargetOnDeploy();
+    assertThat(disable.getState()).isEqualTo(ChampionController.DISABLED);
+    OverrideAbilityButtonState enable =
+        (OverrideAbilityButtonState) handOver.columns().hasTargetOnDeploy();
+    assertThat(enable.getState()).isEqualTo(ChampionController.READY);
+  }
+
+  @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
     assertThatThrownBy(() -> GameData.actions().build("BarbLog_hero_reset_target", INERT_BINDING))
@@ -1389,12 +1429,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 854 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 857 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(854);
+    assertThat(built).as("rows built").isEqualTo(857);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 26, "column", 55, "spawn type", 11));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 23, "column", 55, "spawn type", 11));
   }
 }

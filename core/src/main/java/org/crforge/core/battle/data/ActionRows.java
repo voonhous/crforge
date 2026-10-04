@@ -56,6 +56,7 @@ import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.MegaMinionHeroAbility;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
@@ -74,6 +75,7 @@ import org.crforge.core.battle.action.RunOnMatchingUnitsInGroup;
 import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
+import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -148,6 +150,9 @@ public final class ActionRows {
    * column it inherits, as the Graveyard's skeleton spawns carry their base's.
    */
   private static final Set<String> RESOLVED = Set.of("Base");
+
+  /** The table of target resolvers. */
+  private static final String TARGET_RESOLVERS = "target_resolvers";
 
   /** Milliseconds one step of a taunt's run takes off its duration. */
   private static final int TAUNT_STEP_MS = 50;
@@ -594,6 +599,38 @@ public final class ActionRows {
                   "ResetPendingDamageAtWarp",
                   "WarpPositionEffect",
                   "WarpTargetEffect")),
+          // The mark: its resolver, its two actions, its two tag masks, its pause and its search
+          // delay. The targetter effects, the effect lists and the radii that pick among them only
+          // show something; the arrow's stop condition, which only a client arrow reads, is refused
+          // as a column nothing reads.
+          Map.entry(
+              "ActionSetIndicatorOnTarget",
+              Set.of(
+                  "TargetResolver",
+                  "OnPickNewTargetAction",
+                  "OnTargetDiedAction",
+                  "GameTagsToSetWhileHasNotTarget",
+                  "GameTagsToSetWhileHasTarget",
+                  "PauseIfInCooldown",
+                  "DelayBeforeSearchForNextTarget",
+                  "PlayerTargetterEffect",
+                  "EnemyTargetterEffect",
+                  "RadiusListForEffectSelection",
+                  "PlayerTargettedEffectList",
+                  "EnemyTargettedEffectList",
+                  "PlayerCircleTargetIndicatorList",
+                  "EnemyCircleTargetIndicatorList")),
+          // The hand-over: the mark it reads, the warp it launches and the two deploy actions; the
+          // spell target indicator's file and clip only show something.
+          Map.entry(
+              "ActionMegaMinionHeroAbility",
+              Set.of(
+                  "ActionToGetTargetFrom",
+                  "ActionToExecute",
+                  "HasTargetOnDeployAction",
+                  "NoTargetOnDeployAction",
+                  "SpellTargetIndicatorFilename",
+                  "SpellTargetIndicatorClipName")),
           // Its stats tags only fill the card's stats panel.
           Map.entry(
               "ActionTargetIndicatorAttack",
@@ -1209,6 +1246,8 @@ public final class ActionRows {
             case "ActionGhostEvoAction" -> ghostEvo(name, shared, f);
             case "ActionGhostEvoSpawnSummon" -> ghostSummon(name, shared, f);
             case "ActionWarpCharacter" -> warpCharacter(name, shared, f);
+            case "ActionSetIndicatorOnTarget" -> setIndicatorOnTarget(name, shared, f);
+            case "ActionMegaMinionHeroAbility" -> megaMinionHeroAbility(name, shared, f);
             case "ActionTargetIndicatorAttack" -> targetIndicatorAttack(name, shared, f);
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
@@ -2497,6 +2536,83 @@ public final class ActionRows {
               .avoidWater(f.path("AvoidWaterVertically").asBoolean(true))
               .avoidBlocked(f.path("AvoidBlockedTilesVertically").asBoolean(true))
               .resetPendingDamage(f.path("ResetPendingDamageAtWarp").asBoolean(true))
+              .build());
+    }
+
+    /**
+     * A mark's columns: its resolver's filter and strategies, the names of its two actions, its two
+     * tag masks, its pause and its search delay. Refused: a row without a resolver, a resolver
+     * whose shape is not a Global one or that has no filter, and a row that waits for its next
+     * action. The two actions are not built: only a pick reaches them, and a pick is refused as it
+     * is made.
+     */
+    private SetIndicatorOnTarget setIndicatorOnTarget(String name, ActionRow shared, JsonNode f) {
+      refuseShared(name, f, "NextActionWait");
+      String resolverName = f.path("TargetResolver").asText("");
+      if (resolverName.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " marks with no target resolver, which is not modelled");
+      }
+      GameTable resolvers = tables.table(TARGET_RESOLVERS);
+      if (!resolvers.has(resolverName)) {
+        throw new IllegalArgumentException("no target resolver " + resolverName);
+      }
+      GameRow resolver = resolvers.row(resolverName);
+      String shape = resolver.string("Shape");
+      GameTable shapes = tables.table("shapes");
+      if (shape == null
+          || !shapes.has(shape)
+          || !"Global".equals(shapes.row(shape).string("ClassType"))) {
+        throw new UnsupportedOperationException(
+            name
+                + " resolves through "
+                + resolverName
+                + ", whose shape "
+                + shape
+                + " is not a Global one, which is not modelled");
+      }
+      String filter = resolver.string("Filter");
+      if (filter == null || filter.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " resolves through " + resolverName + " with no filter, which is not modelled");
+      }
+      List<String> strategies = new ArrayList<>();
+      JsonNode list = resolver.value("StrategyList");
+      if (list != null && list.isArray()) {
+        list.forEach(value -> strategies.add(value.asText()));
+      }
+      return new SetIndicatorOnTarget(
+          shared,
+          SetIndicatorOnTarget.Columns.builder()
+              .resolver(resolverName)
+              .filter(records.filter(filter))
+              .strategies(strategies)
+              .onPickNewTarget(rowName(f.get("OnPickNewTargetAction")))
+              .onTargetDied(rowName(f.get("OnTargetDiedAction")))
+              .tagsWithoutTarget(tagMask(f.path("GameTagsToSetWhileHasNotTarget").asText("")))
+              .tagsWithTarget(tagMask(f.path("GameTagsToSetWhileHasTarget").asText("")))
+              .pauseIfInCooldown(bool(f, "PauseIfInCooldown"))
+              .delayBeforeSearchMs(integer(f, "DelayBeforeSearchForNextTarget"))
+              .build());
+    }
+
+    /**
+     * A hand-over's columns: the name of the mark it reads, the name of the warp it launches and
+     * its two deploy actions. Refused: a row without a mark to read. The warp is not built: only a
+     * re-trigger reaches it, and a re-trigger is refused as the run steps after it.
+     */
+    private MegaMinionHeroAbility megaMinionHeroAbility(String name, ActionRow shared, JsonNode f) {
+      String mark = rowName(f.get("ActionToGetTargetFrom"));
+      if (mark == null) {
+        throw new UnsupportedOperationException(name + " reads no mark, which is not modelled");
+      }
+      return new MegaMinionHeroAbility(
+          shared,
+          MegaMinionHeroAbility.Columns.builder()
+              .markRow(mark)
+              .actionToExecute(rowName(f.get("ActionToExecute")))
+              .noTargetOnDeploy(action(f.get("NoTargetOnDeployAction")))
+              .hasTargetOnDeploy(action(f.get("HasTargetOnDeployAction")))
               .build());
     }
 

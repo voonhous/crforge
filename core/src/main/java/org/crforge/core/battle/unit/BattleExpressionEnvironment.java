@@ -5,6 +5,7 @@ import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -42,14 +43,15 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " its speed budget above 0, 0 for any other object, held by"
             + " building_evolutions_barbarians; is_active_or_secondary_champion and is_champion"
             + " alike as a character, no clone, that a champion slot of its side follows by its"
-            + " row and play, held by hero_goblins. Supplied, not"
+            + " row and play, held by hero_goblins; is_deploying as a character in the"
+            + " deploying state, 0 for any other object, held by hero_mega_minion. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
-            + " would read first, refused; the other 24 functions, which fail"
+            + " would read first, refused; the other 23 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -76,6 +78,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_ACTIVE_OR_SECONDARY_CHAMPION =
       BattleFunctions.id("is_active_or_secondary_champion");
   private static final int IS_CHAMPION = BattleFunctions.id("is_champion");
+  private static final int IS_DEPLOYING = BattleFunctions.id("is_deploying");
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -287,6 +290,13 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       // One answer for both names: a character that is no clone and that a champion slot of its
       // side follows - its row and its play - whether alive or not; any other object answers 0.
       return context instanceof CharacterEntity character && world.followedChampion(character)
+          ? 1
+          : 0;
+    }
+    if (id == IS_DEPLOYING) {
+      // A character in the deploying state; any other object answers 0.
+      return context instanceof CharacterEntity character
+              && character.getView().getState() == GridEntityState.DEPLOYING
           ? 1
           : 0;
     }

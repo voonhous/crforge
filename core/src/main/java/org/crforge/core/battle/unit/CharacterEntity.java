@@ -38,6 +38,7 @@ import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
@@ -46,6 +47,7 @@ import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.battle.projectile.CaptureHost;
 import org.crforge.core.battle.projectile.CaptureRun;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -3993,6 +3995,30 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void stepped(boolean locked, int releaseMs, List<String> calls) {
         world.bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
+      }
+    };
+  }
+
+  /**
+   * What a mark's run, or its hand-over's, on the character asks of the battle: the battle's
+   * objects, the cooldown of the champion slot that follows the character, and its state.
+   */
+  @Override
+  public SetIndicatorOnTarget.Host markHost(BattleAction action) {
+    return new SetIndicatorOnTarget.Host() {
+      @Override
+      public ObjectCensus census() {
+        return CharacterEntity.this.census();
+      }
+
+      @Override
+      public int abilityCooldownMs() {
+        return world.championCooldownMs(CharacterEntity.this);
+      }
+
+      @Override
+      public int state() {
+        return getView().getState();
       }
     };
   }
