@@ -12,7 +12,7 @@
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target finds [Musketeer] through MegaMinion_hero_target_resolver: the pick by [RESOLVER_STRATEGY_LOWEST_MAX_HP, RESOLVER_STRATEGY_FURTHEST_TARGET], the mark and MegaMinion_hero_give_bot_buff_to_targets are not modelled", "input": "the run"},
   "ability-sweep-v2/ability_hero_mini_pekka": {"outcome": "diagnostic_match"},
-  "ability-sweep-v2/ability_hero_musketeer": {"outcome": "unsupported", "feature": "MusketeerTurret_SpawnKnockBack spawns a projectile from its cause, which is not modelled", "input": "the run"},
+  "ability-sweep-v2/ability_hero_musketeer": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_wizard": {"outcome": "unsupported", "feature": "WizardHero_ground_to_air is an ActionGroundToAir, which the battle does not have", "input": "the run"},
   "ability-sweep-v2/ability_little_prince": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_mighty_miner": {"outcome": "diagnostic_match"},
