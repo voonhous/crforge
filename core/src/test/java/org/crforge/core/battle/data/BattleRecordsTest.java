@@ -15,6 +15,7 @@ import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
+import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.EntityFlags;
@@ -1034,12 +1035,43 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
-  void anInlineHookIsRefused() {
-    assertThatThrownBy(() -> records.unit("DaggerDuchess"))
+  void anInlineHookIsRefused(@TempDir Path folder) throws IOException {
+    // Every shipped row's inline starting action is now built, so the Knight is given one the
+    // battle does not read: a group whose sub-action is itself written inline.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows ->
+                GameData.columns(rows, "Knight")
+                    .putObject("OnStartingAction")
+                    .put("ClassType", "ActionGroup")
+                    .putArray("SubActions")
+                    .addObject()
+                    .put("ClassType", "ActionBerserk"));
+
+    assertThatThrownBy(() -> new BattleRecords(tables).unit("Knight"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DaggerDuchess")
+        .hasMessageContaining("Knight")
         .hasMessageContaining("OnStartingAction")
-        .hasMessageContaining("ActionBurstAttack");
+        .hasMessageContaining("ActionGroup");
+  }
+
+  @Test
+  @DisplayName(
+      "the Dagger Duchess's inline charge counter is its row's action, and its entries pace")
+  void theDaggerDuchessStartsItsChargeCounterAndPacesItsEntries() {
+    UnitData duchess = records.unit("DaggerDuchess");
+
+    assertThat(duchess.onStartingAction()).isEqualTo("DaggerDuchess_OnStartingAction");
+    assertThat(duchess.attackSequence().mode()).isEqualTo(AttackSequence.MODE_NONE);
+    assertThat(duchess.attackSequence().order()).containsExactly(0, 1, 2, 3);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(AttackSequence.Entry::hitSpeedMultiplier)
+        .containsExactly(100, 100, 70, 90);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(entry -> entry.projectile().name())
+        .containsOnly("TowerKnifeThrowerProjectile");
   }
 
   @Test

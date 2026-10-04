@@ -196,6 +196,17 @@ public interface ActionOwner {
         action.name() + " runs on " + actionRowName() + ", which is not a character, not modelled");
   }
 
+  /**
+   * What a charge counter's run reads of and does to this owner. Only an entity with a targeting
+   * component and an attack sequence runs one.
+   *
+   * @param action the row
+   */
+  default BurstAttack.Host burstAttackHost(BurstAttack action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on " + actionRowName() + ", which does not attack, not modelled");
+  }
+
   /** What a summon area's run asks of the battle about this owner. Only an area effect runs one. */
   default GhostEvo.SummonHost ghostSummonHost() {
     throw new UnsupportedOperationException(
