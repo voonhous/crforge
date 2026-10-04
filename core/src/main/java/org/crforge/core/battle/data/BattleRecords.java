@@ -72,12 +72,18 @@ public final class BattleRecords {
 
   /**
    * The columns of a spell card the cast does not model yet: a Mirror, which a match plays as the
-   * card it repeats instead, a first projectile of its own, and a variant card's class and its
-   * projected summon, which a match plays as the option picked instead. A spell that sets one is
-   * refused.
+   * card it repeats instead, a first projectile of its own, a variant card's class and its
+   * projected summon, which a match plays as the option picked instead, and an action run as the
+   * spell is cast, which only the evolved Goblin Barrel sets (its decoy barrel). A spell that sets
+   * one is refused.
    */
   private static final List<String> UNMODELLED_SPELL_COLUMNS =
-      List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
+      List.of(
+          "Mirror",
+          "CustomFirstProjectile",
+          "CustomClassType",
+          "UseProjectedTimeSummon",
+          "OnExecuteAction");
 
   /**
    * The columns of a projectile the impact does not model: the action on reaching its target,
@@ -263,11 +269,19 @@ public final class BattleRecords {
       List.of("SpawnPushback", "SpawnConstPriority");
 
   /**
-   * The tags a unit's own row may set: those of the Phoenix's egg, each read where the battle reads
-   * the tag word. A row that sets any other is refused as the unit is created.
+   * The tags a unit's own row may set, each read where the battle reads the tag word: those of the
+   * Phoenix's egg, and those of the Goblins hero's banner - no damage taken (the damage entry), no
+   * contact (the push pass and its gate, and a filter's excluded tags) and no targeting (the
+   * targeting and its validator). A row that sets any other is refused as the unit is created.
    */
   private static final Set<String> MODELLED_ROW_TAGS =
-      Set.of("NO_GIANTBUFFER_CHEF_ENCHANTMENT", "AVOIDANCE_AS_OBSTACLE", "NO_MOVE_ALLOW_ATTRACT");
+      Set.of(
+          "NO_GIANTBUFFER_CHEF_ENCHANTMENT",
+          "AVOIDANCE_AS_OBSTACLE",
+          "NO_MOVE_ALLOW_ATTRACT",
+          "NO_DAMAGE",
+          "NO_CHECKCOLLISIONS",
+          "UNTARGETABLE");
 
   /**
    * The tags a buff may set: the one the push pass reads, which keeps the carrier's enemies from
@@ -442,6 +456,13 @@ public final class BattleRecords {
           // Read only by the character view, where it offsets the attached object's sprite, and by
           // a by-name getter nothing calls.
           "AttachedCharacterOffsetY",
+          // The same offset per side, stored beside it and read with it by the same view function;
+          // the battle loads of the same offsets are another object's serialised fields.
+          "AttachedCharacterOffsetYBlue",
+          "AttachedCharacterOffsetYRed",
+          // The name suffix of the Royal Chef tower's attack animation: outside its row's loader,
+          // constructor, destructor and by-name getter, no battle code reaches its field.
+          "CustomAnimationPostfix",
           // Stored and never read.
           "TurretMovement",
           // The evolved Cannon's shadows: the by-name getter that answers them runs in no battle
@@ -492,7 +513,15 @@ public final class BattleRecords {
           "ShakesTargets",
           "SpawnDeployBaseAnim",
           "TargettedEffect",
-          "TrailEffect");
+          "TrailEffect",
+          // The filtered hit effects: the hit-effect chooser tries the filters in order for the
+          // entity hit and the first that accepts names the effect shown, the shooter's own target
+          // keeping HitEffect under the last; its answer only goes to the effect display.
+          "FilteredHitEffects",
+          "HitEffectFilters",
+          "FilteredHitEffectOnlyIfNotShootersTarget",
+          // Read only by the projectile view, for the angle it draws the projectile at.
+          "MinimumLengthForVisualAngleCalculation");
 
   /** The columns of a projectile's row the record shows no battle logic reads to any effect. */
   private static final Set<String> INERT_PROJECTILE_COLUMNS =
@@ -656,6 +685,7 @@ public final class BattleRecords {
             .onAttackAction(actionName(row, "OnAttackAction"))
             .onStartChargingAction(actionName(row, "OnStartChargingAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
+            .onAttackSelfAction(actionName(row, "OnAttackSelfAction"))
             .minimumRange(row.intValue("MinimumRange"))
             .sightClip(sightClip(row))
             .sightClipSide(row.intValue("SightClipSide"))
@@ -1392,11 +1422,35 @@ public final class BattleRecords {
   }
 
   /**
-   * A buff's start or remove action: the row the column names, or null for none and for one written
-   * inline, which is listed as not modelled instead.
+   * A buff's start or remove action: the row the column names, or the row of an inline group of
+   * named rows; null for none and for any other one written inline, which is listed as not modelled
+   * instead.
    */
-  private static String hookAction(GameRow row, String column) {
+  private String hookAction(GameRow row, String column) {
+    if (inlineNamedGroup(row, column)) {
+      return inlineActionName(row, column);
+    }
     return namedAction(row.value(column)) ? actionName(row, column) : null;
+  }
+
+  /**
+   * Whether the battle reads a buff's start or remove action: one that names a row, or a group of
+   * named rows written inline, as the Royal Chef's level-up buff's is, which is the actions table's
+   * row named after the buff and the column.
+   */
+  private boolean readHook(GameRow row, String column) {
+    return namedAction(row.value(column)) || inlineNamedGroup(row, column);
+  }
+
+  /** Whether a column holds an inline group of named rows that the actions table has a row for. */
+  private boolean inlineNamedGroup(GameRow row, String column) {
+    JsonNode value = row.value(column);
+    return value != null
+        && value.isObject()
+        && !value.has("action")
+        && value.path("ClassType").asText().equals("ActionGroup")
+        && namesOnly(value.path("SubActions"))
+        && tables.actionNames().contains(row.name() + "_" + column);
   }
 
   /**
@@ -1434,14 +1488,16 @@ public final class BattleRecords {
           && sets(row, column)
           && !inertDamageReductionAction(row, column)
           && !modelledBuffTags(row, column)
-          && !(BUFF_HOOK_COLUMNS.contains(column) && namedAction(row.value(column)))) {
+          && !(BUFF_HOOK_COLUMNS.contains(column) && readHook(row, column))) {
         unmodelled.add(column);
       }
     }
-    // A start or remove action written inline is a row of its own, which the battle does not read.
+    // A start or remove action written inline is a row of its own, which the battle does not read
+    // unless it is a group of named rows the actions table holds under the buff's and column's
+    // name.
     for (String column : BUFF_HOOK_COLUMNS) {
       JsonNode value = row.value(column);
-      if (value != null && value.isObject() && !namedAction(value)) {
+      if (value != null && value.isObject() && !readHook(row, column)) {
         unmodelled.add(column);
       }
     }
@@ -1675,6 +1731,7 @@ public final class BattleRecords {
             .onStartingAction(actionName(row, "OnStartingAction"))
             // The loader stores at least one link for a row that names a spawned projectile.
             .spawnChain(set(row, "SpawnProjectile") ? Math.max(row.intValue("SpawnChain"), 1) : 0)
+            .chainIsNewProjectile(row.bool("ChainIsNewProjectile"))
             .constantHeight(row.intValue("ConstantHeight"))
             .targetBuff(set(row, "TargetBuff") ? row.string("TargetBuff") : null)
             .applyBuffBeforeDamage(row.bool("ApplyBuffBeforeDamage"))
@@ -1710,6 +1767,10 @@ public final class BattleRecords {
             .customDeflectAction(actionName(row, "CustomDeflectAction"))
             .useCustomMovement(row.bool("UseCustomMovement"))
             .spawnAxisY(row.bool("SpawnAxisY"))
+            .initialCollisionCheckFilter(
+                set(row, "InitialCollisionCheckFilter")
+                    ? filter(row.string("InitialCollisionCheckFilter"))
+                    : null)
             .build();
     List<String> unmodelled =
         new ArrayList<>(
@@ -1845,6 +1906,24 @@ public final class BattleRecords {
   }
 
   /**
+   * The champion a champion slot finds for a card: its linked champion character when that is a
+   * champion, which only a hero form names - the Goblins' names the banner its last goblin leaves -
+   * else the champion the card summons ({@link DeployCard#champion()}); null for none.
+   *
+   * @param name the card row's name
+   */
+  public UnitData cardChampion(String name) {
+    GameRow row = cardRow(name);
+    if (set(row, "LinkedChampionCharacter")) {
+      UnitData linked = unit(row.string("LinkedChampionCharacter"));
+      if (linked.champion()) {
+        return linked;
+      }
+    }
+    return card(name).champion();
+  }
+
+  /**
    * The characters a card lists, each with its offsets at its index in the two offset lists, which
    * the placement reads unchecked: a list longer than either is refused.
    */
@@ -1945,9 +2024,10 @@ public final class BattleRecords {
 
   /**
    * The action row a unit's OnStartingAction names; null for none. One written inline as a bare
-   * ActionBerserk, as the Berserker's is, or as a spawn of an area effect and nothing more, as
-   * Goblinstein's doctor's is, is the actions table's row named after the unit and the column. Any
-   * other inline row is refused.
+   * ActionBerserk, as the Berserker's is, as a charge counter (ActionBurstAttack), as the Dagger
+   * Duchess's is, or as a spawn of an area effect and nothing more, as Goblinstein's doctor's is,
+   * or as a group of named rows, as the Royal Chef's king tower's is, is the actions table's row
+   * named after the unit and the column. Any other inline row is refused.
    */
   private String startingActionName(GameRow row) {
     JsonNode value = row.value("OnStartingAction");
@@ -1963,9 +2043,35 @@ public final class BattleRecords {
             && value.path("ClassType").asText().equals("ActionSpawn")
             && value.path("SpawnType").asText().equals("AreaEffectType")
             && value.path("SpawnData").isTextual();
-    return berserk || areaEffect
+    boolean burstAttack =
+        value != null
+            && value.isObject()
+            && value.path("ClassType").asText().equals("ActionBurstAttack");
+    boolean namedGroup =
+        value != null
+            && value.isObject()
+            && value.path("ClassType").asText().equals("ActionGroup")
+            && namesOnly(value.path("SubActions"));
+    return berserk || burstAttack || areaEffect || namedGroup
         ? inlineActionName(row, "OnStartingAction")
         : actionName(row, "OnStartingAction");
+  }
+
+  /**
+   * Whether every element of a group's sub-actions names an action row, none written inline: such a
+   * group is the actions table's row named after its unit and column, sub-actions and all.
+   */
+  private static boolean namesOnly(JsonNode subActions) {
+    if (!subActions.isArray() || subActions.isEmpty()) {
+      return false;
+    }
+    for (JsonNode sub : subActions) {
+      if (!sub.isTextual()
+          && !(sub.isObject() && sub.size() == 1 && sub.path("action").isTextual())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -2143,6 +2249,15 @@ public final class BattleRecords {
    */
   public boolean troopCard(String name) {
     return tables.table(SPELLS_CHARACTERS).has(name);
+  }
+
+  /**
+   * Whether a card is a spell or building card: a row of the other spells' or the buildings' cards.
+   *
+   * @param name the card row's name
+   */
+  public boolean spellOrBuildingCard(String name) {
+    return tables.table(SPELLS_OTHER).has(name) || tables.table(SPELLS_BUILDINGS).has(name);
   }
 
   /**

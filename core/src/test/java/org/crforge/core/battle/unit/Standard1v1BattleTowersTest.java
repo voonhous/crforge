@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.BurstAttack;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -58,6 +59,38 @@ class Standard1v1BattleTowersTest {
             true);
 
     assertThat(describe(byLevel)).isEqualTo(describe(bySpawnGroup));
+  }
+
+  @Test
+  void aDaggerDuchessStartsItsChargeCounterFullOnItsFirstStep() {
+    Standard1v1Battle battle =
+        new Standard1v1Battle(
+            GameData.tables(),
+            List.of(
+                new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
+                new Standard1v1Battle.Towers("King_KnifeTowers", 1, 9)),
+            true);
+
+    battle.getBattle().step();
+
+    // Each Duchess's placement queued its row's charge counter, which the first step starts with
+    // all eight charges; at eight the counter sets the index the list gives last, entry 0.
+    List<WorldEntity> duchesses =
+        towers(battle).stream()
+            .filter(tower -> tower.getData().name().equals("DaggerDuchess"))
+            .toList();
+    assertThat(duchesses).hasSize(2);
+    for (WorldEntity duchess : duchesses) {
+      List<BurstAttack.Run> runs =
+          duchess.actionHolder().running().stream()
+              .filter(BurstAttack.Run.class::isInstance)
+              .map(BurstAttack.Run.class::cast)
+              .toList();
+      assertThat(runs).hasSize(1);
+      assertThat(runs.get(0).charges()).isEqualTo(8);
+      assertThat(runs.get(0).depleted()).isFalse();
+      assertThat(duchess.attackSequenceIndex()).isZero();
+    }
   }
 
   private static List<String> describe(Standard1v1Battle battle) {

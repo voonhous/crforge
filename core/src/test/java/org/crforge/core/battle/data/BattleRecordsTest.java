@@ -15,6 +15,7 @@ import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
+import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.EntityFlags;
@@ -216,6 +217,21 @@ class BattleRecordsTest {
     // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
     assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
         .contains("TargetBuff");
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile's spawn chain is carried, and whether its spawns share its group or are new"
+          + " projectiles")
+  void aProjectileSpawnChain() {
+    ProjectileData bomb = records.projectile("BombSkeletonProjectile_EV1");
+    assertThat(bomb.spawnProjectile()).isEqualTo("BombSkeletonProjectile_2_EV1");
+    assertThat(bomb.spawnChain()).isEqualTo(2);
+    assertThat(bomb.chainIsNewProjectile()).isFalse();
+    assertThat(bomb.unmodelledColumns()).isEmpty();
+    ProjectileData rocket = records.projectile("RocketSpell_crazy_1");
+    assertThat(rocket.spawnChain()).isEqualTo(4);
+    assertThat(rocket.chainIsNewProjectile()).isTrue();
   }
 
   @Test
@@ -555,8 +571,8 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a buff's start and remove actions are read when they name an action row, and listed as not"
-          + " modelled when written inline")
+      "a buff's start and remove actions are read when they name an action row or are an inline"
+          + " group of named rows, and listed as not modelled when written inline otherwise")
   void aBuffsHooksAreReadByName() {
     BuffData invisibility = records.buff("Ghost_EV1_Invisibility");
     assertThat(invisibility.onStartAction()).isEqualTo("Ghost_EV1_Invisible_Group");
@@ -564,9 +580,11 @@ class BattleRecordsTest {
     assertThat(invisibility.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Rage").onStartAction()).isNull();
 
+    // The Royal Chef's level-up buff writes its start action inline, as a group of named rows,
+    // which is the actions table's row named after the buff and the column.
     BuffData chef = records.buff("ChefTower_increase_level_buff");
-    assertThat(chef.onStartAction()).isNull();
-    assertThat(chef.unmodelledColumns()).contains("OnStartAction");
+    assertThat(chef.onStartAction()).isEqualTo("ChefTower_increase_level_buff_OnStartAction");
+    assertThat(chef.unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -844,9 +862,15 @@ class BattleRecordsTest {
     // The same three written with spaces are the same tags.
     assertThat(records.unit("EliteArcherHero_Dummy").gameTagsToSet())
         .isEqualTo(egg.gameTagsToSet());
-    // Any other tag a row sets is refused.
-    assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns())
-        .containsExactly("GameTagsToSet");
+    // The Goblins hero's banner sets three more the battle reads: no damage, no contact, no
+    // targeting; a row with one of them alone is taken too.
+    assertThat(records.unit("GoblinHero_Flag_Building").gameTagsToSet())
+        .isEqualTo(
+            EntityFlags.NO_DAMAGE | EntityFlags.NO_CHECK_COLLISIONS | EntityFlags.UNTARGETABLE);
+    assertThat(records.unit("GoblinHero_Flag_Building").unmodelledColumns()).isEmpty();
+    assertThat(records.unit("RageBarbarianEvoGhost").gameTagsToSet())
+        .isEqualTo(EntityFlags.NO_DAMAGE);
+    assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -1032,12 +1056,43 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName("a hook written inline, with no name to build it by, is refused rather than dropped")
-  void anInlineHookIsRefused() {
-    assertThatThrownBy(() -> records.unit("DaggerDuchess"))
+  void anInlineHookIsRefused(@TempDir Path folder) throws IOException {
+    // Every shipped row's inline starting action is now built, so the Knight is given one the
+    // battle does not read: a group whose sub-action is itself written inline.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows ->
+                GameData.columns(rows, "Knight")
+                    .putObject("OnStartingAction")
+                    .put("ClassType", "ActionGroup")
+                    .putArray("SubActions")
+                    .addObject()
+                    .put("ClassType", "ActionBerserk"));
+
+    assertThatThrownBy(() -> new BattleRecords(tables).unit("Knight"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("DaggerDuchess")
+        .hasMessageContaining("Knight")
         .hasMessageContaining("OnStartingAction")
-        .hasMessageContaining("ActionBurstAttack");
+        .hasMessageContaining("ActionGroup");
+  }
+
+  @Test
+  @DisplayName(
+      "the Dagger Duchess's inline charge counter is its row's action, and its entries pace")
+  void theDaggerDuchessStartsItsChargeCounterAndPacesItsEntries() {
+    UnitData duchess = records.unit("DaggerDuchess");
+
+    assertThat(duchess.onStartingAction()).isEqualTo("DaggerDuchess_OnStartingAction");
+    assertThat(duchess.attackSequence().mode()).isEqualTo(AttackSequence.MODE_NONE);
+    assertThat(duchess.attackSequence().order()).containsExactly(0, 1, 2, 3);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(AttackSequence.Entry::hitSpeedMultiplier)
+        .containsExactly(100, 100, 70, 90);
+    assertThat(duchess.attackSequence().entries())
+        .extracting(entry -> entry.projectile().name())
+        .containsOnly("TowerKnifeThrowerProjectile");
   }
 
   @Test

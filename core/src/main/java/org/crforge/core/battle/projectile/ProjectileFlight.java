@@ -29,8 +29,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  *
  * <p>The impact of a projectile that hits one target: the row's damage at the projectile's level,
  * or its crown-tower share for a crown tower, dealt once to a target that still has hit points,
- * from the direction of the flight. The damage carries a fresh hit id but no dedupe id, so a second
- * projectile lands on the same target again.
+ * from the direction of the flight. The damage carries a fresh hit id and the projectile's group id
+ * as its dedupe id: 0 for a projectile of no group, so a second projectile lands on the same target
+ * again; the projectiles of one group - a projectile and those its impacts spawn - land on an
+ * entity once, whatever reaches it.
  *
  * <p>The impact of a row with a radius does not look at the target at all: everything the area
  * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the
@@ -82,7 +84,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the projectile's own radius is zero, and the"
             + " row's target limit, which is not carried, is none. The on-impact area effect at"
             + " the impact point, after the spawned characters and before the spawned projectiles,"
-            + " by heal_spirit_group. Not modelled: the area impact"
+            + " by heal_spirit_group. The first step's collision check along the segment from"
+            + " the owner to the projectile, by the hero Elite Archer's arrow, which finds"
+            + " nothing there. Not modelled: the area impact"
             + " of one that only heals, the height toward a moving target under the"
             + " z-distance column, the drag-back hook, and the"
             + " hit effects.")
@@ -107,9 +111,11 @@ final class ProjectileFlight {
    */
   static void fly(ProjectileEntity p, BattleWorld world) {
     ProjectileData data = p.getData();
-    // The first step would spawn a following area effect and run the initial collision check,
-    // neither of which any row carried here has.
-    p.takeFirstVisit();
+    // The first step would spawn a following area effect, which no row carried here has, and runs
+    // the initial collision check of a row that has one.
+    if (p.takeFirstVisit()) {
+      world.initialCollisionCheck(p);
+    }
     // A projectile with a custom movement is moved by a run on it: its visit ends here.
     if (data.useCustomMovement()) {
       return;

@@ -112,6 +112,17 @@ public interface ActionOwner {
   }
 
   /**
+   * What a Royal Chef's cooking run asks of the battle around the owner. Only a king tower runs
+   * one.
+   *
+   * @return the owner's answers
+   */
+  default CookingHost cookingHost() {
+    throw new UnsupportedOperationException(
+        "a Royal Chef's cooking on an owner other than a king tower is not modelled");
+  }
+
+  /**
    * The candidates a snipe's look lists around the owner: the objects in the box about the owner's
    * position, as wide as twice the half width and as long as twice the half length, that pass the
    * filter for the owner's team and row, a building by its square overlapping the box and anything
@@ -208,6 +219,17 @@ public interface ActionOwner {
         action.name() + " runs on " + actionRowName() + ", which is not a character, not modelled");
   }
 
+  /**
+   * What a charge counter's run reads of and does to this owner. Only an entity with a targeting
+   * component and an attack sequence runs one.
+   *
+   * @param action the row
+   */
+  default BurstAttack.Host burstAttackHost(BurstAttack action) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on " + actionRowName() + ", which does not attack, not modelled");
+  }
+
   /** What a summon area's run asks of the battle about this owner. Only an area effect runs one. */
   default GhostEvo.SummonHost ghostSummonHost() {
     throw new UnsupportedOperationException(
@@ -248,6 +270,28 @@ public interface ActionOwner {
   default ActionInstance championAbility(ChampionAbility action) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a king, not modelled");
+  }
+
+  /**
+   * Writes a button state override, and refills the charges when it asks, into the champion slot of
+   * the owner's player that follows the row's champion; nothing when no slot follows it. Only a
+   * character or a building, which is its own player's, answers it; an owner that hands the
+   * question to another object is not modelled.
+   *
+   * @param action the row
+   */
+  default void overrideAbilityButton(OverrideAbilityButtonState action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * The owner's group chain, for the actions that check or run over its group. Only a character
+   * keeps one.
+   */
+  default GroupChain groupChain() {
+    throw new UnsupportedOperationException(
+        "a group check on an owner other than a character is not modelled");
   }
 
   /**

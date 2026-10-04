@@ -1,5 +1,6 @@
 package org.crforge.core.battle.data;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 
@@ -32,5 +33,13 @@ public interface ActionBinding {
    */
   default IntSupplier spawnRate() {
     return () -> 100;
+  }
+
+  /**
+   * Whether a buff changes the entity's hit speed as it stands: never for an entity without buffs,
+   * which is every entity that is not a character or a tower.
+   */
+  default BooleanSupplier hitSpeedBuffed() {
+    return () -> false;
   }
 }

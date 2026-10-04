@@ -202,4 +202,30 @@ class BattleTunnelTest {
     match.getBattle().step();
     assertThat(match.getBattle().getHolder().entities()).doesNotContain(dig);
   }
+
+  @Test
+  @DisplayName(
+      "a dig whose morph's row starts an action, the evolved Goblin Drill's relocation, is refused"
+          + " as it surfaces: a morph starts no action of the row it is made from")
+  void aMorphThatStartsAnActionIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    match.play(
+        0,
+        GameData.card("GoblinDrill_EV1"),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        3500,
+        25500,
+        "Drill");
+
+    assertThatThrownBy(
+            () -> {
+              for (int step = 0; step < 100; step++) {
+                match.getBattle().step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(
+            "GoblinDrill_EV1_Dig morphs into GoblinDrill_EV1, which starts an action");
+  }
 }

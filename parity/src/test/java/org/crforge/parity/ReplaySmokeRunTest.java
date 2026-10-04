@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
@@ -135,6 +136,138 @@ class ReplaySmokeRunTest {
       }
     }
     assertThat(firstHit).isEqualTo(299);
+  }
+
+  @Test
+  void aTowerSelectionLevelRaisesItsSidesPrincessTowersButNotItsKing() throws IOException {
+    ObjectNode scenario = Scenarios.knight();
+    // Side 0 selects the princess towers one level up, side 1 eight levels up.
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 1);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("l", 8);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, identity, 330);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    // Each king stands at the avatar's level (exp level 1: the first level), whatever its side's
+    // selection level is; the princess towers stand at their own side's selection level.
+    for (int i : new int[] {0, 3}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("KingTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2400);
+    }
+    for (int i : new int[] {1, 2}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(1512);
+    }
+    for (int i : new int[] {4, 5}) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2534);
+    }
+    // Side 0's Knight walks up the left lane into side 1's low princess tower's range: its first
+    // arrow takes 90, the projectile's 50 at the tower's level.
+    int firstHp = -1;
+    for (String line : lines) {
+      for (JsonNode entity : MAPPER.readTree(line).path("entities")) {
+        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < 690) {
+          firstHp = entity.path("hp").asInt();
+          break;
+        }
+      }
+      if (firstHp >= 0) {
+        break;
+      }
+    }
+    assertThat(firstHp).isEqualTo(600);
+  }
+
+  @Test
+  void aRoyalChefTowerSelectionCooksAPancakeThatRaisesAFriendlyTroopsLevel() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.knightAgainstTheRoyalChef(), out, identity, 700);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    // Side 1 stands the Royal Chef's king row and two ChefTower rows, eight levels above their
+    // first.
+    assertThat(first.get(3).path("row").asText()).isEqualTo("ChefTowerKing");
+    assertThat(first.get(3).path("hp").asInt()).isEqualTo(2400);
+    for (int i = 4; i <= 5; i++) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("ChefTower");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2244);
+    }
+    // The cooking starts 7 s in and fills at 40 a step while the low tower shoots side 0's Knight
+    // and 50 a step while both towers idle; the full bar throws a pancake from the tower nearer
+    // side 1's Giant, 200 toward it, on tick 638. Its landing raises the Giant one level: its hit
+    // points and its maximum from 1875 to 2061 on tick 644.
+    JsonNode pancake = null;
+    int pancakeTick = -1;
+    int levelUpTick = -1;
+    for (String line : lines) {
+      JsonNode observation = MAPPER.readTree(line);
+      int tick = observation.path("tick").asInt();
+      for (JsonNode entity : observation.path("entities")) {
+        if (pancake == null
+            && tick > 450
+            && !entity.has("row")
+            && entity.path("side").asInt() == 1) {
+          pancake = entity;
+          pancakeTick = tick;
+        }
+        if (levelUpTick < 0
+            && entity.path("row").asText().equals("Giant")
+            && entity.path("max_hp").asInt() != 1875) {
+          assertThat(entity.path("max_hp").asInt()).isEqualTo(2061);
+          assertThat(entity.path("hp").asInt()).isEqualTo(2061);
+          levelUpTick = tick;
+        }
+      }
+    }
+    assertThat(pancakeTick).isEqualTo(638);
+    assertThat(pancake.path("x").asInt()).isEqualTo(3440);
+    assertThat(pancake.path("y").asInt()).isEqualTo(25310);
+    assertThat(levelUpTick).isEqualTo(644);
+  }
+
+  @Test
+  void aDaggerDuchessSpendsItsEightChargesThenAttacksOnlyAsItRecharges() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.giantVsDuchessTower(), out, identity, 820);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    for (int i = 4; i <= 5; i++) {
+      assertThat(first.get(i).path("row").asText()).isEqualTo("DaggerDuchess");
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2298);
+    }
+    // The low Duchess's knives take 89 off the Giant. Its first seven hits come at the full pace,
+    // every nine or ten ticks; the eighth, its last charge's, at the slower pace of its entry 2;
+    // with no charge left it cannot attack until a charge comes back, 900 ms later, and then
+    // throws it at the depleted entry's pace: one hit every 31 ticks until the Giant dies.
+    List<Integer> hits = new ArrayList<>();
+    int hp = -1;
+    for (String line : lines) {
+      JsonNode observation = MAPPER.readTree(line);
+      for (JsonNode entity : observation.path("entities")) {
+        if (entity.path("row").asText().equals("Giant")) {
+          int now = entity.path("hp").asInt();
+          if (hp >= 0 && now != hp) {
+            assertThat(hp - now).isEqualTo(89);
+            hits.add(observation.path("tick").asInt());
+          }
+          hp = now;
+        }
+      }
+    }
+    assertThat(hits)
+        .containsExactly(
+            298, 307, 317, 326, 336, 345, 355, 369, 399, 429, 460, 491, 522, 553, 584, 615, 646,
+            677, 708, 739, 770);
   }
 
   @Test
@@ -301,7 +434,7 @@ class ReplaySmokeRunTest {
   @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
     ObjectNode scenario = Scenarios.knight();
-    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000004);
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, identity, 30);
@@ -310,7 +443,7 @@ class ReplaySmokeRunTest {
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
     assertThat(manifest.path("status").asText()).isEqualTo("unsupported");
     assertThat(manifest.path("unsupported").path("input").asText())
-        .isEqualTo("battle.deck0.sc[0].d=159000004");
+        .isEqualTo("battle.deck0.sc[0].d=159000003");
     assertThat(out.resolve("COMPLETE")).doesNotExist();
     assertThat(out.resolve("observations.jsonl")).doesNotExist();
   }
