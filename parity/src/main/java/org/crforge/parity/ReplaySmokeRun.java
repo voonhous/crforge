@@ -286,14 +286,26 @@ public final class ReplaySmokeRun {
       ScenarioPlan.Ability ability = abilitiesByIndex.get(index);
       if (play != null) {
         planned.put("cmd" + index, play);
-        battle.play(
-            play.runTick(),
-            battle.getWorld().getRecords().card(play.card()),
-            play.level(),
-            play.side(),
-            play.x(),
-            play.y(),
-            "cmd" + index);
+        if (play.repeats() != null) {
+          // A Mirror's play repeats its side's last card, as the battle's Mirror builds it.
+          battle.playMirror(
+              play.runTick(),
+              play.card(),
+              play.level(),
+              play.side(),
+              play.x(),
+              play.y(),
+              "cmd" + index);
+        } else {
+          battle.play(
+              play.runTick(),
+              battle.getWorld().getRecords().card(play.card()),
+              play.level(),
+              play.side(),
+              play.x(),
+              play.y(),
+              "cmd" + index);
+        }
       } else {
         battle.useAbility(ability.runTick(), ability.side(), ability.objectId(), "cmd" + index);
       }
@@ -388,6 +400,10 @@ public final class ReplaySmokeRun {
       if (given == null) {
         throw new IllegalStateException(
             "the battle ran a play the scenario does not give: " + play);
+      }
+      if (given.repeats() != null) {
+        ReplayScenario.checkMirrorItem(given, play.mirror());
+        continue;
       }
       int deckIndex = plan.decks().get(given.side()).indexOf(given.card());
       ReplayScenario.checkItem(

@@ -45,6 +45,9 @@ public record ScenarioPlan(
    * @param item the packed item the play carries, as given; the parts that depend on the battle are
    *     checked against the item the simulator builds as the play runs ({@link
    *     ReplayScenario#checkItem})
+   * @param repeats for a Mirror's play, the card row its item names as the card it repeats ({@code
+   *     fs}), which the run checks against the card the simulator's Mirror repeats ({@link
+   *     ReplayScenario#checkMirrorItem}); null for a play of any other card
    */
   public record Play(
       int index,
@@ -55,7 +58,16 @@ public record ScenarioPlan(
       int level,
       int x,
       int y,
-      int item) {}
+      int item,
+      Repeated repeats) {}
+
+  /**
+   * The card a Mirror play's item names as the one it repeats.
+   *
+   * @param id the row's data id, as given
+   * @param name the row's name
+   */
+  public record Repeated(int id, String name) {}
 
   /**
    * One ability command: the tap on a champion's button, naming one unit by its game object id. The
