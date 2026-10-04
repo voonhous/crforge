@@ -13,7 +13,7 @@
   "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_ability_action is re-triggered to launch MegaMinion_hero_teleport_action at Musketeer (14723, 19185), which is not modelled", "input": "the run"},
   "ability-sweep-v2/ability_hero_mini_pekka": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_musketeer": {"outcome": "diagnostic_match"},
-  "ability-sweep-v2/ability_hero_wizard": {"outcome": "unsupported", "feature": "cmd0_0 taking WizardHero_air asks for a building or a flying row, which is not modelled", "input": "the run"},
+  "ability-sweep-v2/ability_hero_wizard": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_little_prince": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_mighty_miner": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_monk": {"outcome": "diagnostic_match"},

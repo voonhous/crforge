@@ -836,22 +836,38 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
-   * Ends the flight: the projectile takes no further step and leaves at the next cleanup. A damage
-   * still registered on its target is handed back.
+   * Ends the flight: the projectile takes no further step and leaves at the next cleanup. Its row's
+   * action on reaching its target is scheduled on its own holder, itself the cause, and a damage
+   * still registered on its target is handed back. Outside every pending pass the action waits for
+   * the next one of that holder: an arrival's, from the projectile's step, runs in the last pending
+   * pass of the same tick, after the impact and before the projectile leaves.
    */
   void release() {
     released = true;
+    targetReached();
     releasePending();
   }
 
   /**
    * Ends the flight of a projectile that stops at collisions, on the first hit its body lands: it
-   * takes no further hit or step and leaves at the next cleanup, without an impact, and hands back
-   * a damage still registered on its target.
+   * takes no further hit or step and leaves at the next cleanup, without an impact; as a release,
+   * its action on reaching its target is scheduled and a damage still registered on its target is
+   * handed back.
    */
   public void finishOnCollision() {
     released = true;
+    targetReached();
     releasePending();
+  }
+
+  /** Schedules the row's action on reaching its target on the projectile, itself the cause. */
+  private void targetReached() {
+    if (data.onTargetReachedAction() == null) {
+      return;
+    }
+    BattleAction reached =
+        world.getActions().build(data.onTargetReachedAction(), new ProjectileBinding(world, this));
+    actionHolder().schedule(reached, ActionHolder.OWN_DELAY, false, actionHolder());
   }
 
   /**
@@ -870,6 +886,16 @@ public class ProjectileEntity extends BattleEntity
       actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     registerPending();
+  }
+
+  /**
+   * Creates the area effect an action's spawn row names at the projectile's point, moved by the
+   * row's offsets, as the hero Wizard's air projectile does from its action on reaching its target.
+   */
+  @Override
+  public void spawnAreaEffect(
+      String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
+    world.spawnAreaEffect(this, action, areaEffect, source, offsetX, offsetY, phase);
   }
 
   /**

@@ -2884,9 +2884,9 @@ public final class ActionRows {
     }
 
     /**
-     * An area-effect spawn row's columns: the area effect and whether the owner is the source. A
-     * row of the location class, one that sets any other spawn column, writes its area effect
-     * inline, or names one whose row sets a column not modelled is refused.
+     * An area-effect spawn row's columns: the area effect, whether the owner is the source, and the
+     * two offsets. A row of the location class, one that sets any other spawn column, writes its
+     * area effect inline, or names one whose row sets a column not modelled is refused.
      */
     private SpawnAreaEffect spawnAreaEffect(
         String name, String type, ActionRow shared, JsonNode f) {
@@ -2897,7 +2897,8 @@ public final class ActionRows {
       for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
         String column = columns.next();
         if (spawnColumns().contains(column)
-            && !Set.of("SpawnData", "SpawnType", "ParentGOAsSource").contains(column)) {
+            && !Set.of("SpawnData", "SpawnType", "ParentGOAsSource", "OffsetX", "OffsetY")
+                .contains(column)) {
           throw new UnsupportedOperationException(
               name + " spawns an area effect and sets " + column + ", which is not modelled");
         }
@@ -2912,7 +2913,12 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " spawns " + areaEffect + ", which sets columns not modelled: " + unmodelled);
       }
-      return new SpawnAreaEffect(shared, areaEffect, bool(f, "ParentGOAsSource"));
+      return new SpawnAreaEffect(
+          shared,
+          areaEffect,
+          bool(f, "ParentGOAsSource"),
+          integer(f, "OffsetX"),
+          integer(f, "OffsetY"));
     }
 
     /**

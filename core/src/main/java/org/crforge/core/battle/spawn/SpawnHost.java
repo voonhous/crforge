@@ -36,15 +36,18 @@ public interface SpawnHost extends SpawnObject {
   }
 
   /**
-   * Creates an area effect an action's spawn row names, at this object's point, for the source's
-   * side and at its level, the source its parent.
+   * Creates an area effect an action's spawn row names, at this object's point moved by the row's
+   * offsets, for the source's side and at its level, the source its parent.
    *
    * @param action the spawn row's name
    * @param areaEffect the area effect row's name
    * @param source the entity that caused the action
+   * @param offsetX the row's offset along the width, added as it stands
+   * @param offsetY the row's offset along the length, turned by this object's side
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    */
-  default void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
+  default void spawnAreaEffect(
+      String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
     throw new UnsupportedOperationException(name() + " cannot spawn an area effect");
   }
 

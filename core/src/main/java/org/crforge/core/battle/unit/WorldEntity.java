@@ -1753,8 +1753,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
-  public void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
-    world.spawnAreaEffect(this, action, areaEffect, source, phase);
+  public void spawnAreaEffect(
+      String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
+    world.spawnAreaEffect(this, action, areaEffect, source, offsetX, offsetY, phase);
   }
 
   @Override

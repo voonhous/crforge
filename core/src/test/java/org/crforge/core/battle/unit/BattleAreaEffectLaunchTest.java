@@ -281,10 +281,8 @@ class BattleAreaEffectLaunchTest {
         new Standard1v1Battle(
             GameData.altered(
                 folder,
-                "area_effect_objects",
-                rows ->
-                    GameData.columns(rows, "Lightning")
-                        .put("Projectile", "WizardHeroAbilityProjectile")),
+                "projectiles",
+                rows -> GameData.columns(rows, "LighningSpell").put("MinPushback", 100)),
             LEVEL,
             false);
     match.placeAreaEffect(CAST_TICK, "Lightning", LEVEL, 1, X, Y, "L");
@@ -296,6 +294,6 @@ class BattleAreaEffectLaunchTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("launches WizardHeroAbilityProjectile");
+        .hasMessageContaining("launches LighningSpell");
   }
 }

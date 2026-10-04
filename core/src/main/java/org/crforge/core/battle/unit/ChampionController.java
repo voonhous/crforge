@@ -50,8 +50,9 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " the refund window and the refund, the activation, the deck pass, the follow of a"
             + " play; held by archer_queen_ability and archer_queen_ability_refused. The state"
             + " override an action writes, cleared each step, the charges refill and the follow of"
-            + " a spawned champion, held by hero_goblins. Not carried: the limited availability and"
-            + " the reservation, which nothing in a battle here sets.")
+            + " a spawned champion, held by hero_goblins. The state worked out again as a followed"
+            + " copy takes another row, held by ability_hero_wizard. Not carried: the limited"
+            + " availability and the reservation, which nothing in a battle here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
@@ -318,6 +319,19 @@ public final class ChampionController extends ActionInstance {
    */
   void override(int written) {
     override = written;
+  }
+
+  /**
+   * A character this slot followed took another row: when it is one of the live copies the last
+   * working out found, the state is worked out again at once, the copies rebuilt from the live
+   * list, which a unit on a row the slot does not follow has left. Any other unit changes nothing.
+   *
+   * @param unit the character, already on its new row
+   */
+  void dataChanged(CharacterEntity unit) {
+    if (champions.contains(unit)) {
+      compute();
+    }
   }
 
   /** Refills the charges to the champion's most, as an action asks: its row's value as it is. */
