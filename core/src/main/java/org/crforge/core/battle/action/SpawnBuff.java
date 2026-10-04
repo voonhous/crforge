@@ -7,7 +7,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * A spawn row of the buff type: it puts its buff on its owner for its spawn time, at the level and
  * for the side of the entity that caused it, that entity as the buff's source; with no cause, or
  * for a row that takes its owner as the source, the owner's own. A buff written inline is the buff
- * row of its Name. It does not last.
+ * row of its Name. With InstigatorAsBuffController the source is also the buff's parent: kept by a
+ * buff that stacks, its leaving removes the instance. It does not last.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -20,14 +21,16 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " little_prince_retarget: the Little Prince's speed-ups on itself, from itself, the"
             + " unit whose attack start ran the row; and by shield_lost_recruits: a row that takes"
             + " its owner as the source, from the Recruit whose shield broke, not the arrow that"
-            + " broke it. Refused"
-            + " as the row is built: a buff its parent controls, a source taken from the owner's"
-            + " parent, and a spawn time below 1.")
+            + " broke it; and by ability_hero_mega_minion_vs_musketeer: the hero's bot buff on the"
+            + " troop it marks, from the hero, the hero its parent. Refused as the row is built: a"
+            + " buff its parent controls without the source as its parent, a source taken from the"
+            + " owner's parent, and a spawn time below 1.")
 public final class SpawnBuff extends RowAction {
 
   private final String buff;
   private final int spawnTimeMs;
   private final boolean parentGoAsSource;
+  private final boolean sourceAsParent;
 
   /**
    * @param row the row's shared columns
@@ -37,10 +40,29 @@ public final class SpawnBuff extends RowAction {
    *     in place of the cause's
    */
   public SpawnBuff(ActionRow row, String buff, int spawnTimeMs, boolean parentGoAsSource) {
+    this(row, buff, spawnTimeMs, parentGoAsSource, false);
+  }
+
+  /**
+   * @param row the row's shared columns
+   * @param buff the buff row's name
+   * @param spawnTimeMs how long the buff lasts
+   * @param parentGoAsSource true to take the holder's owner as the source, its level and its side
+   *     in place of the cause's
+   * @param sourceAsParent true to make the source the buff's parent too
+   *     (InstigatorAsBuffController)
+   */
+  public SpawnBuff(
+      ActionRow row,
+      String buff,
+      int spawnTimeMs,
+      boolean parentGoAsSource,
+      boolean sourceAsParent) {
     super(row);
     this.buff = buff;
     this.spawnTimeMs = spawnTimeMs;
     this.parentGoAsSource = parentGoAsSource;
+    this.sourceAsParent = sourceAsParent;
   }
 
   @Override
@@ -52,7 +74,8 @@ public final class SpawnBuff extends RowAction {
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
     ActionOwner owner = holder.getOwner();
     ActionOwner cause = instigator == null ? null : instigator.getOwner();
-    owner.spawnBuff(name(), buff, spawnTimeMs, cause != null && !parentGoAsSource ? cause : owner);
+    ActionOwner source = cause != null && !parentGoAsSource ? cause : owner;
+    owner.spawnBuff(name(), buff, spawnTimeMs, source, sourceAsParent);
     return null;
   }
 }

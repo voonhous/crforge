@@ -16,21 +16,24 @@ import org.crforge.core.pathfinding.GridEntityState;
  * <ol>
  *   <li>It looks for the run of its ActionToGetTargetFrom row on its owner's holder; with none it
  *       finishes.
- *   <li>It takes the mark's target, keeping the one it took before when the mark has none.
- *   <li>In the deploying state it schedules HasTargetOnDeployAction, or NoTargetOnDeployAction
- *       without a target, on the owner, the owner as its cause.
+ *   <li>It takes the mark's target, keeping the one it took before when the mark has none, and
+ *       records where that target stands.
+ *   <li>In the deploying state it schedules HasTargetOnDeployAction with a target, or
+ *       NoTargetOnDeployAction without one, on the owner, the owner as its cause.
  * </ol>
  *
- * <p>Refused rather than guessed, at the step that reaches them: a mark that holds a target (a run
- * here never does: its search refuses first) and the warp a re-trigger launches.
+ * <p>A leave notice of the target it holds drops it.
+ *
+ * <p>Refused rather than guessed, at the step that reaches it: the warp a re-trigger launches.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the mark looked up on the holder each step and the finish without it, the"
             + " deploying state's choice without a target scheduled on the owner; held by"
-            + " hero_mega_minion. Refused: a target taken from the mark, and the warp a re-trigger"
-            + " launches.")
+            + " hero_mega_minion. The mark's target taken and kept, its position recorded, and"
+            + " leave notices of other objects; held by ability_hero_mega_minion_vs_musketeer."
+            + " Refused: the warp a re-trigger launches.")
 public final class MegaMinionHeroAbility extends RowAction {
 
   /**
@@ -78,6 +81,14 @@ public final class MegaMinionHeroAbility extends RowAction {
     /** True once a re-trigger asked for the warp. */
     private boolean warpRequested;
 
+    /** The target taken from the mark, or null for none. */
+    private SetIndicatorOnTarget.Candidate target;
+
+    /** Where the target stood when last taken, along the width and the length. */
+    private int targetX;
+
+    private int targetY;
+
     private Run(MegaMinionHeroAbility handOver, SetIndicatorOnTarget.Host host) {
       super(handOver);
       this.handOver = handOver;
@@ -87,6 +98,13 @@ public final class MegaMinionHeroAbility extends RowAction {
     @Override
     protected void retrigger(ActionHolder holder) {
       warpRequested = true;
+    }
+
+    @Override
+    protected void objectLeft(int leftId) {
+      if (target != null && target.id() == leftId) {
+        target = null;
+      }
     }
 
     @Override
@@ -104,18 +122,30 @@ public final class MegaMinionHeroAbility extends RowAction {
         finish();
         return;
       }
-      if (mark.targetId() != -1) {
-        throw new UnsupportedOperationException(
-            handOver.name() + " takes a target from " + columns.markRow() + ", not modelled");
+      // A target once taken is kept while the mark has none.
+      if (mark.target() != null) {
+        target = mark.target();
       }
-      if (host.state() == GridEntityState.DEPLOYING && columns.noTargetOnDeploy() != null) {
-        holder.schedule(columns.noTargetOnDeploy(), ActionHolder.OWN_DELAY, false, holder);
+      if (target != null) {
+        targetX = target.x();
+        targetY = target.y();
+      }
+      if (host.state() == GridEntityState.DEPLOYING) {
+        BattleAction deploy =
+            target == null ? columns.noTargetOnDeploy() : columns.hasTargetOnDeploy();
+        if (deploy != null) {
+          holder.schedule(deploy, ActionHolder.OWN_DELAY, false, holder);
+        }
       }
       if (warpRequested) {
         throw new UnsupportedOperationException(
             handOver.name()
                 + " is re-triggered to launch "
                 + columns.actionToExecute()
+                + " at "
+                + (target == null
+                    ? "no target"
+                    : target.rowName() + " (" + targetX + ", " + targetY + ")")
                 + ", which is not modelled");
       }
     }

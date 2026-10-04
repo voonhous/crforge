@@ -26,6 +26,11 @@ final class EntityFilterSubject implements FilterSubject {
     this.entity = entity;
   }
 
+  /** The entity it answers for. */
+  WorldEntity entity() {
+    return entity;
+  }
+
   private GridEntity view() {
     return entity.getView();
   }
