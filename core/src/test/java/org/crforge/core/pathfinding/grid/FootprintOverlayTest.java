@@ -56,6 +56,31 @@ class FootprintOverlayTest {
   }
 
   @Test
+  void anOccluderStampsWhileItHasNotMovedSinceItsCopyOrHasNoMovementComponent() {
+    GridEntity standing = entity(7, 0, 3292, 16914, 310, false);
+    standing.setOccluder(true);
+    standing.setMovementComponent(true);
+    GridEntity moved = entity(8, 0, 9000, 16000, 310, false);
+    moved.setOccluder(true);
+    moved.setMovementComponent(true);
+    moved.setMovedSinceCopy(true);
+    GridEntity still = entity(9, 1, 14000, 16000, 310, false);
+    still.setOccluder(true);
+    still.setMovedSinceCopy(true);
+    GridEntity troop = entity(10, 1, 3000, 20000, 310, false);
+    troop.setMovementComponent(true);
+
+    List<Integer> stamped =
+        FootprintOverlay.buildOverlay(grid, List.of(standing, moved, still, troop));
+
+    // The occluder that stood still and the one with no movement component stamp; the one that
+    // moved since its copy, and a troop that is no occluder, do not.
+    assertThat(stamped).hasSize(2);
+    assertThat(grid.getHash()[0]).isEqualTo(7 + 9);
+    assertThat(grid.getHash()[1]).isEqualTo(9 + 9);
+  }
+
+  @Test
   void unpacksAFootprintIntoItsCellBounds() {
     int packed = FootprintOverlay.packFootprint(5, 8, 11, 14);
 

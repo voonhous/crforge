@@ -801,6 +801,8 @@ public final class BattleRecords {
             .onDisappearAction(actionName(row, "OnDisappearAction"))
             .ignoreClone(row.bool("IgnoreClone"))
             .ignoreResurrect(row.bool("IgnoreResurrect"))
+            // Read only by the entity's occlusion query, for the routing overlay.
+            .occluder(row.bool("IsOccluder"))
             .reflectedAttackBuff(
                 set(row, "ReflectedAttackBuff") ? row.string("ReflectedAttackBuff") : null)
             .reflectedAttackBuffDurationMs(row.intValue("ReflectedAttackBuffDuration"))

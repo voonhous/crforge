@@ -937,6 +937,19 @@ public final class ActionRows {
               "ActionRunForcedAnimationOnce",
               Set.of(
                   "PlaybackDuration", "CustomStateNumber", "PointToInstigator", "ForcedDuration")),
+          // A run that waits for its owner to be damaged or attacked, then runs its action on the
+          // owner at most once a threshold. Its run keeps a countdown, -1 as it starts and 50 less
+          // a step down to 0; told its owner was damaged under TriggerOnParentDamaged, with the
+          // countdown at 0 or below, it sets the countdown to TimeThreshold and schedules
+          // ActionToRun on its owner, the owner its cause. It has no end of its own: only its
+          // owner leaving ends it. So while its action only shows something, as the decoy's forced
+          // animation does, it changes nothing the simulation reads, and is built as a run that
+          // lasts and does nothing. One whose action does more, and one told of an attack on its
+          // owner (TriggerOnAttacked), whose callback is not modelled, are refused.
+          Map.entry(
+              "ActionRunActionOnCallbackWithThreshold",
+              Set.of(
+                  "ActionToRun", "TimeThreshold", "TriggerOnParentDamaged", "TriggerOnAttacked")),
           // An animator parameter and the value its perform hands the owner's presentation object.
           Map.entry("ActionSetAnimationModifier", Set.of("Parameter", "Value")),
           // The deploy animation it names only shows something, and the card it names only
@@ -1448,6 +1461,22 @@ public final class ActionRows {
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            case "ActionRunActionOnCallbackWithThreshold" -> {
+              if (bool(f, "TriggerOnAttacked")) {
+                throw new UnsupportedOperationException(
+                    name + " sets TriggerOnAttacked, whose callback is not modelled");
+              }
+              BattleAction run = action(f.get("ActionToRun"));
+              // Only an action with no run of its own, which shows something and is done.
+              if (run != null && (!(run instanceof InertAction inert) || inert.isLasting())) {
+                throw new UnsupportedOperationException(
+                    name
+                        + " sets ActionToRun to "
+                        + run.name()
+                        + ", whose run on a callback is not modelled");
+              }
+              yield new InertAction(shared, true);
+            }
             // Its perform reaches only a character's presentation object and the animator behind
             // it, handing it the parameter's value; no logic state of the battle.
             case "ActionSetAnimationModifier" -> new InertAction(shared);
