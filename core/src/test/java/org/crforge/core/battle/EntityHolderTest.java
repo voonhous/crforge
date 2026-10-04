@@ -50,6 +50,9 @@ class EntityHolderTest {
     /** Runs inside the named hook, so a test can change the holder in the middle of a tick. */
     Runnable duringPostHook = () -> {};
 
+    /** True when the entity also records each recompute of its tag word by the holder's add. */
+    boolean recordsTagFolds;
+
     RecordingEntity(String name, int... componentSlots) {
       this(KIND_CHARACTER, name, componentSlots);
     }
@@ -91,6 +94,13 @@ class EntityHolderTest {
     @Override
     protected void preHook() {
       log.add(name + " preHook");
+    }
+
+    @Override
+    protected void addTagFold() {
+      if (recordsTagFolds) {
+        log.add(name + " tag fold");
+      }
     }
 
     @Override
@@ -163,6 +173,35 @@ class EntityHolderTest {
             "postPass 7",
             "a endOfTick",
             "b endOfTick");
+  }
+
+  @Test
+  @DisplayName(
+      "the holder's add recomputes the tag word as it takes an entity: at hand-over, before a"
+          + " registration visit, and again at admission, before the entity is registered")
+  void theAddRecomputesTheTagWordAtHandOverAndAtAdmission() {
+    EntityHolder holder = new EntityHolder(HolderPasses.NONE);
+    RecordingEntity first = new RecordingEntity("a");
+    RecordingEntity late = new RecordingEntity("late", 0);
+    first.recordsTagFolds = true;
+    late.recordsTagFolds = true;
+    first.duringPostHook = () -> holder.addRegistered(late);
+    holder.add(first);
+
+    holder.tick(0);
+
+    assertThat(log)
+        .containsSubsequence(
+            "a tag fold",
+            "a tag fold",
+            "a registered as 5000000",
+            "a preHook",
+            "a postHook",
+            "late tag fold",
+            "late visit 0",
+            "late tag fold",
+            "late registered as 5000001");
+    assertThat(log.stream().filter(line -> line.endsWith("tag fold"))).hasSize(4);
   }
 
   @Test

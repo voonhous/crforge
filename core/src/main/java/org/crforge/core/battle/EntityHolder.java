@@ -104,12 +104,15 @@ public class EntityHolder {
   /**
    * Hands an entity to the holder. It is given its id at once - its kind's band plus how many of
    * its kind came before it - and waits until the next cleanup admits it to the live list; an
-   * entity added during a tick therefore has its id in that tick but takes no part in it.
+   * entity added during a tick therefore has its id in that tick but takes no part in it. The
+   * battle holder's add recomputes the entity's tag word first ({@link BattleEntity#addTagFold()}),
+   * as it does again at the admission.
    */
   public void add(BattleEntity entity) {
     checkState(
         entity.getId() == BattleEntity.UNASSIGNED_ID,
         () -> "entity " + entity.getId() + " is already registered");
+    entity.addTagFold();
     int kind = entity.getKind();
     int counter = handedOverByKind.getOrDefault(kind, 0);
     handedOverByKind.put(kind, counter + 1);
@@ -201,6 +204,11 @@ public class EntityHolder {
       }
     }
     requiredIds.clear();
+    // The fold hands each waiting entity to the battle holder's add again, in the order they
+    // arrived, which recomputes its tag word before it joins the live list and is started.
+    for (BattleEntity entity : pendingAdditions) {
+      entity.addTagFold();
+    }
     List<BattleEntity> admitted = new ArrayList<>(pendingAdditions);
     pendingAdditions.clear();
     live.addAll(admitted);

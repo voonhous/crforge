@@ -161,6 +161,15 @@ public abstract class BattleEntity {
   /** Runs once per tick before any component of any entity. */
   protected void preHook() {}
 
+  /**
+   * The tag recompute the battle holder's add runs on the entity each time it takes it: as the
+   * entity is handed over, before any registration visit, and again as a cleanup admits it to the
+   * live list, before it is registered. By default nothing; an entity with a tag word recomputes it
+   * as its pre-hook does, so a spawned character's row tags are in its tag word from the moment it
+   * is handed over.
+   */
+  protected void addTagFold() {}
+
   /** Runs once per tick after the component passes of every entity. */
   protected void postHook() {}
 

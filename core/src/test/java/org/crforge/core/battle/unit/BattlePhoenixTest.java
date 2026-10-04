@@ -206,7 +206,7 @@ class BattlePhoenixTest {
   @Test
   @DisplayName(
       "an egg is immune as the fireball's impact makes it, but a spell still reaches it; its row's"
-          + " tags join its tag word from the tick after")
+          + " tags are in its tag word from the moment the holder takes it, and every tick after")
   void theEggsImmunityAndTags() {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity phoenix = scene.place(0, "Phoenix", X, Y);
@@ -217,13 +217,14 @@ class BattlePhoenixTest {
     CharacterEntity egg = scene.spawned.get(0);
     assertThat(egg.getData().name()).isEqualTo("PhoenixEgg");
     assertThat(egg.isSpawnImmune()).isTrue();
-    assertThat(egg.getView().getFlags()).as("made after the pre-hooks").isZero();
+    long rowTags =
+        EntityFlags.NO_GIANTBUFFER_CHEF_ENCHANTMENT
+            | EntityFlags.AVOIDANCE_AS_OBSTACLE
+            | EntityFlags.NO_MOVE_ALLOW_ATTRACT;
+    // Made after the pre-hooks, but the holder's add folds its row's tags as it takes the egg.
+    assertThat(egg.getView().getFlags()).as("folded by the holder's add").isEqualTo(rowTags);
     scene.step(1);
-    assertThat(egg.getView().getFlags())
-        .isEqualTo(
-            EntityFlags.NO_GIANTBUFFER_CHEF_ENCHANTMENT
-                | EntityFlags.AVOIDANCE_AS_OBSTACLE
-                | EntityFlags.NO_MOVE_ALLOW_ATTRACT);
+    assertThat(egg.getView().getFlags()).isEqualTo(rowTags);
 
     int full = egg.getHitPoints().getHitPoints();
     scene.match.play(scene.tick, GameData.card("Zap"), LEVEL, 1, X, Y, "Z");
