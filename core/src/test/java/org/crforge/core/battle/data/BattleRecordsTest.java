@@ -556,8 +556,8 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a unit's action run as it attacks is read when it is a spawn, an uppercut, a resetable"
-          + " area effect or a variable's write, and listed as not modelled otherwise")
-  void anAttackActionOtherThanAModelledOneIsNotModelled() {
+          + " area effect, a variable's write or a group, and listed as not modelled otherwise")
+  void anAttackActionOtherThanAModelledOneIsNotModelled(@TempDir Path folder) throws IOException {
     UnitData valkyrie = records.unit("Valkyrie_EV1");
     assertThat(valkyrie.onAttackAction()).isEqualTo("Valkyrie_EV1_Tornado");
     for (String name :
@@ -566,7 +566,8 @@ class BattleRecordsTest {
             "RoyalGiant_EV1",
             "MegaKnight_EV1",
             "BabyDragon_EV1",
-            "InfernoDragon_EV1")) {
+            "InfernoDragon_EV1",
+            "RoyalHog_EV1")) {
       assertThat(records.unit(name).unmodelledColumns()).as(name).isEmpty();
     }
     assertThat(records.unit("MegaKnight_EV1").onAttackAction())
@@ -577,8 +578,20 @@ class BattleRecordsTest {
     // row's two variable damage times unread.
     assertThat(records.unit("InfernoDragon_EV1").onAttackAction())
         .isEqualTo("InfernoDragon_EV1_IncrementAttackCount");
-    // A group.
-    assertThat(records.unit("RoyalHog_EV1").unmodelledColumns()).contains("OnAttackAction");
+    // The evolved Royal Hog's fall is a group, whose parts are built from their own rows.
+    assertThat(records.unit("RoyalHog_EV1").onAttackAction())
+        .isEqualTo("RoyalHog_EV1_Fall_To_Ground_Group");
+    // An action of a class whose run on a hit is not established, here an air-to-ground row
+    // itself, is listed.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows ->
+                GameData.columns(rows, "RoyalHog_EV1")
+                    .put("OnAttackAction", "RoyalHog_EV1_To_Ground"));
+    assertThat(new BattleRecords(tables).unit("RoyalHog_EV1").unmodelledColumns())
+        .contains("OnAttackAction");
   }
 
   @Test

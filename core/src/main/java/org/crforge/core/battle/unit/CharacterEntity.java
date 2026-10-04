@@ -277,8 +277,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " applied to a rider other than through its parent, a rider whose parent may not"
             + " attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
-            + " spawner, a building or a flying row, a champion, another deploy time, a charge,"
-            + " a river jump or a dash; a dash's landing on a cell it may not stand on; a shot"
+            + " spawner, a building or a flying row (but one flying at the same height), a"
+            + " champion, another deploy time, a charge, a river jump (but one alike) or a dash; a dash's landing on a cell it may not stand on; a shot"
             + " whose projectile sets a column its flight or impact does not model; and a buff a"
             + " character's targeting passes over, applied to anyone."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
@@ -1329,8 +1329,21 @@ public class CharacterEntity extends WorldEntity {
             && next.speed() != 0
             && current.lifeTimeMs() == 0
             && next.lifeTimeMs() > 0;
+    // A flying unit may take a row that flies at the same height, as the evolved Royal Hog takes
+    // its grounded row as it lands: the layer and the height are read through the row on demand,
+    // and the swap touches neither the movement component nor what a run pushed.
+    boolean sameFlight =
+        current.air() && next.air() && current.flyingHeight() == next.flyingHeight();
+    // Likewise a unit that jumps the river may take a row that jumps it alike.
+    boolean sameJump =
+        current.jumpEnabled()
+            && next.jumpEnabled()
+            && current.jumpHeight() == next.jumpHeight()
+            && current.jumpSpeed() == next.jumpSpeed();
     String refused = null;
-    if (next.air() || current.air() || current.building() || next.building() && !breaksDown) {
+    if ((next.air() || current.air()) && !sameFlight
+        || current.building()
+        || next.building() && !breaksDown) {
       refused = "a building or a flying row";
     } else if (!breaksDown && (current.speed() == 0) != (next.speed() == 0)) {
       refused = "a movement component built or freed";
@@ -1351,8 +1364,7 @@ public class CharacterEntity extends WorldEntity {
     } else if (current.chargeRange() != 0
         || next.chargeRange() != 0
         || getBuffs().overrideChargeRange() != 0
-        || current.jumpEnabled()
-        || next.jumpEnabled()) {
+        || (current.jumpEnabled() || next.jumpEnabled()) && !sameJump) {
       refused = "a charge or a river jump";
     } else if (current.dashCooldown() != 0 || next.dashCooldown() != 0) {
       refused = "a dash";

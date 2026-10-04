@@ -12,10 +12,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * which folds them into its live height at its next pre-hook. A second start of a singleton row
  * while its run lasts starts the run's phase over.
  *
- * <p>Refused as the row is built: the landing actions, a path reset at landing, a next action and
- * tags. As it starts: an owner that is a clone, hovers, rides another or carries riders. As it
- * ends: the path reset of an air unit that lived through its climb, none of which a reference
- * holds.
+ * <p>An air unit that lands at the end of its descent has the row's action once on the ground
+ * scheduled on it, with itself as the cause, as the evolved Royal Hog's fall does.
+ *
+ * <p>Refused as the row is built: the landing and landing end actions, a path reset at landing and
+ * a next action. As it starts: an owner that is a clone, hovers, rides another or carries riders,
+ * and an action once on the ground for a run that starts on the ground. As it ends: the path reset
+ * of an air unit that lived through its climb, none of which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -26,9 +29,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " kills it, and vines_tower, a princess tower held. Held by the tests alone: the"
             + " re-trigger of a hold on the ground (BattleShapeSelectorTest) and the climb's one"
             + " step (BattleAirToGroundTest); the re-trigger of a hold in the air or of a climb is"
-            + " translated but held by nothing. Refused: the landing actions, a path reset at"
-            + " landing or at the end, a next action, tags, and a clone, hovering, riding or"
-            + " carrying owner.")
+            + " translated but held by nothing. The action once on the ground at the end of a"
+            + " descent, and the row's tags, held by evo_royalhogs_vs_musketeer. Refused: the"
+            + " landing and landing end actions, a path reset at landing or at the end, a next"
+            + " action, the action once on the ground at the start, and a clone, hovering, riding"
+            + " or carrying owner.")
 public final class AirToGround extends RowAction {
 
   /** How long the descent and the climb each take, in milliseconds. */
@@ -43,24 +48,30 @@ public final class AirToGround extends RowAction {
   /** True when an air unit's path is reset as the run ends. */
   @Getter private final boolean resetPathAtEnd;
 
+  /** The action scheduled on the owner once it is on the ground, or null for none. */
+  @Getter private final BattleAction onGround;
+
   /**
    * @param row the row's shared columns
    * @param transitionDurationMs how long the descent and the climb each take
    * @param totalDurationMs how long the whole run takes
    * @param allowIsGroundTagOnIdle true when a ground unit is forced onto the ground layer too
    * @param resetPathAtEnd true when an air unit's path is reset as the run ends
+   * @param onGround the action scheduled on the owner once it is on the ground, or null
    */
   public AirToGround(
       ActionRow row,
       int transitionDurationMs,
       int totalDurationMs,
       boolean allowIsGroundTagOnIdle,
-      boolean resetPathAtEnd) {
+      boolean resetPathAtEnd,
+      BattleAction onGround) {
     super(row);
     this.transitionDurationMs = transitionDurationMs;
     this.totalDurationMs = totalDurationMs;
     this.allowIsGroundTagOnIdle = allowIsGroundTagOnIdle;
     this.resetPathAtEnd = resetPathAtEnd;
+    this.onGround = onGround;
   }
 
   @Override

@@ -32,12 +32,14 @@ import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
+import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Hide;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -655,23 +657,56 @@ class ActionRowsTest {
   }
 
   @Test
-  @DisplayName("an air-to-ground row with a landing action or a path reset at landing is refused")
+  @DisplayName(
+      "an air-to-ground row's action once on the ground and its tags are built; one with a landing"
+          + " action, a landing end action or a path reset at landing is refused")
   void anAirToGroundIsRefused(@TempDir Path folder) throws IOException {
-    assertThatThrownBy(() -> GameData.actions().build("RoyalHog_EV1_To_Ground", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("sets ActionOnGround");
-    Files.createDirectories(folder);
-    GameTables landing =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("Vines_Air_To_Ground").get("fields"))
-                    .put("ResetPathAtLanding", true));
-    ActionRows rows = new ActionRows(landing, new BattleRecords(landing));
-    assertThatThrownBy(() -> rows.build("Vines_Air_To_Ground", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("sets ResetPathAtLanding");
+    BattleAction built = GameData.actions().build("RoyalHog_EV1_To_Ground", INERT_BINDING);
+    assertThat(built).isInstanceOf(AirToGround.class);
+    AirToGround fall = (AirToGround) built;
+    assertThat(fall.getTransitionDurationMs()).isEqualTo(500);
+    assertThat(fall.getTotalDurationMs()).isEqualTo(999999);
+    assertThat(fall.singleton()).isTrue();
+    assertThat(fall.tags()).isEqualTo(GameData.actions().tagMask("UNIT_CUSTOM_TAG_1"));
+    assertThat(fall.getOnGround()).isInstanceOf(Group.class);
+    assertThat(fall.getOnGround().name()).isEqualTo("RoyalHog_EV1_Landed_Group");
+    assertThat(
+            ((AirToGround) GameData.actions().build("Vines_Air_To_Ground", INERT_BINDING))
+                .getOnGround())
+        .isNull();
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "ResetPathAtLanding", f -> f.put("ResetPathAtLanding", true),
+            "ActionOnLanding",
+                f -> f.putObject("ActionOnLanding").put("action", "RoyalHog_EV1_Reset_Path"),
+            "ActionOnLandingEnd",
+                f -> f.putObject("ActionOnLandingEnd").put("action", "RoyalHog_EV1_Reset_Path"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey());
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows ->
+                  change
+                      .getValue()
+                      .accept((ObjectNode) rows.get("Vines_Air_To_Ground").get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build("Vines_Air_To_Ground", INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining("sets " + change.getKey());
+    }
+  }
+
+  @Test
+  @DisplayName("a path reset row is built and reads no column of its own")
+  void aPathResetIsBuilt() {
+    assertThat(GameData.actions().build("RoyalHog_EV1_Reset_Path", INERT_BINDING))
+        .isInstanceOf(ResetPath.class);
+    assertThat(GameData.actions().build("BarbLog_hero_reset_path", INERT_BINDING))
+        .isInstanceOf(ResetPath.class);
   }
 
   @Test
@@ -1354,12 +1389,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 845 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 851 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(845);
+    assertThat(built).as("rows built").isEqualTo(851);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 29, "column", 61, "spawn type", 11));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 26, "column", 58, "spawn type", 11));
   }
 }
