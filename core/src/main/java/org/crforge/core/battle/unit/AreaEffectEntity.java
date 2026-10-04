@@ -1183,8 +1183,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   @Override
-  public void spawnAreaEffect(String action, String areaEffect, SpawnHost source, int phase) {
-    world.spawnAreaEffect(this, action, areaEffect, source, phase);
+  public void spawnAreaEffect(
+      String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
+    world.spawnAreaEffect(this, action, areaEffect, source, offsetX, offsetY, phase);
   }
 
   /** An area effect has no hit points, so it counts as alive. */

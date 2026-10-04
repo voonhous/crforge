@@ -1454,16 +1454,20 @@ class ActionRowsTest {
     assertThat(GameData.actions().build("IceGolemiteHero_Spawn_KnockBack_AEO", INERT_BINDING))
         .isNotNull();
 
-    Files.createDirectories(folder.resolve("offset"));
-    GameTables offset =
+    // The hero Wizard's air shot spawns its two area effects with an offset along the length.
+    assertThat(GameData.actions().build("WizardHeroAbilityProjectile_spawn_tornado", INERT_BINDING))
+        .isNotNull();
+
+    Files.createDirectories(folder.resolve("counted"));
+    GameTables counted =
         GameData.altered(
-            folder.resolve("offset"),
+            folder.resolve("counted"),
             "actions",
-            rows -> ((ObjectNode) rows.get("GoblinCurseCore").get("fields")).put("OffsetY", 1000));
-    ActionRows offsetRows = new ActionRows(offset, new BattleRecords(offset));
-    assertThatThrownBy(() -> offsetRows.build("GoblinCurseCore", INERT_BINDING))
+            rows -> ((ObjectNode) rows.get("GoblinCurseCore").get("fields")).put("Count", 2));
+    ActionRows countedRows = new ActionRows(counted, new BattleRecords(counted));
+    assertThatThrownBy(() -> countedRows.build("GoblinCurseCore", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("sets OffsetY");
+        .hasMessageContaining("sets Count");
 
     Files.createDirectories(folder.resolve("inline"));
     GameTables inline =
@@ -1560,12 +1564,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 882 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 885 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(882);
+    assertThat(built).as("rows built").isEqualTo(885);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 47, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 44, "spawn type", 9));
   }
 }

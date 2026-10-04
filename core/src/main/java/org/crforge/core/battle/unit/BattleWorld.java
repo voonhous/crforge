@@ -5502,11 +5502,13 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Creates the area effect an action's spawn row names: at the point of the holder's owner, for
-   * the source's side and at its level, re-based on the area effect's own rarity, the source kept
-   * as its parent; a row that follows its parent follows the owner. It is handed to the holder in
-   * the pass that ran the action, so it is admitted at that tick's closing cleanup and first
-   * updates on the next tick. The observers are told after it is created.
+   * Creates the area effect an action's spawn row names: at the point of the holder's owner, moved
+   * by the row's offsets - the one along the width as it stands, the one along the length turned
+   * toward the far side of the owner's side - for the source's side and at its level, re-based on
+   * the area effect's own rarity, the source kept as its parent; a row that follows its parent
+   * follows the owner. It is handed to the holder in the pass that ran the action, so it is
+   * admitted at that tick's closing cleanup and first updates on the next tick. The observers are
+   * told after it is created.
    *
    * <p>Refused rather than guessed: a source that is a clone, whose clone byte the area effect
    * would copy, which nothing the battle models reads.
@@ -5515,9 +5517,18 @@ public class BattleWorld implements HolderPasses {
    * @param action the spawn row's name
    * @param row the area effect row's name
    * @param source the entity that caused the action
+   * @param offsetX the row's offset along the width
+   * @param offsetY the row's offset along the length, before the owner's side turns it
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    */
-  void spawnAreaEffect(SpawnHost owner, String action, String row, SpawnHost source, int phase) {
+  public void spawnAreaEffect(
+      SpawnHost owner,
+      String action,
+      String row,
+      SpawnHost source,
+      int offsetX,
+      int offsetY,
+      int phase) {
     if (source instanceof CharacterEntity unit && unit.isClone()) {
       throw new UnsupportedOperationException(
           action + " spawns " + row + " from a clone, which is not modelled");
@@ -5525,8 +5536,8 @@ public class BattleWorld implements HolderPasses {
     AreaEffectEntity areaEffect =
         createAreaEffect(
             row,
-            owner.x(),
-            owner.y(),
+            owner.x() + offsetX,
+            AreaEffectEntity.yDirection(owner.side()) * offsetY + owner.y(),
             source.side(),
             source.packedLevel(),
             null,

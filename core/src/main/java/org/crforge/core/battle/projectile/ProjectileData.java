@@ -94,6 +94,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     flies; 0 for none
  * @param onHitTargetAction the action row its impact schedules on its target, with the projectile
  *     as the cause, before the hit lands; null for none
+ * @param onTargetReachedAction the action row the projectile schedules on itself, itself the cause,
+ *     as it is released or finished: on its arrival before its impact, so the run waits for the
+ *     next pending pass of the projectile's own holder; null for none
  * @param spawnAreaEffectObject the area effect its impact makes at the impact point, after its hit
  *     and its spawned characters; null for none
  * @param ignoreReflectedAttack true for a projectile whose hits a reflecting unit does not reflect
@@ -185,6 +188,7 @@ public record ProjectileData(
     int pingpongVisualTimeMs,
     int randomDelayMs,
     String onHitTargetAction,
+    String onTargetReachedAction,
     String spawnAreaEffectObject,
     boolean ignoreReflectedAttack,
     int dragBackSpeed,
