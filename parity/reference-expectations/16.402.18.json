@@ -133,7 +133,7 @@
   "tv-replays-v3/tv_replay_005": {"outcome": "unsupported", "feature": "BalloonHero_Ability_Target_Seeker is a shape selector that sets OnFinishedAction, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_006": {"outcome": "unsupported", "feature": "Valkyrie sets columns the battle does not model: [TryToFinishAttackAnimationBeforeNextAttack]", "input": "the run"},
   "tv-replays-v3/tv_replay_007": {"outcome": "unsupported", "feature": "ValkyrieHero sets columns the battle does not model: [DisableMeleeAeoDamageEffect, TryToFinishAttackAnimationBeforeNextAttack]", "input": "the run"},
-  "tv-replays-v3/tv_replay_008": {"outcome": "invalid", "error": "org.crforge.core.battle.expression.ExpressionException: Unknown symbol ability_charges_left"},
+  "tv-replays-v3/tv_replay_008": {"outcome": "unsupported", "feature": "SkeletonKing_Capture_Soul, an ActionSoulDrain, sets ExecuteIfTrue, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_009": {"outcome": "unsupported", "feature": "IceWizardHero waits its turn to deploy, which makes its riders later, not held", "input": "the run"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"},
   "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "WizardHeroAbilityProjectile_spawn_tornado spawns WizardHero_MiniTornadoAEO, which sets columns not modelled: [Buff]", "input": "the run"},
