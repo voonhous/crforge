@@ -1,10 +1,8 @@
 package org.crforge.desktop.render;
 
-import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.COLOR_GOLDEN_DEVIATION;
 import static org.crforge.desktop.render.RenderConstants.COLOR_GOLDEN_MARKER;
 import static org.crforge.desktop.render.RenderConstants.COLOR_GOLDEN_PATH;
-import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
@@ -32,6 +30,11 @@ public class GoldenTrajectoryRenderer {
 
   /** Draws the ghost trajectory, the current marker and the deviation marker. */
   public void render(GoldenOverlay overlay) {
+    render(overlay, ViewOrientation.STANDARD);
+  }
+
+  /** Draws the trajectory and its markers the way up the view has the arena. */
+  public void render(GoldenOverlay overlay, ViewOrientation view) {
     if (overlay.isEmpty()) {
       return;
     }
@@ -44,27 +47,19 @@ public class GoldenTrajectoryRenderer {
       int[] from = path.get(i - 1);
       int[] to = path.get(i);
       ctx.getShapeRenderer()
-          .line(
-              unitsToPixels(from[0]),
-              unitsToPixels(from[1]) + BOTTOM_UI_HEIGHT,
-              unitsToPixels(to[0]),
-              unitsToPixels(to[1]) + BOTTOM_UI_HEIGHT);
+          .line(view.px(from[0]), view.py(from[1]), view.px(to[0]), view.py(to[1]));
     }
 
     int[] current = overlay.current();
     if (current != null) {
       ctx.getShapeRenderer().setColor(COLOR_GOLDEN_MARKER);
-      ctx.getShapeRenderer()
-          .circle(
-              unitsToPixels(current[0]),
-              unitsToPixels(current[1]) + BOTTOM_UI_HEIGHT,
-              MARKER_RADIUS);
+      ctx.getShapeRenderer().circle(view.px(current[0]), view.py(current[1]), MARKER_RADIUS);
     }
 
     int[] deviation = overlay.deviation();
     if (deviation != null) {
-      float x = unitsToPixels(deviation[0]);
-      float y = unitsToPixels(deviation[1]) + BOTTOM_UI_HEIGHT;
+      float x = view.px(deviation[0]);
+      float y = view.py(deviation[1]);
       ctx.getShapeRenderer().setColor(COLOR_GOLDEN_DEVIATION);
       ctx.getShapeRenderer().line(x - DEVIATION_ARM, y, x + DEVIATION_ARM, y);
       ctx.getShapeRenderer().line(x, y - DEVIATION_ARM, x, y + DEVIATION_ARM);

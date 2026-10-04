@@ -19,6 +19,8 @@ import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.RenderConstants;
+import org.crforge.desktop.render.ViewOrientation;
+import org.crforge.desktop.render.ViewState;
 import org.crforge.desktop.replay.ReplayFile;
 import org.crforge.desktop.replay.ReplayPlayer;
 
@@ -35,6 +37,10 @@ import org.crforge.desktop.replay.ReplayPlayer;
  *   <li>R: Restart the replay from tick 0
  *   <li>+/-: Speed up/slow down
  *   <li>P, O, D, A, H, G, N: The overlays, as on the debug screen
+ *   <li>F: Flip the view. A replay opens flipped, side 1 at the bottom in blue and side 0 at the
+ *       top in red; F turns the arena, every overlay and the HUD by 180 degrees back and forth. The
+ *       battle's sides are the replay's either way: only the drawing changes.
+ *   <li>T: Hide or show the text annotations (status column, messages)
  * </ul>
  */
 @Slf4j
@@ -49,10 +55,18 @@ public class ReplayGameScreen implements Screen {
   private final OrthographicCamera camera;
   private final Vector3 touchPos = new Vector3();
 
+  /** The view settings: flipped at first, F flips them, T hides the annotations. */
+  private final ViewState view = ViewState.replay();
+
   private int hoverTileX = -1;
   private int hoverTileY = -1;
   private int hoverCellX = -1;
   private int hoverCellY = -1;
+
+  /** The mouse's last window position, to find its tile again after a flip; -1 before any move. */
+  private int mouseX = -1;
+
+  private int mouseY = -1;
 
   /** The area hits of the steps run since the last frame. */
   private final List<AreaHitLog.AreaHit> newAreaHits = new ArrayList<>();
@@ -112,6 +126,18 @@ public class ReplayGameScreen implements Screen {
               case Input.Keys.H -> renderer.toggleDrawHpNumbers();
               case Input.Keys.G -> renderer.toggleDrawCellCosts();
               case Input.Keys.N -> renderer.toggleDrawRoutes();
+              case Input.Keys.F -> {
+                view.flip();
+                if (mouseX >= 0) {
+                  // The mouse has not moved, but the battle's tile under it has.
+                  updateHover(mouseX, mouseY);
+                }
+                log.info("View: side {} at the bottom", view.getOrientation().bottomSide());
+              }
+              case Input.Keys.T -> {
+                view.toggleAnnotations();
+                log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
+              }
               default -> {
                 return false;
               }
@@ -128,14 +154,16 @@ public class ReplayGameScreen implements Screen {
   }
 
   private void updateHover(int screenX, int screenY) {
+    mouseX = screenX;
+    mouseY = screenY;
     touchPos.set(screenX, screenY, 0);
     camera.unproject(touchPos);
-    float arenaY = touchPos.y - RenderConstants.BOTTOM_UI_HEIGHT;
-    float arenaX = touchPos.x;
-    hoverTileX = (int) Math.floor(arenaX / RenderConstants.TILE_PIXELS);
-    hoverTileY = (int) Math.floor(arenaY / RenderConstants.TILE_PIXELS);
-    hoverCellX = (int) Math.floor(arenaX / RenderConstants.CELL_PIXELS);
-    hoverCellY = (int) Math.floor(arenaY / RenderConstants.CELL_PIXELS);
+    // The battle's tile and cell under the mouse, whichever way up the arena is drawn.
+    ViewOrientation orientation = view.getOrientation();
+    hoverTileX = orientation.tileColumnAt(touchPos.x);
+    hoverTileY = orientation.tileRowAt(touchPos.y);
+    hoverCellX = orientation.cellColumnAt(touchPos.x);
+    hoverCellY = orientation.cellRowAt(touchPos.y);
   }
 
   @Override
@@ -152,8 +180,9 @@ public class ReplayGameScreen implements Screen {
       player.advance(delta);
       newAreaHits.addAll(player.drainAreaHits());
       logStop();
-      BattleFrame frame = BattleAdapter.frame(session);
-      List<String> status = new ArrayList<>(player.statusLines());
+      ViewOrientation orientation = view.getOrientation();
+      BattleFrame frame = BattleAdapter.frame(session, orientation::sideName);
+      List<String> status = new ArrayList<>(player.statusLines(orientation));
       status.addAll(NOTES);
       renderer.render(
           frame,
@@ -171,7 +200,8 @@ public class ReplayGameScreen implements Screen {
               null,
               GoldenOverlay.none(),
               status,
-              List.of()));
+              List.of(),
+              view));
       newAreaHits.clear();
     } catch (Exception e) {
       log.error("CRASH during replay loop!", e);
@@ -183,7 +213,7 @@ public class ReplayGameScreen implements Screen {
   private List<String> refusedLines() {
     List<String> lines = new ArrayList<>();
     lines.add("REPLAY NOT PLAYED");
-    lines.addAll(player.getReplay().describe());
+    lines.addAll(player.getReplay().describe(view.getOrientation()));
     lines.add("");
     lines.add("Drop another replay file on the window to open it.");
     return lines;
@@ -197,7 +227,7 @@ public class ReplayGameScreen implements Screen {
       log.info(
           "Replay stopped: {}; battle result: {}; recorded result: {}",
           stop,
-          player.battleResult(),
+          player.battleResult(view.getOrientation()),
           player.getReplay().recordedResult());
     }
   }
@@ -217,6 +247,8 @@ public class ReplayGameScreen implements Screen {
           R     - Restart the replay from tick 0
           +/-   - Speed up/slow down
           P O D A H G N - Overlays, as on the debug screen
+          F     - Flip the view (opens with side 1 at the bottom)
+          T     - Hide/show the text annotations
           Drop a replay .json on the window to open it
         ===========================================""");
   }

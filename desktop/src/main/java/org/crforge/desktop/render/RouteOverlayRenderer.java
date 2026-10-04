@@ -1,6 +1,5 @@
 package org.crforge.desktop.render;
 
-import static org.crforge.desktop.render.RenderConstants.BOTTOM_UI_HEIGHT;
 import static org.crforge.desktop.render.RenderConstants.COLOR_ROUTE_LINE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_ROUTE_NODE;
 import static org.crforge.desktop.render.RenderConstants.COLOR_ROUTE_REFERENCE;
@@ -82,7 +81,7 @@ public class RouteOverlayRenderer {
                 speedBudget(unit)));
       }
     }
-    render(units);
+    render(units, ViewOrientation.STANDARD);
   }
 
   /**
@@ -90,18 +89,23 @@ public class RouteOverlayRenderer {
    * it: the original engine's grid rules or the battle core.
    */
   public void render(List<Routed> units) {
+    render(units, ViewOrientation.STANDARD);
+  }
+
+  /** Draws each unit's route, reference marker and label the way up the view has the arena. */
+  public void render(List<Routed> units, ViewOrientation view) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
     ctx.getShapeRenderer().begin(ShapeType.Line);
     for (Routed routed : units) {
-      drawRoute(routed);
-      drawReference(routed.unit());
+      drawRoute(routed, view);
+      drawReference(routed.unit(), view);
     }
     ctx.getShapeRenderer().end();
 
     ctx.getSpriteBatch().begin();
     ctx.getEntityNameFont().setColor(COLOR_ROUTE_LINE);
     for (Routed routed : units) {
-      drawLabel(routed);
+      drawLabel(routed, view);
     }
     ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
@@ -116,20 +120,20 @@ public class RouteOverlayRenderer {
   }
 
   /** The polyline from the troop through every remaining route cell, ending at the goal. */
-  private void drawRoute(Routed routed) {
+  private void drawRoute(Routed routed, ViewOrientation view) {
     Route route = routed.unit().movement().getRoute();
     if (route.isEmpty()) {
       return;
     }
     int width = TileMap.standard1v1().width();
-    float x = unitsToPixels(routed.x());
-    float y = unitsToPixels(routed.y()) + BOTTOM_UI_HEIGHT;
+    float x = view.px(routed.x());
+    float y = view.py(routed.y());
 
     ctx.getShapeRenderer().setColor(COLOR_ROUTE_LINE);
     for (int i = route.size() - 1; i >= 0; i--) {
       int node = route.get(i);
-      float nodeX = unitsToPixels(cellCentre(node % width));
-      float nodeY = unitsToPixels(cellCentre(node / width)) + BOTTOM_UI_HEIGHT;
+      float nodeX = view.px(cellCentre(node % width));
+      float nodeY = view.py(cellCentre(node / width));
       ctx.getShapeRenderer().line(x, y, nodeX, nodeY);
       x = nodeX;
       y = nodeY;
@@ -140,28 +144,22 @@ public class RouteOverlayRenderer {
       int node = route.get(i);
       ctx.getShapeRenderer()
           .circle(
-              unitsToPixels(cellCentre(node % width)),
-              unitsToPixels(cellCentre(node / width)) + BOTTOM_UI_HEIGHT,
-              NODE_RADIUS);
+              view.px(cellCentre(node % width)), view.py(cellCentre(node / width)), NODE_RADIUS);
     }
   }
 
   /** A ring on the position the troop is currently holding as its reference. */
-  private void drawReference(GridUnitState unit) {
+  private void drawReference(GridUnitState unit, ViewOrientation view) {
     TargetView reference = unit.targeting().getReference();
     if (reference == null) {
       return;
     }
     ctx.getShapeRenderer().setColor(COLOR_ROUTE_REFERENCE);
-    ctx.getShapeRenderer()
-        .circle(
-            unitsToPixels(reference.x()),
-            unitsToPixels(reference.y()) + BOTTOM_UI_HEIGHT,
-            REFERENCE_RADIUS);
+    ctx.getShapeRenderer().circle(view.px(reference.x()), view.py(reference.y()), REFERENCE_RADIUS);
   }
 
   /** The state name, the number of route cells left and this tick's movement budget. */
-  private void drawLabel(Routed routed) {
+  private void drawLabel(Routed routed, ViewOrientation view) {
     GridUnitState unit = routed.unit();
     String label =
         stateName(unit.entity().getState())
@@ -169,8 +167,8 @@ public class RouteOverlayRenderer {
             + unit.movement().getRoute().size()
             + " v="
             + routed.speed();
-    float x = unitsToPixels(routed.x());
-    float y = unitsToPixels(routed.y()) + BOTTOM_UI_HEIGHT;
+    float x = view.px(routed.x());
+    float y = view.py(routed.y());
     float radius = unitsToPixels(routed.radius());
     ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
     ctx.getEntityNameFont()

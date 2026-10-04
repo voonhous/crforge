@@ -2,11 +2,15 @@ package org.crforge.desktop.render;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.badlogic.gdx.graphics.Color;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.util.GameUnits;
+import org.crforge.desktop.battle.BattleAdapter;
+import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.battle.EntityView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,17 +38,67 @@ class BattleRendererTest {
     }
     assertThat(water).as("a water cell on the river row").isNotNegative();
     assertThat(bridge).as("a bridge cell on the river row").isNotNegative();
-    assertThat(BattleRenderer.cellColor(MAP, water, river, true))
+    assertThat(BattleRenderer.cellColor(MAP, water, river, true, ViewOrientation.STANDARD))
         .isEqualTo(RenderConstants.COLOR_RIVER);
-    assertThat(BattleRenderer.cellColor(MAP, bridge, river, true))
+    assertThat(BattleRenderer.cellColor(MAP, bridge, river, true, ViewOrientation.STANDARD))
         .isEqualTo(RenderConstants.COLOR_BRIDGE);
 
     // A cell in front of each king: the bottom half is blue's, the top half red's.
     int middle = MAP.width() / 2;
-    assertThat(BattleRenderer.cellColor(MAP, middle, 10, false))
+    assertThat(BattleRenderer.cellColor(MAP, middle, 10, false, ViewOrientation.STANDARD))
         .isEqualTo(RenderConstants.COLOR_BLUE_ZONE);
-    assertThat(BattleRenderer.cellColor(MAP, middle, MAP.height() - 11, false))
+    assertThat(
+            BattleRenderer.cellColor(
+                MAP, middle, MAP.height() - 11, false, ViewOrientation.STANDARD))
         .isEqualTo(RenderConstants.COLOR_RED_ZONE);
+  }
+
+  @Test
+  @DisplayName("flipped, side 0's half and bodies are red and side 1's are blue")
+  void flippedColours() {
+    int middle = MAP.width() / 2;
+    // Side 0's half (the battle's low rows) is drawn red at the top, side 1's blue at the bottom.
+    assertThat(BattleRenderer.cellColor(MAP, middle, 10, false, ViewOrientation.FLIPPED))
+        .isEqualTo(RenderConstants.COLOR_RED_ZONE);
+    assertThat(
+            BattleRenderer.cellColor(
+                MAP, middle, MAP.height() - 11, false, ViewOrientation.FLIPPED))
+        .isEqualTo(RenderConstants.COLOR_BLUE_ZONE);
+
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.FLIPPED))
+        .isEqualTo(RenderConstants.COLOR_RED_ENTITY);
+    assertThat(BattleRenderer.sideColor(1, ViewOrientation.FLIPPED))
+        .isEqualTo(RenderConstants.COLOR_BLUE_ENTITY);
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.STANDARD))
+        .isEqualTo(RenderConstants.COLOR_BLUE_ENTITY);
+
+    BattleFrame frame = BattleAdapter.frame(BattleSession.ladder(GameTables.loadConfigured()));
+    for (EntityView tower : frame.entities()) {
+      if (tower.kind() != EntityView.Kind.TOWER) {
+        continue;
+      }
+      boolean sideOne = tower.side() == 1;
+      Color flipped = BattleRenderer.bodyColor(tower, ViewOrientation.FLIPPED);
+      Color standing = BattleRenderer.bodyColor(tower, ViewOrientation.STANDARD);
+      if (tower.king()) {
+        assertThat(flipped)
+            .isEqualTo(
+                sideOne
+                    ? RenderConstants.COLOR_BLUE_CROWN_TOWER
+                    : RenderConstants.COLOR_RED_CROWN_TOWER);
+        assertThat(standing)
+            .isEqualTo(
+                sideOne
+                    ? RenderConstants.COLOR_RED_CROWN_TOWER
+                    : RenderConstants.COLOR_BLUE_CROWN_TOWER);
+      } else {
+        assertThat(flipped)
+            .isEqualTo(
+                sideOne
+                    ? RenderConstants.COLOR_BLUE_PRINCESS_TOWER
+                    : RenderConstants.COLOR_RED_PRINCESS_TOWER);
+      }
+    }
   }
 
   @Test

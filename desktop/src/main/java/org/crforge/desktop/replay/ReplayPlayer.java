@@ -11,6 +11,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.parity.ReplaySmokeRun;
 import org.crforge.parity.ScenarioPlan;
 import org.crforge.parity.UnsupportedScenarioException;
@@ -20,10 +21,11 @@ import org.crforge.parity.UnsupportedScenarioException;
  * built from the replay ({@link ReplaySmokeRun#build}) with every command queued at its tick, the
  * clock that steps it, pause and speed, and a restart from tick 0.
  *
- * <p>Each play and ability command that runs is noted in the session's messages (its side, its card
- * or unit, and the tick it ran on), and each play's item is checked against the item the battle
- * built for it ({@link ReplaySmokeRun#checkItems}), as a parity run checks it: a play that ran with
- * another item halts the session with the reason, since the battle has left the replay.
+ * <p>Each play and ability command that runs is noted in the session's messages (its side, named by
+ * the screen's colours as the messages are read, its card or unit, and the tick it ran on), and
+ * each play's item is checked against the item the battle built for it ({@link
+ * ReplaySmokeRun#checkItems}), as a parity run checks it: a play that ran with another item halts
+ * the session with the reason, since the battle has left the replay.
  *
  * <p>The replay stops at its end tick, or when the battle ends by its own rule, whichever is first;
  * a replay that gives no end tick plays until the battle ends. A refused replay has no session.
@@ -160,8 +162,10 @@ public final class ReplayPlayer {
   /**
    * What the status column shows of the replay: the file, the tick against the end tick, why it
    * stopped once it has, the battle's result and the replay's own, and the speed.
+   *
+   * @param view the screen's orientation, which names the sides in the battle's result
    */
-  public List<String> statusLines() {
+  public List<String> statusLines(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
     lines.add("replay: " + replay.path().getFileName());
     if (session == null) {
@@ -181,7 +185,7 @@ public final class ReplayPlayer {
       lines.add("stopped: " + stop);
     }
     if (finished()) {
-      lines.add("battle result: " + battleResult());
+      lines.add("battle result: " + battleResult(view));
       lines.add("recorded result: " + replay.recordedResult());
     }
     return lines;
@@ -204,15 +208,21 @@ public final class ReplayPlayer {
     return null;
   }
 
-  /** The battle's result as it stands: the winner once the match has ended, and the crowns. */
-  public String battleResult() {
+  /**
+   * The battle's result as it stands: the winner once the match has ended, and the crowns, the
+   * bottom (blue) side's first.
+   *
+   * @param view the screen's orientation, which names the sides
+   */
+  public String battleResult(ViewOrientation view) {
     LadderMatch match = session.match();
-    String crowns = "crowns " + match.crowns(0) + " - " + match.crowns(1);
+    List<Integer> order = view.sidesBottomFirst();
+    String crowns = "crowns " + match.crowns(order.get(0)) + " - " + match.crowns(order.get(1));
     if (!match.isEnded()) {
       return "not decided on tick " + session.tick() + ", " + crowns;
     }
     int winner = match.getWinner();
-    return (winner < 0 ? "a draw" : BattleSession.sideName(winner) + " wins") + ", " + crowns;
+    return (winner < 0 ? "a draw" : view.sideName(winner) + " wins") + ", " + crowns;
   }
 
   private boolean atEndTick() {
@@ -232,14 +242,8 @@ public final class ReplayPlayer {
       boolean placed = play.matchCode() == 0 && play.result() != null && play.result().placed();
       if (placed) {
         session.note(
-            BattleSession.sideName(play.side())
-                + " plays "
-                + card(play.name())
-                + " on tick "
-                + play.tick()
-                + " ("
-                + play.name()
-                + ")");
+            play.side(),
+            " plays " + card(play.name()) + " on tick " + play.tick() + " (" + play.name() + ")");
       }
     }
     try {
@@ -256,8 +260,8 @@ public final class ReplayPlayer {
       int cut = use.unit().indexOf('_');
       String unit = cut < 0 ? use.unit() : card(use.unit().substring(0, cut));
       session.note(
-          BattleSession.sideName(use.side())
-              + " taps "
+          use.side(),
+          " taps "
               + unit
               + "'s ability on tick "
               + use.tick()
