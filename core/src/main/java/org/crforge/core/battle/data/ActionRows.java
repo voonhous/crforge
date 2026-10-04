@@ -47,6 +47,7 @@ import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
@@ -664,6 +665,30 @@ public final class ActionRows {
                   "IndicatorOffsetYBlue",
                   "IndicatorOffsetYRed",
                   "AIStateName")),
+          // The evolved Musketeer's snipe: its rounds and the box, filter and minimum range its
+          // look lists candidates by. The side clip, the pending-damage flag and the two actions
+          // are read only once a candidate is found, which is refused; the rest only shows
+          // something.
+          Map.entry(
+              "ActionMusketeerSnipe",
+              Set.of(
+                  "AmmoCount",
+                  "LockedTargetSnipeSideClip",
+                  "SnipeMaxRange",
+                  "SnipeMinRange",
+                  "SnipeTargetFilter",
+                  "SnipeSideClip",
+                  "IgnorePendingDamageTargets",
+                  "ActionOnSnipe",
+                  "ActionOnOutOfAmmo",
+                  "TargetingEffects",
+                  "TargetingEffectVerticalOffset",
+                  "FinalCrosshairFadeTime",
+                  "LoopingEffectWhileHasBullets",
+                  "ExtraSpellTargetIndicatorFile",
+                  "ExtraSpellTargetIndicator",
+                  "ExtraSpellTargetIndicatorXOffset",
+                  "ExtraSpellTargetIndicatorYOffset")),
           Map.entry(
               "ActionRunForcedAnimationOnce",
               Set.of(
@@ -1127,6 +1152,16 @@ public final class ActionRows {
                         .rechargeIncrement(integer(f, "RechargeIncrement"))
                         .attackSequenceIndices(ints(f.get("AttackSequenceIndices")))
                         .depletedAttackSequenceIndex(integer(f, "DepletedAttackSequenceIndex"))
+                        .build());
+            case "ActionMusketeerSnipe" ->
+                new MusketeerSnipe(
+                    shared,
+                    MusketeerSnipe.Columns.builder()
+                        .ammoCount(integer(f, "AmmoCount"))
+                        .lockedTargetSnipeSideClip(integer(f, "LockedTargetSnipeSideClip"))
+                        .snipeMaxRange(integer(f, "SnipeMaxRange"))
+                        .snipeMinRange(integer(f, "SnipeMinRange"))
+                        .snipeTargetFilter(records.filter(f.path("SnipeTargetFilter").asText()))
                         .build());
             case "ActionBerserk" -> {
               // The shipped rows set only their class; a delay, a phase, tags, a gate or a chained

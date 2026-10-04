@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.pathfinding.target.AttackSequenceEntry;
 
 /**
  * A unit's attack sequence as the loader leaves it: the entries, the order they are used in, and
@@ -72,8 +73,8 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       String doAttackAction) {
 
     /**
-     * True when the entry sets anything but its damage, its projectile, its action and its direct
-     * hit's pushback.
+     * True when the entry sets anything but its damage, its projectile, its action, its direct
+     * hit's pushback and its attack range and minimum range.
      */
     public boolean overridesMore() {
       return variableDamageTime != 0 || overridesMoreThanItsWindow();
@@ -81,16 +82,36 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
 
     /**
      * True when the entry sets anything but its damage, its projectile, its action, its direct
-     * hit's pushback and its variable damage time, the window a timer-driven mode walks.
+     * hit's pushback, its attack range and minimum range and its variable damage time, the window a
+     * timer-driven mode walks.
+     *
+     * <p>The two ranges replace the row's Range and MinimumRange whenever the index selects the
+     * entry, at any length of the order, the owner's collision radius still added; the targeting
+     * component's range helpers read them through the entries its configuration carries.
      */
     public boolean overridesMoreThanItsWindow() {
       return hitSpeedMultiplier != 100
-          || customRange != -1
           || customSightRange != -1
-          || customMinimumRange != -1
           || customProjectileStartZ != -1
           || customProjectileStartRadius != -1;
     }
+
+    /**
+     * The entry as the targeting component's range, sight and timer helpers read it: its attack
+     * range, minimum range and sight range overrides, -1 for none, and its hit speed multiplier.
+     */
+    public AttackSequenceEntry targetingEntry() {
+      return new AttackSequenceEntry(
+          customRange, customMinimumRange, customSightRange, hitSpeedMultiplier);
+    }
+  }
+
+  /**
+   * The entries as the targeting component's helpers read them, each by its own index; the order
+   * names which one an index selects.
+   */
+  public List<AttackSequenceEntry> targetingEntries() {
+    return entries.stream().map(Entry::targetingEntry).toList();
   }
 
   /**
