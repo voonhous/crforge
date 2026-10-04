@@ -13,7 +13,10 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -152,6 +155,124 @@ class BattleAreaEffectFilterFormTest {
     assertThat(knight.getHitPoints().getHitPoints())
         .isEqualTo(knight.getHitPoints().getMaximum() - 75);
     assertThat(tower.getHitPoints().getHitPoints()).isEqualTo(towerBefore - 19);
+  }
+
+  /** The pushback of the pushing explosion the push scenes cast. */
+  private static final int PUSHBACK = 1000;
+
+  /**
+   * The configured tables with Zap rewritten in the filter form as a pushing explosion of the newer
+   * data is written: a base damage, a pushback and no buff.
+   */
+  private static GameTables pushingZap(Path folder) throws IOException {
+    return filterForm(
+        folder,
+        "Zap",
+        columns -> {
+          columns.remove("Buff");
+          columns.putObject("Damage").put("BaseDamage", 75);
+          columns.put("Pushback", PUSHBACK);
+        });
+  }
+
+  /**
+   * Records, in order, every push request on a character of the given side - its id, whether a
+   * pushback started, the point it was pushed from, where it stood and where the pushback aims -
+   * and every typed hit it takes, with whether its movement component was on as the hit was dealt.
+   */
+  private static List<String> pushEvents(Standard1v1Battle match, int side) {
+    List<String> events = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void pushbackRequested(
+                  int tick,
+                  WorldEntity unit,
+                  boolean started,
+                  int fromX,
+                  int fromY,
+                  MovementState pushback) {
+                if (unit.side() == side) {
+                  events.add(
+                      String.format(
+                          "%d push %s from %d,%d at %d,%d to %d,%d",
+                          unit.getId(),
+                          started,
+                          fromX,
+                          fromY,
+                          unit.getView().getX(),
+                          unit.getView().getY(),
+                          pushback.getTargetX(),
+                          pushback.getTargetY()));
+                }
+              }
+
+              @Override
+              public void typedHitDealt(
+                  int tick,
+                  WorldEntity source,
+                  WorldEntity target,
+                  int amount,
+                  int damageId,
+                  DamageResult result) {
+                if (target.side() == side && target instanceof CharacterEntity character) {
+                  events.add(
+                      target.getId() + " hit " + amount + " moving " + character.movementOn());
+                }
+              }
+            });
+    return events;
+  }
+
+  @Test
+  @DisplayName(
+      "a pushing row in the filter form pushes a walking troop it lists the whole pushback away"
+          + " from its point, every gate in place, before its damage")
+  void aPushingRowPushesAWalkingTroopBeforeItsDamage(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(pushingZap(folder), LEVEL, false);
+    List<String> events = pushEvents(match, 1);
+    match.play(150, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 14500, 22500, "k");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, 23500, "zap");
+    stepTo(match, 300);
+    CharacterEntity knight = match.getPlays().get(0).units().get(0);
+    assertThat(events).hasSize(2);
+    assertThat(events.get(1)).isEqualTo(knight.getId() + " hit 75 moving true");
+    // The pushback aims the whole distance from where the Knight stands, straight away from the
+    // cast point: the setter's direction, C division.
+    String[] at = events.get(0).split(" at ")[1].split(" to ")[0].split(",");
+    int x = Integer.parseInt(at[0]);
+    int y = Integer.parseInt(at[1]);
+    int dx = x - 14500;
+    int dy = y - 23500;
+    int length = FixedMath.isqrt(dx * dx + dy * dy);
+    assertThat(events.get(0))
+        .isEqualTo(
+            String.format(
+                "%d push true from 14500,23500 at %d,%d to %d,%d",
+                knight.getId(), x, y, x + PUSHBACK * dx / length, y + PUSHBACK * dy / length));
+  }
+
+  @Test
+  @DisplayName(
+      "a pushing row in the filter form neither pushes a troop a hook holds with its movement off"
+          + " nor switches its movement on, and still deals it its damage")
+  void aPushingRowLeavesAHookedTroopAlone(@TempDir Path folder) throws IOException {
+    // The scene of BattleHookedAreaPushTest: side 1's Fisherman hooks side 0's Knight on tick 284
+    // and pulls it, its movement off, until tick 293; the pushing Zap lands on it on tick 287.
+    Standard1v1Battle match = new Standard1v1Battle(pushingZap(folder), 1, true);
+    match.getWorld().seed(1131);
+    match.play(220, match.getWorld().getRecords().card("Knight"), 1, 0, 3500, 14000, "k");
+    match.play(230, match.getWorld().getRecords().card("Fisherman"), 9, 1, 3500, 22000, "f");
+    List<String> events = pushEvents(match, 0);
+    match.play(287, match.getWorld().getRecords().card("Zap"), LEVEL, 1, 3433, 20820, "zap");
+    stepTo(match, 288);
+    CharacterEntity knight = match.getPlays().get(0).units().get(0);
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    assertThat(events).containsExactly(knight.getId() + " hit 75 moving false");
+    assertThat(knight.isActive(CharacterEntity.MOVEMENT_SLOT)).as("movement still off").isFalse();
+    assertThat(knight.getUnit().movement().getPushbackInFlight()).isZero();
   }
 
   @Test

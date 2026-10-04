@@ -533,10 +533,17 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * within the radius, anything else when its centre lies strictly within the radius plus its
    * collision radius - listed once, nearest first by the squared distance of where each stands now
    * from the area effect's point, objects as near listed in the query's order. Each in turn gets
-   * the damage, queued as a typed hit of the row's damage type with the area effect its source, and
-   * then the buff, applied for the buff time - capped at the countdown and one HitSpeed more when
-   * the row caps it - when that time is at least 1, at the area effect's level and for its side,
-   * the area effect its parent when the buff is controlled by its parent.
+   * the push, the damage, queued as a typed hit of the row's damage type with the area effect its
+   * source, and then the buff, applied for the buff time - capped at the countdown and one HitSpeed
+   * more when the row caps it - when that time is at least 1, at the area effect's level and for
+   * its side, the area effect its parent when the buff is controlled by its parent.
+   *
+   * <p>The push, with a pushback of at least 1, reaches only a character whose movement component
+   * is on: anything else, a tower or a troop still deploying among them, is left where it is, and
+   * its movement is not switched on (the area push of a row with hit switches switches it on). It
+   * is asked for the whole pushback away from the area effect's point, every gate in place and
+   * nothing lifted, refused while a pushback is in flight; whether the object is alive is not
+   * asked, as its damage is only queued.
    *
    * @param start the elapsed time at the start of the step, on the row's lifetime
    * @param speed the row's HitSpeed
@@ -555,6 +562,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     world.shapeListed(this, listed);
     BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
     for (WorldEntity target : listed) {
+      // The push first, before the damage.
+      if (data.pushback() >= 1
+          && target instanceof CharacterEntity character
+          && character.movementOn()) {
+        character.pushedFrom(x, y, data.pushback());
+      }
       if (data.typedDamage() != null) {
         world.queueAreaDamage(this, target, data.typedDamage());
       }

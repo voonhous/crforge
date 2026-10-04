@@ -1622,16 +1622,15 @@ public final class BattleRecords {
   }
 
   /**
-   * Refuses, for the filter form, what each object it lists would get beyond its damage and its
-   * buff: a push, a pull (a buff that attracts), a hit action, a launch, a spawner, one hit per
+   * Refuses, for the filter form, what each object it lists would get beyond its push, its damage
+   * and its buff: a pull (a buff that attracts), a hit action, a launch, a spawner, one hit per
    * target, a target limit, the biggest targets first, a clone and a deflection, none of which the
-   * filter form's hit pass is held for. A damage type that names a column the pass is not held for
-   * is refused by its Damage column.
+   * filter form's hit pass is held for. Its push is held for with every gate in place: a row that
+   * lifts them (PushbackAll), takes the separation off (RelativePushback) or keeps the longer push
+   * (ContinuousPushback) is refused by that column. A damage type that names a column the pass is
+   * not held for is refused by its Damage column.
    */
   private void filterForm(AreaEffectData data, List<String> unmodelled) {
-    if (data.pushback() != 0) {
-      unmodelled.add("Pushback");
-    }
     if (data.buff() != null && buff(data.buff()).attracts()) {
       unmodelled.add("Buff");
     }
