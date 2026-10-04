@@ -93,26 +93,7 @@ public final class ReplaySmokeRun {
     Map<String, Object> manifest = new LinkedHashMap<>();
     manifest.put("engine", "java");
     manifest.put("status", "invalid");
-    int exit = INVALID;
-    try {
-      exit = execute(options, out, manifest);
-    } catch (UnsupportedScenarioException e) {
-      manifest.put("status", "unsupported");
-      manifest.put("unsupported", Map.of("feature", e.feature(), "input", e.input()));
-      exit = UNSUPPORTED;
-    } catch (UnsupportedOperationException e) {
-      // The simulator refuses what it does not model with this exception.
-      manifest.put("status", "unsupported");
-      manifest.put(
-          "unsupported", Map.of("feature", String.valueOf(e.getMessage()), "input", "the run"));
-      manifest.put("stack", stack(e));
-      exit = UNSUPPORTED;
-    } catch (RuntimeException | IOException e) {
-      manifest.put("status", "invalid");
-      manifest.put("error", e.toString());
-      manifest.put("stack", stack(e));
-      exit = INVALID;
-    }
+    int exit = attempt(() -> execute(options, out, manifest), manifest);
     try {
       MAPPER
           .writerWithDefaultPrettyPrinter()
@@ -124,6 +105,88 @@ public final class ReplaySmokeRun {
     System.out.println(
         "status=" + manifest.get("status") + " observations=" + manifest.get("observations"));
     return exit;
+  }
+
+  /** A run's body: answers its exit code, or throws what makes the run unsupported or invalid. */
+  @FunctionalInterface
+  private interface Body {
+    int run() throws IOException;
+  }
+
+  /**
+   * Runs a body and records how it ended in the manifest: unsupported (an input with no production
+   * mapping, or a behaviour the simulator refuses) or invalid (any other fault). A completed body
+   * records its own status.
+   *
+   * @return the exit code
+   */
+  private static int attempt(Body body, Map<String, Object> manifest) {
+    try {
+      return body.run();
+    } catch (UnsupportedScenarioException e) {
+      manifest.put("status", "unsupported");
+      manifest.put("unsupported", Map.of("feature", e.feature(), "input", e.input()));
+      return UNSUPPORTED;
+    } catch (UnsupportedOperationException e) {
+      // The simulator refuses what it does not model with this exception.
+      manifest.put("status", "unsupported");
+      manifest.put(
+          "unsupported", Map.of("feature", String.valueOf(e.getMessage()), "input", "the run"));
+      manifest.put("stack", stack(e));
+      return UNSUPPORTED;
+    } catch (RuntimeException | IOException e) {
+      manifest.put("status", "invalid");
+      manifest.put("error", e.toString());
+      manifest.put("stack", stack(e));
+      return INVALID;
+    }
+  }
+
+  /**
+   * A run held in memory: the manifest fields the run wrote (its {@code status}, and for a
+   * completed run {@code observations}, {@code trace_sha256}, the terminal-aware fields and the
+   * plays that ran; for an unsupported run {@code unsupported}; for an invalid one {@code error})
+   * and the trace, empty unless the run completed.
+   *
+   * @param manifest the run's manifest fields
+   * @param trace the observations, one JSON line each
+   */
+  public record InProcessRun(Map<String, Object> manifest, byte[] trace) {
+
+    /** The run's status: {@code completed}, {@code unsupported} or {@code invalid}. */
+    public String status() {
+      return String.valueOf(manifest.get("status"));
+    }
+  }
+
+  /**
+   * Runs a scenario in this process, through the same steps as a run from the command line, and
+   * keeps its artifacts in memory. Nothing is shared between two runs but the tables, which are
+   * only read.
+   *
+   * @param schema the observation schema
+   * @param ticks the horizon: exact under the exact-horizon schema, the most under the
+   *     terminal-aware one
+   * @param scenarioBytes the scenario file's bytes
+   * @param tables the game tables
+   * @return the run
+   */
+  public static InProcessRun runInProcess(
+      SmokeSchema schema, int ticks, byte[] scenarioBytes, GameTables tables) {
+    Map<String, Object> manifest = new LinkedHashMap<>();
+    manifest.put("engine", "java");
+    manifest.put("status", "invalid");
+    manifest.put("schema", schema.id());
+    manifest.put("ticks", ticks);
+    manifest.put("scenario_sha256", sha256(scenarioBytes));
+    byte[][] trace = {new byte[0]};
+    attempt(
+        () -> {
+          trace[0] = simulate(schema, ticks, MAPPER.readTree(scenarioBytes), tables, manifest);
+          return COMPLETED;
+        },
+        manifest);
+    return new InProcessRun(manifest, trace[0]);
   }
 
   private static int execute(Map<String, String> options, Path out, Map<String, Object> manifest)
@@ -167,6 +230,26 @@ public final class ReplaySmokeRun {
               + ", not the identity's");
     }
 
+    byte[] bytes = simulate(schema, ticks, scenario, tables, manifest);
+    Files.write(out.resolve("observations.jsonl"), bytes);
+    Files.writeString(out.resolve("COMPLETE"), manifest.get("trace_sha256") + "\n");
+    return COMPLETED;
+  }
+
+  /**
+   * Builds the battle a scenario gives, steps it and observes it, recording the run's fields in the
+   * manifest (the adapter, the steps executed and why they ended, the observation count, the trace
+   * digest, the plays and ability commands that ran, and the completed status).
+   *
+   * @return the trace: one JSON line per observation
+   */
+  private static byte[] simulate(
+      SmokeSchema schema,
+      int ticks,
+      JsonNode scenario,
+      GameTables tables,
+      Map<String, Object> manifest)
+      throws IOException {
     ReplayScenario translator = new ReplayScenario(tables);
     Map<String, Object> adapter = new LinkedHashMap<>();
     adapter.put("class", ReplaySmokeRun.class.getName());
@@ -232,7 +315,6 @@ public final class ReplaySmokeRun {
       observations += write(trace, SmokeObserver.observe(battle, schema), observations);
     }
     byte[] bytes = trace.toByteArray();
-    Files.write(out.resolve("observations.jsonl"), bytes);
     String digest = sha256(bytes);
     if (schema.terminal()) {
       manifest.put("executed_ticks", executed);
@@ -285,8 +367,7 @@ public final class ReplaySmokeRun {
       manifest.put("items_not_built", unchecked);
     }
     manifest.put("status", "completed");
-    Files.writeString(out.resolve("COMPLETE"), digest + "\n");
-    return COMPLETED;
+    return bytes;
   }
 
   /**

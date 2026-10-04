@@ -1,0 +1,6 @@
+# The commit of the game data repository (the GAME_TABLES_REPOSITORY variable) this source is built
+# and tested against, and the data version folder in it. CI checks that commit out for the game
+# tables (<version>/) and the recorded reference battles (references/<version>/). Move it in the
+# change that needs newer data.
+commit=49a713727fd17e479d6615682b64bafa48d3ca14
+version=14.593.1
