@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +33,8 @@ class BattleMegaMinionHeroTest {
   private static final String HAND_OVER = "MegaMinion_hero_ability_action";
 
   private static final String BOT_BUFF = "MegaMinionHeroBuffForBots";
+
+  private static final String TELEPORT = "MegaMinion_hero_teleport_action";
 
   /** The Mega Minion first, in the hero slot, and seven other cards. */
   private static final List<String> DECK =
@@ -134,6 +137,64 @@ class BattleMegaMinionHeroTest {
     assertThat(distanceSquared(hero, archers.get(0)))
         .isNotEqualTo(distanceSquared(hero, archers.get(1)));
     assertThat(mark(hero).target().id()).isEqualTo(further.getId());
+  }
+
+  @Test
+  @DisplayName(
+      "the ability flies the hero to its marked target: the warp follows the target, gaining 400 a"
+          + " step up to 1500 and braking before it; each step raises the warp's tags for the next"
+          + " one, which stop the mark and the hand-over; on arrival the hero stands on the"
+          + " target's point and keeps it as its reference, and its end action's damage buff is"
+          + " refused")
+  void theAbilityWarpsTheHeroToItsTarget() {
+    Standard1v1Battle battle = heroPlayed();
+    CharacterEntity hero = named(battle, HERO).get(0);
+    int tick = battle.getBattle().getTick();
+    battle.play(tick, GameData.card("Knight"), LEVEL, 1, 14500, 25500, "k");
+    int limit = tick + 60;
+    while (mark(hero).target() == null) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    CharacterEntity knight = named(battle, "Knight").get(0);
+    LadderMatch match = battle.getMatch();
+    for (int i = 0; i < 20 || match.side(0).wholeElixir() < 2; i++) {
+      step(battle);
+    }
+    battle.useAbility(battle.getBattle().getTick(), 0, hero.getId(), "a");
+    limit = battle.getBattle().getTick() + 40;
+    while (!runs(hero).contains(TELEPORT)) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    long warpTags =
+        EntityFlags.NO_ATTACK
+            | EntityFlags.DISABLE_PHYSICAL
+            | EntityFlags.NO_DAMAGE
+            | EntityFlags.UNTARGETABLE
+            | EntityFlags.WARP;
+    // The launch step ran the warp's first update: its tags are in the word from the next step.
+    assertThat(hero.getView().getPendingFlags() & warpTags).isEqualTo(warpTags);
+    step(battle);
+    assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
+    // WARP stops the mark and the hand-over.
+    assertThat(runs(hero)).doesNotContain(MARK, HAND_OVER).contains(TELEPORT);
+    // The arrival places the hero and keeps its target, then builds the end action, whose damage
+    // buff is not modelled.
+    Standard1v1Battle flying = battle;
+    assertThatThrownBy(
+            () -> {
+              for (int i = 0; i < 40; i++) {
+                step(flying);
+                assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(
+            "MegaMinion_hero_DamageBuff_Spawn spawns MegaMinion_hero_Damage_Buff");
+    assertThat(hero.getView().getX()).isEqualTo(knight.getView().getX());
+    assertThat(hero.getView().getY()).isEqualTo(knight.getView().getY());
+    assertThat(hero.getUnit().targeting().getReference()).isSameAs(knight.getTargetView());
   }
 
   private static long distanceSquared(CharacterEntity a, CharacterEntity b) {

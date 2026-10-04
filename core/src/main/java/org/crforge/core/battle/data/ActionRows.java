@@ -660,9 +660,10 @@ public final class ActionRows {
                   "WaitForDashToFinish",
                   "AllowWarpWhenMovementSpeedZero",
                   "AllowWarpWhenAttackSpeedZero")),
-          // The instant warp's columns; the mode is read only to refuse every mode but the relative
-          // one, and the two effects only show something. The flying warp's columns, a target
-          // resolver and the warp's end action are refused as columns nothing reads.
+          // The warp's columns; the mode is read to refuse every mode but the relative one and
+          // InjectedCharacter, and the two effects only show something. The target resolver is
+          // read only to refuse it on a relative warp: InjectedCharacter never reads it. The tower
+          // offset and the step of untargetability are read only to refuse them.
           Map.entry(
               "ActionWarpCharacter",
               Set.of(
@@ -675,7 +676,16 @@ public final class ActionRows {
                   "AvoidBlockedTilesVertically",
                   "ResetPendingDamageAtWarp",
                   "WarpPositionEffect",
-                  "WarpTargetEffect")),
+                  "WarpTargetEffect",
+                  "Speed",
+                  "Acceleration",
+                  "OffsetX",
+                  "OffsetY",
+                  "OffsetToTargetConsideringDirectionToTower",
+                  "ForceKeepTargetAfterWarp",
+                  "MakeUntargetableForTickAfterWarp",
+                  "OnWarpEndAction",
+                  "TargetResolver")),
           // The mark: its resolver, its two actions, its two tag masks, its pause and its search
           // delay. The targetter effects, the effect lists and the radii that pick among them only
           // show something; the arrow's stop condition, which only a client arrow reads, is refused
@@ -2694,24 +2704,73 @@ public final class ActionRows {
     }
 
     /**
-     * An instant warp's columns: its offset, the landing's avoidance and the resets after it, the
-     * four the loader defaults to on. Refused: a mode other than the relative one, and a row that
-     * sets tags, a singleton, a next action that waits for it, or a gate.
+     * A warp's columns: its offset, the landing's avoidance and the resets after it, the four the
+     * loader defaults to on; for an InjectedCharacter warp also its speed, its acceleration (1000
+     * when the row leaves it out, as the loader defaults it), its offsets, the target kept on
+     * arrival and the name of the action run then, built as the warp arrives. Its target resolver
+     * is never read in that mode. Refused: a mode other than the relative one or InjectedCharacter,
+     * a relative warp with a speed or any of the flying warp's columns, an InjectedCharacter warp
+     * without a speed, an offset away from a tower, a step of untargetability after the warp, and a
+     * row that sets tags, a next action that waits for it, or a gate; a singleton relative warp,
+     * and an InjectedCharacter warp with a next action.
      */
     private WarpCharacter warpCharacter(String name, ActionRow shared, JsonNode f) {
       refuseShared(
           name,
           f,
           "GameTagsToSet",
-          "Singleton",
           "NextActionWait",
           "ExecuteIfTrue",
           "ActionPausedIfTrue",
-          "ForceStopIfTrue");
+          "ForceStopIfTrue",
+          "MakeUntargetableForTickAfterWarp");
       String mode = f.path("WarpMode").asText("");
-      if (!mode.isEmpty() && !mode.equals("RelativeWarp")) {
+      boolean injected = mode.equals("InjectedCharacter");
+      if (!mode.isEmpty() && !mode.equals("RelativeWarp") && !injected) {
         throw new UnsupportedOperationException(
             name + " warps in mode " + mode + ", which is not modelled");
+      }
+      int speed = integer(f, "Speed");
+      WarpCharacter.Flight flight = null;
+      if (injected) {
+        // The hand-over lists the run it builds; nothing schedules a next action after it.
+        refuseShared(name, f, "NextAction");
+        if (speed <= 0) {
+          throw new UnsupportedOperationException(
+              name + " warps to an injected target with no Speed, which is not modelled");
+        }
+        if (integer(f, "OffsetToTargetConsideringDirectionToTower") != 0) {
+          throw new UnsupportedOperationException(
+              name
+                  + " sets OffsetToTargetConsideringDirectionToTower, whose tower pick is not"
+                  + " modelled");
+        }
+        flight =
+            WarpCharacter.Flight.builder()
+                .speedPerStep(speed)
+                .acceleration(f.path("Acceleration").asInt(1000))
+                .offsetX(integer(f, "OffsetX"))
+                .offsetY(integer(f, "OffsetY"))
+                .forceKeepTarget(bool(f, "ForceKeepTargetAfterWarp"))
+                .onWarpEnd(rowName(f.get("OnWarpEndAction")))
+                .build();
+      } else {
+        refuseShared(
+            name,
+            f,
+            "Singleton",
+            "Acceleration",
+            "OnWarpEndAction",
+            "ForceKeepTargetAfterWarp",
+            "TargetResolver");
+        // A relative warp with a speed flies toward a point near the map's origin.
+        for (String column :
+            List.of("Speed", "OffsetX", "OffsetY", "OffsetToTargetConsideringDirectionToTower")) {
+          if (integer(f, column) != 0) {
+            throw new UnsupportedOperationException(
+                name + " sets " + column + " on a relative warp, not modelled");
+          }
+        }
       }
       return new WarpCharacter(
           shared,
@@ -2723,7 +2782,8 @@ public final class ActionRows {
               .avoidWater(f.path("AvoidWaterVertically").asBoolean(true))
               .avoidBlocked(f.path("AvoidBlockedTilesVertically").asBoolean(true))
               .resetPendingDamage(f.path("ResetPendingDamageAtWarp").asBoolean(true))
-              .build());
+              .build(),
+          flight);
     }
 
     /**
@@ -2785,8 +2845,8 @@ public final class ActionRows {
 
     /**
      * A hand-over's columns: the name of the mark it reads, the name of the warp it launches and
-     * its two deploy actions. Refused: a row without a mark to read. The warp is not built: only a
-     * re-trigger reaches it, and a re-trigger is refused as the run steps after it.
+     * its two deploy actions. Refused: a row without a mark to read. The warp is built as a
+     * re-trigger launches it, for the owner.
      */
     private MegaMinionHeroAbility megaMinionHeroAbility(String name, ActionRow shared, JsonNode f) {
       String mark = rowName(f.get("ActionToGetTargetFrom"));

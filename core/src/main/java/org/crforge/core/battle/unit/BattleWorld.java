@@ -4477,18 +4477,7 @@ public class BattleWorld implements HolderPasses {
     TargetView referenceBefore = unit.getUnit().targeting().getReference();
     unit.warpTo(x, y);
     if (columns.resetPendingDamage()) {
-      for (BattleEntity entity : holder.entities()) {
-        if (entity instanceof ProjectileEntity p && p.getTarget() == unit) {
-          throw new UnsupportedOperationException(
-              action.name()
-                  + " warps "
-                  + unit.name()
-                  + " with "
-                  + p.name()
-                  + " aimed at it, whose drop no reference holds, not modelled");
-        }
-      }
-      view.setPendingDamageAmount(0);
+      resetPendingDamageAtWarp(unit, action.name());
     }
     if (columns.resetPath()) {
       unit.resetRoute();
@@ -4506,6 +4495,29 @@ public class BattleWorld implements HolderPasses {
           startY,
           referenceBefore == null ? null : referenceBefore.name());
     }
+  }
+
+  /**
+   * A warp's pending damage reset, the instant warp's and the flying warp's start alike: the damage
+   * on its way to the unit is set to 0. A projectile aimed at the unit, which the reset would make
+   * drop its target, is refused: no reference holds it.
+   *
+   * @param unit the unit
+   * @param action the warp row's name
+   */
+  void resetPendingDamageAtWarp(CharacterEntity unit, String action) {
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof ProjectileEntity p && p.getTarget() == unit) {
+        throw new UnsupportedOperationException(
+            action
+                + " warps "
+                + unit.name()
+                + " with "
+                + p.name()
+                + " aimed at it, whose drop no reference holds, not modelled");
+      }
+    }
+    unit.getView().setPendingDamageAmount(0);
   }
 
   /**
