@@ -16,10 +16,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A row that writes a column in a form the battle does not read is refused as the battle builds it,
- * never read as 0, false or nothing: an area effect's damage written as a table of a base and a
- * tower damage, or as the name of a damage type row; an area effect that chooses what it hits by a
- * filter in place of its air, ground and enemy switches; and a unit's death area effect of that
- * form. Each scene alters one row of the configured tables to the form.
+ * never read as 0, false or nothing: an area effect with hit switches whose damage is written as a
+ * table of a base and a tower damage, or as the name of a damage type row, which only the filter
+ * form reads; and an area effect of the filter form, which chooses what it hits by a filter in
+ * place of its air, ground and enemy switches, whose damage is a number, as it is placed and as a
+ * unit's death area effect. Each scene alters one row of the configured tables to the form.
  */
 class BattleTableValueShapeTest {
 
@@ -50,7 +51,9 @@ class BattleTableValueShapeTest {
   }
 
   @Test
-  @DisplayName("an area effect whose damage is a table of a base and a tower damage is refused")
+  @DisplayName(
+      "an area effect with its hit switches whose damage is a table of a base and a tower damage"
+          + " is refused")
   void aDamageTableIsRefused(@TempDir Path folder) throws IOException {
     ObjectNode damage = JsonNodeFactory.instance.objectNode().put("BaseDamage", 75);
     damage.put("TowerDamage", 19);
@@ -75,7 +78,8 @@ class BattleTableValueShapeTest {
   }
 
   @Test
-  @DisplayName("an area effect whose damage names a damage type row is refused")
+  @DisplayName(
+      "an area effect with its hit switches whose damage names a damage type row is refused")
   void aDamageByNameIsRefused(@TempDir Path folder) throws IOException {
     Standard1v1Battle match =
         new Standard1v1Battle(
@@ -94,8 +98,8 @@ class BattleTableValueShapeTest {
   @Test
   @DisplayName(
       "an area effect without a shape that chooses its hits by a filter, setting neither its air"
-          + " nor its ground switch, is refused")
-  void aFilterInPlaceOfTheSwitchesIsRefused(@TempDir Path folder) throws IOException {
+          + " nor its ground switch, is refused by its damage when that is a number")
+  void aFilterFormWithANumberDamageIsRefused(@TempDir Path folder) throws IOException {
     Standard1v1Battle match =
         new Standard1v1Battle(
             withAreaEffect(
@@ -113,11 +117,13 @@ class BattleTableValueShapeTest {
 
     assertThatThrownBy(() -> run(match))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("the area effect Zap sets columns not modelled: [Filter]");
+        .hasMessage("the area effect Zap sets columns not modelled: [Damage]");
   }
 
   @Test
-  @DisplayName("a unit whose death area effect chooses its hits by a filter is refused as it dies")
+  @DisplayName(
+      "a unit whose death area effect chooses its hits by a filter and deals a number as its"
+          + " damage is refused as it dies")
   void aDeathAreaEffectByFilterIsRefused(@TempDir Path folder) throws IOException {
     GameTables tables =
         withAreaEffect(
@@ -129,6 +135,7 @@ class BattleTableValueShapeTest {
               columns.remove("OnlyEnemies");
               columns.remove("AffectsHidden");
               columns.put("Filter", "CommonAreaDamageFilter");
+              columns.put("Damage", 40);
             });
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     match.deploy(
@@ -142,7 +149,7 @@ class BattleTableValueShapeTest {
 
     assertThatThrownBy(() -> run(match))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("the area effect FreezeIceGolemite sets columns not modelled: [Filter]");
+        .hasMessage("the area effect FreezeIceGolemite sets columns not modelled: [Damage]");
   }
 
   @Test

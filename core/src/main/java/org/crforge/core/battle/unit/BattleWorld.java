@@ -270,7 +270,20 @@ public class BattleWorld implements HolderPasses {
       int amount,
       int directionX,
       int directionY,
-      AreaEffectEntity areaSource) {}
+      AreaEffectEntity areaSource,
+      AreaDamageType areaDamage) {
+
+    TypedHit(
+        WorldEntity source,
+        WorldEntity target,
+        DamageType type,
+        int amount,
+        int directionX,
+        int directionY,
+        AreaEffectEntity areaSource) {
+      this(source, target, type, amount, directionX, directionY, areaSource, null);
+    }
+  }
 
   /** The typed hits dealt this tick, in the order they were dealt. */
   private final List<TypedHit> typedHits = new ArrayList<>();
@@ -4301,6 +4314,48 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Queues the damage a filter form area effect deals to one object it lists, as a typed hit of its
+   * damage type with the area effect its source, its direction from the area effect's point to
+   * where the object stands now. The drain deals it after the post-hooks of the tick.
+   *
+   * @param source the area effect that deals it
+   * @param target the object it lands on
+   * @param damage the row's damage type
+   */
+  void queueAreaDamage(AreaEffectEntity source, WorldEntity target, AreaDamageType damage) {
+    typedHits.add(
+        new TypedHit(
+            null,
+            target,
+            null,
+            0,
+            target.getView().getX() - source.getX(),
+            target.getView().getY() - source.getY(),
+            source,
+            damage));
+  }
+
+  /**
+   * A filter form area effect's buff on one object it lists: applied with the area effect as the
+   * source, at its level and for its side, for the given time, the area effect its parent when the
+   * buff is controlled by its parent.
+   *
+   * @param areaEffect the area effect
+   * @param target the object
+   * @param buff the row's buff
+   * @param time how long it lasts
+   */
+  void filterBuff(AreaEffectEntity areaEffect, WorldEntity target, BuffData buff, int time) {
+    for (WorldObserver observer : observers) {
+      observer.areaBuff(tick, areaEffect, buff, time, List.of(target));
+    }
+    AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
+    target
+        .getBuffs()
+        .apply(buff, time, areaEffect.getPackedLevel(), areaEffect, areaEffect.side(), parent);
+  }
+
+  /**
    * Deals every queued typed hit, in the order they were queued: the type's pipeline, a damage id
    * from the battle's hit counter when the type takes one, the typed hit's entry, then the type's
    * action on the source and its action on the target, and the observers are told.
@@ -4311,6 +4366,10 @@ public class BattleWorld implements HolderPasses {
     for (TypedHit hit : due) {
       WorldEntity target = hit.target();
       if (target.getHitPoints() == null) {
+        continue;
+      }
+      if (hit.areaDamage() != null) {
+        drainAreaDamage(hit);
         continue;
       }
       if (hit.areaSource() != null) {
@@ -4382,6 +4441,42 @@ public class BattleWorld implements HolderPasses {
     }
     for (WorldObserver observer : observers) {
       observer.typedHitDealt(tick, null, target, amount, damageId, result);
+    }
+  }
+
+  /**
+   * Deals the damage a filter form area effect queued: nothing to a target that takes no damage;
+   * otherwise the type's amount for the target - its tower amount for a crown tower when it gives
+   * one, its base amount else - scaled by the area effect's level against its rarity as card
+   * damage, then lowered by the target's protection and floored at 0. An amount of 0 is dealt as
+   * nothing at all; any other, with no damage id, through the typed hit's entry, which no source
+   * counts and whose shield break names the area effect as its cause, and the death the area effect
+   * caused.
+   */
+  private void drainAreaDamage(TypedHit hit) {
+    WorldEntity target = hit.target();
+    AreaEffectEntity source = hit.areaSource();
+    if ((target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0) {
+      return;
+    }
+    int amount =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            hit.areaDamage().amount(target.getTargetView().crownTower()),
+            source.getPackedLevel(),
+            ScalingMode.CARD_DAMAGE,
+            source.getData().rarity());
+    amount = Math.max(target.getBuffs().damageReduction(amount), 0);
+    if (amount == 0) {
+      return;
+    }
+    DamageResult result =
+        target.takeTypedHit(null, source, amount, 0, hit.directionX(), hit.directionY());
+    if (result.died()) {
+      target.die(source);
+    }
+    for (WorldObserver observer : observers) {
+      observer.typedHitDealt(tick, null, target, amount, 0, result);
     }
   }
 
