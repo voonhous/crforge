@@ -1,6 +1,7 @@
 package org.crforge.core.battle.action;
 
 import java.util.List;
+import java.util.function.IntSupplier;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -596,6 +597,27 @@ public interface ActionOwner {
    * @param scheduled the action it schedules on the owner
    */
   default void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {}
+
+  /**
+   * What a run listening for destroyed objects needs from the object it runs on: the battle's death
+   * notices, and the side, team and row a destroyed object is tested against.
+   *
+   * @param action the action the run is of
+   */
+  default RunActionOnTroopDestroyed.Host troopDestroyedHost(RunActionOnTroopDestroyed action) {
+    throw new UnsupportedOperationException(
+        action.name() + " listens for destroyed objects on an object that is not modelled for it");
+  }
+
+  /**
+   * The battle tick a run that times itself by the battle clock reads, for the object it runs on.
+   *
+   * @param action the action the run is of
+   */
+  default IntSupplier actionClock(BattleAction action) {
+    throw new UnsupportedOperationException(
+        action.name() + " reads the battle clock on an object that is not modelled for it");
+  }
 
   /**
    * Starts a barrage run on the owner, which makes every bomb's area effect in its first update.
