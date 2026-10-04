@@ -516,7 +516,12 @@ public final class BattleRecords {
           "HitEffectFilters",
           "FilteredHitEffectOnlyIfNotShootersTarget",
           // Read only by the projectile view, for the angle it draws the projectile at.
-          "MinimumLengthForVisualAngleCalculation");
+          "MinimumLengthForVisualAngleCalculation",
+          // Read only where the impact hands its hit effect to the projectile's presentation
+          // object: whether the effect starts from the stored source point, and that point's height
+          // correction. The source point itself is read nowhere else.
+          "UseFixedEffectSourcePosition",
+          "DoEffectSourcePositionHeightCorrection");
 
   /** The columns of a projectile's row the record shows no battle logic reads to any effect. */
   private static final Set<String> INERT_PROJECTILE_COLUMNS =

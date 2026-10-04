@@ -1033,6 +1033,76 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The centre query of a chain attack's search: the index's buckets over the circle, in their
+   * order, each entity once, accepted by the filter, asked for the team and row name of the entity
+   * asking, and with its centre strictly within the radius, whatever its collision radius and
+   * whether or not it is a building.
+   *
+   * @param asking the entity running the query
+   * @param x the circle's centre along the width
+   * @param y the circle's centre along the length
+   * @param radius the circle's radius
+   * @param filter the filter row
+   * @return the entities, in the query's order
+   */
+  public List<WorldEntity> centreQuery(
+      WorldEntity asking, int x, int y, int radius, GameObjectFilter filter) {
+    int side = asking.side() & 1;
+    String name = asking.getData().name();
+    List<GridEntity> found =
+        index.centreQuery(
+            x, y, radius, view -> filter.matches(entityOf(view).filterSubject(), side, name));
+    List<WorldEntity> out = new ArrayList<>();
+    if (found == null) {
+      return out;
+    }
+    for (GridEntity view : found) {
+      out.add(entityOf(view));
+    }
+    index.release(found);
+    return out;
+  }
+
+  /**
+   * Launches a chain attack's first hop at its target: from the launcher's own start, as a hit's
+   * single projectile starts, at where the target stands now, at the launcher's level and on its
+   * side, handed to the holder.
+   *
+   * @param launcher the entity running the chain attack
+   * @param data the projectile's row
+   * @param target the hop's target
+   * @return the projectile
+   */
+  public ProjectileEntity launchChainHop(
+      WorldEntity launcher, ProjectileData data, WorldEntity target) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, launcher.side());
+    ProjectileLauncher.launchAt(projectile, launcher, target);
+    launch(projectile);
+    return projectile;
+  }
+
+  /**
+   * Launches a chain attack's later hop at its target: from the given start, at where the target
+   * stands now, the launcher as launcher and owner, at its level and on its side, handed to the
+   * holder.
+   *
+   * @param launcher the entity running the chain attack
+   * @param data the projectile's row
+   * @param target the hop's target
+   * @param sx the start along the width
+   * @param sy the start along the length
+   * @param sz the start's height
+   * @return the projectile
+   */
+  public ProjectileEntity launchChainHop(
+      WorldEntity launcher, ProjectileData data, WorldEntity target, int sx, int sy, int sz) {
+    ProjectileEntity projectile = new ProjectileEntity(this, data, launcher.side());
+    ProjectileLauncher.launchThrown(projectile, launcher, target, sx, sy, sz);
+    launch(projectile);
+    return projectile;
+  }
+
+  /**
    * Launches a collector's projectile at a friend: from the launcher's own start, at where the
    * friend stands now, at the launcher's level and on its side, handed to the holder.
    *
