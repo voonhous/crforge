@@ -97,14 +97,14 @@ class BattleCardPlayTest {
   @DisplayName(
       "a played unit is started, and a starting action the battle does not have is refused")
   void aUnitWithAnUnknownStartingActionIsRefused(@TempDir Path folder) throws IOException {
-    // A Knight given the hero Wizard's rise into the air, a class the battle does not have.
+    // A Knight given the deck's evolution switch, a class the battle does not have.
     GameTables tables =
         GameData.altered(
             folder,
             "characters",
             rows ->
                 GameData.columns(rows, "Knight")
-                    .put("OnStartingAction", "WizardHero_ground_to_air"));
+                    .put("OnStartingAction", "ActivateEvolutionsInDeck"));
     Standard1v1Battle match = new Standard1v1Battle(tables);
     match.play(
         0,
@@ -122,6 +122,6 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionGroundToAir");
+        .hasMessageContaining("ActionActivateEvolutions");
   }
 }

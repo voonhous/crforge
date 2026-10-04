@@ -6617,6 +6617,25 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  void groundToAirStarted(WorldEntity unit, String action, int phase, int phaseNow, int counter) {
+    for (WorldObserver observer : observers) {
+      observer.groundToAirStarted(tick, unit, action, phase, phaseNow, counter);
+    }
+  }
+
+  void groundToAirStepped(
+      WorldEntity unit,
+      int phaseBefore,
+      int phaseAfter,
+      int counterBefore,
+      int counterAfter,
+      List<Integer> pushes) {
+    for (WorldObserver observer : observers) {
+      observer.groundToAirStepped(
+          tick, unit, phaseBefore, phaseAfter, counterBefore, counterAfter, pushes);
+    }
+  }
+
   void laserStarted(AreaEffectEntity areaEffect, String action, int phase, int timerMs) {
     for (WorldObserver observer : observers) {
       observer.laserStarted(tick, areaEffect, action, phase, timerMs);

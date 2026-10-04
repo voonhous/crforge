@@ -53,7 +53,11 @@ final class AirToGroundRun extends ActionInstance {
     super(row);
     this.row = row;
     this.unit = unit;
-    int flying = unit.getData().flyingHeight();
+    // The height a ground-to-air run left on the unit when above 0, else its row's.
+    int flying =
+        unit.flyingHeightOverride() > 0
+            ? unit.flyingHeightOverride()
+            : unit.getData().flyingHeight();
     if (flying >= 1) {
       height = flying;
       if (unit.getView().isAir()) {
