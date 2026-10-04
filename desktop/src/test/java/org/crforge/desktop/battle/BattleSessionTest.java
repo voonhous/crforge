@@ -43,6 +43,16 @@ class BattleSessionTest {
   }
 
   @Test
+  @DisplayName("a note from the screen joins the session's messages")
+  void aNoteIsKept() {
+    BattleSession session = BattleSession.ladder(Tables.get());
+
+    session.note("data version 2.0.0 refused");
+
+    assertThat(session.messages()).last().isEqualTo("[0] data version 2.0.0 refused");
+  }
+
+  @Test
   @DisplayName("a play the elixir does not cover is refused on the spot with a message")
   void notEnoughElixir() {
     BattleSession session = only("Golem");

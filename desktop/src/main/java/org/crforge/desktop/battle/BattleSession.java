@@ -316,6 +316,16 @@ public final class BattleSession {
     return true;
   }
 
+  /**
+   * Adds a message of the screen's own to the session's, such as why a switch of data version was
+   * refused.
+   *
+   * @param message the message, stamped with the current tick
+   */
+  public void note(String message) {
+    say(message);
+  }
+
   /** The messages kept, oldest first. */
   public List<String> messages() {
     return new ArrayList<>(messages);
