@@ -101,6 +101,17 @@ public abstract class ActionInstance {
   protected void attackEnded(ActionHolder holder) {}
 
   /**
+   * What the run makes of a buff about to be applied to its entity, before any gate of the apply.
+   * By default the buff passes unchanged, as the base slot does.
+   *
+   * @param buff the buff's row name
+   * @return the buff to apply in its place
+   */
+  protected String offeredBuff(String buff) {
+    return buff;
+  }
+
+  /**
    * What the run does as its entity's player pays for a unit's ability. By default nothing, as the
    * base slot does; only a champion slot answers it.
    *
