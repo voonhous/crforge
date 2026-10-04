@@ -17,6 +17,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.BlowdartDartSelect;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.Clone;
@@ -2089,6 +2090,12 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /** Starts the evolved Dart Goblin's dart choice on the character. */
+  @Override
+  public ActionInstance blowdartDartSelect(BlowdartDartSelect action, ActionHolder instigator) {
+    return new BlowdartDartSelectRun(action, this, instigator);
   }
 
   /** Starts a carried push's run on the character. A clone, a rider and a carrier are refused. */

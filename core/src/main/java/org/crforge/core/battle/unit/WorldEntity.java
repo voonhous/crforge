@@ -16,6 +16,8 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BlowdartController;
+import org.crforge.core.battle.action.BlowdartDamage;
 import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
@@ -1807,6 +1809,53 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return sequence.replacesAttack()
         ? sequence.entryAt(targeting.getAttackSequenceIndex()).projectile()
         : data.projectile();
+  }
+
+  /**
+   * The projectile one of the entity's hits launches, after its listed runs have had it: each run,
+   * from the last listed to the first, is handed what the one after it left. Only the evolved Dart
+   * Goblin's dart choice picks another; every other run hands back what it was given.
+   *
+   * @param projectile the projectile the hit would launch
+   * @param target what the hit is aimed at, or null for nothing
+   * @return the projectile the hit launches
+   */
+  public ProjectileData handProjectile(ProjectileData projectile, WorldEntity target) {
+    if (actionHolder == null) {
+      return projectile;
+    }
+    List<ActionInstance> runs = actionHolder.running();
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      if (runs.get(i) instanceof BlowdartDartSelectRun select) {
+        projectile = select.select(projectile, target);
+      }
+    }
+    return projectile;
+  }
+
+  /** True while one of the entity's listed runs picks the projectile of its hits. */
+  public boolean picksProjectile() {
+    if (actionHolder == null) {
+      return false;
+    }
+    for (ActionInstance run : actionHolder.running()) {
+      if (run instanceof BlowdartDartSelectRun) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Starts the evolved Dart Goblin's poison controller on the entity its darts hit. */
+  @Override
+  public ActionInstance blowdartController(BlowdartController action, ActionHolder instigator) {
+    return new BlowdartControllerRun(action, this, instigator);
+  }
+
+  /** Starts the evolved Dart Goblin's poison damage on the entity a poison area reached. */
+  @Override
+  public ActionInstance blowdartDamage(BlowdartDamage action, ActionHolder instigator) {
+    return new BlowdartDamageRun(action, this, instigator);
   }
 
   /** The rows of the entity's attack sequence entries' actions, built on first use, by name. */
