@@ -2,6 +2,7 @@ package org.crforge.desktop.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.BeforeAll;
@@ -156,6 +158,32 @@ class ReplayFileTest {
         .asString()
         .startsWith("the battle core refuses to set up the replay's battle:")
         .contains("sets Tid");
+  }
+
+  @Test
+  @DisplayName("a replay of 16.402.18 is read by that version's fields, refused only by the core")
+  void replayOfVersion16() throws IOException {
+    Optional<GameTables> version16 = Replays.version16Tables();
+    assumeTrue(version16.isPresent(), "no game tables of " + Replays.VERSION_16 + " configured");
+    Path file = Replays.write(folder, "replay.json", Replays.archerQueenOfVersion16());
+
+    ReplayFile replay = ReplayFile.read(file, version16.get());
+
+    assertThat(replay.dataVersion()).isEqualTo(Replays.VERSION_16);
+    assertThat(replay.header().location()).isEqualTo("PvP_spiritempress");
+    assertThat(replay.header().commandTypes())
+        .containsExactly(Map.entry(153, 1), Map.entry(189, 1));
+    assertThat(replay.describe())
+        .contains("  commands: 2 (type 153 x1, a card play; type 189 x1, an ability command)");
+    // The mapping reads every field: what can be left is the battle core's refusal to set up the
+    // battle on these tables, as long as it refuses them.
+    assertThat(replay.refusals()).hasSizeLessThanOrEqualTo(1);
+    assertThat(replay.refusals())
+        .allSatisfy(
+            refusal ->
+                assertThat(refusal)
+                    .startsWith("the battle core refuses to set up the replay's battle:"));
+    assertThat(replay.playable()).isEqualTo(replay.refusals().isEmpty());
   }
 
   @Test

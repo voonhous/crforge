@@ -17,8 +17,19 @@ class CommandTypesTest {
   }
 
   @Test
+  void dataVersion16_402_18PlaysWith153AndTapsAbilitiesWith189() {
+    CommandTypes types = CommandTypes.of("16.402.18").orElseThrow();
+
+    assertThat(types.play()).isEqualTo(153);
+    assertThat(types.ability()).isEqualTo(189);
+    // The numbers of 14.593.1 are no command of this version.
+    assertThat(types.describe(124)).isNull();
+    assertThat(types.describe(178)).isNull();
+  }
+
+  @Test
   void aDataVersionWhoseCommandTypesAreNotEstablishedHasNone() {
-    assertThat(CommandTypes.of("16.402.18")).isEmpty();
+    assertThat(CommandTypes.of("9.1.0")).isEmpty();
     assertThat(CommandTypes.of(null)).isEmpty();
   }
 
