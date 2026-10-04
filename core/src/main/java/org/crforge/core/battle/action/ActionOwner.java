@@ -179,6 +179,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts a ground-to-air run on the owner, which only a character takes.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   * @return the run
+   */
+  default ActionInstance groundToAir(GroundToAir action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " lifts an owner that is not a character, not modelled");
+  }
+
+  /**
    * What a laser ball's run asks of the battle around the owner. Only an area effect runs one.
    *
    * @return the owner's answers
