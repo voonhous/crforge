@@ -1,7 +1,9 @@
 package org.crforge.parity;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.IntNode;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,6 +55,10 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * <p>The command type numbers are the data version's ({@link CommandTypes}): a scenario read
  * against tables of a version whose command types are not established has every command refused.
+ * The fields a later version's replays write beyond 14.593.1's, and the values a version pins, are
+ * the data version's too ({@link ReplayFormat}): a replay of a version whose fields are not decided
+ * is read by 14.593.1's. In 16.402.18's replays each side's king level is its player data's {@code
+ * kt}, and the players' profiles, the cards' cosmetics and the replay's events are carried.
  *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
  * scenario the same way and lists every refusal it meets instead: each field and pinned value it
@@ -167,6 +173,18 @@ public final class ReplayScenario {
   /** The command types of the tables' data version, or null when they are not established. */
   private final CommandTypes commandTypes;
 
+  /**
+   * The fields of the tables' data version's replays that differ from version to version ({@link
+   * ReplayFormat#orShared}).
+   */
+  private final ReplayFormat format;
+
+  /**
+   * Each side's king level, counted from 1, from its player data, in a format that gives it there;
+   * else empty.
+   */
+  private final List<Integer> kingLevels = new ArrayList<>();
+
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
 
@@ -195,6 +213,7 @@ public final class ReplayScenario {
     this.tables = tables;
     this.records = new BattleRecords(tables);
     this.commandTypes = commandTypes;
+    this.format = ReplayFormat.orShared(tables.version());
   }
 
   /** What became of each scenario field, in the order they were read. */
@@ -217,30 +236,40 @@ public final class ReplayScenario {
       mapping.put(
           "endTick", "carried: the replay's last tick, where a viewer stops; no battle input");
     }
-    pin(scenario, "evt", "[]");
-    onlyFields(scenario, "$", "rndSeed", "time", "endTick", "battle", "cmd", "evt");
+    if (format.events()) {
+      events(scenario);
+    } else {
+      pin(scenario, "evt", "[]");
+    }
+    format.rootPins().forEach((field, value) -> pin(scenario, field, value));
+    onlyFields(
+        scenario,
+        "$",
+        with(format.rootPins().keySet(), "rndSeed", "time", "endTick", "battle", "cmd", "evt"));
     JsonNode battle = required(scenario, "battle");
     onlyFields(
         battle,
         "battle",
-        "gmt",
-        "plt",
-        "t1s",
-        "t2s",
-        "gamemode",
-        "hm",
-        "lvlcap",
-        "stp",
-        "trail",
-        "te",
-        "tps",
-        "arena",
-        "deck0",
-        "avatar0",
-        "deck1",
-        "avatar1",
-        "location",
-        "hbd");
+        with(
+            format.battlePins().keySet(),
+            "gmt",
+            "plt",
+            "t1s",
+            "t2s",
+            "gamemode",
+            "hm",
+            "lvlcap",
+            "stp",
+            "trail",
+            "te",
+            "tps",
+            "arena",
+            "deck0",
+            "avatar0",
+            "deck1",
+            "avatar1",
+            "location",
+            "hbd"));
     gameMode(battle);
     location(battle);
     for (String field : List.of("gmt", "plt", "tps")) {
@@ -252,7 +281,8 @@ public final class ReplayScenario {
     pin(battle, "hm", "false");
     pin(battle, "trail", "170000000");
     pin(battle, "te", "-1");
-    pin(battle, "arena", "54000001");
+    pin(battle, "arena", format.arena());
+    format.battlePins().forEach((field, value) -> pin(battle, field, value));
     List<Integer> playerDataChoices = playerData(battle);
 
     List<List<String>> decks = new ArrayList<>();
@@ -270,13 +300,13 @@ public final class ReplayScenario {
         names.add(card.name());
         levels.add(level(required(entry, "l").asInt(), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
-        onlyFields(entry, "battle.deck" + side + ".sp", "d", "l", "el");
+        onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
       towers.add(towers(deck, side));
-      onlyFields(deck, "battle.deck" + side, "sp", "sc");
+      onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
       accounts.add(avatar(required(battle, "avatar" + side), side));
     }
     mapping.put(
@@ -290,6 +320,12 @@ public final class ReplayScenario {
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
             + " slot, Standard1v1Battle.startLadderMatch's slots; absent is 0, and any other bit is"
             + " unsupported");
+    for (String field : format.cardCarried()) {
+      mapping.put("battle.deckN.sp[i]." + field, "carried: the card's cosmetics, no battle input");
+    }
+    for (String field : format.deckCarried()) {
+      mapping.put("battle.deckN." + field, "carried: no battle input");
+    }
     if (accounts.get(0)[0] == accounts.get(1)[0] && accounts.get(0)[1] == accounts.get(1)[1]) {
       refuse("two sides of one account, whose commands name no side", "battle.avatarN.accountID");
     }
@@ -342,7 +378,10 @@ public final class ReplayScenario {
         "checked: the packed item's level field (bits 10..16) against the deck card's level index"
             + " plus its rarity's RelativeLevel, its deck index field (bits 22..27) against the"
             + " card's deck index plus 1, its slot flags field (bits 19..21) against the deck"
-            + " card's, and its option (bits 4..6) and cosmetic (bits 17..18) fields 0; its"
+            + (format.cosmeticCarried()
+                ? " card's, and its option field (bits 4..6) 0, its cosmetic field (bits 17..18)"
+                    + " carried, the card's cosmetic, no battle input, on every play; its"
+                : " card's, and its option (bits 4..6) and cosmetic (bits 17..18) fields 0; its")
             + " evolution field (bits 0..3), count field (bits 7..9) and cost field (bits 28..31)"
             + " against the item the simulator builds as the play runs, and as the scenario is"
             + " read for a card outside the evolution slot: the evolution field 2 for a hero"
@@ -436,6 +475,9 @@ public final class ReplayScenario {
    * @return how many choices each entry's data lists
    */
   private List<Integer> playerData(JsonNode battle) {
+    if (format.kingLevelFromPlayerData()) {
+      return playerDataWithKingLevels(battle);
+    }
     List<Integer> choices = new ArrayList<>();
     for (JsonNode entry : required(battle, "hbd")) {
       if (!entry.toString().equals(NO_EMOTES)) {
@@ -453,6 +495,51 @@ public final class ReplayScenario {
             + ", whose data lists "
             + NO_EMOTES_CHOICES
             + " choice");
+    return choices;
+  }
+
+  /**
+   * The players' data of a format that gives each side's king level there ({@link
+   * ReplayFormat#KING_LEVEL_FIELD}): one entry per side, each holding only the format's fields. The
+   * king level is kept for the side's towers; the other fields are carried, and each entry is
+   * handed over as data that lists one choice, as an entry with no emotes listed is.
+   *
+   * @return how many choices each entry's data lists
+   */
+  private List<Integer> playerDataWithKingLevels(JsonNode battle) {
+    kingLevels.clear();
+    JsonNode entries = required(battle, "hbd");
+    if (entries.size() != 2) {
+      throw new UnsupportedScenarioException(
+          "players' data of " + entries.size() + " entries, not one per side", "battle.hbd");
+    }
+    List<Integer> choices = new ArrayList<>();
+    int levelCount = tables.table("rarities").row("Common").intValue("LevelCount");
+    for (int side = 0; side < 2; side++) {
+      JsonNode entry = entries.get(side);
+      String field = "battle.hbd[" + side + "]";
+      onlyFields(entry, field, format.playerData().toArray(String[]::new));
+      JsonNode level = required(entry, ReplayFormat.KING_LEVEL_FIELD);
+      if (!level.isInt() || level.asInt() < 1 || level.asInt() > levelCount) {
+        refuse(
+            "a king level outside the " + levelCount + " levels of the king's Common rarity",
+            field + "." + ReplayFormat.KING_LEVEL_FIELD + "=" + level);
+      }
+      kingLevels.add(level.asInt());
+      choices.add(NO_EMOTES_CHOICES);
+    }
+    mapping.put(
+        "battle.hbd[i]",
+        "consumed: Standard1v1Battle.addPlayerData, one entry per side in order, each handed over"
+            + " as data that lists "
+            + NO_EMOTES_CHOICES
+            + " choice, as one with no emotes listed; the fields other than "
+            + ReplayFormat.KING_LEVEL_FIELD
+            + " are carried, the emotes, skins, banner and profile, no battle input");
+    mapping.put(
+        "battle.hbd[i]." + ReplayFormat.KING_LEVEL_FIELD,
+        "consumed: the side's king level, counted from 1, 1 to the Common rarity's LevelCount: the"
+            + " level its king row is created at");
     return choices;
   }
 
@@ -537,9 +624,16 @@ public final class ReplayScenario {
               + UNBUILT_TOWER_SELECTIONS.getOrDefault(card.name(), "which is not modelled"),
           field + "[0].d=" + id);
     }
-    pin(selection, "t", "0");
-    pin(selection, "c", "1");
-    onlyFields(selection, field + "[0]", "d", "l", "t", "c");
+    format.selectionPins().forEach((name, value) -> pin(selection, name, value));
+    onlyFields(
+        selection,
+        field + "[0]",
+        with(format.selectionCarried(), with(format.selectionPins().keySet(), "d", "l")));
+    for (String name : format.selectionCarried()) {
+      mapping.put(
+          "battle.deckN.sc[0]." + name,
+          "carried: the tower card's count and flags, no battle input");
+    }
     GameRow rarity = tables.table(SUPPORT_RARITIES).row(card.string("Rarity"));
     int levelIndex = required(selection, "l").asInt();
     int levelCount = rarity.intValue("LevelCount");
@@ -563,8 +657,11 @@ public final class ReplayScenario {
         "consumed: the towers' level index, 0 to the support rarity's LevelCount less 1; the"
             + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1;"
             + " the king row does not use it");
+    // The king row stands at the avatar's level, or where the format gives one, at the side's own
+    // king level from its player data.
+    int kingLevel = kingLevels.isEmpty() ? KING_LEVEL : kingLevels.get(side);
     return new Standard1v1Battle.Towers(
-        card.string("SpawnGroup"), KING_LEVEL, levelIndex + rarity.intValue("RelativeLevel") + 1);
+        card.string("SpawnGroup"), kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1);
   }
 
   /**
@@ -576,18 +673,36 @@ public final class ReplayScenario {
     String field = "battle.avatar" + side;
     // The king tower is created at the summoner level of the avatar's exp level; only the first
     // exp level, whose king level is KING_LEVEL, has a production input.
-    pin(avatar, "expLevel", String.valueOf(EXP_LEVEL));
-    pin(avatar, "npc", "false");
-    pin(avatar, "arena", "54000001");
-    onlyFields(avatar, field, "accountID.hi", "accountID.lo", "expLevel", "name", "arena", "npc");
+    // A format whose king level is in the player data has no exp level pinned.
+    format.avatarPins().forEach((name, value) -> pin(avatar, name, value));
+    pin(avatar, "arena", format.arena());
+    onlyFields(
+        avatar,
+        field,
+        with(
+            format.avatarCarried().keySet(),
+            "accountID.hi",
+            "accountID.lo",
+            "expLevel",
+            "name",
+            "arena",
+            "npc"));
     mapping.put(
         "battle.avatarN.accountID.hi/lo",
         "consumed: names the side of a command; the low word is the player's word that joins its"
-            + " deck shuffle's draw");
+            + " deck shuffle's draw"
+            + (format.accountHighOptional()
+                ? "; a high word left out is 0, as the side's commands give it"
+                : ""));
     mapping.put("battle.avatarN.name", "carried: presentation");
-    return new int[] {
-      required(avatar, "accountID.hi").asInt(), required(avatar, "accountID.lo").asInt()
-    };
+    format
+        .avatarCarried()
+        .forEach((name, what) -> mapping.put("battle.avatarN." + name, "carried: " + what));
+    JsonNode high =
+        format.accountHighOptional() && !avatar.has("accountID.hi")
+            ? IntNode.valueOf(0)
+            : required(avatar, "accountID.hi");
+    return new int[] {high.asInt(), required(avatar, "accountID.lo").asInt()};
   }
 
   private ScenarioPlan.Play play(
@@ -649,7 +764,7 @@ public final class ReplayScenario {
         || packedIndex != deckIndex + 1
         || packedFlags != slots
         || packedOption != 0
-        || packedCosmetic != 0
+        || (packedCosmetic != 0 && !format.cosmeticCarried())
         || !fieldAllowed
         || (packedField == 0 && packedCost != card.intValue("ManaCost"))) {
       throw new UnsupportedScenarioException(
@@ -727,7 +842,8 @@ public final class ReplayScenario {
     if ((packed & ITEM_FIELD_MASK) != 0
         || ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK) != 0
         || ((packed >>> ITEM_LEVEL_SHIFT) & ITEM_LEVEL_MASK) != level - 1
-        || ((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+        || (((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+            && !format.cosmeticCarried())
         || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != 0
         || ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK) != deckIndex + 1
         || packed >>> ITEM_COST_SHIFT != option.cost()) {
@@ -798,7 +914,8 @@ public final class ReplayScenario {
     if ((packed & ITEM_FIELD_MASK) != 0
         || ((packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK) != 0
         || ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK) != 0
-        || ((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+        || (((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+            && !format.cosmeticCarried())
         || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != 0
         || ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK) != deckIndex + 1) {
       throw new UnsupportedScenarioException(
@@ -1112,6 +1229,42 @@ public final class ReplayScenario {
           field + "=" + value);
     }
     mapping.put(field, "pinned: " + expected);
+  }
+
+  /**
+   * The replay's events, in a format that carries them: each of a known event type, with only an
+   * event's fields. They are what the players' clients showed, not commands, and give the battle no
+   * input.
+   */
+  private void events(JsonNode scenario) {
+    int index = 0;
+    for (JsonNode event : required(scenario, "evt")) {
+      String field = "evt[" + index + "]";
+      onlyFields(event, field, ReplayFormat.EVENT_FIELDS.toArray(String[]::new));
+      JsonNode type = required(event, "type");
+      if (!type.isInt() || !ReplayFormat.EVENT_TYPES.contains(type.asInt())) {
+        refuse(
+            "an event of a type other than "
+                + ReplayFormat.EVENT_TYPES.stream().sorted().toList()
+                + ", whose effect on the battle is not established",
+            field + ".type=" + type);
+      }
+      index++;
+    }
+    mapping.put(
+        "evt",
+        "carried: the replay's events, each of type "
+            + ReplayFormat.EVENT_TYPES.stream().sorted().toList()
+            + " with the fields "
+            + ReplayFormat.EVENT_FIELDS.stream().sorted().toList()
+            + "; no battle input, any other type unsupported");
+  }
+
+  /** Known field names: some named in a collection and more. */
+  private static String[] with(Collection<String> names, String... more) {
+    List<String> all = new ArrayList<>(List.of(more));
+    all.addAll(names);
+    return all.toArray(String[]::new);
   }
 
   /** Refuses a field the mapping does not know. */

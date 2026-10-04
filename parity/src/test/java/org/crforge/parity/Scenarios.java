@@ -77,6 +77,92 @@ final class Scenarios {
   }
 
   /**
+   * The {@link #knight()} battle as a replay of the game client whose data version is 16.402.18
+   * writes it, with made-up players: the play's command type 153; the request lists, the header's
+   * new switches and the arena of that version; each avatar's profile, each deck's header, each
+   * card's cosmetics and the tower card's count and flags; player data holding each side's king
+   * level ({@code kt}: 15 for side 0, 16 for side 1) beside emotes, skins and a banner; a carried
+   * event of each type; the Knight's item with its cosmetic field (bits 17..18) 2; and side 1's
+   * avatar without the high word of its account id, which its commands give as 0.
+   */
+  static ObjectNode knightOfVersion16() {
+    ObjectNode scenario = knight();
+    scenario.put("endTick", 3681);
+    scenario.putArray("srq");
+    scenario.putArray("srs");
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("cardlvlmin", 0);
+    battle.put("rrb", false);
+    battle.put("seb", false);
+    battle.put("arena", 54000144);
+    battle.put("location", 15000170);
+    ArrayNode hbd = battle.putArray("hbd");
+    for (int side = 0; side < 2; side++) {
+      ObjectNode avatar = (ObjectNode) battle.path("avatar" + side);
+      avatar.put("arena", 54000144);
+      avatar.put("expLevel", 40 + side);
+      avatar.put("expPoints", 100);
+      avatar.put("totalExpPoints", 1000);
+      avatar.put("clan_name", "Made Up Clan");
+      avatar.put("clan_id_hi", 1);
+      avatar.put("clan_id_lo", 2);
+      avatar.put("badge", 16000000);
+      avatar.put("welo", -1);
+      avatar.put("scr", 5000);
+      avatar.put("spi", 1);
+      avatar.put("spt", 2);
+      avatar.put("lti", 143);
+      avatar.put("birth_date", 0);
+      ObjectNode deck = (ObjectNode) battle.path("deck" + side);
+      deck.put("hdr", "abcd");
+      ObjectNode first = (ObjectNode) deck.path("sp").get(0);
+      first.put("pr", 2);
+      first.put("sc", 6);
+      first.put("hsc", 200);
+      ((ObjectNode) deck.path("sc").get(0)).put("c", 0).put("newu", false).put("newf", false);
+      ObjectNode data = hbd.addObject();
+      data.put("kt", 15 + side);
+      ObjectNode emotes = data.putObject("em");
+      emotes.putArray("oe").add(4294967296L);
+      emotes.putArray("de").addObject().put("p", 1).put("e", 0);
+      ObjectNode skins = data.putObject("sk");
+      skins.putArray("os").add(87000001);
+      skins.putArray("ss").add(87000001);
+      skins.put("ats", 87000001);
+      skins.put("rnd", false);
+      data.putObject("bn").put("bg", 126000000).put("fg", 126000001);
+      data.put("npc", 3);
+      data.put("hcl", 1500);
+      data.put("dts", 181000037);
+      data.put("dbi", 4);
+      data.put("ptix", -1);
+      data.put("rrsmr", 14000004);
+      data.put("ts", 1);
+    }
+    ((ObjectNode) battle.path("avatar1")).remove("accountID.hi");
+    ArrayNode events = scenario.putArray("evt");
+    events.add(event(1, 1, 108).put("type", 1));
+    events.add(event(1, 2, 150).put("type", 3));
+    ObjectNode drawn = event(0, 1, 245).put("type", 5);
+    drawn.putArray("coords").add(-100).add(87);
+    events.add(drawn);
+    ObjectNode command = (ObjectNode) scenario.path("cmd").get(0);
+    command.put("ct", 153);
+    ((ObjectNode) command.path("c").path("sel")).put("pd", 0x30400000 | (2 << 17));
+    return scenario;
+  }
+
+  /** A replay event of a side's account at a tick, with one parameter; its type is put after. */
+  private static ObjectNode event(int parameter, int accountLo, int tick) {
+    ObjectNode event = JSON.objectNode();
+    event.put("id_hi", 0);
+    event.put("id_lo", accountLo);
+    event.putArray("ticks").add(tick);
+    event.putArray("params").add(parameter);
+    return event;
+  }
+
+  /**
    * The {@link #knight()} battle with side 0's Knight in the deck's evolution slot ({@code el} 1),
    * played three times with four other cards between its plays, so it cycles back into the hand.
    * Each play carries the packed item the player's client builds for it: the Knight's carry the
