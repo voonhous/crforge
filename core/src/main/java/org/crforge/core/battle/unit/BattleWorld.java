@@ -5105,26 +5105,22 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The building placement a spawn row that validates its point as a building's asks for: the point
-   * clamped into the arena, kept when no building of the live list overlaps the child's circle
-   * there and its cell can be stood on. A blocked point is refused: the search over the rows toward
-   * or away from the side that would follow is not modelled. An owner that is itself a building,
-   * which the overlap query may leave out, is refused too.
+   * clamped into the arena, kept when no building of the live list other than the owner overlaps
+   * the child's circle there and its cell can be stood on. The owner is the object whose action
+   * runs the row, so a building that places a building where it stands, as the hero Musketeer's
+   * dummy building places the turret, does not block its own point. A blocked point is refused: the
+   * search over the rows toward or away from the side that would follow, whose overlap test leaves
+   * no object out, is not modelled.
    *
    * @param owner the object whose action spawns the child
    * @param child the row of the child
    * @return the search
    */
   SpawnPerform.PlacementSearch buildingPlacement(WorldEntity owner, UnitData child) {
-    if (owner.getTargetView().building()) {
-      throw new UnsupportedOperationException(
-          owner.name()
-              + " places a building it spawns while it is a building itself, which the overlap"
-              + " query may leave out; not established");
-    }
     return (x, y) -> {
       int clampedX = Math.max(0, Math.min(x, tileMap.width() * TileMap.CELL_UNITS - 1));
       int clampedY = Math.max(0, Math.min(y, tileMap.height() * TileMap.CELL_UNITS - 1));
-      if (!buildingOver(clampedX, clampedY, child.collisionRadius())
+      if (!buildingOver(clampedX, clampedY, child.collisionRadius(), owner)
           && CellTests.cellBlocked(grid, clampedX, clampedY) == 0) {
         return new int[] {clampedX, clampedY};
       }
@@ -5144,8 +5140,20 @@ public class BattleWorld implements HolderPasses {
    * taken in 32 bits and compared unsigned; a square distance of the largest integer is passed by.
    */
   private boolean buildingOver(int x, int y, int radius) {
+    return buildingOver(x, y, radius, null);
+  }
+
+  /**
+   * Whether a building of the live list other than the one left out has a circle that overlaps a
+   * circle, as {@link #buildingOver(int, int, int)} asks it.
+   *
+   * @param excluded the object the query passes by, or null to ask every building
+   */
+  private boolean buildingOver(int x, int y, int radius, BattleEntity excluded) {
     for (BattleEntity entity : holder.entities()) {
-      if (!(entity instanceof WorldEntity building) || !building.getTargetView().building()) {
+      if (entity == excluded
+          || !(entity instanceof WorldEntity building)
+          || !building.getTargetView().building()) {
         continue;
       }
       int dx = x - building.getView().getX();
