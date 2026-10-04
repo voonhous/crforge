@@ -155,6 +155,12 @@ public class ProjectileEntity extends BattleEntity
    */
   @Getter private WorldEntity owner;
 
+  /**
+   * The id of the entity that launched the projectile, kept after it leaves the battle; 0 for none.
+   * The evolved Dart Goblin's poison controller tells its darts by it.
+   */
+  @Getter private int ownerId;
+
   /** The launcher, or the launcher's own root for a projectile fired by a projectile. */
   @Getter private WorldEntity root;
 
@@ -583,6 +589,7 @@ public class ProjectileEntity extends BattleEntity
     this.z = sz;
     this.target = target;
     this.owner = launcher;
+    this.ownerId = launcher == null ? 0 : launcher.getId();
     this.root = rootOwner;
     this.spawnChain = data.spawnChain();
     aim(originX, originY, hx, hy);

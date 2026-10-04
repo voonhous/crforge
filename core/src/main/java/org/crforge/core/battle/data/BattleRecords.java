@@ -1279,7 +1279,8 @@ public final class BattleRecords {
     // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
     // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
     // a Clone's whose hit action is a buff spawn, as the evolved Tesla's ring's is, a group of buff
-    // spawns, as the Goblin Curse's base is, or a taunt, as the Goblin Demolisher's is.
+    // spawns, as the Goblin Curse's base is, a taunt, as the Goblin Demolisher's is, or the evolved
+    // Dart Goblin's poison damage.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
@@ -1287,6 +1288,13 @@ public final class BattleRecords {
     boolean taunt =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionTaunt");
+    // The evolved Dart Goblin's poison areas start its poison damage on what they reach.
+    boolean poison =
+        data.onHitAction() != null
+            && tables
+                .action(data.onHitAction())
+                .classType()
+                .equals("ActionBlowdartGoblinEvoDamage");
     // A shaped row's hit pass schedules a choice by team, as the evolved Baby Dragon's wind does.
     boolean byTeam =
         data.onHitAction() != null
@@ -1294,7 +1302,7 @@ public final class BattleRecords {
             && tables.action(data.onHitAction()).classType().equals("ActionFilterByEnemy");
     if (data.onHitAction() != null
         && !(data.cloning() && cloning)
-        && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt))
+        && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt || poison))
         && !byTeam) {
       unmodelled.add("OnHitAction");
     }
