@@ -5258,10 +5258,10 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** A capture started on a projectile. */
-  public void captureStarted(ProjectileEntity projectile, String action, int phase) {
+  /** A capture started on its owner, a projectile or a character. */
+  public void captureStarted(BattleEntity owner, String action, int phase) {
     for (WorldObserver observer : observers) {
-      observer.captureStarted(tick, projectile, action, phase);
+      observer.captureStarted(tick, owner, action, phase);
     }
   }
 
@@ -5275,6 +5275,10 @@ public class BattleWorld implements HolderPasses {
           | EntityFlags.ABILITY_DISABLED
           | EntityFlags.NO_REFLECTED_ATTACK
           | EntityFlags.CAPTURED;
+
+  /** The tags a capture's drag raises on its unit for one step besides, without a capture buff. */
+  static final long CAPTURE_HOLD_TAGS =
+      EntityFlags.NO_MOVE | EntityFlags.NO_SUMMON | EntityFlags.NO_ATTACK;
 
   /**
    * The deflection pass a roll runs at its projectile's point as it starts and after each step,
@@ -5400,10 +5404,9 @@ public class BattleWorld implements HolderPasses {
   }
 
   /** A capture asked for a lock on a unit, with the request's answer. */
-  public void captureRequested(
-      ProjectileEntity projectile, WorldEntity unit, int priority, boolean answer) {
+  public void captureRequested(BattleEntity owner, WorldEntity unit, int priority, boolean answer) {
     for (WorldObserver observer : observers) {
-      observer.captureRequested(tick, projectile, unit, priority, answer);
+      observer.captureRequested(tick, owner, unit, priority, answer);
     }
   }
 
@@ -5435,11 +5438,19 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The capture's tags on a unit it drags, for one step. Refused: a unit whose death spawns a
-   * building, and a reflecting unit in the battle, whose readers of two of the tags are not
-   * modelled.
+   * The capture's tags on a unit it drags, for one step, with NO_MOVE, NO_SUMMON and NO_ATTACK
+   * besides for a capture without a buff. Refused: a unit whose death spawns a building, and a
+   * reflecting unit in the battle, whose readers of two of the tags are not modelled, and a unit
+   * with a spawner held without a buff, whose reader of NO_SUMMON is not modelled.
+   *
+   * @param unit the unit dragged
+   * @param withoutBuff true for a capture whose row gives no capture buff
    */
-  public void captureTagged(WorldEntity unit) {
+  public void captureTagged(WorldEntity unit, boolean withoutBuff) {
+    if (withoutBuff && unit.getData().spawnCharacter() != null) {
+      throw new UnsupportedOperationException(
+          unit.name() + " is captured without a buff and has a spawner, not modelled");
+    }
     String deathSpawn = unit.getData().deathSpawnCharacter();
     if (deathSpawn != null && records.unit(deathSpawn).building()) {
       throw new UnsupportedOperationException(
@@ -5451,7 +5462,31 @@ public class BattleWorld implements HolderPasses {
             unit.name() + " is captured beside the reflecting " + other.name() + ", not modelled");
       }
     }
-    unit.raiseCaptureTags(CAPTURE_TAGS);
+    unit.raiseCaptureTags(withoutBuff ? CAPTURE_TAGS | CAPTURE_HOLD_TAGS : CAPTURE_TAGS);
+  }
+
+  /**
+   * A capture's drag step during its pause: the unit only turned to the owner's point.
+   *
+   * @param owner the capturing owner's row name
+   * @param unit the unit held
+   * @param toX the owner's point it turns to, along the width
+   * @param toY the owner's point it turns to, along the length
+   */
+  public void captureFaced(String owner, WorldEntity unit, int toX, int toY) {
+    captured(owner, unit).faceToward(toX, toY);
+  }
+
+  /**
+   * A capture's hit on a unit it holds: the damage entry with no hit id and no dedupe id, the
+   * capturing character the attacker, passing the hidden unit.
+   *
+   * @param owner the capturing character
+   * @param unit the unit held
+   * @param damage the damage per hit at the owner's level
+   */
+  public void captureHit(CharacterEntity owner, WorldEntity unit, int damage) {
+    unit.takeDamage(damage, 0, 0, 0, true, owner, owner);
   }
 
   /** A captured unit's pre-hook changed its hidden tag or the capture's tags in its word. */
@@ -5462,46 +5497,55 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A capture's drag step: the unit moved toward the projectile's point, then turned to it.
+   * A capture's drag step: the unit moved toward the owner's point, then turned to it.
    *
-   * @param projectile the capturing projectile
+   * @param owner the capturing owner's row name
    * @param unit the unit dragged
    * @param x where it is moved, along the width
    * @param y where it is moved, along the length
-   * @param toX the projectile's point it turns to, along the width
-   * @param toY the projectile's point it turns to, along the length
+   * @param toX the owner's point it turns to, along the width
+   * @param toY the owner's point it turns to, along the length
    */
-  public void captureDragged(
-      ProjectileEntity projectile, WorldEntity unit, int x, int y, int toX, int toY) {
-    CharacterEntity character = captured(projectile, unit);
+  public void captureDragged(String owner, WorldEntity unit, int x, int y, int toX, int toY) {
+    CharacterEntity character = captured(owner, unit);
     character.warpTo(x, y);
     character.faceToward(toX, toY);
   }
 
   /**
-   * A completed drag: the unit put on the projectile's point and, with a movement component, its
-   * jump ended and its route reset. A unit in a jump, or a dash with a height, would be put down
-   * first, which is refused.
+   * A completed drag: the unit put on the owner's point and, with a movement component, its jump
+   * ended, its route reset and, with a height change, the change pushed with its floor, which the
+   * next pre-hook folds. A unit in a jump, or a dash with a height, would be put down first, which
+   * is refused.
+   *
+   * @param owner the capturing owner's row name
+   * @param heightModifier the capture's height change, 0 for none
+   * @param heightModifierCap the change's floor
    */
-  public void capturePutOn(ProjectileEntity projectile, WorldEntity unit, int x, int y) {
-    CharacterEntity character = captured(projectile, unit);
+  public void capturePutOn(
+      String owner, WorldEntity unit, int x, int y, int heightModifier, int heightModifierCap) {
+    CharacterEntity character = captured(owner, unit);
     character.warpTo(x, y);
     if (character.hasMovementComponent()) {
       int state = unit.getView().getState();
       if (state == GridEntityState.JUMPING
           || (state == GridEntityState.DASHING && unit.getData().jumpHeight() >= 1)) {
         throw new UnsupportedOperationException(
-            projectile.name() + " captures " + unit.name() + " in the air, not modelled");
+            owner + " captures " + unit.name() + " in the air, not modelled");
       }
       character.resetRoute();
+      if (heightModifier != 0) {
+        character.startLayering();
+        character.pushHeight(heightModifier, heightModifierCap);
+      }
     }
   }
 
   /** A captured object as the character it must be. */
-  private static CharacterEntity captured(ProjectileEntity projectile, WorldEntity unit) {
+  private static CharacterEntity captured(String owner, WorldEntity unit) {
     if (!(unit instanceof CharacterEntity character)) {
       throw new UnsupportedOperationException(
-          projectile.name() + " captures " + unit.name() + ", not a character, not modelled");
+          owner + " captures " + unit.name() + ", not a character, not modelled");
     }
     return character;
   }
@@ -5509,19 +5553,16 @@ public class BattleWorld implements HolderPasses {
   /**
    * A capture's step ended.
    *
-   * @param projectile the capturing projectile
+   * @param owner the capturing owner
    * @param captured the ids it holds
    * @param complete the ids whose drag is complete
    * @param timesMs the time of each capture
    */
   public void captureStepped(
-      ProjectileEntity projectile,
-      List<Integer> captured,
-      List<Integer> complete,
-      List<Integer> timesMs) {
+      BattleEntity owner, List<Integer> captured, List<Integer> complete, List<Integer> timesMs) {
     for (WorldObserver observer : observers) {
       observer.captureStepped(
-          tick, projectile, List.copyOf(captured), List.copyOf(complete), List.copyOf(timesMs));
+          tick, owner, List.copyOf(captured), List.copyOf(complete), List.copyOf(timesMs));
     }
   }
 

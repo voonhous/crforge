@@ -72,10 +72,16 @@ public final class EntityFlags {
   /** The entity's ability waits: a request leaves it pending. */
   public static final long ABILITY_POSTPONED = 1L << 29;
 
+  /** The entity's spawner may not summon: raised on a unit a capture without a buff holds. */
+  public static final long NO_SUMMON = 1L << 31;
+
   /** The entity may not use its special attack. */
   public static final long NO_SPECIAL_ATTACK = 1L << 35;
 
-  /** The entity holds a capture: set on a capturing projectile, which keeps no tag word. */
+  /**
+   * The entity holds a capture: raised for one step on a capturing character as a drag completes (a
+   * capturing projectile keeps no tag word).
+   */
   public static final long HAS_CAPTURE = 1L << 37;
 
   /** A reflecting unit does not reflect the entity's attack. */

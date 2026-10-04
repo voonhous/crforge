@@ -316,7 +316,9 @@ public final class ActionRows {
                   "Radius",
                   "BuffOnHit",
                   "BuffTime")),
-          // The pull's clips and its start effect only show something.
+          // The pull's clips, frames and effects, the grab point and the capture and idle
+          // animation labels and priority only show something: the capture's run reads none of
+          // them, only its view does.
           Map.entry(
               "ActionCaptureCharacter",
               Set.of(
@@ -343,7 +345,21 @@ public final class ActionRows {
                   "PullEndClipExportName",
                   "PullFileName",
                   "PullStartEffect",
-                  "StretchingClipExportName")),
+                  "StretchingClipExportName",
+                  "PullEndClipScale",
+                  "StretcingClipWidthScale",
+                  "GrabPointOffset",
+                  "PullEndIdleStartFrame",
+                  "PullEndIdleEndFrame",
+                  "PullEndGrabStartFrame",
+                  "PullEndGrabEndFrame",
+                  "PullGrabEffect",
+                  "PullCompleteEffect",
+                  "CaptureAnimationStartLabel",
+                  "CaptureAnimationEndLabel",
+                  "CaptureAnimationPriority",
+                  "IdleAnimationStartLabel",
+                  "IdleAnimationEndLabel")),
           // The health bar's offset only shows something.
           Map.entry("ActionHide", Set.of("Duration", "StopWhenHiderDies", "HealthBarYOffset")),
           Map.entry("ActionRunActionOnInstigatorDeath", Set.of("ActionToRun")),
@@ -1813,38 +1829,20 @@ public final class ActionRows {
     }
 
     /**
-     * A capture's columns. Its three actions are built here, so a row the battle cannot take is
+     * A capture's columns. Its four actions are built here, so a row the battle cannot take is
      * refused as the capture is built, and each is built again on what it runs on as it is
-     * scheduled. Refused: a delay before the drag, a pause in it, a pull centre off the projectile,
-     * a cooldown, a height change, an action on each completed capture, damage per hit, a row
-     * without a filter or a capture buff, and the shared columns its run does not read.
+     * scheduled. HeightModifier keeps the loader's default of -15000 when the row leaves it unset.
+     * Refused: a row without a filter, and the shared columns its run does not read.
      */
     private CaptureCharacter captureCharacter(String name, ActionRow shared, JsonNode f) {
       refuseUnread(name, f, true);
-      for (String column :
-          List.of(
-              "DragDelay",
-              "TimePausedWhenGrabbing",
-              "PullCenterOffsetX",
-              "PullCenterOffsetY",
-              "CaptureCooldown",
-              "HeightModifier",
-              "HeightModifierCap",
-              "OnCaptureAction",
-              "DamagePerHit")) {
-        if (sets(f, column)) {
-          throw new UnsupportedOperationException(
-              name + " is a capture that sets " + column + ", which is not modelled");
-        }
-      }
-      for (String column : List.of("TargetFilter", "BuffDuringCapture")) {
-        if (!sets(f, column)) {
-          throw new UnsupportedOperationException(
-              name + " captures without " + column + ", which is not modelled");
-        }
+      if (!sets(f, "TargetFilter")) {
+        throw new UnsupportedOperationException(
+            name + " captures without TargetFilter, which is not modelled");
       }
       BattleAction hide = action(f.get("HideAction"));
       BattleAction first = action(f.get("OnFirstCaptureAction"));
+      BattleAction onCapture = action(f.get("OnCaptureAction"));
       BattleAction onCaptured = action(f.get("ActionOnCapturedObject"));
       return new CaptureCharacter(
           shared,
@@ -1855,11 +1853,26 @@ public final class ActionRows {
               .captureDragTimeMs(integer(f, "CaptureDragTime"))
               .hideDistance(integer(f, "HideDistance"))
               .hitFrequencyMs(integer(f, "HitFrequency"))
+              .damagePerHit(integer(f, "DamagePerHit"))
+              .dragDelayMs(integer(f, "DragDelay"))
+              .timePausedWhenGrabbingMs(integer(f, "TimePausedWhenGrabbing"))
+              .pullCenterOffsetX(integer(f, "PullCenterOffsetX"))
+              .pullCenterOffsetY(integer(f, "PullCenterOffsetY"))
+              .captureCooldownMs(integer(f, "CaptureCooldown"))
+              .heightModifier(
+                  sets(f, "HeightModifier")
+                      ? integer(f, "HeightModifier")
+                      : CaptureCharacter.DEFAULT_HEIGHT_MODIFIER)
+              .heightModifierCap(integer(f, "HeightModifierCap"))
               .targetFilter(records.filter(f.get("TargetFilter").asText()))
               .hideAction(hide == null ? null : hide.name())
               .onFirstCaptureAction(first == null ? null : first.name())
+              .onCaptureAction(onCapture == null ? null : onCapture.name())
               .actionOnCapturedObject(onCaptured == null ? null : onCaptured.name())
-              .buffDuringCapture(records.buff(f.get("BuffDuringCapture").asText()).name())
+              .buffDuringCapture(
+                  sets(f, "BuffDuringCapture")
+                      ? records.buff(f.get("BuffDuringCapture").asText()).name()
+                      : null)
               .build());
     }
 

@@ -20,6 +20,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BlowdartDartSelect;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
+import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChainAttackHost;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamagingPushBack;
@@ -38,6 +39,8 @@ import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.projectile.CaptureHost;
+import org.crforge.core.battle.projectile.CaptureRun;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -3849,6 +3852,116 @@ public class CharacterEntity extends WorldEntity {
   void resetTargetAfterWarp() {
     unit.targeting().setReference(null);
     unit.targeting().setKeptByPendingDamageCheck(false);
+  }
+
+  /** Starts a capture on the character, as the evolved Goblin Cage holds what it catches. */
+  @Override
+  public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
+    world.captureStarted(this, action.name(), phase);
+    return new CaptureRun(action, captureHost());
+  }
+
+  /**
+   * What a capture on the character asks of it: it claims only while its targeting component is on,
+   * which a deploy or a stun switches off; it queries around its point and is asked its own side by
+   * the filter; its hit timer steps at its hit speed; each hit is its damage per hit at its level
+   * and rarity through the damage entry, the character the attacker, passing a hidden unit; a
+   * completed drag raises HAS_CAPTURE in its tag word for one step. Refused as it runs: a capture
+   * buff, which no character's row gives.
+   */
+  private CaptureHost captureHost() {
+    CharacterEntity owner = this;
+    return new CaptureHost() {
+      @Override
+      public BattleEntity owner() {
+        return owner;
+      }
+
+      @Override
+      public int id() {
+        return getId();
+      }
+
+      @Override
+      public String name() {
+        return owner.name();
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int y() {
+        return getView().getY();
+      }
+
+      @Override
+      public BattleWorld world() {
+        return world;
+      }
+
+      @Override
+      public ActionHolder actionHolder() {
+        return owner.actionHolder();
+      }
+
+      // The component is off while the character deploys or waits to, as the combat gate has it.
+      @Override
+      public boolean claims() {
+        return isActive(TARGETING_SLOT) && !deploying() && !waiting();
+      }
+
+      @Override
+      public List<WorldEntity> query(int radius, GameObjectFilter filter) {
+        return world.objectQuery(owner, radius, filter);
+      }
+
+      @Override
+      public boolean passes(WorldEntity unit, GameObjectFilter filter) {
+        return filter.matches(unit.filterSubject(), side() & 1, getData().name());
+      }
+
+      @Override
+      public void buff(WorldEntity unit, String buff, int timeMs) {
+        throw new UnsupportedOperationException(
+            owner.name() + " captures with the buff " + buff + ", not modelled");
+      }
+
+      @Override
+      public void scheduleOnOwner(WorldEntity cause, String action) {
+        owner
+            .actionHolder()
+            .schedule(
+                world.getActions().build(action, world.binding(owner)),
+                ActionHolder.OWN_DELAY,
+                false,
+                cause.actionHolder());
+      }
+
+      @Override
+      public void hasCapture() {
+        getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.HAS_CAPTURE);
+      }
+
+      @Override
+      public int hitStep(int stepMs) {
+        return getBuffs().hitSpeed(stepMs);
+      }
+
+      @Override
+      public void hit(WorldEntity unit, int damagePerHit) {
+        int damage =
+            LevelScaling.scale(
+                ScalingGlobals.standard(),
+                damagePerHit,
+                packedLevel(),
+                ScalingMode.CARD_DAMAGE,
+                getData().rarity());
+        world.captureHit(owner, unit, damage);
+      }
+    };
   }
 
   /**

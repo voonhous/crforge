@@ -337,8 +337,8 @@ class ActionRowsTest {
   @Test
   @DisplayName(
       "the evolved Snowball's roll, capture, hide and wait read their columns, the hide stopping"
-          + " with its hider when the row leaves it empty; a capture's unmodelled columns, one"
-          + " without a capture buff and a roll without a buff are refused")
+          + " with its hider when the row leaves it empty; the evolved Goblin Cage's capture reads"
+          + " its own; a capture without a filter and a roll without a buff are refused")
   void theSnowballActionsAreBuilt(@TempDir Path folder) throws IOException {
     RollingProjectile roll =
         (RollingProjectile)
@@ -375,18 +375,37 @@ class ActionRowsTest {
         (RunActionOnInstigatorDeath)
             GameData.actions().build("snowball_spell_ev1_run_action_on_release", INERT_BINDING);
     assertThat(release.getActionToRun().name()).isEqualTo("snowball_spell_ev1_after_release");
-    // The evolved Goblin Cage's capture sets columns no reference holds.
-    assertThatThrownBy(() -> GameData.actions().build("GoblinCage_EV1_CaptureUnit", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class);
+    // The evolved Goblin Cage's capture: a drag delay and a pause, a pull centre, a cooldown, an
+    // action per completed capture, damage per hit and no capture buff; its animation labels, the
+    // pull frames and the grab point only show something.
+    CaptureCharacter cage =
+        (CaptureCharacter) GameData.actions().build("GoblinCage_EV1_CaptureUnit", INERT_BINDING);
+    CaptureCharacter.Columns g = cage.getColumns();
+    assertThat(g.captureRadius()).isEqualTo(3000);
+    assertThat(g.numberOfUnitsToCapture()).isEqualTo(1);
+    assertThat(g.damagePerHit()).isEqualTo(132);
+    assertThat(g.hitFrequencyMs()).isEqualTo(1000);
+    assertThat(g.dragDelayMs()).isEqualTo(100);
+    assertThat(g.timePausedWhenGrabbingMs()).isEqualTo(500);
+    assertThat(g.captureDragTimeMs()).isEqualTo(300);
+    assertThat(g.hideDistance()).isEqualTo(200);
+    assertThat(g.pullCenterOffsetX()).isZero();
+    assertThat(g.pullCenterOffsetY()).isEqualTo(-1000);
+    assertThat(g.captureCooldownMs()).isEqualTo(500);
+    assertThat(g.onCaptureAction()).isEqualTo("goblin_cage_ev1_fight_effect");
+    assertThat(g.hideAction()).isEqualTo("GoblinCage_EV1_hide_captured_unit");
+    assertThat(g.buffDuringCapture()).isNull();
+    assertThat(g.onFirstCaptureAction()).isNull();
+    assertThat(g.actionOnCapturedObject()).isNull();
+    assertThat(g.heightModifier()).as("the loader's default").isEqualTo(-15000);
+    assertThat(g.heightModifierCap()).isZero();
+    assertThat(c.heightModifier()).as("the loader's default").isEqualTo(-15000);
 
     record Change(String row, String expected, Consumer<ObjectNode> change) {}
     List<Change> changes =
         List.of(
-            new Change("SnowballSpell_EV1_capture_unit", "DragDelay", f -> f.put("DragDelay", 100)),
             new Change(
-                "SnowballSpell_EV1_capture_unit",
-                "BuffDuringCapture",
-                f -> f.remove("BuffDuringCapture")),
+                "SnowballSpell_EV1_capture_unit", "TargetFilter", f -> f.remove("TargetFilter")),
             new Change(
                 "SnowballSpell_EV1_rolling_projectile", "BuffOnHit", f -> f.remove("BuffOnHit")),
             new Change(
@@ -1243,12 +1262,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 821 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 823 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(821);
+    assertThat(built).as("rows built").isEqualTo(823);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 43, "column", 69, "spawn type", 13));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 43, "column", 67, "spawn type", 13));
   }
 }
