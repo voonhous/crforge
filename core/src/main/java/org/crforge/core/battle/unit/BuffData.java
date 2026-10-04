@@ -66,6 +66,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     pre-hook for as long as it is listed
  * @param overrideChargeRange the charge range it gives a carrier whose row has none, while it is
  *     the first listed instance that sets one; 0 for none
+ * @param overrideProjectile the projectile every projectile of its carrier's hits is instead, while
+ *     it is the first listed instance that names one; null for none
+ * @param removeOnAttack true when a hit its carrier deals that the target's hit points let through
+ *     removes every instance of its row without a parent
  * @param onStartAction the action a newly listed instance schedules on its carrier, the carrier its
  *     cause; a refresh schedules nothing; null for none
  * @param onRemoveAction the action every removal of an instance but a death's schedules on its
@@ -126,6 +130,8 @@ public record BuffData(
     String attachedInheritAs,
     long gameTagsToSet,
     int overrideChargeRange,
+    String overrideProjectile,
+    boolean removeOnAttack,
     String onStartAction,
     String onRemoveAction,
     String spawnObject,

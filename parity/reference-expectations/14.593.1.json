@@ -10,7 +10,7 @@
   "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_knight": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
-  "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_DamageBuff_Spawn spawns MegaMinion_hero_Damage_Buff, which sets columns not modelled: [OverrideProjectile, RemoveOnAttack]", "input": "the run"},
+  "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mini_pekka": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_musketeer": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_wizard": {"outcome": "diagnostic_match"},
