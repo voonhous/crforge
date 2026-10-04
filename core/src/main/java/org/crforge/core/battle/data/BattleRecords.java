@@ -673,10 +673,12 @@ public final class BattleRecords {
             .deathDamageRadius(row.intValue("DeathDamageRadius"))
             .deathPushBack(row.intValue("DeathPushBack"))
             .deathSpawnCharacter(deathSpawn.isEmpty() ? null : deathSpawn)
-            // The loader keeps at least one for a row that spawns or launches on its death.
+            // The loader keeps at least one for a row that spawns or launches on its death. For
+            // any other row it reads no death spawn count and stores 0, whatever the row sets, as
+            // the evolved Skeleton Balloon's count inherited from its base row.
             .deathSpawnCount(
                 deathSpawn.isEmpty() && deathProjectile.isEmpty()
-                    ? 0
+                    ? notLoaded(row, "DeathSpawnCount")
                     : Math.max(row.intValue("DeathSpawnCount"), 1))
             .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
             .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
@@ -1190,6 +1192,15 @@ public final class BattleRecords {
   }
 
   /** The columns of a row's death that are not modelled, those of its death spawn only with one. */
+  /**
+   * A column the row's loader skips, so whatever the row sets stays out of the battle: marked as
+   * seen, and 0.
+   */
+  private static int notLoaded(GameRow row, String column) {
+    row.has(column);
+    return 0;
+  }
+
   private static List<String> unmodelledDeathColumns(GameRow row, boolean spawns) {
     List<String> columns = new ArrayList<>();
     for (String column : UNMODELLED_DEATH_COLUMNS) {

@@ -654,6 +654,21 @@ public interface ActionOwner {
   }
 
   /**
+   * Drops a container of a balloon pop: its area effect at the owner's point moved by the offsets,
+   * the one along the length turned toward the enemy side, for the owner's side and level, the
+   * owner its parent.
+   *
+   * @param action the pop row
+   * @param areaEffect the container's area effect row
+   * @param offsetX how far along the width from the owner it drops
+   * @param offsetY how far along the length, toward the enemy side
+   */
+  default void dropContainer(PopBalloons action, String areaEffect, int offsetX, int offsetY) {
+    throw new UnsupportedOperationException(
+        action.name() + " drops a container from an owner other than a character, not modelled");
+  }
+
+  /**
    * Starts a run that makes an area effect the row may give its lifetime back to.
    *
    * @param action the row

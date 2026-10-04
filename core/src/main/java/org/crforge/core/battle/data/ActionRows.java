@@ -709,8 +709,8 @@ public final class ActionRows {
                   "ToggleEffectTag")),
           // The Skeleton Barrel's pop action has no perform: its run is started and stepped and
           // does nothing. The balloons it pops as the hit points fall, their frames and effects
-          // reach its view object alone. The columns of a singleton's second start, which drops
-          // containers, are not read and so refused.
+          // reach its view object alone. A singleton's second start drops a container: the
+          // balloons it starts with, the container list, the offsets and the double container.
           Map.entry(
               "ActionSkeletonBarrelPopBalloon",
               Set.of(
@@ -725,6 +725,11 @@ public final class ActionRows {
                   "SpecialKamikazeEndFrameList",
                   "SpecialDeployStartFrameLabel",
                   "SpecialDeployEndFrameLabel",
+                  "ContainerAeoList",
+                  "OverrideKamikazeDoubleContainer",
+                  "TotalBalloons",
+                  "OffsetXList",
+                  "OffsetYList",
                   "OnPopBalloonEffectList")),
           // The Goblin Cage's shake has no perform: its run is started and stepped and does
           // nothing. Which frames it plays, and at what priority, is read by its client view
@@ -1478,13 +1483,18 @@ public final class ActionRows {
                             f.has("ToggleEffectTag") ? f.get("ToggleEffectTag").asText() : null)
                         .build());
             case "ActionSkeletonBarrelPopBalloon" -> {
-              if (shared.singleton()) {
-                throw new UnsupportedOperationException(
-                    name
-                        + " is a singleton Skeleton Barrel pop, whose second start drops"
-                        + " containers, which is not modelled");
-              }
-              yield new PopBalloons(shared);
+              // The containers are read only by a singleton's second start; a row that is no
+              // singleton never re-triggers its run, so its containers never drop.
+              List<String> containers = new ArrayList<>();
+              f.path("ContainerAeoList").forEach(value -> containers.add(value.asText()));
+              String doubleContainer = f.path("OverrideKamikazeDoubleContainer").asText("");
+              yield new PopBalloons(
+                  shared,
+                  containers,
+                  doubleContainer.isEmpty() ? null : doubleContainer,
+                  integer(f, "TotalBalloons"),
+                  ints(f.get("OffsetXList")),
+                  ints(f.get("OffsetYList")));
             }
             default -> {
               if (INERT.contains(type)) {
