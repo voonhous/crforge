@@ -362,6 +362,47 @@ public class Standard1v1Battle {
         });
   }
 
+  /**
+   * Queues a player's ability command that names its unit by game object id, as a replay's command
+   * does: it carries no row and no play, so only the live entity holding that id answers it (see
+   * {@link AbilityCommand#run(BattleWorld, int, int)}). It runs in the command pass of its tick, in
+   * order with the card plays, like {@link #useAbility(int, int, String, String)}; the use is
+   * recorded under the name of the unit a card play made with that id, or {@code #id} for none.
+   *
+   * @param tick the tick the command runs on
+   * @param side the commanding side
+   * @param objectId the game object id of the unit it names
+   * @param name the command's name
+   */
+  public void useAbility(int tick, int side, int objectId, String name) {
+    if (match == null) {
+      throw new UnsupportedOperationException(
+          name + ": an ability command outside a match, which has no champion slots");
+    }
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            String unit = "#" + objectId;
+            for (Play play : plays) {
+              for (CharacterEntity made : play.units()) {
+                if (made.getId() == objectId) {
+                  unit = made.name();
+                }
+              }
+            }
+            abilityUses.add(
+                new AbilityUse(
+                    name, side, unit, target.getTick(), AbilityCommand.run(world, side, objectId)));
+          }
+        });
+  }
+
   /** The unit a card play run so far made under a name, or null. */
   private CharacterEntity playedUnit(String name) {
     for (Play play : plays) {

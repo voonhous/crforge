@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -207,6 +208,55 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void anAbilityCommandRunsOnItsRunTickPaysAndCastsTheNamedChampionsAbility() throws IOException {
+    ObjectNode without = Scenarios.archerQueenAbility();
+    ((ArrayNode) without.path("cmd")).remove(1);
+    run(without, folder.resolve("without"), terminalIdentity, 360);
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.archerQueenAbility(), out, terminalIdentity, 360);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    List<String> plain =
+        Files.readAllLines(folder.resolve("without").resolve("observations.jsonl"));
+    // Nothing differs before the command's run tick, 350.
+    assertThat(lines.subList(0, 351)).isEqualTo(plain.subList(0, 351));
+    // In the observation after it the Archer Queen's ability cost, 1 elixir, is spent and she
+    // casts (state 10) where she shot (state 2).
+    JsonNode after = MAPPER.readTree(lines.get(351));
+    JsonNode plainAfter = MAPPER.readTree(plain.get(351));
+    assertThat(after.path("sides").get(0).path("elixir").asInt())
+        .isEqualTo(plainAfter.path("sides").get(0).path("elixir").asInt() - 10000);
+    assertThat(entity(after, 5000006).path("state").asInt()).isEqualTo(10);
+    assertThat(entity(plainAfter, 5000006).path("state").asInt()).isEqualTo(2);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    JsonNode used = manifest.path("abilities_run").get(0);
+    assertThat(used.path("name").asText()).isEqualTo("cmd1");
+    assertThat(used.path("tick").asInt()).isEqualTo(350);
+    assertThat(used.path("code").asInt()).isZero();
+  }
+
+  @Test
+  void anAbilityCommandNamingNoLiveUnitIsRefusedAndChangesNothing() throws IOException {
+    ObjectNode without = Scenarios.archerQueenAbility();
+    ((ArrayNode) without.path("cmd")).remove(1);
+    run(without, folder.resolve("without"), terminalIdentity, 360);
+    ObjectNode scenario = Scenarios.archerQueenAbility();
+    ((ObjectNode) scenario.path("cmd").get(1).path("c")).put("cgid", 5000099);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, terminalIdentity, 360);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    assertThat(Files.readAllBytes(out.resolve("observations.jsonl")))
+        .isEqualTo(Files.readAllBytes(folder.resolve("without").resolve("observations.jsonl")));
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    // Refused: no champion found (0x3ee).
+    assertThat(manifest.path("abilities_run").get(0).path("code").asInt()).isEqualTo(0x3ee);
+  }
+
+  @Test
   void anEvolutionSlotsPlayThatNeverRunsIsListedAsNotBuilt() throws IOException {
     Path out = folder.resolve("run");
 
@@ -295,6 +345,16 @@ class ReplaySmokeRunTest {
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.INVALID);
     assertThat(out.resolve("manifest.json")).doesNotExist();
+  }
+
+  /** The entity an observation lists under a game object id, or a missing node. */
+  private static JsonNode entity(JsonNode observation, int id) {
+    for (JsonNode entity : observation.path("entities")) {
+      if (entity.path("id").asInt() == id) {
+        return entity;
+      }
+    }
+    return MAPPER.missingNode();
   }
 
   /** The row of the entity with the highest id an observation lists, the newest unit. */

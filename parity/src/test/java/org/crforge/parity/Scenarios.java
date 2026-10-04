@@ -101,6 +101,44 @@ final class Scenarios {
     return scenario;
   }
 
+  /**
+   * The {@link #knight()} battle with the Archer Queen in place of the Knight at deck index 0 of
+   * both decks: side 0 plays her on tick 220 at (3500, 14000), and an ability command given on tick
+   * 330 and run on tick 350 names her by her game object id, 5000006, the first unit made after the
+   * six towers. She shoots the left princess tower from tick 317.
+   */
+  static ObjectNode archerQueenAbility() {
+    ObjectNode scenario = knight();
+    for (int side = 0; side < 2; side++) {
+      ((ObjectNode) scenario.path("battle").path("deck" + side).path("sp").get(0))
+          .put("d", ARCHER_QUEEN);
+    }
+    // Cost 5, a Champion at level index 0 (level field 10) and deck index field 1: her plain item.
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel"))
+        .put("os", ARCHER_QUEEN)
+        .put("pd", 0x50402800);
+    addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
+    return scenario;
+  }
+
+  /** The Archer Queen's card, by data id. */
+  static final int ARCHER_QUEEN = 26000072;
+
+  /**
+   * Adds an ability command of the side whose account's low word is given, given 20 ticks before
+   * the tick it runs on, naming a unit by its game object id.
+   */
+  static void addAbility(ArrayNode commands, int runTick, int accountLo, int objectId) {
+    ObjectNode command = commands.addObject();
+    command.put("ct", 178);
+    ObjectNode body = command.putObject("c");
+    body.put("t", runTick - 20);
+    body.put("t2", runTick);
+    body.put("idHi", 0);
+    body.put("idLo", accountLo);
+    body.put("cgid", objectId);
+  }
+
   /** Adds side 0's play of a card, given 20 ticks before the tick it runs on. */
   private static void addPlay(ArrayNode commands, int runTick, int card, int item, int x, int y) {
     ObjectNode command = commands.addObject();

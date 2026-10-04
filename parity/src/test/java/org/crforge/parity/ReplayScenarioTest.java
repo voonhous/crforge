@@ -129,6 +129,37 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void readsAnAbilityCommandThatNamesItsUnitByGameObjectId() {
+    ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.archerQueenAbility());
+
+    assertThat(plan.plays())
+        .containsExactly(
+            new ScenarioPlan.Play(0, 200, 220, 0, "ArcherQueen", 11, 3500, 14000, 0x50402800));
+    assertThat(plan.abilities()).containsExactly(new ScenarioPlan.Ability(1, 330, 350, 0, 5000006));
+  }
+
+  @Test
+  void namesTheSideOfAnAbilityCommandByItsAccount() {
+    ObjectNode scenario = Scenarios.archerQueenAbility();
+    ((ObjectNode) scenario.path("cmd").get(1).path("c")).put("idLo", 2);
+
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    assertThat(plan.abilities().get(0).side()).isEqualTo(1);
+  }
+
+  @Test
+  void refusesAnAbilityCommandFieldItHasNoMappingFor() {
+    ObjectNode scenario = Scenarios.archerQueenAbility();
+    // A unit's row and play are not read from an ability command's fields.
+    ((ObjectNode) scenario.path("cmd").get(1).path("c")).put("px", 3500);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("cmd[1].c.px");
+  }
+
+  @Test
   void refusesAnotherValueOfAFieldWithNoProductionInput() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle")).put("hm", true);
