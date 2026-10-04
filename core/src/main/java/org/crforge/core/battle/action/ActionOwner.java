@@ -470,6 +470,17 @@ public interface ActionOwner {
   }
 
   /**
+   * Throws a mirrored extra spell from the owner as its cause, as the action's perform reads it.
+   * Only a projectile is a cause the perform reads; any other is refused.
+   *
+   * @param action the mirrored extra spell, which names the projectile row it throws
+   */
+  default void mirroredExtraSpell(MirroredExtraSpell action) {
+    throw new UnsupportedOperationException(
+        action.name() + " mirrors a cause other than a projectile, which is not modelled");
+  }
+
+  /**
    * Starts a rolling run on the owner, which moves it in place of its flight.
    *
    * @param action the roll

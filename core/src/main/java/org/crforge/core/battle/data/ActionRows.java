@@ -47,6 +47,7 @@ import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
@@ -698,6 +699,8 @@ public final class ActionRows {
           Map.entry(
               "ActionClone",
               Set.of("OnClonedAction", "CloneDuration", "SpawnDeployBaseAnim", "CardDataForStats")),
+          // The evolved Goblin Barrel's decoy: the projectile it throws, mirrored.
+          Map.entry("ActionMirroredExtraSpell", Set.of("Projectile")),
           Map.entry("ActionSpawn", spawnColumns()),
           Map.entry("ActionSpawnToLocation", spawnColumns()),
           // The evolved Cannon's barrage: its bombs' areas and points. The relative offsets are
@@ -1100,6 +1103,8 @@ public final class ActionRows {
                     shared,
                     integer(f, "RelativeLevelAdjustment"),
                     f.path("AbsoluteLevelToSet").asInt(1));
+            case "ActionMirroredExtraSpell" ->
+                new MirroredExtraSpell(shared, f.path("Projectile").asText());
             case "ActionDealDamage" ->
                 new DealDamage(
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));

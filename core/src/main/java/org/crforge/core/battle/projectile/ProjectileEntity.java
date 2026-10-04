@@ -15,6 +15,7 @@ import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -368,6 +369,38 @@ public class ProjectileEntity extends BattleEntity
     // The cast has no launcher: a projectile that aims by its range would aim from its start.
     place(king, king, null, cardLevel, sx, sy, sz, hx, hy, sx, sy);
     this.delayMs = delayMs;
+  }
+
+  /**
+   * Places the projectile a mirrored extra spell throws for a cast projectile: owned by the cast's
+   * owner, which is its root as well, with no target and no delay, at the cast's packed level
+   * re-based on this row's rarity, from where the cast stands and at its height, to the given
+   * point.
+   *
+   * @param source the cast projectile the extra spell mirrors
+   * @param hx the point it is thrown to along the arena's width
+   * @param hy the point it is thrown to along the arena's length
+   */
+  public void castMirrored(ProjectileEntity source, int hx, int hy) {
+    refuseUnitOnly("thrown by a mirrored extra spell");
+    if (source.owner == null) {
+      throw new UnsupportedOperationException(
+          data.name() + " mirrors " + source.name() + ", which has no owner, not modelled");
+    }
+    // Like the cast, it has no launcher: it aims from its start.
+    place(
+        source.owner,
+        source.owner,
+        null,
+        source.packedLevel,
+        source.x,
+        source.y,
+        source.z,
+        hx,
+        hy,
+        source.x,
+        source.y);
+    this.delayMs = 0;
   }
 
   /**
@@ -782,6 +815,15 @@ public class ProjectileEntity extends BattleEntity
       actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     registerPending();
+  }
+
+  /**
+   * Throws the mirrored extra spell with this projectile as its cause, as the evolved Goblin
+   * Barrel's cast runs it on its king.
+   */
+  @Override
+  public void mirroredExtraSpell(MirroredExtraSpell action) {
+    world.castMirroredExtraSpell(this, action.getProjectile(), action.name());
   }
 
   /**
