@@ -530,23 +530,30 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a unit's action run as it attacks is read when it is a spawn, an uppercut or a resetable"
-          + " area effect, and listed as not modelled otherwise")
+      "a unit's action run as it attacks is read when it is a spawn, an uppercut, a resetable"
+          + " area effect or a variable's write, and listed as not modelled otherwise")
   void anAttackActionOtherThanAModelledOneIsNotModelled() {
     UnitData valkyrie = records.unit("Valkyrie_EV1");
     assertThat(valkyrie.onAttackAction()).isEqualTo("Valkyrie_EV1_Tornado");
     for (String name :
-        List.of("Valkyrie_EV1", "RoyalGiant_EV1", "MegaKnight_EV1", "BabyDragon_EV1")) {
+        List.of(
+            "Valkyrie_EV1",
+            "RoyalGiant_EV1",
+            "MegaKnight_EV1",
+            "BabyDragon_EV1",
+            "InfernoDragon_EV1")) {
       assertThat(records.unit(name).unmodelledColumns()).as(name).isEmpty();
     }
     assertThat(records.unit("MegaKnight_EV1").onAttackAction())
         .isEqualTo("MegaKnight_EV1_uppercut");
     assertThat(records.unit("BabyDragon_EV1").onAttackAction())
         .isEqualTo("baby_dragon_evo_wind_action");
-    // A variable set and a group.
-    for (String name : List.of("InfernoDragon_EV1", "RoyalHog_EV1")) {
-      assertThat(records.unit(name).unmodelledColumns()).as(name).contains("OnAttackAction");
-    }
+    // The evolved Inferno Dragon's counts its attacks in a variable; its list's entries leave the
+    // row's two variable damage times unread.
+    assertThat(records.unit("InfernoDragon_EV1").onAttackAction())
+        .isEqualTo("InfernoDragon_EV1_IncrementAttackCount");
+    // A group.
+    assertThat(records.unit("RoyalHog_EV1").unmodelledColumns()).contains("OnAttackAction");
   }
 
   @Test

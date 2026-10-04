@@ -421,9 +421,12 @@ public final class BattleRecords {
           // Gates only the statistics calls of the buff add.
           "AvoidCountingForBuffAmountStats",
           // A later entry's columns load into no entry without an order or VariableDamageTime1; a
-          // row that builds its entries reads them.
+          // row that builds its entries reads them. A row with an AttackSequenceList loads its
+          // entries from the list alone, and no other reader takes the two times either.
           "VariableDamage2",
           "VariableDamage3",
+          "VariableDamageTime1",
+          "VariableDamageTime2",
           "MeleePushback2",
           "MeleePushback3",
           "IsMeleePushbackAll2",
@@ -864,7 +867,11 @@ public final class BattleRecords {
 
   /** The classes of the actions a unit's hits run whose runs are established. */
   private static final Set<String> ATTACK_ACTION_CLASSES =
-      Set.of("ActionSpawn", "ActionMegaKnightUppercut", "ActionSpawnResetableAeO");
+      Set.of(
+          "ActionSpawn",
+          "ActionMegaKnightUppercut",
+          "ActionSpawnResetableAeO",
+          "ActionSetVariable");
 
   /** The classes of the actions a completed charge runs whose runs are established. */
   private static final Set<String> CHARGE_ACTION_CLASSES = Set.of("ActionDamagingPushBack");
@@ -887,7 +894,8 @@ public final class BattleRecords {
   /**
    * The unmodelled columns with OnAttackAction added when the row names an action its hits run
    * whose run is not established: every hit schedules the row alike, but only a spawn's, the
-   * evolved Mega Knight's uppercut and the evolved Baby Dragon's wind are.
+   * evolved Mega Knight's uppercut, the evolved Baby Dragon's wind and a variable's write (the
+   * evolved Inferno Dragon's attack count, kept in the attacker's own variable) are.
    */
   private List<String> withAttackAction(List<String> columns, GameRow row) {
     if (!sets(row, "OnAttackAction")

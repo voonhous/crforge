@@ -1375,22 +1375,23 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
-   * mode moves the index by itself other than a continuous-damage attacker's and a static loop's,
-   * an entry that sets more than its damage, its projectile, its action, its direct hit's pushback
-   * and its attack range and minimum range (and, for a continuous-damage attacker, its window), and
-   * an entry without a projectile or an action on a unit that fires. An entry's action is
-   * established in place of a projectile, read from an order of two or more by an index only
-   * actions move, and in a sequence of one beside the row's own projectile; one with a projectile,
-   * in a continuous-damage attacker's or on a charging row is refused, and in a sequence of one
-   * also on a multi-target attacker or beside a buff on damage, which the hit would apply only
-   * without a projectile.
+   * mode moves the index by itself other than a continuous-damage attacker's and a static loop's
+   * (the Manual mode, whose index only actions move, is accepted), an entry that sets more than its
+   * damage, its projectile, its action, its direct hit's pushback and its attack range and minimum
+   * range (and, for a continuous-damage attacker, its window), and an entry without a projectile or
+   * an action on a unit that fires. An entry's action is established in place of a projectile, read
+   * from an order of two or more by an index only actions move, and in a sequence of one beside the
+   * row's own projectile; one with a projectile, in a continuous-damage attacker's or on a charging
+   * row is refused, and in a sequence of one also on a multi-target attacker or beside a buff on
+   * damage, which the hit would apply only without a projectile.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
     boolean windowed = sequence.mode() == AttackSequence.MODE_HITTIME;
     boolean looped = sequence.mode() == AttackSequence.MODE_STATIC_LOOP;
+    boolean manual = sequence.mode() == AttackSequence.MODE_MANUAL;
     String refused = null;
-    if (sequence.mode() != AttackSequence.MODE_NONE && !windowed && !looped) {
+    if (sequence.mode() != AttackSequence.MODE_NONE && !windowed && !looped && !manual) {
       refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
     } else if (!sequence.replacesAttack()) {
       // In a sequence of one the entry's action is still read, beside the row's own projectile.
@@ -1398,7 +1399,7 @@ public class CharacterEntity extends WorldEntity {
         if (entry.doAttackAction() == null) {
           continue;
         }
-        if (windowed || data.chargeRange() != 0) {
+        if (windowed || manual || data.chargeRange() != 0) {
           refused =
               "an attack sequence entry's action in a continuous-damage attacker or on a"
                   + " charging row";
@@ -1414,7 +1415,8 @@ public class CharacterEntity extends WorldEntity {
         boolean acts = entry.doAttackAction() != null;
         if (windowed ? entry.overridesMoreThanItsWindow() : entry.overridesMore()) {
           refused = "an attack sequence entry that sets more than its damage and projectile";
-        } else if (acts && (windowed || entry.projectile() != null || data.chargeRange() != 0)) {
+        } else if (acts
+            && (windowed || manual || entry.projectile() != null || data.chargeRange() != 0)) {
           refused =
               "an attack sequence entry's action with a projectile, in a continuous-damage"
                   + " attacker or on a charging row";
