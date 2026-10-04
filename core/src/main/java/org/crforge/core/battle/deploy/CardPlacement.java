@@ -154,7 +154,9 @@ public final class CardPlacement {
             card.projectileIntervalMs(),
             card.listed(),
             card.listOffsetsXMirrored(),
-            card.group());
+            card.group(),
+            card.onExecuteAction(),
+            card.namesCharacter());
     int[] interval =
         columnInterval(
             PlacementSearch.mask(tileMap, offBuildings, side, entities),
