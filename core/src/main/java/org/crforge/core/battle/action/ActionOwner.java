@@ -501,6 +501,24 @@ public interface ActionOwner {
   }
 
   /**
+   * Puts a buff on the owner, as a buff-spawning action does, the source its parent too when asked.
+   *
+   * @param action the action's name
+   * @param buff the buff row's name
+   * @param timeMs how long it lasts
+   * @param source what applies it, whose level and side it takes
+   * @param sourceAsParent true to make the source the buff's parent as well
+   */
+  default void spawnBuff(
+      String action, String buff, int timeMs, ActionOwner source, boolean sourceAsParent) {
+    if (sourceAsParent) {
+      throw new UnsupportedOperationException(
+          action + " puts a buff its source controls on an owner that is not a unit, not modelled");
+    }
+    spawnBuff(action, buff, timeMs, source);
+  }
+
+  /**
    * For an area effect, the object an action's spawn made it from, while that object is in the
    * battle; null for any other owner.
    */

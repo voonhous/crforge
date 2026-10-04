@@ -10,7 +10,7 @@
   "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "unsupported", "feature": "IceGolemiteHero_Spawn_KnockBack_AEO spawns IceGolemiteHero_KnockBack_AEO, which sets columns not modelled: [Shape]", "input": "the run"},
   "ability-sweep-v2/ability_hero_knight": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
-  "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target finds [Musketeer] through MegaMinion_hero_target_resolver: the pick by [RESOLVER_STRATEGY_LOWEST_MAX_HP, RESOLVER_STRATEGY_FURTHEST_TARGET], the mark and MegaMinion_hero_give_bot_buff_to_targets are not modelled", "input": "the run"},
+  "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_ability_action is re-triggered to launch MegaMinion_hero_teleport_action at Musketeer (14723, 19185), which is not modelled", "input": "the run"},
   "ability-sweep-v2/ability_hero_mini_pekka": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_musketeer": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_wizard": {"outcome": "unsupported", "feature": "cmd0_0 taking WizardHero_air asks for a building or a flying row, which is not modelled", "input": "the run"},
