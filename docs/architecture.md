@@ -132,7 +132,7 @@ So a `crforge-data` checkout next to the `crforge` checkout needs no setting at 
 
 1. An explicit data version: the argument `--data-version <v>` (`./gradlew :desktop:run --args="--data-version 16.402.18"`), else the property `crforge.dataVersion`. It opens `<root>/<v>`, and needs a data root.
 2. A tables folder named outright, as before data roots: the property `crforge.gameTables`, else the variable `CRFORGE_GAME_TABLES`.
-3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`.
+3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`. That is the data version under work; the lock's `unitTestVersion=`, the tables the unit tests read, is not used here.
 
 The `run` task passes the Gradle properties `crforge.dataRoot`, `crforge.dataVersion` and `crforge.gameTables` (for example from `~/.gradle/gradle.properties`, or `-P<name>=<value>`), or the variables `CRFORGE_DATA_ROOT` and `CRFORGE_GAME_TABLES`, to the program as system properties. A `crforge.gameTables` set for the test tasks therefore also wins over the lock's version here; the data root still gives `V` its versions.
 
@@ -140,11 +140,11 @@ At startup the launcher prints the data root and the setting that named it, the 
 
 ```
 data root: /path/to/crforge-data (from the crforge-data folder beside the project)
-data root commit: e61b362a... (differs from the lock's 0f84a50d...; informational only)
+data root commit: e61b362a... (differs from the lock's 5a2fd481...; informational only)
 data versions: 14.593.1, 16.402.18 (V switches)
-game tables: /path/to/crforge-data/14.593.1 (from version=14.593.1 of crforge-data.lock in the data root)
-data version: 14.593.1
-content sha: 2be4aad4...
+game tables: /path/to/crforge-data/16.402.18 (from version=16.402.18 of crforge-data.lock in the data root)
+data version: 16.402.18
+content sha: 8aa80152...
 ```
 
 With no rule that applies it stops with a message naming `crforge.dataRoot`, `CRFORGE_DATA_ROOT`, `crforge.gameTables` and `CRFORGE_GAME_TABLES`; with a folder it cannot read it stops naming the folder (and the root's versions); and when the battle core refuses a battle on the chosen tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
