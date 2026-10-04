@@ -14,6 +14,7 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
+import org.crforge.core.battle.action.BarbBarrelHeroReRoll;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BlowdartController;
@@ -25,6 +26,7 @@ import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.GroundToAir;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.ResetPath;
+import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.Taunt;
@@ -1003,6 +1005,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return world.isHitsHeld();
       }
 
+      // The damage entry refuses an entity whose tag word holds NO_DAMAGE, whatever the source:
+      // the word folds its row's tags and those its runs raised for the step, such as a hero
+      // Barbarian Barrel's roll.
+      @Override
+      public boolean damageForbidden() {
+        return (view.getFlags() & EntityFlags.NO_DAMAGE) != 0;
+      }
+
       // The damage entry refuses a hidden entity, unless the hit passes it.
       @Override
       public boolean hidden() {
@@ -1515,6 +1525,36 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /** The battle the entity belongs to. */
   BattleWorld world() {
     return world;
+  }
+
+  /**
+   * Drops the entity's target for a target reset row, as the reset does on the targeting component
+   * when the entity has one: a character's reference and its pending-damage keep byte are cleared;
+   * an entity without one is left alone. Any other entity with a targeting component is refused.
+   */
+  @Override
+  public void resetTarget(ResetTarget action) {
+    if (component(CharacterEntity.TARGETING_SLOT) == null) {
+      return;
+    }
+    if (!(this instanceof CharacterEntity unit)) {
+      throw new UnsupportedOperationException(
+          action.name() + " resets the target of " + name() + ", which is not modelled");
+    }
+    unit.resetTargetAfterWarp();
+  }
+
+  /**
+   * Starts a hero Barbarian Barrel's reroll on the entity, listed by the holder. Only a character
+   * takes one; a clone is refused, as its projectile would carry the clone's answer.
+   */
+  @Override
+  public ActionInstance barbBarrelReRoll(BarbBarrelHeroReRoll action, int phase) {
+    if (!(this instanceof CharacterEntity unit) || unit.isClone()) {
+      throw new UnsupportedOperationException(
+          action.name() + " rerolls " + name() + ", not a character or a clone, not modelled");
+    }
+    return new BarbReRollRun(action, unit);
   }
 
   /**

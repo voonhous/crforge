@@ -15,6 +15,7 @@ import java.util.function.IntSupplier;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.AliveTimer;
+import org.crforge.core.battle.action.BarbBarrelHeroReRoll;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BlowdartController;
@@ -64,6 +65,7 @@ import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ResetPath;
+import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
@@ -197,6 +199,30 @@ public final class ActionRows {
           Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
           // The path reset reads no column of its own.
           Map.entry("ActionResetPath", Set.of()),
+          // The target reset reads no column of its own.
+          Map.entry("ActionResetTarget", Set.of()),
+          // The hero Barbarian Barrel's reroll. The deploy animation, the health bar hiding and the
+          // target indicator's columns are read only by the views; the tags while the spawn delay
+          // runs, which the run never raises, are refused by being left out.
+          Map.entry(
+              "ActionBarbBarrelHeroReRoll",
+              Set.of(
+                  "OffsetY",
+                  "DeployDuration",
+                  "SpawnDelay",
+                  "ReRollProjectile",
+                  "GameTagsToSetWhileOnReRolling",
+                  "OnReRollStartAction",
+                  "OnReRollEndAction",
+                  "OnDeflectedAction",
+                  "ReSpawnDeployBaseAnim",
+                  "HideHealthbarWhileRolling",
+                  "TargetIndicatorBarrelScale",
+                  "TargetIndicatorUsesBarrelVersion",
+                  "TargetIndicatorOffsetX",
+                  "TargetIndicatorOffsetY",
+                  "TargetIndicatorFileName",
+                  "TargetIndicatorEffectName")),
           // The Royal Chef's cooking. Its animation share, view indicator, AI state name, full-bar
           // hold and throw duration only show something; any other column of the class (an
           // overflow, the king's own shot, a cooking-done action, single buffs, deploying troops
@@ -1331,6 +1357,8 @@ public final class ActionRows {
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionGroundToAir" -> groundToAir(name, shared, f);
             case "ActionResetPath" -> new ResetPath(shared);
+            case "ActionResetTarget" -> new ResetTarget(shared);
+            case "ActionBarbBarrelHeroReRoll" -> barbBarrelReRoll(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);
             case "ActionDoPushbackFromInstigator" -> pushbackFromInstigator(name, shared, f);
@@ -2027,6 +2055,25 @@ public final class ActionRows {
           action(f.get("ActionOnFlyHeightReached")),
           action(f.get("ActionOnStartDescending")),
           action(f.get("ActionOnGround")));
+    }
+
+    private BarbBarrelHeroReRoll barbBarrelReRoll(String name, ActionRow shared, JsonNode f) {
+      if (!f.hasNonNull("ReRollProjectile")) {
+        throw new UnsupportedOperationException(
+            name + ", a reroll row, names no ReRollProjectile, which is not modelled");
+      }
+      return new BarbBarrelHeroReRoll(
+          shared,
+          BarbBarrelHeroReRoll.Columns.builder()
+              .offsetY(f.path("OffsetY").asInt(0))
+              .deployDurationMs(f.path("DeployDuration").asInt(0))
+              .spawnDelayMs(f.path("SpawnDelay").asInt(0))
+              .reRollProjectile(f.get("ReRollProjectile").asText())
+              .rollingTags(tags(f, "GameTagsToSetWhileOnReRolling"))
+              .onReRollStartAction(action(f.get("OnReRollStartAction")))
+              .onReRollEndAction(action(f.get("OnReRollEndAction")))
+              .onDeflectedAction(action(f.get("OnDeflectedAction")))
+              .build());
     }
 
     /** The mask of a tag list column, or 0 when the row leaves it out. */

@@ -175,6 +175,31 @@ public interface ActionOwner {
   }
 
   /**
+   * Drops the owner's target for a target reset row. Only a character or a building owner is
+   * modelled: a character's reference is dropped and an owner without a targeting component is left
+   * alone.
+   *
+   * @param action the row
+   */
+  default void resetTarget(ResetTarget action) {
+    throw new UnsupportedOperationException(
+        action.name()
+            + " resets the target of an owner that is neither a character nor a building");
+  }
+
+  /**
+   * Starts a hero Barbarian Barrel's reroll on the owner, which only a character takes.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   * @return the run
+   */
+  default ActionInstance barbBarrelReRoll(BarbBarrelHeroReRoll action, int phase) {
+    throw new UnsupportedOperationException(
+        action.name() + " rerolls an owner that is not a character, not modelled");
+  }
+
+  /**
    * Starts an air-to-ground run on the owner, which only a character or a tower takes.
    *
    * @param action the row

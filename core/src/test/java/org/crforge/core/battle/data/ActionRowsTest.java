@@ -18,6 +18,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
+import org.crforge.core.battle.action.BarbBarrelHeroReRoll;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
@@ -42,6 +43,7 @@ import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ResetPath;
+import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
@@ -1159,9 +1161,35 @@ class ActionRowsTest {
   @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
   void anUnmodelledClassIsRefused() {
-    assertThatThrownBy(() -> GameData.actions().build("BarbLog_hero_reset_target", INERT_BINDING))
+    assertThatThrownBy(() -> GameData.actions().build("SnowballSpell_EV1_deflect", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionResetTarget");
+        .hasMessageContaining("ActionProjectileDeflected");
+  }
+
+  @Test
+  @DisplayName(
+      "the hero Barbarian Barrel's reroll builds with its columns, and its end group with the"
+          + " target reset")
+  void theRerollBuilds() {
+    BattleAction reroll = GameData.actions().build("BarbLogHero_spawn_reroll", INERT_BINDING);
+    assertThat(reroll).isInstanceOf(BarbBarrelHeroReRoll.class);
+    BarbBarrelHeroReRoll.Columns columns = ((BarbBarrelHeroReRoll) reroll).getColumns();
+    assertThat(columns.offsetY()).isEqualTo(-1000);
+    assertThat(columns.spawnDelayMs()).isEqualTo(350);
+    assertThat(columns.deployDurationMs()).isEqualTo(1000);
+    assertThat(columns.reRollProjectile()).isEqualTo("BarbLogHeroProjectileReRolling");
+    assertThat(columns.rollingTags())
+        .isEqualTo(
+            GameData.actions()
+                .tagMask(
+                    "NO_GIANTBUFFER_CHEF_ENCHANTMENT,NO_CLONE,NO_ATTACK,UNTARGETABLE,"
+                        + "DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS,NO_DAMAGE"));
+    assertThat(columns.onReRollStartAction().name())
+        .isEqualTo("BarbLogHero_on_rerroll_start_actions");
+    assertThat(columns.onReRollEndAction().name()).isEqualTo("BarbLogHero_on_rerroll_end_actions");
+    assertThat(columns.onDeflectedAction().name()).isEqualTo("barblog_hero_change_data");
+    assertThat(GameData.actions().build("BarbLog_hero_reset_target", INERT_BINDING))
+        .isInstanceOf(ResetTarget.class);
   }
 
   @Test
@@ -1529,12 +1557,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 876 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 946 rows, 879 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(876);
+    assertThat(built).as("rows built").isEqualTo(879);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 11, "column", 50, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 8, "column", 50, "spawn type", 9));
   }
 }

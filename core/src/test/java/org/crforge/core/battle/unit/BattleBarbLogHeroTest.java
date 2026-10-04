@@ -11,14 +11,17 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Barbarian Barrel's hero form played with no ability use: a spell card in the hero slot, cast
- * as its hero row. Its thrown and rolling projectiles hold the champion slot's button state ready
- * while they fly, and the roll's end leaves the hero barbarian, which the slot follows by the play
- * and whose starting actions run.
+ * The Barbarian Barrel's hero form: a spell card in the hero slot, cast as its hero row. Its thrown
+ * and rolling projectiles hold the champion slot's button state ready while they fly, and the
+ * roll's end leaves the hero barbarian, which the slot follows by the play and whose starting
+ * actions run. The barbarian's ability rerolls it: it backs off, rolls forward in a barrel it
+ * follows, and stands up again where the barrel ends.
  */
 class BattleBarbLogHeroTest {
 
@@ -91,6 +94,82 @@ class BattleBarbLogHeroTest {
         .extracting(run -> run.getAction().name())
         .contains(
             "BarbLog_hero_Listen_To_New_Deploy", "BarbLog_hero_interval_check_ability_played");
+  }
+
+  @Test
+  @DisplayName(
+      "the ability's reroll backs the barbarian off toward its side by 142 a step for six steps,"
+          + " then rolls it in BarbLogHeroProjectileReRolling from where it stands, healed by half"
+          + " its missing hit points; it follows the projectile a step behind, taking no damage"
+          + " and untargetable, and deploys for 1000 ms where the projectile ends")
+  void theRerollRollsTheBarbarianForward() {
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0; match == null || !inHand(match, "BarbLog"); word++) {
+      battle = new Standard1v1Battle(GameData.tables());
+      match = battle.startLadderMatch(BARREL_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
+    }
+    int cost = GameData.records().matchCard("BarbLog").cost();
+    while (match.side(0).wholeElixir() < cost) {
+      step(battle);
+    }
+    battle.play(battle.getBattle().getTick(), GameData.card("BarbLog"), LEVEL, 0, 3500, 20500, "b");
+    int limit = battle.getBattle().getTick() + 200;
+    while (named(battle, BARBARIAN).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    CharacterEntity barbarian = named(battle, BARBARIAN).get(0);
+    for (int i = 0; i < 40 || match.side(0).wholeElixir() < 1; i++) {
+      step(battle);
+    }
+    battle.useAbility(battle.getBattle().getTick(), 0, barbarian.getId(), "a");
+    limit = battle.getBattle().getTick() + 30;
+    while (barbarian.getView().getState() != GridEntityState.CASTING) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    // The activation starts the run on the cast's first step; its first update is on the next.
+    int x = barbarian.getView().getX();
+    int y = barbarian.getView().getY();
+    for (int i = 1; i <= 6; i++) {
+      step(battle);
+      assertThat(barbarian.getView().getY()).isEqualTo(y - 142 * i);
+      assertThat(barbarian.getView().getX()).isEqualTo(x);
+      assertThat(projectiles(battle, "BarbLogHeroProjectileReRolling")).isEmpty();
+    }
+    int missing = barbarian.getHitPoints().getMaximum() - barbarian.getHitPoints().getHitPoints();
+    int before = barbarian.getHitPoints().getHitPoints();
+    step(battle);
+    // The seventh step launches the projectile where the barbarian stands, and the start action
+    // heals it.
+    assertThat(barbarian.getHitPoints().getHitPoints()).isEqualTo(before + missing * 50 / 100);
+    step(battle);
+    List<ProjectileEntity> rolling = projectiles(battle, "BarbLogHeroProjectileReRolling");
+    assertThat(rolling).hasSize(1);
+    ProjectileEntity barrel = rolling.get(0);
+    assertThat(barrel.getOwner()).isSameAs(barbarian);
+    assertThat(barbarian.getView().getY()).isEqualTo(y - 142 * 6);
+    long rollingTags = EntityFlags.NO_DAMAGE | EntityFlags.UNTARGETABLE | EntityFlags.NO_ATTACK;
+    int steps = 0;
+    int healed = barbarian.getHitPoints().getHitPoints();
+    while (projectiles(battle, "BarbLogHeroProjectileReRolling").contains(barrel)) {
+      assertThat(barbarian.getView().getFlags() & rollingTags).isEqualTo(rollingTags);
+      assertThat(barbarian.getHitPoints().getHitPoints()).isEqualTo(healed);
+      int px = barrel.getX();
+      int py = barrel.getY();
+      step(battle);
+      assertThat(barbarian.getView().getX()).isEqualTo(px);
+      assertThat(barbarian.getView().getY()).isEqualTo(py);
+      assertThat(++steps).isLessThan(40);
+    }
+    assertThat(barbarian.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(barbarian.getView().getDeployCountdown()).isEqualTo(1000);
+    step(battle);
+    step(battle);
+    assertThat(barbarian.actionHolder().running())
+        .extracting(run -> run.getAction().name())
+        .doesNotContain("BarbLogHero_spawn_reroll");
   }
 
   @Test

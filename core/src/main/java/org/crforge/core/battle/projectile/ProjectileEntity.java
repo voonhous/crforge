@@ -374,6 +374,24 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Places a projectile a unit's action fires at a point, as the hero Barbarian Barrel's reroll
+   * fires its barrel: launched as a unit's shot is, with no target, the unit as launcher and owner,
+   * and carrying the unit's play, which the launch copies from it.
+   *
+   * @param unit the unit firing it
+   * @param play the unit's play, by its king's count of card plays before it; -1 for none
+   * @param sx start position along the arena's width
+   * @param sy start position along the arena's length
+   * @param sz start height
+   * @param hx the point it is fired at along the width
+   * @param hy the point it is fired at along the length
+   */
+  public void launchFromUnit(WorldEntity unit, int play, int sx, int sy, int sz, int hx, int hy) {
+    launch(unit, null, sx, sy, sz, hx, hy);
+    this.deployIndex = play;
+  }
+
+  /**
    * Places a spell's projectile, cast by a card play: owned by its side's king tower, with no
    * target, at the card's level re-based on the row's rarity, from the start the cast works out to
    * the placed point.
