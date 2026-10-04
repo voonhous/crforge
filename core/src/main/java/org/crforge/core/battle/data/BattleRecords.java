@@ -81,14 +81,13 @@ public final class BattleRecords {
       List.of("Mirror", "CustomFirstProjectile", "CustomClassType", "UseProjectedTimeSummon");
 
   /**
-   * The columns of a projectile the impact does not model: the action on reaching its target,
-   * spawned projectiles laid along the width, and the push's floor and a push along the flight. A
-   * spell whose projectile, or the projectile that one spawns, sets one is refused as it is cast or
-   * spawned, and a unit's shot as it is fired. The area effect it spawns is modelled unless its row
-   * is refused.
+   * The columns of a projectile the impact does not model: spawned projectiles laid along the
+   * width, and the push's floor and a push along the flight. A spell whose projectile, or the
+   * projectile that one spawns, sets one is refused as it is cast or spawned, and a unit's shot as
+   * it is fired. The area effect it spawns is modelled unless its row is refused.
    */
   private static final List<String> UNMODELLED_PROJECTILE_COLUMNS =
-      List.of("OnTargetReachedAction", "SpawnAxisX", "MinPushback", "DoDirectionalPushback");
+      List.of("SpawnAxisX", "MinPushback", "DoDirectionalPushback");
 
   /** The target limit the loader stores for a projectile row that leaves it empty. */
   private static final int DEFAULT_MAXIMUM_TARGETS = 1000;
@@ -288,13 +287,14 @@ public final class BattleRecords {
           "UNTARGETABLE");
 
   /**
-   * The tags a buff may set: the one the push pass reads, which keeps the carrier's enemies from
-   * pushing it, and UNIT_CUSTOM_TAG_1, which no battle code and no filter tests, read only by the
-   * expressions of the carrier's own action rows, which read the tag word the buff is folded into.
-   * A buff that sets any other is refused.
+   * The tags a buff may set: the two the push pass reads, which keep the carrier's enemies, or its
+   * own side, from pushing it, and are the only code that tests either; and UNIT_CUSTOM_TAG_1,
+   * which no battle code and no filter tests, read only by the expressions of the carrier's own
+   * action rows, which read the tag word the buff is folded into. A buff that sets any other is
+   * refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
-      Set.of("NO_PUSHED_BY_ENEMY", "UNIT_CUSTOM_TAG_1");
+      Set.of("NO_PUSHED_BY_ENEMY", "NO_PUSHED_BY_ALLY", "UNIT_CUSTOM_TAG_1");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when
@@ -1868,6 +1868,7 @@ public final class BattleRecords {
             .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
             .randomDelayMs(row.intValue("RandomDelay"))
             .onHitTargetAction(inlineActionName(row, "OnHitTargetAction"))
+            .onTargetReachedAction(actionName(row, "OnTargetReachedAction"))
             .spawnAreaEffectObject(
                 set(row, "SpawnAreaEffectObject") ? row.string("SpawnAreaEffectObject") : null)
             .ignoreReflectedAttack(row.bool("IgnoreReflectedAttack"))

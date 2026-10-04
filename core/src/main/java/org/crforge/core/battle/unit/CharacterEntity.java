@@ -1161,9 +1161,18 @@ public class CharacterEntity extends WorldEntity {
    * carried kept. A walking unit without a lifetime may take a walking row with one, as the Goblin
    * Demolisher becomes its kamikaze form: it keeps walking, and its hit points drain the same way.
    *
-   * <p>Refused rather than guessed: any other building row, a flying row either side, any other
-   * swap that builds or frees the movement component or reaches a lifetime, a different rarity or
-   * deploy time, and a champion. A shield keeps its value, its maximum taken from the new row.
+   * <p>A ground unit a ground-to-air run holds in the air may take a row that flies, as the hero
+   * Wizard takes its flying row at the height: its layer is the run's FORCE_IS_AIR and its height
+   * the run's push, neither of which the swap touches.
+   *
+   * <p>A champion's slot is found before the swap, on the old row, as the slot that follows the
+   * unit; once the row is swapped, a slot whose live copies held the unit works its state out at
+   * once, its copies rebuilt from the live list, so a unit on a row the slot does not follow is no
+   * copy of it from then on.
+   *
+   * <p>Refused rather than guessed: any other building row, a flying row either side but those, any
+   * other swap that builds or frees the movement component or reaches a lifetime, and a different
+   * rarity or deploy time. A shield keeps its value, its maximum taken from the new row.
    *
    * @param rowName the name of the new character row
    * @param resetTarget true to give up the target rather than keep it
@@ -1172,6 +1181,8 @@ public class CharacterEntity extends WorldEntity {
   public void changeData(String rowName, boolean resetTarget) {
     UnitData next = world.getRecords().unit(rowName);
     refuseSwap(next);
+    // The slot of the side's king that follows the unit, asked on the old row: none for a clone.
+    ChampionController slot = followingSlot();
     TargetingState targeting = getTargeting();
     TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
     boolean becomesBuilding = !getData().building() && next.building();
@@ -1205,6 +1216,10 @@ public class CharacterEntity extends WorldEntity {
     getView().setMass(next.mass());
     // The occlusion query reads the row the unit has now.
     getView().setOccluder(next.occluder());
+    // The slot that followed the unit hears of the swap once the row is the new one.
+    if (slot != null) {
+      slot.dataChanged(this);
+    }
     unit =
         new GridUnitState(
             unit.entity(),
@@ -1260,6 +1275,38 @@ public class CharacterEntity extends WorldEntity {
     return run;
   }
 
+  /**
+   * The champion slot of the side's king that follows the character, the first before the second;
+   * null for none, a clone, or a battle without a king's slots.
+   */
+  private ChampionController followingSlot() {
+    TowerEntity king = world.kingTower(side());
+    if (king == null) {
+      return null;
+    }
+    for (int n = 1; n <= 2; n++) {
+      ChampionController slot = king.championSlot(n);
+      if (slot != null && slot.follows(this)) {
+        return slot;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Whether a ground-to-air run on the character holds it in the air: climbing or held, it raises
+   * FORCE_IS_AIR on each step and pushes the character's height itself.
+   */
+  private boolean liftedByRun() {
+    for (ActionInstance instance : actionHolder().running()) {
+      if (instance instanceof GroundToAirRun run
+          && (run.phase() == GroundToAirRun.CLIMBING || run.phase() == GroundToAirRun.HELD)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Refuses a swap whose effect is not established. */
   private void refuseSwap(UnitData next) {
     UnitData current = getData();
@@ -1286,6 +1333,12 @@ public class CharacterEntity extends WorldEntity {
     // and the swap touches neither the movement component nor what a run pushed.
     boolean sameFlight =
         current.air() && next.air() && current.flyingHeight() == next.flyingHeight();
+    // A ground unit a ground-to-air run holds in the air may take a flying row, as the hero Wizard
+    // takes its flying row at the height: its layer is the run's FORCE_IS_AIR and its height the
+    // run's push, which the swap leaves alone. The movement config built from the old row reads its
+    // flying height only with direct paths, so a row that flies by them is refused.
+    boolean liftedToFlight =
+        !current.air() && next.air() && !next.flyDirectPaths() && liftedByRun();
     // Likewise a unit that jumps the river may take a row that jumps it alike.
     boolean sameJump =
         current.jumpEnabled()
@@ -1293,7 +1346,7 @@ public class CharacterEntity extends WorldEntity {
             && current.jumpHeight() == next.jumpHeight()
             && current.jumpSpeed() == next.jumpSpeed();
     String refused = null;
-    if ((next.air() || current.air()) && !sameFlight
+    if ((next.air() || current.air()) && !sameFlight && !liftedToFlight
         || current.building()
         || next.building() && !breaksDown) {
       refused = "a building or a flying row";
@@ -1309,8 +1362,6 @@ public class CharacterEntity extends WorldEntity {
       refused = "a level packed against another rarity";
     } else if (current.deployTimeMs() != next.deployTimeMs()) {
       refused = "another deploy time";
-    } else if (current.champion()) {
-      refused = "a champion's controller";
     } else if (!Objects.equals(current.ability(), next.ability())) {
       refused = "another ability";
     } else if (current.chargeRange() != 0
