@@ -29,8 +29,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  *
  * <p>The impact of a projectile that hits one target: the row's damage at the projectile's level,
  * or its crown-tower share for a crown tower, dealt once to a target that still has hit points,
- * from the direction of the flight. The damage carries a fresh hit id but no dedupe id, so a second
- * projectile lands on the same target again.
+ * from the direction of the flight. The damage carries a fresh hit id and the projectile's group id
+ * as its dedupe id: 0 for a projectile of no group, so a second projectile lands on the same target
+ * again; the projectiles of one group - a projectile and those its impacts spawn - land on an
+ * entity once, whatever reaches it.
  *
  * <p>The impact of a row with a radius does not look at the target at all: everything the area
  * damage collects in the circle around the aim takes the damage, or the crown-tower share, and the

@@ -233,6 +233,19 @@ public class ProjectileEntity extends BattleEntity
   /** How many links of spawned projectiles its impact may still launch. */
   @Getter private int spawnChain;
 
+  /**
+   * The group id it shares with the projectiles its impacts spawn, 0 for none. Every hit it deals
+   * carries it as its dedupe id, so the projectiles of one group land on an entity once: an entity
+   * one of them has hit takes nothing from the others. A projectile that spawns ones that do not
+   * fly to a point, and does not fly to a point itself, takes a fresh id from the battle's group
+   * counter as it is launched, unless it already holds one; a spawned projectile takes its parent's
+   * before its launch, unless the parent's row makes each a new projectile.
+   */
+  @Getter private int groupId;
+
+  /** True for a projectile another one's impact spawned, which may take a group id of its own. */
+  private boolean spawnedByImpact;
+
   /** The chain it belongs to, or null for a projectile on its own. */
   @Getter private ProjectileChain chain;
 
@@ -494,6 +507,12 @@ public class ProjectileEntity extends BattleEntity
    */
   public void launchSpawned(ProjectileEntity parent, int hx, int hy) {
     refuseUnitOnly("spawned");
+    // The group is handed on before the launch, which then keeps it; a row whose spawns are new
+    // projectiles hands on none, and the launch gives each a group of its own.
+    spawnedByImpact = true;
+    if (!parent.data.chainIsNewProjectile()) {
+      groupId = parent.groupId;
+    }
     place(
         null,
         parent.root,
@@ -554,17 +573,22 @@ public class ProjectileEntity extends BattleEntity
         aimY = startY + vec[1];
       }
     }
+    ProjectileData spawned =
+        data.spawnProjectile() == null
+            ? null
+            : world.getRecords().projectile(data.spawnProjectile());
     if (data.homingLike()) {
       aimZ = startZ;
-    } else if (data.spawnProjectile() != null) {
+    } else if (spawned != null && spawned.homingLike()) {
       // A projectile that spawns one flying to a point aims at that one's body height.
-      ProjectileData spawned = world.getRecords().projectile(data.spawnProjectile());
-      if (spawned.homingLike()) {
-        aimZ =
-            spawned.projectileRadiusY() == 0
-                ? spawned.projectileRadius()
-                : Math.min(spawned.projectileRadius(), spawned.projectileRadiusY());
-      }
+      aimZ =
+          spawned.projectileRadiusY() == 0
+              ? spawned.projectileRadius()
+              : Math.min(spawned.projectileRadius(), spawned.projectileRadiusY());
+    } else if ((spawned != null || spawnedByImpact) && groupId == 0) {
+      // Neither it nor what it spawns flies to a point: it takes a fresh group id, which the
+      // projectiles its impact spawns share.
+      groupId = world.nextProjectileGroupId();
     }
     if (data.constantHeight() != 0) {
       // A constant height replaces the launcher's height as the start and the aim: the flight's arc
