@@ -27,12 +27,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " target is read, the direction from the owner to the reference's last position, the"
             + " choice between the two damages by the target's own answer, and that a cancelled"
             + " hit touches nothing, and the area of a unit with a radius in place of the target,"
-            + " centred on the unit or on the reference's last position. Held by every hit of the"
-            + " kill run and every area of the Valkyrie runs. Not modelled: the damage"
+            + " centred on the unit or on the reference's last position, and the owner's recoil"
+            + " by its attack pushback after the damage, away from the reference's last position."
+            + " Held by every hit of the kill run, every area of the Valkyrie runs and the evolved"
+            + " Battle Ram's tower hits. Not modelled: the damage"
             + " effect and the fallback, the attacker's buffs changing either"
             + " damage, the attack sequence step's pushback on a target that moves (refused),"
-            + " the elixir a drainer moves, the"
-            + " area-effect entity a hit may create and the pushback on the owner.")
+            + " the elixir a drainer moves and the"
+            + " area-effect entity a hit may create.")
 public final class DirectHit {
 
   private DirectHit() {
@@ -52,6 +54,9 @@ public final class DirectHit {
       TargetingState t, TargetView target, int damage, boolean missed, HitQueries queries) {
     TargetingConfig cfg = t.getConfig();
     int crownTowerDamage = crownTowerDamage(cfg.crownTowerDamagePercent(), damage);
+    // Whether the owner may recoil after the hit is decided by its movement component as it stands
+    // now, before the hit id is counted and the damage dealt.
+    boolean ownerMoves = queries.ownerMovementOn();
     int hitId = queries.nextHitId();
     // The owner's listening actions change both damages of a hit that lands, after the crown-tower
     // damage was worked out from the plain one.
@@ -82,6 +87,12 @@ public final class DirectHit {
     int dealt = target.isCrownTowerTarget() ? crownTowerDamage : damage;
     queries.dealDamage(target, dealt, hitId, directionX, directionY);
     queries.directHitDealt();
+    // Last, an owner with a movement component recoils by its own attack pushback, away from where
+    // its reference stood at the start of the visit, as it does after each projectile it launches.
+    // The area branch above never reaches it.
+    if (ownerMoves) {
+      queries.attackRecoil(t.getLastReferenceX(), t.getLastReferenceY());
+    }
   }
 
   /**
