@@ -69,6 +69,14 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner has no attack sequence");
   }
 
+  /**
+   * Raises the owner's instant-hit byte, as an instant-hit action does: its next attack visit lands
+   * a whole hit at once.
+   */
+  default void setInstantHit() {
+    throw new UnsupportedOperationException("this owner has no targeting to hit instantly with");
+  }
+
   /** The owner's attack sequence index, which its next hit reads. */
   default int attackSequenceIndex() {
     throw new UnsupportedOperationException("this owner has no attack sequence");

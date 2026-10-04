@@ -77,6 +77,7 @@ import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
+import org.crforge.core.battle.action.SetInstantHit;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -323,6 +324,8 @@ public final class ActionRows {
                   "OnDeactivatedAction")),
           Map.entry("ActionSetVariable", Set.of("Variable", "Value")),
           Map.entry("ActionSetShield", Set.of("ShieldPercent")),
+          // The instant hit has no columns of its own: its start gate is a shared column.
+          Map.entry("ActionSetInstantHit", Set.of()),
           Map.entry("ActionRunActionAtHealth", Set.of("HealthPercentages", "Actions")),
           // The evolved Goblin Drill's relocation. Its hide, reappear and target effects only show
           // something; the spawn deploy time and radius only feed the character spawns.
@@ -1303,6 +1306,7 @@ public final class ActionRows {
                         ? binding.variableKey(f.get("Variable").asText())
                         : SetVariable.NO_VARIABLE);
             case "ActionSetShield" -> new SetShield(shared, integer(f, "ShieldPercent"));
+            case "ActionSetInstantHit" -> new SetInstantHit(shared);
             case "ActionRunActionAtHealth" ->
                 new RunActionAtHealth(
                     shared, ints(f.get("HealthPercentages")), actions(f.get("Actions")));
