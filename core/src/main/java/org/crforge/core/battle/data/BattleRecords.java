@@ -5,6 +5,7 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1062,9 +1063,10 @@ public final class BattleRecords {
    * A game object filter as the battle reads it, from the game object filters table. Every column
    * is its field of the same name; the dead are filtered unless the row says not; the tags it
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
-   * the text the game shows for it is not read. A row that sets any other column, as a filter it
-   * builds on or a list of filters it joins, is refused: read without it, the filter would match
-   * what the row does not.
+   * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
+   * switches, or the names of its Filters list, which a newer data version writes in their place. A
+   * row that sets any other column, as a filter it builds on or a match on its instigator, is
+   * refused: read without it, the filter would match what the row does not.
    *
    * @param name the row's name
    */
@@ -1092,8 +1094,90 @@ public final class BattleRecords {
   /** The columns of a game object filter's row that only show something: the text it shows. */
   private static final Set<String> PRESENTATION_FILTER_COLUMNS = Set.of("FilterDescriptionTID");
 
-  /** A game object filter's fields, read from its row's columns of the same names. */
+  /**
+   * The kinds of object a game object filter's Filters list may name, each with the switch of the
+   * same test: a filter that lists a kind leaves out what the switch leaves out. A newer data
+   * version writes the kinds as this list in place of the switches; the filter's test reads each
+   * listed kind as the very check the switch asks (the same object queries, and the same character
+   * row columns for the pushback and dash checks). A kind the switches have no test for (Self, the
+   * instigator itself; Kamikaze and IgnoreResurrect, characters whose row sets the column of that
+   * name) is refused.
+   */
+  private static final Map<String, String> FILTER_LIST_SWITCHES =
+      Map.ofEntries(
+          Map.entry("Hidden", "FilterHidden"),
+          Map.entry("Invisible", "FilterInvisible"),
+          Map.entry("Underground", "FilterUnderground"),
+          Map.entry("Buildings", "FilterBuildings"),
+          Map.entry("Towers", "FilterTowers"),
+          Map.entry("Summoner", "FilterSummoner"),
+          Map.entry("Flying", "FilterFlying"),
+          Map.entry("Jumping", "FilterJumping"),
+          Map.entry("DashImmune", "FilterDashImmune"),
+          Map.entry("Dragging", "FilterDragging"),
+          Map.entry("Cloning", "FilterCloning"),
+          Map.entry("NoHitpointComponent", "FilterIfNoHitpointComponent"),
+          Map.entry("PushbackIgnore", "FilterPushbackIgnore"),
+          Map.entry("SameObjects", "FilterSameObjects"),
+          Map.entry("PrincessTowers", "FilterPrincessTowers"),
+          Map.entry("Clones", "FilterClones"));
+
+  /**
+   * Whether a game object filter leaves out the kind of object a switch names: the switch's own
+   * column, or, for a row that writes the kinds as a Filters list, the list naming the kind. A row
+   * writes one form or the other; one that writes both, or lists a kind no switch tests, is
+   * refused.
+   *
+   * @param row the filter's row
+   * @param listed the kinds its Filters list names, or null for a row without the list
+   * @param column the switch's column
+   */
+  private static boolean filterSwitch(GameRow row, Set<String> listed, String column) {
+    if (listed == null) {
+      return row.bool(column);
+    }
+    if (row.bool(column)) {
+      throw new UnsupportedOperationException(
+          "the game object filter "
+              + row.name()
+              + " writes both a Filters list and the switch "
+              + column
+              + ", which no data version writes together");
+    }
+    return listed.contains(column);
+  }
+
+  /**
+   * The switches a filter's Filters list names, or null for a row without the list.
+   *
+   * @throws UnsupportedOperationException for a kind no switch tests
+   */
+  private static Set<String> listedSwitches(GameRow row) {
+    if (!row.has("Filters")) {
+      return null;
+    }
+    Set<String> switches = new HashSet<>();
+    for (String kind : row.strings("Filters")) {
+      String column = FILTER_LIST_SWITCHES.get(kind);
+      if (column == null) {
+        throw new UnsupportedOperationException(
+            "the game object filter "
+                + row.name()
+                + " lists the kind "
+                + kind
+                + " in Filters, which is not modelled");
+      }
+      switches.add(column);
+    }
+    return switches;
+  }
+
+  /**
+   * A game object filter's fields, read from its row's columns of the same names, or, for the kinds
+   * it leaves out, from its Filters list.
+   */
   private GameObjectFilter filterOf(GameRow row) {
+    Set<String> listed = listedSwitches(row);
     return GameObjectFilter.builder()
         .matchTeamOwn(row.bool("MatchTeamOwn"))
         .matchTeamEnemy(row.bool("MatchTeamEnemy"))
@@ -1103,25 +1187,25 @@ public final class BattleRecords {
         .matchTypeAoe(row.bool("MatchTypeAoe"))
         .matchTypeGoblinRef(row.bool("MatchTypeGoblinRef"))
         .matchTowers(row.bool("MatchTowers"))
-        .filterHidden(row.bool("FilterHidden"))
-        .filterInvisible(row.bool("FilterInvisible"))
-        .filterUnderground(row.bool("FilterUnderground"))
-        .filterBuildings(row.bool("FilterBuildings"))
-        .filterTowers(row.bool("FilterTowers"))
-        .filterSummoner(row.bool("FilterSummoner"))
-        .filterFlying(row.bool("FilterFlying"))
-        .filterJumping(row.bool("FilterJumping"))
-        .filterDashImmune(row.bool("FilterDashImmune"))
-        .filterDragging(row.bool("FilterDragging"))
-        .filterCloning(row.bool("FilterCloning"))
-        .filterIfNoHitpointComponent(row.bool("FilterIfNoHitpointComponent"))
-        .filterPushbackIgnore(row.bool("FilterPushbackIgnore"))
+        .filterHidden(filterSwitch(row, listed, "FilterHidden"))
+        .filterInvisible(filterSwitch(row, listed, "FilterInvisible"))
+        .filterUnderground(filterSwitch(row, listed, "FilterUnderground"))
+        .filterBuildings(filterSwitch(row, listed, "FilterBuildings"))
+        .filterTowers(filterSwitch(row, listed, "FilterTowers"))
+        .filterSummoner(filterSwitch(row, listed, "FilterSummoner"))
+        .filterFlying(filterSwitch(row, listed, "FilterFlying"))
+        .filterJumping(filterSwitch(row, listed, "FilterJumping"))
+        .filterDashImmune(filterSwitch(row, listed, "FilterDashImmune"))
+        .filterDragging(filterSwitch(row, listed, "FilterDragging"))
+        .filterCloning(filterSwitch(row, listed, "FilterCloning"))
+        .filterIfNoHitpointComponent(filterSwitch(row, listed, "FilterIfNoHitpointComponent"))
+        .filterPushbackIgnore(filterSwitch(row, listed, "FilterPushbackIgnore"))
         .matchAttachedChildren(row.bool("MatchAttachedChildren"))
-        .filterSameObjects(row.bool("FilterSameObjects"))
+        .filterSameObjects(filterSwitch(row, listed, "FilterSameObjects"))
         .filterTags(tagBits(row.string("FilterTags")))
-        .filterPrincessTowers(row.bool("FilterPrincessTowers"))
+        .filterPrincessTowers(filterSwitch(row, listed, "FilterPrincessTowers"))
         .filterDead(!row.has("FilterDead") || row.bool("FilterDead"))
-        .filterClones(row.bool("FilterClones"))
+        .filterClones(filterSwitch(row, listed, "FilterClones"))
         .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
         .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
         .build();
