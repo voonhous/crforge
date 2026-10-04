@@ -2697,6 +2697,10 @@ public class BattleWorld implements HolderPasses {
               Standard1v1Battle.LANE_BASED_DEPLOY_SEQUENCE);
       int cx = inset(x + offset[0], w);
       int cy = inset(y + offset[1], h);
+      // The creation takes the child's lane from where it is made with the impact point's x as
+      // the reference and no flag (0xe36d9c..0xe36dc4): a child made across the centre column
+      // from the impact, whose nearest road is the impact's own, is swapped to the impact's side.
+      int childLane = LaneAssignment.lane(w, h, w, cx, cy, x, 0, tileMap::bits);
       int made = spawnCounts.merge(projectile.name(), 1, Integer::sum) - 1;
       CharacterEntity spawned =
           CharacterEntity.spawned(
@@ -2706,7 +2710,8 @@ public class BattleWorld implements HolderPasses {
               projectile.side(),
               cx,
               cy,
-              PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())));
+              PackedLevel.level(PackedLevel.pack(projectile.getPackedLevel(), child.rarity())),
+              childLane);
       // A fixed priority per child: the k-th is taken as (20k)^2 nearer by a selection.
       if (data.spawnConstPriority()) {
         spawned.getView().setSquaredDistanceReduction((i * 20) * (i * 20));
