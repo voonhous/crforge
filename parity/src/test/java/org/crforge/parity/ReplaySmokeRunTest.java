@@ -530,6 +530,78 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aMirrorPlayRepeatsItsSidesLastCardOneLevelAboveTheMirrorsForItsItem() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.knightThenMirror(), out, terminalIdentity, 420);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    JsonNode mirror = manifest.path("plays_run").get(4);
+    assertThat(mirror.path("name").asText()).isEqualTo("cmd4");
+    assertThat(mirror.path("tick").asInt()).isEqualTo(410);
+    assertThat(mirror.path("placed").asBoolean()).isTrue();
+    assertThat(mirror.path("units").asInt()).isEqualTo(1);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    // The Knight again, at the Mirror's level field plus 1, field 6: 1214 hit points, where the
+    // Knight played at its own level index 0 has 690.
+    JsonNode repeated = newestUnit(MAPPER.readTree(lines.get(411)));
+    assertThat(repeated.path("row").asText()).isEqualTo("Knight");
+    assertThat(repeated.path("side").asInt()).isZero();
+    assertThat(repeated.path("hp").asInt()).isEqualTo(1214);
+    // The Mirror costs 1 more than the Knight: 4 elixir, less one step's regeneration.
+    int before = MAPPER.readTree(lines.get(410)).path("sides").get(0).path("elixir").asInt();
+    int after = MAPPER.readTree(lines.get(411)).path("sides").get(0).path("elixir").asInt();
+    assertThat(before - after).isBetween(40000 - 200, 40000);
+  }
+
+  @Test
+  void aMirrorPlayNamingAnotherRepeatedCardThanTheSimulatorsIsUnsupported() throws IOException {
+    ObjectNode scenario = Scenarios.knightThenMirror();
+    // The Archer was played before the Knight: the Mirror repeats the Knight, the last card.
+    ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("fs", Scenarios.ARCHER);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, terminalIdentity, 420);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("unsupported").path("feature").asText())
+        .isEqualTo(
+            "a Mirror play whose repeated card is not the one the simulator's Mirror repeats");
+    assertThat(manifest.path("unsupported").path("input").asText())
+        .isEqualTo(
+            "cmd[4].c.sel.fs="
+                + Scenarios.ARCHER
+                + " (Archer), where the simulator repeats Knight");
+    assertThat(out.resolve("COMPLETE")).doesNotExist();
+  }
+
+  @Test
+  void aMirrorPlayWhoseCostOrLevelIsNotTheSimulatorsIsUnsupported() throws IOException {
+    // The Mirror's own cost, 1, and its own level field, 5, where it repeats the Knight.
+    for (int item : new int[] {0x11801800, 0x41801400}) {
+      ObjectNode scenario = Scenarios.knightThenMirror();
+      ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("pd", item);
+      Path out = folder.resolve("run-" + Integer.toHexString(item));
+
+      int exit = run(scenario, out, terminalIdentity, 420);
+
+      assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+      JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+      assertThat(manifest.path("unsupported").path("feature").asText()).contains("packed item");
+      // The item the simulator builds: level field 6, deck index field 6, cost 4.
+      assertThat(manifest.path("unsupported").path("input").asText())
+          .startsWith("cmd[4].c.sel.pd=" + item)
+          .endsWith(
+              "where the simulator builds "
+                  + 0x41801800
+                  + " (evolution field 0, option field 0, count field 0, level field 6, cosmetic"
+                  + " field 0, slot flags field 0, deck index field 6, cost 4)");
+    }
+  }
+
+  @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
@@ -581,6 +653,17 @@ class ReplaySmokeRunTest {
       }
     }
     return MAPPER.missingNode();
+  }
+
+  /** The entity with the highest id an observation lists, the newest unit. */
+  private static JsonNode newestUnit(JsonNode observation) {
+    JsonNode newest = MAPPER.missingNode();
+    for (JsonNode entity : observation.path("entities")) {
+      if (newest.isMissingNode() || entity.path("id").asInt() > newest.path("id").asInt()) {
+        newest = entity;
+      }
+    }
+    return newest;
   }
 
   /** The row of the entity with the highest id an observation lists, the newest unit. */

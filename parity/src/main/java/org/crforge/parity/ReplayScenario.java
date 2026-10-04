@@ -13,6 +13,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -39,7 +40,10 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * in bits 17..18, the deck card's slot flags in bits 19..21, the deck index plus 1 in bits 22..27
  * and the cost from bit 28. The parts the deck alone decides are checked as the scenario is read;
  * the evolution field, the count and the cost of a play whose item depends on the battle are
- * checked as the play runs, against the item the simulator builds ({@link #checkItem}).
+ * checked as the play runs, against the item the simulator builds ({@link #checkItem}). A Mirror's
+ * item also names the card it repeats ({@code fs}); that card, the level field and the cost depend
+ * on the battle, and are checked against the Mirror item the simulator builds ({@link
+ * #checkMirrorItem}).
  */
 public final class ReplayScenario {
 
@@ -129,6 +133,9 @@ public final class ReplayScenario {
 
   /** The cost field of a play's packed item: the bits from bit 28. */
   private static final int ITEM_COST_SHIFT = 28;
+
+  /** The card row column that marks the Mirror, whose play repeats its side's last card. */
+  private static final String MIRROR_COLUMN = "Mirror";
 
   /** A player's data with no emotes listed. */
   private static final String NO_EMOTES = "{\"em\":{\"oe\":[],\"de\":[]}}";
@@ -285,7 +292,17 @@ public final class ReplayScenario {
             + " evolution field (bits 0..3), count field (bits 7..9) and cost field (bits 28..31)"
             + " against the item the simulator builds as the play runs, and as the scenario is"
             + " read for a card outside the evolution slot: the evolution field 2 for a hero"
-            + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost");
+            + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost. A"
+            + " Mirror's: its deck index field as above, its slot flags, evolution, option, count"
+            + " and cosmetic fields 0, and its level field (the Mirror's plus the level offset)"
+            + " and cost (the Mirror's plus the repeated card's) against the Mirror item the"
+            + " simulator builds as the play runs");
+    mapping.put(
+        "cmd[i].c.sel.fs",
+        "checked (a Mirror's play only, where it is required): the card row the item repeats,"
+            + " against the card the simulator's Mirror repeats as the play runs, its side's last"
+            + " card; the play runs as Standard1v1Battle.playMirror. On any other play it is"
+            + " unsupported");
     return new ScenarioPlan(
         seed, towers, decks, deckLevels, slotFlags, accounts, playerDataChoices, plays, abilities);
   }
@@ -464,7 +481,7 @@ public final class ReplayScenario {
     pin(body, "sid", "-1");
     int side = side(body, field, accounts);
     JsonNode item = required(body, "sel");
-    onlyFields(item, field + ".c.sel", "os", "pd");
+    onlyFields(item, field + ".c.sel", "os", "fs", "pd");
     GameRow card = cardRow(required(item, "os").asInt(), field + ".c.sel.os");
     int deckIndex = decks.get(side).indexOf(card.name());
     if (deckIndex < 0) {
@@ -474,6 +491,15 @@ public final class ReplayScenario {
     int level = deckLevels.get(side)[deckIndex];
     int slots = slotFlags.get(side)[deckIndex];
     int packed = required(item, "pd").asInt();
+    if (card.bool(MIRROR_COLUMN)) {
+      return mirrorPlay(body, item, index, side, card, deckIndex, level, slots, packed);
+    }
+    // Only a Mirror's item names a card it repeats.
+    if (item.has("fs")) {
+      throw new UnsupportedScenarioException(
+          "a repeated card on a play of " + card.name() + ", which is not the Mirror",
+          field + ".c.sel.fs=" + item.get("fs"));
+    }
     int packedField = packed & ITEM_FIELD_MASK;
     int packedOption = (packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK;
     int packedCount = (packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK;
@@ -523,7 +549,77 @@ public final class ReplayScenario {
         level,
         required(body, "px").asInt(),
         required(body, "py").asInt(),
-        packed);
+        packed,
+        null);
+  }
+
+  /**
+   * A Mirror's play. Its item is built by the player's client from the side's last card: {@code fs}
+   * names the card it repeats, and {@code pd} carries the Mirror's own deck index, its level field
+   * plus the level offset and its cost plus the repeated card's. The repeated card, the level field
+   * and the cost depend on the battle, so they are checked as the play runs ({@link
+   * #checkMirrorItem}); the parts the deck decides are checked here: the deck index, no slot flags,
+   * and no evolution, option, count or cosmetic field.
+   *
+   * <p>A Mirror item that names no repeated card, as one with nothing to repeat would be, and a
+   * Mirror in a deck's evolution or hero slot are in no reference, and are refused.
+   */
+  private ScenarioPlan.Play mirrorPlay(
+      JsonNode body,
+      JsonNode item,
+      int index,
+      int side,
+      GameRow card,
+      int deckIndex,
+      int level,
+      int slots,
+      int packed) {
+    String field = "cmd[" + index + "]";
+    if (slots != 0) {
+      throw new UnsupportedScenarioException(
+          "a Mirror in a deck's evolution or hero slot, whose item no reference holds",
+          "battle.deck" + side + ".sp[" + deckIndex + "].el=" + slots);
+    }
+    JsonNode repeats = item.get("fs");
+    if (repeats == null) {
+      throw new UnsupportedScenarioException(
+          "a Mirror play whose item names no repeated card, which no reference holds",
+          field + ".c.sel");
+    }
+    GameRow repeated = row(repeats.asInt(), field + ".c.sel.fs");
+    if ((packed & ITEM_FIELD_MASK) != 0
+        || ((packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK) != 0
+        || ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK) != 0
+        || ((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+        || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != 0
+        || ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK) != deckIndex + 1) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not one its deck card can carry",
+          field
+              + ".c.sel.pd="
+              + packed
+              + " ("
+              + describe(packed)
+              + ") for "
+              + card.name()
+              + " at deck index "
+              + deckIndex
+              + ", slot flags "
+              + slots
+              + " and level "
+              + level);
+    }
+    return new ScenarioPlan.Play(
+        index,
+        required(body, "t").asInt(),
+        required(body, "t2").asInt(),
+        side,
+        card.name(),
+        level,
+        required(body, "px").asInt(),
+        required(body, "py").asInt(),
+        packed,
+        new ScenarioPlan.Repeated(repeats.asInt(), repeated.name()));
   }
 
   /**
@@ -605,14 +701,75 @@ public final class ReplayScenario {
   }
 
   /**
+   * Checks a Mirror play's item against the Mirror item the simulator built as the play ran: the
+   * card it repeats ({@code fs}) must be the one the simulator's Mirror repeats, and the packed
+   * item's level field, deck index and cost the built item's. The simulator builds the item from
+   * its side's last card, so a play given with another item is one it does not model.
+   *
+   * @param play the Mirror play as the scenario gives it
+   * @param built the Mirror item the simulator built as the play ran, or null if it built none
+   * @throws UnsupportedScenarioException for an item other than the built one
+   */
+  public static void checkMirrorItem(ScenarioPlan.Play play, MirrorItem built) {
+    String field = "cmd[" + play.index() + "].c.sel";
+    if (built == null) {
+      throw new UnsupportedScenarioException(
+          "a Mirror play the simulator ran without building its item",
+          field + ".pd=" + play.item());
+    }
+    String repeated = built.repeats() == null ? null : built.repeats().name();
+    if (!play.repeats().name().equals(repeated)) {
+      throw new UnsupportedScenarioException(
+          "a Mirror play whose repeated card is not the one the simulator's Mirror repeats",
+          field
+              + ".fs="
+              + play.repeats().id()
+              + " ("
+              + play.repeats().name()
+              + "), where the simulator "
+              + (repeated == null ? "has nothing to repeat" : "repeats " + repeated));
+    }
+    // The parts the deck decides are as given, checked as the scenario was read.
+    int fromDeck =
+        play.item()
+            & ~((ITEM_LEVEL_MASK << ITEM_LEVEL_SHIFT)
+                | (ITEM_INDEX_MASK << ITEM_INDEX_SHIFT)
+                | (-1 << ITEM_COST_SHIFT));
+    int expected =
+        fromDeck
+            | ((built.levelField() & ITEM_LEVEL_MASK) << ITEM_LEVEL_SHIFT)
+            | (((built.index() + 1) & ITEM_INDEX_MASK) << ITEM_INDEX_SHIFT)
+            | (built.cost() << ITEM_COST_SHIFT);
+    if (expected != play.item()) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not the item the simulator builds as it runs",
+          field
+              + ".pd="
+              + play.item()
+              + " ("
+              + describe(play.item())
+              + ") for "
+              + play.card()
+              + ", where the simulator builds "
+              + expected
+              + " ("
+              + describe(expected)
+              + ")");
+    }
+  }
+
+  /**
    * Whether a play's item depends on the battle, so that only the run can check its evolution
-   * field, count and cost: a play of an evolution slot's card, or one with an evolution field.
+   * field, count and cost: a Mirror's play, a play of an evolution slot's card, or one with an
+   * evolution field.
    *
    * @param play the play as the scenario gives it
    * @param slotFlags the slot flags of the play's deck card
    */
   public static boolean dependsOnBattle(ScenarioPlan.Play play, int slotFlags) {
-    return (slotFlags & MatchSide.EVOLUTION_SLOT) != 0 || (play.item() & ITEM_FIELD_MASK) != 0;
+    return play.repeats() != null
+        || (slotFlags & MatchSide.EVOLUTION_SLOT) != 0
+        || (play.item() & ITEM_FIELD_MASK) != 0;
   }
 
   /** A packed item's fields, by name. */
