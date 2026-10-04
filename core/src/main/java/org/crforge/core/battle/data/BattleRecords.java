@@ -1905,9 +1905,10 @@ public final class BattleRecords {
    *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
    * never reads it: the summoned units take the level the card is played at. A card may summon a
-   * list of characters, each at an offset of its own, in place of its groups; one that lists them
-   * besides a group is refused, as no card does. The card's deploy time of its own is read nowhere
-   * on the placement's path, and is not read here.
+   * list of characters, each at an offset of its own, in place of its groups or after its first
+   * group, as the evolved Skeleton Army's general follows its soldiers; one that lists them besides
+   * a second group but no first is refused, as no card does. The card's deploy time of its own is
+   * read nowhere on the placement's path, and is not read here.
    *
    * @param name the card row's name
    */
@@ -1935,18 +1936,18 @@ public final class BattleRecords {
           name + " makes an area effect as well as a unit, which the cast does not model");
     }
     List<DeployCard.Listed> listed = listed(row);
-    if (!listed.isEmpty() && (set(row, "SummonCharacter") || set(row, "SummonCharacterSecond"))) {
+    boolean namesCharacter = !row.string("SummonCharacter").isEmpty();
+    if (!listed.isEmpty() && !namesCharacter && set(row, "SummonCharacterSecond")) {
       throw new UnsupportedOperationException(
-          name + " summons a list of characters besides a group, which no card does");
+          name
+              + " lists its characters besides a second group but no first, which no card does, not"
+              + " modelled");
     }
-    checkArgument(
-        !listed.isEmpty() || !row.string("SummonCharacter").isEmpty(),
-        () -> name + " summons no character");
+    checkArgument(!listed.isEmpty() || namesCharacter, () -> name + " summons no character");
     String second = row.string("SummonCharacterSecond");
     // The card's first unit, which the map check and the search read: its summoned character, else
-    // its list's first.
-    UnitData summoned =
-        listed.isEmpty() ? unit(row.string("SummonCharacter")) : listed.get(0).unit();
+    // its list's first. A card that names both places its groups first and its list after them.
+    UnitData summoned = namesCharacter ? unit(row.string("SummonCharacter")) : listed.get(0).unit();
     return new DeployCard(
         row.name(),
         summoned,
@@ -1977,7 +1978,9 @@ public final class BattleRecords {
         row.intValue("ProjectileInterval"),
         listed,
         row.bool("CharactersOffsetsXMirrored"),
-        row.bool("IsAGroup"));
+        row.bool("IsAGroup"),
+        null,
+        namesCharacter);
   }
 
   /**
@@ -2077,7 +2080,8 @@ public final class BattleRecords {
         List.of(),
         false,
         false,
-        set(row, "OnExecuteAction") ? row.string("OnExecuteAction") : null);
+        set(row, "OnExecuteAction") ? row.string("OnExecuteAction") : null,
+        false);
   }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */

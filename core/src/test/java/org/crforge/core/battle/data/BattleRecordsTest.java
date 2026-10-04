@@ -338,15 +338,38 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a card listing its characters besides a group, or more of them than offsets, is refused")
-  void aListBesidesAGroupIsRefused(@TempDir Path folder) throws IOException {
+      "a card naming its character and listing another places its group first and its list after"
+          + " it, the named character as the card's unit")
+  void aListBesidesTheFirstGroupFollowsIt() {
+    DeployCard card = records.card("SkeletonArmy_EV1");
+    assertThat(card.unit().name()).isEqualTo("SkeletonArmy_EV1_Soldier");
+    assertThat(card.namesCharacter()).isTrue();
+    assertThat(card.primaryCount()).isEqualTo(15);
+    assertThat(card.secondaryTotal()).isZero();
+    assertThat(card.total()).isEqualTo(16);
+    assertThat(card.unitAt(0).name()).isEqualTo("SkeletonArmy_EV1_Soldier");
+    assertThat(card.unitAt(14).name()).isEqualTo("SkeletonArmy_EV1_Soldier");
+    assertThat(card.unitAt(15).name()).isEqualTo("SkeletonArmy_EV1_General");
+    assertThat(card.listed())
+        .extracting(l -> l.unit().name() + " " + l.offsetX() + " " + l.offsetY())
+        .containsExactly("SkeletonArmy_EV1_General 0 1000");
+    assertThat(card.group()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a card listing its characters besides a second group but no first, or more of them than"
+          + " offsets, is refused")
+  void aListBesidesASecondGroupAloneIsRefused(@TempDir Path folder) throws IOException {
     BattleRecords altered =
         new BattleRecords(
             GameData.altered(
                 folder,
                 "spells_characters",
                 rows -> {
-                  GameData.columns(rows, "ThreeMusketeers").put("SummonCharacter", "Knight");
+                  GameData.columns(rows, "ThreeMusketeers")
+                      .put("SummonCharacterSecond", "Knight")
+                      .put("SummonCharacterSecondCount", 1);
                   GameData.columns(rows, "Barbarians")
                       .set(
                           "SummonCharactersList",
@@ -354,7 +377,9 @@ class BattleRecordsTest {
                 }));
     assertThatThrownBy(() -> altered.card("ThreeMusketeers"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("besides a group");
+        .hasMessage(
+            "ThreeMusketeers lists its characters besides a second group but no first, which no"
+                + " card does, not modelled");
     assertThatThrownBy(() -> altered.card("Barbarians"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("more characters than offsets");

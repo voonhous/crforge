@@ -170,7 +170,7 @@
   "evo-sweep-v2/evo_royalgiant_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_royalhogs_vs_musketeer": {"outcome": "unsupported", "feature": "RoyalHog_EV1 sets columns the battle does not model: [OnAttackAction]", "input": "the run"},
   "evo-sweep-v2/evo_royalrecruits_vs_musketeer": {"outcome": "diagnostic_match"},
-  "evo-sweep-v2/evo_skeletonarmy_vs_musketeer": {"outcome": "unsupported", "feature": "SkeletonArmy_EV1 summons a list of characters besides a group, which no card does", "input": "the run"},
+  "evo-sweep-v2/evo_skeletonarmy_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_skeletonballoon_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_skeletons_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_snowball_on_musketeer": {"outcome": "diagnostic_match"},
