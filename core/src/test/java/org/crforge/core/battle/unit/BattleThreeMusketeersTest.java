@@ -158,8 +158,8 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "an entry's action in a sequence of one, or beside a projectile, is refused as the unit is"
-          + " made")
+      "an entry's action in a sequence of one on a multi-target attacker, or beside a projectile,"
+          + " is refused as the unit is made")
   void unheldEntryActionsAreRefused(@TempDir Path folder) throws IOException {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     assertThatThrownBy(
@@ -167,7 +167,7 @@ class BattleThreeMusketeersTest {
                 new CharacterEntity(
                     match.getWorld(), GameData.unit("ElectroWizard_crazy_1"), "E", 0, X, Y, LEVEL))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("in a sequence of one");
+        .hasMessageContaining("in a sequence of one on a multi-target attacker");
 
     GameTables both =
         GameData.altered(

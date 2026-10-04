@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonBarrage;
+import org.crforge.core.battle.action.ChainAttackHost;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.FriendCollecting;
@@ -1369,8 +1370,10 @@ public class CharacterEntity extends WorldEntity {
    * and its attack range and minimum range (and, for a continuous-damage attacker, its window), and
    * an entry without a projectile or an action on a unit that fires. An entry's action is
    * established in place of a projectile, read from an order of two or more by an index only
-   * actions move; one with a projectile, in a sequence of one, in a continuous-damage attacker's or
-   * on a charging row is refused.
+   * actions move, and in a sequence of one beside the row's own projectile; one with a projectile,
+   * in a continuous-damage attacker's or on a charging row is refused, and in a sequence of one
+   * also on a multi-target attacker or beside a buff on damage, which the hit would apply only
+   * without a projectile.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1380,9 +1383,19 @@ public class CharacterEntity extends WorldEntity {
     if (sequence.mode() != AttackSequence.MODE_NONE && !windowed && !looped) {
       refused = "an attack sequence whose mode " + sequence.mode() + " moves the index itself";
     } else if (!sequence.replacesAttack()) {
+      // In a sequence of one the entry's action is still read, beside the row's own projectile.
       for (AttackSequence.Entry entry : sequence.entries()) {
-        if (entry.doAttackAction() != null) {
-          refused = "an attack sequence entry's action in a sequence of one";
+        if (entry.doAttackAction() == null) {
+          continue;
+        }
+        if (windowed || data.chargeRange() != 0) {
+          refused =
+              "an attack sequence entry's action in a continuous-damage attacker or on a"
+                  + " charging row";
+        } else if (data.multipleTargets() >= 2 || data.buffOnDamage() != null) {
+          refused =
+              "an attack sequence entry's action in a sequence of one on a multi-target attacker"
+                  + " or beside a buff on damage";
         }
       }
     } else {
@@ -3965,6 +3978,123 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void log(TargetIndicatorAttack.Event event) {
         world.targetIndicatorLogged(CharacterEntity.this, event);
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
+  }
+
+  /**
+   * What a chain projectile attack's run on the character asks of the battle: its point, height and
+   * row radius, its tag word and targeting component, its hit speed, the live list by id, where
+   * objects stand and what a projectile flies to, the centre query around a point, the objects'
+   * const-priority offsets, the hops it launches and the notice to its listening actions. Refused:
+   * a clone, whose clone byte the hops would copy.
+   */
+  @Override
+  public ChainAttackHost chainAttackHost() {
+    if (isClone()) {
+      throw new UnsupportedOperationException(
+          name() + " is a clone running a chain projectile attack, which is not modelled");
+    }
+    return new ChainAttackHost() {
+      @Override
+      public int ownerX() {
+        return getView().getX();
+      }
+
+      @Override
+      public int ownerY() {
+        return getView().getY();
+      }
+
+      @Override
+      public int ownerZ() {
+        return getView().getZ();
+      }
+
+      @Override
+      public int ownerRadius() {
+        return getData().collisionRadius();
+      }
+
+      @Override
+      public boolean attackingOrNoAttack() {
+        return (getView().getFlags() & (EntityFlags.ATTACKING | EntityFlags.NO_ATTACK)) != 0;
+      }
+
+      @Override
+      public boolean targetingOn() {
+        return isActive(TARGETING_SLOT);
+      }
+
+      @Override
+      public int timeStep(int stepMs) {
+        return getBuffs().hitSpeed(stepMs);
+      }
+
+      @Override
+      public boolean live(int id) {
+        return world.liveObject(id) != null;
+      }
+
+      @Override
+      public int x(int id) {
+        return object(id).getView().getX();
+      }
+
+      @Override
+      public int y(int id) {
+        return object(id).getView().getY();
+      }
+
+      @Override
+      public int z(int id) {
+        return object(id).getView().getZ();
+      }
+
+      @Override
+      public int[] projectileAim(int id) {
+        ProjectileEntity projectile = (ProjectileEntity) world.liveObject(id);
+        WorldEntity target = projectile.getTarget();
+        if (target != null && projectile.getData().homing()) {
+          GridEntity view = target.getView();
+          return new int[] {view.getX(), view.getY(), view.getZ()};
+        }
+        return new int[] {projectile.getAimX(), projectile.getAimY(), projectile.getAimZ()};
+      }
+
+      @Override
+      public List<Integer> centreQuery(int x, int y, int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.centreQuery(CharacterEntity.this, x, y, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public int priority(int id) {
+        return object(id).getView().getSquaredDistanceReduction();
+      }
+
+      @Override
+      public int launchFromOwner(String projectile, int targetId) {
+        ProjectileData data = world.getRecords().projectile(projectile);
+        return world.launchChainHop(CharacterEntity.this, data, object(targetId)).getId();
+      }
+
+      @Override
+      public int launchFrom(String projectile, int targetId, int x, int y, int z) {
+        ProjectileData data = world.getRecords().projectile(projectile);
+        return world.launchChainHop(CharacterEntity.this, data, object(targetId), x, y, z).getId();
+      }
+
+      @Override
+      public void attackEnded() {
+        actionHolder().attackEnded();
       }
 
       private WorldEntity object(int id) {

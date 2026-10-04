@@ -635,6 +635,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void attackCounted() {
         attackCount++;
+        // With the count the hit raises ATTACKING for one step.
+        getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.ATTACKING);
       }
 
       @Override
@@ -1814,13 +1816,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * The action the entity's next hit runs in place of hitting: the attack sequence's entry's at the
-   * index, when the sequence has two or more in its order and the entry names one; otherwise null.
+   * index, at any length of the order, when the entry names one; otherwise null. Unlike the entry's
+   * projectile and damage, its action is read in a sequence of one too.
    */
   private String attackAction() {
     AttackSequence sequence = data.attackSequence();
-    return sequence.replacesAttack()
-        ? sequence.entryAt(targeting.getAttackSequenceIndex()).doAttackAction()
-        : null;
+    return sequence.entries().isEmpty()
+        ? null
+        : sequence.entryAt(targeting.getAttackSequenceIndex()).doAttackAction();
   }
 
   /**
