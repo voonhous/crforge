@@ -268,6 +268,28 @@ public interface ActionOwner {
   }
 
   /**
+   * Builds the run of a flying warp a hand-over launches on the owner, as the hand-over's update
+   * does: the warp's row built for the owner, its run handed the target and the target's last
+   * position, and started. The caller lists it. Only a character flies a warp.
+   *
+   * @param handOver the row that launches it
+   * @param warpRow the name of the warp's row
+   * @param target the target taken from the mark, or null for none
+   * @param lastX where the target last stood, along the width
+   * @param lastY where the target last stood, along the length
+   * @return the warp's run, started
+   */
+  default ActionInstance launchWarp(
+      BattleAction handOver,
+      String warpRow,
+      SetIndicatorOnTarget.Candidate target,
+      int lastX,
+      int lastY) {
+    throw new UnsupportedOperationException(
+        handOver.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Warps the owner, as a warp's perform does. Only a character is warped.
    *
    * @param action the row

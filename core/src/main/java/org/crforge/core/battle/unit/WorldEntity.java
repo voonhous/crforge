@@ -1949,6 +1949,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Sets the entity's reference as a flying warp's arrival does when it keeps its target: onto the
+   * target, through the setter's re-check, or given up when there is none.
+   *
+   * @param keep the target, or null to give the reference up
+   */
+  void warpReference(WorldEntity keep) {
+    ReferenceSetter.setReference(
+        getTargeting(),
+        keep == null ? null : keep.getTargetView(),
+        false,
+        false,
+        false,
+        selection,
+        selection.getOutcome());
+  }
+
+  /**
    * Gives the entity's reference up, as a taunt's end does.
    *
    * @param keepWindUp true to keep the wind-up as it is, as the end of its duration does

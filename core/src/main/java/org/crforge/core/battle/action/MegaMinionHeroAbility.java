@@ -22,9 +22,9 @@ import org.crforge.core.pathfinding.GridEntityState;
  *       NoTargetOnDeployAction without one, on the owner, the owner as its cause.
  * </ol>
  *
- * <p>A leave notice of the target it holds drops it.
- *
- * <p>Refused rather than guessed, at the step that reaches it: the warp a re-trigger launches.
+ * <p>A leave notice of the target it holds drops it. After a re-trigger, the next step launches the
+ * warp, ActionToExecute: built for the owner, handed the target and the position recorded for it,
+ * listed on the holder and started.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -32,8 +32,8 @@ import org.crforge.core.pathfinding.GridEntityState;
         "Settled: the mark looked up on the holder each step and the finish without it, the"
             + " deploying state's choice without a target scheduled on the owner; held by"
             + " hero_mega_minion. The mark's target taken and kept, its position recorded, and"
-            + " leave notices of other objects; held by ability_hero_mega_minion_vs_musketeer."
-            + " Refused: the warp a re-trigger launches.")
+            + " leave notices of other objects, and the warp a re-trigger launches with the target"
+            + " and its position; held by ability_hero_mega_minion_vs_musketeer.")
 public final class MegaMinionHeroAbility extends RowAction {
 
   /**
@@ -138,15 +138,13 @@ public final class MegaMinionHeroAbility extends RowAction {
         }
       }
       if (warpRequested) {
-        throw new UnsupportedOperationException(
-            handOver.name()
-                + " is re-triggered to launch "
-                + columns.actionToExecute()
-                + " at "
-                + (target == null
-                    ? "no target"
-                    : target.rowName() + " (" + targetX + ", " + targetY + ")")
-                + ", which is not modelled");
+        // The warp is built with the target and its last position, listed and started; the run
+        // pass reaches it in this same pass, as it is listed after this run.
+        holder.list(
+            holder
+                .getOwner()
+                .launchWarp(handOver, columns.actionToExecute(), target, targetX, targetY));
+        warpRequested = false;
       }
     }
   }
