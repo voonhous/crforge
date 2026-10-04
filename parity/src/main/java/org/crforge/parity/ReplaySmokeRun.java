@@ -296,6 +296,16 @@ public final class ReplaySmokeRun {
               play.x(),
               play.y(),
               "cmd" + index);
+        } else if (play.option() != null) {
+          // A variant card's play runs as the option the battle's player picks as it gives it.
+          battle.playVariant(
+              play.runTick(),
+              play.card(),
+              play.level(),
+              play.side(),
+              play.x(),
+              play.y(),
+              "cmd" + index);
         } else {
           battle.play(
               play.runTick(),
@@ -364,8 +374,9 @@ public final class ReplaySmokeRun {
     if (!abilities.isEmpty()) {
       manifest.put("abilities_run", abilities);
     }
-    // A play that never ran had no item built: when its item depends on the battle (an evolution
-    // slot's card, or an evolved or hero field), the parts the run checks are listed as unchecked.
+    // A play that never ran had no item built: when its item depends on the battle (a Mirror's or a
+    // variant card's play, an evolution slot's card, or an evolved or hero field), the parts the
+    // run checks are listed as unchecked.
     List<String> unchecked = new ArrayList<>();
     for (ScenarioPlan.Play play : plan.plays()) {
       boolean ran = battle.getPlays().stream().anyMatch(p -> p.name().equals("cmd" + play.index()));
@@ -403,6 +414,10 @@ public final class ReplaySmokeRun {
       }
       if (given.repeats() != null) {
         ReplayScenario.checkMirrorItem(given, play.mirror());
+        continue;
+      }
+      if (given.option() != null) {
+        ReplayScenario.checkVariantItem(given, play.variant());
         continue;
       }
       int deckIndex = plan.decks().get(given.side()).indexOf(given.card());

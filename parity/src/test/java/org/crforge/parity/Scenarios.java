@@ -163,6 +163,98 @@ final class Scenarios {
     return scenario;
   }
 
+  /** The Merge Maiden's card, a variant card, by data id. */
+  static final int MERGE_MAIDEN = 28000025;
+
+  /** The mounted maiden's own card row, MergeMaiden_Mounted, by data id. */
+  static final int MOUNTED_MAIDEN_CARD = 26000105;
+
+  /** The Giant's card, by data id. */
+  static final int GIANT = 26000003;
+
+  /**
+   * The mounted Merge Maiden's item: the option field 1 (option 0, MergeMaiden_Mounted), a
+   * Legendary at level index 0 (level field 8), the deck index field 1 and the option's cost, 6.
+   */
+  static final int MOUNTED_MAIDEN_ITEM = 0x60402010;
+
+  /** The Merge Maiden's item on foot: the option field 2 (MergeMaiden_Normal) for its cost, 3. */
+  static final int MAIDEN_ON_FOOT_ITEM = 0x30402020;
+
+  /**
+   * The {@link #knight()} battle with side 0 on a deck that holds the Merge Maiden at deck index 0
+   * and the Giant at index 2, both in the opening hand, and side 1 on its own eight cards, playing
+   * none. Side 0 plays the Merge Maiden on tick 240 at (14500, 9500): the player's client picks its
+   * option from the king's elixir, about 9.9 then, and takes the mounted maiden, whose trigger is
+   * 6.
+   */
+  static ObjectNode mergeMaidenMounted() {
+    ObjectNode scenario = mergeMaidenDecks();
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 240, MERGE_MAIDEN, MOUNTED_MAIDEN_ITEM, 14500, 9500);
+    return scenario;
+  }
+
+  /**
+   * The {@link #mergeMaidenMounted()} decks with side 0's Giant played first, on tick 230 for 5
+   * elixir, and the Merge Maiden on tick 270: its option is picked from about 5.3 elixir, below the
+   * mounted maiden's trigger, so it is played as the maiden on foot, for 3.
+   */
+  static ObjectNode mergeMaidenOnFoot() {
+    ObjectNode scenario = mergeMaidenDecks();
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 230, GIANT, 0x50c00800, 14500, 8500);
+    addPlay(commands, 270, MERGE_MAIDEN, MAIDEN_ON_FOOT_ITEM, 14500, 9500);
+    return scenario;
+  }
+
+  /** The {@link #knight()} battle on the Merge Maiden's decks, with no command. */
+  private static ObjectNode mergeMaidenDecks() {
+    ObjectNode scenario = knight();
+    putDecks(
+        scenario,
+        new int[] {MERGE_MAIDEN, 26000002, GIANT, ARCHER, 28000001, KNIGHT, 26000005, 26000010},
+        new int[] {26000002, ARCHER, GIANT, KNIGHT, 26000014, 26000005, 27000000, 26000010});
+    return scenario;
+  }
+
+  /**
+   * A battle in which side 0 plays the mounted Merge Maiden and later the Mirror, with the maiden
+   * as its side's last card: Skeletons on 230, Goblins on 260, Zap on 290, the maiden (deck index
+   * 3) on 325 and the Mirror (deck index 5, level index 3) on 691, whose item names the mounted
+   * maiden's row, MergeMaiden_Mounted, as the card it repeats. Side 1 plays the Minions on 500 and
+   * the Knight on 540.
+   */
+  static ObjectNode mergeMaidenThenMirror() {
+    ObjectNode scenario = knight();
+    putDecks(
+        scenario,
+        new int[] {KNIGHT, 26000005, ARCHER, MERGE_MAIDEN, 28000008, MIRROR, 26000010, 26000002},
+        new int[] {26000002, ARCHER, GIANT, KNIGHT, 26000014, 26000005, 27000000, 26000010});
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(5)).put("l", 3);
+    ArrayNode commands = scenario.putArray("cmd");
+    addPlay(commands, 230, 26000010, 0x11c00000, 3500, 9000);
+    addPlay(commands, 260, 26000002, 0x22000000, 3500, 9000);
+    addPlay(commands, 290, 28000008, 0x21400000, 3500, 24500);
+    addPlay(commands, 325, MERGE_MAIDEN, 0x61002010, 14500, 9500);
+    addPlay(commands, 1, 500, 26000005, 0x31800000, 14500, 22000);
+    addPlay(commands, 1, 540, KNIGHT, 0x31000000, 14500, 21000);
+    addPlay(commands, 691, MIRROR, 0x71802400, 14500, 9500);
+    ((ObjectNode) commands.get(6).path("c").path("sel")).put("fs", MOUNTED_MAIDEN_CARD);
+    return scenario;
+  }
+
+  /** Puts both sides' eight cards, each at level index 0. */
+  private static void putDecks(ObjectNode scenario, int[] deck0, int[] deck1) {
+    int[][] decks = {deck0, deck1};
+    for (int side = 0; side < 2; side++) {
+      ArrayNode cards = ((ObjectNode) scenario.path("battle").path("deck" + side)).putArray("sp");
+      for (int id : decks[side]) {
+        cards.addObject().put("d", id).put("l", 0);
+      }
+    }
+  }
+
   /** The Archer Queen's card, by data id. */
   static final int ARCHER_QUEEN = 26000072;
 
