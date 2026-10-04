@@ -7,7 +7,7 @@
   "ability-sweep-v2/ability_hero_barb_log": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_elite_archer": {"outcome": "unsupported", "feature": "EliteArcherHero_Ability_Warp warps cmd0_0 with proj_4000002 aimed at it, whose drop no reference holds, not modelled", "input": "the run"},
   "ability-sweep-v2/ability_hero_goblins": {"outcome": "diagnostic_match"},
-  "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "unsupported", "feature": "IceGolemiteHero_Spawn_KnockBack_AEO spawns IceGolemiteHero_KnockBack_AEO, which sets columns not modelled: [Shape]", "input": "the run"},
+  "ability-sweep-v2/ability_hero_ice_golemite": {"outcome": "unsupported", "feature": "IceGolemiteHero_Spawn_Slow_AEO spawns IceGolemiteHero_Slow_AEO, which sets columns not modelled: [Shape, OnHitAction]", "input": "the run"},
   "ability-sweep-v2/ability_hero_knight": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion": {"outcome": "diagnostic_match"},
   "ability-sweep-v2/ability_hero_mega_minion_vs_musketeer": {"outcome": "unsupported", "feature": "MegaMinion_hero_ability_action is re-triggered to launch MegaMinion_hero_teleport_action at Musketeer (14723, 19185), which is not modelled", "input": "the run"},

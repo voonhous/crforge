@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -598,7 +599,8 @@ class BattleRecordsTest {
   @DisplayName(
       "a shaped area effect reads its rectangle and its filter, and its damage type without"
           + " damage; a circle with a filter and damage reads its radius and damage type, with a"
-          + " crown tower share too; a circle that pushes or splits its damage is not modelled")
+          + " crown tower share too, and a circle that pushes without damage its push; a circle"
+          + " that neither damages nor pushes, or splits its damage, is not modelled")
   void aShapedAreaEffect(@TempDir Path folder) throws IOException {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
     assertThat(wind.shaped()).isTrue();
@@ -608,8 +610,26 @@ class BattleRecordsTest {
     assertThat(wind.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").shaped()).isFalse();
     assertThat(records.areaEffect("Zap").filter()).isNull();
-    // A circle that pushes without damage is not held.
-    assertThat(records.areaEffect("IceGolemiteHero_KnockBack_AEO").unmodelledColumns())
+    // A circle that pushes without damage, as the Ice Golemite hero form's knockback does: its
+    // damage type is read by no hit.
+    AreaEffectData knockback = records.areaEffect("IceGolemiteHero_KnockBack_AEO");
+    assertThat(knockback.unmodelledColumns()).isEmpty();
+    assertThat(knockback.shapeRadius()).isEqualTo(1500);
+    assertThat(knockback.pushback()).isEqualTo(1000);
+    assertThat(knockback.damage()).isZero();
+    assertThat(knockback.damageType()).isNull();
+    assertThat(knockback.filter()).isEqualTo("CommonAreaDamageFilter");
+    // A circle that neither damages nor pushes is not held.
+    Files.createDirectories(folder.resolve("still"));
+    GameTables still =
+        GameData.altered(
+            folder.resolve("still"),
+            "area_effect_objects",
+            rows -> GameData.columns(rows, "IceGolemiteHero_KnockBack_AEO").put("Pushback", 0));
+    assertThat(
+            new BattleRecords(still)
+                .areaEffect("IceGolemiteHero_KnockBack_AEO")
+                .unmodelledColumns())
         .contains("Shape");
     // A circle whose damage a crown tower takes less of, hitting every 1500 ms, as the Ice
     // Golemite hero form's ability has; where its looping effect is shown is the view's.
