@@ -83,6 +83,34 @@ class BattleChampionTest {
   }
 
   @Test
+  @DisplayName(
+      "an ability command naming its unit by game object id answers that live unit; an id no live"
+          + " unit holds is refused and spends nothing")
+  void aCommandByGameObjectIdAnswersOnlyThatLiveUnit() {
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0; match == null || !inHand(match, "ArcherQueen"); word++) {
+      battle = new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+      match = battle.startLadderMatch(QUEEN_SKELETONS, KNIGHTS, word, 0);
+    }
+    playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q");
+    CharacterEntity queen = battle.getPlays().get(0).units().get(0);
+
+    int now = afterDeployWithElixir(battle, match);
+    battle.useAbility(now, 0, queen.getId() + 1000, "unknown");
+    battle.useAbility(now + 1, 0, queen.getId(), "queen");
+    run(battle, now + 1);
+
+    List<Standard1v1Battle.AbilityUse> uses = battle.getAbilityUses();
+    AbilityCommand.Outcome refused = uses.get(uses.size() - 2).outcome();
+    assertThat(refused.code()).isEqualTo(AbilityCommand.NO_CHAMPION);
+    assertThat(refused.elixirAfter()).isEqualTo(refused.elixirBefore());
+    assertThat(uses.get(uses.size() - 1).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(uses.get(uses.size() - 1).outcome().requested()).containsExactly(queen);
+    assertThat(uses.get(uses.size() - 1).unit()).isEqualTo("q_0");
+  }
+
+  @Test
   @DisplayName("an ability command outside a match, which has no champion slots, is refused")
   void aCommandOutsideAMatchIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());

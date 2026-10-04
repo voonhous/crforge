@@ -46,6 +46,9 @@ public final class ReplayScenario {
   /** The command type of a card play in the scenario's protocol version. */
   public static final int PLACE_CARD = 124;
 
+  /** The command type of an ability command, the tap on a champion's button. */
+  public static final int ABILITY = 178;
+
   /** Ids per table. */
   private static final int IDS_PER_TABLE = 1_000_000;
 
@@ -237,17 +240,39 @@ public final class ReplayScenario {
           "two sides of one account, whose commands name no side", "battle.avatarN.accountID");
     }
     List<ScenarioPlan.Play> plays = new ArrayList<>();
+    List<ScenarioPlan.Ability> abilities = new ArrayList<>();
     int index = 0;
     for (JsonNode command : required(scenario, "cmd")) {
-      plays.add(play(command, index++, decks, deckLevels, slotFlags, accounts));
+      String field = "cmd[" + index + "]";
+      int type = required(command, "ct").asInt();
+      if (type == PLACE_CARD) {
+        plays.add(play(command, index, decks, deckLevels, slotFlags, accounts));
+      } else if (type == ABILITY) {
+        abilities.add(ability(command, index, accounts));
+      } else {
+        throw new UnsupportedScenarioException("the command type " + type, field + ".ct");
+      }
+      index++;
     }
-    mapping.put("cmd[i].ct", "consumed: " + PLACE_CARD + ", a card play; any other is unsupported");
-    mapping.put("cmd[i].c.t", "carried: the tick the play was given on");
     mapping.put(
-        "cmd[i].c.t2", "consumed: Standard1v1Battle.play's tick, the tick the play runs on");
+        "cmd[i].ct",
+        "consumed: "
+            + PLACE_CARD
+            + ", a card play, or "
+            + ABILITY
+            + ", an ability command; any other is unsupported. Both kinds run in the scenario's"
+            + " order within a tick");
+    mapping.put("cmd[i].c.t", "carried: the tick the command was given on");
+    mapping.put(
+        "cmd[i].c.t2",
+        "consumed: the tick the command runs on, Standard1v1Battle.play's or useAbility's tick");
     mapping.put(
         "cmd[i].c.idHi/idLo",
-        "consumed: the playing side, the side whose avatar has this account id");
+        "consumed: the commanding side, the side whose avatar has this account id");
+    mapping.put(
+        "cmd[i].c.cgid",
+        "consumed (ability command only): the game object id of the unit the command names,"
+            + " Standard1v1Battle.useAbility's object id; the command names no row and no play");
     mapping.put("cmd[i].c.px/py", "consumed: the requested point in game units, as given");
     mapping.put("cmd[i].c.sid", "pinned: -1");
     mapping.put("cmd[i].c.sel.os", "consumed: the card row played, which must be in the deck");
@@ -262,7 +287,7 @@ public final class ReplayScenario {
             + " read for a card outside the evolution slot: the evolution field 2 for a hero"
             + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost");
     return new ScenarioPlan(
-        seed, towers, decks, deckLevels, slotFlags, accounts, playerDataChoices, plays);
+        seed, towers, decks, deckLevels, slotFlags, accounts, playerDataChoices, plays, abilities);
   }
 
   /**
@@ -433,25 +458,11 @@ public final class ReplayScenario {
       List<int[]> slotFlags,
       List<int[]> accounts) {
     String field = "cmd[" + index + "]";
-    int type = required(command, "ct").asInt();
-    if (type != PLACE_CARD) {
-      throw new UnsupportedScenarioException("the command type " + type, field + ".ct");
-    }
     JsonNode body = required(command, "c");
     onlyFields(command, field, "ct", "c");
     onlyFields(body, field + ".c", "t", "t2", "idHi", "idLo", "px", "py", "sid", "sel");
     pin(body, "sid", "-1");
-    int hi = required(body, "idHi").asInt();
-    int lo = required(body, "idLo").asInt();
-    int side = -1;
-    for (int s = 0; s < 2; s++) {
-      if (accounts.get(s)[0] == hi && accounts.get(s)[1] == lo) {
-        side = s;
-      }
-    }
-    if (side < 0) {
-      throw new IllegalArgumentException(field + " names the account " + hi + "/" + lo);
-    }
+    int side = side(body, field, accounts);
     JsonNode item = required(body, "sel");
     onlyFields(item, field + ".c.sel", "os", "pd");
     GameRow card = cardRow(required(item, "os").asInt(), field + ".c.sel.os");
@@ -513,6 +524,40 @@ public final class ReplayScenario {
         required(body, "px").asInt(),
         required(body, "py").asInt(),
         packed);
+  }
+
+  /**
+   * One ability command: the tap on a champion's button. Its fields name the commanding side, by
+   * account, and one unit, by its game object id ({@code cgid}); the command carries no row and no
+   * play of the unit, so only the live unit with that id answers it.
+   */
+  private static ScenarioPlan.Ability ability(JsonNode command, int index, List<int[]> accounts) {
+    String field = "cmd[" + index + "]";
+    JsonNode body = required(command, "c");
+    onlyFields(command, field, "ct", "c");
+    onlyFields(body, field + ".c", "t", "t2", "idHi", "idLo", "cgid");
+    return new ScenarioPlan.Ability(
+        index,
+        required(body, "t").asInt(),
+        required(body, "t2").asInt(),
+        side(body, field, accounts),
+        required(body, "cgid").asInt());
+  }
+
+  /** The side a command's account id names: the side whose avatar has it. */
+  private static int side(JsonNode body, String field, List<int[]> accounts) {
+    int hi = required(body, "idHi").asInt();
+    int lo = required(body, "idLo").asInt();
+    int side = -1;
+    for (int s = 0; s < 2; s++) {
+      if (accounts.get(s)[0] == hi && accounts.get(s)[1] == lo) {
+        side = s;
+      }
+    }
+    if (side < 0) {
+      throw new IllegalArgumentException(field + " names the account " + hi + "/" + lo);
+    }
+    return side;
   }
 
   /**
