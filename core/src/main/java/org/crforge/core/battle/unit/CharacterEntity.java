@@ -2536,14 +2536,18 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Hidden while it tunnels to its placement, in the spawn-pathfinding state, while it routes to a
-   * point its ability sent it to, unless its row keeps it visible there, for a row that hides while
-   * it does not attack, while its hide counter stands exactly at its hide time, and while its tag
-   * word holds the hidden tag, which a hiding run sets.
+   * Hidden while it waits its turn to deploy, which the test asks first, while it tunnels to its
+   * placement, in the spawn-pathfinding state, while it routes to a point its ability sent it to,
+   * unless its row keeps it visible there, for a row that hides while it does not attack, while its
+   * hide counter stands exactly at its hide time, and while its tag word holds the hidden tag,
+   * which a hiding run sets. So every hit, area and filter that asks this test passes a unit of a
+   * play that still waits by, and the damage entry refuses it, but for an area effect that reaches
+   * hidden units.
    */
   @Override
   public boolean hidden() {
-    return tunnelling()
+    return waiting()
+        || tunnelling()
         || ingamePathfinding() && !getData().ingamePathfindVisible()
         || getData().hidesWhenNotAttacking()
             && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs())
@@ -2567,9 +2571,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * An area effect that reaches hidden units reaches it hidden by its hide counter. One reaching it
-   * in its tunnel, routing to a point its ability sent it to, or hidden by its tag, is not
-   * modelled.
+   * An area effect that reaches hidden units reaches it hidden by its hide counter, and while it
+   * waits its turn to deploy. One reaching it in its tunnel, routing to a point its ability sent it
+   * to, or hidden by its tag, is not modelled.
    */
   @Override
   protected boolean reachableWhileHidden() {
