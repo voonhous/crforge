@@ -1476,6 +1476,39 @@ public interface WorldObserver {
       int tick, WorldEntity unit, String action, int phase, int counter) {}
 
   /**
+   * A ground-to-air run started on a character.
+   *
+   * @param tick the battle tick
+   * @param unit the character
+   * @param action the row
+   * @param phase the pending pass it started in
+   * @param runPhase the run's phase: 1 climbing, 2 held
+   * @param counter what is left of the phase
+   */
+  default void groundToAirStarted(
+      int tick, WorldEntity unit, String action, int phase, int runPhase, int counter) {}
+
+  /**
+   * A ground-to-air run took a step.
+   *
+   * @param tick the battle tick
+   * @param unit the character
+   * @param phaseBefore the phase as the step began
+   * @param phaseAfter the phase as it ended
+   * @param counterBefore what was left of the phase as the step began
+   * @param counterAfter what was left as it ended
+   * @param pushes the height changes the step pushed
+   */
+  default void groundToAirStepped(
+      int tick,
+      WorldEntity unit,
+      int phaseBefore,
+      int phaseAfter,
+      int counterBefore,
+      int counterAfter,
+      List<Integer> pushes) {}
+
+  /**
    * A laser ball's run started on an area effect.
    *
    * @param tick the battle tick

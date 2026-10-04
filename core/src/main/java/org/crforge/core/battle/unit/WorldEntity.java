@@ -22,6 +22,7 @@ import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
+import org.crforge.core.battle.action.GroundToAir;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
@@ -1402,6 +1403,22 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   private boolean layered;
 
+  /**
+   * The flying height a ground-to-air run gave the entity as it started, or 0 for none: an
+   * air-to-ground run starting on it reads this height in place of its row's when it is above 0.
+   */
+  private int flyingHeightOverride;
+
+  /** The flying height a ground-to-air run gave the entity, or 0 for none. */
+  int flyingHeightOverride() {
+    return flyingHeightOverride;
+  }
+
+  /** Sets the flying height a ground-to-air run gives the entity as it starts. */
+  void setFlyingHeightOverride(int height) {
+    flyingHeightOverride = height;
+  }
+
   /** The height changes pushed since the last pre-hook, each with its floor, in order. */
   private final List<int[]> heightPushes = new ArrayList<>();
 
@@ -1535,6 +1552,30 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
+    return run;
+  }
+
+  /**
+   * Starts a ground-to-air run on the entity, listed by the holder. Only a character takes one; a
+   * clone, a hovering unit, and a unit that rides another or carries riders are refused.
+   */
+  @Override
+  public ActionInstance groundToAir(GroundToAir action, int phase) {
+    if (!(this instanceof CharacterEntity unit)
+        || data.hovering()
+        || unit.isClone()
+        || unit.getParent() != null
+        || !unit.riders().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " lifts "
+              + name()
+              + ", not a character, or a clone, a hovering unit, a rider or a carrier, which is"
+              + " not modelled");
+    }
+    startLayering();
+    GroundToAirRun run = new GroundToAirRun(action, unit);
+    world.groundToAirStarted(this, action.name(), phase, run.phase(), run.counter());
     return run;
   }
 
