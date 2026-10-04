@@ -2,5 +2,5 @@
 # and tested against, and the data version folder in it. CI checks that commit out for the game
 # tables (<version>/) and the recorded reference battles (references/<version>/). Move it in the
 # change that needs newer data.
-commit=0f6de7269498a84ac7d38ec848e22d82ae0bfb05
+commit=ce6189aa84eb51eddba44de5787b1f094da5282b
 version=14.593.1
