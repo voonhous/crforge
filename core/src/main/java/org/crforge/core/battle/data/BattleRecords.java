@@ -486,7 +486,16 @@ public final class BattleRecords {
           // Read once, outside the battle's logic, beside the deploy time's conversion for the
           // deploy animation; the state visit's deploy step does not read it, and a guard that
           // sets it deploys natively as the battle deploys it.
-          "DeployTimeChangesDeployAnim");
+          "DeployTimeChangesDeployAnim",
+          // The evolved Pekka's soul: on a kill of a character, TempResurrect hands the kill to
+          // the battle's presentation listener, which changes nothing the battle reads; the
+          // parameters, effects and filter of the soul's flight are read by no battle logic. The
+          // kill's heal is the row's killed-done action, modelled apart.
+          "TempResurrect",
+          "ResurrectParameters",
+          "ResurrectFlyingEffect",
+          "ResurrectGainChargeEffect",
+          "ResurrectChargeFilter");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread

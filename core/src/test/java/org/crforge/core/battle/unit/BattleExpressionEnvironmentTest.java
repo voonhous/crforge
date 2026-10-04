@@ -284,4 +284,50 @@ class BattleExpressionEnvironmentTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("which is not a character");
   }
+
+  /** A Knight of side 0 that has taken a still unit of side 1 as its reference. */
+  private static CharacterEntity referencing(Standard1v1Battle match, String row) {
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 10000);
+    CharacterEntity target =
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit(row),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            1,
+            9000,
+            13000);
+    target.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    target.setActive(CharacterEntity.TARGETING_SLOT, false);
+    for (int i = 0; i < 100 && knight.getTargeting().getReference() == null; i++) {
+      match.getBattle().step();
+    }
+    assertThat(knight.getTargeting().getReference()).as(row + " referenced").isNotNull();
+    return knight;
+  }
+
+  @Test
+  @DisplayName(
+      "target_max_hp(10) is the reference's row's hit points at card level 11, re-based on its"
+          + " rarity, whatever level it was played at; with no argument the reference's maximum")
+  void targetMaxHpAtALevel() {
+    String[] rows = {"Knight", "MiniPekka", "Golem", "Skeleton", "SuperMiniPekka", "MegaMonk"};
+    int[] expected = {1766, 1390, 5120, 81, 1573, 3800};
+    for (int i = 0; i < rows.length; i++) {
+      Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, false);
+      BattleExpressionEnvironment environment =
+          new BattleExpressionEnvironment(referencing(match, rows[i]), match.getWorld());
+      assertThat(evaluate("target_max_hp(10)", environment)).as(rows[i]).isEqualTo(expected[i]);
+    }
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, false);
+    CharacterEntity knight = referencing(match, "Knight");
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+    WorldEntity target =
+        match.getWorld().entityOf(knight.getTargeting().getReference().getEntity());
+    assertThat(evaluate("target_max_hp()", environment))
+        .isEqualTo(target.getHitPoints().getMaximum());
+    knight.setActive(CharacterEntity.TARGETING_SLOT, false);
+    assertThat(evaluate("target_max_hp(10)", environment)).as("targeting off").isZero();
+  }
 }
