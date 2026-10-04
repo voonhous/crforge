@@ -194,6 +194,7 @@
   "launch-recoil-v2/zap_machine_fireballed_on_launch": {"outcome": "diagnostic_match"},
   "launch-recoil-v2/zap_machine_launch_recoil": {"outcome": "diagnostic_match"},
   "pekka-resurrect-v2/evo_pekka_kills_giant_knight_musketeer": {"outcome": "diagnostic_match"},
+  "ragebarbarian-ghost-v2/evo_ragebarbarian_ghost_walks_out": {"outcome": "diagnostic_match"},
   "smoke-c1/archer_s0": {"outcome": "diagnostic_match"},
   "smoke-c1/arrows_s0_tower": {"outcome": "diagnostic_match"},
   "smoke-c1/cycle_s0": {"outcome": "diagnostic_match"},
