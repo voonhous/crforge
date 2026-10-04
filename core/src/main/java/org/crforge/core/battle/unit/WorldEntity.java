@@ -1334,18 +1334,42 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   public void launched(int aimX, int aimY) {}
 
   /**
+   * The tag recompute the holder's add runs as the entity is handed over and again as it is
+   * admitted: the bare recompute, without the pre-hook's readers of the new word. A character
+   * spawned on another unit therefore carries its row's tags in its registration visit, and a row
+   * that sets AVOIDANCE_AS_OBSTACLE keeps its push pass from moving it on the tick it is made; a
+   * one-step tag written between the hand-over and the admission is folded at the admission and
+   * gone from the next pre-hook.
+   */
+  @Override
+  protected void addTagFold() {
+    recomputeTags();
+  }
+
+  /**
+   * The tag word every reader sees becomes the one-step word handlers wrote since the last
+   * recompute, which is then cleared, with the tags of every action the entity lists, of every buff
+   * listed on it and, for a character, the tags its own row sets.
+   */
+  private void recomputeTags() {
+    GridEntity view = getView();
+    view.setFlags(view.getPendingFlags() | actionTags() | buffs.tags() | rowTags());
+    view.setPendingFlags(0);
+  }
+
+  /**
    * The tag recompute every entity runs first thing in its pre-hook: the tag word every reader sees
    * becomes the one-step word handlers wrote since the last recompute, which is then cleared,
    * together with the tags of every action the entity runs, of every buff listed on it and, for a
    * character, the tags its own row sets. A tag a handler sets therefore lasts one step, a tag an
-   * action or a buff sets lasts as long as the action or the buff is listed, and a row's tags are
-   * there from the first pre-hook after the entity is made.
+   * action or a buff sets lasts as long as the action or the buff is listed. The holder's add runs
+   * the same recompute ({@link #addTagFold()}), so a row's tags are there from the moment the
+   * entity is handed over, before its registration visit.
    */
   @Override
   protected void preHook() {
+    recomputeTags();
     GridEntity view = getView();
-    view.setFlags(view.getPendingFlags() | actionTags() | buffs.tags() | rowTags());
-    view.setPendingFlags(0);
     if (tagsWatched) {
       long word = view.getFlags() & watchedTagMask();
       if (word != watchedWord) {
