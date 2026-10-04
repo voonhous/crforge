@@ -17,7 +17,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * neighbour tried first at each distance, at that cell's centre; with none, the starting row's
  * centre. The unit is placed there in one write. Then its pending damage is reset, its route
  * emptied and its reference dropped; the two effects only show something. It has no run: it is done
- * as it starts.
+ * as it starts. The reset, the flying warp's start's alike and the same as entering a pathfinding
+ * state, makes every projectile aimed at the unit lose it as its target, handing nothing back: each
+ * flies on to its aim, where the unit stood for it before the warp, and lands on nothing.
  *
  * <p>The flying warp ({@link #getFlight()} not null, mode InjectedCharacter with a speed) is not
  * started by the runner: the Mega Minion hero's hand-over builds its run with the target it took
@@ -29,20 +31,21 @@ import org.crforge.core.fidelity.FidelityStatus;
  * speed, an offset away from a tower, a warp that makes the unit untargetable for a step after it,
  * tags, a singleton instant warp, a next action that waits for it, and the gates. As it starts: an
  * owner other than a character, a flying warp started by the runner, which no injected target
- * reaches, and a projectile aimed at the unit, whose drop no reference holds.
+ * reaches, and a projectile aimed at the unit whose row keeps its target through the reset.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the offset by the side, the clamp, the vertical search off water"
             + " and blocked cells, the single position write, the pending damage reset, the route"
-            + " and reference cleared. Held by boss_bandit_ability_tower and"
-            + " boss_bandit_ability_charges. The flying warp's start, steps and arrival, held by"
+            + " and reference cleared, the projectiles aimed at the unit dropped. Held by"
+            + " boss_bandit_ability_tower, boss_bandit_ability_charges and, for the dropped arrow,"
+            + " ability_hero_elite_archer. The flying warp's start, steps and arrival, held by"
             + " ability_hero_mega_minion_vs_musketeer. Not modelled: the two effects. Refused:"
             + " another mode, a relative speed, an instant injected warp, the tower offset, the"
             + " untargetable step, tags, a singleton instant warp, a next action that waits, the"
             + " gates, an owner other than a character, a flying warp the runner starts and a"
-            + " projectile aimed at the unit.")
+            + " projectile aimed at the unit whose row keeps its target through the reset.")
 public final class WarpCharacter extends RowAction {
 
   /**
