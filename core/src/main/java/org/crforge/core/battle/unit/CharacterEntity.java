@@ -35,6 +35,7 @@ import org.crforge.core.battle.action.GroupChain;
 import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
@@ -4345,6 +4346,107 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void attackEnded() {
         actionHolder().attackEnded();
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
+  }
+
+  /**
+   * What a net attack's run on the character asks of the battle: its tag word, hit speed and
+   * targeting component with its load and attack time, its point and row radius, the object query
+   * around it testing buildings by their squares, where objects stand, the target locks, the nets
+   * it launches and the actions it schedules on itself. Refused: a clone, whose clone byte the net
+   * would copy.
+   */
+  @Override
+  public NetAttackHost netAttackHost() {
+    if (isClone()) {
+      throw new UnsupportedOperationException(
+          name() + " is a clone running a net attack, which is not modelled");
+    }
+    return new NetAttackHost() {
+      @Override
+      public boolean noAttack() {
+        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+      }
+
+      @Override
+      public int timeStep(int stepMs) {
+        return getBuffs().hitSpeed(stepMs);
+      }
+
+      // The component is off while the character deploys or waits to, as the combat gate has it.
+      @Override
+      public boolean targetingOn() {
+        return isActive(TARGETING_SLOT) && !deploying() && !waiting();
+      }
+
+      @Override
+      public int loadedMs() {
+        return getData().loadTimeMs() - getTargeting().getLoadTimerMs();
+      }
+
+      @Override
+      public int hitSpeedMs() {
+        return getData().hitSpeedMs();
+      }
+
+      @Override
+      public int attackTimeMs() {
+        return getTargeting().getAttackTimerMs();
+      }
+
+      @Override
+      public int ownerX() {
+        return getView().getX();
+      }
+
+      @Override
+      public int ownerY() {
+        return getView().getY();
+      }
+
+      @Override
+      public int ownerRadius() {
+        return getData().collisionRadius();
+      }
+
+      @Override
+      public List<Integer> query(int radius, GameObjectFilter filter) {
+        List<Integer> ids = new ArrayList<>();
+        for (WorldEntity entity : world.shapeQuery(CharacterEntity.this, radius, filter)) {
+          ids.add(entity.getId());
+        }
+        return ids;
+      }
+
+      @Override
+      public int x(int id) {
+        return object(id).getView().getX();
+      }
+
+      @Override
+      public int y(int id) {
+        return object(id).getView().getY();
+      }
+
+      @Override
+      public boolean heldByOther(int id, int channel) {
+        return world.lockHeldByOther(getId(), id, channel);
+      }
+
+      @Override
+      public int launch(String projectile, int targetId, int x, int y, int z) {
+        ProjectileData data = world.getRecords().projectile(projectile);
+        return world.launchChainHop(CharacterEntity.this, data, object(targetId), x, y, z).getId();
+      }
+
+      @Override
+      public void schedule(BattleAction action) {
+        actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
       }
 
       private WorldEntity object(int id) {

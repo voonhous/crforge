@@ -97,13 +97,14 @@ class BattleCardPlayTest {
   @DisplayName(
       "a played unit is started, and a starting action the battle does not have is refused")
   void aUnitWithAnUnknownStartingActionIsRefused(@TempDir Path folder) throws IOException {
-    // A Knight given the net attack of the Hunter's evolution, a class the battle does not have.
+    // A Knight given the skeleton watch of the Witch's evolution, a class the battle does not have.
     GameTables tables =
         GameData.altered(
             folder,
             "characters",
             rows ->
-                GameData.columns(rows, "Knight").put("OnStartingAction", "Hunter_EV1_net_attack"));
+                GameData.columns(rows, "Knight")
+                    .put("OnStartingAction", "Witch_EV1_On_Skeleton_Destroyed"));
     Standard1v1Battle match = new Standard1v1Battle(tables);
     match.play(
         0,
@@ -121,6 +122,6 @@ class BattleCardPlayTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionHunterNetAttack");
+        .hasMessageContaining("ActionRunActionOnTroopDestroyed");
   }
 }
