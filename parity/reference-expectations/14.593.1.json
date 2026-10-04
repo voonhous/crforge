@@ -251,7 +251,7 @@
   "spell-interaction-v2/spell_fireball_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_freeze_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_goblinbarrel_into_push": {"outcome": "diagnostic_match"},
-  "spell-interaction-v2/spell_goblincurse_into_push": {"outcome": "mismatch", "first_divergent_tick": 575, "path": "$.entities[2].x"},
+  "spell-interaction-v2/spell_goblincurse_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_graveyard_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_heal_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_lightning_into_push": {"outcome": "diagnostic_match"},
