@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
@@ -14,6 +15,8 @@ import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.battle.match.SpellVariant;
+import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -43,7 +46,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * checked as the play runs, against the item the simulator builds ({@link #checkItem}). A Mirror's
  * item also names the card it repeats ({@code fs}); that card, the level field and the cost depend
  * on the battle, and are checked against the Mirror item the simulator builds ({@link
- * #checkMirrorItem}).
+ * #checkMirrorItem}). A variant card's item names the option it is played as in the option field
+ * and carries that option's cost; the option the player's client picks depends on the battle, and
+ * is checked against the variant item the simulator builds ({@link #checkVariantItem}).
  */
 public final class ReplayScenario {
 
@@ -137,6 +142,12 @@ public final class ReplayScenario {
   /** The card row column that marks the Mirror, whose play repeats its side's last card. */
   private static final String MIRROR_COLUMN = "Mirror";
 
+  /**
+   * The card row column that names a card's custom class: a variant card's, played as one of its
+   * options, is the only one a match models.
+   */
+  private static final String CUSTOM_CLASS_COLUMN = "CustomClassType";
+
   /** A player's data with no emotes listed. */
   private static final String NO_EMOTES = "{\"em\":{\"oe\":[],\"de\":[]}}";
 
@@ -144,6 +155,10 @@ public final class ReplayScenario {
   private static final int NO_EMOTES_CHOICES = 1;
 
   private final GameTables tables;
+
+  /** The battle's reading of the tables, which a variant card's options are read through. */
+  private final BattleRecords records;
+
   private final Map<String, String> mapping = new LinkedHashMap<>();
 
   /**
@@ -151,6 +166,7 @@ public final class ReplayScenario {
    */
   public ReplayScenario(GameTables tables) {
     this.tables = tables;
+    this.records = new BattleRecords(tables);
   }
 
   /** What became of each scenario field, in the order they were read. */
@@ -296,7 +312,12 @@ public final class ReplayScenario {
             + " Mirror's: its deck index field as above, its slot flags, evolution, option, count"
             + " and cosmetic fields 0, and its level field (the Mirror's plus the level offset)"
             + " and cost (the Mirror's plus the repeated card's) against the Mirror item the"
-            + " simulator builds as the play runs");
+            + " simulator builds as the play runs. A variant card's: its deck index and level"
+            + " fields as above, its slot flags, evolution, count and cosmetic fields 0, its"
+            + " option field one of the card's options plus 1 and its cost that option's"
+            + " cost, and its option field and cost against the variant item the simulator"
+            + " builds as the play runs, from the option its player picks; the play runs as"
+            + " Standard1v1Battle.playVariant");
     mapping.put(
         "cmd[i].c.sel.fs",
         "checked (a Mirror's play only, where it is required): the card row the item repeats,"
@@ -500,6 +521,11 @@ public final class ReplayScenario {
           "a repeated card on a play of " + card.name() + ", which is not the Mirror",
           field + ".c.sel.fs=" + item.get("fs"));
     }
+    // A card of a custom class is a variant card, which the match reads its options from.
+    if (!card.string(CUSTOM_CLASS_COLUMN).isEmpty()) {
+      SpellVariant variant = records.matchCard(card.name()).variant();
+      return variantPlay(body, index, side, card, deckIndex, level, slots, packed, variant);
+    }
     int packedField = packed & ITEM_FIELD_MASK;
     int packedOption = (packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK;
     int packedCount = (packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK;
@@ -550,7 +576,87 @@ public final class ReplayScenario {
         required(body, "px").asInt(),
         required(body, "py").asInt(),
         packed,
+        null,
         null);
+  }
+
+  /**
+   * A variant card's play. Its item is built by the player's client from the option it picks as it
+   * gives the play: the option field is the option's index plus 1 and the cost is the option row's.
+   * The option picked depends on the battle, so it is checked as the play runs ({@link
+   * #checkVariantItem}); the parts the deck decides are checked here: the option field names one of
+   * the card's options, the cost is that option's, the deck index and level fields are the card's,
+   * and there are no slot flags and no evolution, count or cosmetic field.
+   *
+   * <p>A variant card in a deck's evolution or hero slot is in no reference, and is refused.
+   */
+  private ScenarioPlan.Play variantPlay(
+      JsonNode body,
+      int index,
+      int side,
+      GameRow card,
+      int deckIndex,
+      int level,
+      int slots,
+      int packed,
+      SpellVariant variant) {
+    String field = "cmd[" + index + "]";
+    if (slots != 0) {
+      throw new UnsupportedScenarioException(
+          "a variant card in a deck's evolution or hero slot, whose item no reference holds",
+          "battle.deck" + side + ".sp[" + deckIndex + "].el=" + slots);
+    }
+    int optionField = (packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK;
+    if (optionField < 1 || optionField > variant.options().size()) {
+      throw new UnsupportedScenarioException(
+          "a variant play whose option field names none of its card's options",
+          field
+              + ".c.sel.pd="
+              + packed
+              + " ("
+              + describe(packed)
+              + ") for "
+              + card.name()
+              + ", which has "
+              + variant.options().size()
+              + " options");
+    }
+    SpellVariant.Option option = variant.options().get(optionField - 1);
+    if ((packed & ITEM_FIELD_MASK) != 0
+        || ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK) != 0
+        || ((packed >>> ITEM_LEVEL_SHIFT) & ITEM_LEVEL_MASK) != level - 1
+        || ((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
+        || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != 0
+        || ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK) != deckIndex + 1
+        || packed >>> ITEM_COST_SHIFT != option.cost()) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not one its deck card can carry",
+          field
+              + ".c.sel.pd="
+              + packed
+              + " ("
+              + describe(packed)
+              + ") for "
+              + card.name()
+              + " at deck index "
+              + deckIndex
+              + ", slot flags "
+              + slots
+              + " and level "
+              + level);
+    }
+    return new ScenarioPlan.Play(
+        index,
+        required(body, "t").asInt(),
+        required(body, "t2").asInt(),
+        side,
+        card.name(),
+        level,
+        required(body, "px").asInt(),
+        required(body, "py").asInt(),
+        packed,
+        null,
+        new ScenarioPlan.Option(optionField - 1, option.spell(), option.cost()));
   }
 
   /**
@@ -619,7 +725,8 @@ public final class ReplayScenario {
         required(body, "px").asInt(),
         required(body, "py").asInt(),
         packed,
-        new ScenarioPlan.Repeated(repeats.asInt(), repeated.name()));
+        new ScenarioPlan.Repeated(repeats.asInt(), repeated.name()),
+        null);
   }
 
   /**
@@ -759,15 +866,62 @@ public final class ReplayScenario {
   }
 
   /**
+   * Checks a variant card's play item against the variant item the simulator built as the play ran:
+   * the packed item's option field must be the option the simulator's player picked plus 1, and its
+   * deck index and cost the built item's. The simulator picks the option from the king's elixir as
+   * the play is given, so a play given as another option is one it does not model.
+   *
+   * @param play the variant card's play as the scenario gives it
+   * @param built the variant item the simulator built as the play ran, or null if it built none
+   * @throws UnsupportedScenarioException for an item other than the built one
+   */
+  public static void checkVariantItem(ScenarioPlan.Play play, VariantItem built) {
+    String field = "cmd[" + play.index() + "].c.sel";
+    if (built == null) {
+      throw new UnsupportedScenarioException(
+          "a variant play the simulator ran without building its item",
+          field + ".pd=" + play.item());
+    }
+    // The parts the deck decides are as given, checked as the scenario was read.
+    int fromDeck =
+        play.item()
+            & ~((ITEM_OPTION_MASK << ITEM_OPTION_SHIFT)
+                | (ITEM_INDEX_MASK << ITEM_INDEX_SHIFT)
+                | (-1 << ITEM_COST_SHIFT));
+    int expected =
+        fromDeck
+            | (((built.option() + 1) & ITEM_OPTION_MASK) << ITEM_OPTION_SHIFT)
+            | (((built.index() + 1) & ITEM_INDEX_MASK) << ITEM_INDEX_SHIFT)
+            | (built.cost() << ITEM_COST_SHIFT);
+    if (expected != play.item()) {
+      throw new UnsupportedScenarioException(
+          "a play whose packed item is not the item the simulator builds as it runs",
+          field
+              + ".pd="
+              + play.item()
+              + " ("
+              + describe(play.item())
+              + ") for "
+              + play.card()
+              + ", where the simulator builds "
+              + expected
+              + " ("
+              + describe(expected)
+              + ")");
+    }
+  }
+
+  /**
    * Whether a play's item depends on the battle, so that only the run can check its evolution
-   * field, count and cost: a Mirror's play, a play of an evolution slot's card, or one with an
-   * evolution field.
+   * field, count and cost: a Mirror's play, a variant card's, a play of an evolution slot's card,
+   * or one with an evolution field.
    *
    * @param play the play as the scenario gives it
    * @param slotFlags the slot flags of the play's deck card
    */
   public static boolean dependsOnBattle(ScenarioPlan.Play play, int slotFlags) {
     return play.repeats() != null
+        || play.option() != null
         || (slotFlags & MatchSide.EVOLUTION_SLOT) != 0
         || (play.item() & ITEM_FIELD_MASK) != 0;
   }

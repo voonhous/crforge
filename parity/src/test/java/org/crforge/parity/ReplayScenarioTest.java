@@ -39,7 +39,8 @@ class ReplayScenarioTest {
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
     assertThat(plan.plays())
         .containsExactly(
-            new ScenarioPlan.Play(0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000, null));
+            new ScenarioPlan.Play(
+                0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000, null, null));
     // No deck item names slot flags: every card is in neither slot.
     assertThat(plan.slotFlags().get(0)).containsOnly(0);
     assertThat(plan.slotFlags().get(1)).containsOnly(0);
@@ -235,7 +236,7 @@ class ReplayScenarioTest {
     assertThat(plan.plays())
         .containsExactly(
             new ScenarioPlan.Play(
-                0, 200, 220, 0, "ArcherQueen", 11, 3500, 14000, 0x50402800, null));
+                0, 200, 220, 0, "ArcherQueen", 11, 3500, 14000, 0x50402800, null, null));
     assertThat(plan.abilities()).containsExactly(new ScenarioPlan.Ability(1, 330, 350, 0, 5000006));
   }
 
@@ -371,6 +372,73 @@ class ReplayScenarioTest {
       assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
           .isInstanceOf(UnsupportedScenarioException.class)
           .hasMessageContaining("cmd[4].c.sel.pd=" + item);
+    }
+  }
+
+  @Test
+  void readsTheOptionAVariantPlayIsPlayedAsFromItsItem() {
+    ScenarioPlan mounted = new ReplayScenario(tables).translate(Scenarios.mergeMaidenMounted());
+    ScenarioPlan onFoot = new ReplayScenario(tables).translate(Scenarios.mergeMaidenOnFoot());
+
+    ScenarioPlan.Play maiden = mounted.plays().get(0);
+    assertThat(maiden.card()).isEqualTo("MergeMaiden");
+    // The option field 1 is the first option, the mounted maiden, for its cost.
+    assertThat(maiden.option()).isEqualTo(new ScenarioPlan.Option(0, "MergeMaiden_Mounted", 6));
+    // A Legendary at level index 0: level 9 of all. Its item is kept whole for the run to check.
+    assertThat(maiden.level()).isEqualTo(9);
+    assertThat(maiden.item()).isEqualTo(Scenarios.MOUNTED_MAIDEN_ITEM);
+    assertThat(maiden.repeats()).isNull();
+    // The option field 2 is the second, the maiden on foot; a play of any other card has none.
+    assertThat(onFoot.plays().get(1).option())
+        .isEqualTo(new ScenarioPlan.Option(1, "MergeMaiden_Normal", 3));
+    assertThat(onFoot.plays().get(0).option()).isNull();
+  }
+
+  @Test
+  void refusesAVariantPlayWhoseOptionFieldNamesNoneOfItsOptions() {
+    // The option field 0 names no option, and 3 a third one the Merge Maiden does not have.
+    for (int item : new int[] {0x60402000, 0x60402030}) {
+      ObjectNode scenario = Scenarios.mergeMaidenMounted();
+      ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", item);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageStartingWith(
+              "a variant play whose option field names none of its card's options:"
+                  + " cmd[0].c.sel.pd="
+                  + item)
+          .hasMessageEndingWith("for MergeMaiden, which has 2 options");
+    }
+  }
+
+  @Test
+  void refusesAVariantPlayWhoseItemIsNotOneItsDeckCardCanCarry() {
+    // The mounted maiden at the on-foot cost, the deck index field 2, the level field 9 and the
+    // slot flags field 1.
+    for (int item : new int[] {0x30402010, 0x60802010, 0x60402410, 0x60482010}) {
+      ObjectNode scenario = Scenarios.mergeMaidenMounted();
+      ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", item);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageStartingWith(
+              "a play whose packed item is not one its deck card can carry: cmd[0].c.sel.pd="
+                  + item);
+    }
+  }
+
+  @Test
+  void refusesAVariantCardInADecksEvolutionOrHeroSlot() {
+    for (int flags : new int[] {1, 2}) {
+      ObjectNode scenario = Scenarios.mergeMaidenMounted();
+      ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(0)).put("el", flags);
+
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessage(
+              "a variant card in a deck's evolution or hero slot, whose item no reference holds:"
+                  + " battle.deck0.sp[0].el="
+                  + flags);
     }
   }
 
