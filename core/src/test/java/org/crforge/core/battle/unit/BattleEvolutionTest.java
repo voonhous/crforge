@@ -265,7 +265,7 @@ class BattleEvolutionTest {
                 new Standard1v1Battle(GameData.tables())
                     .startLadderMatch(zaps, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Zap in an evolution or hero slot, which is not a troop card");
+        .hasMessageContaining("Zap in a hero slot, a spell card with no hero form");
     int[] mirrorSlot = new int[8];
     mirrorSlot[2] = MatchSide.HERO_SLOT;
     assertThatThrownBy(

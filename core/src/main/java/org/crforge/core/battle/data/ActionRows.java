@@ -912,6 +912,8 @@ public final class ActionRows {
               "ActionRunForcedAnimationOnce",
               Set.of(
                   "PlaybackDuration", "CustomStateNumber", "PointToInstigator", "ForcedDuration")),
+          // An animator parameter and the value its perform hands the owner's presentation object.
+          Map.entry("ActionSetAnimationModifier", Set.of("Parameter", "Value")),
           // The deploy animation it names only shows something, and the card it names only
           // counts toward the statistics.
           Map.entry(
@@ -1420,6 +1422,9 @@ public final class ActionRows {
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
             case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            // Its perform reaches only a character's presentation object and the animator behind
+            // it, handing it the parameter's value; no logic state of the battle.
+            case "ActionSetAnimationModifier" -> new InertAction(shared);
             case "ActionPlayAnimationIfHasTarget" -> {
               // Its run is listed for as long as its owner lives and changes nothing; the columns
               // that would give such a run something to do are held by no reference.
