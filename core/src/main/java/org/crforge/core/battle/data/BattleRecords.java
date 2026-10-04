@@ -361,6 +361,10 @@ public final class BattleRecords {
           "MoveEffect",
           "NewHealthBarOffsetXBlue",
           "NewHealthBarOffsetXRed",
+          // Rows of the client's own action table (its health bar parts, visual layers and bars),
+          // which the table of the client's data loads and only the unit's view object runs as
+          // the view is built.
+          "OnStartingClientActions",
           "PrestigeExportName2",
           "PrestigeExportName3",
           "PrestigeRedExportName",
