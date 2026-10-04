@@ -602,6 +602,88 @@ class ReplaySmokeRunTest {
   }
 
   @Test
+  void aVariantPlayFromAFullBarRunsAsTheMountedMaidenForItsCost() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.mergeMaidenMounted(), out, terminalIdentity, 250);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    JsonNode maiden = manifest.path("plays_run").get(0);
+    assertThat(maiden.path("name").asText()).isEqualTo("cmd0");
+    assertThat(maiden.path("tick").asInt()).isEqualTo(240);
+    assertThat(maiden.path("placed").asBoolean()).isTrue();
+    assertThat(manifest.has("items_not_built")).isFalse();
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode unit = newestUnit(MAPPER.readTree(lines.get(241)));
+    assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Mounted");
+    assertThat(unit.path("side").asInt()).isZero();
+    // The mounted maiden's cost, 6 elixir, less one step's regeneration.
+    int before = MAPPER.readTree(lines.get(240)).path("sides").get(0).path("elixir").asInt();
+    int after = MAPPER.readTree(lines.get(241)).path("sides").get(0).path("elixir").asInt();
+    assertThat(before - after).isBetween(60000 - 200, 60000);
+  }
+
+  @Test
+  void aVariantPlayBelowTheMountedTriggerRunsAsTheMaidenOnFootForItsCost() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.mergeMaidenOnFoot(), out, terminalIdentity, 280);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode unit = newestUnit(MAPPER.readTree(lines.get(271)));
+    assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Normal");
+    int before = MAPPER.readTree(lines.get(270)).path("sides").get(0).path("elixir").asInt();
+    int after = MAPPER.readTree(lines.get(271)).path("sides").get(0).path("elixir").asInt();
+    assertThat(before - after).isBetween(30000 - 200, 30000);
+  }
+
+  @Test
+  void aVariantPlayGivenAsAnotherOptionThanTheSimulatorPicksIsUnsupported() throws IOException {
+    ObjectNode scenario = Scenarios.mergeMaidenMounted();
+    // The maiden on foot, where the client picks the mounted maiden from a full bar.
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel"))
+        .put("pd", Scenarios.MAIDEN_ON_FOOT_ITEM);
+    Path out = folder.resolve("run");
+
+    int exit = run(scenario, out, terminalIdentity, 250);
+
+    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("unsupported").path("feature").asText())
+        .isEqualTo("a play whose packed item is not the item the simulator builds as it runs");
+    assertThat(manifest.path("unsupported").path("input").asText())
+        .isEqualTo(
+            "cmd[0].c.sel.pd="
+                + Scenarios.MAIDEN_ON_FOOT_ITEM
+                + " (evolution field 0, option field 2, count field 0, level field 8, cosmetic"
+                + " field 0, slot flags field 0, deck index field 1, cost 3) for MergeMaiden, where"
+                + " the simulator builds "
+                + Scenarios.MOUNTED_MAIDEN_ITEM
+                + " (evolution field 0, option field 1, count field 0, level field 8, cosmetic"
+                + " field 0, slot flags field 0, deck index field 1, cost 6)");
+    assertThat(out.resolve("COMPLETE")).doesNotExist();
+  }
+
+  @Test
+  void aMirrorOfAVariantPlayIsRefusedByTheBattle() throws IOException {
+    Path out = folder.resolve("run");
+
+    int exit = run(Scenarios.mergeMaidenThenMirror(), out, terminalIdentity, 700);
+
+    // The maiden's play runs; the Mirror, which would repeat the option it was played as, is
+    // refused as it runs.
+    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
+    assertThat(manifest.path("unsupported").path("feature").asText())
+        .isEqualTo(
+            "a Mirror of MergeMaiden, which repeats the option it was played as, which no"
+                + " reference holds");
+    assertThat(manifest.path("unsupported").path("input").asText()).isEqualTo("the run");
+  }
+
+  @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);

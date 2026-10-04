@@ -48,6 +48,9 @@ public record ScenarioPlan(
    * @param repeats for a Mirror's play, the card row its item names as the card it repeats ({@code
    *     fs}), which the run checks against the card the simulator's Mirror repeats ({@link
    *     ReplayScenario#checkMirrorItem}); null for a play of any other card
+   * @param option for a variant card's play, the option its item names (the option field) and that
+   *     option's cost, which the run checks against the option the simulator's player picks ({@link
+   *     ReplayScenario#checkVariantItem}); null for a play of any other card
    */
   public record Play(
       int index,
@@ -59,7 +62,8 @@ public record ScenarioPlan(
       int x,
       int y,
       int item,
-      Repeated repeats) {}
+      Repeated repeats,
+      Option option) {}
 
   /**
    * The card a Mirror play's item names as the one it repeats.
@@ -68,6 +72,15 @@ public record ScenarioPlan(
    * @param name the row's name
    */
   public record Repeated(int id, String name) {}
+
+  /**
+   * The option a variant card's play item names, as the deck card's variant lists it.
+   *
+   * @param index the option's index in the variant's order: the item's option field less 1
+   * @param spell the option's card row, which the play runs as
+   * @param cost the option row's cost, which the item carries
+   */
+  public record Option(int index, String spell, int cost) {}
 
   /**
    * One ability command: the tap on a champion's button, naming one unit by its game object id. The
