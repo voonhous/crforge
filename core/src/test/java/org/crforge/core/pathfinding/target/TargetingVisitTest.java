@@ -2,9 +2,14 @@ package org.crforge.core.pathfinding.target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -13,6 +18,7 @@ import org.crforge.core.pathfinding.state.StateSetter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** The per-tick targeting pass: its timers, its attack decision and what it asks the caller for. */
 class TargetingVisitTest {
@@ -425,5 +431,52 @@ class TargetingVisitTest {
 
     assertThat(knight.getVisitHoldMs()).isEqualTo(100);
     assertThat(queries.selectionCalls).isZero();
+  }
+
+  /** The tag a newer data version appends to the game tags, which drops the keep extension. */
+  private static final String IGNORE_EXTENSION = "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET";
+
+  @TempDir Path folder;
+
+  /**
+   * The bits of the configured game tags with IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET appended after
+   * the last, as a newer data version lists it, or the configured bits when the table has it.
+   */
+  private EntityFlags bitsWithTheIgnoreExtensionTag() throws IOException {
+    Path source = GameTables.configuredDirectory().orElseThrow().resolve("game_tags.json");
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode document = (ObjectNode) mapper.readTree(source.toFile());
+    ObjectNode rows = (ObjectNode) document.get("rows");
+    if (!rows.has(IGNORE_EXTENSION)) {
+      ObjectNode row = ((ObjectNode) rows.elements().next()).deepCopy();
+      row.put("index", rows.size());
+      ((ObjectNode) row.get("columns")).put("Name", IGNORE_EXTENSION);
+      rows.set(IGNORE_EXTENSION, row);
+    }
+    mapper.writeValue(folder.resolve("game_tags.json").toFile(), document);
+    return EntityFlags.of(GameTables.load(folder));
+  }
+
+  @Test
+  @DisplayName(
+      "a reference just past the range is kept by the keep extension, and dropped at once by a"
+          + " unit carrying IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET")
+  void theIgnoreExtensionTagDropsTheKeepExtension() throws IOException {
+    EntityFlags bits = bitsWithTheIgnoreExtensionTag();
+    assertThat(bits.ignoreRangeExtensionToKeepTarget()).isNotZero();
+    unit.setFlagBits(bits);
+    tower.getEntity().setFlagBits(bits);
+    // Range 1200 plus both radii is 2700 from the tower's centre; the unit stands 10 past it, well
+    // inside the keep extension of 25.
+    unit.setY(tower.getEntity().getY() - 2710);
+    knight.setReference(tower);
+    queries.selection = null;
+
+    visit();
+    assertThat(knight.getReference()).as("kept by the extension").isSameAs(tower);
+
+    unit.setFlags(bits.ignoreRangeExtensionToKeepTarget());
+    visit();
+    assertThat(knight.getReference()).as("the tag drops the extension").isNull();
   }
 }

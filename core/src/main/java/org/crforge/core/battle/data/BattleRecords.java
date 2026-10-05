@@ -304,13 +304,18 @@ public final class BattleRecords {
 
   /**
    * The tags a buff may set: the two the push pass reads, which keep the carrier's enemies, or its
-   * own side, from pushing it, and are the only code that tests either; and UNIT_CUSTOM_TAG_1,
-   * which no battle code and no filter tests, read only by the expressions of the carrier's own
-   * action rows, which read the tag word the buff is folded into. A buff that sets any other is
-   * refused.
+   * own side, from pushing it, and are the only code that tests either; UNIT_CUSTOM_TAG_1, which no
+   * battle code and no filter tests, read only by the expressions of the carrier's own action rows,
+   * which read the tag word the buff is folded into; and a newer data version's
+   * IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, which only the targeting visit's keep test reads, from
+   * the same tag word. A buff that sets any other is refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
-      Set.of("NO_PUSHED_BY_ENEMY", "NO_PUSHED_BY_ALLY", "UNIT_CUSTOM_TAG_1");
+      Set.of(
+          "NO_PUSHED_BY_ENEMY",
+          "NO_PUSHED_BY_ALLY",
+          "UNIT_CUSTOM_TAG_1",
+          "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when
