@@ -4,6 +4,7 @@ import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.math.FixedMath;
 
 /**
@@ -33,7 +34,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the river, by the Sparky run; the attached placement of a rider without a rotation"
             + " limit, by the Goblin Giant's run. Not held by any fixture: the limited rotation of an"
             + " attacking rider, the pushback visit's end action, the block countdown. Collision"
-            + " checks are always on.")
+            + " checks are always on. The route dropped at a flight's end, data version 16.402.18"
+            + " only, is held by its reference battles of a Monk's push on a Giant, the Zap"
+            + " Machine's recoil and two death explosions' pushes.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */
@@ -160,7 +163,9 @@ public final class MovementVisit {
 
   /**
    * One visit of an in-flight pushback: the entity is pushed, moved off an unusable cell, then
-   * displaced toward the pushback's target with a budget that falls 25 per visit.
+   * displaced toward the pushback's target with a budget that falls 25 per visit. The visit whose
+   * budget falls below 0 ends the flight; when the match-wide settings say so, that end also drops
+   * the route the entity held.
    *
    * <p>Held by the Sparky run: its recoil after each launch flies here, and on the tick it stands
    * on the river the relocation moves it off before the displacement.
@@ -193,11 +198,22 @@ public final class MovementVisit {
     chain.displace(
         component.getTargetX(), component.getTargetY(), budget, 1, component.getAttackPushback());
     component.setPushbackInFlight(budget >= 0 ? 1 : 0);
-    if (wasInFlight != 0 && budget < 0 && component.getAttackPushback() != 0) {
+    if (wasInFlight == 0 || budget >= 0) {
+      return;
+    }
+    if (component.getAttackPushback() != 0) {
       chain.mark("attack_pushback_end");
       if (config.attackPushbackEndAction() != null) {
         chain.mark(config.attackPushbackEndAction());
       }
+    }
+    // Where the game's version asks for it, the flight's end, an attack pushback's after its end
+    // action, drops the route and its leads-away bit: the next visit that prepares a route then
+    // searches one from where the pushback left the entity, instead of walking back toward the
+    // waypoint it held before the push.
+    if (chain.globals().pushbackEndDropsRoute()) {
+      component.setRoute(new Route());
+      component.setRouteLeadsAway(0);
     }
   }
 
