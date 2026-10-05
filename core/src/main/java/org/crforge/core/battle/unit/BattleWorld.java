@@ -241,6 +241,23 @@ public class BattleWorld implements HolderPasses {
   private boolean guardRunMakesArea;
 
   /**
+   * The data versions whose game schedules a dying object's death action from its death slot, with
+   * the dying object as its own cause, rather than from the death handler with what killed it. The
+   * rule is the game build's, not a table value: the game of data version 16.402.18 ends every
+   * death slot with the row's death action on the dying object's holder - so an area effect it
+   * spawns is for the dying object's side, and a death the slot runs without the death handler (a
+   * removal, a rider let go, a decay) has it too - and its death handler schedules the killed
+   * action alone, unless the object killed itself or the death has no killing side. The game of
+   * 14.593.1 schedules both from the death handler, with the killer as their cause.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> DEATH_ACTION_AT_DEATH_SLOT = Set.of("16.402.18");
+
+  /** True when the battle's data version schedules the death action from the death slot. */
+  private boolean deathActionAtDeathSlot;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -596,6 +613,7 @@ public class BattleWorld implements HolderPasses {
     this.directHitAtDrain = DIRECT_HIT_AT_DRAIN.contains(tables.version());
     this.areaLifeEndsBelowZero = AREA_LIFE_ENDS_BELOW_ZERO.contains(tables.version());
     this.guardRunMakesArea = GUARD_RUN_MAKES_AREA.contains(tables.version());
+    this.deathActionAtDeathSlot = DEATH_ACTION_AT_DEATH_SLOT.contains(tables.version());
   }
 
   /**
@@ -2709,6 +2727,10 @@ public class BattleWorld implements HolderPasses {
    * typed hit, and at once, the death action before the killed action is scheduled, after a kill
    * inside a pending pass.
    *
+   * <p>On a data version that schedules the death action from the death slot (see {@link
+   * #DEATH_ACTION_AT_DEATH_SLOT}) the slot has scheduled it, the dying entity its own cause, and
+   * the handler schedules the killed action alone (see {@link #killedHook}).
+   *
    * <p>Refused rather than guessed: a death hook with no cause, which the game gives a cause that
    * carries only a side, and one scheduled after the tick's last pending pass, which would leave
    * with the entity. The cause is the attacker's own holder, where the game hands the hook a copy
@@ -2727,7 +2749,11 @@ public class BattleWorld implements HolderPasses {
     UnitData data = dying.getData();
     deathSlot(dying, data);
     killedDone(dying, attacker);
-    deathHooks(dying, attacker, data);
+    if (deathActionAtDeathSlot) {
+      killedHook(dying, attacker, data, killingSide);
+    } else {
+      deathHooks(dying, attacker, data);
+    }
     deathReward(dying, data, killingSide);
   }
 
@@ -2832,6 +2858,89 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * The death handler's hook on a data version that schedules the death action from the death slot
+   * (see {@link #DEATH_ACTION_AT_DEATH_SLOT}): the dying unit's killed action alone, with what
+   * killed it as the cause. None when the row has no killed action, when the death has no killing
+   * side, or when the unit killed itself on the killing side. Refused rather than guessed, as
+   * {@link #deathHooks} refuses them: a killed action with no attacker, whose cause would carry a
+   * side alone, and one scheduled after the tick's last pending pass.
+   *
+   * @param dying the entity that died
+   * @param attacker what killed it, or null for nothing
+   * @param data its row
+   * @param killingSide the side of the killing hit, or -1 for none
+   */
+  private void killedHook(
+      WorldEntity dying, BattleEntity attacker, UnitData data, int killingSide) {
+    if (data.onKilledAction() == null || killingSide == -1) {
+      return;
+    }
+    ActionHolder cause;
+    int side;
+    if (attacker instanceof WorldEntity entity) {
+      cause = entity.actionHolder();
+      side = entity.side();
+    } else if (attacker instanceof ProjectileEntity projectile) {
+      cause = projectile.actionHolder();
+      side = projectile.getSide();
+    } else if (attacker instanceof AreaEffectEntity areaEffect) {
+      cause = areaEffect.actionHolder();
+      side = areaEffect.side();
+    } else {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died with no attacker; the cause its killed action would carry, a side alone, is"
+              + " not modelled");
+    }
+    if (attacker == dying && side == killingSide) {
+      return;
+    }
+    if (!holder.hasPendingPassAhead()) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died after the tick's last pending pass, where its death hooks would leave with"
+              + " it; such a death is not established");
+    }
+    List<String> hooks = List.of(data.onKilledAction());
+    boolean inPendingPass = holder.isInPendingPass();
+    for (WorldObserver observer : observers) {
+      observer.deathHooksScheduled(tick, dying, attacker, side, hooks, inPendingPass);
+    }
+    dying
+        .actionHolder()
+        .schedule(
+            actions.build(data.onKilledAction(), binding(dying)),
+            ActionHolder.OWN_DELAY,
+            false,
+            cause);
+  }
+
+  /**
+   * The death slot's last act on a data version that schedules the death action there (see {@link
+   * #DEATH_ACTION_AT_DEATH_SLOT}): the row's death action, built for the dying object and scheduled
+   * on its own holder with the row's own delay, the dying object its own cause. It runs in the next
+   * pending pass of the tick; after the tick's last pending pass the object leaves at the closing
+   * cleanup with the entry unrun.
+   *
+   * @param dying the object dying
+   * @param data its row
+   */
+  private void slotDeathAction(WorldEntity dying, UnitData data) {
+    List<String> hooks = List.of(data.onDeathAction());
+    boolean inPendingPass = holder.isInPendingPass();
+    for (WorldObserver observer : observers) {
+      observer.deathHooksScheduled(tick, dying, dying, dying.side(), hooks, inPendingPass);
+    }
+    dying
+        .actionHolder()
+        .schedule(
+            actions.build(data.onDeathAction(), binding(dying)),
+            ActionHolder.OWN_DELAY,
+            false,
+            dying.actionHolder());
+  }
+
   /** The death handler's hooks: the dying unit's death and killed actions, with their cause. */
   private void deathHooks(WorldEntity dying, BattleEntity attacker, UnitData data) {
     if (data.onDeathAction() == null && data.onKilledAction() == null) {
@@ -2911,7 +3020,8 @@ public class BattleWorld implements HolderPasses {
       observer.decayDied(tick, dying, hitPointsBefore);
     }
     deathSlot(dying, data);
-    if (data.onDeathAction() != null) {
+    // On a data version that schedules it from the death slot, the slot has done so.
+    if (!deathActionAtDeathSlot && data.onDeathAction() != null) {
       // The death action alone, on itself with itself as the cause, taken by the tick's next
       // pending pass.
       List<String> hooks = List.of(data.onDeathAction());
@@ -4150,6 +4260,9 @@ public class BattleWorld implements HolderPasses {
     deathSpawn(dying, data);
     deathProjectiles(dying, data);
     deathNotice(dying);
+    if (deathActionAtDeathSlot && data.onDeathAction() != null) {
+      slotDeathAction(dying, data);
+    }
   }
 
   /**
