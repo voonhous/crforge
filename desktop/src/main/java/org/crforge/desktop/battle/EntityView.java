@@ -1,5 +1,6 @@
 package org.crforge.desktop.battle;
 
+import java.util.List;
 import org.crforge.core.pathfinding.GridUnitState;
 
 /**
@@ -39,6 +40,7 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param aimY a projectile's aim along the length, 0 otherwise
  * @param speed the distance a character's movement visit asked for in the last tick
  * @param grid a character's grid state, for the route overlay; null otherwise
+ * @param statuses active buff snapshots and persistent clone identity; empty for non-characters
  */
 public record EntityView(
     int id,
@@ -70,7 +72,16 @@ public record EntityView(
     int aimX,
     int aimY,
     int speed,
-    GridUnitState grid) {
+    GridUnitState grid,
+    List<UnitStatus> statuses) {
+
+  public EntityView {
+    statuses = List.copyOf(statuses);
+  }
+
+  public boolean hasStatus(UnitStatus.Kind kind) {
+    return statuses.stream().anyMatch(status -> status.kind() == kind);
+  }
 
   /** What an entity is drawn as. */
   public enum Kind {

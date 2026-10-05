@@ -225,6 +225,7 @@ public final class BattleWorkspace implements Disposable {
     }
     tools.add(presets).padBottom(8).row();
     toggle(tools, "Tile grid", renderer::isDrawGrid, renderer::toggleDrawGrid);
+    toggle(tools, "Status effects", renderer::isDrawStatuses, renderer::toggleDrawStatuses);
     toggle(tools, "All unit names", renderer::isDrawLabels, renderer::toggleDrawLabels);
     toggle(tools, "Target lines", renderer::isDrawTargets, renderer::toggleDrawTargets);
     toggle(

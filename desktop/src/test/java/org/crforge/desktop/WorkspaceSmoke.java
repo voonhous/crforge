@@ -12,15 +12,26 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.battle.unit.StatusSmokeFixture;
+import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
+import org.crforge.desktop.battle.UnitStatus;
+import org.crforge.desktop.replay.SmokeReplayFixture;
+import org.crforge.desktop.screen.DebugGameScreen;
+import org.crforge.desktop.screen.ReplayGameScreen;
 
 public class WorkspaceSmoke extends CRForgeGame {
   private final BattleSession session;
   private final DataVersions versions;
   private int frames;
   private int tick;
+  private BattleSession statusSession;
+  private CharacterEntity statusClone;
+  private List<UnitStatus> pausedStatuses;
 
   WorkspaceSmoke(DataVersions versions, BattleSession session) {
     super(versions, session);
@@ -142,7 +153,7 @@ public class WorkspaceSmoke extends CRForgeGame {
         require(!session.getBattle().getPlays().isEmpty(), "queued card executes");
         key(Input.Keys.I);
         var entity =
-            org.crforge.desktop.battle.BattleAdapter.frame(session).entities().stream()
+            BattleAdapter.frame(session).entities().stream()
                 .filter(value -> value.kind() == org.crforge.desktop.battle.EntityView.Kind.TROOP)
                 .findFirst()
                 .orElseThrow();
@@ -177,9 +188,7 @@ public class WorkspaceSmoke extends CRForgeGame {
         require(labels.contains("Data: " + versions.current().version()), "loaded data persists");
         capture("halted");
         var previous = getScreen();
-        setScreen(
-            new org.crforge.desktop.screen.ReplayGameScreen(
-                org.crforge.desktop.replay.SmokeReplayFixture.create(false), versions));
+        setScreen(new ReplayGameScreen(SmokeReplayFixture.create(false), versions));
         previous.dispose();
         key(Input.Keys.PERIOD);
       }
@@ -206,16 +215,90 @@ public class WorkspaceSmoke extends CRForgeGame {
         require(labels(stage().getRoot()).contains("FINISHED"), "replay end state");
         capture("replay-finished");
         var previous = getScreen();
-        setScreen(
-            new org.crforge.desktop.screen.ReplayGameScreen(
-                org.crforge.desktop.replay.SmokeReplayFixture.create(true), versions));
+        setScreen(new ReplayGameScreen(SmokeReplayFixture.create(true), versions));
         previous.dispose();
       }
       if (frames == 53) {
         require(labels(stage().getRoot()).contains("REFUSED"), "refusal state");
         capture("replay-refused");
+        statusSession = versions.ladder();
+        statusClone = StatusSmokeFixture.populate(statusSession);
+        var previous = getScreen();
+        setScreen(new DebugGameScreen(versions, statusSession));
+        previous.dispose();
+        key(Input.Keys.SPACE);
+        key(Input.Keys.I);
+        Gdx.graphics.setWindowedMode(1120, 1040);
+      }
+      if (frames == 56) {
+        clickArena(statusClone.getView().getX() / 18000f, statusClone.getView().getY() / 32000f);
+      }
+      if (frames == 58) {
+        require(
+            labels(stage().getRoot()).contains("Frozen - 5.0s"), "inspector shows freeze duration");
+        require(
+            labels(stage().getRoot()).contains("Stunned - 3.0s"), "inspector shows stun duration");
+        require(labels(stage().getRoot()).contains("From MiniPekka"), "inspector shows source");
+        pausedStatuses = BattleAdapter.entity(statusClone).statuses();
+        capture("statuses");
+      }
+      if (frames == 61) {
+        require(
+            pausedStatuses.equals(BattleAdapter.entity(statusClone).statuses()),
+            "paused status timers remain unchanged");
+        capture("statuses-paused");
+        for (int i = 0; i < 20; i++) key(Input.Keys.PERIOD);
+      }
+      if (frames == 63) {
+        require(
+            labels(stage().getRoot()).contains("Frozen - 4.0s"),
+            "status duration follows simulation steps");
+        capture("statuses-stepped");
+        click("Status effects", true);
+      }
+      if (frames == 65) {
+        require(
+            !find(stage().getRoot(), "Status effects", true).isChecked(),
+            "status overlay toggles off");
+        require(
+            labels(stage().getRoot()).contains("Frozen - 4.0s"),
+            "inspector survives overlay toggle");
+        capture("statuses-hidden");
+        click("Status effects", true);
+        Gdx.graphics.setWindowedMode(1000, 760);
+      }
+      if (frames == 69) {
+        capture("statuses-minimum-size");
+        for (int i = 0; i < 81; i++) key(Input.Keys.PERIOD);
+      }
+      if (frames == 72) {
+        var snapshot = BattleAdapter.entity(statusClone);
+        require(!snapshot.hasStatus(UnitStatus.Kind.FROZEN), "freeze expires");
+        require(!snapshot.hasStatus(UnitStatus.Kind.STUNNED), "stun expires");
+        require(snapshot.hasStatus(UnitStatus.Kind.CLONE), "clone identity persists");
+        capture("statuses-expired");
+        var previous = getScreen();
+        setScreen(new ReplayGameScreen(SmokeReplayFixture.statuses(), versions));
+        previous.dispose();
+        Gdx.graphics.setWindowedMode(1120, 1040);
+        for (int i = 0; i < 262; i++) key(Input.Keys.PERIOD);
+      }
+      if (frames == 75) {
+        clickArena(14500 / 18000f, (32000 - 25500) / 32000f);
+      }
+      if (frames == 77) {
+        require(labels(stage().getRoot()).contains("Frozen -"), "replay reads real Freeze spell");
+        require(labels(stage().getRoot()).contains("Stunned -"), "replay reads real Zap spell");
+        capture("statuses-replay-flipped");
+        click("Flip [F]", true);
+      }
+      if (frames == 80) {
+        require(
+            labels(stage().getRoot()).contains("Frozen -"),
+            "selected statuses survive replay flip");
+        capture("statuses-replay-standard");
         System.out.println(
-            "UI_SMOKE_OK: pause, step, resize, metadata, deployment, inspection, halt, replay flip/end/refusal");
+            "UI_SMOKE_OK: workspace, replay, status badges/inspector/pause/step/toggle/expiry/flip");
         Gdx.app.exit();
       }
     } catch (Throwable failure) {
