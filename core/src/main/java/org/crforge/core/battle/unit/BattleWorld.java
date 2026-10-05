@@ -207,7 +207,10 @@ public class BattleWorld implements HolderPasses {
    * tick, so an entity it kills is still alive through that tick's passes - a tower or a unit that
    * targets it still attacks it, and it takes its own visits - and dies at the drain. A Kamikaze
    * unit killed in its own hit is still alive for the entities visited after it in that tick: one
-   * that targets it walks at it once more, and its body still stands among the others.
+   * that targets it walks at it once more, and its body still stands among the others. A kill
+   * action's kill of its owner (see {@link #kill(WorldEntity, WorldEntity)}) goes the same way: its
+   * owner's kill action is scheduled at once, and the owner dies at the drain, so a building a
+   * pending pass kills still pushes the units around it in that tick's movement pass.
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
@@ -467,6 +470,15 @@ public class BattleWorld implements HolderPasses {
   private record KamikazeKillDue(WorldEntity unit) implements QueuedHit {}
 
   /**
+   * A kill action's kill of its owner waiting for the drain, on a data version that lands it there:
+   * dealt as {@link #kill(WorldEntity, WorldEntity)} deals it at once.
+   *
+   * @param target the kill action's owner
+   * @param killer the entity that caused the action, or null for none
+   */
+  private record ActionKillDue(WorldEntity target, WorldEntity killer) implements QueuedHit {}
+
+  /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
    * share of a character's or a projectile's area, a projectile's hit on its one target, a circle's
    * kill or a Kamikaze unit's kill on a version that queues them.
@@ -479,7 +491,8 @@ public class BattleWorld implements HolderPasses {
           ProjectileHitDue,
           ActionDamageDue,
           CircleKillDue,
-          KamikazeKillDue {}
+          KamikazeKillDue,
+          ActionKillDue {}
 
   /**
    * A damage-taking action's hit waiting for the drain: its source, its target, the row's damage
@@ -1509,13 +1522,24 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Kills an entity, and tells every observer what the kill did as they are told of a hit of its
-   * whole hit points.
+   * Kills an entity, as a kill action kills its owner, and tells every observer what the kill did
+   * as they are told of a hit of its whole hit points. On a data version that lands it at the
+   * damage drain the kill is queued, and the entity stays alive until the drain of the tick (see
+   * {@link #DIRECT_HIT_AT_DRAIN}).
    *
    * @param target the entity
    * @param killer the entity that caused it, or null for none
    */
   public void kill(WorldEntity target, WorldEntity killer) {
+    if (directHitAtDrain) {
+      queuedHits.add(new ActionKillDue(target, killer));
+      return;
+    }
+    killNow(target, killer);
+  }
+
+  /** A kill action's kill, dealt: at once, or at the damage drain on a version that queues it. */
+  private void killNow(WorldEntity target, WorldEntity killer) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
     DamageResult result = target.takeKill(null, killer);
     for (WorldObserver observer : observers) {
@@ -5009,6 +5033,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof KamikazeKillDue kamikaze) {
         kamikazeKillNow(kamikaze.unit());
+        continue;
+      }
+      if (queued instanceof ActionKillDue kill) {
+        killNow(kill.target(), kill.killer());
         continue;
       }
       TypedHit hit = (TypedHit) queued;

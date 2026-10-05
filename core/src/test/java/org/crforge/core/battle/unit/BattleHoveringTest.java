@@ -90,7 +90,9 @@ class BattleHoveringTest {
     Standard1v1Battle match = passiveTowers();
     UnitData still =
         GameData.unit("Ghost").toBuilder()
-            .speed(0)
+            // A speed of 1 keeps the movement component a push needs, which a row without a
+            // speed is not given, and moves it next to nothing.
+            .speed(1)
             .attacksGround(false)
             .attacksAir(false)
             .allowAreaDamageWhenInvisible(allowAreaDamage)
@@ -193,7 +195,9 @@ class BattleHoveringTest {
     Standard1v1Battle match = passiveTowers();
     UnitData still =
         GameData.unit("Ghost").toBuilder()
-            .speed(0)
+            // A speed of 1 keeps the movement component a push needs, which a row without a
+            // speed is not given, and moves it next to nothing.
+            .speed(1)
             .attacksGround(false)
             .attacksAir(false)
             .hovering(hovering)

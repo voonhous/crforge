@@ -456,6 +456,16 @@ public record UnitData(
     attackSequence = attackSequence == null ? AttackSequence.NONE : attackSequence;
   }
 
+  /**
+   * True for a row whose unit is given a movement component: one with a speed of at least 1, as the
+   * level setter builds it as the unit is created and a data swap builds or frees it. A building
+   * has no speed; a character row without one, as the Tombstone hero's passive monster, stands
+   * still with no movement component either.
+   */
+  public boolean hasMovementComponent() {
+    return speed >= 1;
+  }
+
   /** True for a unit that fires a projectile rather than hitting its target directly. */
   public boolean hasProjectile() {
     return projectile != null;

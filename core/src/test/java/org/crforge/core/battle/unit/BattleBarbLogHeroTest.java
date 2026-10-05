@@ -177,8 +177,8 @@ class BattleBarbLogHeroTest {
 
   @Test
   @DisplayName(
-      "a hero slot on a building card, or on a spell card with no hero form, is refused, as no"
-          + " reference holds it")
+      "a hero slot on a spell or building card with no hero form is refused, as no reference"
+          + " holds it")
   void theHeroSlotsNoReferenceHoldsAreRefused() {
     List<String> zaps =
         List.of("Zap", "Archer", "Knight", "Giant", "Minions", "Musketeer", "Fireball", "Arrows");
@@ -196,7 +196,7 @@ class BattleBarbLogHeroTest {
                 new Standard1v1Battle(GameData.tables())
                     .startLadderMatch(cannons, KNIGHTS, 0, 0, heroFirst(), new int[8]))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Cannon in a hero slot, which is neither a troop card nor a spell");
+        .hasMessageContaining("Cannon in a hero slot, a building card with no hero form");
   }
 
   /** Slot flags with the first card in the hero slot. */

@@ -107,6 +107,9 @@ public final class BattleRecords {
       Set.of(
           "Name",
           "Rarity",
+          // Read only to refuse a hit the carrier deals while the buff is listed: the attacker's
+          // share of the damage entry is not traced.
+          "DamageMultiplier",
           "Invisible",
           // Read only by the clone creator, which leaves such a buff off a clone; a clone of a
           // carrier is refused.
@@ -290,7 +293,10 @@ public final class BattleRecords {
    * contact (the push pass and its gate, and a filter's excluded tags) and no targeting (the
    * targeting and its validator); and the Elite Archer hero's decoy's no attack, read where the
    * battle reads NO_ATTACK for its other holders, the targeting visit clearing the attack each
-   * step. A row that sets any other is refused as the unit is created.
+   * step; and the Tombstone hero's dummies' and passive monster's no physical interaction, read by
+   * the push pass and the avoidance as a warp's and a knockback's are, and no buffs, which refuses
+   * a buff's apply as a guard's tags do. A row that sets any other is refused as the unit is
+   * created.
    */
   private static final Set<String> MODELLED_ROW_TAGS =
       Set.of(
@@ -300,7 +306,9 @@ public final class BattleRecords {
           "NO_DAMAGE",
           "NO_CHECKCOLLISIONS",
           "UNTARGETABLE",
-          "NO_ATTACK");
+          "NO_ATTACK",
+          "DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS",
+          "NO_BUFFS");
 
   /**
    * The tags a buff may set: the two the push pass reads, which keep the carrier's enemies, or its
@@ -416,7 +424,18 @@ public final class BattleRecords {
           "SpawnPathfindEffect",
           "SpecialAttackRangeForStats",
           "TID",
-          "UseAnimator");
+          "UseAnimator",
+          // Read only by the character's view: whether it is shown as a good target, set on its
+          // own view unless the row disables it, and on the views of its group's members that do
+          // not disable it either when the row sets it group wide.
+          "ShowAsGoodTargetGroupWide",
+          "DisableIndependentShowAsGoodTarget",
+          // Read only where the view builds a buff's visual filter: it is built for the carrier
+          // and,
+          // when the carrier's row passes it on, for each member of its group whose row receives
+          // it.
+          "PassBuffFiltersInGroup",
+          "ReceiveBuffFiltersFromGroup");
 
   /**
    * The columns of a unit's row the record shows no battle logic reads, or reads to no effect for
@@ -529,7 +548,10 @@ public final class BattleRecords {
           // Read only by the direct hit as it hands a melee area hit to the area damage, where it
           // skips one call of the battle's presentation listener, whose answer the area damage
           // does not read; the targets, damage and pushes of the area are the same either way.
-          "DisableMeleeAeoDamageEffect");
+          "DisableMeleeAeoDamageEffect",
+          // Carried by the death spawn's request of the first row into the spawn, where it only
+          // skips playing each child's SpawnEffect as the child is made.
+          "DeathSpawnCharacterIgnoreEffect");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
@@ -2153,6 +2175,7 @@ public final class BattleRecords {
         .rarity(rarity(row.string("Rarity")))
         .speedMultiplier(row.intValue("SpeedMultiplier"))
         .hitSpeedMultiplier(row.intValue("HitSpeedMultiplier"))
+        .damageMultiplier(row.intValue("DamageMultiplier"))
         .spawnSpeedMultiplier(row.intValue("SpawnSpeedMultiplier"))
         .hitFrequency(row.intValue("HitFrequency"))
         .damagePerSecond(row.intValue("DamagePerSecond"))

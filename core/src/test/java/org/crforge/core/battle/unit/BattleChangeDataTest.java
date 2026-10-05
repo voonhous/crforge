@@ -93,8 +93,8 @@ class BattleChangeDataTest {
   @Test
   @DisplayName(
       "a walking unit without a lifetime takes a walking row with one: it keeps its hit points and"
-          + " level and its hit points drain over the new row's lifetime; a swap away from a"
-          + " lifetime is refused")
+          + " level and its hit points drain over the new row's lifetime; a swap back away from"
+          + " the lifetime ends the drain")
   void aWalkingRowWithALifetime() {
     Scene scene = new Scene("GoblinDemolisher");
     CharacterEntity demolisher = scene.knight;
@@ -108,9 +108,10 @@ class BattleChangeDataTest {
     assertThat(demolisher.getPackedLevel()).isEqualTo(level);
     assertThat(demolisher.getHitPoints().getDecayStep())
         .isEqualTo(HitPoints.decayStep(demolisher.getHitPoints().getMaximum(), 20000));
-    assertThatThrownBy(() -> demolisher.changeData("GoblinDemolisher", false))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a lifetime");
+    int drained = demolisher.getHitPoints().getHitPoints();
+    demolisher.changeData("GoblinDemolisher", false);
+    assertThat(demolisher.getHitPoints().getDecayStep()).isZero();
+    assertThat(demolisher.getHitPoints().getHitPoints()).isEqualTo(drained);
   }
 
   @Test
@@ -122,7 +123,7 @@ class BattleChangeDataTest {
     assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Recruit_Chess", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("movement component");
-    assertThatThrownBy(() -> new Scene("SkeletonKing").knight.changeData("Knight", false))
+    assertThatThrownBy(() -> new Scene("Knight").knight.changeData("KnightHero", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("another ability");
     assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Prince", false))
