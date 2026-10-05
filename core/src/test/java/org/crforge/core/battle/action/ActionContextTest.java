@@ -3,7 +3,10 @@ package org.crforge.core.battle.action;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -208,5 +211,90 @@ class ActionContextTest {
     // Fired in the run pass of tick 1, its parts start in the next pending pass.
     assertThat(fired).as("the ticks the interval's action started on").containsExactly(1);
     assertThat(holder.running()).isEmpty();
+  }
+
+  /** An owner whose variables the test reads back. */
+  private static final class VariableOwner implements ActionOwner {
+    private final Map<Integer, Integer> variables = new HashMap<>();
+
+    @Override
+    public HitPoints actionHitPoints() {
+      return null;
+    }
+
+    @Override
+    public int variable(int key) {
+      return variables.getOrDefault(key, 0);
+    }
+
+    @Override
+    public void setVariable(int key, int value) {
+      variables.put(key, value);
+    }
+
+    @Override
+    public void killBy(ActionOwner killer) {}
+
+    @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {}
+  }
+
+  @Test
+  @DisplayName(
+      "a board write evaluates its value with the context and writes the board it names; with no"
+          + " context it does nothing and evaluates nothing")
+  void aBoardWriteWritesTheContext() {
+    ActionHolder holder = new ActionHolder();
+    int key = ActionContext.key("PosX");
+    int other = ActionContext.key("PosY");
+    BlackboardSetInt main =
+        new BlackboardSetInt(
+            ActionRow.named("main"), false, key, () -> holder.currentContext() != null ? 7 : -7);
+    BlackboardSetInt scratch =
+        new BlackboardSetInt(ActionRow.named("scratch"), true, other, () -> 3);
+    holder.schedule(
+        group("writes", Group.ContextMode.CREATE, main, scratch, new Leaf("reads")), 0, true);
+
+    ActionContext context = contexts.get(0);
+    assertThat(context.readBoard(false, key)).isEqualTo(7);
+    assertThat(context.readBoard(true, other)).isEqualTo(3);
+    assertThat(context.readBoard(false, other)).isNull();
+    assertThat(context.read(other)).isEqualTo(3);
+
+    holder.schedule(
+        new BlackboardSetInt(
+            ActionRow.named("bare"),
+            false,
+            key,
+            () -> {
+              throw new AssertionError("evaluated with no context");
+            }),
+        0,
+        true);
+  }
+
+  @Test
+  @DisplayName(
+      "a copy into a variable reads the one board it names, else its default, and writes the"
+          + " owner's variable; with no context it writes nothing")
+  void aCopyIntoAVariableReadsOneBoard() {
+    VariableOwner owner = new VariableOwner();
+    ActionHolder holder = new ActionHolder(owner);
+    int key = ActionContext.key("tombstone_hp_percent");
+    holder.schedule(
+        group(
+            "copies",
+            Group.ContextMode.CREATE,
+            new BlackboardSetInt(ActionRow.named("write"), true, key, () -> 5),
+            new ContextToVariable(ActionRow.named("fromMain"), false, key, 9, 3),
+            new ContextToVariable(ActionRow.named("fromScratch"), true, key, 9, 4)),
+        0,
+        true);
+
+    assertThat(owner.variable(3)).isEqualTo(9);
+    assertThat(owner.variable(4)).isEqualTo(5);
+
+    holder.schedule(new ContextToVariable(ActionRow.named("bare"), true, key, 9, 6), 0, true);
+    assertThat(owner.variables).doesNotContainKey(6);
   }
 }
