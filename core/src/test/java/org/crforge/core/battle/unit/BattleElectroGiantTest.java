@@ -287,12 +287,45 @@ class BattleElectroGiantTest {
   }
 
   @Test
-  @DisplayName("a kill on a reflecting unit, whose reflect no reference reaches, is refused")
-  void aKillIsRefused() {
+  @DisplayName(
+      "a fallen king's circle kills a reflecting unit and nothing is struck back: the kill has no"
+          + " attacker")
+  void theCircleKillsIt() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    scene.step(25);
+    int knightHitPoints = knight.getHitPoints().getHitPoints();
+
+    scene.match.getWorld().circleKill(scene.giant, 1000);
+
+    assertThat(scene.giant.getHitPoints().getHitPoints()).isZero();
+    assertThat(scene.giant.isRemovable()).isTrue();
+    assertThat(scene.reflections).isEmpty();
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(knightHitPoints);
+    assertThat(knight.getBuffs().carries("ZapFreeze")).isFalse();
+  }
+
+  @Test
+  @DisplayName("a kill with no killer on a reflecting unit kills it, striking nothing back")
+  void aKillWithoutAKiller() {
     Scene scene = new Scene();
     scene.step(25);
 
-    assertThatThrownBy(() -> scene.match.getWorld().kill(scene.giant, null))
+    scene.match.getWorld().kill(scene.giant, null);
+
+    assertThat(scene.giant.getHitPoints().getHitPoints()).isZero();
+    assertThat(scene.reflections).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a kill a killer deals to a reflecting unit, whose reflect no reference reaches, is refused")
+  void aKillByAKillerIsRefused() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    scene.step(25);
+
+    assertThatThrownBy(() -> scene.match.getWorld().kill(scene.giant, knight))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("reflects and takes a kill");
   }
