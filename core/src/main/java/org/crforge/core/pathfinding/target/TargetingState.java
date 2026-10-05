@@ -203,6 +203,20 @@ public class TargetingState {
   /** Ids of the entities this component has already hit and must not take again. */
   private final List<Integer> hitTargetIds = new ArrayList<>();
 
+  /**
+   * The ids of the targets the owner's last multi-target hit step reached while its attack sequence
+   * entry remembered them: the reference first, then each further target once, in the order hit.
+   * The lookup of a further target prefers them while the entry at the index remembers, and the
+   * removal notice drops the id of an entity that leaves.
+   */
+  private final List<Integer> rememberedTargetIds = new ArrayList<>();
+
+  /**
+   * Milliseconds the attack timer is still held at 0 after an attack started on an entry with a
+   * start delay; each timer step that finds the timer at 0 takes 50 off it instead of advancing.
+   */
+  private int attackStartDelayMs;
+
   /** How many dashes the current chain of a chained dash has started; 0 outside a chain. */
   private int dashChainCount;
 

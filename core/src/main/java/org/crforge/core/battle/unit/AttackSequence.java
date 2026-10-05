@@ -68,6 +68,17 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
    * @param meleePushbackAll true when that push lifts the gates that would refuse it: the target's
    *     row or buffs ignoring pushback, its no-pushback flag or its being dragged
    * @param doAttackAction the action the entry's hit schedules instead of hitting, or null
+   * @param customFirstProjectile the projectile the first of each hit's projectiles is instead of
+   *     the row's custom first projectile, or null to keep the row's; read in an order of two or
+   *     more, from the entry at the index itself rather than the one the order names there
+   * @param customMultipleTargets how many targets each hit reaches, or -1 for the row's
+   *     MultipleTargets; read at any length of the order
+   * @param customRememberMultipleTargets whether each hit remembers the targets it reached: -1 for
+   *     the row's RememberMultipleTargets, 0 for no, anything else for yes
+   * @param customOnAttackAction the action each hit schedules in place of the row's OnAttackAction,
+   *     or null to keep the row's; read at any length of the order
+   * @param attackStartDelay milliseconds the attack timer is held at 0 when an attack starts while
+   *     the index selects the entry
    */
   public record Entry(
       int damage,
@@ -81,39 +92,40 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       int customProjectileStartRadius,
       int meleePushback,
       boolean meleePushbackAll,
-      String doAttackAction) {
+      String doAttackAction,
+      ProjectileData customFirstProjectile,
+      int customMultipleTargets,
+      int customRememberMultipleTargets,
+      String customOnAttackAction,
+      int attackStartDelay) {
 
     /**
-     * True when the entry sets anything but its damage, its projectile, its action, its direct
-     * hit's pushback and its attack range and minimum range.
+     * True when the entry sets a variable damage time outside a timer-driven mode, which walks no
+     * window there. Every other column it sets is read: the two ranges replace the row's Range and
+     * MinimumRange whenever the index selects the entry, at any length of the order, the owner's
+     * collision radius still added; the sight range, the launch's start height and distance and,
+     * through the attack timer, the hit speed multiplier in an order of two or more; and the
+     * columns of a newer data version as each describes.
      */
     public boolean overridesMore() {
-      return variableDamageTime != 0 || overridesMoreThanItsWindow();
+      return variableDamageTime != 0;
     }
 
     /**
-     * True when the entry sets anything but its damage, its projectile, its action, its direct
-     * hit's pushback, its attack range and minimum range and its variable damage time, the window a
-     * timer-driven mode walks.
-     *
-     * <p>The two ranges replace the row's Range and MinimumRange whenever the index selects the
-     * entry, at any length of the order, the owner's collision radius still added; the targeting
-     * component's range helpers read them through the entries its configuration carries.
-     */
-    public boolean overridesMoreThanItsWindow() {
-      return hitSpeedMultiplier != 100
-          || customSightRange != -1
-          || customProjectileStartZ != -1
-          || customProjectileStartRadius != -1;
-    }
-
-    /**
-     * The entry as the targeting component's range, sight and timer helpers read it: its attack
-     * range, minimum range and sight range overrides, -1 for none, and its hit speed multiplier.
+     * The entry as the targeting component's range, sight, timer and multi-target helpers read it:
+     * its attack range, minimum range and sight range overrides, -1 for none, its hit speed
+     * multiplier, its number of targets, -1 for none, whether it remembers them, -1 for the row's
+     * answer, and its start delay.
      */
     public AttackSequenceEntry targetingEntry() {
       return new AttackSequenceEntry(
-          customRange, customMinimumRange, customSightRange, hitSpeedMultiplier);
+          customRange,
+          customMinimumRange,
+          customSightRange,
+          hitSpeedMultiplier,
+          customMultipleTargets,
+          customRememberMultipleTargets,
+          attackStartDelay);
     }
   }
 

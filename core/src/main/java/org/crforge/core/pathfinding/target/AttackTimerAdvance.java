@@ -87,6 +87,15 @@ public final class AttackTimerAdvance {
 
     int attackTime = t.getAttackTimerMs();
     boolean roundUp = t.isChargeStrike() || t.isInstantHit();
+    if (attackTime == 0 && !roundUp && t.getAttackStartDelayMs() >= 1) {
+      // The start delay of the entry the attack started on holds the timer at 0: each step takes
+      // 50 off it, never below 0, whatever the step's own length, and advances nothing.
+      t.setAttackTimerMs(0);
+      t.setHitInProgressWithoutReference(false);
+      t.setAttackStartDelayMs(
+          Math.max(t.getAttackStartDelayMs(), TargetingQueries.TICK_MS) - TargetingQueries.TICK_MS);
+      return;
+    }
     if (attackTime == 0 && !roundUp) {
       int loadTime = cfg.loadTime();
       int countdown = t.getLoadTimerMs();

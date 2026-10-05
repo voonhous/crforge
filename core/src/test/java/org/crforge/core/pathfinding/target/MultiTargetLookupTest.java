@@ -107,6 +107,29 @@ class MultiTargetLookupTest {
   }
 
   @Test
+  @DisplayName(
+      "a remembered candidate gains 1000 priority while the entry at the index remembers, so it"
+          + " beats a nearer one; the same list counts for nothing while it does not")
+  void aRememberedCandidateIsPreferred() {
+    TargetView far = troopAhead("far", 21, 4500);
+    TargetView near = troop("near", 22, 4500, 10000);
+    around.addAll(List.of(reference, near, far));
+    wizard.getRememberedTargetIds().addAll(List.of(20, 21));
+    AttackSequenceEntry remembers =
+        AttackSequenceEntry.none().toBuilder().rememberMultipleTargets(1).build();
+    wizard.setConfig(
+        wizard.getConfig().toBuilder()
+            .attackSequenceLength(2)
+            .attackSequenceStepIds(List.of(0, 1))
+            .attackSequenceEntries(List.of(AttackSequenceEntry.none(), remembers))
+            .build());
+
+    assertThat(MultiTargetLookup.lookup(wizard, 0, queries)).as("index 0").isSameAs(near);
+    wizard.setAttackSequenceIndex(1);
+    assertThat(MultiTargetLookup.lookup(wizard, 0, queries)).as("index 1").isSameAs(far);
+  }
+
+  @Test
   @DisplayName("of two candidates at the same distance the earlier in the query's order stays")
   void theEarlierOfEqualsStays() {
     TargetView left = troop("left", 21, 2500, 10000);

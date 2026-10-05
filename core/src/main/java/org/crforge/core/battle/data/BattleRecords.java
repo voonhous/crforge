@@ -781,6 +781,7 @@ public final class BattleRecords {
             .multipleTargets(row.intValue("MultipleTargets"))
             .allTargetsHit(row.bool("AllTargetsHit"))
             .uniqueMultipleTargets(row.bool("UniqueMultipleTargets"))
+            .rememberMultipleTargets(row.bool("RememberMultipleTargets"))
             .buffOnDamage(set(row, "BuffOnDamage") ? row.string("BuffOnDamage") : null)
             .buffOnDamageTimeMs(row.intValue("BuffOnDamageTime"))
             .groupMaxSize(row.intValue("GroupMaxSize"))
@@ -949,16 +950,29 @@ public final class BattleRecords {
    * whose run is not established: every hit schedules the row alike, but only a spawn's, the
    * evolved Mega Knight's uppercut, the evolved Baby Dragon's wind, a variable's write (the evolved
    * Inferno Dragon's attack count, kept in the attacker's own variable) and a group's (the evolved
-   * Royal Hog's fall, whose parts are each built from their own rows and refused there) are.
+   * Royal Hog's fall, whose parts are each built from their own rows and refused there) are. An
+   * attack sequence entry's CustomOnAttackAction of another class adds AttackSequenceList.
    */
   private List<String> withAttackAction(List<String> columns, GameRow row) {
-    if (!sets(row, "OnAttackAction")
-        || ATTACK_ACTION_CLASSES.contains(
-            tables.action(row.string("OnAttackAction")).classType())) {
-      return columns;
-    }
     List<String> out = new ArrayList<>(columns);
-    out.add("OnAttackAction");
+    if (sets(row, "OnAttackAction")
+        && !ATTACK_ACTION_CLASSES.contains(
+            tables.action(row.string("OnAttackAction")).classType())) {
+      out.add("OnAttackAction");
+    }
+    // An attack sequence entry's CustomOnAttackAction runs where the row's would, so it is held to
+    // the same classes.
+    JsonNode entries = row.value("AttackSequenceList");
+    if (entries != null && entries.isArray() && !out.contains("AttackSequenceList")) {
+      for (JsonNode entry : entries) {
+        String custom =
+            actionName(row.name(), "CustomOnAttackAction", entry.path("CustomOnAttackAction"));
+        if (custom != null && !ATTACK_ACTION_CLASSES.contains(tables.action(custom).classType())) {
+          out.add("AttackSequenceList");
+          break;
+        }
+      }
+    }
     return out;
   }
 
@@ -1012,7 +1026,9 @@ public final class BattleRecords {
 
   /**
    * The fields of an attack sequence entry its loader reads: its damage, projectile, timing, range
-   * overrides, push and attack action.
+   * overrides, push and attack action, and those of a newer data version: its first projectile, its
+   * number of targets and whether it remembers them, the action its hit runs in place of the row's
+   * attack action, and its start delay.
    */
   private static final Set<String> SEQUENCE_ENTRY_FIELDS =
       Set.of(
@@ -1027,17 +1043,24 @@ public final class BattleRecords {
           "CustomProjectileStartRadius",
           "MeleePushback",
           "IsMeleePushbackAll",
-          "DoAttackAction");
+          "DoAttackAction",
+          "CustomFirstProjectile",
+          "CustomMultipleTargets",
+          "CustomRememberMultipleTargets",
+          "CustomOnAttackAction",
+          "AttackStartDelay");
 
   /**
    * The fields of an attack sequence entry that only show something: its effects, the stats its
-   * card's info shows, and the hit speed its animation shows, carried unread as before, classified
-   * by what they name.
+   * card's info shows, the hit speed its animation shows, carried unread as before, classified by
+   * what they name, and DisableAttackAnimationFrameMatching, whose only reader is the unit's
+   * animation.
    */
   private static final Set<String> PRESENTATION_SEQUENCE_ENTRY_FIELDS =
       Set.of(
           "AttackStartEffect",
           "DamageEffect",
+          "DisableAttackAnimationFrameMatching",
           "FlameEffect",
           "StatsTags",
           "TargettedDamageEffect",
@@ -1376,7 +1399,12 @@ public final class BattleRecords {
         -1,
         meleePushback,
         meleePushbackAll,
-        null);
+        null,
+        null,
+        -1,
+        -1,
+        null,
+        0);
   }
 
   /** An entry of an AttackSequenceList element, with the entry columns' defaults. */
@@ -1384,6 +1412,7 @@ public final class BattleRecords {
     String column = "AttackSequenceList";
     row.tableElement(column, element);
     String projectile = row.textField(column, element, "Projectile");
+    String first = row.textField(column, element, "CustomFirstProjectile");
     return new AttackSequence.Entry(
         row.intField(column, element, "Damage", 0),
         projectile.isEmpty() ? null : projectile(projectile),
@@ -1396,7 +1425,12 @@ public final class BattleRecords {
         row.intField(column, element, "CustomProjectileStartRadius", -1),
         row.intField(column, element, "MeleePushback", 0),
         row.boolField(column, element, "IsMeleePushbackAll", false),
-        actionName(row.name(), "DoAttackAction", element.path("DoAttackAction")));
+        actionName(row.name(), "DoAttackAction", element.path("DoAttackAction")),
+        first.isEmpty() ? null : projectile(first),
+        row.intField(column, element, "CustomMultipleTargets", -1),
+        row.intField(column, element, "CustomRememberMultipleTargets", -1),
+        actionName(row.name(), "CustomOnAttackAction", element.path("CustomOnAttackAction")),
+        row.intField(column, element, "AttackStartDelay", 0));
   }
 
   /** The columns of a row's death that are not modelled, those of its death spawn only with one. */

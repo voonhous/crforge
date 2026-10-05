@@ -1427,14 +1427,13 @@ public class CharacterEntity extends WorldEntity {
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
    * mode moves the index by itself other than a continuous-damage attacker's and a static loop's
-   * (the Manual mode, whose index only actions move, is accepted), an entry that sets more than its
-   * damage, its projectile, its action, its direct hit's pushback and its attack range and minimum
-   * range (and, for a continuous-damage attacker, its window), and an entry without a projectile or
-   * an action on a unit that fires. An entry's action is established in place of a projectile, read
-   * from an order of two or more by an index only actions move, and in a sequence of one beside the
-   * row's own projectile; one with a projectile, in a continuous-damage attacker's or on a charging
-   * row is refused, and in a sequence of one also on a multi-target attacker or beside a buff on
-   * damage, which the hit would apply only without a projectile.
+   * (the Manual mode, whose index only actions move, is accepted), an entry's variable damage time
+   * outside a continuous-damage attacker, where no window is walked, and an entry without a
+   * projectile or an action on a unit that fires. An entry's action is established in place of a
+   * projectile, read from an order of two or more by an index only actions move, and in a sequence
+   * of one beside the row's own projectile; one with a projectile, in a continuous-damage
+   * attacker's or on a charging row is refused, and in a sequence of one also on a multi-target
+   * attacker or beside a buff on damage, which the hit would apply only without a projectile.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1464,8 +1463,8 @@ public class CharacterEntity extends WorldEntity {
       for (int index = 0; index < sequence.order().size(); index++) {
         AttackSequence.Entry entry = sequence.entryAt(index);
         boolean acts = entry.doAttackAction() != null;
-        if (windowed ? entry.overridesMoreThanItsWindow() : entry.overridesMore()) {
-          refused = "an attack sequence entry that sets more than its damage and projectile";
+        if (!windowed && entry.overridesMore()) {
+          refused = "an attack sequence entry's variable damage time outside a timer-driven mode";
         } else if (acts
             && (windowed || manual || entry.projectile() != null || data.chargeRange() != 0)) {
           refused =
@@ -1835,6 +1834,7 @@ public class CharacterEntity extends WorldEntity {
         .targetOnlyBuildings(data.targetOnlyBuildings())
         .multipleTargets(data.multipleTargets())
         .uniqueMultipleTargets(data.uniqueMultipleTargets())
+        .rememberMultipleTargets(data.rememberMultipleTargets())
         .allTargetsHit(data.allTargetsHit())
         .attackSequenceMode(data.attackSequence().mode())
         .attackSequenceLength(data.attackSequence().order().size())
@@ -3003,6 +3003,18 @@ public class CharacterEntity extends WorldEntity {
   @Override
   protected void refuseHit() {
     UnitData data = getData();
+    // An attack sequence entry's number of targets stands in for the row's while it is selected.
+    for (AttackSequence.Entry entry : data.attackSequence().entries()) {
+      int targets = entry.customMultipleTargets();
+      if (targets >= 3 || targets >= 2 && data.uniqueMultipleTargets()) {
+        throw new UnsupportedOperationException(
+            name()
+                + " has an attack sequence entry that hits with CustomMultipleTargets "
+                + targets
+                + (data.uniqueMultipleTargets() ? " unique" : "")
+                + ", which is not modelled");
+      }
+    }
     if (data.multipleTargets() >= 3
         || data.multipleTargets() >= 2 && data.uniqueMultipleTargets()
         || data.buffOnDamage() != null
