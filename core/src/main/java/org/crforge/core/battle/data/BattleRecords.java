@@ -1570,6 +1570,8 @@ public final class BattleRecords {
             .projectile(row.string("Projectile").isEmpty() ? null : row.string("Projectile"))
             .hitBiggestTargets(row.bool("HitBiggestTargets"))
             .projectileStartHeight(row.intValue("ProjectileStartHeight"))
+            // On unless the row turns it off.
+            .targetProjectiles(!row.has("TargetProjectiles") || row.bool("TargetProjectiles"))
             .cloning(row.bool("Clone"))
             .onHitAction(actionName(row, "OnHitAction"))
             .oneHitPerTarget(row.bool("OneHitPerTarget"))
@@ -1687,7 +1689,11 @@ public final class BattleRecords {
         && (!cloning || data.damage() != 0 || data.buff() != null)) {
       unmodelled.add("Clone");
     }
-    if (data.projectile() != null) {
+    // Whether a projectile goes onto each object hit is read only by the filter form's hit pass.
+    if (!data.targetProjectiles() && !data.filterHits()) {
+      unmodelled.add("TargetProjectiles");
+    }
+    if (data.projectile() != null && !data.filterHits()) {
       // A start height of -1 launches from the area effect's source at height 1000, which no row
       // carried here does.
       if (data.projectileStartHeight() == -1) {
@@ -1718,29 +1724,24 @@ public final class BattleRecords {
 
   /**
    * Refuses, for the filter form, what each object it lists would get beyond its push, its damage,
-   * its hit action and its buff, and what the pass does beyond passing by an object it has reached
-   * for a row that hits each once, its hit action on itself and its end on its first hit: a pull (a
-   * buff that attracts), a launch, a spawner, a target limit, the biggest targets first and a
-   * deflection, none of which the filter form's hit pass is held for. Its push is held for with
-   * every gate in place: a row that lifts them (PushbackAll), takes the separation off
-   * (RelativePushback) or keeps the longer push (ContinuousPushback) is refused by that column. A
-   * damage type that names a column the pass is not held for is refused by its Damage column.
+   * its hit action, its buff and its projectile, and what the pass does beyond passing by an object
+   * it has reached for a row that hits each once, its target limit, its biggest targets first, its
+   * hit action on itself and its end on its first hit: a pull (a buff that attracts), a launch from
+   * the area effect's source (a start height below 0), a spawner and a deflection, none of which
+   * the filter form's hit pass is held for. Its push is held for with every gate in place: a row
+   * that lifts them (PushbackAll), takes the separation off (RelativePushback) or keeps the longer
+   * push (ContinuousPushback) is refused by that column. A damage type that names a column the pass
+   * is not held for is refused by its Damage column.
    */
   private void filterForm(AreaEffectData data, List<String> unmodelled) {
     if (data.buff() != null && buff(data.buff()).attracts()) {
       unmodelled.add("Buff");
     }
-    if (data.projectile() != null) {
-      unmodelled.add("Projectile");
+    if (data.projectile() != null && data.projectileStartHeight() < 0) {
+      unmodelled.add("ProjectileStartHeight");
     }
     if (data.spawnCharacter() != null && !unmodelled.contains("SpawnCharacter")) {
       unmodelled.add("SpawnCharacter");
-    }
-    if (data.maximumTargets() != 0) {
-      unmodelled.add("MaximumTargets");
-    }
-    if (data.hitBiggestTargets()) {
-      unmodelled.add("HitBiggestTargets");
     }
     if (data.deflectsProjectiles()) {
       unmodelled.add("DeflectProjectilesEnabled");

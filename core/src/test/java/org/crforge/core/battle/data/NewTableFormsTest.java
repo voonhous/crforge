@@ -230,4 +230,35 @@ class NewTableFormsTest {
     assertThat(records.areaEffect("BoostAOE_TrickOrTreat_Pekka").onHitSelfAction())
         .isEqualTo("BoostSpawnPekka");
   }
+
+  @Test
+  @DisplayName(
+      "a filter form row's target limit, biggest targets first, projectile and projectiles onto"
+          + " each target are read, never refused")
+  void theTargetColumnsOfTheFilterFormAreRead() {
+    List<String> columns =
+        List.of("MaximumTargets", "HitBiggestTargets", "Projectile", "TargetProjectiles");
+    List<String> rows = new ArrayList<>();
+    for (GameRow row : tables.table("area_effect_objects").rows()) {
+      if (row.string("Filter").isEmpty() || !row.string("Shape").isEmpty()) {
+        continue;
+      }
+      if (columns.stream().noneMatch(row::has)) {
+        continue;
+      }
+      rows.add(row.name());
+      AreaEffectData data = records.areaEffect(row.name());
+      assertThat(data.filterHits()).as(row.name()).isTrue();
+      assertThat(data.unmodelledColumns()).as(row.name()).doesNotContainAnyElementsOf(columns);
+      assertThat(data.maximumTargets()).as(row.name()).isEqualTo(row.intValue("MaximumTargets"));
+      assertThat(data.hitBiggestTargets()).as(row.name()).isEqualTo(row.bool("HitBiggestTargets"));
+    }
+    assertThat(rows).contains("Vines_AeO", "Lightning", "RoyalDeliveryArea");
+    // Left out, a projectile goes onto each object hit; the Royal Delivery's goes onto its point.
+    assertThat(records.areaEffect("Lightning").targetProjectiles()).isTrue();
+    assertThat(records.areaEffect("RoyalDeliveryArea").targetProjectiles()).isFalse();
+    assertThat(records.areaEffect("Vines_AeO").unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("Lightning").unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("RoyalDeliveryArea").unmodelledColumns()).isEmpty();
+  }
 }
