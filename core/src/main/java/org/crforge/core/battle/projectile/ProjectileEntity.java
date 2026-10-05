@@ -761,13 +761,26 @@ public class ProjectileEntity extends BattleEntity
    * counts it and lists the target. It is no longer released, and waits {@value #HOP_DELAY_MS} ms
    * before it flies on.
    *
+   * <p>A projectile whose launcher has left - the Electro Spirit dies on its launch - is launched
+   * with itself as its owner, and as its root when that has left too: its owner id becomes its own
+   * id, and the owner and root stay empty here, as they hold units only. A projectile owner is what
+   * every reader of the owner on this flight makes of none: the shooter its hits count for and a
+   * kill reaches is a character owner only, the impact's owner tests ask for a character or for the
+   * owner as its own target, and the rest read it only for a hooking or pingpong row. Its side,
+   * level, damage and hop count are its own, and its next target is searched for around where it
+   * landed, with itself as the asker, as with a launcher.
+   *
    * @param next the character it hops to
    */
   void hop(WorldEntity next) {
     int hx = 2 * aimX - startX;
     int hy = 2 * aimY - startY;
     target = null;
+    boolean orphaned = owner == null;
     place(owner, root, next, packedLevel, x, y, aimZ, hx, hy, x, y);
+    if (orphaned) {
+      ownerId = getId();
+    }
     // The relaunch registers its damage on the next target, from where the hop starts.
     registerPending();
     released = false;
