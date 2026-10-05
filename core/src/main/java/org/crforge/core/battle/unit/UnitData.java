@@ -140,6 +140,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param loadFirstHit true when the unit winds up its load before its first hit and again after
  *     each, rather than having it credited
  * @param spawnCharacter the row of the units its spawner makes while it lives, or null for none
+ * @param spawnCharacter2 the row its spawner's second wave makes, the waves taking the rows in
+ *     turn, or null for none
+ * @param spawnCharacter3 the row its spawner's third wave makes, or null for none
  * @param spawnNumber how many children one wave of its spawner makes
  * @param spawnIntervalMs the time between the children of a wave; 0 to make a wave at once
  * @param spawnPauseTimeMs the time between waves
@@ -343,6 +346,8 @@ public record UnitData(
     int sightClipSide,
     boolean loadFirstHit,
     String spawnCharacter,
+    String spawnCharacter2,
+    String spawnCharacter3,
     int spawnNumber,
     int spawnIntervalMs,
     int spawnPauseTimeMs,

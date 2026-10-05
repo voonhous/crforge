@@ -379,6 +379,13 @@ public class CharacterEntity extends WorldEntity {
   private int spawnWaveMade;
 
   /**
+   * Which of its row's spawn characters the spawner's current wave makes: 0 for SpawnCharacter, 1
+   * for SpawnCharacter2, 2 for SpawnCharacter3. It moves on, in turn over the rows set, as a wave
+   * is complete.
+   */
+  private int spawnRowTurn;
+
+  /**
    * How many firings a limited spawner has left, from its row's limit at placement; 0 for a spawner
    * without a limit, which never counts it.
    */
@@ -4788,7 +4795,8 @@ public class CharacterEntity extends WorldEntity {
     int number = data.spawnNumber();
     int count = interval != 0 ? 1 : number;
     int radius = interval != 0 ? 0 : data.spawnRadius();
-    world.liveSpawn(this, count, radius);
+    String row = spawnRow(data);
+    world.liveSpawn(this, row, count, radius);
     if (limit >= 1) {
       spawnsLeft--;
     }
@@ -4797,11 +4805,24 @@ public class CharacterEntity extends WorldEntity {
     if (spawnWaveMade < number) {
       next = interval;
     } else {
+      // A complete wave hands the turn to the next row set, back to the first after the last.
       spawnWaveMade = 0;
+      int rows = 1 + (data.spawnCharacter2() != null ? 1 : 0);
+      rows += data.spawnCharacter3() != null ? 1 : 0;
+      spawnRowTurn = (spawnRowTurn + 1) % rows;
       next = pause;
     }
     spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
-    world.spawnerFired(this, data.spawnCharacter(), count, radius, spawnTimer, spawnWaveMade);
+    world.spawnerFired(this, row, count, radius, spawnTimer, spawnWaveMade);
+  }
+
+  /** The row the spawner's current wave makes, by its turn. */
+  private String spawnRow(UnitData data) {
+    return switch (spawnRowTurn) {
+      case 1 -> data.spawnCharacter2();
+      case 2 -> data.spawnCharacter3();
+      default -> data.spawnCharacter();
+    };
   }
 
   /** Chooses, keeps or drops the character's target and decides whether it attacks this tick. */
