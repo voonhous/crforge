@@ -17,6 +17,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.target.RangeTest;
 import org.crforge.core.pathfinding.target.TargetView;
 
@@ -312,7 +313,10 @@ public final class TrajectoryRecorder implements WorldObserver {
     }
     int x = unit.getView().getX();
     int y = unit.getView().getY();
-    Integer ownHitPoints = towersAttack ? unit.getHitPoints().getHitPoints() : null;
+    // A character whose row has no hit points, such as the Rage spell's bottle, has none to record.
+    HitPoints unitHitPoints = unit.getHitPoints();
+    Integer ownHitPoints =
+        towersAttack && unitHitPoints != null ? unitHitPoints.getHitPoints() : null;
     int state = unit.getView().getState();
     boolean deploying =
         deployingBeforeTheStateVisit ? deployingAtHead : state == GridEntityState.DEPLOYING;
