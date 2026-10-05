@@ -5764,7 +5764,10 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Tells the observers an uppercut marked its target in the unit's targeting queue. */
+  /**
+   * Tells the observers an uppercut marked its target, or a taunt its forced object, in the unit's
+   * targeting queue.
+   */
   void uppercutMarked(CharacterEntity unit, WorldEntity target, int priority) {
     for (WorldObserver observer : observers) {
       observer.uppercutMarked(tick, unit, target, priority, unit.currentTarget());

@@ -2087,6 +2087,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         getTargeting(), null, false, keepWindUp, false, selection, selection.getOutcome());
   }
 
+  /**
+   * Gives the entity's reference up as a unit's taunt step does once its forced object is captured:
+   * the wind-up kept and the setter's re-check skipped.
+   */
+  void tauntRelease() {
+    ReferenceSetter.setReference(
+        getTargeting(), null, false, true, true, selection, selection.getOutcome());
+  }
+
   /** Locks the entity's selector from its next pre-hook, for one step. */
   void raiseLockTarget() {
     getView().setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().lockTarget());

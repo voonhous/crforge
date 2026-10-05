@@ -2227,8 +2227,9 @@ public class CharacterEntity extends WorldEntity {
   private final List<int[]> targetQueue = new ArrayList<>();
 
   /**
-   * Marks an object in the targeting queue, as an uppercut does with the battle's target queueing
-   * on: an id already marked keeps the higher of its priorities.
+   * Marks an object in the targeting queue, as an uppercut (priority 0) and a unit's taunt step
+   * (priority 1) do with the battle's target queueing on: an id already marked keeps the higher of
+   * its priorities.
    *
    * @param target the object
    * @param priority its priority
@@ -2246,8 +2247,10 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The pre-hook, with the targeting queue's flush at its tail while the targeting component is on:
-   * the last entry with a priority of 1 or more whose object is still listed would become the
-   * reference, which is refused, and the queue is emptied.
+   * the last entry with a priority of 1 or more whose object is still listed becomes the reference,
+   * set without the setter's re-check, and the next targeting visit skips its candidate selection;
+   * then the queue is emptied. A listed object that is not a battle entity, which only a taunt's
+   * forced object or an uppercut's target is marked as, is refused.
    */
   @Override
   protected void preHook() {
@@ -2255,13 +2258,24 @@ public class CharacterEntity extends WorldEntity {
     if (targetQueue.isEmpty() || !isActive(TARGETING_SLOT)) {
       return;
     }
+    BattleEntity taken = null;
     for (int[] entry : targetQueue) {
-      if (entry[1] >= 1 && world.liveObject(entry[0]) != null) {
-        throw new UnsupportedOperationException(
-            name() + " takes a target from its targeting queue, which is not modelled");
+      if (entry[1] >= 1) {
+        BattleEntity listed = world.liveObject(entry[0]);
+        if (listed != null) {
+          taken = listed;
+        }
       }
     }
     targetQueue.clear();
+    if (taken != null) {
+      if (!(taken instanceof WorldEntity onto)) {
+        throw new UnsupportedOperationException(
+            name() + " takes " + taken + " from its targeting queue, which is not modelled");
+      }
+      tauntReference(onto, true);
+      unit.targeting().setSkipSelectionNextVisit(true);
+    }
     world.targetQueueFlushed(this);
   }
 
