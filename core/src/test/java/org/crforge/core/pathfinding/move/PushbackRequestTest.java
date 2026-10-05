@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.Test;
  * target, the zero vector and a dash wind-up resumed.
  */
 class PushbackRequestTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   @Test
   @DisplayName("every recorded case gets its recorded answer and leaves the recorded pushback")
@@ -33,10 +37,11 @@ class PushbackRequestTest {
         c[k] = cases.get(i).get(k).asInt();
       }
       GridEntity owner = new GridEntity();
+      owner.setFlagBits(BITS);
       owner.setX(c[0]);
       owner.setY(c[1]);
       owner.setId(c[2] == 1 ? 5000007 : 5000006);
-      owner.setFlags(c[3] == 1 ? EntityFlags.NO_PUSHBACK : 0);
+      owner.setFlags(c[3] == 1 ? BITS.noPushback() : 0);
       owner.setState(c[4]);
       boolean[] resumed = {false};
       PushbackQueries queries =

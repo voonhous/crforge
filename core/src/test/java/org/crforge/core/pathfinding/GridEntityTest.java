@@ -20,13 +20,13 @@ class GridEntityTest {
   @Test
   void flagsHoldBitsAboveThirtyTwo() {
     GridEntity entity = new GridEntity();
-    long noMoveAllowAttract = 1L << 58;
-    long noPushedByAlly = 1L << 53;
+    long bit58 = 1L << 58;
+    long bit53 = 1L << 53;
 
-    entity.setFlags(noMoveAllowAttract | noPushedByAlly);
+    entity.setFlags(bit58 | bit53);
 
-    assertThat(entity.getFlags() & noMoveAllowAttract).isNotZero();
-    assertThat(entity.getFlags() & noPushedByAlly).isNotZero();
+    assertThat(entity.getFlags() & bit58).isNotZero();
+    assertThat(entity.getFlags() & bit53).isNotZero();
     assertThat(entity.getFlags() & (1L << 52)).isZero();
   }
 

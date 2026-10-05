@@ -449,7 +449,7 @@ public final class GridStateSetter implements StateSetter {
     if (casting != null
         && casting.timers().getAbilityWarningCountdown() >= 1
         && !casting.championClone()) {
-      owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
+      owner.setPendingFlags(owner.getPendingFlags() | owner.getFlagBits().abilityCooldownPaused());
       casting.timers().setAbilityReady(true);
     }
     if (movement != null) {
@@ -467,7 +467,7 @@ public final class GridStateSetter implements StateSetter {
       throw new UnsupportedOperationException(
           owner.getName() + " enters the casting state without an ability");
     }
-    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.CASTING_ABILITY);
+    owner.setPendingFlags(owner.getPendingFlags() | owner.getFlagBits().castingAbility());
     int cast = casting.castTimeMs() / TICK_MS;
     int trigger = casting.triggerDelayMs() / TICK_MS;
     if ((cast | trigger) == 0 && casting.effect() == null) {
@@ -609,7 +609,7 @@ public final class GridStateSetter implements StateSetter {
    * reset, the dash timer loaded and the landing hold cleared.
    */
   private void enterDash() {
-    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.DASHING);
+    owner.setPendingFlags(owner.getPendingFlags() | owner.getFlagBits().dashing());
     if (movement == null) {
       return;
     }

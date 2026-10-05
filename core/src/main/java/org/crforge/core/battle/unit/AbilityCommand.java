@@ -5,7 +5,6 @@ import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.combat.HitPoints;
 
 /**
@@ -180,7 +179,7 @@ public final class AbilityCommand {
     if (!CAN_EXECUTE_ABILITY_FROZEN && !unit.isActive(CharacterEntity.TARGETING_SLOT)) {
       return FROZEN;
     }
-    if ((unit.getView().getFlags() & EntityFlags.ABILITY_DISABLED) != 0) {
+    if ((unit.getView().getFlags() & unit.getView().getFlagBits().abilityDisabled()) != 0) {
       return DISABLED;
     }
     if (world.wholeElixir(side) < ability.manaCost()) {

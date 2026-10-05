@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +14,9 @@ import org.junit.jupiter.api.Test;
 /** The rules that decide whether a unit may keep or take a target. */
 class ReferenceValidatorTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private TargetingState knight;
   private TargetView enemyTower;
   private TargetView friendlyTower;
@@ -20,6 +24,7 @@ class ReferenceValidatorTest {
 
   private static GridEntity entity(String name, int id, int side, int x, int y) {
     GridEntity e = new GridEntity();
+    e.setFlagBits(BITS);
     e.setName(name);
     e.setId(id);
     e.setSide(side);
@@ -116,7 +121,7 @@ class ReferenceValidatorTest {
   @Test
   @DisplayName("the untargetable flag hides an entity from everything")
   void untargetableIsRefused() {
-    enemyTower.getEntity().setFlags(EntityFlags.UNTARGETABLE);
+    enemyTower.getEntity().setFlags(BITS.untargetable());
 
     assertThat(
             ReferenceValidator.validate(knight, enemyTower, ReferenceValidator.MODE_TAKE, queries))

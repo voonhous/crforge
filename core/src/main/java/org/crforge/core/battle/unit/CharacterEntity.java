@@ -25,7 +25,6 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
-import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinDrillEvoRelocate;
 import org.crforge.core.battle.action.GoblinHutLife;
@@ -53,7 +52,6 @@ import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridMovementQueries;
@@ -2611,7 +2609,7 @@ public class CharacterEntity extends WorldEntity {
 
   /** Whether its tag word holds the hidden tag. */
   private boolean taggedHidden() {
-    return (getView().getFlags() & EntityFlags.HIDDEN) != 0;
+    return (getView().getFlags() & getView().getFlagBits().hidden()) != 0;
   }
 
   /** Whether it routes to a point its ability sent it to, in the in-game pathfinding state. */
@@ -3215,7 +3213,9 @@ public class CharacterEntity extends WorldEntity {
     if (state >= GridEntityState.DASHING && state <= GridEntityState.COMPONENTS_DISABLED) {
       return false;
     }
-    if ((getView().getFlags() & (EntityFlags.ABILITY_POSTPONED | EntityFlags.ABILITY_DISABLED))
+    if ((getView().getFlags()
+            & (getView().getFlagBits().abilityPostponed()
+                | getView().getFlagBits().abilityDisabled()))
         != 0) {
       return false;
     }
@@ -3296,7 +3296,9 @@ public class CharacterEntity extends WorldEntity {
               + ability.pendingBuff()
               + ", which no reference holds");
     }
-    getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
+    getView()
+        .setPendingFlags(
+            getView().getPendingFlags() | getView().getFlagBits().abilityCooldownPaused());
     unit.timers().setAbilityReady(true);
   }
 
@@ -3535,7 +3537,7 @@ public class CharacterEntity extends WorldEntity {
    */
   private void chainedDashStart(int x, int y, int radius) {
     GridEntity view = getView();
-    if ((view.getFlags() & EntityFlags.NO_DASH) != 0) {
+    if ((view.getFlags() & view.getFlagBits().noDash()) != 0) {
       return;
     }
     TargetingState t = unit.targeting();
@@ -3690,7 +3692,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public boolean noAttack() {
-        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+        return (getView().getFlags() & getView().getFlagBits().noAttack()) != 0;
       }
 
       @Override
@@ -3912,7 +3914,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public boolean rowSetsNoDamage() {
-        return (getData().gameTagsToSet() & EntityFlags.NO_DAMAGE) != 0;
+        return (getData().gameTagsToSet() & getView().getFlagBits().noDamage()) != 0;
       }
 
       @Override
@@ -4266,7 +4268,8 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void hasCapture() {
-        getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.HAS_CAPTURE);
+        getView()
+            .setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().hasCapture());
       }
 
       @Override
@@ -4386,7 +4389,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public boolean noAttack() {
-        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+        return (getView().getFlags() & getView().getFlagBits().noAttack()) != 0;
       }
 
       @Override
@@ -4537,7 +4540,9 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public boolean attackingOrNoAttack() {
-        return (getView().getFlags() & (EntityFlags.ATTACKING | EntityFlags.NO_ATTACK)) != 0;
+        return (getView().getFlags()
+                & (getView().getFlagBits().attacking() | getView().getFlagBits().noAttack()))
+            != 0;
       }
 
       @Override
@@ -4634,7 +4639,7 @@ public class CharacterEntity extends WorldEntity {
     return new NetAttackHost() {
       @Override
       public boolean noAttack() {
-        return (getView().getFlags() & EntityFlags.NO_ATTACK) != 0;
+        return (getView().getFlags() & getView().getFlagBits().noAttack()) != 0;
       }
 
       @Override
@@ -4786,7 +4791,7 @@ public class CharacterEntity extends WorldEntity {
       return;
     }
     // A spawner under NO_SUMMON holds its timer; a firing already due still fires.
-    if ((getView().getFlags() & EntityFlags.NO_SUMMON) == 0) {
+    if ((getView().getFlags() & getView().getFlagBits().noSummon()) == 0) {
       spawnTimer -= getBuffs().spawnRate() / 2;
     }
     if (spawnTimer > 0) {
@@ -4838,7 +4843,8 @@ public class CharacterEntity extends WorldEntity {
       if (deploying() || waiting()) {
         return;
       }
-      if (parent != null && (parent.getView().getFlags() & EntityFlags.NO_ATTACK) != 0) {
+      if (parent != null
+          && (parent.getView().getFlags() & parent.getView().getFlagBits().noAttack()) != 0) {
         throw new UnsupportedOperationException(
             name() + " rides on a parent that may not attack, whose hold on its hit no run holds");
       }
@@ -4874,7 +4880,8 @@ public class CharacterEntity extends WorldEntity {
     public void visit() {
       // A shield that is up is tagged in every state and at any hit points, from the next step.
       if (getHitPoints().getShield() >= 1) {
-        getView().setPendingFlags(getView().getPendingFlags() | GameTags.HAS_SHIELD);
+        getView()
+            .setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().hasShield());
       }
       int state = getView().getState();
       if (getHitPoints().getHitPoints() < 1

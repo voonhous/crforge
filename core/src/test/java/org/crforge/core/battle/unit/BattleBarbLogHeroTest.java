@@ -25,6 +25,9 @@ import org.junit.jupiter.api.Test;
  */
 class BattleBarbLogHeroTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String BARBARIAN = "BarbLogBarbarianHero";
@@ -150,7 +153,7 @@ class BattleBarbLogHeroTest {
     ProjectileEntity barrel = rolling.get(0);
     assertThat(barrel.getOwner()).isSameAs(barbarian);
     assertThat(barbarian.getView().getY()).isEqualTo(y - 142 * 6);
-    long rollingTags = EntityFlags.NO_DAMAGE | EntityFlags.UNTARGETABLE | EntityFlags.NO_ATTACK;
+    long rollingTags = BITS.noDamage() | BITS.untargetable() | BITS.noAttack();
     int steps = 0;
     int healed = barbarian.getHitPoints().getHitPoints();
     while (projectiles(battle, "BarbLogHeroProjectileReRolling").contains(barrel)) {

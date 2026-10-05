@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.move;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 
 /**
@@ -10,6 +11,7 @@ import org.crforge.core.pathfinding.GridEntity;
  * fills them from the entity's targeting component and from the entity itself.
  *
  * @param flags the entity's 64-bit behaviour flags
+ * @param flagBits which bit of {@code flags} each flag is
  * @param state the entity's current state
  * @param hasTargetingComponent whether the entity carries an active targeting component at all
  * @param dashWindup positive while the targeting component winds up a dash, which zeroes the budget
@@ -29,6 +31,7 @@ import org.crforge.core.pathfinding.GridEntity;
  */
 public record SpeedInputs(
     long flags,
+    EntityFlags flagBits,
     int state,
     boolean hasTargetingComponent,
     int dashWindup,
@@ -49,6 +52,7 @@ public record SpeedInputs(
   public static SpeedInputs of(GridEntity entity, MovementState movement) {
     return new SpeedInputs(
         entity.getFlags(),
+        entity.getFlagBits(),
         entity.getState(),
         false,
         0,

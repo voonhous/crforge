@@ -34,6 +34,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class BattleRecordsTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static BattleRecords records;
 
   @BeforeAll
@@ -712,7 +715,7 @@ class BattleRecordsTest {
           + " carrier, and listed as not modelled otherwise")
   void aBuffSetsOnlyTheTagThePushPassReads(@TempDir Path folder) throws IOException {
     BuffData notPushed = records.buff("Valkyrie_NotPushed_BUF");
-    assertThat(notPushed.gameTagsToSet()).isEqualTo(EntityFlags.NO_PUSHED_BY_ENEMY);
+    assertThat(notPushed.gameTagsToSet()).isEqualTo(BITS.noPushedByEnemy());
     assertThat(notPushed.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Valkyrie_MiniTornado_EV1").gameTagsToSet()).isZero();
 
@@ -975,20 +978,18 @@ class BattleRecordsTest {
     assertThat(egg.untargetableWhenSpawned()).isTrue();
     assertThat(egg.gameTagsToSet())
         .isEqualTo(
-            EntityFlags.NO_GIANTBUFFER_CHEF_ENCHANTMENT
-                | EntityFlags.AVOIDANCE_AS_OBSTACLE
-                | EntityFlags.NO_MOVE_ALLOW_ATTRACT);
+            BITS.noGiantbufferChefEnchantment()
+                | BITS.avoidanceAsObstacle()
+                | BITS.noMoveAllowAttract());
     // The same three written with spaces are the same tags.
     assertThat(records.unit("EliteArcherHero_Dummy").gameTagsToSet())
         .isEqualTo(egg.gameTagsToSet());
     // The Goblins hero's banner sets three more the battle reads: no damage, no contact, no
     // targeting; a row with one of them alone is taken too.
     assertThat(records.unit("GoblinHero_Flag_Building").gameTagsToSet())
-        .isEqualTo(
-            EntityFlags.NO_DAMAGE | EntityFlags.NO_CHECK_COLLISIONS | EntityFlags.UNTARGETABLE);
+        .isEqualTo(BITS.noDamage() | BITS.noCheckCollisions() | BITS.untargetable());
     assertThat(records.unit("GoblinHero_Flag_Building").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("RageBarbarianEvoGhost").gameTagsToSet())
-        .isEqualTo(EntityFlags.NO_DAMAGE);
+    assertThat(records.unit("RageBarbarianEvoGhost").gameTagsToSet()).isEqualTo(BITS.noDamage());
     assertThat(records.unit("RageBarbarianEvoGhost").unmodelledColumns()).isEmpty();
   }
 
@@ -1042,7 +1043,7 @@ class BattleRecordsTest {
     assertThat(monk.areaEffectObject()).isEqualTo("Deflect");
     assertThat(monk.abilityStateDurationMs()).isEqualTo(4000);
     assertThat(monk.gameTagsWhileAbilityActive())
-        .isEqualTo(EntityFlags.AVOIDANCE_AS_OBSTACLE | EntityFlags.NO_MOVE_ALLOW_ATTRACT);
+        .isEqualTo(BITS.avoidanceAsObstacle() | BITS.noMoveAllowAttract());
     assertThat(monk.unmodelledColumns()).isEmpty();
     assertThat(queen.areaEffectObject()).isNull();
     assertThat(queen.abilityStateDurationMs()).isZero();

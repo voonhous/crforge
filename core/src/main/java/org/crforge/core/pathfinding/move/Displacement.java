@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -231,6 +230,6 @@ public final class Displacement {
 
   /** Sets the charging flag on the entity once its charge progress is complete. */
   static void markCharging(GridEntity owner) {
-    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.CHARGING);
+    owner.setPendingFlags(owner.getPendingFlags() | owner.getFlagBits().charging());
   }
 }

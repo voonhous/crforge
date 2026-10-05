@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -15,6 +16,9 @@ import org.junit.jupiter.api.Test;
 
 /** The per-tick targeting pass: its timers, its attack decision and what it asks the caller for. */
 class TargetingVisitTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   private TargetingState knight;
   private GridEntity unit;
@@ -80,6 +84,7 @@ class TargetingVisitTest {
   @BeforeEach
   void setUp() {
     unit = new GridEntity();
+    unit.setFlagBits(BITS);
     unit.setName("owner");
     unit.setId(7);
     unit.setSide(0);
@@ -95,6 +100,8 @@ class TargetingVisitTest {
     knight.setMovementComponentActive(true);
 
     GridEntity towerEntity = new GridEntity();
+
+    towerEntity.setFlagBits(BITS);
     towerEntity.setName("PrincessTower_1_1");
     towerEntity.setId(5);
     towerEntity.setSide(1);
@@ -386,7 +393,7 @@ class TargetingVisitTest {
   void theNoAttackFlagClearsTheAttack() {
     knight.setReference(tower);
     knight.setAttackTimerMs(600);
-    unit.setFlags(EntityFlags.NO_ATTACK);
+    unit.setFlags(BITS.noAttack());
 
     visit();
 

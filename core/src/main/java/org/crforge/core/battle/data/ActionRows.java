@@ -1513,7 +1513,8 @@ public final class ActionRows {
               yield new Hide(
                   shared,
                   integer(f, "Duration"),
-                  !f.hasNonNull("StopWhenHiderDies") || bool(f, "StopWhenHiderDies"));
+                  !f.hasNonNull("StopWhenHiderDies") || bool(f, "StopWhenHiderDies"),
+                  tagMask("HIDDEN"));
             }
             case "ActionRunActionOnInstigatorDeath" -> {
               refuseUnread(name, f, true);
@@ -1651,6 +1652,7 @@ public final class ActionRows {
                         .rechargeIncrement(integer(f, "RechargeIncrement"))
                         .attackSequenceIndices(ints(f, "AttackSequenceIndices"))
                         .depletedAttackSequenceIndex(integer(f, "DepletedAttackSequenceIndex"))
+                        .noAttackTag(tagMask("NO_ATTACK"))
                         .build());
             case "ActionMusketeerSnipe" ->
                 new MusketeerSnipe(

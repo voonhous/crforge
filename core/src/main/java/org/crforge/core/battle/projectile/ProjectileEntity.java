@@ -1200,6 +1200,7 @@ public class ProjectileEntity extends BattleEntity
 
   public TargetingState areaOwner() {
     GridEntity view = new GridEntity();
+    view.setFlagBits(world.getFlagBits());
     view.setName(name());
     view.setType(KIND_PROJECTILE);
     view.setSide(side);

@@ -404,6 +404,8 @@ public class GridPathfindingSystem {
 
   /** Creates the view of one entity, with the fields that never change over its life. */
   private GridEntity createView(Entity entity) {
+    // The view keeps EntityFlags.NONE: the older engine never sets a flag word, so no flag has a
+    // bit here.
     GridEntity view = new GridEntity();
     view.setId((int) entity.getId());
     view.setName(entity.getName());

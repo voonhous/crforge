@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
 
@@ -50,7 +49,8 @@ public final class SpeedBudget {
    *     up
    */
   public static int speedBudget(SpeedInputs entity, SpeedConfig config, SpeedGlobals globals) {
-    if ((entity.flags() & (EntityFlags.NO_MOVE | EntityFlags.NO_MOVE_ALLOW_ATTRACT)) != 0) {
+    if ((entity.flags() & (entity.flagBits().noMove() | entity.flagBits().noMoveAllowAttract()))
+        != 0) {
       return 0;
     }
     if (entity.hasTargetingComponent()) {

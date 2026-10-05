@@ -6,7 +6,6 @@ import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.AreaDamage;
@@ -171,7 +170,8 @@ final class ProjectileFlight {
           speed = attracted(target, speed);
         }
       }
-      if (target != null && (target.getView().getFlags() & EntityFlags.DASHING) != 0) {
+      if (target != null
+          && (target.getView().getFlags() & target.getView().getFlagBits().dashing()) != 0) {
         // A dashing target the dash keeps out of reach would end the hook as an ordinary
         // arrival; no reference holds a hook on a dashing unit.
         throw new UnsupportedOperationException(

@@ -78,7 +78,7 @@ final class UppercutRun extends ActionInstance {
     super(row);
     this.row = row;
     this.unit = unit;
-    unit.raiseWatched(EntityFlags.NO_ATTACK | EntityFlags.NO_MOVE);
+    unit.raiseWatched(bits().noAttack() | bits().noMove());
     target = unit.currentTarget();
     if (target == null) {
       throw new UnsupportedOperationException(
@@ -107,7 +107,7 @@ final class UppercutRun extends ActionInstance {
         outcome = "push refused";
         finish();
       } else {
-        unit.raiseWatched(EntityFlags.NO_ATTACK | EntityFlags.NO_MOVE | EntityFlags.LOCK_TARGET);
+        unit.raiseWatched(bits().noAttack() | bits().noMove() | bits().lockTarget());
         delay = row.getDashFollowUpDelayMs();
         if (delay != 0) {
           outcome = "pushed";
@@ -140,7 +140,7 @@ final class UppercutRun extends ActionInstance {
     }
     delay -= STEP_MS;
     if (delay > 0) {
-      unit.raiseWatched(EntityFlags.NO_MOVE | EntityFlags.NO_ATTACK);
+      unit.raiseWatched(bits().noMove() | bits().noAttack());
       return "waiting";
     }
     // Without the follow-up dash, which the row refuses, the run ends with the delay.
@@ -240,5 +240,10 @@ final class UppercutRun extends ActionInstance {
       unit.world().uppercutTargetLeft(unit, target);
       target = null;
     }
+  }
+
+  /** Which bit of the unit's tag word each flag is. */
+  private EntityFlags bits() {
+    return unit.getView().getFlagBits();
   }
 }

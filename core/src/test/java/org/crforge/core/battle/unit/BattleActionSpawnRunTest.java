@@ -406,6 +406,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class BattleActionSpawnRunTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   /** Writes a match's trace row as the reference lists it. */
   private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -3541,11 +3544,7 @@ class BattleActionSpawnRunTest {
     List<String> names = new ArrayList<>();
     String[] all = {"NO_MOVE", "NO_ATTACK", "LOCK_TARGET", "FORCE_IS_AIR", "DISABLE_PHYSICAL"};
     long[] bits = {
-      EntityFlags.NO_MOVE,
-      EntityFlags.NO_ATTACK,
-      EntityFlags.LOCK_TARGET,
-      world.forceIsAir(),
-      EntityFlags.DISABLE_PHYSICAL
+      BITS.noMove(), BITS.noAttack(), BITS.lockTarget(), world.forceIsAir(), BITS.disablePhysical()
     };
     for (int i = 0; i < all.length; i++) {
       if ((word & bits[i]) != 0) {

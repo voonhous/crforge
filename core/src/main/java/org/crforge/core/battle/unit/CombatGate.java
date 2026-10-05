@@ -1,6 +1,5 @@
 package org.crforge.core.battle.unit;
 
-import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -76,7 +75,7 @@ final class CombatGate {
       Runnable resume,
       boolean keepCurrentTarget) {
     int state = view.getState();
-    if ((view.getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0) {
+    if ((view.getFlags() & view.getFlagBits().keepsTargetingOff()) != 0) {
       return false;
     }
     if (state == GridEntityState.WAITING_TO_DEPLOY) {

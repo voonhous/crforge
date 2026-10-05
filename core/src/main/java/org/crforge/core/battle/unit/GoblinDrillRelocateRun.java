@@ -6,7 +6,6 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.GoblinDrillEvoRelocate;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -204,7 +203,7 @@ final class GoblinDrillRelocateRun extends ActionInstance {
     boolean hidden = view.getState() == GridEntityState.WAITING_TO_DEPLOY || unit.hidden();
     if (hidden) {
       timerMs -= STEP_MS;
-      view.setPendingFlags(view.getPendingFlags() | EntityFlags.NO_SUMMON);
+      view.setPendingFlags(view.getPendingFlags() | view.getFlagBits().noSummon());
       if (moving && timerMs <= MOVE_AT_MS) {
         // One position write, the height set to 0, which a standing building already has.
         if (view.getZ() != 0) {

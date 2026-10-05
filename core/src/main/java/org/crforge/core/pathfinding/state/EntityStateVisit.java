@@ -3,7 +3,6 @@ package org.crforge.core.pathfinding.state;
 import java.util.List;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -117,11 +116,13 @@ public final class EntityStateVisit {
     int word = entity.getState();
     if ((entity.getState() & ~1) == GridEntityState.SPAWN_PATHFIND) {
       MovementState component = entity.isMovementActive() ? movement : null;
-      entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.DISABLE_PHYSICAL);
+      entity.setPendingFlags(entity.getPendingFlags() | entity.getFlagBits().disablePhysical());
       if (component != null
           && component.getRoute().isEmpty()
-          && (entity.getFlags() & (EntityFlags.NO_MOVE_ALLOW_ATTRACT | EntityFlags.NO_MOVE)) == 0
-          && (entity.getFlags() & EntityFlags.CAPTURED) == 0) {
+          && (entity.getFlags()
+                  & (entity.getFlagBits().noMoveAllowAttract() | entity.getFlagBits().noMove()))
+              == 0
+          && (entity.getFlags() & entity.getFlagBits().captured()) == 0) {
         word = arrival(entity, component, config, queries, chain, setter);
       } else {
         word = entity.getState();
@@ -204,13 +205,14 @@ public final class EntityStateVisit {
         timers.setAbilityReady(false);
         setter.setState(entity, GridEntityState.CASTING);
       } else {
-        entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.ABILITY_COOLDOWN_PAUSED);
+        entity.setPendingFlags(
+            entity.getPendingFlags() | entity.getFlagBits().abilityCooldownPaused());
       }
     }
 
     // 9. The casting and follow-up countdowns.
     if (entity.getState() == GridEntityState.CASTING) {
-      entity.setPendingFlags(entity.getPendingFlags() | EntityFlags.CASTING_ABILITY);
+      entity.setPendingFlags(entity.getPendingFlags() | entity.getFlagBits().castingAbility());
       chain.add("ability_cast_active");
       if (queries.abilityCastActive() && config.abilityPresent() && config.abilityHoldsState()) {
         ResumeHelper.resume(entity, config, queries, chain, setter);

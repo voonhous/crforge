@@ -8,7 +8,6 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.target.AttackRange;
@@ -298,7 +297,7 @@ final class TauntRun extends ActionInstance {
 
   /** Whether the forced object carries the captured tag. */
   private boolean captured() {
-    return (forced.getView().getFlags() & EntityFlags.CAPTURED) != 0;
+    return (forced.getView().getFlags() & forced.getView().getFlagBits().captured()) != 0;
   }
 
   /**

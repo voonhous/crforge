@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -13,6 +14,9 @@ import org.junit.jupiter.api.Test;
 
 /** Which of the entities around a unit it takes as its target. */
 class CandidateSelectorTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   private TargetingState knight;
   private TargetingOutcome outcome;
@@ -53,6 +57,7 @@ class CandidateSelectorTest {
 
   private static TargetView troop(String name, int id, int side, int x, int y, int radius) {
     GridEntity e = new GridEntity();
+    e.setFlagBits(BITS);
     e.setName(name);
     e.setId(id);
     e.setSide(side);
@@ -65,6 +70,7 @@ class CandidateSelectorTest {
 
   private static TargetView tower(String name, int id, int x, int y, boolean king) {
     GridEntity e = new GridEntity();
+    e.setFlagBits(BITS);
     e.setName(name);
     e.setId(id);
     e.setSide(1);
@@ -85,6 +91,7 @@ class CandidateSelectorTest {
   @BeforeEach
   void setUp() {
     GridEntity unit = new GridEntity();
+    unit.setFlagBits(BITS);
     unit.setName("owner");
     unit.setId(7);
     unit.setSide(0);
@@ -172,7 +179,7 @@ class CandidateSelectorTest {
     TargetView enemy = troop("Archer", 9, 1, 3500, 13000, 500);
     around.add(enemy);
 
-    knight.getOwner().setFlags(EntityFlags.LOCK_TARGET);
+    knight.getOwner().setFlags(BITS.lockTarget());
     CandidateSelector.select(knight, false, false, queries, outcome);
     assertThat(knight.getReference()).isNull();
 

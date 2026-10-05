@@ -8,7 +8,6 @@ import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.Relocation;
@@ -78,7 +77,7 @@ final class BarbReRollRun extends ActionInstance {
       return;
     }
     faceForward();
-    if ((unit.getView().getFlags() & EntityFlags.CAPTURED) != 0) {
+    if ((unit.getView().getFlags() & unit.getView().getFlagBits().captured()) != 0) {
       return;
     }
     counter = Math.max(counter, STEP_MS) - STEP_MS;

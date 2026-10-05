@@ -94,7 +94,8 @@ public final class RouteFollower {
       MovementQueries queries,
       MovementChain chain) {
     long flags = owner.getFlags();
-    if ((flags & (EntityFlags.NO_MOVE | EntityFlags.NO_MOVE_ALLOW_ATTRACT)) != 0) {
+    EntityFlags bits = owner.getFlagBits();
+    if ((flags & (bits.noMove() | bits.noMoveAllowAttract())) != 0) {
       if (component.getChargeProgress() != MovementState.CHARGE_INACTIVE) {
         if (config.chargeRange() == 0) {
           chain.mark("modifier_component");
@@ -117,7 +118,7 @@ public final class RouteFollower {
           || state == GridEntityState.ROUTE_FOLLOWING_ALTERNATE) {
         chain.requestState("set_state_standing", GridEntityState.STANDING);
       }
-      if ((flags & EntityFlags.NO_MOVE) != 0) {
+      if ((flags & bits.noMove()) != 0) {
         return;
       }
     }

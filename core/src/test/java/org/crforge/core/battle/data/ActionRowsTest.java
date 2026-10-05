@@ -31,7 +31,6 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
-import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.Group;
 import org.crforge.core.battle.action.Hide;
@@ -73,6 +72,9 @@ import org.junit.jupiter.api.io.TempDir;
  * every row of the data either built or refused by name.
  */
 class ActionRowsTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   /** A binding that compiles nothing: every expression answers 0, every variable its hash. */
   private static final ActionBinding INERT_BINDING =
@@ -1187,10 +1189,10 @@ class ActionRowsTest {
   @DisplayName("game tags are the bits of their rows, a list of them the bits of all")
   void gameTags() {
     ActionRows rows = GameData.actions();
-    assertThat(rows.tagMask("INACTIVE")).isEqualTo(GameTags.INACTIVE);
-    assertThat(rows.tagMask("ACTIVATING")).isEqualTo(GameTags.ACTIVATING);
-    assertThat(rows.tagMask("INACTIVE, ACTIVATING"))
-        .isEqualTo(GameTags.INACTIVE | GameTags.ACTIVATING);
+    // INACTIVE and ACTIVATING are the rows at indices 20 and 21 of the configured tables.
+    assertThat(rows.tagMask("INACTIVE")).isEqualTo(1L << 20);
+    assertThat(rows.tagMask("ACTIVATING")).isEqualTo(1L << 21);
+    assertThat(rows.tagMask("INACTIVE, ACTIVATING")).isEqualTo((1L << 20) | (1L << 21));
     assertThatThrownBy(() -> rows.tagMask("NO_SUCH_TAG"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NO_SUCH_TAG");
@@ -1264,7 +1266,7 @@ class ActionRowsTest {
     assertThat(columns.onPickNewTarget().name())
         .isEqualTo("MegaMinion_hero_give_bot_buff_to_targets");
     assertThat(columns.onTargetDied()).isEqualTo("MegaMinion_hero_reset_ability");
-    assertThat(columns.tagsWithoutTarget()).isEqualTo(EntityFlags.ABILITY_DISABLED);
+    assertThat(columns.tagsWithoutTarget()).isEqualTo(BITS.abilityDisabled());
     assertThat(columns.tagsWithTarget()).isZero();
     assertThat(columns.pauseIfInCooldown()).isTrue();
     assertThat(columns.delayBeforeSearchMs()).isEqualTo(1000);

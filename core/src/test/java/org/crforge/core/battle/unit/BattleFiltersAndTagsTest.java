@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -57,7 +56,7 @@ class BattleFiltersAndTagsTest {
         new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = match.getBattle();
     BattleWorld world = match.getWorld();
-    world.registerGameTag("INACTIVE", GameTags.INACTIVE);
+    world.registerGameTag("INACTIVE", world.getFlagBits().inactive());
     TowerEntity king = tower(match, "KingTower_0_0");
     TowerEntity princess = tower(match, "PrincessTower_0_1");
     Expression inactive =
@@ -75,6 +74,7 @@ class BattleFiltersAndTagsTest {
             ExpressionEvaluator.evaluate(
                 inactive, new BattleExpressionEnvironment(princess, world)))
         .isZero();
-    assertThat(king.getView().getFlags() & GameTags.INACTIVE).isEqualTo(GameTags.INACTIVE);
+    long inactiveBit = world.getFlagBits().inactive();
+    assertThat(king.getView().getFlags() & inactiveBit).isEqualTo(inactiveBit);
   }
 }

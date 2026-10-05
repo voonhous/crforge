@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 /** The battle as an expression sees it from a king tower. */
 class BattleExpressionEnvironmentTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   @Test
   @DisplayName("every one of the 48 names resolves, so every expression of the data compiles")
   void everyNameResolves() {
@@ -234,9 +237,9 @@ class BattleExpressionEnvironmentTest {
       match.getBattle().step();
     }
     assertThat(environment.call(isMoving, new int[0])).as("walking").isEqualTo(1);
-    knight.getView().setFlags(knight.getView().getFlags() | EntityFlags.NO_MOVE);
+    knight.getView().setFlags(knight.getView().getFlags() | BITS.noMove());
     assertThat(environment.call(isMoving, new int[0])).as("held by NO_MOVE").isZero();
-    knight.getView().setFlags(knight.getView().getFlags() & ~EntityFlags.NO_MOVE);
+    knight.getView().setFlags(knight.getView().getFlags() & ~BITS.noMove());
     knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     assertThat(environment.call(isMoving, new int[0])).as("its movement off").isZero();
 

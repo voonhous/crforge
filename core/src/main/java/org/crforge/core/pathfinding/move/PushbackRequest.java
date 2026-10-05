@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -81,7 +80,7 @@ public final class PushbackRequest {
     if (queries.buffRefusesPushback() && !liftGates) {
       return 0;
     }
-    if ((owner.getFlags() & EntityFlags.NO_PUSHBACK) != 0 && !liftGates) {
+    if ((owner.getFlags() & owner.getFlagBits().noPushback()) != 0 && !liftGates) {
       return 0;
     }
     if (queries.hidden() && !evenIfHidden) {

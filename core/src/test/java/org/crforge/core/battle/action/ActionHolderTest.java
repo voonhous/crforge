@@ -11,6 +11,11 @@ import org.junit.jupiter.api.Test;
 /** The action holder's scheduling and run rules, one at a time. */
 class ActionHolderTest {
 
+  /** Two tag bits for the runs to set; the holder only folds them into its word. */
+  private static final long INACTIVE = 1L << 20;
+
+  private static final long ACTIVATING = 1L << 21;
+
   /** The names of the actions started, in the order they started, with their phase. */
   private final List<String> started = new ArrayList<>();
 
@@ -140,9 +145,9 @@ class ActionHolderTest {
           + " it")
   void aFinishedRunKeepsItsTagsUntilTheNextRunPass() {
     ActionHolder holder = holder();
-    holder.schedule(new WithDuration("run", 100, GameTags.ACTIVATING, null), 0);
+    holder.schedule(new WithDuration("run", 100, ACTIVATING, null), 0);
     holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
-    assertThat(holder.tags()).isEqualTo(GameTags.ACTIVATING);
+    assertThat(holder.tags()).isEqualTo(ACTIVATING);
 
     // The counter is compared before it is advanced: 0, 50 and 100 ms, finished on the third.
     holder.runPass(0);
@@ -150,7 +155,7 @@ class ActionHolderTest {
     assertThat(holder.running().get(0).isFinished()).isFalse();
     holder.runPass(2);
     assertThat(holder.running().get(0).isFinished()).isTrue();
-    assertThat(holder.tags()).as("finished, still listed").isEqualTo(GameTags.ACTIVATING);
+    assertThat(holder.tags()).as("finished, still listed").isEqualTo(ACTIVATING);
 
     holder.runPass(3);
     assertThat(holder.running()).isEmpty();
@@ -165,12 +170,11 @@ class ActionHolderTest {
     ActionHolder holder = holder();
     boolean[] condition = {false};
     BattleAction effect = new InertAction(ActionRow.named("effect"));
-    BattleAction activating = new WithDuration("activating", 3300, GameTags.ACTIVATING, effect);
-    holder.schedule(
-        new WaitToActivate("wait", () -> condition[0], activating, GameTags.INACTIVE), 0);
+    BattleAction activating = new WithDuration("activating", 3300, ACTIVATING, effect);
+    holder.schedule(new WaitToActivate("wait", () -> condition[0], activating, INACTIVE), 0);
     holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
     holder.runPass(0);
-    assertThat(holder.tags()).isEqualTo(GameTags.INACTIVE);
+    assertThat(holder.tags()).isEqualTo(INACTIVE);
 
     condition[0] = true;
     holder.runPass(1);
@@ -180,9 +184,9 @@ class ActionHolderTest {
     // The activating run and its effect alongside start in phase 2, after the finished wait, which
     // still sets its tag.
     assertThat(started).containsExactly("wait@1", "activating@2", "effect@2");
-    assertThat(holder.tags()).isEqualTo(GameTags.INACTIVE | GameTags.ACTIVATING);
+    assertThat(holder.tags()).isEqualTo(INACTIVE | ACTIVATING);
     holder.runPass(2);
-    assertThat(holder.tags()).isEqualTo(GameTags.ACTIVATING);
+    assertThat(holder.tags()).isEqualTo(ACTIVATING);
   }
 
   @Test

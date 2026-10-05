@@ -163,12 +163,6 @@ public final class BuffComponent implements BattleComponent {
   /** Milliseconds one visit takes off each instance. */
   private static final int STEP_MS = 50;
 
-  /** The tag under which an entity takes no buff. */
-  private static final long NO_BUFFS = 1L << 16;
-
-  /** The tag under which an entity's spawner time does not step. */
-  private static final long NO_SPAWNTIMER = 1L << 13;
-
   private static final int PERCENT = 100;
 
   private final WorldEntity entity;
@@ -286,7 +280,7 @@ public final class BuffComponent implements BattleComponent {
     if (entity.getTargetView().building() && buff.ignoreBuildings()) {
       return;
     }
-    if ((entity.getView().getFlags() & NO_BUFFS) != 0) {
+    if ((entity.getView().getFlags() & entity.getView().getFlagBits().noBuffs()) != 0) {
       return;
     }
     // A rider takes a buff only from its parent: an area effect's buff test refuses it, and a hit's
@@ -852,7 +846,7 @@ public final class BuffComponent implements BattleComponent {
    * otherwise what the largest slow leaves of the largest boost.
    */
   public int spawnRate() {
-    if ((entity.getView().getFlags() & NO_SPAWNTIMER) != 0) {
+    if ((entity.getView().getFlags() & entity.getView().getFlagBits().noSpawnTimer()) != 0) {
       return 0;
     }
     int[] extremes = extremes(BuffData::spawnSpeedMultiplier);
