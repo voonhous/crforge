@@ -217,6 +217,20 @@ public class BattleWorld implements HolderPasses {
   private boolean areaLifeEndsBelowZero;
 
   /**
+   * The data versions whose game's guard run makes its row's area effect (SpawnAEO), which pushes
+   * and hits what the charge passes, in place of its own push pass. The rule is the game build's,
+   * not a table value: the game of data version 16.402.18 reads no push column of the guard spawn
+   * row, makes the area effect at the guard's point on the step that starts the charge and ends it
+   * as the run finishes; the game of 14.593.1 pushes and hits by the row's push columns itself.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> GUARD_RUN_MAKES_AREA = Set.of("16.402.18");
+
+  /** True when the battle's data version's guard run makes its row's area effect. */
+  private boolean guardRunMakesArea;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -527,6 +541,15 @@ public class BattleWorld implements HolderPasses {
             PUSHBACK_END_DROPS_ROUTE.contains(tables.version()));
     this.directHitAtDrain = DIRECT_HIT_AT_DRAIN.contains(tables.version());
     this.areaLifeEndsBelowZero = AREA_LIFE_ENDS_BELOW_ZERO.contains(tables.version());
+    this.guardRunMakesArea = GUARD_RUN_MAKES_AREA.contains(tables.version());
+  }
+
+  /**
+   * Whether the battle's data version's guard run makes its row's area effect in place of its own
+   * push pass (see {@link #GUARD_RUN_MAKES_AREA}).
+   */
+  boolean guardRunMakesArea() {
+    return guardRunMakesArea;
   }
 
   /**
@@ -5985,8 +6008,9 @@ public class BattleWorld implements HolderPasses {
    * @param offsetX the row's offset along the width
    * @param offsetY the row's offset along the length, before the owner's side turns it
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the area effect
    */
-  public void spawnAreaEffect(
+  public AreaEffectEntity spawnAreaEffect(
       SpawnHost owner,
       String action,
       String row,
@@ -6013,6 +6037,7 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
     }
+    return areaEffect;
   }
 
   /**

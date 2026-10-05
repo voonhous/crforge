@@ -650,4 +650,107 @@ class BattleAreaEffectFilterFormTest {
     }
     assertThat(far.getBuffs().carries("Tornado")).isFalse();
   }
+
+  /** The pushback of the lasting pushing area the flag scenes cast, as the guard's charge has. */
+  private static final int LONG_PUSHBACK = 2500;
+
+  /**
+   * The configured tables with Zap rewritten in the filter form as a lasting pushing area: a hit
+   * every step for 500 ms, each object hit once, a base damage, a long pushback, the given push
+   * columns set and no buff.
+   */
+  private static GameTables lastingPushZap(Path folder, String... flags) throws IOException {
+    return filterForm(
+        folder,
+        "Zap",
+        columns -> {
+          columns.remove("Buff");
+          columns.put("LifeDuration", 500);
+          columns.put("HitSpeed", 50);
+          columns.put("OneHitPerTarget", true);
+          columns.putObject("Damage").put("BaseDamage", 75);
+          columns.put("Pushback", LONG_PUSHBACK);
+          for (String flag : flags) {
+            columns.put(flag, true);
+          }
+        });
+  }
+
+  /** Where the flag scenes cast their Zap: about 800 ahead of where the Knight walks to by then. */
+  private static final int ZAP_Y = 21500;
+
+  /** A side 1 Knight walking down the right lane into a lasting pushing Zap of side 0. */
+  private static List<String> knightUnderLastingZap(GameTables tables) {
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    List<String> events = pushEvents(match, 1);
+    match.play(150, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 14500, 22500, "k");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, ZAP_Y, "zap");
+    stepTo(match, 300);
+    return events;
+  }
+
+  @Test
+  @DisplayName(
+      "a row in the filter form that hits each object once and pushes continuously and relatively"
+          + " pushes a troop it reached again on every update, to the edge of its pushback circle,"
+          + " and deals it its damage once")
+  void aContinuousRelativeRowPushesAReachedTroopAgain(@TempDir Path folder) throws IOException {
+    List<String> events =
+        knightUnderLastingZap(
+            lastingPushZap(folder, "RelativePushback", "ContinuousPushback", "PushbackAll"));
+    List<String> hits = events.stream().filter(e -> e.contains(" hit ")).toList();
+    List<String> pushes = events.stream().filter(e -> e.contains(" push ")).toList();
+    assertThat(hits).hasSize(1);
+    assertThat(hits.get(0)).endsWith(" hit 75 moving true");
+    assertThat(pushes).hasSizeGreaterThan(1);
+    // The first push comes before the hit, and aims the pushback less the separation from where
+    // the Knight stands, straight away from the cast point: the edge of the circle.
+    assertThat(events.get(0)).contains(" push true ");
+    String[] at = events.get(0).split(" at ")[1].split(" to ")[0].split(",");
+    int x = Integer.parseInt(at[0]);
+    int y = Integer.parseInt(at[1]);
+    int dx = x - 14500;
+    int dy = y - ZAP_Y;
+    int length = FixedMath.isqrt(dx * dx + dy * dy);
+    int distance = LONG_PUSHBACK - length;
+    assertThat(distance).isPositive().isLessThan(LONG_PUSHBACK);
+    assertThat(events.get(0))
+        .endsWith(
+            String.format(
+                " push true from 14500,%d at %d,%d to %d,%d",
+                ZAP_Y, x, y, x + distance * dx / length, y + distance * dy / length));
+  }
+
+  @Test
+  @DisplayName(
+      "a row in the filter form that hits each object once without ContinuousPushback passes a"
+          + " troop it reached by: one push and one hit")
+  void aRowWithoutContinuousPushbackPushesOnce(@TempDir Path folder) throws IOException {
+    List<String> events = knightUnderLastingZap(lastingPushZap(folder));
+    assertThat(events).hasSize(2);
+    assertThat(events.get(0)).contains(" push true ");
+    assertThat(events.get(1)).endsWith(" hit 75 moving true");
+  }
+
+  /** A side 1 P.E.K.K.A., whose row ignores pushback, walking into a pushing Zap of side 0. */
+  private static List<String> pekkaUnderZap(GameTables tables) {
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    List<String> events = pushEvents(match, 1);
+    match.deploy(150, match.getWorld().getRecords().unit("Pekka"), LEVEL, 1, 14500, 22500, "p");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, ZAP_Y, "zap");
+    stepTo(match, 300);
+    return events.stream().filter(e -> e.contains(" push ")).toList();
+  }
+
+  @Test
+  @DisplayName(
+      "a row in the filter form with PushbackAll pushes a troop whose row ignores pushback; one"
+          + " without it is refused")
+  void pushbackAllLiftsTheGates(@TempDir Path lifted, @TempDir Path gated) throws IOException {
+    assertThat(pekkaUnderZap(lastingPushZap(lifted, "PushbackAll")))
+        .first()
+        .asString()
+        .contains(" push true ");
+    assertThat(pekkaUnderZap(lastingPushZap(gated))).first().asString().contains(" push false ");
+  }
 }

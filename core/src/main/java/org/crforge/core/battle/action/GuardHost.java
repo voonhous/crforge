@@ -76,6 +76,32 @@ public interface GuardHost {
    */
   void hit(int id, int amount);
 
+  /**
+   * True when the battle's data version's guard run makes its row's area effect, which pushes and
+   * hits, in place of pushing and hitting by itself.
+   */
+  boolean makesArea();
+
+  /**
+   * Makes an area effect at the guard's point for its side and at its level, the guard its source
+   * and parent and, for a row that follows its parent, the object it follows; handed to the holder,
+   * so it first updates on the next tick.
+   *
+   * @param action the guard spawn row's name
+   * @param row the area effect's row
+   * @param phase the pending pass the run steps in
+   * @return its id
+   */
+  int spawnArea(String action, String row, int phase);
+
+  /**
+   * Ends an area effect the run made, as its finish does: its countdown below 0, so the next
+   * cleanup after its update removes it.
+   *
+   * @param id the area effect
+   */
+  void endArea(int id);
+
   /** True when the guard has a targeting component. */
   boolean hasTargeting();
 
