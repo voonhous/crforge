@@ -72,7 +72,7 @@
   "hero-sweep-v2/hero_wizard": {"outcome": "diagnostic_match"},
   "hooked-push-v2/fisherman_holding_fireballed": {"outcome": "diagnostic_match"},
   "hooked-push-v2/fisherman_hooked_knight_fireballed": {"outcome": "diagnostic_match"},
-  "launch-recoil-v2/zap_machine_fireballed_on_launch": {"outcome": "mismatch", "first_divergent_tick": 742, "path": "$.entities[3].state"},
+  "launch-recoil-v2/zap_machine_fireballed_on_launch": {"outcome": "diagnostic_match"},
   "launch-recoil-v2/zap_machine_launch_recoil": {"outcome": "diagnostic_match"},
   "match-timeline-v2/timeline_overtime_crown": {"outcome": "diagnostic_match"},
   "match-timeline-v2/timeline_spells_through_rates": {"outcome": "diagnostic_match"},
