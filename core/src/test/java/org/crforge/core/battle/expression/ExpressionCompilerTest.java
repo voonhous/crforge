@@ -214,4 +214,27 @@ class ExpressionCompilerTest {
     TestEnvironment env = new TestEnvironment().with("tag", 0, 0, 0, a -> 1);
     assertThat(ExpressionCompiler.compile(text, env, false, false).maxDepth()).isEqualTo(depth);
   }
+
+  @Test
+  @DisplayName(
+      "a symbol may carry the sigils # and $; one the environment fixes compiles to its value,"
+          + " never folded, with or without empty parentheses, after the functions; an unfixed one"
+          + " is unknown")
+  void aFixedSymbolCompilesToItsValue() {
+    TestEnvironment env =
+        new TestEnvironment()
+            .with("as_int", 9, 1, 2, a -> a[0] == 77 ? 5 : a.length == 2 ? a[1] : -1)
+            .withConstant("#key", 77)
+            .withConstant("#other", 78);
+
+    assertThat(code("as_int(#key, 0)", env, true)).containsExactly(words("1 77 1 0 3 9 2"));
+    assertThat(code("#key + 1", env, true)).containsExactly(words("1 77 1 1 4"));
+    assertThat(code("#key()", env, true)).containsExactly(words("1 77"));
+    assertThat(value("as_int(#key, 0) + as_int(#other, 3) + as_int(#other)", env))
+        .isEqualTo(5 + 3 - 1);
+    assertThatThrownBy(() -> code("#key(1)", env, true)).isInstanceOf(ExpressionException.class);
+    assertThatThrownBy(() -> code("as_int($unset)", env, true))
+        .isInstanceOf(ExpressionException.class)
+        .hasMessageContaining("Unknown symbol $unset");
+  }
 }

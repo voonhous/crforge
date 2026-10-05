@@ -478,6 +478,19 @@ public interface ActionOwner {
     return false;
   }
 
+  /**
+   * The owner's hit points and shield as an action that writes what caused it into a context reads
+   * them: at a level, its row's hit points and shield hit points that many steps above the Common
+   * first level re-based on its rarity - the level target_max_hp with an argument reads.
+   *
+   * @param levelIndex the level's steps above the Common first level
+   * @return the hit points and the shield hit points, in that order
+   */
+  default int[] contextHitpoints(int levelIndex) {
+    throw new UnsupportedOperationException(
+        "the hit points of this owner, written into a context, are not modelled");
+  }
+
   /** The owner's rarity, which a level is packed against; null for none. */
   default RarityTable actionRarity() {
     throw new UnsupportedOperationException("this owner has no rarity");

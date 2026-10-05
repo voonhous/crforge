@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.AliveTimer;
@@ -94,6 +95,7 @@ import org.crforge.core.battle.action.TimerQuest;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.action.WithDuration;
+import org.crforge.core.battle.action.WriteInstigatorInfoToContext;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -197,7 +199,13 @@ public final class ActionRows {
   /** The columns each class reads besides the shared ones. */
   private static final Map<String, Set<String>> READS =
       Map.ofEntries(
-          Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay")),
+          // The group's context mode decides the context its parts carry.
+          Map.entry("ActionGroup", Set.of("SubActions", "SubActionsDelay", "ContextMode")),
+          // The context writer's hit points and shield keys, the level they are read at and the
+          // board. The cause's global id and position keys are refused by being left out.
+          Map.entry(
+              "ActionWriteInstigatorInfoToContext",
+              Set.of("HitpointsKey", "ShieldHitpointsKey", "HitpointsLevelIndex", "UseScratch")),
           // The path reset reads no column of its own.
           Map.entry("ActionResetPath", Set.of()),
           // The target reset reads no column of its own.
@@ -1137,6 +1145,23 @@ public final class ActionRows {
     return tables.action(name).classType().equals("ActionPlayEffect");
   }
 
+  /**
+   * A group's context mode by its text: None, Create or Inherit; any other text reads as None, as
+   * the game's loader reads it.
+   */
+  private static Group.ContextMode contextMode(String text) {
+    return switch (text) {
+      case "Create" -> Group.ContextMode.CREATE;
+      case "Inherit" -> Group.ContextMode.INHERIT;
+      default -> Group.ContextMode.NONE;
+    };
+  }
+
+  /** A context key column's key: the hash of its name, or none for an empty name. */
+  private static int contextKey(String name) {
+    return name.isEmpty() ? WriteInstigatorInfoToContext.NO_KEY : ActionContext.key(name);
+  }
+
   /** The bits of a list of game tags, each its row's index in the game tags table. */
   public long tagMask(String names) {
     long mask = 0;
@@ -1196,7 +1221,18 @@ public final class ActionRows {
       BattleAction action =
           switch (type) {
             case "ActionGroup" ->
-                new Group(shared, actions(f.get("SubActions")), ints(f, "SubActionsDelay"));
+                new Group(
+                    shared,
+                    actions(f.get("SubActions")),
+                    ints(f, "SubActionsDelay"),
+                    contextMode(text(f, "ContextMode", "None")));
+            case "ActionWriteInstigatorInfoToContext" ->
+                new WriteInstigatorInfoToContext(
+                    shared,
+                    bool(f, "UseScratch"),
+                    contextKey(text(f, "HitpointsKey", "")),
+                    contextKey(text(f, "ShieldHitpointsKey", "")),
+                    integer(f, "HitpointsLevelIndex", -1));
             case "ActionSelect" ->
                 new Select(
                     shared,

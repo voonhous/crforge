@@ -26,8 +26,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>Each level emits its operator after both operands. A number is a run of decimal digits read as
  * C reads it: into a long, then cut to 32 bits, so a literal too large for an int wraps. Any
- * character below {@code 0x21} is whitespace. A symbol names a function of the environment, asked
- * first, or a builtin; a zero-argument function may be written with or without its parentheses.
+ * character below {@code 0x21} is whitespace. A symbol is letters, digits, underscores and the
+ * sigils {@code #} and {@code $}, not starting with a digit. It names a function of the
+ * environment, asked first, a value the environment fixes, or a builtin; a zero-argument function
+ * may be written with or without its parentheses.
  *
  * <p>With folding on, every subtree without a call to the environment is replaced by the one
  * constant it evaluates to, except a division or modulo by zero, which is left to run.
@@ -39,7 +41,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " their wrap, whitespace, identifiers, the order symbols are resolved in, argument"
             + " counts, the fold and its exception for a division by zero, the refusals and the"
             + " stack depth, on every recorded case. Variables resolve through the environment,"
-            + " which offers them after its functions. Not modelled: game tags and data rows by"
+            + " which offers them after its functions. The sigils # and $ in a symbol, and a"
+            + " symbol the environment fixes (a context key), held by pekka-resurrect-v2. Not modelled: game tags and data rows by"
             + " name, which need the loaded data. Not settled: whether"
             + " true and false are matched without regard to case.")
 public final class ExpressionCompiler {
@@ -194,8 +197,9 @@ public final class ExpressionCompiler {
     return c >= '0' && c <= '9';
   }
 
+  /** A letter, the underscore, or the two sigils a symbol may carry, {@code #} and {@code $}. */
   private static boolean isIdentifierStart(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '#' || c == '$';
   }
 
   private static boolean isIdentifierPart(char c) {
@@ -339,6 +343,15 @@ public final class ExpressionCompiler {
         throw new ExpressionException("Wrong number of arguments for " + name);
       }
       return call(arguments, Expression.CALL, function.id());
+    }
+    // A symbol the environment fixes as the expression compiles, such as a context key. It is
+    // never folded into what surrounds it.
+    Integer constant = environment == null ? null : environment.constant(name);
+    if (constant != null) {
+      if (!arguments.isEmpty()) {
+        throw new ExpressionException("Wrong number of arguments for " + name);
+      }
+      return new Node(List.of(Expression.PUSH, constant), null);
     }
     Builtins.Builtin builtin = Builtins.resolve(name);
     if (builtin != null) {

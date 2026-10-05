@@ -33,6 +33,12 @@ public abstract class ActionInstance {
   /** True once the run has finished; the next run pass removes it. */
   @Getter private boolean finished;
 
+  /**
+   * The context the run's start carried, or null for none: the stop gate is asked with it, and a
+   * run that schedules actions as it steps may hand it on.
+   */
+  private ActionContext context;
+
   protected ActionInstance(BattleAction action) {
     this.action = action;
   }
@@ -127,6 +133,16 @@ public abstract class ActionInstance {
    * @param holder the entity's holder
    */
   protected void stop(ActionHolder holder) {}
+
+  /** The context the run's start carried, or null for none. */
+  protected ActionContext context() {
+    return context;
+  }
+
+  /** Gives the run the context its start carried, as the holder lists it. */
+  void setContext(ActionContext context) {
+    this.context = context;
+  }
 
   /** Marks the run finished; it is removed by the next run pass. */
   protected void finish() {

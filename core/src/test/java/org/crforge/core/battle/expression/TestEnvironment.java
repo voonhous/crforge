@@ -17,6 +17,19 @@ final class TestEnvironment implements ExpressionEnvironment {
 
   private final Map<Integer, String> nameOfId = new HashMap<>();
 
+  private final Map<String, Integer> constants = new HashMap<>();
+
+  /** A symbol the environment fixes to a value as the expression compiles. */
+  TestEnvironment withConstant(String name, int value) {
+    constants.put(name, value);
+    return this;
+  }
+
+  @Override
+  public Integer constant(String name) {
+    return constants.get(name);
+  }
+
   TestEnvironment with(String name, int id, int min, int max, ToIntFunction<int[]> answer) {
     names.put(name, new ExpressionEnvironment.Function(id, min, max));
     answers.put(id, answer);

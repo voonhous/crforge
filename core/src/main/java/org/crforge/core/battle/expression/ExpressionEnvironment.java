@@ -22,6 +22,15 @@ public interface ExpressionEnvironment {
   Function resolve(String name);
 
   /**
+   * The value a symbol that names no function stands for, fixed as the expression compiles - a
+   * context key's {@code #name} - or null for none. The compiler asks after the functions and
+   * before the builtins; such a symbol may be written with empty parentheses.
+   */
+  default Integer constant(String name) {
+    return null;
+  }
+
+  /**
    * Calls a function.
    *
    * @param id the function's id
