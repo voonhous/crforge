@@ -473,6 +473,9 @@ public final class BattleRecords {
           "HasRotationOnTimeline",
           "AttackStateCount",
           "TryToFinishAttackAnimation",
+          // Whether the attack animation is sped up to end before the next attack: the same
+          // view function reads it, beside TryToFinishAttackAnimation, and nothing else does.
+          "TryToFinishAttackAnimationBeforeNextAttack",
           "DontStopMoveAnim",
           "AttackShakeTime",
           "LoopingFilter",
@@ -517,7 +520,11 @@ public final class BattleRecords {
           "ResurrectParameters",
           "ResurrectFlyingEffect",
           "ResurrectGainChargeEffect",
-          "ResurrectChargeFilter");
+          "ResurrectChargeFilter",
+          // Read only by the direct hit as it hands a melee area hit to the area damage, where it
+          // skips one call of the battle's presentation listener, whose answer the area damage
+          // does not read; the targets, damage and pushes of the area are the same either way.
+          "DisableMeleeAeoDamageEffect");
 
   /**
    * The columns of a unit's row whose role in the battle is not yet established, carried unread
