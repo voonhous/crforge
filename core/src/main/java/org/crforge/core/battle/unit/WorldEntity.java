@@ -2738,7 +2738,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    refuseReflect("a kill");
+    // The kill's attacker is its killer. A reflect needs an attacker before it asks anything else,
+    // so a kill with none - a fallen king's circle, a tiebreaker's clearing, a kill without a
+    // killer - is never struck back and kills a reflecting unit as any other. One with a killer
+    // stays refused.
+    if (dealer != null || cause != null) {
+      refuseReflect("a kill");
+    }
     int shieldBefore = hitPoints.getShield();
     int whole = hitPoints.getHitPoints();
     DamageResult result = DamageApplication.kill(hitPoints, damageQueries(false, dealer, true));

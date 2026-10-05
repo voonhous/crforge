@@ -247,7 +247,7 @@
   "random-battles-v2/random_battle_s0003": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0004": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0005": {"outcome": "diagnostic_match"},
-  "random-battles-v2/random_battle_s0006": {"outcome": "unsupported", "feature": "cmd17_0 reflects and takes a kill, whose reflect is not modelled", "input": "the run"},
+  "random-battles-v2/random_battle_s0006": {"outcome": "mismatch", "first_divergent_tick": 2206, "path": "$.entities[4].id"},
   "random-battles-v2/random_battle_s0008": {"outcome": "mismatch", "first_divergent_tick": 535, "path": "$.entities[13].hp"},
   "random-battles-v2/random_battle_s0009": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0010": {"outcome": "diagnostic_match"},
