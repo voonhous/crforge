@@ -21,6 +21,7 @@ import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
+import org.crforge.desktop.render.WorkspaceAction;
 import org.crforge.desktop.replay.ReplayFile;
 import org.crforge.desktop.replay.ReplayPlayer;
 
@@ -89,8 +90,7 @@ public class ReplayGameScreen implements Screen {
     this.camera = new OrthographicCamera();
     setupInput();
     workspace =
-        new BattleWorkspace(
-            camera, renderer, view, true, key -> controls.keyDown(key), (side, slot) -> {});
+        new BattleWorkspace(camera, renderer, view, true, this::handleAction, (side, slot) -> {});
     workspace.setData(
         versions.current().version(),
         versions.source(),
@@ -99,56 +99,61 @@ public class ReplayGameScreen implements Screen {
         versions.developmentVersion());
   }
 
+  private boolean handleAction(WorkspaceAction action) {
+    switch (action) {
+      case PAUSE -> {
+        player.togglePause();
+        log.info("Replay {}", player.isPaused() ? "paused" : "resumed");
+      }
+      case RESTART -> {
+        player.restart();
+        workspace.reset();
+        newAreaHits.clear();
+        loggedStop = null;
+        log.info("Replay restarted from tick 0");
+      }
+      case STEP -> player.stepOnce();
+      case FASTER -> {
+        player.faster();
+        log.info("Replay speed: {}x", player.getSpeed());
+      }
+      case SLOWER -> {
+        player.slower();
+        log.info("Replay speed: {}x", player.getSpeed());
+      }
+      case HEADINGS -> renderer.toggleDrawPaths();
+      case RANGES -> renderer.toggleDrawRanges();
+      case DAMAGE -> renderer.toggleDrawDamageNumbers();
+      case AREA_HITS -> renderer.toggleDrawAoeDamage();
+      case HP -> renderer.toggleDrawHpNumbers();
+      case CELL_COSTS -> renderer.toggleDrawCellCosts();
+      case ROUTES -> renderer.toggleDrawRoutes();
+      case FLIP -> {
+        view.flip();
+        if (mouseX >= 0) {
+          // The mouse has not moved, but the battle's tile under it has.
+          updateHover(mouseX, mouseY);
+        }
+        log.info("View: side {} at the bottom", view.getOrientation().bottomSide());
+      }
+      case SIDEBAR -> {
+        view.toggleAnnotations();
+        log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
+      }
+      default -> {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private void setupInput() {
     controls =
         new InputAdapter() {
           @Override
           public boolean keyDown(int keycode) {
-            switch (keycode) {
-              case Input.Keys.SPACE -> {
-                player.togglePause();
-                log.info("Replay {}", player.isPaused() ? "paused" : "resumed");
-              }
-              case Input.Keys.R -> {
-                player.restart();
-                workspace.reset();
-                newAreaHits.clear();
-                loggedStop = null;
-                log.info("Replay restarted from tick 0");
-              }
-              case Input.Keys.PERIOD -> player.stepOnce();
-              case Input.Keys.EQUALS, Input.Keys.PLUS -> {
-                player.faster();
-                log.info("Replay speed: {}x", player.getSpeed());
-              }
-              case Input.Keys.MINUS -> {
-                player.slower();
-                log.info("Replay speed: {}x", player.getSpeed());
-              }
-              case Input.Keys.P -> renderer.toggleDrawPaths();
-              case Input.Keys.O -> renderer.toggleDrawRanges();
-              case Input.Keys.D -> renderer.toggleDrawDamageNumbers();
-              case Input.Keys.A -> renderer.toggleDrawAoeDamage();
-              case Input.Keys.H -> renderer.toggleDrawHpNumbers();
-              case Input.Keys.G -> renderer.toggleDrawCellCosts();
-              case Input.Keys.N -> renderer.toggleDrawRoutes();
-              case Input.Keys.F -> {
-                view.flip();
-                if (mouseX >= 0) {
-                  // The mouse has not moved, but the battle's tile under it has.
-                  updateHover(mouseX, mouseY);
-                }
-                log.info("View: side {} at the bottom", view.getOrientation().bottomSide());
-              }
-              case Input.Keys.T -> {
-                view.toggleAnnotations();
-                log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
-              }
-              default -> {
-                return false;
-              }
-            }
-            return true;
+            WorkspaceAction action = WorkspaceAction.fromKey(keycode);
+            return action != null && handleAction(action);
           }
 
           @Override

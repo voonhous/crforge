@@ -267,3 +267,16 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 - Double Elixir (`DOUBLE_ELIXIR`)
 - Triple Elixir (`TRIPLE_ELIXIR`)
 - Sudden Death (`SUDDEN_DEATH`)
+
+### Workspace interaction checks
+
+Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/14.593.1` with a
+working display/OpenGL context to exercise live deployment, keyboard/button availability,
+resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and
+writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from
+headless `check`; its synthetic replay fixture requires data version `14.593.1`.
+
+Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to the screen.
+`BattleSession.cardUnavailableReason` owns selection/submission availability, including pending
+costs; `BattleAdapter` exposes it to the hand view. `WorkspaceTheme`, `HandPanel`, and
+`UnitInspector` own presentation, while `BattleWorkspace` coordinates layout and arena projection.

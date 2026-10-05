@@ -53,7 +53,8 @@ public record BattleFrame(
    *
    * @param name the card row name
    * @param cost its cost in whole elixir
+   * @param unavailableReason why selection is disabled, or null if available
    * @param pending whether it has been played and waits for its play to run
    */
-  public record CardView(String name, int cost, boolean pending) {}
+  public record CardView(String name, int cost, boolean pending, String unavailableReason) {}
 }
