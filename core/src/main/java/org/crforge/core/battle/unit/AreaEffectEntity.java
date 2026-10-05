@@ -204,7 +204,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " target limit, its list taken again with the most hit points and shield first,"
             + " and its projectile onto each object it hits or, with TargetProjectiles off, one"
             + " onto its own point, held by the newer data's Lightning, Vines and Royal Delivery"
-            + " plays; an end on its first hit with such a projectile held by no run.")
+            + " plays; an end on its first hit with such a projectile held by no run. Its pull"
+            + " of each object it lists for an attracting buff, after the push and before the"
+            + " damage, held by the newer data's Tornado and evolved Valkyrie plays.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -553,11 +555,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * within the radius, anything else when its centre lies strictly within the radius plus its
    * collision radius - listed once, nearest first by the squared distance of where each stands now
    * from the area effect's point, objects as near listed in the query's order. Each in turn gets
-   * the push, the damage, queued as a typed hit of the row's damage type with the area effect its
-   * source, the hit action, built for it and scheduled on it with the area effect the cause, and
-   * then the buff, applied for the buff time - capped at the countdown and one HitSpeed more when
-   * the row caps it - when that time is at least 1, at the area effect's level and for its side,
-   * the area effect its parent when the buff is controlled by its parent.
+   * the push, the pull of an attracting buff, the damage, queued as a typed hit of the row's damage
+   * type with the area effect its source, the hit action, built for it and scheduled on it with the
+   * area effect the cause, and then the buff, applied for the buff time - capped at the countdown
+   * and one HitSpeed more when the row caps it - when that time is at least 1, at the area effect's
+   * level and for its side, the area effect its parent when the buff is controlled by its parent.
    *
    * <p>A row with HitBiggestTargets then takes the list again, those with the most hit points and
    * shield first, an object without hit points last, objects as big kept nearest first. A row with
@@ -579,6 +581,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * is asked for the whole pushback away from the area effect's point, every gate in place and
    * nothing lifted, refused while a pushback is in flight; whether the object is alive is not
    * asked, as its damage is only queued.
+   *
+   * <p>The pull, for a row whose buff attracts, reaches the same characters, after the push and
+   * whatever the buff's time: the buff push along the vector from where the character stood before
+   * the push to the area effect's point, added to its push accumulators for its next movement
+   * visit, as the pull of a row with hit switches adds it. Only the objects the hit takes are
+   * pulled, in the list's order: the filter chooses them, not the enemy test of the row with hit
+   * switches, and no building is skipped by name, a building having no movement component that is
+   * on. The filter form tests no angle between the area effect's move and the way to the object; a
+   * buff with such an angle window, which no recorded battle holds, is still refused as the area
+   * effect is created.
    *
    * @param start the elapsed time at the start of the step, on the row's lifetime
    * @param speed the row's HitSpeed
@@ -607,6 +619,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         data.projectile() == null ? null : world.getRecords().projectile(data.projectile());
     // The objects a hit may still take: the row's maximum, or the whole list without one.
     int left = data.maximumTargets() > 0 ? data.maximumTargets() : listed.size();
+    List<Pull> pulls = new ArrayList<>();
     boolean first = true;
     for (int i = 0; i < listed.size() && left > 0; i++) {
       WorldEntity target = listed.get(i);
@@ -618,11 +631,20 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         }
         reached.add(target.getId());
       }
+      // A character whose movement component is on is the one the push and the pull reach; the
+      // vector to the centre is taken before the push asks for anything.
+      CharacterEntity mover =
+          target instanceof CharacterEntity character && character.movementOn() ? character : null;
+      int dx = x - target.getView().getX();
+      int dy = y - target.getView().getY();
       // The push first, before the damage.
-      if (data.pushback() >= 1
-          && target instanceof CharacterEntity character
-          && character.movementOn()) {
-        character.pushedFrom(x, y, data.pushback());
+      if (data.pushback() >= 1 && mover != null) {
+        mover.pushedFrom(x, y, data.pushback());
+      }
+      // Then the pull of an attracting buff, whatever the buff's time: the buff push toward the
+      // area effect's point, waiting in the unit's push accumulators for its next movement visit.
+      if (buff != null && buff.attracts() && mover != null) {
+        pulls.add(pull(mover, dx, dy, buff));
       }
       if (data.typedDamage() != null) {
         world.queueAreaDamage(this, target, data.typedDamage());
@@ -658,6 +680,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
       left--;
       first = false;
+    }
+    if (buff != null && buff.attracts()) {
+      world.areaPulled(this, pulls);
     }
     // Without a projectile for each object, one onto its own point, on every hit, whatever the
     // list holds (an end on the first hit included).
@@ -1158,29 +1183,42 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           || !unit.isActive(CharacterEntity.MOVEMENT_SLOT)) {
         continue;
       }
-      MovementState movement = unit.getUnit().movement();
-      int dx = x - unit.getView().getX();
-      int dy = y - unit.getView().getY();
-      int[] before = accumulators(movement);
-      UnitData row = unit.getData();
-      BuffPush.push(
-          movement,
-          dx,
-          dy,
-          buff.attractPercentage(),
-          buff.lateralPushPercentage(),
-          buff.pushMassFactor(),
-          buff.pushSpeedFactor(),
-          unit.getView().getState(),
-          row.speed(),
-          row.jumpHeight(),
-          unit.side(),
-          row.mass(),
-          row.air(),
-          row.hovering());
-      pulls.add(new Pull(unit, dx, dy, before, accumulators(movement)));
+      pulls.add(pull(unit, x - unit.getView().getX(), y - unit.getView().getY(), buff));
     }
     world.areaPulled(this, pulls);
+  }
+
+  /**
+   * The buff push of one pull on a unit: the given vector to the centre scaled by the buff's
+   * attraction and lateral push, its push speed factor of the unit's configured speed and its mass
+   * factor of the unit's mass, added to the unit's push accumulators.
+   *
+   * @param unit the unit pulled
+   * @param dx the centre less its position, along the width
+   * @param dy the centre less its position, along the length
+   * @param buff the attracting buff
+   * @return the pull, with the accumulators before and after it
+   */
+  private static Pull pull(CharacterEntity unit, int dx, int dy, BuffData buff) {
+    MovementState movement = unit.getUnit().movement();
+    int[] before = accumulators(movement);
+    UnitData row = unit.getData();
+    BuffPush.push(
+        movement,
+        dx,
+        dy,
+        buff.attractPercentage(),
+        buff.lateralPushPercentage(),
+        buff.pushMassFactor(),
+        buff.pushSpeedFactor(),
+        unit.getView().getState(),
+        row.speed(),
+        row.jumpHeight(),
+        unit.side(),
+        row.mass(),
+        row.air(),
+        row.hovering());
+    return new Pull(unit, dx, dy, before, accumulators(movement));
   }
 
   /** A unit's push accumulators: x, y, the count, the water clamp and the lifted cap. */
