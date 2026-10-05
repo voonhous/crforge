@@ -241,10 +241,11 @@ public final class BattleRecords {
    * The columns of what a unit does as it dies that the battle does not model: a unit whose row
    * sets one is refused when it dies. The elixir a death gives is not among them: the death handler
    * pays a player's unit's ManaOnDeathForOpponent to the side that killed it in a match, and pays
-   * ManaOnDeath only for a neutral object, which the battle has none of.
+   * ManaOnDeath only for a neutral object, which the battle has none of. Nor is StartingBuff, whose
+   * instances the death slot takes off where the dying unit is their parent.
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
-      List.of("DeathSpawnCharacter3", "StartingBuff", "DeathSpawnIsSameUnit");
+      List.of("DeathSpawnCharacter3", "DeathSpawnIsSameUnit");
 
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
@@ -831,6 +832,9 @@ public final class BattleRecords {
             .startWithBuffWhenNotAttacking(
                 !row.has("StartWithBuffWhenNotAttacking")
                     || row.bool("StartWithBuffWhenNotAttacking"))
+            // Applied by the level setter's tail as the unit is made, for its own time.
+            .startingBuff(set(row, "StartingBuff") ? row.string("StartingBuff") : null)
+            .startingBuffTimeMs(row.intValue("StartingBuffTime"))
             .allowAreaDamageWhenInvisible(row.bool("AllowAreaDmgWhenInvisible"))
             .areaEffectOnHit(set(row, "AreaEffectOnHit") ? row.string("AreaEffectOnHit") : null)
             // The loader's default is true: only a row that sets it false lets its target go.

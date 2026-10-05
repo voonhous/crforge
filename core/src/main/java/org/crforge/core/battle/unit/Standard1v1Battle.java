@@ -806,6 +806,13 @@ public class Standard1v1Battle {
     // A card that is a group links each unit it makes after the one made before it.
     CharacterEntity previous = null;
     for (CardPlacement.Unit unit : result.units()) {
+      // The construction applies a played unit's starting buff again after its level setter's,
+      // with no source and the play's level, which no row played by a card asks for.
+      if (unit.unit().startingBuff() != null) {
+        throw new UnsupportedOperationException(
+            unit.unit().name()
+                + " is played with a StartingBuff, which the play applies again, not modelled");
+      }
       if (unit.tunnels()) {
         if (card.group()) {
           throw new UnsupportedOperationException(

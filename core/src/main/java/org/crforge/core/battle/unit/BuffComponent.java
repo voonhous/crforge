@@ -477,6 +477,24 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
+   * Removes every listed instance of a row whose parent is the given entity, from the last to the
+   * first, as a dying unit's death slot asks for its starting buff's instances.
+   *
+   * @param buff the buff row's name
+   * @param parent the dying entity
+   */
+  void removeParented(String buff, BattleEntity parent) {
+    for (int i = items.size() - 1; i >= 0; i--) {
+      BuffInstance instance = items.get(i);
+      if (instance.getBuff().name().equals(buff) && instance.getParent() == parent) {
+        items.remove(i);
+        onRemoved(instance);
+        world.buffRemoved(entity, instance);
+      }
+    }
+  }
+
+  /**
    * RemoveOnAttack, as a hit the carrier dealt is counted: from the last listed instance to the
    * first, one whose row sets RemoveOnAttack removes every instance of its row without a parent,
    * from the last to the first, itself included when it has none. A walk whose next index lies past

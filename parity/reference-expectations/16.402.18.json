@@ -181,11 +181,11 @@
   "tv-replays-v3/tv_replay_004": {"outcome": "unsupported", "feature": "GoblinDrillDamage spawns GoblinDrillDamageArea, which sets columns not modelled: [LinkToInstigatorLife]", "input": "the run"},
   "tv-replays-v3/tv_replay_005": {"outcome": "unsupported", "feature": "BalloonHero_Ability_Target_Seeker is a shape selector that sets OnFinishedAction, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_006": {"outcome": "mismatch", "first_divergent_tick": 555, "path": "$.entities.length"},
-  "tv-replays-v3/tv_replay_007": {"outcome": "unsupported", "feature": "Witch_EV1_Healing_Skeleton sets columns the battle does not model: [StartingBuffTime]", "input": "the run"},
+  "tv-replays-v3/tv_replay_007": {"outcome": "unsupported", "feature": "spawning Witch_EV1_Skeleton_Interval asks for a ring around a character, which reads the character's own spawn columns, which is not established", "input": "the run"},
   "tv-replays-v3/tv_replay_008": {"outcome": "unsupported", "feature": "SkeletonKing_Capture_Soul, an ActionSoulDrain, sets ExecuteIfTrue, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_009": {"outcome": "unsupported", "feature": "IceWizardHero_run_on_attached_ice is an ActionRunOnAttached, which the battle does not have", "input": "the run"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"},
-  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "Witch_EV1_Healing_Skeleton sets columns the battle does not model: [StartingBuffTime]", "input": "the run"},
+  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "DarkPrinceHero_Ability_WarpBack sets ExecuteIfTrue on a ActionWarpCharacter, not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_012": {"outcome": "unsupported", "feature": "proj_4000138 hops on after its launcher left, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_013": {"outcome": "unsupported", "feature": "AngryBarbarian_EV1_RangedProjectile writes its OnTargetReachedAction inline, as ActionSpawn, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_014": {"outcome": "unsupported", "feature": "EliteArcherHero_Triple_Shot_Action is an ActionCreateParallelProjectiles, which the battle does not have", "input": "the run"},
@@ -195,7 +195,7 @@
   "tv-replays-v3/tv_replay_018": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target's target Firecracker leaves, whose died action MegaMinion_hero_reset_ability is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_019": {"outcome": "unsupported", "feature": "ValkyrieHero_Charge_Target is a shape selector that sets ActionOnSelfWhenTriggered, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_020": {"outcome": "unsupported", "feature": "IceWizardHero_run_on_attached_ice is an ActionRunOnAttached, which the battle does not have", "input": "the run"},
-  "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "Witch_EV1_Healing_Skeleton sets columns the battle does not model: [StartingBuffTime]", "input": "the run"},
+  "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "spawning Witch_EV1_Skeleton_Interval asks for a ring around a character, which reads the character's own spawn columns, which is not established", "input": "the run"},
   "tv-replays-v3/tv_replay_022": {"outcome": "unsupported", "feature": "MinionGiant_run_on_resolved is an ActionRunActionOnResolvedGameObjects, which the battle does not have", "input": "the run"},
   "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"}
  }
