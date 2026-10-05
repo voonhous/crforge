@@ -1606,11 +1606,13 @@ public final class BattleRecords {
         unmodelled.add(column);
       }
     }
-    // The filter form: a row without a shape that names a filter and neither hit switch, as the
-    // area effect class of a newer data version writes every row, which has no hit switches. It
-    // chooses what it reaches by the filter alone and deals its damage as a damage type.
+    // The filter form: a row that names a filter and neither hit switch, as the area effect class
+    // of a newer data version writes every row, which has no hit switches. It chooses what it
+    // reaches by the filter alone and deals its damage as a damage type. A shaped row is of the
+    // form when it names no damage type column either, which that class does not have: its Damage
+    // column is its damage type, and it lists what it reaches in its shape.
     boolean filterHits =
-        !sets(row, "Shape")
+        (!sets(row, "Shape") || !sets(row, "DamageType"))
             && sets(row, "Filter")
             && !row.bool("HitsAir")
             && !row.bool("HitsGround");
@@ -1679,7 +1681,9 @@ public final class BattleRecords {
             .typedDamage(filterHits ? areaDamageType(row, unmodelled) : null)
             .unmodelledColumns(unmodelled)
             .build();
-    if (data.shaped()) {
+    if (data.shaped() && data.filterHits()) {
+      data = filterShape(data, row.string("Shape"), unmodelled);
+    } else if (data.shaped()) {
       data = shaped(data, row.string("Shape"), unmodelled);
       // A shaped row's damage type is read only by its hits' damage, which a row without damage
       // never deals; a circle's damage is queued with it as a typed hit.
@@ -1837,6 +1841,42 @@ public final class BattleRecords {
     if (data.deflectsProjectiles()) {
       unmodelled.add("DeflectProjectilesEnabled");
     }
+  }
+
+  /**
+   * A shaped filter form row with its shape read: a circle's radius, which its list is taken in
+   * instead of its own radius's circle, or a rectangle's width and height, about its point either
+   * way. The shape is only where the filter form's hit pass lists its objects; the pass is the
+   * same. Refused, by its Shape column: a shape of another class or none, a circle without a radius
+   * and a shape that checks its origin, which drops what stands beyond its circle by its centre.
+   */
+  private AreaEffectData filterShape(AreaEffectData data, String shape, List<String> unmodelled) {
+    GameTable table = tables.table(SHAPES);
+    if (!table.has(shape)) {
+      unmodelled.add("Shape");
+      return data;
+    }
+    GameRow row = table.row(shape);
+    if (row.bool("CheckOrigin")) {
+      unmodelled.add("Shape");
+    }
+    return switch (row.string("ClassType")) {
+      case "Circle" -> {
+        if (row.intValue("Radius") < 1) {
+          unmodelled.add("Shape");
+        }
+        yield data.toBuilder().shapeRadius(row.intValue("Radius")).build();
+      }
+      case "Rectangle" ->
+          data.toBuilder()
+              .shapeWidth(row.intValue("Width"))
+              .shapeHeight(row.intValue("Height"))
+              .build();
+      default -> {
+        unmodelled.add("Shape");
+        yield data;
+      }
+    };
   }
 
   /**

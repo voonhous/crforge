@@ -568,16 +568,39 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * The objects the filter form's hit lists, in the query's order, before they are sorted: those
+   * that pass its filter, asked for its side and row name, in the circle of its radius around its
+   * point; for a shaped row in its shape instead, a circle of the shape's radius or a rectangle
+   * about its point, its own radius not read. Every circle takes a building when its square comes
+   * within the radius and anything else when its centre lies strictly within the radius plus its
+   * collision radius; the rectangle as the shaped rows with hit switches take theirs.
+   *
+   * @param radius the radius of its hits now
+   */
+  private List<WorldEntity> filterListed(int radius) {
+    GameObjectFilter filter = world.getRecords().filter(data.filter());
+    if (data.shaped() && data.shapeRadius() >= 1) {
+      return world.shapeQuery(this, data.shapeRadius(), filter);
+    }
+    if (data.shaped()) {
+      return world.rectangleQuery(
+          this, x, y, half(data.shapeWidth()), half(data.shapeHeight()), filter);
+    }
+    return world.shapeQuery(this, radius, filter);
+  }
+
+  /**
    * The hits of the filter form, on an update a hit is due: the objects in the circle around its
    * point that pass its filter, asked for its side and row name - a building when its square comes
    * within the radius, anything else when its centre lies strictly within the radius plus its
-   * collision radius - listed once, nearest first by the squared distance of where each stands now
-   * from the area effect's point, objects as near listed in the query's order. Each in turn gets
-   * the push, the pull of an attracting buff, the damage, queued as a typed hit of the row's damage
-   * type with the area effect its source, the hit action, built for it and scheduled on it with the
-   * area effect the cause, and then the buff, applied for the buff time - capped at the countdown
-   * and one HitSpeed more when the row caps it - when that time is at least 1, at the area effect's
-   * level and for its side, the area effect its parent when the buff is controlled by its parent.
+   * collision radius - or, for a shaped row, those its shape lists ({@link #filterListed}), listed
+   * once, nearest first by the squared distance of where each stands now from the area effect's
+   * point, objects as near listed in the query's order. Each in turn gets the push, the pull of an
+   * attracting buff, the damage, queued as a typed hit of the row's damage type with the area
+   * effect its source, the hit action, built for it and scheduled on it with the area effect the
+   * cause, and then the buff, applied for the buff time - capped at the countdown and one HitSpeed
+   * more when the row caps it - when that time is at least 1, at the area effect's level and for
+   * its side, the area effect its parent when the buff is controlled by its parent.
    *
    * <p>A row with HitBiggestTargets then takes the list again, those with the most hit points and
    * shield first, an object without hit points last, objects as big kept nearest first. A row with
@@ -621,8 +644,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (!filterHitDue(start, speed)) {
       return;
     }
-    List<WorldEntity> listed =
-        new ArrayList<>(world.shapeQuery(this, radius, world.getRecords().filter(data.filter())));
+    List<WorldEntity> listed = new ArrayList<>(filterListed(radius));
     listed.sort(
         Comparator.comparingInt(
             target ->
