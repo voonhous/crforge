@@ -831,6 +831,11 @@ public interface ActionOwner {
         "an action run at an age of an owner other than an area effect is not modelled");
   }
 
+  /** True for a character: a troop, a building or a tower, and not a projectile or an area. */
+  default boolean actionCharacter() {
+    return false;
+  }
+
   /** The owner as a game object filter asks about it. */
   default FilterSubject actionFilterSubject() {
     throw new UnsupportedOperationException(
