@@ -815,11 +815,6 @@ public class Standard1v1Battle {
         continue;
       }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
-      if (waits && unit.unit().spawnAttach()) {
-        throw new UnsupportedOperationException(
-            unit.unit().name()
-                + " waits its turn to deploy, which makes its riders later, not held");
-      }
       CharacterEntity character =
           new CharacterEntity(
               world,
@@ -841,10 +836,9 @@ public class Standard1v1Battle {
       // makes the riders of a row that attaches its children: they are queued first. It makes a
       // row's area object after them, updated at once, while the unit is not yet in the battle,
       // and then a row's push, which finds nobody: the command pass runs between the holder's
-      // post-pass, which empties the spatial index, and the next pre-pass, which fills it.
-      if (unit.unit().spawnAttach()) {
-        world.attachRiders(character);
-      }
+      // post-pass, which empties the spatial index, and the next pre-pass, which fills it. A unit
+      // that waits its turn makes them all as its state visit sets it deploying, its riders then
+      // queued after it.
       if (!waits) {
         character.enteredDeploying();
       }
