@@ -1295,13 +1295,19 @@ public class CharacterEntity extends WorldEntity {
     if (slot != null) {
       slot.dataChanged(this);
     }
+    // The movement visits read the charge range and the river jump of the row the unit has now.
+    MovementConfig movementConfig =
+        unit.movementConfig()
+            .withCharge(next.chargeRange())
+            .withJump(next.jumpEnabled(), next.jumpHeight());
+    setter.setMovementConfig(movementConfig);
     unit =
         new GridUnitState(
             unit.entity(),
             unit.movement(),
             unit.targeting(),
             unit.timers(),
-            unit.movementConfig(),
+            movementConfig,
             SpeedConfig.forGroundUnit(next.speed()),
             StateVisitConfig.forGroundUnit(next.deployTimeMs()),
             unit.selection(),
@@ -1479,6 +1485,16 @@ public class CharacterEntity extends WorldEntity {
             && next.jumpEnabled()
             && current.jumpHeight() == next.jumpHeight()
             && current.jumpSpeed() == next.jumpSpeed();
+    // A unit may give up its charge and its river jump for a row with neither, as the hero Dark
+    // Prince takes its walking row: the swap leaves the movement component as it stands, and every
+    // later visit reads the new row, so a charge under way ends at the next displacement and no
+    // jump starts. Refused mid-jump, and once charged, whose strike the new row would carry.
+    boolean dropsChargeAndJump =
+        next.chargeRange() == 0
+            && !next.jumpEnabled()
+            && getBuffs().overrideChargeRange() == 0
+            && state != GridEntityState.JUMPING
+            && chargeProgress() < MovementState.CHARGE_COMPLETE;
     String refused = null;
     if ((next.air() || current.air()) && !sameFlight && !liftedToFlight && !landedFromFlight
         || (current.building() || next.building()) && !breaksDown && !buildingToBuilding) {
@@ -1498,10 +1514,11 @@ public class CharacterEntity extends WorldEntity {
       refused = "another deploy time";
     } else if (!Objects.equals(current.ability(), next.ability()) && !dropsAbility) {
       refused = "another ability";
-    } else if (current.chargeRange() != 0
-        || next.chargeRange() != 0
-        || getBuffs().overrideChargeRange() != 0
-        || (current.jumpEnabled() || next.jumpEnabled()) && !sameJump) {
+    } else if (!dropsChargeAndJump
+        && (current.chargeRange() != 0
+            || next.chargeRange() != 0
+            || getBuffs().overrideChargeRange() != 0
+            || (current.jumpEnabled() || next.jumpEnabled()) && !sameJump)) {
       refused = "a charge or a river jump";
     } else if (current.dashCooldown() != 0 || next.dashCooldown() != 0) {
       refused = "a dash";

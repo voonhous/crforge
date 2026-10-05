@@ -6542,7 +6542,7 @@ public class BattleWorld implements HolderPasses {
    * class at the row's start height above the owner's live height. A row of either class aimed by
    * neither expression launches at the owner's current target, which is refused unless the owner is
    * a character whose targeting component is off or holds nothing, or whose row reads no target
-   * (see {@link #readsLaunchTarget(ProjectileData)}).
+   * (see {@link #readsLaunchTarget(ProjectileData, WorldEntity)}).
    *
    * @param owner the entity the action runs on
    * @param action the spawn row's name
@@ -6581,7 +6581,7 @@ public class BattleWorld implements HolderPasses {
         && aimX == null
         && aimY == null
         && (!(owner instanceof CharacterEntity unit)
-            || unit.referenceHeld() && readsLaunchTarget(data))) {
+            || unit.referenceHeld() && readsLaunchTarget(data, unit.currentTarget()))) {
       throw new UnsupportedOperationException(
           action
               + " launches "
@@ -6619,14 +6619,20 @@ public class BattleWorld implements HolderPasses {
    * Whether a projectile row launched at a target reads it. One that does not home flies to its
    * aim, and with a radius of at least 1 its impact is the area at its impact point; the target
    * would only take the row's on-hit target action, its target buff or its pushback, and be chained
-   * from. A row with none of these reads no target, so a launch at one is a launch at none.
+   * from. A row with none of these reads no target, so a launch at one is a launch at none. The
+   * pushback moves only a target with a movement component: a launch at a building or a tower, as
+   * the hero Dark Prince's mount, which targets only buildings, launches its landing blow, pushes
+   * nothing there.
+   *
+   * @param data the projectile row
+   * @param target the target it would be launched at, or null for none
    */
-  private static boolean readsLaunchTarget(ProjectileData data) {
+  private static boolean readsLaunchTarget(ProjectileData data, WorldEntity target) {
     return data.homing()
         || data.radius() < 1
         || data.onHitTargetAction() != null
         || data.targetBuff() != null
-        || data.pushback() > 0
+        || data.pushback() > 0 && (target == null || target.hasMovementComponent())
         || data.chainedHitRadius() > 0;
   }
 
