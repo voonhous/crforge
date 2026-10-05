@@ -16,20 +16,23 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Each step of the run:
  *
  * <ol>
- *   <li>A run that carries a context asks its pin, PinnedActiveExpression, with it. A pin that
- *       holds would keep the run from searching and pin it to a point (refused here, below).
+ *   <li>The pin is cleared. A run that carries a context then asks its pin, PinnedActiveExpression,
+ *       with it; one that holds pins the run for the step, at the point PinnedPositionXExpression
+ *       and PinnedPositionYExpression answer with the same context. A pinned run does not search.
+ *       Nothing in the run reads the pinned point.
  *   <li>With PauseIfInCooldown, a run without a target whose owner's champion slot has cooldown
- *       left would not search (refused here, below). With a target the pause changes nothing: the
- *       run keeps the target either way.
- *   <li>Without a target it searches when its counter is -1 (its first step: the run starts it at
- *       -1) or has reached DelayBeforeSearchForNextTarget. The search offers every live object of
- *       the owner's battle, in id order and the owner among them, to the resolver's filter for the
- *       owner's team: a Global shape collects them all, wherever they stand. Each of the resolver's
- *       strategies in turn narrows what passed to its ties, a strategy that keeps nothing leaving
- *       them as they were and one that keeps a single candidate ending the search, and the first
- *       left is the target: RESOLVER_STRATEGY_LOWEST_MAX_HP keeps the lowest maximum hit points
- *       plus maximum shield, RESOLVER_STRATEGY_FURTHEST_TARGET the largest squared distance from
- *       the owner.
+ *       left would not search (refused here, below, unless the run is pinned, which keeps it from
+ *       searching either way). With a target the pause changes nothing: the run keeps the target
+ *       either way.
+ *   <li>Without a target, and not pinned, it searches when its counter is -1 (its first step: the
+ *       run starts it at -1) or has reached DelayBeforeSearchForNextTarget. The search offers every
+ *       live object of the owner's battle, in id order and the owner among them, to the resolver's
+ *       filter for the owner's team: a Global shape collects them all, wherever they stand. Each of
+ *       the resolver's strategies in turn narrows what passed to its ties, a strategy that keeps
+ *       nothing leaving them as they were and one that keeps a single candidate ending the search,
+ *       and the first left is the target: RESOLVER_STRATEGY_LOWEST_MAX_HP keeps the lowest maximum
+ *       hit points plus maximum shield, RESOLVER_STRATEGY_FURTHEST_TARGET the largest squared
+ *       distance from the owner.
  *   <li>With a target it sets the tags of having one and clears the tags of having none. A target
  *       other than the last step's is a new one: OnPickNewTargetAction is scheduled on the owner,
  *       the target its cause, and the counter is set to 0. The run never searches again while it
@@ -42,8 +45,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>A leave notice of the object it has marked would run its died action on the owner and drop the
  * target; a notice of any other object does nothing.
  *
- * <p>Refused rather than guessed, at the step that reaches them: a pin that holds, a pause in the
- * owner's ability cooldown without a target, an object other than a character or a building let
+ * <p>Refused rather than guessed, at the step that reaches them: a pause in the owner's ability
+ * cooldown without a target and without a pin, an object other than a character or a building let
  * through by the filter, a strategy other than the two above, and the marked object leaving (its
  * died action is not modelled).
  */
@@ -59,9 +62,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " its cause and the counter's reset, the sticky target and the pause doing nothing"
             + " with one; held by ability_hero_mega_minion_vs_musketeer. Refused: a pause without a"
             + " target, any other strategy, an object other than a character or building found,"
-            + " and the marked object leaving. The pin asked first each step with the run's"
-            + " context, only by a run that has one, held by BattleMarkPinTest; a pin that holds"
-            + " refused.")
+            + " and the marked object leaving. The pin cleared and asked first each step with the"
+            + " run's context, only by a run that has one, and a pin that holds keeping the run"
+            + " from searching, held by BattleMarkPinTest and BattleMegaMinionReturnTest. The"
+            + " pinned point is recorded; no reader of it is traced.")
 public final class SetIndicatorOnTarget extends RowAction {
 
   /** Milliseconds a step without a target adds to the counter: a constant, not the clock's step. */
@@ -134,6 +138,8 @@ public final class SetIndicatorOnTarget extends RowAction {
    * @param pauseIfInCooldown true when the search waits out the owner's ability cooldown
    * @param delayBeforeSearchMs the milliseconds between searches without a target
    * @param pinnedActive the pin, asked each step with the run's context, or null for none
+   * @param pinnedX the pinned point along the width, asked as the pin holds, or null for 0
+   * @param pinnedY the pinned point along the length, asked as the pin holds, or null for 0
    */
   @Builder
   public record Columns(
@@ -146,7 +152,9 @@ public final class SetIndicatorOnTarget extends RowAction {
       long tagsWithTarget,
       boolean pauseIfInCooldown,
       int delayBeforeSearchMs,
-      IntSupplier pinnedActive) {}
+      IntSupplier pinnedActive,
+      IntSupplier pinnedX,
+      IntSupplier pinnedY) {}
 
   private final Columns columns;
 
@@ -181,6 +189,14 @@ public final class SetIndicatorOnTarget extends RowAction {
     /** The marked object, or null for none. */
     private Candidate target;
 
+    /** True while the pin holds, asked anew each step. */
+    private boolean pinned;
+
+    /** The pinned point along the width and the length, as the pin last held. */
+    private int pinnedX;
+
+    private int pinnedY;
+
     private Run(SetIndicatorOnTarget mark, Host host) {
       super(mark);
       this.mark = mark;
@@ -192,28 +208,50 @@ public final class SetIndicatorOnTarget extends RowAction {
       return target;
     }
 
+    /** True when the pin held on the last step. */
+    public boolean pinned() {
+      return pinned;
+    }
+
+    /** The pinned point along the width, as the pin last held. */
+    public int pinnedX() {
+      return pinnedX;
+    }
+
+    /** The pinned point along the length, as the pin last held. */
+    public int pinnedY() {
+      return pinnedY;
+    }
+
     @Override
     protected void update(ActionHolder holder) {
       Columns columns = mark.columns;
-      // The pin, asked first each step, with the run's context, by a run that has one. A pin that
-      // holds keeps the run from searching and records a pinned point, whose reader is not
-      // traced: it is refused.
+      int previous = target == null ? -1 : target.id();
+      // The pin, cleared and then asked each step, with the run's context, by a run that has one.
+      // A pin that holds records its point, which nothing in the run reads, and keeps the run
+      // from searching this step.
+      pinned = false;
       if (columns.pinnedActive() != null
           && context() != null
           && columns.pinnedActive().getAsInt() != 0) {
-        throw new UnsupportedOperationException(
-            mark.name()
-                + " is pinned by its PinnedActiveExpression, whose pinned point is not modelled");
+        pinned = true;
+        pinnedX = columns.pinnedX() == null ? 0 : columns.pinnedX().getAsInt();
+        pinnedY = columns.pinnedY() == null ? 0 : columns.pinnedY().getAsInt();
       }
-      int previous = target == null ? -1 : target.id();
-      // The pause only stops a search: with a target the run keeps it whether it is paused or not.
-      if (target == null && columns.pauseIfInCooldown() && host.abilityCooldownMs() >= 1) {
+      // The pause only stops a search: with a target, or pinned, the run does not search either
+      // way.
+      if (target == null
+          && !pinned
+          && columns.pauseIfInCooldown()
+          && host.abilityCooldownMs() >= 1) {
         throw new UnsupportedOperationException(
             mark.name()
                 + " waits out its owner's ability cooldown, which is not modelled (the pause's"
                 + " lift for an active champion is untraced)");
       }
-      if (target == null && (counterMs == -1 || counterMs >= columns.delayBeforeSearchMs())) {
+      if (target == null
+          && !pinned
+          && (counterMs == -1 || counterMs >= columns.delayBeforeSearchMs())) {
         target = search(columns);
       }
       if (target == null) {
