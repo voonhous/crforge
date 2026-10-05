@@ -1114,6 +1114,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Whether the entity is underground, which a game object filter that drops underground objects
+   * asks. A tower never is.
+   */
+  public boolean underground() {
+    return false;
+  }
+
+  /**
    * Whether an area or a buff passes the entity by: while it is hidden, unless it comes from an
    * area effect that reaches hidden units. Such an area effect reaching an entity hidden in a way
    * the battle does not model is refused.
