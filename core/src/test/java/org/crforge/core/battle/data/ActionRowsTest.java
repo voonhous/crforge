@@ -1026,8 +1026,8 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a flying warp with no speed, a tower offset, a step of untargetability or a next action is"
-          + " refused, and so is a relative warp with an end action")
+      "a flying warp with no speed, a tower offset, a step of untargetability, a next action or a"
+          + " start gate is refused, and so is a relative warp with an end action")
   void aFlyingWarpOutsideTheShippedOneIsRefused(@TempDir Path folder) throws IOException {
     String teleport = "MegaMinion_hero_teleport_action";
     Map<String, Map.Entry<String, Consumer<ObjectNode>>> changes =
@@ -1045,7 +1045,9 @@ class ActionRowsTest {
             "OnWarpEndAction",
             Map.entry(
                 "BossBandit_ability_warp",
-                f -> f.putObject("OnWarpEndAction").put("action", "MegaMinion_hero_first_hit")));
+                f -> f.putObject("OnWarpEndAction").put("action", "MegaMinion_hero_first_hit")),
+            "ExecuteIfTrue",
+            Map.entry(teleport, f -> f.put("ExecuteIfTrue", "1")));
     for (Map.Entry<String, Map.Entry<String, Consumer<ObjectNode>>> change : changes.entrySet()) {
       Path dir = folder.resolve(change.getKey().replace(' ', '_'));
       Files.createDirectories(dir);
