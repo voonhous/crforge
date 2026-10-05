@@ -21,7 +21,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " matching. A newer data version's name, ability_charges_left (no arguments), takes"
             + " the next id, 47, which is this table's own: the newer build numbers its functions"
             + " otherwise, and only the name reaches the battle. Another newer name,"
-            + " is_valid_position (two arguments), takes 48 the same way.")
+            + " is_valid_position (two arguments), takes 48 the same way, and is_dodging_damage (no"
+            + " arguments) 49.")
 public final class BattleFunctions {
 
   /** One function: its name, its id and the fewest and most arguments it takes. */
@@ -78,7 +79,8 @@ public final class BattleFunctions {
           new Entry("group_count", 45, 0, 0),
           new Entry("target_is_crown_tower", 46, 0, 0),
           new Entry("ability_charges_left", 47, 0, 0),
-          new Entry("is_valid_position", 48, 2, 2));
+          new Entry("is_valid_position", 48, 2, 2),
+          new Entry("is_dodging_damage", 49, 0, 0));
 
   private static final Map<String, Entry> BY_NAME = new HashMap<>();
 

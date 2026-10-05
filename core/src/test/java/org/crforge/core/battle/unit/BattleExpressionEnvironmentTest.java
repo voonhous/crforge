@@ -21,7 +21,7 @@ class BattleExpressionEnvironmentTest {
   private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   @Test
-  @DisplayName("every one of the 48 names resolves, so every expression of the data compiles")
+  @DisplayName("every one of the 50 names resolves, so every expression of the data compiles")
   void everyNameResolves() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
@@ -286,6 +286,45 @@ class BattleExpressionEnvironmentTest {
             () -> evaluate("is_clone()", new BattleExpressionEnvironment(king, match.getWorld())))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("which is not a character");
+  }
+
+  @Test
+  @DisplayName(
+      "is_dodging_damage answers 1 for a character dashing under a row with a dash immunity or"
+          + " with that immunity still counting after its dash, and 0 otherwise and for a tower")
+  void isDodgingDamageIsTheDashImmunity() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity bandit =
+        match.deploy(0, GameData.unit("Assassin"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 5500, 10000);
+    match.getBattle().step();
+    BattleExpressionEnvironment banditSees =
+        new BattleExpressionEnvironment(bandit, match.getWorld());
+    BattleExpressionEnvironment knightSees =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+    assertThat(bandit.getData().dashImmuneToDamageTimeMs()).isPositive();
+
+    // The data writes it bare, with no parentheses.
+    assertThat(evaluate("is_dodging_damage", banditSees)).as("deploying").isZero();
+    assertThat(evaluate("!is_dodging_damage", banditSees)).isEqualTo(1);
+    bandit.getView().setState(GridEntityState.DASHING);
+    assertThat(evaluate("is_dodging_damage", banditSees)).as("dashing").isEqualTo(1);
+    knight.getView().setState(GridEntityState.DASHING);
+    assertThat(evaluate("is_dodging_damage", knightSees))
+        .as("dashing under a row without the immunity")
+        .isZero();
+    bandit.getView().setState(GridEntityState.MOVING);
+    assertThat(evaluate("is_dodging_damage", banditSees)).as("after its dash").isZero();
+    bandit.getUnit().timers().setDashImmunityRemainingMs(1);
+    assertThat(evaluate("is_dodging_damage", banditSees))
+        .as("the immunity still counting")
+        .isEqualTo(1);
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    assertThat(
+            evaluate("is_dodging_damage", new BattleExpressionEnvironment(king, match.getWorld())))
+        .as("a tower")
+        .isZero();
   }
 
   /** A Knight of side 0 that has taken a still unit of side 1 as its reference. */

@@ -57,6 +57,8 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " is_valid_position (a newer data version) as a point on the map off water, read"
             + " from the newer build's function; self (a newer data version) as the context's"
             + " id, from the newer build's symbol map;"
+            + " is_dodging_damage (a newer data version) as a character dashing under a row with"
+            + " a dash immunity or with that immunity still counting, 0 for any other object;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -103,6 +105,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_COMBAT_ENABLED = BattleFunctions.id("is_combat_enabled");
   private static final int ABILITY_CHARGES_LEFT = BattleFunctions.id("ability_charges_left");
   private static final int IS_VALID_POSITION = BattleFunctions.id("is_valid_position");
+  private static final int IS_DODGING_DAMAGE = BattleFunctions.id("is_dodging_damage");
 
   /** What ability_charges_left answers for an object without counted charges to read. */
   private static final int NO_CHARGES = -1;
@@ -380,6 +383,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == IS_VALID_POSITION) {
       return validPosition(arguments[0], arguments[1]);
+    }
+    if (id == IS_DODGING_DAMAGE) {
+      // A character dashing under a row with a dash immunity, or with that immunity still
+      // counting after its dash; any other object answers 0.
+      return context instanceof CharacterEntity character && character.dodgingDamage() ? 1 : 0;
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.
