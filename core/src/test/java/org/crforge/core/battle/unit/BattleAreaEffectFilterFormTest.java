@@ -568,4 +568,86 @@ class BattleAreaEffectFilterFormTest {
     assertThat(spawned).hasSize(1);
     assertThat(spawned.get(0)).startsWith("1 at 14500,");
   }
+
+  /**
+   * Records each pull a Tornado in the filter form makes: per hit, the units it pulled in order,
+   * each with the vector to the centre and its push accumulators before and after.
+   */
+  private static List<List<AreaEffectEntity.Pull>> pulls(Standard1v1Battle match) {
+    List<List<AreaEffectEntity.Pull>> pulls = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaPulled(
+                  int tick, AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulled) {
+                pulls.add(List.copyOf(pulled));
+              }
+            });
+    return pulls;
+  }
+
+  /** Places a Tornado of side 0 on tick 25, once the units of the first tick have deployed. */
+  private static void tornado(Standard1v1Battle match) {
+    match.placeAreaEffect(25, "Tornado", LEVEL, 0, 3500, 23500, "Tornado");
+    stepTo(match, 26);
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row whose buff attracts pulls each enemy troop it lists toward its point on"
+          + " every hit, before its buff; a friendly troop and a building are left alone")
+  void anAttractingBuffPullsEachListedTroop(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(filterForm(folder, "Tornado", c -> {}), 1, false);
+    UnitData knightRow = match.getWorld().getRecords().unit("Knight");
+    CharacterEntity near = match.deploy(0, knightRow, LEVEL, 1, 5500, 23500, "near");
+    CharacterEntity far = match.deploy(0, knightRow, LEVEL, 1, 7000, 25000, "far");
+    match.deploy(0, knightRow, LEVEL, 0, 2000, 22000, "friend");
+    CharacterEntity cannon =
+        match.deploy(0, match.getWorld().getRecords().unit("Cannon"), LEVEL, 1, 3500, 21500);
+    List<List<AreaEffectEntity.Pull>> pulls = pulls(match);
+    tornado(match);
+
+    assertThat(pulls).hasSize(1);
+    assertThat(pulls.get(0)).extracting(AreaEffectEntity.Pull::target).containsExactly(near, far);
+    for (AreaEffectEntity.Pull pull : pulls.get(0)) {
+      // The buff push: PushSpeedFactor 100 and AttractPercentage 360 of the Knight's configured
+      // Speed 60 give 216, along the way to the centre, C division; one more sample, the cap
+      // lifted.
+      int length = FixedMath.isqrt(pull.dx() * pull.dx() + pull.dy() * pull.dy());
+      assertThat(pull.after()[0] - pull.before()[0]).isEqualTo(216 * pull.dx() / length);
+      assertThat(pull.after()[1] - pull.before()[1]).isEqualTo(216 * pull.dy() / length);
+      assertThat(pull.after()[2] - pull.before()[2]).isEqualTo(1);
+      assertThat(pull.after()[4]).isEqualTo(1);
+      assertThat(pull.dx()).isEqualTo(3500 - pull.target().getView().getX());
+      assertThat(pull.dy()).isEqualTo(23500 - pull.target().getView().getY());
+    }
+    // The buff is applied after the pull, to the building too, which nothing pulls.
+    assertThat(near.getBuffs().carries("Tornado")).isTrue();
+    assertThat(cannon.getBuffs().carries("Tornado")).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row whose buff attracts pulls only the objects its hit takes: with a target"
+          + " limit of one, the nearest alone")
+  void thePullFollowsTheTargetLimit(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            filterForm(folder, "Tornado", columns -> columns.put("MaximumTargets", 1)), 1, false);
+    UnitData knightRow = match.getWorld().getRecords().unit("Knight");
+    CharacterEntity near = match.deploy(0, knightRow, LEVEL, 1, 5500, 23500, "near");
+    CharacterEntity far = match.deploy(0, knightRow, LEVEL, 1, 7000, 25000, "far");
+    List<List<AreaEffectEntity.Pull>> pulls = pulls(match);
+    tornado(match);
+    stepTo(match, 30);
+
+    assertThat(pulls).hasSize(5);
+    for (List<AreaEffectEntity.Pull> hit : pulls) {
+      assertThat(hit).extracting(AreaEffectEntity.Pull::target).containsExactly(near);
+    }
+    assertThat(far.getBuffs().carries("Tornado")).isFalse();
+  }
 }
