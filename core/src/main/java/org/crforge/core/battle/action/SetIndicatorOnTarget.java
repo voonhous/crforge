@@ -89,6 +89,12 @@ public final class SetIndicatorOnTarget extends RowAction {
     /** Its maximum hit points plus its maximum shield, as the lowest-maximum strategy reads it. */
     int maxHitPoints();
 
+    /** Its current hit points plus its current shield, as the highest-current strategy reads it. */
+    default int currentHitPoints() {
+      throw new UnsupportedOperationException(
+          "the current hit points of " + rowName() + " are not read by its resolver");
+    }
+
     /** Its position along the width. */
     int x();
 

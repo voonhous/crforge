@@ -1581,9 +1581,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   /** An area effect has no hit points, so it counts as alive. */
   /**
    * What a shape selector's run on the area effect asks of the battle: the battle tick, the circle
-   * around its point that tests buildings by their squares, an object's hit points and shield, and
-   * the actions it schedules on what it picked, each built for that object, the area effect its
-   * cause.
+   * around its point that tests buildings by their squares, an object's hit points and shield or
+   * its squared distance from the area effect, the holder of a pick, and the actions it schedules,
+   * each built for the object it runs on with the cause and the context the run hands it: on what
+   * it picked, and on the area effect itself.
    */
   @Override
   public ShapeSelectorHost shapeSelectorHost() {
@@ -1604,7 +1605,14 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
       @Override
       public int score(int id, int mode) {
-        HitPoints hitPoints = ((WorldEntity) world.liveObject(id)).getHitPoints();
+        WorldEntity object = (WorldEntity) world.liveObject(id);
+        if (mode == ShapeSelector.CLOSEST) {
+          // The guarded squared distance from the owner's point, its bits flipped.
+          return FixedMath.INT_MAX
+              ^ FixedMath.squaredDistance(
+                  AreaEffectEntity.this.x(), AreaEffectEntity.this.y(), object.x(), object.y());
+        }
+        HitPoints hitPoints = object.getHitPoints();
         if (hitPoints == null) {
           return 0;
         }
@@ -1614,10 +1622,21 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
 
       @Override
-      public void schedule(int targetId, String action) {
+      public ActionHolder holder(int id) {
+        return ((WorldEntity) world.liveObject(id)).actionHolder();
+      }
+
+      @Override
+      public void schedule(int targetId, String action, ActionHolder cause, ActionContext context) {
         WorldEntity target = (WorldEntity) world.liveObject(targetId);
         BattleAction built = world.getActions().build(action, world.binding(target));
-        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder);
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+
+      @Override
+      public void scheduleOnOwner(String action, ActionHolder cause, ActionContext context) {
+        BattleAction built = world.getActions().build(action, binding());
+        actionHolder.schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
       }
 
       @Override

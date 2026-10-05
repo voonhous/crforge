@@ -380,14 +380,14 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a shape selector that waits at most a while, scores by distance, has fewer actions than"
-          + " delays, has no filter or a shape other than a circle is refused")
+      "a shape selector that waits at most a while, scores by maximum hit points, has fewer"
+          + " actions than delays, has no filter or a shape other than a circle is refused")
   void aShapeSelectorIsRefused(@TempDir Path folder) throws IOException {
     String row = "Vines_Target_Selector";
     Map<String, Consumer<ObjectNode>> changes =
         Map.of(
             "sets MaxWaitTimeForTarget", f -> f.put("MaxWaitTimeForTarget", 1000),
-            "scores by Closest", f -> f.put("TargetSelectionMode", "Closest"),
+            "scores by HighestMaxHp", f -> f.put("TargetSelectionMode", "HighestMaxHp"),
             "fewer actions than delays", f -> f.putArray("Delays").add(0).add(50).add(100).add(150),
             "without a filter", f -> f.remove("TargetFilter"),
             "is a Rectangle", f -> f.put("Shape", "BabyDragon_EV1_wind_aeo_shape"));

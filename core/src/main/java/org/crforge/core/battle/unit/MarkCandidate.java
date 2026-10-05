@@ -8,7 +8,8 @@ import org.crforge.core.pathfinding.combat.HitPoints;
 
 /**
  * A character or building a mark's resolver collects, read live: its id, row, position and action
- * holder, and the maximum hit points plus maximum shield the lowest-maximum strategy compares.
+ * holder, the maximum hit points plus maximum shield the lowest-maximum strategy compares and the
+ * current hit points plus current shield the highest-current one compares.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -53,6 +54,16 @@ final class MarkCandidate implements SetIndicatorOnTarget.Candidate {
           action + " compares the maximum hit points of " + rowName() + ", which has none");
     }
     return hitPoints.getMaximum() + hitPoints.getShieldMaximum();
+  }
+
+  @Override
+  public int currentHitPoints() {
+    HitPoints hitPoints = entity.getHitPoints();
+    if (hitPoints == null) {
+      throw new UnsupportedOperationException(
+          action + " compares the current hit points of " + rowName() + ", which has none");
+    }
+    return hitPoints.getHitPoints() + hitPoints.getShield();
   }
 
   @Override

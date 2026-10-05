@@ -247,7 +247,9 @@ public class ProjectileEntity extends BattleEntity
   /** Milliseconds its flight still waits before it moves, 50 off each visit. */
   @Getter private int delayMs;
 
-  /** The speed its launch gave it in place of its row's, or 0 for none. */
+  /**
+   * The speed its launch or a speed override action gave it in place of its row's, or 0 for none.
+   */
   @Getter private int speedOverride;
 
   /** The ids of the entities its flying body has hit, which it does not hit again. */
@@ -554,6 +556,15 @@ public class ProjectileEntity extends BattleEntity
   public void dropOnto(AreaEffectEntity area, int sz, int speed) {
     launchFromArea(area, null, area.getX(), area.getY(), sz, area.getX(), area.getY());
     areaTarget = area;
+    speedOverride = speed;
+  }
+
+  /**
+   * Takes a speed in place of its row's, as a speed override action writes it: the flight reads it
+   * while it is above 0.
+   */
+  @Override
+  public void overrideProjectileSpeed(String action, int speed) {
     speedOverride = speed;
   }
 

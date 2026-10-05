@@ -97,6 +97,10 @@ public interface SpawnHost extends SpawnObject {
    * @param aimY the aim along the arena's length, or null for this object's own coordinate
    * @param spawnClass true for a row of the plain spawn class, which adds this object's live height
    *     to the start height and, aimed by neither expression, launches at its current target
+   * @param fromContext true for a row that names its target in the context: it launches at the
+   *     object {@code targetId} names, whatever its expressions, and at none for null
+   * @param targetId the id the context named, or null for none or an id no object holds now
+   * @param startOffset how far the start moves toward that target, 0 for not at all
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    */
   default void spawnProjectile(
@@ -106,6 +110,9 @@ public interface SpawnHost extends SpawnObject {
       IntSupplier aimX,
       IntSupplier aimY,
       boolean spawnClass,
+      boolean fromContext,
+      Integer targetId,
+      int startOffset,
       int phase) {
     throw new UnsupportedOperationException(name() + " cannot launch a projectile");
   }
