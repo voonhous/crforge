@@ -13,6 +13,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -171,6 +172,28 @@ class BattleShapeSelectorTest {
             "19 retrigger knight phase 0 counter 2000",
             "21 chosen [2=knight] none [] empty false finished true",
             "21 retrigger knight phase 0 counter 2000");
+  }
+
+  @Test
+  @DisplayName(
+      "Vines' filter drops underground objects, though not hidden ones: a Miner tunnelling through"
+          + " its circle is never picked")
+  void aTunnellingMinerIsNotPicked() {
+    Scene scene = new Scene(GameData.tables());
+    // The top side's Miner tunnels from its king to the bottom side's left lane: it crosses the
+    // circle about (5000, 17500) from tick 17 to tick 21, every due step of the selector, and
+    // surfaces at tick 33.
+    scene.match.play(0, GameData.card("Miner"), LEVEL, 1, 3500, 8000, "miner");
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, 5000, 17500, "vines");
+    scene.steps(25);
+    CharacterEntity miner = scene.match.getPlays().get(0).units().get(0);
+    assertThat(miner.getView().getState()).isEqualTo(GridEntityState.SPAWN_PATHFIND);
+    assertThat(scene.steps)
+        .containsExactly(
+            "18 chosen [] none [] empty true finished false",
+            "19 chosen [] none [] empty true finished false",
+            "21 chosen [] none [] empty true finished false",
+            "22 chosen [] none [] empty false finished true");
   }
 
   @Test

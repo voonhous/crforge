@@ -2585,11 +2585,21 @@ public class CharacterEntity extends WorldEntity {
   @Override
   public boolean hidden() {
     return waiting()
-        || tunnelling()
-        || ingamePathfinding() && !getData().ingamePathfindVisible()
+        || underground()
         || getData().hidesWhenNotAttacking()
             && HideHandler.hidden(unit.timers().getHideCounterMs(), getData().hideTimeMs())
         || taggedHidden();
+  }
+
+  /**
+   * Underground while it tunnels to its placement, in the spawn-pathfinding state, and while it
+   * routes to a point its ability sent it to, unless its row keeps it visible there. A game object
+   * filter that drops underground objects asks this test, so such a filter drops a tunnelling or
+   * routing unit even when it does not drop hidden ones; the hidden test asks it too.
+   */
+  @Override
+  public boolean underground() {
+    return tunnelling() || ingamePathfinding() && !getData().ingamePathfindVisible();
   }
 
   /** Whether its tag word holds the hidden tag. */
