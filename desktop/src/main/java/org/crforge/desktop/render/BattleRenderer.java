@@ -49,7 +49,17 @@ public class BattleRenderer {
   /** Length in pixels of a heading line. */
   private static final float HEADING_PIXELS = TILE_PIXELS * 1.5f;
 
+  /** Clear space between the HP text and the inside of its bar's border. */
+  private static final float HP_TEXT_PADDING = 4f;
+
+  /** Clears the arena's three-pixel team accent, with another three pixels of space. */
+  private static final float ANNOTATION_EDGE_INSET = 6f;
+
+  private static final float NAME_BAR_GAP = 3f;
+  private static final float SHIELD_BAR_GAP = 1f;
+
   private final RenderContext ctx;
+  private final float numberedHealthBarHeight;
   private final HudRenderer backgrounds;
   private final CellCostOverlayRenderer cellCosts;
   private final RouteOverlayRenderer routes;
@@ -61,10 +71,10 @@ public class BattleRenderer {
   @Getter private boolean drawRanges = false;
   @Getter private boolean drawDamageNumbers = false;
   @Getter private boolean drawAoeDamage = true;
-  @Getter private boolean drawHpNumbers = false;
+  @Getter private boolean drawHpNumbers = true;
   @Getter private boolean drawCellCosts = false;
   @Getter private boolean drawRoutes = false;
-  @Getter private boolean drawLabels = false;
+  @Getter private boolean drawLabels = true;
   @Getter private boolean drawGrid = false;
   @Getter private boolean drawTargets = false;
   private final BattleArenaRenderer arena;
@@ -107,6 +117,10 @@ public class BattleRenderer {
 
   public BattleRenderer() {
     this.ctx = new RenderContext(12);
+    this.numberedHealthBarHeight =
+        Math.max(
+            HEALTH_BAR_HEIGHT,
+            ctx.getEntityNameFont().getCapHeight() + 2 * (HEALTH_BAR_BORDER + HP_TEXT_PADDING));
     this.arena = new BattleArenaRenderer(ctx);
     this.backgrounds = new HudRenderer(ctx);
     this.cellCosts = new CellCostOverlayRenderer(ctx);
@@ -479,30 +493,43 @@ public class BattleRenderer {
       }
       float width = barWidth(entity);
       float left = px(entity.x()) - width / 2;
-      float barY = py(entity.y()) + unitsToPixels(entity.radius()) + HEALTH_BAR_Y_OFFSET;
+      float barY = healthBarY(entity);
       float share = entity.healthShare();
       Color fill =
           share > HEALTH_THRESHOLD_HIGH
               ? ArenaPalette.HEALTH
               : share > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW : COLOR_HEALTH_RED;
-      bar(shapes, left, barY, width, share, fill);
+      bar(shapes, left, barY, width, healthBarHeight(), share, fill);
       if (entity.maxShield() > 0) {
         float shieldShare = (float) entity.shield() / entity.maxShield();
-        bar(shapes, left, barY + HEALTH_BAR_HEIGHT + 1, width, shieldShare, COLOR_SHIELD);
+        bar(
+            shapes,
+            left,
+            barY + healthBarHeight() + SHIELD_BAR_GAP,
+            width,
+            HEALTH_BAR_HEIGHT,
+            shieldShare,
+            COLOR_SHIELD);
       }
     }
     shapes.end();
   }
 
   private static void bar(
-      ShapeRenderer shapes, float left, float y, float width, float share, Color fill) {
+      ShapeRenderer shapes,
+      float left,
+      float y,
+      float width,
+      float height,
+      float share,
+      Color fill) {
     float b = HEALTH_BAR_BORDER;
     shapes.setColor(COLOR_CARD_BORDER);
-    shapes.rect(left, y, width, HEALTH_BAR_HEIGHT);
+    shapes.rect(left, y, width, height);
     shapes.setColor(COLOR_HEALTH_BG);
-    shapes.rect(left + b, y + b, width - b * 2, HEALTH_BAR_HEIGHT - b * 2);
+    shapes.rect(left + b, y + b, width - b * 2, height - b * 2);
     shapes.setColor(fill);
-    shapes.rect(left + b, y + b, (width - b * 2) * share, HEALTH_BAR_HEIGHT - b * 2);
+    shapes.rect(left + b, y + b, (width - b * 2) * share, height - b * 2);
   }
 
   /** A bar's width: the body's, at least the minimum, widened to fit the HP numbers when shown. */
@@ -512,7 +539,55 @@ public class BattleRenderer {
       return base;
     }
     ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), hpText(entity));
-    return Math.max(base, ctx.getGlyphLayout().width + HEALTH_BAR_BORDER * 2 + 2);
+    return Math.max(base, ctx.getGlyphLayout().width + 2 * (HEALTH_BAR_BORDER + HP_TEXT_PADDING));
+  }
+
+  private float healthBarHeight() {
+    return drawHpNumbers ? numberedHealthBarHeight : HEALTH_BAR_HEIGHT;
+  }
+
+  private float healthAndShieldHeight(EntityView entity) {
+    return healthBarHeight() + (entity.maxShield() > 0 ? SHIELD_BAR_GAP + HEALTH_BAR_HEIGHT : 0);
+  }
+
+  /**
+   * Keep annotations inside the arena. Towers reserve the same clearance at either end, so
+   * corresponding red and blue towers keep matching gaps even when the upper label is constrained.
+   */
+  private float healthBarY(EntityView entity) {
+    float height = healthAndShieldHeight(entity);
+    if (showLabel(entity)) {
+      height += ctx.getEntityNameFont().getCapHeight() + NAME_BAR_GAP;
+    }
+    float bodyTop = py(entity.y()) + unitsToPixels(entity.radius());
+    float limit =
+        BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - ANNOTATION_EDGE_INSET - height;
+    if (entity.kind() == EntityView.Kind.TOWER) {
+      float upperBodyTop =
+          unitsToPixels(Math.max(entity.y(), view.heightUnits() - entity.y()))
+              + BOTTOM_UI_HEIGHT
+              + unitsToPixels(entity.radius());
+      return bodyTop + Math.min(HEALTH_BAR_Y_OFFSET, limit - upperBodyTop);
+    }
+    return Math.min(bodyTop + HEALTH_BAR_Y_OFFSET, limit);
+  }
+
+  private boolean showLabel(EntityView entity) {
+    return drawLabels || entity.id() == inspectedEntity;
+  }
+
+  private String characterLabel(EntityView entity) {
+    String label =
+        displayNames.computeIfAbsent(
+            entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "));
+    if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
+      return label + " [WAIT]";
+    } else if (entity.deploying()) {
+      return label + " [DEPLOY]";
+    } else if (entity.hidden()) {
+      return label + " [HIDDEN]";
+    }
+    return label;
   }
 
   private static String hpText(EntityView entity) {
@@ -632,25 +707,17 @@ public class BattleRenderer {
   private void renderLabels(BattleFrame frame) {
     ctx.getSpriteBatch().begin();
     for (EntityView entity : frame.entities()) {
-      if (!drawLabels && entity.id() != inspectedEntity) continue;
+      if (!showLabel(entity)) continue;
       String label;
       float y;
       if (entity.isCharacter()) {
-        label =
-            displayNames.computeIfAbsent(
-                entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "));
-        if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
-          label += " [WAIT]";
-        } else if (entity.deploying()) {
-          label += " [DEPLOY]";
-        } else if (entity.hidden()) {
-          label += " [HIDDEN]";
-        }
-        float bars = HEALTH_BAR_Y_OFFSET + HEALTH_BAR_HEIGHT;
-        if (entity.maxShield() > 0) {
-          bars += 1 + HEALTH_BAR_HEIGHT;
-        }
-        y = py(entity.y()) + unitsToPixels(entity.radius()) + bars + 10;
+        label = characterLabel(entity);
+        float barY = healthBarY(entity);
+        y =
+            barY
+                + healthAndShieldHeight(entity)
+                + ctx.getEntityNameFont().getCapHeight()
+                + NAME_BAR_GAP;
       } else if (entity.kind() == EntityView.Kind.AREA_EFFECT) {
         label =
             entity.name()
@@ -667,7 +734,7 @@ public class BattleRenderer {
               Math.min(
                   WorkspaceViewport.WORLD_WIDTH - ctx.getGlyphLayout().width - 3,
                   px(entity.x()) - ctx.getGlyphLayout().width / 2));
-      y = Math.min(BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - 3, y);
+      y = Math.min(BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - ANNOTATION_EDGE_INSET, y);
       ctx.getEntityNameFont().setColor(0.04f, 0.07f, 0.08f, 1);
       ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, left + 1, y - 1);
       ctx.getEntityNameFont().setColor(Color.WHITE);
@@ -695,21 +762,19 @@ public class BattleRenderer {
 
   /** The hit points and maximum centred on each health bar. */
   private void renderHpNumbers(BattleFrame frame) {
+    var font = ctx.getEntityNameFont();
+    font.setColor(Color.BLACK);
     ctx.getSpriteBatch().begin();
-    ctx.getEntityNameFont().setColor(COLOR_HP_TEXT);
     for (EntityView entity : frame.entities()) {
       if (!entity.isCharacter() || !entity.hasHitPoints()) {
         continue;
       }
-      float barY = py(entity.y()) + unitsToPixels(entity.radius()) + HEALTH_BAR_Y_OFFSET;
+      float barY = healthBarY(entity);
       String text = hpText(entity);
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), text);
-      ctx.getEntityNameFont()
-          .draw(
-              ctx.getSpriteBatch(),
-              text,
-              px(entity.x()) - ctx.getGlyphLayout().width / 2,
-              barY + HEALTH_BAR_HEIGHT / 2 + ctx.getGlyphLayout().height / 2);
+      float left = px(entity.x()) - ctx.getGlyphLayout().width / 2;
+      float top = barY + healthBarHeight() / 2 + ctx.getGlyphLayout().height / 2;
+      font.draw(ctx.getSpriteBatch(), text, left, top);
     }
     ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
