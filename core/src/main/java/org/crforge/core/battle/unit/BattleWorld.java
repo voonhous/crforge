@@ -195,6 +195,14 @@ public class BattleWorld implements HolderPasses {
    * The share counts for the projectile's shooter, and the projectile's listening runs hear of it,
    * as the drain deals it.
    *
+   * <p>And it lands the two kills of a whole hit points at the drain: a fallen king's circle's (see
+   * {@link #circleKill(WorldEntity, int)}) and a Kamikaze unit's of itself as its hit ends (see
+   * {@link #kamikazeKill(WorldEntity)}). The circle runs in the match update, before the holder
+   * tick, so an entity it kills is still alive through that tick's passes - a tower or a unit that
+   * targets it still attacks it, and it takes its own visits - and dies at the drain. A Kamikaze
+   * unit killed in its own hit is still alive for the entities visited after it in that tick: one
+   * that targets it walks at it once more, and its body still stands among the others.
+   *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
   private static final Set<String> DIRECT_HIT_AT_DRAIN = Set.of("16.402.18");
@@ -398,11 +406,35 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * A hit the damage drain deals: a typed hit, or a direct hit or a share of a character's or a
-   * projectile's area on a version that queues them.
+   * The kill of a fallen king's circle waiting for the drain, on a data version that lands it
+   * there: dealt as {@link #circleKill(WorldEntity, int)} deals it at once.
+   *
+   * @param target the entity the circle reached
+   * @param radius the circle's radius
+   */
+  private record CircleKillDue(WorldEntity target, int radius) implements QueuedHit {}
+
+  /**
+   * A Kamikaze unit's kill of itself waiting for the drain, on a data version that lands it there:
+   * dealt as {@link #kamikazeKill(WorldEntity)} deals it at once.
+   *
+   * @param unit the unit whose hit ended
+   */
+  private record KamikazeKillDue(WorldEntity unit) implements QueuedHit {}
+
+  /**
+   * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
+   * share of a character's or a projectile's area, a circle's kill or a Kamikaze unit's kill on a
+   * version that queues them.
    */
   private sealed interface QueuedHit
-      permits TypedHit, DirectHitDue, AreaHitDue, ProjectileAreaHitDue, ActionDamageDue {}
+      permits TypedHit,
+          DirectHitDue,
+          AreaHitDue,
+          ProjectileAreaHitDue,
+          ActionDamageDue,
+          CircleKillDue,
+          KamikazeKillDue {}
 
   /**
    * A damage-taking action's hit waiting for the drain: its source, its target, the row's damage
@@ -1606,11 +1638,22 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills a Kamikaze unit at the end of its hit: its whole hit points, with itself as the attacker
-   * on its own side, so its death action runs alone. Every observer is told of the kill.
+   * on its own side, so its death action runs alone. Every observer is told of the kill. On a data
+   * version that lands it at the damage drain the kill is queued, and the unit stays alive until
+   * the drain of the tick (see {@link #DIRECT_HIT_AT_DRAIN}).
    *
    * @param unit the unit
    */
   public void kamikazeKill(WorldEntity unit) {
+    if (directHitAtDrain) {
+      queuedHits.add(new KamikazeKillDue(unit));
+      return;
+    }
+    kamikazeKillNow(unit);
+  }
+
+  /** The Kamikaze kill, dealt: at once, or at the damage drain on a version that queues it. */
+  private void kamikazeKillNow(WorldEntity unit) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKill(unit, unit);
     for (WorldObserver observer : observers) {
@@ -1654,12 +1697,23 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills an entity of a fallen king's side that the king's circle reached: its whole hit points,
-   * no attacker, told to every observer as the circle's kill rather than a hit.
+   * no attacker, told to every observer as the circle's kill rather than a hit. On a data version
+   * that lands it at the damage drain the kill is queued, and the entity stays alive until the
+   * drain of the tick (see {@link #DIRECT_HIT_AT_DRAIN}).
    *
    * @param target the entity
    * @param radius the circle's radius
    */
   public void circleKill(WorldEntity target, int radius) {
+    if (directHitAtDrain) {
+      queuedHits.add(new CircleKillDue(target, radius));
+      return;
+    }
+    circleKillNow(target, radius);
+  }
+
+  /** The circle's kill, dealt: at once, or at the damage drain on a version that queues it. */
+  private void circleKillNow(WorldEntity target, int radius) {
     DamageResult result = target.takeKill();
     for (WorldObserver observer : observers) {
       observer.circleKilled(tick, target, radius);
@@ -4739,7 +4793,8 @@ public class BattleWorld implements HolderPasses {
    * the type's action on the source and its action on the target, and the observers are told. A
    * direct hit or a share of a character's or a projectile's area, on a data version that queues
    * them: the damage dealt as it is dealt at once, with its reflect, its observers, its death or
-   * the reference drop.
+   * the reference drop; a circle's or a Kamikaze unit's kill, on such a version, as it is dealt at
+   * once.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -4765,6 +4820,14 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof ActionDamageDue actionDamage) {
         drainActionDamage(actionDamage);
+        continue;
+      }
+      if (queued instanceof CircleKillDue kill) {
+        circleKillNow(kill.target(), kill.radius());
+        continue;
+      }
+      if (queued instanceof KamikazeKillDue kamikaze) {
+        kamikazeKillNow(kamikaze.unit());
         continue;
       }
       TypedHit hit = (TypedHit) queued;
@@ -7741,8 +7804,8 @@ public class BattleWorld implements HolderPasses {
   @Override
   public void afterPostHooks() {
     // The queued hits land after every post-hook and before phase 3: the typed hits and, on a data
-    // version that queues them, the direct hits and the shares of an area. The observers see them
-    // landed.
+    // version that queues them, the direct hits, the shares of an area and the circle's and the
+    // Kamikaze kills. The observers see them landed.
     drainTypedHits();
     List<WorldEntity> snapshotOfPresent = present();
     List<ProjectileEntity> snapshotOfProjectiles = projectiles();
