@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BarbBarrelHeroReRoll;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
+import org.crforge.core.battle.action.BlackboardSetInt;
 import org.crforge.core.battle.action.BlowdartController;
 import org.crforge.core.battle.action.BlowdartDamage;
 import org.crforge.core.battle.action.BlowdartDartSelect;
@@ -34,6 +35,7 @@ import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
+import org.crforge.core.battle.action.ContextToVariable;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DealDamage;
@@ -206,6 +208,12 @@ public final class ActionRows {
           Map.entry(
               "ActionWriteInstigatorInfoToContext",
               Set.of("HitpointsKey", "ShieldHitpointsKey", "HitpointsLevelIndex", "UseScratch")),
+          // The context's two other actions: a value written under a key, and a key's value
+          // copied into a variable.
+          Map.entry("ActionBlackboardSetInt", Set.of("Key", "Value", "UseScratch")),
+          Map.entry(
+              "ActionContextToVariable",
+              Set.of("BlackboardKey", "OutputVariable", "UseScratch", "DefaultValue")),
           // The path reset reads no column of its own.
           Map.entry("ActionResetPath", Set.of()),
           // The target reset reads no column of its own.
@@ -1238,6 +1246,21 @@ public final class ActionRows {
                     contextKey(text(f, "HitpointsKey", "")),
                     contextKey(text(f, "ShieldHitpointsKey", "")),
                     integer(f, "HitpointsLevelIndex", -1));
+            case "ActionBlackboardSetInt" ->
+                new BlackboardSetInt(
+                    shared,
+                    bool(f, "UseScratch"),
+                    ActionContext.key(text(f, "Key", "")),
+                    expression(f.get("Value")));
+            case "ActionContextToVariable" ->
+                new ContextToVariable(
+                    shared,
+                    bool(f, "UseScratch"),
+                    ActionContext.key(text(f, "BlackboardKey", "")),
+                    integer(f, "DefaultValue", 0),
+                    f.hasNonNull("OutputVariable")
+                        ? binding.variableKey(f.get("OutputVariable").asText())
+                        : SetVariable.NO_VARIABLE);
             case "ActionSelect" ->
                 new Select(
                     shared,
