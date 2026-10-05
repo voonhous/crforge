@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class BattleExpressionEnvironmentTest {
 
   @Test
-  @DisplayName("every one of the 47 names resolves, so every expression of the data compiles")
+  @DisplayName("every one of the 48 names resolves, so every expression of the data compiles")
   void everyNameResolves() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();

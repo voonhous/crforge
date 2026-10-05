@@ -7,6 +7,8 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
+import org.crforge.core.battle.expression.ExpressionCompiler;
+import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -274,6 +276,31 @@ class BattleMegaMinionHeroTest {
         .map(SetIndicatorOnTarget.Run.class::cast)
         .findFirst()
         .orElseThrow();
+  }
+
+  @Test
+  @DisplayName(
+      "ability_charges_left answers the charges the slot that follows the hero has left, and -1"
+          + " for a unit whose row has no ability with charges or for a tower")
+  void abilityChargesLeft() {
+    Standard1v1Battle battle = heroPlayed();
+    CharacterEntity hero = named(battle, HERO).get(0);
+    CharacterEntity knight =
+        battle.deploy(battle.getBattle().getTick(), GameData.unit("Knight"), LEVEL, 1, 3500, 25000);
+    step(battle);
+
+    assertThat(battle.getWorld().kingTower(0).championSlot(1).getCharges()).isEqualTo(1);
+    assertThat(chargesLeft(battle, hero)).isEqualTo(1);
+    assertThat(chargesLeft(battle, knight)).isEqualTo(-1);
+    assertThat(chargesLeft(battle, battle.getWorld().kingTower(0))).isEqualTo(-1);
+  }
+
+  /** What ability_charges_left answers for a context. */
+  private static int chargesLeft(Standard1v1Battle battle, WorldEntity context) {
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(context, battle.getWorld());
+    return ExpressionEvaluator.evaluate(
+        ExpressionCompiler.compile("ability_charges_left", environment), environment);
   }
 
   /** A battle with the hero Mega Minion played at (3500, 14000), one step after it appears. */
