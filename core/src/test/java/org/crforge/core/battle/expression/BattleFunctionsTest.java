@@ -11,17 +11,19 @@ class BattleFunctionsTest {
 
   @Test
   @DisplayName(
-      "48 functions with the ids 0 to 47, each once: the 47 of 14.593.1 and a newer version's one")
-  void fortyEightIds() {
-    assertThat(BattleFunctions.ALL).hasSize(48);
+      "49 functions with the ids 0 to 48, each once: the 47 of 14.593.1 and a newer version's two")
+  void fortyNineIds() {
+    assertThat(BattleFunctions.ALL).hasSize(49);
     assertThat(BattleFunctions.byId(47).name()).isEqualTo("ability_charges_left");
-    for (int id = 0; id < 48; id++) {
+    assertThat(BattleFunctions.byId(48).name()).isEqualTo("is_valid_position");
+    for (int id = 0; id < 49; id++) {
       assertThat(BattleFunctions.byId(id).id()).isEqualTo(id);
     }
   }
 
   @Test
-  @DisplayName("seven take exactly one argument, two an optional one, the rest none")
+  @DisplayName(
+      "seven take exactly one argument, two an optional one, one exactly two, the rest none")
   void argumentCounts() {
     List<String> exactlyOne =
         BattleFunctions.ALL.stream()
@@ -41,6 +43,8 @@ class BattleFunctionsTest {
     assertThat(BattleFunctions.byName("max_hp").minArguments()).isZero();
     assertThat(BattleFunctions.byName("target_max_hp").maxArguments()).isEqualTo(1);
     assertThat(BattleFunctions.byName("king_tower_damaged").maxArguments()).isZero();
+    assertThat(BattleFunctions.byName("is_valid_position").minArguments()).isEqualTo(2);
+    assertThat(BattleFunctions.byName("is_valid_position").maxArguments()).isEqualTo(2);
   }
 
   @Test

@@ -2130,6 +2130,36 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The live list's objects a target resolver's Global shape collects and its filter lets through,
+   * asked by an entity: for its team and row name, the entity itself the one a MatchSelf filter
+   * passes and the one whose buffs a buff checker looks for. In the holder's order; a projectile or
+   * an area effect the filter lets through is refused, as above.
+   *
+   * @param filter the resolver's filter
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   * @param action the name of the action that resolves
+   * @param asker the asking entity
+   */
+  List<WorldEntity> resolverCandidates(
+      GameObjectFilter filter, int team, String rowName, String action, BattleEntity asker) {
+    List<WorldEntity> out = new ArrayList<>();
+    for (FilterSubject subject : filterSubjects()) {
+      if (!(subject instanceof EntityFilterSubject entity)) {
+        if (filter.matches(subject, team, rowName, false, asker.getId())) {
+          throw new UnsupportedOperationException(
+              action + " resolves an object other than a character or building, not modelled");
+        }
+        continue;
+      }
+      if (filter.matches(entity, team, rowName, entity.entity() == asker, asker.getId())) {
+        out.add(entity.entity());
+      }
+    }
+    return out;
+  }
+
+  /**
    * Sends a card play to every card-play listener on the live and the queued objects, in that
    * order: each hears it as its row says, and an activating play schedules the row's action on the
    * listener's owner, the owner its cause, to run in its next pending pass.
@@ -2589,29 +2619,27 @@ public class BattleWorld implements HolderPasses {
    * tick: phase 2 after a melee hit or a dash landing. A unit that killed itself is no attacker
    * here.
    *
-   * <p>Refused rather than guessed: a projectile's kill for a launcher with a killed-done action,
-   * which the game hands on to the launcher by a path not followed, and a kill after the tick's
-   * last pending pass, as for the death hooks. Of the hook's other blocks, the evolved Pekka's
-   * TempResurrect hands a character's kill to the battle's presentation listener and changes
-   * nothing the battle reads, so it has no part here; a buff or a conversion on a kill read columns
-   * the battle refuses as it creates the unit. Its first block, the reference a row that passes
-   * over buffed targets drops on every hit, comes first - see {@link #referenceDrop}.
+   * <p>A projectile's kill is its shooter's: the hit-points chain hands the hook to the
+   * projectile's launcher when that is a character, which schedules its own killed-done action the
+   * same way, the entity killed its cause; a projectile without one runs none.
+   *
+   * <p>Refused rather than guessed: a kill after the tick's last pending pass, as for the death
+   * hooks. Of the hook's other blocks, the evolved Pekka's TempResurrect hands a character's kill
+   * to the battle's presentation listener and changes nothing the battle reads, so it has no part
+   * here; a buff or a conversion on a kill read columns the battle refuses as it creates the unit.
+   * Its first block, the reference a row that passes over buffed targets drops on every hit, comes
+   * first - see {@link #referenceDrop}.
    *
    * @param dying the entity killed
    * @param attacker what killed it
    */
   private void killedDone(WorldEntity dying, BattleEntity attacker) {
     referenceDrop(attacker, dying, true);
-    if (attacker instanceof ProjectileEntity projectile
-        && projectile.getRoot() != null
-        && projectile.getRoot().getData().onKilledDoneAction() != null) {
-      throw new UnsupportedOperationException(
-          projectile.getRoot().name()
-              + "'s projectile killed "
-              + dying.name()
-              + ", and the hook it hands its launcher is not modelled");
-    }
-    if (!(attacker instanceof WorldEntity killer) || killer == dying) {
+    // A projectile's kill reaches its shooter: its launcher, when that is a character. With none
+    // the projectile itself hears the kill, which runs no row.
+    BattleEntity hook =
+        attacker instanceof ProjectileEntity projectile ? projectile.getOwner() : attacker;
+    if (!(hook instanceof WorldEntity killer) || killer == dying) {
       return;
     }
     String action = killer.getData().onKilledDoneAction();
@@ -6028,6 +6056,36 @@ public class BattleWorld implements HolderPasses {
       int offsetX,
       int offsetY,
       int phase) {
+    return spawnAreaEffect(
+        owner, action, row, source, owner.x(), owner.y(), offsetX, offsetY, phase);
+  }
+
+  /**
+   * Creates the area effect an action's spawn row names at a point - the owner's for the plain
+   * class, the one its two expressions give for the location class - moved by the row's offsets,
+   * the one along the length turned toward the far side of the owner's side; otherwise as above.
+   *
+   * @param owner the owner of the holder that ran the action
+   * @param action the spawn row's name
+   * @param row the area effect row's name
+   * @param source the entity that caused the action
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param offsetX the row's offset along the width
+   * @param offsetY the row's offset along the length, before the owner's side turns it
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   * @return the area effect
+   */
+  public AreaEffectEntity spawnAreaEffect(
+      SpawnHost owner,
+      String action,
+      String row,
+      SpawnHost source,
+      int x,
+      int y,
+      int offsetX,
+      int offsetY,
+      int phase) {
     if (source instanceof CharacterEntity unit && unit.isClone()) {
       throw new UnsupportedOperationException(
           action + " spawns " + row + " from a clone, which is not modelled");
@@ -6035,8 +6093,8 @@ public class BattleWorld implements HolderPasses {
     AreaEffectEntity areaEffect =
         createAreaEffect(
             row,
-            owner.x() + offsetX,
-            AreaEffectEntity.yDirection(owner.side()) * offsetY + owner.y(),
+            x + offsetX,
+            AreaEffectEntity.yDirection(owner.side()) * offsetY + y,
             source.side(),
             source.packedLevel(),
             null,

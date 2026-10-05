@@ -8,6 +8,7 @@ import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
@@ -19,6 +20,8 @@ import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
+import org.crforge.core.battle.action.RunOnResolvedObjects;
+import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -441,6 +444,20 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       BattleAction starting = world.getActions().build(data.onStartingAction(), binding());
       actionHolder.schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder);
     }
+  }
+
+  /**
+   * Schedules the action a spawn row runs on the area effect it spawned, built for the area effect,
+   * with the spawn's source as its cause and the context the row shares, as the spawn's perform
+   * does right after the area effect is queued: its own delay, not at once.
+   *
+   * @param row the action row's name
+   * @param cause the holder of the spawn's source, or null for none
+   * @param context the context, or null for none
+   */
+  void runOnSpawned(String row, ActionHolder cause, ActionContext context) {
+    BattleAction action = world.getActions().build(row, binding());
+    actionHolder.schedule(action, ActionHolder.OWN_DELAY, false, cause, context);
   }
 
   /**
@@ -919,12 +936,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   /**
    * An object that left the battle: a parent that leaves is forgotten, and an object it follows
    * that leaves ends its life, so the same cleanup removes it, unless its row stays after its
-   * parent dies: it then stands on its last point for the rest of its life.
+   * parent dies: it then stands on its last point for the rest of its life. A row linked to its
+   * instigator's life, as a newer data version writes, ends its life as its parent leaves too.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
     if (parent == removed) {
       parent = null;
+      if (data.linkToInstigatorLife()) {
+        end();
+      }
     }
     if (follow == removed) {
       if (!data.stayAfterParentDies()) {
@@ -1464,6 +1485,54 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   public void spawnAreaEffect(
       String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
     world.spawnAreaEffect(this, action, areaEffect, source, offsetX, offsetY, phase);
+  }
+
+  /**
+   * What an action that runs another on what its resolver finds asks of the battle about the area
+   * effect: the objects the filter lets through, asked by the area effect itself for its team and
+   * row, its point, and a row built for and scheduled on what it found or on itself.
+   */
+  @Override
+  public RunOnResolvedObjects.Host resolvedObjectsHost(BattleAction action) {
+    return new RunOnResolvedObjects.Host() {
+      @Override
+      public List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter) {
+        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+        for (WorldEntity entity :
+            world.resolverCandidates(
+                filter, side() & 1, data.name(), action.name(), AreaEffectEntity.this)) {
+          out.add(new MarkCandidate(entity, action.name()));
+        }
+        return out;
+      }
+
+      @Override
+      public int x() {
+        return AreaEffectEntity.this.x();
+      }
+
+      @Override
+      public int y() {
+        return AreaEffectEntity.this.y();
+      }
+
+      @Override
+      public void schedule(
+          SetIndicatorOnTarget.Candidate target,
+          String row,
+          ActionHolder cause,
+          ActionContext context) {
+        WorldEntity entity = ((MarkCandidate) target).entity();
+        BattleAction built = world.getActions().build(row, world.binding(entity));
+        entity.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+
+      @Override
+      public void scheduleOnOwner(String row, ActionHolder cause, ActionContext context) {
+        BattleAction built = world.getActions().build(row, binding());
+        actionHolder.schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+    };
   }
 
   /** An area effect has no hit points, so it counts as alive. */

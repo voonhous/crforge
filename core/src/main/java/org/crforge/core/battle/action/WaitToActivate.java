@@ -8,7 +8,7 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * An action that lasts until its condition holds: each run-pass step evaluates the condition, whose
  * value defaults to false, and on the step it is true the action schedules its activation action,
- * if it has one, and finishes.
+ * if it has one, on its owner with the owner as its cause and the run's context, and finishes.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -16,7 +16,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the condition evaluated once per run-pass step with a default of false, the"
             + " activation action scheduled with its own delay and the run finished on the step it"
             + " holds, with or without an action, and the tags the run sets. Held by the recorded"
-            + " cases and the king tower's runs; the king's condition is its row's expression.")
+            + " cases and the king tower's runs; the king's condition is its row's expression. The"
+            + " activation action's cause, the owner itself, and the run's context, read from both"
+            + " builds' update; held by BattleRunOnResolvedTest.")
 public final class WaitToActivate extends RowAction {
 
   private final IntSupplier condition;
@@ -54,7 +56,8 @@ public final class WaitToActivate extends RowAction {
       protected void update(ActionHolder h) {
         if (condition != null && condition.getAsInt() != 0) {
           if (onActivateAction != null) {
-            h.schedule(onActivateAction, ActionHolder.OWN_DELAY);
+            // On the owner, the owner its own cause, carrying the run's context.
+            h.schedule(onActivateAction, ActionHolder.OWN_DELAY, false, h, context());
           }
           finish();
         }
