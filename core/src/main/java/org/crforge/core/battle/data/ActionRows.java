@@ -704,8 +704,8 @@ public final class ActionRows {
                   "OnWarpEndAction",
                   "TargetResolver")),
           // The mark: its resolver, its two actions, its two tag masks, its pause, its search
-          // delay and its pin. The pinned point's two expressions are read only once the pin
-          // holds, which is refused. The targetter effects, the effect lists and the radii that
+          // delay, its pin and the pinned point's two expressions, asked as the pin holds. The
+          // targetter effects, the effect lists and the radii that
           // pick among them only
           // show something; the arrow's stop condition, which only a client arrow reads, is refused
           // as a column nothing reads.
@@ -729,8 +729,9 @@ public final class ActionRows {
                   "PinnedActiveExpression",
                   "PinnedPositionXExpression",
                   "PinnedPositionYExpression")),
-          // The hand-over: the mark it reads, the warp it launches and the two deploy actions; the
-          // spell target indicator's file and clip only show something.
+          // The hand-over: the mark it reads, the warp it launches, the two deploy actions, the
+          // return to the origin and the warp window's three keys; the spell target indicator's
+          // file and clip only show something.
           Map.entry(
               "ActionMegaMinionHeroAbility",
               Set.of(
@@ -738,6 +739,13 @@ public final class ActionRows {
                   "ActionToExecute",
                   "HasTargetOnDeployAction",
                   "NoTargetOnDeployAction",
+                  "ReturnToOrigin",
+                  "ReturnOnTargetDeath",
+                  "ReturnDelay",
+                  "ReturnWarpAction",
+                  "WarpWindowActiveKey",
+                  "WarpWindowOriginXKey",
+                  "WarpWindowOriginYKey",
                   "SpellTargetIndicatorFilename",
                   "SpellTargetIndicatorClipName")),
           // Its stats tags only fill the card's stats panel.
@@ -2961,13 +2969,17 @@ public final class ActionRows {
               .pauseIfInCooldown(bool(f, "PauseIfInCooldown"))
               .delayBeforeSearchMs(integer(f, "DelayBeforeSearchForNextTarget"))
               .pinnedActive(expression(f.get("PinnedActiveExpression")))
+              .pinnedX(expression(f.get("PinnedPositionXExpression")))
+              .pinnedY(expression(f.get("PinnedPositionYExpression")))
               .build());
     }
 
     /**
-     * A hand-over's columns: the name of the mark it reads, the name of the warp it launches and
-     * its two deploy actions. Refused: a row without a mark to read. The warp is built as a
-     * re-trigger launches it, for the owner.
+     * A hand-over's columns: the name of the mark it reads, the name of the warp it launches, its
+     * two deploy actions, the return (ReturnToOrigin, ReturnOnTargetDeath, ReturnDelay, the name of
+     * the ReturnWarpAction row) and the warp window's three keys, each the hash of its name, a key
+     * column left out naming the default key. Refused: a row without a mark to read. Both warps are
+     * built as they are launched, for the owner.
      */
     private MegaMinionHeroAbility megaMinionHeroAbility(String name, ActionRow shared, JsonNode f) {
       String mark = rowName(f.get("ActionToGetTargetFrom"));
@@ -2981,6 +2993,19 @@ public final class ActionRows {
               .actionToExecute(rowName(f.get("ActionToExecute")))
               .noTargetOnDeploy(action(f.get("NoTargetOnDeployAction")))
               .hasTargetOnDeploy(action(f.get("HasTargetOnDeployAction")))
+              .returnToOrigin(bool(f, "ReturnToOrigin"))
+              .returnOnTargetDeath(bool(f, "ReturnOnTargetDeath"))
+              .returnDelayMs(integer(f, "ReturnDelay"))
+              .returnWarpRow(rowName(f.get("ReturnWarpAction")))
+              .activeKey(
+                  ActionContext.key(
+                      text(f, "WarpWindowActiveKey", MegaMinionHeroAbility.DEFAULT_ACTIVE_KEY)))
+              .originXKey(
+                  ActionContext.key(
+                      text(f, "WarpWindowOriginXKey", MegaMinionHeroAbility.DEFAULT_ORIGIN_X_KEY)))
+              .originYKey(
+                  ActionContext.key(
+                      text(f, "WarpWindowOriginYKey", MegaMinionHeroAbility.DEFAULT_ORIGIN_Y_KEY)))
               .build());
     }
 

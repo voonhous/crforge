@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,8 +22,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A newer data version's Mega Minion hero mark carries a pin, PinnedActiveExpression, which reads
  * the context the hero's starting group creates: each step the mark asks it with the run's context.
- * A pin that answers 0 leaves the mark as it was; one that holds is refused; a mark started with no
- * context never asks it.
+ * A pin that answers 0 leaves the mark as it was; one that holds keeps it from searching; a mark
+ * started with no context never asks it.
  */
 class BattleMarkPinTest {
 
@@ -135,14 +134,28 @@ class BattleMarkPinTest {
   }
 
   @Test
-  @DisplayName("a pin that holds, read from the context with its default 1, is refused")
-  void aPinThatHoldsIsRefused(@TempDir Path folder) throws IOException {
+  @DisplayName(
+      "a pin that holds, read from the context with its default 1, keeps the mark from searching:"
+          + " it never marks the Knight")
+  void aPinThatHoldsKeepsTheMarkFromSearching(@TempDir Path folder) throws IOException {
     Standard1v1Battle battle =
         heroAndKnight(withPin(folder, "as_int(#MegaMinionWarpActive, 1)", true));
 
-    assertThatThrownBy(() -> markedWithin200(battle))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("is pinned by its PinnedActiveExpression");
+    int pinnedSteps = 0;
+    for (int i = 0; i < 80; i++) {
+      battle.getBattle().step();
+      for (CharacterEntity unit : characters(battle, HERO)) {
+        for (var run : unit.actionHolder().running()) {
+          if (run instanceof SetIndicatorOnTarget.Run mark) {
+            assertThat(mark.target()).isNull();
+            if (mark.pinned()) {
+              pinnedSteps++;
+            }
+          }
+        }
+      }
+    }
+    assertThat(pinnedSteps).isGreaterThan(40);
   }
 
   @Test
