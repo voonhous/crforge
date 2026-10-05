@@ -10,7 +10,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  * and each step takes off half the rate percentage - 50 ms at the usual 100 - unless the owner
  * carries the pause tag, when it does not move at all. At zero or below it adds the interval to
  * what is left, so it does not drift, and schedules the action on its owner, the owner as its
- * cause. It never ends on its own.
+ * cause, carrying the context the run's start carried. It never ends on its own.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -22,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " building_evolutions_barbarians. The rate percentage answers as given: the row"
             + " builder gives a row"
             + " affected by the spawn speed its owner's spawn rate, which no run holds with a"
-            + " buff, and any other 100.")
+            + " buff, and any other 100. The action carries the context the run's start carried,"
+            + " held by ActionContextTest.")
 public final class Interval extends RowAction {
 
   private final int intervalMs;
@@ -84,7 +85,8 @@ public final class Interval extends RowAction {
       if (counter <= 0) {
         counter += intervalMs;
         if (action != null) {
-          holder.schedule(action, ActionHolder.OWN_DELAY, false, holder);
+          // The action carries the context the run's start carried.
+          holder.schedule(action, ActionHolder.OWN_DELAY, false, holder, context());
         }
       }
     }

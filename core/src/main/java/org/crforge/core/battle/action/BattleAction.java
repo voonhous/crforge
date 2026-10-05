@@ -89,6 +89,22 @@ public interface BattleAction {
       ActionHolder holder, int delayMs, boolean immediate, ActionHolder instigator) {}
 
   /**
+   * Runs every time the action is scheduled, as {@link #scheduled(ActionHolder, int, boolean,
+   * ActionHolder)} does, knowing the context the schedule carries. By default the context does not
+   * matter; a group that hands a context to its parts answers for itself.
+   *
+   * @param context the context the schedule carries, or null for none
+   */
+  default void scheduled(
+      ActionHolder holder,
+      int delayMs,
+      boolean immediate,
+      ActionHolder instigator,
+      ActionContext context) {
+    scheduled(holder, delayMs, immediate, instigator);
+  }
+
+  /**
    * Starts the action on its holder: what the action does, and its run if it lasts.
    *
    * @return the running instance of an action that lasts, or null for one that is done
@@ -104,5 +120,19 @@ public interface BattleAction {
    */
   default ActionInstance start(ActionHolder holder, ActionHolder instigator) {
     return start(holder);
+  }
+
+  /**
+   * Starts the action on its holder, knowing what caused it and the context its schedule carried.
+   * By default the context does not matter; an action that writes into it answers for itself.
+   *
+   * @param holder the holder it starts on
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @param context the context, or null for none
+   * @return the running instance of an action that lasts, or null for one that is done
+   */
+  default ActionInstance start(
+      ActionHolder holder, ActionHolder instigator, ActionContext context) {
+    return start(holder, instigator);
   }
 }

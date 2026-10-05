@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import java.util.List;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
@@ -55,7 +56,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
             + " re-based on its rarity, held by evo_pekka_vs_musketeer and"
-            + " evo_pekka_kills_giant_knight_musketeer. Supplied, not"
+            + " evo_pekka_kills_giant_knight_musketeer; as_int (a newer data version) as the"
+            + " value under its key in the context of what the entity's holder is doing, else its"
+            + " default, else -1, and a context key #name as the name's hash, held by"
+            + " pekka-resurrect-v2. Supplied, not"
             + " settled: the battle's seed, 1 unless one is given; max_hp's growth percentage, the"
             + " usual 100; the"
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
@@ -130,6 +134,15 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   /** The id a game tag's index is added to: every function id lies below it. */
   static final int GAME_TAG_BASE = 10_000;
 
+  /** The name of a newer data version's function that reads a context key. */
+  private static final String AS_INT_NAME = "as_int";
+
+  /** The id the environment calls as_int by, below every tag, variable and data row id. */
+  static final int AS_INT = 9_000;
+
+  /** What as_int answers for a key no board holds when the expression gives no default. */
+  private static final int AS_INT_NO_DEFAULT = -1;
+
   /** Princess towers a side must keep for tower_destroyed to answer false. */
   private static final int PRINCESS_TOWERS_KEPT = 2;
 
@@ -147,6 +160,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   @Override
   public Function resolve(String name) {
+    // A newer data version's function, ahead of the table, whose ids are 14.593.1's.
+    if (name.equalsIgnoreCase(AS_INT_NAME)) {
+      return new Function(AS_INT, 1, 2);
+    }
     BattleFunctions.Entry entry = BattleFunctions.byName(name);
     if (entry != null) {
       return new Function(entry.id(), entry.minArguments(), entry.maxArguments());
@@ -177,8 +194,17 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     return new Function(DATA_ROW_BASE + row, 0, 0);
   }
 
+  /** A context key, {@code #name}: the hash of the name after the sigil. */
+  @Override
+  public Integer constant(String name) {
+    return name.startsWith("#") ? ActionContext.key(name.substring(1)) : null;
+  }
+
   @Override
   public int call(int id, int[] arguments) {
+    if (id == AS_INT) {
+      return asInt(arguments);
+    }
     if (id >= DATA_ROW_BASE) {
       // The call id is the global id plus the base, in 32 bits; a negative one answers 0.
       int callId = DATA_CALL_BASE + world.dataRowId(id - DATA_ROW_BASE);
@@ -385,6 +411,25 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
             (RarityTable.COMMON.relativeLevel() << 8) | (arguments[0] & 0xff), row.rarity());
     return LevelScaling.hitpoints(
         ScalingGlobals.standard(), row.hitpoints(), packed, row.rarity(), false, false);
+  }
+
+  /**
+   * as_int(key, default), a newer data version's function: the value under the key in the context
+   * of what the entity's holder is doing now, the main board first and then the scratch board, else
+   * the default, -1 without one. The game reads the context unchecked, so it never evaluates as_int
+   * without one; here that is refused.
+   */
+  private int asInt(int[] arguments) {
+    ActionContext actionContext = context.actionHolder().currentContext();
+    if (actionContext == null) {
+      throw new UnsupportedOperationException(
+          "as_int on " + context.name() + " with no action context, which is not established");
+    }
+    Integer value = actionContext.read(arguments[0]);
+    if (value != null) {
+      return value;
+    }
+    return arguments.length == 2 ? arguments[1] : AS_INT_NO_DEFAULT;
   }
 
   /**

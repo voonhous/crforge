@@ -9,16 +9,17 @@ import org.crforge.core.fidelity.FidelityStatus;
  * A soul's flight to the object the run is on, as each skeleton's soul flies to the evolved Witch:
  * the run takes the flight time in whole ticks - the row's constant flight time over 50 ms, toward
  * zero - and ends on the step that reaches the battle tick it started on plus that many. Then it
- * schedules the row's action on its object with its own delay, its object as the cause, and
- * finishes. Everything else the row sets - the soul's effects, its wobble, its waits, its pivot -
- * only shows the flight.
+ * schedules the row's action on its object with its own delay, its object as the cause and the
+ * context its start carried, and finishes. Everything else the row sets - the soul's effects, its
+ * wobble, its waits, its pivot - only shows the flight.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the end tick from the start's battle tick and the flight time"
             + " over 50, the test on each step and the action on the object, itself the cause, as"
-            + " the run finishes; held by evo_witch_vs_musketeer.")
+            + " the run finishes; held by evo_witch_vs_musketeer. The action carries the context"
+            + " the flight's start carried, held by pekka-resurrect-v2.")
 public final class SoulDrain extends RowAction {
 
   /** Milliseconds one battle tick takes. */
@@ -70,7 +71,8 @@ public final class SoulDrain extends RowAction {
         return;
       }
       if (onTargetReached != null) {
-        holder.schedule(onTargetReached, ActionHolder.OWN_DELAY, false, holder);
+        // The action carries the context the flight's start carried.
+        holder.schedule(onTargetReached, ActionHolder.OWN_DELAY, false, holder, context());
       }
       finish();
     }
