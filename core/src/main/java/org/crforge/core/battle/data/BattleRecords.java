@@ -318,8 +318,10 @@ public final class BattleRecords {
    * IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, which only the targeting visit's keep test reads, from
    * the same tag word; and NO_DAMAGE, as the evolved Minion Horde's ghost buff sets it: the tag
    * word's recompute folds every listed instance's tags in beside the row's and the runs', and the
-   * damage entry and the typed hit read NO_DAMAGE from that word, as for a row that sets it. A buff
-   * that sets any other is refused.
+   * damage entry and the typed hit read NO_DAMAGE from that word, as for a row that sets it; and
+   * ABILITY_PENDING, as the Valkyrie hero form's charge buff sets it, which only the health bar's
+   * view reads from the tag word: no battle code, filter or row tests it. A buff that sets any
+   * other is refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
       Set.of(
@@ -327,7 +329,8 @@ public final class BattleRecords {
           "NO_PUSHED_BY_ALLY",
           "UNIT_CUSTOM_TAG_1",
           "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET",
-          "NO_DAMAGE");
+          "NO_DAMAGE",
+          "ABILITY_PENDING");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when

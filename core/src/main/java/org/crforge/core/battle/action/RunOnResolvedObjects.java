@@ -238,8 +238,55 @@ public final class RunOnResolvedObjects extends RowAction {
     return pool.get(0);
   }
 
+  /**
+   * The objects a resolver finds in rank order, as many as the cap allows, as a chain's pick takes
+   * them: each strategy in turn takes the candidates tied for its best off the pool and appends
+   * them, again and again, while they fit under the cap; ties that do not fit narrow the pool for
+   * the next strategy, or, at the last one, only the first of them that fit are appended. A
+   * strategy that keeps nothing moves to the next. With one strategy this is the pool in the
+   * strategy's order, ties in the pool's order, cut at the cap.
+   *
+   * @param host the owner's side of the battle
+   * @param pool what the resolver's shape and filter let through, in the query's order
+   * @param strategies the resolver's strategies, in order
+   * @param cap the most objects found
+   * @param action the row asking, for a refusal
+   * @param resolver the resolver's name, for a refusal
+   */
+  public static List<SetIndicatorOnTarget.Candidate> ranked(
+      Host host,
+      List<SetIndicatorOnTarget.Candidate> pool,
+      List<String> strategies,
+      int cap,
+      String action,
+      String resolver) {
+    List<SetIndicatorOnTarget.Candidate> left = new ArrayList<>(pool);
+    List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+    for (int k = 0; k < strategies.size() && out.size() < cap && !left.isEmpty(); k++) {
+      while (out.size() < cap && !left.isEmpty()) {
+        List<SetIndicatorOnTarget.Candidate> ties =
+            ties(host, strategies.get(k), left, action, resolver);
+        if (ties.isEmpty()) {
+          break;
+        }
+        if (out.size() + ties.size() <= cap) {
+          out.addAll(ties);
+          left.removeAll(ties);
+          continue;
+        }
+        if (k < strategies.size() - 1) {
+          left = ties;
+          break;
+        }
+        out.addAll(ties.subList(0, cap - out.size()));
+        return out;
+      }
+    }
+    return out;
+  }
+
   /** Refuses a strategy not modelled. */
-  static void checkStrategy(String strategy, String action, String resolver) {
+  public static void checkStrategy(String strategy, String action, String resolver) {
     if (!strategy.equals(CLOSEST_TARGET)
         && !strategy.equals(HIGHEST_CURR_HP)
         && !strategy.equals(SetIndicatorOnTarget.FURTHEST_TARGET)
