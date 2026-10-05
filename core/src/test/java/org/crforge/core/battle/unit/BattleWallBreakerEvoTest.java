@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,8 @@ import org.junit.jupiter.api.Test;
  * Wallbreaker_mini where it stood and then, as its next action, launches the barrel explosion from
  * the dying unit's own point and height, aimed at that point, at its current target, which its
  * combat gate has already dropped. A Wall Breaker that dies by its own attack runs no killed
- * action, and an owner that still holds a target is refused.
+ * action. An owner that still holds a target launches the barrel the same way: an area projectile
+ * that does not home reads no target.
  */
 class BattleWallBreakerEvoTest {
 
@@ -146,9 +146,10 @@ class BattleWallBreakerEvoTest {
 
   @Test
   @DisplayName(
-      "the barrel row run on a Wall Breaker that holds a target is refused: a launch at a held"
-          + " target is not modelled")
-  void aHeldTargetIsRefused() {
+      "the barrel row run on a Wall Breaker that still holds a target launches from its own point,"
+          + " aimed at that point, at no target: the barrel, an area projectile that does not home,"
+          + " reads no target")
+  void aHeldTargetIsNotRead() {
     Scene scene = new Scene();
     CharacterEntity breaker =
         scene.match.deploy(0, GameData.unit(WALL_BREAKER), LEVEL, 0, 14500, 19000);
@@ -158,19 +159,20 @@ class BattleWallBreakerEvoTest {
     assertThat(breaker.referenceHeld()).isTrue();
     BattleWorld world = scene.match.getWorld();
 
-    assertThatThrownBy(
-            () ->
-                breaker
-                    .actionHolder()
-                    .start(
-                        world
-                            .getActions()
-                            .build("WallBreaker_EV1_SpawnMini_NextAction", world.binding(breaker))))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "WallBreaker_EV1_SpawnMini_NextAction launches WallbreakerBarrelExplosion_EV1 at the"
-                + " current target of Wallbreaker_EV1, which is held or not a character's, not"
-                + " modelled");
-    assertThat(scene.launches).isEmpty();
+    breaker
+        .actionHolder()
+        .start(
+            world
+                .getActions()
+                .build("WallBreaker_EV1_SpawnMini_NextAction", world.binding(breaker)));
+
+    assertThat(scene.launches)
+        .containsExactly(WALL_BREAKER + " WallBreaker_EV1_SpawnMini_NextAction " + BARREL);
+    ProjectileEntity barrel = scene.barrels.get(0);
+    assertThat(barrel.getStartX()).isEqualTo(breaker.getView().getX());
+    assertThat(barrel.getStartY()).isEqualTo(breaker.getView().getY());
+    assertThat(barrel.getAimX()).isEqualTo(breaker.getView().getX());
+    assertThat(barrel.getAimY()).isEqualTo(breaker.getView().getY());
+    assertThat(scene.launchTargets.get(0)).isNull();
   }
 }

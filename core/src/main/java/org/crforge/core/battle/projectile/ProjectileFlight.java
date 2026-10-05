@@ -585,6 +585,7 @@ final class ProjectileFlight {
     int dealt = target.isCrownTowerTarget() ? towerDamage : damage;
     int directionX = p.getAimX() - p.getStartX();
     int directionY = p.getAimY() - p.getStartY();
-    world.dealProjectileDamage(p, p.getTarget(), dealt, hitId, directionX, directionY);
+    // At once, or queued for the damage drain, as the data version's game deals it.
+    world.dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
   }
 }
