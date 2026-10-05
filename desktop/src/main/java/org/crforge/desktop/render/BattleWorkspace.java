@@ -1,23 +1,16 @@
 package org.crforge.desktop.render;
 
+import static org.crforge.desktop.render.WorkspaceTheme.*;
+
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
-import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -28,18 +21,14 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.EntityView;
 
 /** Scene2D controls surrounding a separately projected arena; never steps or mutates a battle. */
 public final class BattleWorkspace implements Disposable {
-  private static final Color BACKGROUND = Color.valueOf("10151fff");
-  private static final Color PANEL = Color.valueOf("192230ff");
-  private static final Color MUTED = Color.valueOf("a1b1c6ff");
-  private static final Color ACCENT = Color.valueOf("76d7cbff");
-  private final Skin skin = new Skin();
   private final Stage stage = new Stage(new ScreenViewport());
+  private final WorkspaceTheme theme = new WorkspaceTheme(stage);
+  private final Skin skin = theme.skin;
   private final Table root = new Table();
   private final Table arena = new Table();
   private final Table handRail = new Table();
@@ -47,18 +36,19 @@ public final class BattleWorkspace implements Disposable {
   private final ViewState view;
   private final BattleRenderer renderer;
   private final boolean replay;
-  private final IntConsumer command;
+  private final Consumer<WorkspaceAction> command;
   private final BiConsumer<Integer, Integer> selectCard;
   private final Label data;
   private final Label summary;
   private final Label state;
-  private final Label inspector;
+  private final UnitInspector inspector;
   private final Label diagnostics;
   private final Label events;
   private final Label notice;
   private final Label refusal;
   private final ScrollPane refusalPane;
   private final ScrollPane eventPane;
+  private final TextButton latestEvents;
   private final ScrollPane sidebar;
   private final Cell<ScrollPane> sidebarCell;
   private final TextButton pause;
@@ -81,6 +71,7 @@ public final class BattleWorkspace implements Disposable {
   private boolean inspecting;
   private String lastEvents = "";
   private String details = "";
+  private List<String> metadata = List.of();
 
   private record Toggle(TextButton button, BooleanSupplier value) {}
 
@@ -89,7 +80,7 @@ public final class BattleWorkspace implements Disposable {
       BattleRenderer renderer,
       ViewState view,
       boolean replay,
-      IntConsumer command,
+      Consumer<WorkspaceAction> command,
       BiConsumer<Integer, Integer> selectCard) {
     this.renderer = renderer;
     this.view = view;
@@ -97,7 +88,6 @@ public final class BattleWorkspace implements Disposable {
     this.command = command;
     this.selectCard = selectCard;
     inspecting = replay;
-    createSkin();
     arenaViewport = new ScreenViewport(camera);
     arenaViewport.setWorldSize(WorkspaceViewport.WORLD_WIDTH, WorkspaceViewport.WORLD_HEIGHT);
     camera.setToOrtho(false, WorkspaceViewport.WORLD_WIDTH, WorkspaceViewport.WORLD_HEIGHT);
@@ -122,34 +112,34 @@ public final class BattleWorkspace implements Disposable {
 
     Table toolbar = new Table();
     toolbar.defaults().height(34).padRight(4);
-    pause = button("Pause [Space]", () -> command.accept(Input.Keys.SPACE));
-    step = button("Step [.]", () -> command.accept(Input.Keys.PERIOD));
+    pause = button("Pause [Space]", () -> command.accept(WorkspaceAction.PAUSE));
+    step = button("Step [.]", () -> command.accept(WorkspaceAction.STEP));
     toolbar.add(pause).width(120);
     toolbar.add(step).width(86);
-    toolbar.add(button("Restart [R]", () -> command.accept(Input.Keys.R))).width(108);
-    toolbar.add(button("-", () -> command.accept(Input.Keys.MINUS))).width(28);
+    toolbar.add(button("Restart [R]", () -> command.accept(WorkspaceAction.RESTART))).width(108);
+    toolbar.add(button("-", () -> command.accept(WorkspaceAction.SLOWER))).width(28);
     state = label("");
     toolbar.add(state).minWidth(126);
-    toolbar.add(button("+", () -> command.accept(Input.Keys.PLUS))).width(28);
+    toolbar.add(button("+", () -> command.accept(WorkspaceAction.FASTER))).width(28);
     deploy =
         button(
             "Deploy",
             () -> {
-              if (inspecting && !replay) command.accept(Input.Keys.I);
+              command.accept(WorkspaceAction.DEPLOY);
             });
     inspect =
         button(
             replay ? "Inspect" : "Inspect [I]",
             () -> {
-              if (!inspecting) command.accept(Input.Keys.I);
+              command.accept(WorkspaceAction.INSPECT);
             });
     if (!replay) toolbar.add(deploy).width(76);
     toolbar.add(inspect).width(104);
     if (replay) {
-      toolbar.add(button("Flip [F]", () -> command.accept(Input.Keys.F))).width(82);
+      toolbar.add(button("Flip [F]", () -> command.accept(WorkspaceAction.FLIP))).width(82);
     }
     toolbar.add().expandX();
-    toolbar.add(button("Sidebar [T]", () -> command.accept(Input.Keys.T))).width(108);
+    toolbar.add(button("Sidebar [T]", () -> command.accept(WorkspaceAction.SIDEBAR))).width(108);
     root.add(toolbar).growX().padBottom(8).row();
 
     dataPanel = new Table();
@@ -170,18 +160,26 @@ public final class BattleWorkspace implements Disposable {
     root.add(summary).left().padBottom(8).row();
 
     Table content = new Table();
-    topHand = new HandPanel();
-    bottomHand = new HandPanel();
+    topHand = new HandPanel(theme, view, replay, selectCard);
+    bottomHand = new HandPanel(theme, view, replay, selectCard);
     handRail.add(topHand.table).growX().padBottom(10).row();
     Table logHeader = new Table();
     Label logTitle = label("RECENT EVENTS");
     logTitle.setColor(MUTED);
     logHeader.add(logTitle).expandX().left();
+    latestEvents =
+        button(
+            "Latest",
+            () -> {
+              followEvents();
+            });
+    logHeader.add(latestEvents).height(26).padRight(4);
     logHeader.add(button("Copy", () -> Gdx.app.getClipboard().setContents(lastEvents))).height(26);
     handRail.add(logHeader).growX().padBottom(6).row();
     events = wrapped("No events yet.");
     events.setAlignment(Align.topLeft);
     eventPane = scroll(events);
+    eventPane.setName("event-log");
     handRail.add(eventPane).grow().minHeight(0).padBottom(10).row();
     handRail.add(bottomHand.table).growX().row();
     content.add(handRail).width(248).growY().padRight(12);
@@ -199,13 +197,13 @@ public final class BattleWorkspace implements Disposable {
     tools.defaults().growX().left();
     tools.background(skin.newDrawable("white", PANEL));
     heading(tools, "UNIT INSPECTOR");
-    inspector = wrapped("Choose Inspect, then click a unit.");
+    inspector = new UnitInspector(skin);
     tools.add(inspector).padBottom(16).row();
     heading(tools, "OVERLAYS");
     Table presets = new Table();
-    for (String preset : List.of("Clean", "Combat", "Pathing")) {
+    for (OverlayPreset preset : OverlayPreset.values()) {
       presets
-          .add(button(preset, () -> renderer.applyPreset(preset)))
+          .add(button(preset.label(), () -> renderer.applyPreset(preset)))
           .growX()
           .height(32)
           .padRight(4);
@@ -213,25 +211,47 @@ public final class BattleWorkspace implements Disposable {
     tools.add(presets).padBottom(8).row();
     toggle(tools, "Unit names", renderer::isDrawLabels, renderer::toggleDrawLabels);
     toggle(tools, "Target lines", renderer::isDrawTargets, renderer::toggleDrawTargets);
-    toggle(tools, "Ranges [O]", renderer::isDrawRanges, () -> command.accept(Input.Keys.O));
-    toggle(tools, "Damage [D]", renderer::isDrawDamageNumbers, () -> command.accept(Input.Keys.D));
-    toggle(tools, "Area hits [A]", renderer::isDrawAoeDamage, () -> command.accept(Input.Keys.A));
-    toggle(tools, "HP values [H]", renderer::isDrawHpNumbers, () -> command.accept(Input.Keys.H));
-    toggle(tools, "Headings [P]", renderer::isDrawPaths, () -> command.accept(Input.Keys.P));
-    toggle(tools, "Cell costs [G]", renderer::isDrawCellCosts, () -> command.accept(Input.Keys.G));
-    toggle(tools, "Routes [N]", renderer::isDrawRoutes, () -> command.accept(Input.Keys.N));
+    toggle(
+        tools, "Ranges [O]", renderer::isDrawRanges, () -> command.accept(WorkspaceAction.RANGES));
+    toggle(
+        tools,
+        "Damage [D]",
+        renderer::isDrawDamageNumbers,
+        () -> command.accept(WorkspaceAction.DAMAGE));
+    toggle(
+        tools,
+        "Area hits [A]",
+        renderer::isDrawAoeDamage,
+        () -> command.accept(WorkspaceAction.AREA_HITS));
+    toggle(
+        tools,
+        "HP values [H]",
+        renderer::isDrawHpNumbers,
+        () -> command.accept(WorkspaceAction.HP));
+    toggle(
+        tools,
+        "Headings [P]",
+        renderer::isDrawPaths,
+        () -> command.accept(WorkspaceAction.HEADINGS));
+    toggle(
+        tools,
+        "Cell costs [G]",
+        renderer::isDrawCellCosts,
+        () -> command.accept(WorkspaceAction.CELL_COSTS));
+    toggle(
+        tools, "Routes [N]", renderer::isDrawRoutes, () -> command.accept(WorkspaceAction.ROUTES));
     tools.add().height(12).row();
     heading(tools, "SESSION");
     diagnostics = wrapped("");
     tools.add(diagnostics).padBottom(12).row();
     if (!replay) {
       tools
-          .add(button("Next golden scenario [S]", () -> command.accept(Input.Keys.S)))
+          .add(button("Next golden scenario [S]", () -> command.accept(WorkspaceAction.SCENARIO)))
           .height(32)
           .padBottom(6)
           .row();
       tools
-          .add(button("Export trajectories [E]", () -> command.accept(Input.Keys.E)))
+          .add(button("Export trajectories [E]", () -> command.accept(WorkspaceAction.EXPORT)))
           .height(32)
           .padBottom(6)
           .row();
@@ -245,6 +265,7 @@ public final class BattleWorkspace implements Disposable {
     root.add(content).grow().minSize(0).row();
 
     progress = new ProgressBar(0, 1, 0.001f, false, skin);
+    progress.setName("replay-progress");
     progressText = label("");
     if (replay) {
       Table timeline = new Table();
@@ -257,57 +278,9 @@ public final class BattleWorkspace implements Disposable {
     root.add(scroll(notice)).growX().minHeight(18).prefHeight(20).maxHeight(54).padTop(8).row();
   }
 
-  private void createSkin() {
-    FreeTypeFontGenerator generator =
-        new FreeTypeFontGenerator(Gdx.files.classpath("fonts/RobotoMono-Regular.ttf"));
-    FreeTypeFontGenerator.FreeTypeFontParameter parameter =
-        new FreeTypeFontGenerator.FreeTypeFontParameter();
-    parameter.size = 14;
-    skin.add("default-font", generator.generateFont(parameter), BitmapFont.class);
-    generator.dispose();
-    Pixmap pixel = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-    pixel.setColor(Color.WHITE);
-    pixel.fill();
-    Texture texture = new Texture(pixel);
-    pixel.dispose();
-    skin.add("pixel", texture);
-    skin.add("white", new TextureRegionDrawable(new TextureRegion(texture)), Drawable.class);
-    skin.add(
-        "default", new Label.LabelStyle(skin.getFont("default-font"), Color.valueOf("e8edf5ff")));
-    TextButton.TextButtonStyle button = new TextButton.TextButtonStyle();
-    button.font = skin.getFont("default-font");
-    button.fontColor = Color.valueOf("e8edf5ff");
-    button.disabledFontColor = Color.valueOf("78899fff");
-    button.up = skin.newDrawable("white", Color.valueOf("263447ff"));
-    button.over = skin.newDrawable("white", Color.valueOf("344860ff"));
-    button.down = skin.newDrawable("white", Color.valueOf("326e70ff"));
-    button.checked = skin.newDrawable("white", Color.valueOf("28575fff"));
-    button.disabled = skin.newDrawable("white", Color.valueOf("1c2634ff"));
-    skin.add("default", button);
-    ScrollPane.ScrollPaneStyle scroll = new ScrollPane.ScrollPaneStyle();
-    scroll.vScrollKnob = skin.newDrawable("white", Color.valueOf("42526aff"));
-    scroll.vScrollKnob.setMinWidth(5);
-    skin.add("default", scroll);
-    com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle list =
-        new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle();
-    list.font = skin.getFont("default-font");
-    list.fontColorSelected = Color.WHITE;
-    list.fontColorUnselected = MUTED;
-    list.selection = skin.newDrawable("white", Color.valueOf("28575fff"));
-    list.background = skin.newDrawable("white", PANEL);
-    SelectBox.SelectBoxStyle select = new SelectBox.SelectBoxStyle();
-    select.font = list.font;
-    select.fontColor = Color.WHITE;
-    select.background = skin.newDrawable("white", Color.valueOf("263447ff"));
-    select.listStyle = list;
-    select.scrollStyle = scroll;
-    skin.add("default", select);
-    ProgressBar.ProgressBarStyle bar = new ProgressBar.ProgressBarStyle();
-    bar.background = skin.newDrawable("white", PANEL);
-    bar.background.setMinHeight(5);
-    bar.knobBefore = skin.newDrawable("white", ACCENT);
-    bar.knobBefore.setMinHeight(5);
-    skin.add("default-horizontal", bar);
+  private void followEvents() {
+    eventPane.setScrollPercentY(1);
+    latestEvents.setText("Latest");
   }
 
   private void toggleDataDetails() {
@@ -316,36 +289,19 @@ public final class BattleWorkspace implements Disposable {
   }
 
   private Label label(String text) {
-    return new Label(text, skin);
+    return theme.label(text);
   }
 
   private Label wrapped(String text) {
-    Label label = label(text);
-    label.setWrap(true);
-    return label;
+    return theme.wrapped(text);
   }
 
   private TextButton button(String text, Runnable action) {
-    TextButton button = new TextButton(text, skin);
-    button.pad(0, 6, 0, 6);
-    button.setProgrammaticChangeEvents(false);
-    button.addListener(
-        new ChangeListener() {
-          @Override
-          public void changed(ChangeEvent event, Actor actor) {
-            action.run();
-            button.setChecked(false);
-            stage.setKeyboardFocus(null);
-          }
-        });
-    return button;
+    return theme.button(text, action);
   }
 
   private ScrollPane scroll(Actor actor) {
-    ScrollPane pane = new ScrollPane(actor, skin);
-    pane.setScrollingDisabled(true, false);
-    pane.setFadeScrollBars(false);
-    return pane;
+    return theme.scroll(actor);
   }
 
   private void heading(Table table, String text) {
@@ -478,6 +434,9 @@ public final class BattleWorkspace implements Disposable {
 
   /** Metadata is always the tables actually loaded, independent of hidden diagnostics. */
   public void setData(String version, String source, String folder, String sha, String target) {
+    List<String> updatedMetadata = List.of(version, source, folder, sha, target);
+    if (updatedMetadata.equals(metadata)) return;
+    metadata = updatedMetadata;
     data.setText("Data: " + version);
     String updated =
         "Loaded: "
@@ -540,50 +499,7 @@ public final class BattleWorkspace implements Disposable {
     diagnostics.setText(
         status.isEmpty() ? "Battle core\nStandard Ladder / level 11" : String.join("\n", status));
     for (Toggle toggle : toggles) toggle.button().setChecked(toggle.value().getAsBoolean());
-    EntityView selected =
-        frame.entities().stream()
-            .filter(entity -> entity.id() == selectedId)
-            .findFirst()
-            .orElse(null);
-    if (selected == null) {
-      inspector.setText(
-          selectedId < 0
-              ? "Choose Inspect, then click a unit.\n\nPosition and ranges use game units."
-              : "Unit #" + selectedId + " is no longer on the arena.");
-    } else {
-      inspector.setText(
-          selected.name()
-              + " #"
-              + selected.id()
-              + "\nSide "
-              + selected.side()
-              + " / "
-              + view.getOrientation().sideName(selected.side())
-              + "\nHP "
-              + selected.hitPoints()
-              + " / "
-              + selected.maxHitPoints()
-              + "\nShield "
-              + selected.shield()
-              + " / "
-              + selected.maxShield()
-              + "\nPosition "
-              + selected.x()
-              + ", "
-              + selected.y()
-              + "\nState "
-              + RouteOverlayRenderer.stateName(selected.state())
-              + "\nRange "
-              + selected.minimumRange()
-              + " - "
-              + selected.range()
-              + "\nSight "
-              + selected.sightRange()
-              + "\nTarget "
-              + (selected.hasTarget() ? selected.targetX() + ", " + selected.targetY() : "none")
-              + (selected.deploying() ? "\nDeploying" : "")
-              + (selected.hidden() ? "\nHidden" : ""));
-    }
+    inspector.update(frame, selectedId, view.getOrientation());
     String result = HudText.of(frame, view, List.of()).result();
     notice.setText(
         frame.halted() != null
@@ -599,10 +515,13 @@ public final class BattleWorkspace implements Disposable {
     notice.setColor(frame.halted() != null ? Color.SALMON : ACCENT);
     String text = String.join("\n", frame.messages());
     if (!text.equals(lastEvents)) {
+      boolean following =
+          eventPane.getMaxY() == 0 || eventPane.getScrollY() >= eventPane.getMaxY() - 2;
       lastEvents = text;
       events.setText(text.isBlank() ? "No events yet." : text);
       eventPane.layout();
-      eventPane.setScrollPercentY(1);
+      if (following) followEvents();
+      else latestEvents.setText("New events");
     }
     if (replay) {
       progress.setValue(endTick > 0 ? Math.min(1f, frame.tick() / (float) endTick) : 0);
@@ -627,90 +546,9 @@ public final class BattleWorkspace implements Disposable {
     events.setText(lastEvents);
   }
 
-  private final class HandPanel {
-    private final Table table = new Table();
-    private final Label title = label("");
-    private final TextButton[] cards = new TextButton[4];
-    private final Label next = wrapped("");
-    private int side;
-
-    private HandPanel() {
-      table.background(skin.newDrawable("white", PANEL));
-      table.pad(8);
-      title.setWrap(true);
-      table.add(title).colspan(2).growX().left().padBottom(6).row();
-      for (int slot = 0; slot < 4; slot++) {
-        final int index = slot;
-        cards[slot] =
-            button(
-                "",
-                () -> {
-                  setInspecting(false);
-                  selectCard.accept(side, index);
-                });
-        cards[slot].getLabel().setWrap(true);
-        if (replay) cards[slot].setTouchable(Touchable.disabled);
-        table
-            .add(cards[slot])
-            .growX()
-            .uniformX()
-            .height(58)
-            .padRight(slot % 2 == 0 ? 6 : 0)
-            .padBottom(6);
-        if (slot % 2 == 1) table.row();
-      }
-      next.setColor(MUTED);
-      table.add(next).colspan(2).growX().minHeight(22).left();
-    }
-
-    private void update(BattleFrame frame, int side, int selectedSide, int selectedSlot) {
-      this.side = side;
-      BattleFrame.SideView player =
-          frame.sides().stream().filter(value -> value.side() == side).findFirst().orElse(null);
-      title.setColor(view.getOrientation().blue(side) ? Color.SKY : Color.SALMON);
-      title.setText(
-          player == null
-              ? "Scenario - no hand"
-              : "SIDE "
-                  + side
-                  + " / "
-                  + view.getOrientation().sideName(side).toUpperCase(Locale.ROOT)
-                  + "\nElixir "
-                  + String.format(Locale.ROOT, "%.1f", player.elixir() / 10000f)
-                  + " / 10  Crowns "
-                  + player.crowns());
-      int reserved =
-          player == null
-              ? 0
-              : player.hand().stream()
-                  .filter(value -> value != null && value.pending())
-                  .mapToInt(BattleFrame.CardView::cost)
-                  .sum();
-      for (int slot = 0; slot < 4; slot++) {
-        BattleFrame.CardView card = player == null ? null : player.hand().get(slot);
-        TextButton button = cards[slot];
-        boolean unavailable =
-            card == null || card.pending() || card.cost() > player.wholeElixir() - reserved;
-        button.setDisabled(unavailable || frame.halted() != null || frame.ended() || frame.over());
-        button.setChecked(selectedSide == side && selectedSlot == slot);
-        button.setText(
-            card == null
-                ? "-"
-                : card.name().replaceAll("(?<=[a-z])(?=[A-Z])", " ")
-                    + "\n"
-                    + (card.pending() ? "Queued" : card.cost() + " elixir")
-                    + (replay ? "" : " [" + (side * 4 + slot + 1) + "]"));
-      }
-      next.setText(
-          player == null || player.next() == null
-              ? ""
-              : "Next: " + player.next().name().replaceAll("(?<=[a-z])(?=[A-Z])", " "));
-    }
-  }
-
   @Override
   public void dispose() {
     stage.dispose();
-    skin.dispose();
+    theme.dispose();
   }
 }

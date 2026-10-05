@@ -31,6 +31,7 @@ import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
+import org.crforge.desktop.render.WorkspaceAction;
 
 /**
  * Debug screen for visualizing a battle on the battle core: a Ladder battle between the decks of
@@ -131,12 +132,96 @@ public class DebugGameScreen implements Screen {
     this.session = first;
     setupInput();
     workspace =
-        new BattleWorkspace(
-            camera, renderer, view, false, key -> controls.keyDown(key), this::selectCard);
+        new BattleWorkspace(camera, renderer, view, false, this::handleAction, this::selectCard);
     workspace.configureVersions(
         versions.versions(),
         versions.current().version(),
         version -> switchDataVersion(versions.select(version)));
+  }
+
+  private boolean handleAction(WorkspaceAction action) {
+    switch (action) {
+      case PAUSE -> paused = !paused;
+      case STEP -> stepOnce();
+      case TOGGLE_INSPECT -> {
+        deselect();
+        workspace.setInspecting(!workspace.isInspecting());
+      }
+      case DEPLOY -> {
+        deselect();
+        workspace.setInspecting(false);
+      }
+      case INSPECT -> {
+        deselect();
+        workspace.setInspecting(true);
+      }
+      case RESTART -> resetBattle();
+      case HEADINGS -> {
+        renderer.toggleDrawPaths();
+        log.info("Heading lines: {}", renderer.isDrawPaths() ? "ON" : "OFF");
+      }
+      case RANGES -> {
+        renderer.toggleDrawRanges();
+        log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
+      }
+      case DAMAGE -> {
+        renderer.toggleDrawDamageNumbers();
+        log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
+      }
+      case AREA_HITS -> {
+        renderer.toggleDrawAoeDamage();
+        log.info("AOE damage indicators: {}", renderer.isDrawAoeDamage() ? "ON" : "OFF");
+      }
+      case HP -> {
+        renderer.toggleDrawHpNumbers();
+        log.info("HP numbers: {}", renderer.isDrawHpNumbers() ? "ON" : "OFF");
+      }
+      case LEGACY_PATHFINDING ->
+          log.info(
+              "M flips the original engine's pathfinding mode; the battle core has one set"
+                  + " of movement rules, so there is nothing to flip");
+      case CELL_COSTS -> {
+        renderer.toggleDrawCellCosts();
+        log.info("Cell cost overlay: {}", renderer.isDrawCellCosts() ? "ON" : "OFF");
+      }
+      case ROUTES -> {
+        renderer.toggleDrawRoutes();
+        log.info("Route overlay: {}", renderer.isDrawRoutes() ? "ON" : "OFF");
+      }
+      case FLIP -> {
+        if (!view.flip()) {
+          log.info(
+              "F flips the view in the replay viewer only: this screen's clicks, hand"
+                  + " panels and number keys play for a side as the arena stands");
+        }
+      }
+      case SIDEBAR -> {
+        view.toggleAnnotations();
+        log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
+      }
+      case SCENARIO -> startGoldenScenario();
+      case EXPORT -> exportTrajectories();
+      case NEXT_VERSION -> switchDataVersion();
+      case FASTER -> adjustSpeed(2f);
+      case SLOWER -> adjustSpeed(0.5f);
+
+      // Select card from hand (Blue Player) via keyboard
+      case CARD_1 -> selectCard(0, 0);
+      case CARD_2 -> selectCard(0, 1);
+      case CARD_3 -> selectCard(0, 2);
+      case CARD_4 -> selectCard(0, 3);
+
+      // Select card from hand (Red Player) via keyboard
+      case CARD_5 -> selectCard(1, 0);
+      case CARD_6 -> selectCard(1, 1);
+      case CARD_7 -> selectCard(1, 2);
+      case CARD_8 -> selectCard(1, 3);
+
+      default -> {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void setupInput() {
@@ -144,80 +229,8 @@ public class DebugGameScreen implements Screen {
         new InputAdapter() {
           @Override
           public boolean keyDown(int keycode) {
-            switch (keycode) {
-              case Input.Keys.SPACE -> paused = !paused;
-              case Input.Keys.PERIOD -> stepOnce();
-              case Input.Keys.I -> {
-                deselect();
-                workspace.setInspecting(!workspace.isInspecting());
-              }
-              case Input.Keys.R -> resetBattle();
-              case Input.Keys.P -> {
-                renderer.toggleDrawPaths();
-                log.info("Heading lines: {}", renderer.isDrawPaths() ? "ON" : "OFF");
-              }
-              case Input.Keys.O -> {
-                renderer.toggleDrawRanges();
-                log.info("Range circles: {}", renderer.isDrawRanges() ? "ON" : "OFF");
-              }
-              case Input.Keys.D -> {
-                renderer.toggleDrawDamageNumbers();
-                log.info("Damage numbers: {}", renderer.isDrawDamageNumbers() ? "ON" : "OFF");
-              }
-              case Input.Keys.A -> {
-                renderer.toggleDrawAoeDamage();
-                log.info("AOE damage indicators: {}", renderer.isDrawAoeDamage() ? "ON" : "OFF");
-              }
-              case Input.Keys.H -> {
-                renderer.toggleDrawHpNumbers();
-                log.info("HP numbers: {}", renderer.isDrawHpNumbers() ? "ON" : "OFF");
-              }
-              case Input.Keys.M ->
-                  log.info(
-                      "M flips the original engine's pathfinding mode; the battle core has one set"
-                          + " of movement rules, so there is nothing to flip");
-              case Input.Keys.G -> {
-                renderer.toggleDrawCellCosts();
-                log.info("Cell cost overlay: {}", renderer.isDrawCellCosts() ? "ON" : "OFF");
-              }
-              case Input.Keys.N -> {
-                renderer.toggleDrawRoutes();
-                log.info("Route overlay: {}", renderer.isDrawRoutes() ? "ON" : "OFF");
-              }
-              case Input.Keys.F -> {
-                if (!view.flip()) {
-                  log.info(
-                      "F flips the view in the replay viewer only: this screen's clicks, hand"
-                          + " panels and number keys play for a side as the arena stands");
-                }
-              }
-              case Input.Keys.T -> {
-                view.toggleAnnotations();
-                log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
-              }
-              case Input.Keys.S -> startGoldenScenario();
-              case Input.Keys.E -> exportTrajectories();
-              case Input.Keys.V -> switchDataVersion();
-              case Input.Keys.EQUALS, Input.Keys.PLUS -> adjustSpeed(2f);
-              case Input.Keys.MINUS -> adjustSpeed(0.5f);
-
-              // Select card from hand (Blue Player) via keyboard
-              case Input.Keys.NUM_1 -> selectCard(0, 0);
-              case Input.Keys.NUM_2 -> selectCard(0, 1);
-              case Input.Keys.NUM_3 -> selectCard(0, 2);
-              case Input.Keys.NUM_4 -> selectCard(0, 3);
-
-              // Select card from hand (Red Player) via keyboard
-              case Input.Keys.NUM_5 -> selectCard(1, 0);
-              case Input.Keys.NUM_6 -> selectCard(1, 1);
-              case Input.Keys.NUM_7 -> selectCard(1, 2);
-              case Input.Keys.NUM_8 -> selectCard(1, 3);
-
-              default -> {
-                return false;
-              }
-            }
-            return true;
+            WorkspaceAction action = WorkspaceAction.fromKey(keycode);
+            return action != null && handleAction(action);
           }
 
           @Override
@@ -294,11 +307,12 @@ public class DebugGameScreen implements Screen {
   }
 
   private void selectCard(int side, int slot) {
-    MatchCard card = session.handCard(side, slot);
-    if (card == null) {
-      log.info("[tick {}] No card in {} slot {}", session.tick(), sideName(side), slot + 1);
+    String unavailable = session.cardUnavailableReason(side, slot);
+    if (unavailable != null) {
+      log.info("[tick {}] {}", session.tick(), unavailable);
       return;
     }
+    MatchCard card = session.handCard(side, slot);
     this.selectedSide = side;
     this.selectedSlot = slot;
     workspace.setInspecting(false);

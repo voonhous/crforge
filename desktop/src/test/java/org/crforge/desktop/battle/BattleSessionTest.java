@@ -58,6 +58,9 @@ class BattleSessionTest {
     BattleSession session = only("Golem");
     int elixir = session.match().side(0).wholeElixir();
 
+    assertThat(session.cardUnavailableReason(0, 0)).contains("not enough elixir");
+    assertThat(BattleAdapter.frame(session).sides().get(0).hand().get(0).unavailableReason())
+        .isEqualTo(session.cardUnavailableReason(0, 0));
     assertThat(session.play(0, 0, 9500, 8500)).isFalse();
 
     assertThat(elixir).isLessThan(8);
@@ -90,6 +93,7 @@ class BattleSessionTest {
 
     assertThat(session.play(0, 0, 9500, 8500)).isTrue();
     assertThat(session.isPending(0, 0)).isTrue();
+    assertThat(session.cardUnavailableReason(0, 0)).contains("already played");
     assertThat(session.play(0, 0, 9500, 8500)).isFalse();
     assertThat(session.messages()).last().asString().contains("already played");
 
@@ -109,6 +113,7 @@ class BattleSessionTest {
     // One Musketeer is covered; a second while the first waits to run is not.
     assertThat(elixir).isBetween(4, 7);
     assertThat(session.play(0, 0, 3500, 8500)).isTrue();
+    assertThat(session.cardUnavailableReason(0, 1)).contains("not enough elixir");
     assertThat(session.play(0, 1, 14500, 8500)).isFalse();
     assertThat(session.messages()).last().asString().contains("not enough elixir");
   }
@@ -134,7 +139,12 @@ class BattleSessionTest {
     int knight = slot(session, "Knight");
     int mirror = slot(session, "Mirror");
     assertThat(session.play(0, knight, 3500, 8500)).isTrue();
+    assertThat(session.cardUnavailableReason(0, mirror)).isNull();
+    assertThat(BattleAdapter.frame(session).sides().get(0).hand().get(mirror).unavailableReason())
+        .isNull();
     assertThat(session.play(0, mirror, 14500, 8500)).isTrue();
+    // Mirror reserves zero until its item resolves; the remaining Archer stays selectable.
+    assertThat(session.cardUnavailableReason(0, slot(session, "Archer"))).isNull();
 
     boolean stepped = true;
     for (int i = 0; i < 40 && stepped; i++) {
@@ -147,6 +157,7 @@ class BattleSessionTest {
     assertThat(session.step()).isFalse();
     assertThat(session.tick()).isEqualTo(tick);
     assertThat(session.messages()).last().asString().contains("battle stopped");
+    assertThat(session.cardUnavailableReason(1, 0)).contains("stopped");
     assertThat(session.play(1, 0, 9500, 23500)).isFalse();
   }
 
