@@ -50,8 +50,8 @@
   "content-gaps-v2/cg_minipekka_hero_level2": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_minipekka_hero_level3": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_threemusketeers_bayonet": {"outcome": "unsupported", "feature": "ThreeMusketeer_Rework_Bayonet_Attack_Deal_Damage is an ActionTakeDamage, which the battle does not have", "input": "the run"},
-  "content-gaps-v2/cg_vines_goblingiant_riders": {"outcome": "unsupported", "feature": "the area effect Vines_AeO sets columns not modelled: [MaximumTargets, HitBiggestTargets]", "input": "the run"},
-  "content-gaps-v2/cg_vines_king_giant_minipekka": {"outcome": "unsupported", "feature": "the area effect Vines_AeO sets columns not modelled: [MaximumTargets, HitBiggestTargets]", "input": "the run"},
+  "content-gaps-v2/cg_vines_goblingiant_riders": {"outcome": "unsupported", "feature": "Vines_Air_To_Ground holds cmd0_0, a clone, a hovering unit, a rider or a carrier, which is not modelled", "input": "the run"},
+  "content-gaps-v2/cg_vines_king_giant_minipekka": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_wizard_hero_lands": {"outcome": "unsupported", "feature": "WizardHeroAbilityProjectile_spawn_tornado spawns WizardHero_MiniTornadoAEO, which sets columns not modelled: [Buff]", "input": "the run"},
   "duchess-v2/giant_vs_duchess_tower": {"outcome": "diagnostic_match"},
   "duchess-v2/knight_giant_vs_duchess_tower": {"outcome": "diagnostic_match"},
@@ -126,7 +126,7 @@
   "state-grid-v2/grid_rage_over_miner_tunnel_and_lane_switch": {"outcome": "diagnostic_match"},
   "state-grid-v2/grid_snowball_on_hidden_tesla": {"outcome": "mismatch", "first_divergent_tick": 298, "path": "$.entities[6].hp"},
   "state-grid-v2/grid_snowball_on_mightyminer_lane_switch": {"outcome": "mismatch", "first_divergent_tick": 454, "path": "$.entities[5].hp"},
-  "state-grid-v2/grid_vines_over_digging_drill": {"outcome": "unsupported", "feature": "the area effect Vines_AeO sets columns not modelled: [MaximumTargets, HitBiggestTargets]", "input": "the run"},
+  "state-grid-v2/grid_vines_over_digging_drill": {"outcome": "unsupported", "feature": "GoblinDrillDamage spawns GoblinDrillDamageArea, which sets columns not modelled: [LinkToInstigatorLife]", "input": "the run"},
   "state-grid-v2/grid_zap_on_hog_river_jump": {"outcome": "diagnostic_match"},
   "terminal-handoff-v2/card_BossBandit": {"outcome": "diagnostic_match"},
   "terminal-handoff-v2/card_GoblinBarrel": {"outcome": "diagnostic_match"},
@@ -177,7 +177,7 @@
   "tv-replays-v3/tv_replay_000": {"outcome": "unsupported", "feature": "BattleHealerSpawnHeal spawns BattleHealerSpawnHealArea, which sets columns not modelled: [LinkToInstigatorLife]", "input": "the run"},
   "tv-replays-v3/tv_replay_001": {"outcome": "unsupported", "feature": "EarthquakeHiddenDamage_Hit is an ActionTakeDamage, which the battle does not have", "input": "the run"},
   "tv-replays-v3/tv_replay_002": {"outcome": "unsupported", "feature": "IceWizardHero waits its turn to deploy, which makes its riders later, not held", "input": "the run"},
-  "tv-replays-v3/tv_replay_003": {"outcome": "unsupported", "feature": "the area effect Lightning sets columns not modelled: [Projectile, MaximumTargets, HitBiggestTargets]", "input": "the run"},
+  "tv-replays-v3/tv_replay_003": {"outcome": "mismatch", "first_divergent_tick": 264, "path": "$.entities[14].x"},
   "tv-replays-v3/tv_replay_004": {"outcome": "unsupported", "feature": "GoblinDrillDamage spawns GoblinDrillDamageArea, which sets columns not modelled: [LinkToInstigatorLife]", "input": "the run"},
   "tv-replays-v3/tv_replay_005": {"outcome": "unsupported", "feature": "BalloonHero_Ability_Target_Seeker is a shape selector that sets OnFinishedAction, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_006": {"outcome": "unsupported", "feature": "Valkyrie_EV1_Tornado spawns Valkyrie_MiniTornado_EV1, which sets columns not modelled: [Buff]", "input": "the run"},
@@ -189,7 +189,7 @@
   "tv-replays-v3/tv_replay_012": {"outcome": "unsupported", "feature": "WizardHeroAbilityProjectile_spawn_tornado spawns WizardHero_MiniTornadoAEO, which sets columns not modelled: [Buff]", "input": "the run"},
   "tv-replays-v3/tv_replay_013": {"outcome": "unsupported", "feature": "Spawn_ChampionGuardCharge sets SpawnAEO, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_014": {"outcome": "unsupported", "feature": "EliteArcherHero_Triple_Shot_Action is an ActionCreateParallelProjectiles, which the battle does not have", "input": "the run"},
-  "tv-replays-v3/tv_replay_015": {"outcome": "unsupported", "feature": "the area effect RoyalDeliveryArea sets columns not modelled: [Projectile]", "input": "the run"},
+  "tv-replays-v3/tv_replay_015": {"outcome": "mismatch", "first_divergent_tick": 1038, "path": "$.entities.length"},
   "tv-replays-v3/tv_replay_016": {"outcome": "unsupported", "feature": "MegaMinion_hero_ability_action sets ReturnDelay, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_017": {"outcome": "unsupported", "feature": "cmd0_0_3 died carrying VoodooCurse, whose death spawn VoodooHog stands on a ring, is a building, paths to its point or starts an action, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_018": {"outcome": "unsupported", "feature": "MegaMinion_hero_ability_action sets ReturnDelay, which is not modelled", "input": "the run"},
@@ -197,6 +197,6 @@
   "tv-replays-v3/tv_replay_020": {"outcome": "unsupported", "feature": "IceWizardHero waits its turn to deploy, which makes its riders later, not held", "input": "the run"},
   "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "Witch_EV1_Healing_Skeleton sets columns the battle does not model: [StartingBuffTime]", "input": "the run"},
   "tv-replays-v3/tv_replay_022": {"outcome": "unsupported", "feature": "Spawn_ChampionGuardCharge sets SpawnAEO, which is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "the area effect RoyalDeliveryArea sets columns not modelled: [Projectile]", "input": "the run"}
+  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"}
  }
 }

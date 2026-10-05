@@ -61,7 +61,7 @@ class BattleAreaEffectFilterFormTest {
    * @param row the area effect row
    * @param edit what is set on the row once its hit switches are gone
    */
-  private static GameTables filterForm(Path folder, String row, Consumer<ObjectNode> edit)
+  static GameTables filterForm(Path folder, String row, Consumer<ObjectNode> edit)
       throws IOException {
     GameData.altered(
         folder,
