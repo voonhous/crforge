@@ -229,6 +229,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     that countdown
  * @param startWithBuffWhenNotAttacking true when it takes that buff as it is created; the loader
  *     makes it true for a row that leaves it empty
+ * @param startingBuff the buff row it takes from itself as it is created, for its starting buff
+ *     time, or null for none
+ * @param startingBuffTimeMs how long that buff lasts
  * @param allowAreaDamageWhenInvisible true when an area's damage reaches it while it is invisible
  * @param areaEffectOnHit the area effect each of its direct hits makes where it stands, or null for
  *     none
@@ -414,6 +417,8 @@ public record UnitData(
     int buffWhenNotAttackingTimeMs,
     boolean buffWhenNotAttackingUseAttackRange,
     boolean startWithBuffWhenNotAttacking,
+    String startingBuff,
+    int startingBuffTimeMs,
     boolean allowAreaDamageWhenInvisible,
     String areaEffectOnHit,
     boolean keepTargetWithPendingDamage,
