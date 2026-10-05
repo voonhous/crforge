@@ -8,19 +8,22 @@ import org.crforge.core.fidelity.FidelityStatus;
  * An action that lasts on its owner and lifts it off the ground for a time, as the hero Wizard's
  * ability does: a ground unit climbs to the row's flying height over the transition, raising
  * FORCE_IS_AIR and the row's climbing tags, is held there for the whole less two transitions,
- * raising FORCE_IS_AIR and the row's held tags, and then comes back down. Its height changes are
- * pushed to the owner, which folds them into its live height at its next pre-hook, as an
- * air-to-ground run's are. As it starts the owner's flying height override takes the row's flying
- * height, which an air-to-ground run starting on it later reads in place of its row's.
+ * raising FORCE_IS_AIR and the row's held tags, and then comes back down over the transition,
+ * raising the row's descending tags, and FORCE_IS_AIR while more than 149 ms are left, its length
+ * eased toward the point the relocation off water gives for it. Its height changes are pushed to
+ * the owner, which folds them into its live height at its next pre-hook, as an air-to-ground run's
+ * are. As it starts the owner's flying height override takes the row's flying height, which an
+ * air-to-ground run starting on it later reads in place of its row's.
  *
  * <p>When the climb reaches the height the owner's path is reset when the row asks for it, and the
  * row's action at the height is scheduled on the owner with the owner as its cause. When the hold
- * ends the descent starts, scheduling the row's action at the start of the descent the same way.
+ * ends the descent starts, scheduling the row's action at the start of the descent the same way,
+ * and when the descent ends the row's action on the ground is scheduled, the override is cleared
+ * and the path is reset when the row asks for it and the owner's movement component is on.
  *
  * <p>Refused as it starts: an owner that is not a character, a clone, a hovering unit, one that
  * rides another or carries riders, and an owner already in the air, whose start reads its live
- * height against the row's. As the hold ends: the descent, whose height, landing relocation and
- * action on the ground no reference holds.
+ * height against the row's.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -28,9 +31,11 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the start on a ground owner (the override, the row height kept,"
             + " the climb's counter), the climb's tags, target heights and pushes, the turn at the"
             + " height with the path reset and the scheduled action, and the hold's tags and"
-            + " pushes; held by ability_hero_wizard, which the hero's death ends inside the hold."
-            + " Refused: a start in the air, the descent, and a clone, hovering, riding or carrying"
-            + " owner.")
+            + " pushes, the turn to the descent and its scheduled action, the descent's tags,"
+            + " heights, pushes and landing relocation, and the end (the action on the ground, the"
+            + " override cleared, the path reset); held by ability_hero_wizard and"
+            + " cg_wizard_hero_lands. Refused: a start in the air, and a clone, hovering, riding or"
+            + " carrying owner.")
 public final class GroundToAir extends RowAction {
 
   /** The height the owner climbs to. */

@@ -7,13 +7,15 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.GroundToAir;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.grid.CellGrid;
+import org.crforge.core.pathfinding.grid.Relocation;
 
 /**
  * One run of a ground-to-air action on a character: a phase and its counter, and the flying height
  * of the row the character had as it started. A ground character climbs (1) for the transition, is
- * held at the height (2) for the whole less two transitions, and would then come back down (3),
- * which is refused. Each start and each step that changes the phase is told to the battle's
- * observers.
+ * held at the height (2) for the whole less two transitions, and then comes back down (3) over the
+ * transition. Each start and each step is told to the battle's observers.
  *
  * <p>Each climbing step raises FORCE_IS_AIR and the row's climbing tags and, for a character whose
  * movement component is on, pushes the change from the row height to the climb's height at that
@@ -23,15 +25,30 @@ import org.crforge.core.fidelity.FidelityStatus;
  * the path is reset when the row asks for it and the movement component is on, the hold's counter
  * is the whole less two transitions, and the row's action at the height is scheduled on the
  * character with the character as its cause. Each held step raises FORCE_IS_AIR and the row's held
- * tags and, for a character with a movement component, pushes the flying height.
+ * tags and, for a character with a movement component, pushes the flying height. The held step that
+ * finds the counter out turns to the descent: its counter is the transition, the row's action at
+ * the start of the descent is scheduled on the character with the character as its cause, and 50 ms
+ * are taken off.
+ *
+ * <p>Each descending step raises FORCE_IS_AIR while more than 149 ms are left, and the row's
+ * descending tags always; for a character with a movement component it pushes the change from the
+ * row height to the descent's height at that step, the transition's share of the climb left above
+ * the row height (the whole climb with more than a transition left, none below 0), with the flying
+ * height as the floor. Then the character's length is eased toward the point the relocation off
+ * water gives for it, by the counter's share of the transition (none below 0, all of it above the
+ * transition), its width kept. The step that finds the counter out schedules the row's action on
+ * the ground, as the others are, and ends the run: the flying height override is cleared, and the
+ * path is reset when the row asks for it and the movement component is on.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start on a ground character, the climb's tags, heights and"
             + " pushes in 32-bit arithmetic, the turn at the height (the path reset, the hold's"
-            + " counter and the scheduled action) and the hold's tags and pushes; held by"
-            + " ability_hero_wizard. Refused: the descent.")
+            + " counter and the scheduled action), the hold's tags and pushes, the turn to the"
+            + " descent with its scheduled action, the descent's tags, heights, pushes and landing"
+            + " relocation, and the end with the override cleared and the path reset; held by"
+            + " ability_hero_wizard and cg_wizard_hero_lands.")
 final class GroundToAirRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -39,6 +56,10 @@ final class GroundToAirRun extends ActionInstance {
 
   static final int CLIMBING = 1;
   static final int HELD = 2;
+  static final int DESCENDING = 3;
+
+  /** A descending step raises FORCE_IS_AIR while its counter is above this. */
+  private static final int AIR_WHILE_ABOVE_MS = 149;
 
   private final GroundToAir row;
   private final CharacterEntity unit;
@@ -86,7 +107,8 @@ final class GroundToAirRun extends ActionInstance {
     List<Integer> pushes = new ArrayList<>();
     switch (phase) {
       case CLIMBING -> climb(holder, pushes);
-      case HELD -> hold(pushes);
+      case HELD -> hold(holder, pushes);
+      case DESCENDING -> descend(holder, pushes);
       default -> throw new IllegalStateException("phase " + phase);
     }
     unit.world().groundToAirStepped(unit, phaseBefore, phase, counterBefore, counter, pushes);
@@ -127,21 +149,93 @@ final class GroundToAirRun extends ActionInstance {
     }
   }
 
-  /** The hold: the tags and the flying height pushed; at the end of its counter, the descent. */
-  private void hold(List<Integer> pushes) {
+  /**
+   * The hold: the tags and the flying height pushed; at the end of its counter the turn to the
+   * descent, whose action at the start is scheduled before 50 ms are taken off its counter.
+   */
+  private void hold(ActionHolder holder, List<Integer> pushes) {
     unit.raiseWatched(unit.world().forceIsAir() | row.getOnAirTags());
     if (unit.hasMovementComponent()) {
       unit.pushHeight(row.getFlyingHeight(), row.getFlyingHeight());
       pushes.add(row.getFlyingHeight());
     }
+    if (counter <= 0) {
+      phase = DESCENDING;
+      counter = row.getTransitionDurationMs();
+      if (row.getOnStartDescending() != null) {
+        holder.schedule(row.getOnStartDescending(), ActionHolder.OWN_DELAY, false, holder);
+      }
+    }
+    counter -= STEP_MS;
+  }
+
+  /**
+   * The descent: the tags, the height for the counter pushed against the row height, the landing
+   * relocation, and at the end of the counter the action on the ground and the end of the run.
+   */
+  private void descend(ActionHolder holder, List<Integer> pushes) {
+    long tags = row.getToGroundTags();
+    if (counter > AIR_WHILE_ABOVE_MS) {
+      tags |= unit.world().forceIsAir();
+    }
+    unit.raiseWatched(tags);
+    int t = row.getTransitionDurationMs();
+    int height = row.getFlyingHeight();
+    if (unit.hasMovementComponent()) {
+      int now;
+      if (counter < 0) {
+        now = rowHeight;
+      } else if (counter > t) {
+        now = height;
+      } else {
+        now = divide((height - rowHeight) * counter, t) + rowHeight;
+      }
+      unit.pushHeight(now - rowHeight, height);
+      pushes.add(now - rowHeight);
+    }
+    land();
     if (counter > 0) {
       counter -= STEP_MS;
       return;
     }
-    // The descent's height, its landing relocation and its action on the ground are held by no
-    // reference.
-    throw new UnsupportedOperationException(
-        row.name() + " brings " + unit.name() + " back down, which is not modelled");
+    if (row.getOnGround() != null) {
+      holder.schedule(row.getOnGround(), ActionHolder.OWN_DELAY, false, holder);
+    }
+    finish();
+    // The run's end: the override an air-to-ground run would read is cleared, and the path is
+    // reset when the row asks for it and the movement component is on.
+    unit.setFlyingHeightOverride(0);
+    if (row.isResetPathWhenBackToGround() && unit.movementOn()) {
+      unit.resetRoute();
+    }
+  }
+
+  /**
+   * The landing relocation of a descending step: the length eased toward the one the relocation off
+   * water gives for the character's point, by the counter's share of the transition, the width
+   * kept. A point the relocation leaves on its length is not moved.
+   */
+  private void land() {
+    GridEntity view = unit.getView();
+    CellGrid grid = unit.world().getGrid();
+    int y = view.getY();
+    int to =
+        Relocation.unpackY(
+            Relocation.relocate(
+                grid.getWidth(), grid.getHeight(), view.getX(), y, -1, grid::water));
+    if (to == y) {
+      return;
+    }
+    int t = row.getTransitionDurationMs();
+    int share;
+    if (counter < 0) {
+      share = 0;
+    } else if (counter > t) {
+      share = to - y;
+    } else {
+      share = divide((to - y) * counter, t);
+    }
+    view.setY(y + share);
   }
 
   /** A 32-bit signed division as the hardware does it: truncated, and 0 for a zero divisor. */
