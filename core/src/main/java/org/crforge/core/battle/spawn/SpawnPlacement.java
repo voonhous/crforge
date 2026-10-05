@@ -127,10 +127,7 @@ public final class SpawnPlacement {
       int arenaWidth,
       Passable passable) {
     if (radius != 0) {
-      int angle = (count - 1 - index) * 360 / count + turn;
-      int ox = towardZero(FixedMath.sine1024(angle + 90) * radius);
-      int oy = towardZero(FixedMath.sine1024(angle) * radius);
-      return new int[] {ox + x, oy + y};
+      return ring(x, y, index, count, count, turn, radius);
     }
     if (!noOffset && reach == NO_REACH) {
       throw new UnsupportedOperationException(
@@ -155,6 +152,28 @@ public final class SpawnPlacement {
       }
     }
     return new int[] {x + 1, y};
+  }
+
+  /**
+   * Where one child stands on a ring shared with other children: child {@code i} of {@code count}
+   * at angle {@code (count - 1 - i) * 360 / total}, turned by {@code turn}. A spawn of one row
+   * divides the ring by its own count; a death spawn of two rows divides it by both counts, each
+   * row starting from its own angle.
+   *
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param index the child's index within its row
+   * @param count how many children its row makes
+   * @param total how many children the ring is divided between
+   * @param turn the degrees every ring angle is turned by
+   * @param radius the ring's radius
+   * @return the child's position as {x, y}
+   */
+  public static int[] ring(int x, int y, int index, int count, int total, int turn, int radius) {
+    int angle = (count - 1 - index) * 360 / total + turn;
+    int ox = towardZero(FixedMath.sine1024(angle + 90) * radius);
+    int oy = towardZero(FixedMath.sine1024(angle) * radius);
+    return new int[] {ox + x, oy + y};
   }
 
   /**
