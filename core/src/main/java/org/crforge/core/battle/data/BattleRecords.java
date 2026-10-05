@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.match.BattleTimeline;
@@ -1128,7 +1129,8 @@ public final class BattleRecords {
    * is its field of the same name; the dead are filtered unless the row says not; the tags it
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
    * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
-   * switches, or the names of its Filters list, which a newer data version writes in their place;
+   * switches, or the names of its Filters list, which a newer data version writes in their place
+   * and which may also name three kinds no switch tests (Self, Kamikaze and IgnoreResurrect);
    * MatchSelf, also of the newer version, passes only the object that asks, and its two buff
    * checkers keep or drop an object by the buffs the asker applied to it. A row that sets any other
    * column, as a filter it builds on, is refused: read without it, the filter would match what the
@@ -1203,9 +1205,8 @@ public final class BattleRecords {
    * same test: a filter that lists a kind leaves out what the switch leaves out. A newer data
    * version writes the kinds as this list in place of the switches; the filter's test reads each
    * listed kind as the very check the switch asks (the same object queries, and the same character
-   * row columns for the pushback and dash checks). A kind the switches have no test for (Self, the
-   * instigator itself; Kamikaze and IgnoreResurrect, characters whose row sets the column of that
-   * name) is refused.
+   * row columns for the pushback and dash checks). The kinds the switches have no test for are
+   * {@link #LIST_ONLY_FILTER_KINDS}; any other kind is refused.
    */
   private static final Map<String, String> FILTER_LIST_SWITCHES =
       Map.ofEntries(
@@ -1225,6 +1226,19 @@ public final class BattleRecords {
           Map.entry("SameObjects", "FilterSameObjects"),
           Map.entry("PrincessTowers", "FilterPrincessTowers"),
           Map.entry("Clones", "FilterClones"));
+
+  /** The switch columns of {@link #FILTER_LIST_SWITCHES}, each with the kind that names it. */
+  private static final Map<String, String> FILTER_SWITCH_KINDS =
+      FILTER_LIST_SWITCHES.entrySet().stream()
+          .collect(Collectors.toUnmodifiableMap(Map.Entry::getValue, Map.Entry::getKey));
+
+  /**
+   * The kinds a Filters list may name that no switch tests, the newer data version's alone: Self,
+   * the asker itself; Kamikaze, a character whose row sets Kamikaze; IgnoreResurrect, a character
+   * whose row sets IgnoreResurrect.
+   */
+  private static final Set<String> LIST_ONLY_FILTER_KINDS =
+      Set.of("Self", "Kamikaze", "IgnoreResurrect");
 
   /**
    * Whether a game object filter leaves out the kind of object a switch names: the switch's own
@@ -1248,25 +1262,36 @@ public final class BattleRecords {
               + column
               + ", which no data version writes together");
     }
-    return listed.contains(column);
+    return listed.contains(FILTER_SWITCH_KINDS.get(column));
   }
 
   /**
-   * The switches a filter's Filters list names, or null for a row without the list. A row may write
+   * Whether a game object filter's Filters list names a kind no switch tests; false for a row
+   * without the list.
+   *
+   * @param listed the kinds its Filters list names, or null for a row without the list
+   * @param kind one of {@link #LIST_ONLY_FILTER_KINDS}
+   */
+  private static boolean filterListOnly(Set<String> listed, String kind) {
+    return listed != null && listed.contains(kind);
+  }
+
+  /**
+   * The kinds a filter's Filters list names, or null for a row without the list. A row may write
    * the list as a single text, which the game reads as a list of that one kind.
    *
-   * @throws UnsupportedOperationException for a kind no switch tests
+   * @throws UnsupportedOperationException for a kind neither a switch nor the filter's own test of
+   *     a listed kind reads
    */
-  private static Set<String> listedSwitches(GameRow row) {
+  private static Set<String> listedKinds(GameRow row) {
     if (!row.has("Filters")) {
       return null;
     }
     List<String> kinds =
         row.value("Filters").isTextual() ? List.of(row.string("Filters")) : row.strings("Filters");
-    Set<String> switches = new HashSet<>();
+    Set<String> listed = new HashSet<>();
     for (String kind : kinds) {
-      String column = FILTER_LIST_SWITCHES.get(kind);
-      if (column == null) {
+      if (!FILTER_LIST_SWITCHES.containsKey(kind) && !LIST_ONLY_FILTER_KINDS.contains(kind)) {
         throw new UnsupportedOperationException(
             "the game object filter "
                 + row.name()
@@ -1274,9 +1299,9 @@ public final class BattleRecords {
                 + kind
                 + " in Filters, which is not modelled");
       }
-      switches.add(column);
+      listed.add(kind);
     }
-    return switches;
+    return listed;
   }
 
   /**
@@ -1284,7 +1309,7 @@ public final class BattleRecords {
    * it leaves out, from its Filters list.
    */
   private GameObjectFilter filterOf(GameRow row) {
-    Set<String> listed = listedSwitches(row);
+    Set<String> listed = listedKinds(row);
     return GameObjectFilter.builder()
         .matchTeamOwn(row.bool("MatchTeamOwn"))
         .matchTeamEnemy(row.bool("MatchTeamEnemy"))
@@ -1314,6 +1339,9 @@ public final class BattleRecords {
         .filterDead(!row.has("FilterDead") || row.bool("FilterDead"))
         .filterClones(filterSwitch(row, listed, "FilterClones"))
         .matchSelf(row.bool("MatchSelf"))
+        .filterSelf(filterListOnly(listed, "Self"))
+        .filterKamikaze(filterListOnly(listed, "Kamikaze"))
+        .filterIgnoreResurrect(filterListOnly(listed, "IgnoreResurrect"))
         .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
         .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
         .requireBuffsFromAsker(Set.copyOf(row.strings("FilterIfNotBuffedByChecker")))

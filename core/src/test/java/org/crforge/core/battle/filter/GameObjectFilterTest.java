@@ -1,6 +1,7 @@
 package org.crforge.core.battle.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,8 @@ class GameObjectFilterTest {
     int dashImmuneMs;
     int invisible;
     boolean ignoresPushback;
+    boolean kamikaze;
+    boolean ignoresResurrect;
     final List<String> asked = new ArrayList<>();
 
     private boolean ask(String question, boolean answer) {
@@ -138,6 +141,16 @@ class GameObjectFilterTest {
     @Override
     public boolean ignoresPushback() {
       return ignoresPushback;
+    }
+
+    @Override
+    public boolean kamikaze() {
+      return ask("kamikaze", kamikaze);
+    }
+
+    @Override
+    public boolean ignoresResurrect() {
+      return ask("ignoresResurrect", ignoresResurrect);
     }
   }
 
@@ -622,5 +635,58 @@ class GameObjectFilterTest {
                       return s;
                     })))
         .isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "the Filters list's own kinds: Kamikaze and IgnoreResurrect drop a character whose row sets"
+          + " them and are not asked of another kind; Self drops the asker alone and is refused"
+          + " without it")
+  void listOnlyKinds() {
+    GameObjectFilter kamikaze = own().filterKamikaze(true).build();
+    GameObjectFilter resurrect = own().filterIgnoreResurrect(true).build();
+    Subject plain = subject(s -> s);
+    Subject spirit =
+        subject(
+            s -> {
+              s.kamikaze = true;
+              return s;
+            });
+    Subject golem =
+        subject(
+            s -> {
+              s.ignoresResurrect = true;
+              return s;
+            });
+    assertThat(
+            List.of(matches(kamikaze, plain), matches(kamikaze, spirit), matches(kamikaze, golem)))
+        .containsExactly(1, 0, 1);
+    assertThat(
+            List.of(
+                matches(resurrect, plain), matches(resurrect, spirit), matches(resurrect, golem)))
+        .containsExactly(1, 1, 0);
+
+    Subject shot =
+        subject(
+            s -> {
+              s.type = FilterSubject.PROJECTILE;
+              s.kamikaze = true;
+              s.ignoresResurrect = true;
+              return s;
+            });
+    GameObjectFilter both =
+        own().matchTypeProjectiles(true).filterKamikaze(true).filterIgnoreResurrect(true).build();
+    assertThat(matches(both, shot)).as("a projectile is not asked").isEqualTo(1);
+    assertThat(shot.asked).doesNotContain("kamikaze", "ignoresResurrect");
+
+    GameObjectFilter self = own().filterSelf(true).build();
+    assertThat(self.matches(plain, 0, "Other", true)).as("the asker").isFalse();
+    assertThat(self.matches(plain, 0, "Other", false)).as("another object").isTrue();
+    assertThat(self.matches(plain, 0, "Other", false, 7)).as("another object, by id").isTrue();
+    assertThatThrownBy(() -> self.matches(plain, 0, "Other"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "a game object filter that lists the kind Self is asked without its asker, which is"
+                + " not modelled");
   }
 }
