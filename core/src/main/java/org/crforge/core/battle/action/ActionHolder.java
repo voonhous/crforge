@@ -274,11 +274,14 @@ public class ActionHolder implements EntityActions {
       pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS, context));
     }
     ActionContext before = current;
+    ActionContext activeBefore = ACTIVE.get();
     current = context;
+    ACTIVE.set(context);
     try {
       action.scheduled(this, delay, immediate, instigator, context);
     } finally {
       current = before;
+      ACTIVE.set(activeBefore);
     }
     BattleAction next = action.nextAction();
     if (next != null && !action.nextActionWait()) {
@@ -344,7 +347,9 @@ public class ActionHolder implements EntityActions {
       }
     }
     ActionContext before = current;
+    ActionContext activeBefore = ACTIVE.get();
     current = context;
+    ACTIVE.set(context);
     try {
       if (!holds(action.executeIf(), true)) {
         return;
@@ -363,6 +368,7 @@ public class ActionHolder implements EntityActions {
       }
     } finally {
       current = before;
+      ACTIVE.set(activeBefore);
     }
   }
 
@@ -372,6 +378,19 @@ public class ActionHolder implements EntityActions {
    */
   public ActionContext currentContext() {
     return current;
+  }
+
+  /**
+   * The context of what any holder of the running battle is doing now, the innermost one: an action
+   * built in one entity's tree may run on another's holder, as a counter's action on the hit's
+   * source does, and the game evaluates its expressions with the context the running holder was
+   * handed. A battle runs on one thread, so the thread keeps it.
+   */
+  private static final ThreadLocal<ActionContext> ACTIVE = new ThreadLocal<>();
+
+  /** The context of what any holder is doing now on this thread, the innermost one, or null. */
+  public static ActionContext activeContext() {
+    return ACTIVE.get();
   }
 
   /**
@@ -482,7 +501,9 @@ public class ActionHolder implements EntityActions {
       }
       // The stop gate is asked, and the run stepped, with the context its start carried.
       ActionContext before = current;
+      ActionContext activeBefore = ACTIVE.get();
       current = instance.context();
+      ACTIVE.set(current);
       boolean stopped;
       try {
         stopped = holds(instance.getAction().forceStopIf(), false);
@@ -491,6 +512,7 @@ public class ActionHolder implements EntityActions {
         }
       } finally {
         current = before;
+        ACTIVE.set(activeBefore);
       }
       if (stopped) {
         instance.finish();
@@ -503,6 +525,19 @@ public class ActionHolder implements EntityActions {
         listener.finished(instance);
       }
       i++;
+    }
+  }
+
+  /**
+   * Tells every running instance, from the last to the first, of a hit that reaches the owner's
+   * damage entry; finished runs still listed are told too. A run listed meanwhile is not.
+   *
+   * @param hit the hit, whose amount a run may change
+   */
+  public void damageHeard(DamageHeard hit) {
+    List<ActionInstance> instances = new ArrayList<>(running);
+    for (int i = instances.size() - 1; i >= 0; i--) {
+      instances.get(i).damageHeard(this, hit);
     }
   }
 

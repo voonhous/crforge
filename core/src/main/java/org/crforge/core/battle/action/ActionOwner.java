@@ -249,6 +249,18 @@ public interface ActionOwner {
   }
 
   /**
+   * What a counter's run asks of the battle about the owner as a hit reaches it. Only a character
+   * runs one.
+   *
+   * @param action the row
+   * @return the owner's answers
+   */
+  default Counter.Host counterHost(Counter action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * What a Boss Bandit ability's run asks of the battle about the owner. Only a character runs one.
    *
    * @param action the row
@@ -912,4 +924,16 @@ public interface ActionOwner {
    * @param type the hit's damage type
    */
   void queueTypedHit(ActionOwner source, int amount, DamageType type);
+
+  /**
+   * Queues a damage-taking action's hit on the owner, which the battle's damage drain deals.
+   *
+   * @param source the entity that caused the action, or null for none
+   * @param damage the row's damage
+   * @param added the added amount
+   */
+  default void queueActionDamage(ActionOwner source, TakeDamage.Damage damage, int added) {
+    throw new UnsupportedOperationException(
+        "a damage-taking action on an owner other than a character is not modelled");
+  }
 }
