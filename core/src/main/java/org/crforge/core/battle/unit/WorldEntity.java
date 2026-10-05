@@ -21,6 +21,7 @@ import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BlowdartController;
 import org.crforge.core.battle.action.BlowdartDamage;
 import org.crforge.core.battle.action.BurstAttack;
+import org.crforge.core.battle.action.DamageHeard;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
@@ -30,6 +31,7 @@ import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
+import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
@@ -402,7 +404,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             dedupeId,
             directionX,
             directionY,
-            damageQueries(passesHidden, dealer, true, heard));
+            damageQueries(passesHidden, dealer, true, heard, cause, false));
     shieldHit(damage, shieldBefore, cause);
     refreshHitPoints();
     return result;
@@ -989,7 +991,36 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   private DamageQueries damageQueries(
       boolean passesHidden, WorldEntity dealer, boolean buffAfterHitsHeld, Runnable heard) {
+    return damageQueries(passesHidden, dealer, buffAfterHitsHeld, heard, null, false);
+  }
+
+  /**
+   * What the damage chain asks about the entity, who counts the hit, who hears of it before the
+   * subtraction, and what the entity's runs hear of it at the entry.
+   *
+   * @param cause what the hit came from, which the entity's runs are told, or null for nothing
+   * @param reflected true for a hit whose damage is flagged Reflected
+   */
+  private DamageQueries damageQueries(
+      boolean passesHidden,
+      WorldEntity dealer,
+      boolean buffAfterHitsHeld,
+      Runnable heard,
+      SpawnHost cause,
+      boolean reflected) {
     return new DamageQueries() {
+      // The entry tells the entity's runs of the hit, from the last listed to the first, when it
+      // has a holder at all.
+      @Override
+      public int heard(int amount) {
+        if (actionHolder == null) {
+          return amount;
+        }
+        DamageHeard hit = new DamageHeard(amount, reflected, cause);
+        actionHolder.damageHeard(hit);
+        return hit.getAmount();
+      }
+
       @Override
       public void beforeSubtraction() {
         if (heard != null) {
@@ -1513,7 +1544,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * air above height 0; with FORCE_IS_AIR alone in the air, with FORCE_IS_GROUND alone on the
    * ground; with neither, in the air when its row flies.
    */
-  private boolean layerAir() {
+  boolean layerAir() {
     long flags = getView().getFlags();
     boolean air = (flags & world.forceIsAir()) != 0;
     boolean ground = (flags & world.forceIsGround()) != 0;
@@ -2609,6 +2640,42 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     world.queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
   }
 
+  @Override
+  public void queueActionDamage(ActionOwner source, TakeDamage.Damage damage, int added) {
+    world.queueActionDamage(
+        source instanceof WorldEntity entity ? entity : null, this, damage, added);
+  }
+
+  /**
+   * Takes a damage-taking action's hit from the drain, its amount already settled: the damage entry
+   * as for any hit, the source counting it and named as its cause, and the entity's runs told
+   * whether its damage is a Reflected one.
+   *
+   * @param source the entity that caused the action, or null for none
+   * @param amount the amount the drain settled on
+   * @param reflected true under the damage's Reflected flag
+   * @return what the hit did; a death it causes is the battle's to run
+   */
+  DamageResult takeActionDamage(
+      WorldEntity source, int amount, boolean reflected, int directionX, int directionY) {
+    if (hitPoints == null) {
+      return DamageResult.NOTHING;
+    }
+    refuseReflect("a damage-taking action's hit");
+    int shieldBefore = hitPoints.getShield();
+    DamageResult result =
+        DamageApplication.damage(
+            hitPoints,
+            amount,
+            0,
+            directionX,
+            directionY,
+            damageQueries(false, source, true, null, source, reflected));
+    shieldHit(amount, shieldBefore, source);
+    refreshHitPoints();
+    return result;
+  }
+
   /**
    * Takes a typed hit from the drain, its pipeline already run.
    *
@@ -2643,7 +2710,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             damageId,
             directionX,
             directionY,
-            damageQueries(false, source, false));
+            damageQueries(false, source, false, null, cause, false));
     shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
 

@@ -37,6 +37,7 @@ import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SpawnGuard;
+import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.data.ActionBinding;
@@ -401,7 +402,27 @@ public class BattleWorld implements HolderPasses {
    * projectile's area on a version that queues them.
    */
   private sealed interface QueuedHit
-      permits TypedHit, DirectHitDue, AreaHitDue, ProjectileAreaHitDue {}
+      permits TypedHit, DirectHitDue, AreaHitDue, ProjectileAreaHitDue, ActionDamageDue {}
+
+  /**
+   * A damage-taking action's hit waiting for the drain: its source, its target, the row's damage
+   * and the added amount, with the direction from the source to the target as it was queued.
+   *
+   * @param source the entity that caused the action, or null for none
+   * @param target the entity it lands on
+   * @param damage the row's damage
+   * @param added the added amount
+   * @param directionX the target's position less the source's, along the width
+   * @param directionY the same along the length
+   */
+  private record ActionDamageDue(
+      WorldEntity source,
+      WorldEntity target,
+      TakeDamage.Damage damage,
+      int added,
+      int directionX,
+      int directionY)
+      implements QueuedHit {}
 
   /**
    * The hits dealt this tick that wait for the drain, in the order they were dealt: one queue, so a
@@ -4640,6 +4661,22 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Queues a damage-taking action's hit, which the drain deals after the post-hooks of the tick;
+   * one queued after that lands on the next tick.
+   *
+   * @param source the entity that caused the action, or null for none
+   * @param target the entity it lands on
+   * @param damage the row's damage
+   * @param added the added amount
+   */
+  void queueActionDamage(
+      WorldEntity source, WorldEntity target, TakeDamage.Damage damage, int added) {
+    int directionX = source == null ? 0 : target.getView().getX() - source.getView().getX();
+    int directionY = source == null ? 0 : target.getView().getY() - source.getView().getY();
+    queuedHits.add(new ActionDamageDue(source, target, damage, added, directionX, directionY));
+  }
+
+  /**
    * Queues a typed hit from an area effect, as a shaped area effect's damage does: the area effect
    * its source, with no direction. The drain deals it after the post-hooks of the tick.
    *
@@ -4725,6 +4762,10 @@ public class BattleWorld implements HolderPasses {
             share.projectile(), share.victim(), share.damage(), share.hitId(), 0, 0);
         continue;
       }
+      if (queued instanceof ActionDamageDue actionDamage) {
+        drainActionDamage(actionDamage);
+        continue;
+      }
       TypedHit hit = (TypedHit) queued;
       WorldEntity target = hit.target();
       if (target.getHitPoints() == null) {
@@ -4766,6 +4807,48 @@ public class BattleWorld implements HolderPasses {
       for (WorldObserver observer : observers) {
         observer.typedHitDealt(tick, source, target, amount, damageId, result);
       }
+    }
+  }
+
+  /**
+   * Deals a damage-taking action's hit: nothing to a target without hit points; nothing at all from
+   * a target that takes no damage; otherwise the damage's amount for the target - its tower amount
+   * against a crown tower when it gives one - plus the added amount, floored at 0 behind the
+   * source's percentages (which no buff changes) unless NoAmplification, then lowered by the
+   * target's protection and floored at 0 unless NoProtection. The damage entry deals it with the
+   * source counting it, the target's runs told whether it is a Reflected hit, and the death it
+   * causes runs at once. A source that has left the battle is no source. A source whose row sets a
+   * buff on damage, which the drain applies after a hit it lets through, is refused.
+   */
+  private void drainActionDamage(ActionDamageDue due) {
+    WorldEntity target = due.target();
+    if (target.getHitPoints() == null) {
+      return;
+    }
+    WorldEntity source = due.source() == null || due.source().isLeft() ? null : due.source();
+    TakeDamage.Damage damage = due.damage();
+    int amount = 0;
+    if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) == 0) {
+      amount = damage.amount(target.getTargetView().isCrownTowerTarget()) + due.added();
+      if (source != null && !damage.noAmplification()) {
+        amount = Math.max(amount, 0);
+      }
+      if (!damage.noProtection()) {
+        amount = Math.max(target.getBuffs().damageReduction(amount), 0);
+      }
+    }
+    DamageResult result =
+        target.takeActionDamage(
+            source, amount, damage.reflected(), due.directionX(), due.directionY());
+    if (result.died()) {
+      target.die(source);
+    }
+    if (result.landed() && source != null && source.getData().buffOnDamage() != null) {
+      throw new UnsupportedOperationException(
+          source.name() + " deals a damage-taking action's hit with a BuffOnDamage, not modelled");
+    }
+    for (WorldObserver observer : observers) {
+      observer.typedHitDealt(tick, source, target, amount, 0, result);
     }
   }
 
