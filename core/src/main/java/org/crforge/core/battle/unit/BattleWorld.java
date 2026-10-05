@@ -4223,6 +4223,11 @@ public class BattleWorld implements HolderPasses {
    * first quarter turn of that offset the in-front test accepts; where it accepts none, the
    * children stand one unit right of the dying object.
    *
+   * <p>A row with a second death spawn row makes its children after the first row's, on the same
+   * ring: the ring is divided by both counts, the first row starts from the row's angle shift and
+   * the second half a step past the opposite side, neither turned by the dying object's facing; a
+   * second row with no radius stands in front of the dying object even as a single child.
+   *
    * <p>Refused rather than guessed: a child that is a building with hit points, which replaces the
    * dying object, paths to its point or has a starting action of its own; a least radius below the
    * radius, which draws each child's ring radius from the battle's random source - no row sets one;
@@ -4233,9 +4238,49 @@ public class BattleWorld implements HolderPasses {
     if (data.deathSpawnCharacter() == null) {
       return;
     }
-    int radius = data.deathSpawnRadius();
     int count = data.deathSpawnCount();
-    UnitData child = spawnedRow(data.deathSpawnCharacter());
+    if (data.deathSpawnCharacter2() == null) {
+      deathSpawnRow(dying, data, data.deathSpawnCharacter(), count, count == 1, -1, 0);
+      return;
+    }
+    // A second row shares the first row's ring: both divide it by the sum of the two counts. The
+    // first starts from the row's angle shift, the second half a step past the opposite side,
+    // and neither is turned by the way the dying object faces. The second row is made after the
+    // first, always with its in-front offset.
+    int total = count + data.deathSpawnCount2();
+    if (total < 1) {
+      throw new UnsupportedOperationException(
+          dying.name() + "'s two death spawn rows count no child in all, which is not modelled");
+    }
+    int shift = data.spawnAngleShift();
+    int second = shift + ((180 + 360 / total / 2) & 0xffff);
+    deathSpawnRow(dying, data, data.deathSpawnCharacter(), count, count == 1, total, shift);
+    deathSpawnRow(
+        dying, data, data.deathSpawnCharacter2(), data.deathSpawnCount2(), false, total, second);
+  }
+
+  /**
+   * One row of the death spawn: {@code count} children of the row, nothing for a count below 1.
+   *
+   * @param dying the dying object
+   * @param data its row
+   * @param row the row the children are made of
+   * @param count how many
+   * @param noOffset true for no in-front offset, as for a single child of the only or first row
+   * @param total the children of the whole ring, which the angle step divides by, or -1 for this
+   *     row's own count and the ring turned by the dying object's angle shift and facing
+   * @param angleBase the angle the ring starts from with a total, in degrees
+   */
+  private void deathSpawnRow(
+      WorldEntity dying,
+      UnitData data,
+      String row,
+      int count,
+      boolean noOffset,
+      int total,
+      int angleBase) {
+    int radius = data.deathSpawnRadius();
+    UnitData child = spawnedRow(row);
     // A building with hit points replaces the dying object instead; one without, a bomb, is made.
     if ((child.building() && child.hitpoints() > 0)
         || child.spawnPathfindSpeed() != 0
@@ -4262,18 +4307,20 @@ public class BattleWorld implements HolderPasses {
       int[] at;
       if (radius != 0) {
         at =
-            SpawnPlacement.position(
-                fromX,
-                fromY,
-                i,
-                count,
-                false,
-                radius,
-                ringTurn(dying),
-                SpawnPlacement.NO_REACH,
-                0,
-                0,
-                (px, py) -> true);
+            total == -1
+                ? SpawnPlacement.position(
+                    fromX,
+                    fromY,
+                    i,
+                    count,
+                    false,
+                    radius,
+                    ringTurn(dying),
+                    SpawnPlacement.NO_REACH,
+                    0,
+                    0,
+                    (px, py) -> true)
+                : SpawnPlacement.ring(fromX, fromY, i, count, total, angleBase, radius);
         // A ring whose children take a fixed priority asks the lane of the dying object's point
         // before each child, and is turned over by it and by the dying object's team.
         if (data.spawnConstPriority()) {
@@ -4300,7 +4347,7 @@ public class BattleWorld implements HolderPasses {
                 fromY,
                 i,
                 count,
-                count == 1,
+                noOffset,
                 0,
                 dying.getData().collisionRadius() + child.collisionRadius(),
                 dying.side() & 1,
