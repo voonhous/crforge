@@ -695,8 +695,10 @@ public final class ActionRows {
                   "MakeUntargetableForTickAfterWarp",
                   "OnWarpEndAction",
                   "TargetResolver")),
-          // The mark: its resolver, its two actions, its two tag masks, its pause and its search
-          // delay. The targetter effects, the effect lists and the radii that pick among them only
+          // The mark: its resolver, its two actions, its two tag masks, its pause, its search
+          // delay and its pin. The pinned point's two expressions are read only once the pin
+          // holds, which is refused. The targetter effects, the effect lists and the radii that
+          // pick among them only
           // show something; the arrow's stop condition, which only a client arrow reads, is refused
           // as a column nothing reads.
           Map.entry(
@@ -715,7 +717,10 @@ public final class ActionRows {
                   "PlayerTargettedEffectList",
                   "EnemyTargettedEffectList",
                   "PlayerCircleTargetIndicatorList",
-                  "EnemyCircleTargetIndicatorList")),
+                  "EnemyCircleTargetIndicatorList",
+                  "PinnedActiveExpression",
+                  "PinnedPositionXExpression",
+                  "PinnedPositionYExpression")),
           // The hand-over: the mark it reads, the warp it launches and the two deploy actions; the
           // spell target indicator's file and clip only show something.
           Map.entry(
@@ -2930,6 +2935,7 @@ public final class ActionRows {
               .tagsWithTarget(tagMask(text(f, "GameTagsToSetWhileHasTarget", "")))
               .pauseIfInCooldown(bool(f, "PauseIfInCooldown"))
               .delayBeforeSearchMs(integer(f, "DelayBeforeSearchForNextTarget"))
+              .pinnedActive(expression(f.get("PinnedActiveExpression")))
               .build());
     }
 
