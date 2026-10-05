@@ -445,7 +445,8 @@ class ActionRowsTest {
       "the evolved Furnace's spawn behind it is a projectile from 6000 high, the evolved Wall"
           + " Breaker's barrel one of the plain class and the hero Musketeer turret's knockback one"
           + " of the location class from its cause with no aim; a count and a character spawn with"
-          + " an aim are refused")
+          + " a start height are refused, while a character spawn's aim, which only the projectile"
+          + " branch reads, is built and not read")
   void aProjectileSpawnIsBuilt(@TempDir Path folder) throws IOException {
     SpawnProjectile left =
         (SpawnProjectile) GameData.actions().build("Furnace_EV1_Spawn_Behind_Left", INERT_BINDING);
@@ -502,19 +503,37 @@ class ActionRowsTest {
 
     Path characters = folder.resolve("characters");
     Files.createDirectories(characters);
-    GameTables aimed =
+    GameTables raised =
         GameData.altered(
             characters,
             "actions",
             rows ->
                 ((ObjectNode) rows.get("Furnace_rework_spawn_forward").get("fields"))
-                    .put("TargetExprX", "x"));
+                    .put("StartPositionZOffset", 6000));
     assertThatThrownBy(
             () ->
-                new ActionRows(aimed, new BattleRecords(aimed))
+                new ActionRows(raised, new BattleRecords(raised))
                     .build("Furnace_rework_spawn_forward", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("spawns characters and sets TargetExprX");
+        .hasMessageContaining("spawns characters and sets StartPositionZOffset");
+
+    // The aim expressions are the projectile branch's alone: a character spawn that sets them
+    // spawns where it would without them.
+    Path aimedFolder = folder.resolve("aimed");
+    Files.createDirectories(aimedFolder);
+    GameTables aimed =
+        GameData.altered(
+            aimedFolder,
+            "actions",
+            rows -> {
+              ObjectNode f = (ObjectNode) rows.get("Furnace_rework_spawn_forward").get("fields");
+              f.put("TargetExprX", "x");
+              f.put("TargetExprY", "y");
+            });
+    assertThat(
+            new ActionRows(aimed, new BattleRecords(aimed))
+                .build("Furnace_rework_spawn_forward", INERT_BINDING))
+        .isInstanceOf(SpawnCharacters.class);
   }
 
   @Test

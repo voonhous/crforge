@@ -452,6 +452,10 @@ public final class BattleRecords {
       Set.of(
           // The row's own name, read as the row's key.
           "Name",
+          // Stored by the character loader and read by no battle logic. Only the hero Dark
+          // Prince's mount sets it, which targets only buildings, which no push moves; a row that
+          // targets anything else is refused below, in case a reader was missed.
+          "Pushback",
           // Read only by the placement, into a slot of the entity's view object.
           "DeployDelay",
           // Presentation only, by the attack sequence's getter scan.
@@ -1037,6 +1041,10 @@ public final class BattleRecords {
       if (sets(row, column)) {
         columns.add(column);
       }
+    }
+    // The character Pushback column is held inert only where a reader would move nothing.
+    if (sets(row, "Pushback") && !row.bool("TargetOnlyBuildings")) {
+      columns.add("Pushback");
     }
     // The action a hit on the unit runs is scheduled with the unit as its instigator when the row
     // says so, else with the hit's source, and not at all for a hit without one: only the first is

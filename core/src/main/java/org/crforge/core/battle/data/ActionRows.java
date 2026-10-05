@@ -1315,7 +1315,10 @@ public final class ActionRows {
         return done;
       }
       if (!building.add(name)) {
-        throw new UnsupportedOperationException(name + " names itself, which is not modelled");
+        // The row is reached again through itself while it is built: a part, an action to run or a
+        // next action names it back. The game's rows are one object each, which the rows naming
+        // them point at, so the cycle is a loop; the reference answers as the row once it is built.
+        return new CycleReference(name, () -> built.get(name));
       }
       GameAction row = tables.action(name);
       JsonNode f = row.fields();
@@ -1959,6 +1962,13 @@ public final class ActionRows {
      */
     private ActionRow shared(GameAction row) {
       JsonNode f = row.fields();
+      if (nextChainReturns(row.name())) {
+        // The loader clears a NextAction chain that leads back to its own row, whatever the rows
+        // between; in which row of a longer chain it is cleared depends on their load order.
+        throw new UnsupportedOperationException(
+            row.name()
+                + " chains NextAction back to itself, which the loader clears, not modelled");
+      }
       boolean bareEffect =
           row.classType().equals("ActionPlayEffect")
               && !bool(f, "Singleton", false)
@@ -1976,6 +1986,23 @@ public final class ActionRows {
           .pausedIf(expression(f.get("ActionPausedIfTrue")))
           .abortIfInstigatorDies(bool(f, "AbortIfInstigatorDies", true))
           .build();
+    }
+
+    /**
+     * Whether the row's NextAction chain, followed from row to row by name, leads back to the row:
+     * the chain the loader clears. Only NextAction is followed, as the loader follows it; a chain
+     * that loops without the row is not.
+     */
+    private boolean nextChainReturns(String name) {
+      Set<String> seen = new HashSet<>();
+      String next = rowName(tables.action(name).fields().get("NextAction"));
+      while (next != null && seen.add(next)) {
+        if (next.equals(name)) {
+          return true;
+        }
+        next = rowName(tables.action(next).fields().get("NextAction"));
+      }
+      return false;
     }
 
     /**
@@ -3647,12 +3674,12 @@ public final class ActionRows {
             name + " spawns " + spawnType + ", which is not modelled");
       }
       // The projectile branch's columns, which the character branch does not read, and the
-      // context target, which the perform hands every branch and this port does not follow.
+      // context target, which the perform hands every branch and this port does not follow. The
+      // two aim expressions are read by the projectile branch alone, so a character spawn that
+      // sets them (the hero Dark Prince's mount, at "x" and "y") spawns where it would without.
       for (String column :
           List.of(
               "StartPositionZOffset",
-              "TargetExprX",
-              "TargetExprY",
               "TargetFromContextName",
               "UseScratchBlackboard",
               "ProjectileStartOffset")) {

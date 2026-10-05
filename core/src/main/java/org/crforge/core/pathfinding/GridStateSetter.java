@@ -107,7 +107,7 @@ public final class GridStateSetter implements StateSetter {
   private final int deployTimeMs;
 
   /** The unit's movement columns, which the dashing state's entry reads; null for none. */
-  private final MovementConfig movementConfig;
+  private MovementConfig movementConfig;
 
   /**
    * What entering and leaving the casting state needs: the unit's countdowns, its ability's cast
@@ -285,6 +285,16 @@ public final class GridStateSetter implements StateSetter {
     this.targeting = targeting;
     this.chains = chains;
     this.deployTimeMs = deployTimeMs;
+    this.movementConfig = movementConfig;
+  }
+
+  /**
+   * The unit's movement columns from now on, as a swap of its row makes them: the charge reset and
+   * the dashing state's entry read the row the unit has.
+   *
+   * @param movementConfig the unit's movement columns
+   */
+  public void setMovementConfig(MovementConfig movementConfig) {
     this.movementConfig = movementConfig;
   }
 
