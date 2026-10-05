@@ -563,7 +563,7 @@ public class CharacterEntity extends WorldEntity {
 
     GridEntity view = getView();
     TargetingState targeting = getTargeting();
-    targeting.setMovementComponentActive(!data.building());
+    targeting.setMovementComponentActive(data.hasMovementComponent());
     this.unit =
         new GridUnitState(
             view,
@@ -700,7 +700,7 @@ public class CharacterEntity extends WorldEntity {
 
     targetingComponent = new TargetingComponent();
     attach(targetingComponent);
-    if (!data.building()) {
+    if (data.hasMovementComponent()) {
       attach(new MovementComponent());
     }
     if (getHitPoints() != null) {
@@ -1218,9 +1218,19 @@ public class CharacterEntity extends WorldEntity {
    * once, its copies rebuilt from the live list, so a unit on a row the slot does not follow is no
    * copy of it from then on.
    *
+   * <p>A ground unit without a movement component may take a ground row with a speed, as the
+   * Tombstone hero's passive monster takes its active row as its ability fires: it is given a new
+   * movement component, switched on, as a unit with a speed is created with one, and from the next
+   * movement visit it walks at the new speed. A unit draining over a lifetime may take a row
+   * without one, the same swap: the drain ends at once, the hit points kept. A building without a
+   * speed or a lifetime may take another such building row, as the Tombstone hero's dummy breaks.
+   * Once a unit has deployed its new row's deploy time is not read, and a row without an ability
+   * may follow one with an ability while the unit is not casting.
+   *
    * <p>Refused rather than guessed: any other building row, a flying row either side but those, any
-   * other swap that builds or frees the movement component or reaches a lifetime, and a different
-   * rarity or deploy time. A shield keeps its value, its maximum taken from the new row.
+   * other swap that builds or frees the movement component or reaches a lifetime, a different
+   * rarity, a different deploy time while the unit deploys, and another ability. A shield keeps its
+   * value, its maximum taken from the new row.
    *
    * @param rowName the name of the new character row
    * @param resetTarget true to give up the target rather than keep it
@@ -1235,7 +1245,23 @@ public class CharacterEntity extends WorldEntity {
     TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
     boolean becomesBuilding = !getData().building() && next.building();
     boolean startsLifetime = getData().lifeTimeMs() == 0 && next.lifeTimeMs() > 0;
+    boolean endsLifetime = getData().lifeTimeMs() > 0 && next.lifeTimeMs() == 0;
+    boolean buildsMovement = !hasMovementComponent() && next.hasMovementComponent();
     swapRow(next);
+    if (endsLifetime) {
+      // The hit points' data hook recomputes the step from the new row, 0 without a lifetime, and
+      // zeroes the carried hundredths: the drain ends at once, the hit points left as they are.
+      getHitPoints().endDecay();
+    }
+    if (buildsMovement) {
+      // A unit without a movement component that takes a row with a speed is given a new one,
+      // switched on: as its creation gives one, with nothing carried over, and nothing else
+      // told of it.
+      attach(new MovementComponent());
+      getView().setMovementComponent(true);
+      getView().setMovementActive(true);
+      targeting.setMovementComponentActive(true);
+    }
     if (startsLifetime && !becomesBuilding) {
       // The drain from the new row's lifetime at the unchanged level, run by the hit-points visit
       // from the next pass.
@@ -1406,6 +1432,46 @@ public class CharacterEntity extends WorldEntity {
     // the run's push; the movement config was built from a ground row.
     boolean landedFromFlight =
         current.air() && !next.air() && !current.flyDirectPaths() && landedByRun();
+    // A building without a speed or a lifetime may take another such building row, as the
+    // Tombstone hero's dummy takes its broken row: neither has a movement component, and the swap
+    // only recomputes the hit points' maximum.
+    boolean buildingToBuilding =
+        current.building()
+            && next.building()
+            && !current.hasMovementComponent()
+            && !next.hasMovementComponent()
+            && current.lifeTimeMs() == 0
+            && next.lifeTimeMs() == 0;
+    // A ground unit without a movement component may take a ground row with a speed, as the
+    // Tombstone hero's passive monster takes its active row: the swap builds it a new movement
+    // component.
+    boolean buildsMovement =
+        !current.building()
+            && !next.building()
+            && !current.air()
+            && !next.air()
+            && !hasMovementComponent()
+            && next.hasMovementComponent();
+    // A unit draining over a lifetime may take a row without one, the same monster again: the hit
+    // points' data hook ends the drain.
+    boolean endsLifetime =
+        !current.building()
+            && !next.building()
+            && current.lifeTimeMs() > 0
+            && next.lifeTimeMs() == 0;
+    // A row with an ability may give way to one without, once the unit is not casting: the battle
+    // object keeps no copy of the ability, every reader asks the row it has.
+    boolean dropsAbility =
+        current.ability() != null
+            && next.ability() == null
+            && getView().getState() != GridEntityState.CASTING;
+    // The deploy time is read only as the unit enters the deploying state, so it may change once
+    // the unit has deployed.
+    int state = getView().getState();
+    boolean deployed =
+        state != GridEntityState.DEPLOYING
+            && state != GridEntityState.WAITING_TO_DEPLOY
+            && state != GridEntityState.CLONE_SETUP;
     // Likewise a unit that jumps the river may take a row that jumps it alike.
     boolean sameJump =
         current.jumpEnabled()
@@ -1414,22 +1480,22 @@ public class CharacterEntity extends WorldEntity {
             && current.jumpSpeed() == next.jumpSpeed();
     String refused = null;
     if ((next.air() || current.air()) && !sameFlight && !liftedToFlight && !landedFromFlight
-        || current.building()
-        || next.building() && !breaksDown) {
+        || (current.building() || next.building()) && !breaksDown && !buildingToBuilding) {
       refused = "a building or a flying row";
-    } else if (!breaksDown && (current.speed() == 0) != (next.speed() == 0)) {
+    } else if (!breaksDown && !buildsMovement && (current.speed() == 0) != (next.speed() == 0)) {
       refused = "a movement component built or freed";
     } else if (!breaksDown
         && !startsLifetime
+        && !endsLifetime
         && (current.lifeTimeMs() != 0 || next.lifeTimeMs() != 0)) {
       refused = "a lifetime";
     } else if (current.spawnCharacter() != null || next.spawnCharacter() != null) {
       refused = "a spawner";
     } else if (current.rarity() != next.rarity()) {
       refused = "a level packed against another rarity";
-    } else if (current.deployTimeMs() != next.deployTimeMs()) {
+    } else if (current.deployTimeMs() != next.deployTimeMs() && !deployed) {
       refused = "another deploy time";
-    } else if (!Objects.equals(current.ability(), next.ability())) {
+    } else if (!Objects.equals(current.ability(), next.ability()) && !dropsAbility) {
       refused = "another ability";
     } else if (current.chargeRange() != 0
         || next.chargeRange() != 0
@@ -1698,12 +1764,13 @@ public class CharacterEntity extends WorldEntity {
     view.setZ(data.flyingHeight());
     view.setZTotal(data.flyingHeight());
     // A building has no movement component, and stands in the overlay as an obstacle; an
-    // occluder stands in it too while it stands still.
+    // occluder stands in it too while it stands still. A row without a speed has no movement
+    // component either, a building or not.
     view.setBuilding(data.building());
     view.setOccludes(data.building());
     view.setOccluder(data.occluder());
-    view.setMovementComponent(!data.building());
-    view.setMovementActive(!data.building());
+    view.setMovementComponent(data.hasMovementComponent());
+    view.setMovementActive(data.hasMovementComponent());
     view.setTargetable(1);
     view.setX(x);
     view.setY(y);

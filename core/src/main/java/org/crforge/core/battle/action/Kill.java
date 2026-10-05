@@ -5,7 +5,8 @@ import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * An action that kills its owner: its kill action is scheduled on the owner first, and the owner is
- * then killed with the entity that caused the action as its killer. An owner without hit points is
+ * then killed with the entity that caused the action as its killer - at once, or at the damage
+ * drain of the tick on a data version that queues the kill there. An owner without hit points is
  * left alone, its kill action included.
  */
 @Fidelity(

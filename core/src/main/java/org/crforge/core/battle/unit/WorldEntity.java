@@ -1077,6 +1077,24 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public int modifyDamage(int damage) {
         return buffs.damageReduction(damage);
       }
+
+      // The attacker's buffs scale the damage by their damage multipliers, which is not traced: a
+      // hit dealt while the dealer carries a buff that sets one is refused.
+      @Override
+      public int attackerDamagePercent() {
+        if (dealer != null) {
+          for (BuffInstance instance : dealer.getBuffs().items()) {
+            if (instance.getBuff().damageMultiplier() != 0) {
+              throw new UnsupportedOperationException(
+                  dealer.name()
+                      + " hits while it carries "
+                      + instance.getBuff().name()
+                      + ", whose DamageMultiplier is not modelled");
+            }
+          }
+        }
+        return 100;
+      }
     };
   }
 
