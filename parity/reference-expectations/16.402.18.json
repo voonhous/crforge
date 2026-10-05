@@ -211,7 +211,7 @@
   "evo-sweep-v2/evo_tesla_vs_giant": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_valkyrie_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_wallbreakers_vs_musketeer": {"outcome": "mismatch", "first_divergent_tick": 1351, "path": "$.entities[0].x"},
-  "evo-sweep-v2/evo_witch_vs_musketeer": {"outcome": "unsupported", "feature": "spawning Witch_EV1_Skeleton_Interval asks for a ring around a character, which reads the character's own spawn columns, which is not established", "input": "the run"},
+  "evo-sweep-v2/evo_witch_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_wizard_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_zap_on_musketeer": {"outcome": "diagnostic_match"},
   "evolution-v2/knight_evolved_third_play": {"outcome": "diagnostic_match"},
@@ -427,7 +427,7 @@
   "tv-replays-v3/tv_replay_004": {"outcome": "unsupported", "feature": "proj_4000310 hops on after its launcher left, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_005": {"outcome": "unsupported", "feature": "BalloonHero_Ability_Target_Seeker is a shape selector that sets OnFinishedAction, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_006": {"outcome": "mismatch", "first_divergent_tick": 555, "path": "$.entities.length"},
-  "tv-replays-v3/tv_replay_007": {"outcome": "unsupported", "feature": "spawning Witch_EV1_Skeleton_Interval asks for a ring around a character, which reads the character's own spawn columns, which is not established", "input": "the run"},
+  "tv-replays-v3/tv_replay_007": {"outcome": "unsupported", "feature": "ValkyrieHero_Charge_Target is a shape selector that sets ActionOnSelfWhenTriggered, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_008": {"outcome": "unsupported", "feature": "SkeletonKing_Capture_Soul, an ActionSoulDrain, sets ExecuteIfTrue, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_009": {"outcome": "unsupported", "feature": "MegaKnight_EV1_uppercut, an ActionMegaKnightUppercut, sets ExecuteIfTrue, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"},
@@ -441,7 +441,7 @@
   "tv-replays-v3/tv_replay_018": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target's target Firecracker leaves, whose died action MegaMinion_hero_reset_ability is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_019": {"outcome": "unsupported", "feature": "ValkyrieHero_Charge_Target is a shape selector that sets ActionOnSelfWhenTriggered, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_020": {"outcome": "unsupported", "feature": "MiniPekkaHero_run_timer_continuous steps under a buff on its owner's hit speed, whose scaling is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "spawning Witch_EV1_Skeleton_Interval asks for a ring around a character, which reads the character's own spawn columns, which is not established", "input": "the run"},
+  "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "MinionHorde_EV1 sets columns the battle does not model: [OnDamageTakenAction, OnDamageTakenActionInstigatorAsSelf]", "input": "the run"},
   "tv-replays-v3/tv_replay_022": {"outcome": "unsupported", "feature": "MinionGiant_run_on_resolved resolves through MinionGiant_easter_egg_resolver, whose shape MinionGiant_easter_egg_shape is not a Global one, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "ronin_parry is an ActionCounter, which the battle does not have", "input": "the run"}
  }

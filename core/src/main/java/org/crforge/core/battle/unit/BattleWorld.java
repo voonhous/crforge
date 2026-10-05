@@ -5058,11 +5058,18 @@ public class BattleWorld implements HolderPasses {
    * the point and flies it back to its ring point. A child of a source other than a character made
    * with a deploy time faces along the length toward the enemy, a vector of length 1.
    *
+   * <p>A ring around a character source reads the source's own row: an angle shift turns the ring
+   * by the shift and the angle the source faces, as a character's own spawner turns it, and a row
+   * whose death spawn pushes its children makes the ring push them although the spawn does not ask.
+   * The source's running actions hear of each child, by its id, as the last step of its making, as
+   * they hear of what a character's own spawner makes: the evolved Witch's soul drain counts the
+   * skeletons of her interval spawn as hers.
+   *
    * <p>Refused rather than guessed: a morph, a spawn for the other side, a ring around a character
-   * source, which reads its own spawn columns, and a unit that paths to its spawn point. A child
-   * without a speed stands where it is made, and one without hit points is taken like any other. A
-   * child with a starting action of its own starts it as the cleanup's fold admits it: the action
-   * is scheduled then, outside every pending pass.
+   * whose row draws each child's radius or attaches its children, and a unit that paths to its
+   * spawn point. A child without a speed stands where it is made, and one without hit points is
+   * taken like any other. A child with a starting action of its own starts it as the cleanup's fold
+   * admits it: the action is scheduled then, outside every pending pass.
    *
    * @param source the object the children are spawned from
    * @param arguments the block the row's perform works out
@@ -5071,6 +5078,13 @@ public class BattleWorld implements HolderPasses {
   public List<SpawnHost> spawnCharacters(SpawnHost source, SpawnArguments arguments) {
     UnitData data = arguments.configuration();
     refuseUnestablished(source, arguments, data);
+    // A character source's own row: its angle shift turns a ring, with the angle it faces, and its
+    // death spawn's pushback makes a ring push its children when the spawn does not ask.
+    WorldEntity ownRow =
+        source instanceof WorldEntity entity && entity.isCharacter() ? entity : null;
+    int turn = arguments.radius() != 0 && ownRow != null ? ringTurn(ownRow) : 0;
+    boolean pushback =
+        arguments.spawnPushback() || (ownRow != null && ownRow.getData().deathSpawnPushback());
     List<SpawnHost> made = new ArrayList<>();
     for (int i = 0; i < arguments.count(); i++) {
       int[] at =
@@ -5081,6 +5095,10 @@ public class BattleWorld implements HolderPasses {
               arguments.count(),
               arguments.noOffset(),
               arguments.radius(),
+              turn,
+              SpawnPlacement.NO_REACH,
+              0,
+              0,
               (x, y) -> SpawnPassable.passable(tileMap, x, y, data.collisionRadius()));
       if (arguments.radius() != 0 && arguments.constPriority()) {
         // A ring whose children take a fixed priority asks the lane of the point before each
@@ -5114,9 +5132,8 @@ public class BattleWorld implements HolderPasses {
               x,
               y,
               PackedLevel.level(PackedLevel.pack(level, data.rarity())));
-      if (arguments.radius() != 0 && arguments.spawnPushback()) {
-        // On the point, flying back to its ring point; a character source, whose own death spawn
-        // pushback would decide when the row does not push, is refused above.
+      if (arguments.radius() != 0 && pushback) {
+        // On the point, flying back to its ring point.
         child.flyBackFrom(arguments.x(), arguments.y());
       }
       // A fixed priority per child: the i-th is taken as (80i)^2 nearer by a selection.
@@ -5155,6 +5172,11 @@ public class BattleWorld implements HolderPasses {
             .schedule(arguments.action(), ActionHolder.OWN_DELAY, false, source.actionHolder());
       }
       made.add(child);
+      // The spawner's last act on each child: the source's running actions hear of it.
+      ActionHolder actions = source.actionHolder();
+      if (actions != null) {
+        actions.childSpawned(child.getId());
+      }
     }
     return made;
   }
@@ -7560,8 +7582,19 @@ public class BattleWorld implements HolderPasses {
       refused = "a morph";
     } else if (arguments.enemy()) {
       refused = "a spawn for the other side";
-    } else if (arguments.radius() != 0 && source.isCharacter()) {
-      refused = "a ring around a character, which reads the character's own spawn columns";
+    } else if (arguments.radius() != 0
+        && source instanceof WorldEntity entity
+        && entity.isCharacter()
+        && entity.getData().deathSpawnMinRadius() != 0) {
+      // Each child's radius would be drawn from the battle's random source.
+      refused = "a ring around a character whose row draws each child's radius";
+    } else if (arguments.radius() != 0
+        && source instanceof WorldEntity entity
+        && entity.isCharacter()
+        && entity.getData().spawnAttach()
+        && !arguments.deathSpawn()) {
+      // Each child would be carried by the source, at its index and ring angle.
+      refused = "a ring around a character whose row attaches its children";
     } else if (data.spawnPathfindSpeed() != 0) {
       refused = "a unit that paths to its spawn point";
     } else if (data.groupMaxSize() > 0
