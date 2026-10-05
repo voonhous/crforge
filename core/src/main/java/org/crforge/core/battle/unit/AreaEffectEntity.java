@@ -200,7 +200,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " schedule, its list through its filter nearest first, its damage type's amounts"
             + " for a troop and a crown tower, its buff on each listed object and its one more"
             + " update, held by the newer data's Zap, Rage, Poison and Freeze plays; its damage"
-            + " order within a tick and a protecting buff on its target held by no run.")
+            + " order within a tick and a protecting buff on its target held by no run. Its"
+            + " target limit, its list taken again with the most hit points and shield first,"
+            + " and its projectile onto each object it hits or, with TargetProjectiles off, one"
+            + " onto its own point, held by the newer data's Lightning, Vines and Royal Delivery"
+            + " plays; an end on its first hit with such a projectile held by no run.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -555,11 +559,19 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * the row caps it - when that time is at least 1, at the area effect's level and for its side,
    * the area effect its parent when the buff is controlled by its parent.
    *
+   * <p>A row with HitBiggestTargets then takes the list again, those with the most hit points and
+   * shield first, an object without hit points last, objects as big kept nearest first. A row with
+   * MaximumTargets hits at most that many objects of the list a hit; any other hits all of it.
+   *
    * <p>A row that hits each object once passes by an object an earlier hit reached: it gets
-   * nothing. Any other is listed as reached before its push. After the first object a hit reaches,
-   * the row's hit action on itself is scheduled on the area effect, that object the cause; and a
-   * row that ends on its first hit has its countdown set to -1 there and its list left, so the rest
-   * of the list gets nothing and the cleanup after the update removes it.
+   * nothing, and does not count against the row's maximum. Any other is listed as reached before
+   * its push. After its buff, a row with a projectile and TargetProjectiles on (as a row leaves it)
+   * launches one onto the object, from the object's point at the row's start height. After the
+   * first object a hit reaches, the row's hit action on itself is scheduled on the area effect,
+   * that object the cause; and a row that ends on its first hit has its countdown set to -1 there
+   * and its list left, so the rest of the list gets nothing and the cleanup after the update
+   * removes it. After the list, a row with a projectile and TargetProjectiles off launches one onto
+   * its own point at its start height, with no target, on every hit, whatever the list holds.
    *
    * <p>The push, with a pushback of at least 1, reaches only a character whose movement component
    * is on: anything else, a tower or a troop still deploying among them, is left where it is, and
@@ -582,10 +594,22 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         Comparator.comparingInt(
             target ->
                 FixedMath.squaredDistance(x, y, target.getView().getX(), target.getView().getY())));
+    // The biggest first: a second stable sort, by hit points and shield, the most first, an object
+    // without hit points after every other; it keeps the nearest first among equals.
+    if (data.hitBiggestTargets()) {
+      listed.sort(
+          Comparator.comparing((WorldEntity target) -> target.getHitPoints() == null)
+              .thenComparing(Comparator.comparingInt(AreaEffectEntity::size).reversed()));
+    }
     world.shapeListed(this, listed);
     BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
+    ProjectileData projectile =
+        data.projectile() == null ? null : world.getRecords().projectile(data.projectile());
+    // The objects a hit may still take: the row's maximum, or the whole list without one.
+    int left = data.maximumTargets() > 0 ? data.maximumTargets() : listed.size();
     boolean first = true;
-    for (WorldEntity target : listed) {
+    for (int i = 0; i < listed.size() && left > 0; i++) {
+      WorldEntity target = listed.get(i);
       // One hit per target: an object already reached is passed by, anything else listed as
       // reached. (A row that pushes a reached object again, ContinuousPushback, is refused.)
       if (data.oneHitPerTarget()) {
@@ -618,6 +642,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           world.filterBuff(this, target, buff, time);
         }
       }
+      // A projectile onto the object, from where it stands at the row's start height.
+      if (projectile != null && data.targetProjectiles()) {
+        launchFilterProjectile(
+            projectile, target, target.getView().getX(), target.getView().getY());
+      }
       // The hit action on itself, once a hit: scheduled on the area effect, the object the cause.
       if (first && data.onHitSelfAction() != null) {
         BattleAction self = world.getActions().build(data.onHitSelfAction(), binding());
@@ -625,10 +654,34 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
       if (data.expireOnTrigger()) {
         countdown = -1;
-        return;
+        break;
       }
+      left--;
       first = false;
     }
+    // Without a projectile for each object, one onto its own point, on every hit, whatever the
+    // list holds (an end on the first hit included).
+    if (projectile != null && !data.targetProjectiles()) {
+      launchFilterProjectile(projectile, null, x, y);
+    }
+  }
+
+  /** What the biggest are taken by: an object's hit points and shield, 0 without hit points. */
+  private static int size(WorldEntity target) {
+    HitPoints hitPoints = target.getHitPoints();
+    return hitPoints == null ? 0 : hitPoints.getHitPoints() + hitPoints.getShield();
+  }
+
+  /**
+   * The filter form's launch: the row's projectile from the given point at the row's start height
+   * to that same point, at the target or none, the area effect its launcher, owner and root, as
+   * {@link #launch} launches one. The row's load refuses a start height below 0, which launches
+   * from the area effect's source.
+   */
+  private void launchFilterProjectile(ProjectileData row, WorldEntity target, int px, int py) {
+    ProjectileEntity launched = new ProjectileEntity(world, row, side);
+    launched.launchFromArea(this, target, px, py, data.projectileStartHeight(), px, py);
+    world.launch(launched);
   }
 
   /**

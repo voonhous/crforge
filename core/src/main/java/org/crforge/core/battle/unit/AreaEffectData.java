@@ -22,7 +22,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onlyEnemies true when its hits spare its own side
  * @param ignoreBuildings true when its hits spare buildings
  * @param pushback how far a hit pushes its victims; 0 for none
- * @param maximumTargets the most victims a hit takes; 0 for no limit
+ * @param maximumTargets the most victims a hit takes; 0 for no limit. In the filter form, the most
+ *     objects of its list a hit reaches, an object it passes by not counted
  * @param sharedDamage true when a hit's damage is shared out among its victims
  * @param onStartingAction the action it runs as it joins the battle, or null
  * @param onLifeTimeEndAction the action it runs when its life ends, or null
@@ -35,8 +36,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param projectile the projectile it launches on each update whose hit count rose, or null for
  *     none
  * @param hitBiggestTargets true when it drops each projectile onto the enemy in its circle with the
- *     most hit points and shield it has not struck yet; false to drop it onto its own point
+ *     most hit points and shield it has not struck yet; false to drop it onto its own point. In the
+ *     filter form, true when its list is taken with the most hit points and shield first
  * @param projectileStartHeight the height its projectiles start at
+ * @param targetProjectiles in the filter form, true (as a row leaves it) to launch its projectile
+ *     onto each object a hit reaches, false to launch one a hit onto its own point
  * @param affectsHidden true when it reaches a hidden unit, which nothing else does
  * @param controlsBuff true when its slot that removes the instances it is the parent of acts; no
  *     path the battle models reaches that slot, and a parent's instances go as the parent leaves
@@ -113,6 +117,7 @@ public record AreaEffectData(
     String projectile,
     boolean hitBiggestTargets,
     int projectileStartHeight,
+    boolean targetProjectiles,
     boolean affectsHidden,
     boolean controlsBuff,
     boolean cloning,
