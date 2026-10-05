@@ -277,7 +277,9 @@ class BattleTauntTest {
   }
 
   @Test
-  @DisplayName("a unit's taunt that outlasts its first step is refused as it steps")
+  @DisplayName(
+      "a unit's taunt that outlasts its first step keeps the reference on the forced object, then"
+          + " lets it go as the duration runs out")
   void aLongerTauntOnAUnit(@TempDir Path folder) throws IOException {
     Files.createDirectories(folder);
     GameTables longer =
@@ -298,9 +300,13 @@ class BattleTauntTest {
     scene.demolisher.actionHolder().start(spawn, scene.demolisher.actionHolder());
     scene.match.getBattle().step();
     assertThat(scene.taunts).contains("demolisher performed onto demolisher");
-    assertThatThrownBy(() -> scene.match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ResetTauntEffect lasts past its first step");
+    scene.taunts.clear();
+    scene.match.getBattle().step();
+    assertThat(scene.taunts).containsExactly("demolisher [raise LOCK_TARGET]");
+    scene.taunts.clear();
+    scene.match.getBattle().step();
+    assertThat(scene.taunts).hasSize(1);
+    assertThat(scene.taunts.get(0)).startsWith("demolisher [remaining 0").contains("finish");
   }
 
   @Test

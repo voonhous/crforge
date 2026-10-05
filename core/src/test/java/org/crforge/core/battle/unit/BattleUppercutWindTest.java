@@ -217,7 +217,8 @@ class BattleUppercutWindTest {
 
   @Test
   @DisplayName(
-      "the targeting queue's flush takes nothing of a mark at priority 0 and refuses one above")
+      "the targeting queue's flush takes nothing of a mark at priority 0 and takes one above as"
+          + " the reference")
   void theQueueFlush() {
     Scene scene = new Scene();
     CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 10000, "mk");
@@ -228,10 +229,10 @@ class BattleUppercutWindTest {
     scene.step(1);
     mk.markTarget(knight, 0);
     mk.markTarget(knight, 1);
+    mk.tauntDrop(false);
 
-    assertThatThrownBy(() -> scene.step(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("takes a target from its targeting queue");
+    scene.step(1);
+    assertThat(mk.getTargeting().getReference()).isSameAs(knight.getTargetView());
   }
 
   @Test

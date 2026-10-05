@@ -1954,14 +1954,17 @@ public interface WorldObserver {
       int[] pushPoint) {}
 
   /**
-   * An uppercut marked its target in the unit's targeting queue.
+   * An uppercut marked its target, or a taunt its forced object, in the unit's targeting queue.
    *
    * @param current the unit's current target
    */
   default void uppercutMarked(
       int tick, CharacterEntity unit, WorldEntity target, int priority, WorldEntity current) {}
 
-  /** A unit's pre-hook emptied its targeting queue, taking nothing from it. */
+  /**
+   * A unit's pre-hook emptied its targeting queue, its reference already set to the entry it took,
+   * if any.
+   */
   default void targetQueueFlushed(int tick, CharacterEntity unit) {}
 
   /** An uppercut's target left the battle and was forgotten. */
