@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.target;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,33 @@ class RemovalNoticeTest {
     GridEntity entity = new GridEntity();
     entity.setName(name);
     return new TargetView(entity, null);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit any of whose entries remembers its targets drops the id of an entity that left from"
+          + " them, keeping the order of the rest; one whose entries do not keeps them")
+  void aRememberedIdIsDropped() {
+    GridEntity gone = new GridEntity();
+    gone.setId(21);
+    TargetView left = new TargetView(gone, null);
+    AttackSequenceEntry remembers =
+        AttackSequenceEntry.none().toBuilder().rememberMultipleTargets(1).build();
+    TargetingConfig remembering =
+        knight().toBuilder()
+            .attackSequenceEntries(List.of(AttackSequenceEntry.none(), remembers))
+            .build();
+    TargetingState t = attacking(remembering, view("tower"));
+    t.getRememberedTargetIds().addAll(List.of(20, 21, 22, 21));
+
+    RemovalNotice.entityRemoved(t, left, null);
+
+    assertThat(t.getRememberedTargetIds()).containsExactly(20, 22, 21);
+
+    TargetingState plain = attacking(knight(), view("tower"));
+    plain.getRememberedTargetIds().addAll(List.of(20, 21));
+    RemovalNotice.entityRemoved(plain, left, null);
+    assertThat(plain.getRememberedTargetIds()).containsExactly(20, 21);
   }
 
   @Test
