@@ -35,8 +35,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " retargeting and the expiry with and without an attacking owner, and the finish that"
             + " removes its buffs; held by goblin_demolisher_knight and ability_hero_knight. The"
             + " falloff on a lost reach, the re-arm and the end as its forced object leaves are"
-            + " translated but held by no run. A unit's taunt that outlasts one step, and with it"
-            + " the mark of the reference, is refused as it steps.")
+            + " translated but held by no run. A unit's steps: the reference kept while it stays"
+            + " on the forced object, or marked in the targeting queue and forced back onto it,"
+            + " nothing while the targeting component is off.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -138,8 +139,8 @@ final class TauntRun extends ActionInstance {
    * its reference; and a building owner that reaches the object has its reference forced again when
    * the row allows building retargeting and its falloff reloaded when the row tests the reach by
    * distance, while one that does not reach it loses falloff, let go once that is spent, and gives
-   * up the reference under building retargeting. A reference on the forced object locks the
-   * selector again.
+   * up the reference under building retargeting. A unit's step is {@link #stepUnit}. A reference on
+   * the forced object locks the selector again.
    */
   @Override
   protected void update(ActionHolder holder) {
@@ -182,8 +183,9 @@ final class TauntRun extends ActionInstance {
       return;
     }
     if (unit) {
-      throw new UnsupportedOperationException(
-          taunt.name() + " lasts past its first step, which is not modelled");
+      stepUnit(calls);
+      closeStep(calls);
+      return;
     }
     if (captured() && referenced()) {
       remaining(0, calls);
@@ -213,6 +215,43 @@ final class TauntRun extends ActionInstance {
         calls.add("set_target null 0 0 0");
       }
     }
+    closeStep(calls);
+  }
+
+  /**
+   * A unit's step while the duration lasts. With its targeting component off (a stun or a freeze)
+   * nothing is done. A reference still on the forced object is given up, the wind-up kept, only
+   * when the object has been captured. A reference on anything else, or none, is forced back onto
+   * the object - marked in the unit's targeting queue at priority 1, set without the setter's
+   * re-check, the selector locked and the re-selection wait set to what is left of the duration -
+   * unless the object is captured or the unit is dashing, winding up a dash or carries the dashing
+   * tag.
+   */
+  private void stepUnit(List<String> calls) {
+    if (!owner.isActive(CharacterEntity.TARGETING_SLOT)) {
+      return;
+    }
+    if (referenced()) {
+      if (captured()) {
+        owner.tauntRelease();
+        calls.add("set_target null 0 1 1");
+        remaining(0, calls);
+      }
+      return;
+    }
+    if (captured()
+        || owner.getView().getState() == GridEntityState.DASHING
+        || owner.getTargeting().getDashWindupMs() > 0
+        || (owner.getView().getFlags() & owner.getView().getFlagBits().dashing()) != 0) {
+      return;
+    }
+    ((CharacterEntity) owner).markTarget(forced, 1);
+    calls.add("mark " + forced.name() + " 1");
+    force(true, calls);
+  }
+
+  /** The step's close: a reference on the forced object locks the selector again. */
+  private void closeStep(List<String> calls) {
     if (referenced()) {
       owner.raiseLockTarget();
       calls.add("raise LOCK_TARGET");
