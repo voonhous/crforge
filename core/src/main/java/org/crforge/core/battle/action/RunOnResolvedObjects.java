@@ -23,7 +23,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * leaving the pool as it was, one that keeps a single candidate ending the search - and the first
  * left is the one object found. RESOLVER_STRATEGY_CLOSEST_TARGET keeps the smallest squared
  * distance from the owner's position, RESOLVER_STRATEGY_FURTHEST_TARGET the largest,
- * RESOLVER_STRATEGY_LOWEST_MAX_HP the lowest maximum hit points plus maximum shield.
+ * RESOLVER_STRATEGY_LOWEST_MAX_HP the lowest maximum hit points plus maximum shield,
+ * RESOLVER_STRATEGY_HIGHEST_CURR_HP the highest current hit points plus current shield.
  *
  * <p>Action is then scheduled on the object found, built for it, with the owner as its cause and
  * the context the start carried; with RunActionsOnSelf it is scheduled on the owner instead, the
@@ -46,12 +47,16 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the self action when nothing is found; held by BattleRunOnResolvedTest and the"
             + " Ice Wizard hero's tap; a Cone shape's circle query and cone test, held by"
             + " BattleRunOnResolvedConeTest. A many pick with no action only asks whether anything"
-            + " passed. Refused: a many pick that runs an action, an Amount below 1 and any other"
-            + " strategy.")
+            + " passed. The highest current hit points plus shield strategy, read line for line"
+            + " and shared with the resolver write, is reached by no recorded tie. Refused: a many"
+            + " pick that runs an action, an Amount below 1 and any other strategy.")
 public final class RunOnResolvedObjects extends RowAction {
 
   /** The strategy that keeps the smallest squared distance from the position asked. */
   public static final String CLOSEST_TARGET = "RESOLVER_STRATEGY_CLOSEST_TARGET";
+
+  /** The strategy that keeps the highest current hit points plus current shield. */
+  public static final String HIGHEST_CURR_HP = "RESOLVER_STRATEGY_HIGHEST_CURR_HP";
 
   /** What the action asks of the battle about its owner. */
   public interface Host {
@@ -176,14 +181,15 @@ public final class RunOnResolvedObjects extends RowAction {
                 + " objects, whose order is not modelled");
       }
       for (String strategy : columns.strategies()) {
-        checkStrategy(strategy);
+        checkStrategy(strategy, name(), columns.resolver());
       }
       if (pool.isEmpty() && columns.noObjectsAction() != null) {
         host.scheduleOnOwner(columns.noObjectsAction(), holder, context);
       }
       return null;
     }
-    SetIndicatorOnTarget.Candidate found = pick(host, pool);
+    SetIndicatorOnTarget.Candidate found =
+        pick(host, pool, columns.strategies(), name(), columns.resolver());
     if (found == null) {
       if (columns.noObjectsAction() != null) {
         host.scheduleOnOwner(columns.noObjectsAction(), holder, context);
@@ -200,14 +206,26 @@ public final class RunOnResolvedObjects extends RowAction {
     return null;
   }
 
-  /** The single pick: the pool narrowed by each strategy in turn, its first, or null. */
-  private SetIndicatorOnTarget.Candidate pick(
-      Host host, List<SetIndicatorOnTarget.Candidate> pool) {
+  /**
+   * The single pick: the pool narrowed by each strategy in turn, its first, or null.
+   *
+   * @param host the owner, whose position the distance strategies measure from
+   * @param pool the candidates the resolver's shape and filter collected, in their order
+   * @param strategies the resolver's strategies, in order
+   * @param action the name of the row that resolves, for a refusal
+   * @param resolver the resolver's row name, for a refusal
+   */
+  static SetIndicatorOnTarget.Candidate pick(
+      Host host,
+      List<SetIndicatorOnTarget.Candidate> pool,
+      List<String> strategies,
+      String action,
+      String resolver) {
     if (pool.isEmpty()) {
       return null;
     }
-    for (String strategy : columns.strategies()) {
-      List<SetIndicatorOnTarget.Candidate> ties = ties(host, strategy, pool);
+    for (String strategy : strategies) {
+      List<SetIndicatorOnTarget.Candidate> ties = ties(host, strategy, pool, action, resolver);
       // A strategy that keeps nothing leaves the pool as it was; one that keeps a single
       // candidate ends the search, the strategies after it not asked.
       if (!ties.isEmpty()) {
@@ -221,24 +239,27 @@ public final class RunOnResolvedObjects extends RowAction {
   }
 
   /** Refuses a strategy not modelled. */
-  private void checkStrategy(String strategy) {
+  static void checkStrategy(String strategy, String action, String resolver) {
     if (!strategy.equals(CLOSEST_TARGET)
+        && !strategy.equals(HIGHEST_CURR_HP)
         && !strategy.equals(SetIndicatorOnTarget.FURTHEST_TARGET)
         && !strategy.equals(SetIndicatorOnTarget.LOWEST_MAX_HP)) {
       throw new UnsupportedOperationException(
-          name()
-              + " resolves through "
-              + columns.resolver()
-              + " by "
-              + strategy
-              + ", which is not modelled");
+          action + " resolves through " + resolver + " by " + strategy + ", which is not modelled");
     }
   }
 
-  /** The candidates tied for a strategy's best, in their order. */
-  private List<SetIndicatorOnTarget.Candidate> ties(
-      Host host, String strategy, List<SetIndicatorOnTarget.Candidate> pool) {
-    checkStrategy(strategy);
+  /**
+   * The candidates tied for a strategy's best, in their order. The highest current hit points plus
+   * current shield is kept as the most negative score, so every strategy keeps its lowest.
+   */
+  private static List<SetIndicatorOnTarget.Candidate> ties(
+      Host host,
+      String strategy,
+      List<SetIndicatorOnTarget.Candidate> pool,
+      String action,
+      String resolver) {
+    checkStrategy(strategy, action, resolver);
     List<Long> scores = new ArrayList<>();
     for (SetIndicatorOnTarget.Candidate candidate : pool) {
       long dx = (long) candidate.x() - host.x();
@@ -246,6 +267,7 @@ public final class RunOnResolvedObjects extends RowAction {
       scores.add(
           switch (strategy) {
             case CLOSEST_TARGET -> dx * dx + dy * dy;
+            case HIGHEST_CURR_HP -> -(long) candidate.currentHitPoints();
             case SetIndicatorOnTarget.FURTHEST_TARGET -> -(dx * dx + dy * dy);
             default -> (long) candidate.maxHitPoints();
           });

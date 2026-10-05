@@ -2,6 +2,7 @@ package org.crforge.core.battle.spawn;
 
 import java.util.function.IntSupplier;
 import lombok.Getter;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionRow;
@@ -30,9 +31,17 @@ import org.crforge.core.fidelity.FidelityStatus;
  * source of the turret's knockback is the turret itself, the same object, side and level as the
  * owner.
  *
+ * <p>A row that names its target in the context, as the Balloon hero's skeleton trooper is aimed,
+ * reads that name's key from the context it runs with - the main board, or the scratch board under
+ * UseScratchBlackboard - and launches at the live object of the id it holds, keeping it whatever
+ * the expressions; with no context, no value or a value of -1, or an id no live object holds, it
+ * launches at none. Its ProjectileStartOffset then moves the start that far toward that target
+ * along the line between them, the aim's default staying the owner's point.
+ *
  * <p>Refused rather than guessed, as the row is built: one that sets any spawn column besides its
- * data, its type, the start height, the two expressions, the source switch and the action to run on
- * what it spawned, which this branch does not read. Refused as it starts: a row without
+ * data, its type, the start height, the two expressions, the source switch, the action to run on
+ * what it spawned, the context target with its board and the start offset, which this branch does
+ * not read; and a board picked without a context name. Refused as it starts: a row without
  * ParentGOAsSource whose cause is missing or is not the owner; an owner that is a clone, whose
  * answer the projectile would copy; a row aimed by neither expression on an owner that is not a
  * character or whose targeting component is on and holds a reference, which the projectile would be
@@ -50,8 +59,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " The cause as the source when it is the owner, and the location class aimed by"
             + " neither expression at no target, are held by ability_hero_musketeer, where the"
             + " hero Musketeer's turret launches its knockback on its own point as it starts."
-            + " Refused: a cause other than the owner, an aim at a held target of either class,"
-            + " the count, the positions, the offsets and a clone as the owner.")
+            + " The target from the context and the start's move toward it, held by hero_balloon,"
+            + " where the hero Balloon's skeleton trooper falls on the enemy its ability found."
+            + " Refused: a cause other than the owner, an aim at a held target of either class"
+            + " without a context name, the count, the positions, the offsets and a clone as the"
+            + " owner.")
 public final class SpawnProjectile extends RowAction {
 
   /** The projectile row's name. */
@@ -75,6 +87,15 @@ public final class SpawnProjectile extends RowAction {
   /** True to take the owner as the source; false to take the cause, which must be the owner. */
   @Getter private final boolean parentGoAsSource;
 
+  /** The key of the context name the target is read under, or null for a row that names none. */
+  private final Integer contextTargetKey;
+
+  /** True to read the context target from the scratch board, false for the main board. */
+  private final boolean useScratch;
+
+  /** How far the start moves toward the target. */
+  private final int startOffset;
+
   /**
    * @param row the row's shared columns
    * @param projectile the projectile row's name
@@ -83,6 +104,9 @@ public final class SpawnProjectile extends RowAction {
    * @param aimY the aim along the arena's length, or null for the owner's own coordinate
    * @param spawnClass true for a row of the plain spawn class, false for the location class
    * @param parentGoAsSource true to take the owner as the source in place of the cause
+   * @param contextTargetKey the key of the context name the target is read under, or null for none
+   * @param useScratch true to read it from the scratch board
+   * @param startOffset how far the start moves toward the target, 0 for not at all
    */
   public SpawnProjectile(
       ActionRow row,
@@ -91,7 +115,10 @@ public final class SpawnProjectile extends RowAction {
       IntSupplier aimX,
       IntSupplier aimY,
       boolean spawnClass,
-      boolean parentGoAsSource) {
+      boolean parentGoAsSource,
+      Integer contextTargetKey,
+      boolean useScratch,
+      int startOffset) {
     super(row);
     this.projectile = projectile;
     this.startHeight = startHeight;
@@ -99,6 +126,9 @@ public final class SpawnProjectile extends RowAction {
     this.aimY = aimY;
     this.spawnClass = spawnClass;
     this.parentGoAsSource = parentGoAsSource;
+    this.contextTargetKey = contextTargetKey;
+    this.useScratch = useScratch;
+    this.startOffset = startOffset;
   }
 
   @Override
@@ -108,6 +138,11 @@ public final class SpawnProjectile extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    return start(holder, instigator, null);
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator, ActionContext context) {
     if (!(holder.getOwner() instanceof SpawnHost owner)) {
       throw new UnsupportedOperationException(name() + " runs on an object that cannot spawn");
     }
@@ -117,8 +152,25 @@ public final class SpawnProjectile extends RowAction {
       throw new UnsupportedOperationException(
           name() + " spawns a projectile from a cause other than its owner, which is not modelled");
     }
+    // The context target: the id the board holds under the name's key, -1 for none.
+    Integer targetId = null;
+    if (contextTargetKey != null && context != null) {
+      Integer held = context.readBoard(useScratch, contextTargetKey);
+      if (held != null && held != -1) {
+        targetId = held;
+      }
+    }
     owner.spawnProjectile(
-        name(), projectile, startHeight, aimX, aimY, spawnClass, holder.passPhase());
+        name(),
+        projectile,
+        startHeight,
+        aimX,
+        aimY,
+        spawnClass,
+        contextTargetKey != null,
+        targetId,
+        startOffset,
+        holder.passPhase());
     return null;
   }
 }
