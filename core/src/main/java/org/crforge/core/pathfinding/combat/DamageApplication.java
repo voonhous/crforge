@@ -49,7 +49,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " target both sides may damage, the presentation and the actions a hit runs on"
             + " arrival. The reflected attack, which runs between the subtraction and the death"
             + " test, is the battle's: it runs around this chain, held by electro_giant_struck and"
-            + " electro_giant_tower.")
+            + " electro_giant_tower. The target told of a hit that took hit points, after the"
+            + " death test and whatever the hit left, for its on-damage action, held by"
+            + " evo_minionhorde.")
 public final class DamageApplication {
 
   private DamageApplication() {
@@ -256,7 +258,11 @@ public final class DamageApplication {
       return DamageResult.NOTHING;
     }
     if (hitPoints.getHitPoints() < 1) {
-      // Already dead: the event is accepted, but there is nothing left to take.
+      // Already dead: the event is accepted, but there is nothing left to take. The whole amount
+      // still counts as taken off the hit points for the on-damage action.
+      if (damage >= 1) {
+        queries.hitPointsTaken(damage);
+      }
       return new DamageResult(true, 0, false);
     }
     queries.beforeSubtraction();
@@ -281,6 +287,10 @@ public final class DamageApplication {
       if (hitPoints.getHitPoints() < 0) {
         hitPoints.setHitPoints(0);
       }
+    }
+    // After the death test, whether the hit killed or not; nothing for a hit the shield took.
+    if (damage >= 1) {
+      queries.hitPointsTaken(damage);
     }
     return new DamageResult(true, applied, died);
   }

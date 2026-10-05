@@ -444,6 +444,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               public void hitCounted() {
                 reflecting.countHit(WorldEntity.this, true);
               }
+
+              @Override
+              public void hitPointsTaken(int amount) {
+                scheduleDamageTaken();
+              }
             });
     shieldHit(damage, shieldBefore, reflecting);
     refreshHitPoints();
@@ -1029,6 +1034,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public void hitPointsTaken(int amount) {
+        scheduleDamageTaken();
+      }
+
+      @Override
       public void hitCounted() {
         if (dealer != null) {
           dealer.countHit(WorldEntity.this, buffAfterHitsHeld);
@@ -1322,6 +1332,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     world.shieldLostScheduled(this, row.name(), cause);
     actionHolder()
         .schedule(row, ActionHolder.OWN_DELAY, false, cause == null ? null : cause.actionHolder());
+  }
+
+  /**
+   * The row's action as a hit takes hit points off the entity, scheduled on the entity's own holder
+   * with the entity itself as its cause and the row's own delay, as the subtraction's tail does
+   * after the death test: a killing hit schedules it too, and a hit its shield takes does not. Each
+   * hit schedules it anew; the row's own gate decides whether it does anything.
+   */
+  void scheduleDamageTaken() {
+    if (data.onDamageTakenAction() == null) {
+      return;
+    }
+    // Built at each hit, from the row the entity has then.
+    BattleAction row = world.getActions().build(data.onDamageTakenAction(), world.binding(this));
+    actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, actionHolder());
   }
 
   /** Brings the alive answer and the advertised hit points back into step with the object. */
