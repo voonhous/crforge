@@ -670,6 +670,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Starts an attack chain on the owner.
+   *
+   * @param action the chain
+   * @param holder the owner's holder
+   * @return the run
+   */
+  default ActionInstance attackChain(AttackChain action, ActionHolder holder) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Starts the evolved Goblin Drill's relocation on the owner.
    *
    * @param action the relocation

@@ -16,6 +16,7 @@ import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AttackChain;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BlowdartDartSelect;
 import org.crforge.core.battle.action.BossBanditAbility;
@@ -1849,7 +1850,7 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /** Switches a component on or off, the movement component's view and targeting bits with it. */
-  private void switchComponent(int slot, boolean on) {
+  void switchComponent(int slot, boolean on) {
     setActive(slot, on);
     if (slot == TARGETING_SLOT && !on) {
       targetingSwitchedOff();
@@ -2368,6 +2369,22 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
+  }
+
+  /**
+   * Starts an attack chain on the character: its first object picked and the chain begun on it, or
+   * the run left waiting. A clone, a rider and a carrier are refused, whose chain no reference
+   * holds.
+   */
+  @Override
+  public ActionInstance attackChain(AttackChain action, ActionHolder holder) {
+    if (isClone() || parent != null || !riders().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action.name() + " on " + name() + ", a clone, a rider or a carrier, not modelled");
+    }
+    AttackChainRun run = new AttackChainRun(action, this, holder);
+    run.start();
+    return run;
   }
 
   /** Starts the evolved Goblin Drill's relocation on the character, which must be a building. */
