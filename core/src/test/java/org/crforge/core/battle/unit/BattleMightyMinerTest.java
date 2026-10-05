@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -106,6 +107,23 @@ class BattleMightyMinerTest {
         .as("the Knight beside it")
         .isLessThan(knightFull);
     assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(minerFull);
+  }
+
+  @Test
+  @DisplayName(
+      "a filter that drops underground objects, as Vines' does, drops the Mighty Miner as it"
+          + " routes across and passes it once it lands")
+  void anUndergroundFilterDropsTheRoutingMiner() {
+    Scene scene = new Scene(GameData.tables(), 3500, 12000);
+    GameObjectFilter vines = scene.match.getWorld().getRecords().filter("enemy_troops_for_vines");
+    scene.switchLanes();
+    assertThat(vines.matches(scene.miner.filterSubject(), 1, "Vines")).isFalse();
+
+    while (scene.miner.getView().getState() == GridEntityState.INGAME_PATHFIND) {
+      scene.step();
+      assertThat(scene.tick).as("the Mighty Miner lands").isLessThan(TICKS);
+    }
+    assertThat(vines.matches(scene.miner.filterSubject(), 1, "Vines")).isTrue();
   }
 
   @Test

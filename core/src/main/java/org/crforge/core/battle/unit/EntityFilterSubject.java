@@ -13,10 +13,10 @@ import org.crforge.core.pathfinding.GridEntity;
             + " whether it is a clone,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
             + " pushback, its buffs' invisible count, and whether it is hidden, which asks the"
-            + " entity's own hidden test as the filter's hidden flag does; the summoner is the"
+            + " entity's own hidden test as the filter's hidden flag does, and whether it is"
+            + " underground, which asks the entity's own underground test; the summoner is the"
             + " king tower. Supplied: a princess tower is a row with the summoner-tower column,"
-            + " and nothing is underground or immune while dashing, neither of which the battle"
-            + " models yet.")
+            + " and nothing is immune while dashing, which the battle does not model yet.")
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
@@ -74,9 +74,13 @@ final class EntityFilterSubject implements FilterSubject {
     return entity.hidden();
   }
 
+  /**
+   * The filter's underground flag asks the entity's own underground test: a unit in its tunnel, and
+   * one routing to a point its ability sent it to unless its row keeps it visible there.
+   */
   @Override
   public boolean underground() {
-    return false;
+    return entity.underground();
   }
 
   @Override
