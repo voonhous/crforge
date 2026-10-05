@@ -1579,7 +1579,8 @@ public final class ActionRows {
                       || bool(f, "MatchOnlyFromSameOwnerIndex"));
             }
             case "ActionSoulDrain" -> {
-              refuseUnread(name, f, true);
+              // The start gate is the runtime's: asked as the flight starts.
+              refuseUnread(name, f, true, true);
               yield new SoulDrain(
                   shared,
                   integer(f, "ConstantFlightDuration"),
@@ -2243,16 +2244,28 @@ public final class ActionRows {
      * and, unless the class reads it, Singleton.
      */
     private void refuseUnread(String name, JsonNode f, boolean singleton) {
+      refuseUnread(name, f, singleton, false);
+    }
+
+    /**
+     * Refuses a row that sets one of the shared columns its class's run does not read, as {@link
+     * #refuseUnread(String, JsonNode, boolean)} does; with {@code startGated} the start gate
+     * (ExecuteIfTrue) is left to the runtime, which asks it as the action starts, before the class
+     * does anything, the same for every class it starts.
+     */
+    private void refuseUnread(String name, JsonNode f, boolean singleton, boolean startGated) {
       List<String> columns =
           new ArrayList<>(
               List.of(
                   "GameTagsToSet",
                   "NextAction",
-                  "ExecuteIfTrue",
                   "ActionPausedIfTrue",
                   "ForceStopIfTrue",
                   "ActionDelay",
                   "UpdatePhase"));
+      if (!startGated) {
+        columns.add("ExecuteIfTrue");
+      }
       if (singleton) {
         columns.add("Singleton");
       }
@@ -2275,7 +2288,8 @@ public final class ActionRows {
      * that pushes through the request's gates or dashes after the delay is refused.
      */
     private MegaKnightUppercut uppercut(String name, ActionRow shared, JsonNode f) {
-      refuseUnread(name, f, true);
+      // The start gate is the runtime's: asked as the uppercut starts, before its hold and target.
+      refuseUnread(name, f, true, true);
       if (!bool(f, "IgnorePushbackChecks", false)) {
         throw new UnsupportedOperationException(
             name + " pushes through the pushback request's gates, which is not modelled");
@@ -2878,16 +2892,18 @@ public final class ActionRows {
      * is never read in that mode. Refused: a mode other than the relative one or InjectedCharacter,
      * a relative warp with a speed or any of the flying warp's columns, an InjectedCharacter warp
      * without a speed, an offset away from a tower, a step of untargetability after the warp, and a
-     * row that sets tags, a next action that waits for it, or a gate; a singleton relative warp,
-     * and an InjectedCharacter warp with a next action.
+     * row that sets tags, a next action that waits for it, or a pause or stop gate; a singleton
+     * relative warp, and an InjectedCharacter warp with a next action or a start gate. A relative
+     * warp's start gate is asked as the warp starts, as every action's is.
      */
     private WarpCharacter warpCharacter(String name, ActionRow shared, JsonNode f) {
+      // A relative warp's start gate is the runtime's, asked as the warp starts, before it moves
+      // the unit.
       refuseShared(
           name,
           f,
           "GameTagsToSet",
           "NextActionWait",
-          "ExecuteIfTrue",
           "ActionPausedIfTrue",
           "ForceStopIfTrue",
           "MakeUntargetableForTickAfterWarp");
@@ -2900,8 +2916,9 @@ public final class ActionRows {
       int speed = integer(f, "Speed");
       WarpCharacter.Flight flight = null;
       if (injected) {
-        // The hand-over lists the run it builds; nothing schedules a next action after it.
-        refuseShared(name, f, "NextAction");
+        // The hand-over lists the run it builds; nothing schedules a next action after it, and
+        // its launch does not pass the runtime's start, which asks the start gate.
+        refuseShared(name, f, "NextAction", "ExecuteIfTrue");
         if (speed <= 0) {
           throw new UnsupportedOperationException(
               name + " warps to an injected target with no Speed, which is not modelled");
