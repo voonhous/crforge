@@ -99,6 +99,10 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param deathPushBack how far that damage pushes what it hits; 0 for no push
  * @param deathSpawnCharacter the row of the units the unit spawns as it dies, or null for none
  * @param deathSpawnCount how many it spawns: the column, at least one when the row spawns
+ * @param deathSpawnCharacter2 the row of the units it spawns as it dies after the first row's, or
+ *     null for none
+ * @param deathSpawnCount2 how many of the second row it spawns: the column as written, nothing
+ *     below 1
  * @param deathSpawnRadius the radius of the ring they stand on; 0 for none
  * @param deathSpawnDeployTimeMs the deploy time they start with; 0 for their own row's rule
  * @param deathAreaEffect the area effect the unit leaves where it dies, or null for none
@@ -321,6 +325,8 @@ public record UnitData(
     int deathPushBack,
     String deathSpawnCharacter,
     int deathSpawnCount,
+    String deathSpawnCharacter2,
+    int deathSpawnCount2,
     int deathSpawnRadius,
     int deathSpawnDeployTimeMs,
     String deathAreaEffect,

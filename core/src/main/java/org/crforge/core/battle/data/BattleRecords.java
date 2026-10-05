@@ -245,8 +245,7 @@ public final class BattleRecords {
    * ManaOnDeath only for a neutral object, which the battle has none of.
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
-      List.of(
-          "DeathSpawnCharacter2", "DeathSpawnCharacter3", "StartingBuff", "DeathSpawnIsSameUnit");
+      List.of("DeathSpawnCharacter3", "StartingBuff", "DeathSpawnIsSameUnit");
 
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
@@ -726,6 +725,12 @@ public final class BattleRecords {
                 deathSpawn.isEmpty() && deathProjectile.isEmpty()
                     ? notLoaded(row, "DeathSpawnCount")
                     : Math.max(row.intValue("DeathSpawnCount"), 1))
+            .deathSpawnCharacter2(
+                row.string("DeathSpawnCharacter2").isEmpty()
+                    ? null
+                    : row.string("DeathSpawnCharacter2"))
+            // Kept as written: a count below 1 makes nothing of the second row.
+            .deathSpawnCount2(row.intValue("DeathSpawnCount2"))
             .deathSpawnRadius(row.intValue("DeathSpawnRadius"))
             .deathSpawnDeployTimeMs(row.intValue("DeathSpawnDeployTime"))
             .deathAreaEffect(
@@ -1476,6 +1481,16 @@ public final class BattleRecords {
           columns.add(column);
         }
       }
+    }
+    // A second death spawn row is held on a plain ring or in front: not for a row whose children
+    // fly back to the ring, take a fixed priority or draw their ring radius, and not without a
+    // first row, which makes the slot skip both. No row sets any of these.
+    if (sets(row, "DeathSpawnCharacter2")
+        && (!spawns
+            || row.bool("DeathSpawnPushback")
+            || row.bool("SpawnConstPriority")
+            || sets(row, "DeathSpawnMinRadius"))) {
+      columns.add("DeathSpawnCharacter2");
     }
     return columns;
   }
