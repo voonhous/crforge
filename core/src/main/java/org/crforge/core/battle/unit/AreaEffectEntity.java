@@ -249,7 +249,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    */
   @Getter private SpawnHost follow;
 
-  /** The ids of the objects its hit action has reached, for a row that reaches each once. */
+  /**
+   * The ids of the objects its hit action has reached, for a row that reaches each once; in the
+   * filter form, the ids of the objects its hits have reached, listed as each is first reached.
+   */
   private final List<Integer> reached = new ArrayList<>();
 
   /** True once the area effect its row chains has been created, on its first update. */
@@ -534,9 +537,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * collision radius - listed once, nearest first by the squared distance of where each stands now
    * from the area effect's point, objects as near listed in the query's order. Each in turn gets
    * the push, the damage, queued as a typed hit of the row's damage type with the area effect its
-   * source, and then the buff, applied for the buff time - capped at the countdown and one HitSpeed
-   * more when the row caps it - when that time is at least 1, at the area effect's level and for
-   * its side, the area effect its parent when the buff is controlled by its parent.
+   * source, the hit action, built for it and scheduled on it with the area effect the cause, and
+   * then the buff, applied for the buff time - capped at the countdown and one HitSpeed more when
+   * the row caps it - when that time is at least 1, at the area effect's level and for its side,
+   * the area effect its parent when the buff is controlled by its parent.
+   *
+   * <p>A row that hits each object once passes by an object an earlier hit reached: it gets
+   * nothing. Any other is listed as reached before its push. After the first object a hit reaches,
+   * the row's hit action on itself is scheduled on the area effect, that object the cause; and a
+   * row that ends on its first hit has its countdown set to -1 there and its list left, so the rest
+   * of the list gets nothing and the cleanup after the update removes it.
    *
    * <p>The push, with a pushback of at least 1, reaches only a character whose movement component
    * is on: anything else, a tower or a troop still deploying among them, is left where it is, and
@@ -561,7 +571,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
                 FixedMath.squaredDistance(x, y, target.getView().getX(), target.getView().getY())));
     world.shapeListed(this, listed);
     BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
+    boolean first = true;
     for (WorldEntity target : listed) {
+      // One hit per target: an object already reached is passed by, anything else listed as
+      // reached. (A row that pushes a reached object again, ContinuousPushback, is refused.)
+      if (data.oneHitPerTarget()) {
+        if (reached.contains(target.getId())) {
+          continue;
+        }
+        reached.add(target.getId());
+      }
       // The push first, before the damage.
       if (data.pushback() >= 1
           && target instanceof CharacterEntity character
@@ -570,6 +589,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
       if (data.typedDamage() != null) {
         world.queueAreaDamage(this, target, data.typedDamage());
+      }
+      // The hit action, built for the object and scheduled on it, the area effect the cause.
+      if (data.onHitAction() != null) {
+        BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
+        world.onHitActionScheduled(this, target, action);
+        target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
       }
       if (buff != null) {
         int time = data.buffTimeMs();
@@ -580,6 +605,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           world.filterBuff(this, target, buff, time);
         }
       }
+      // The hit action on itself, once a hit: scheduled on the area effect, the object the cause.
+      if (first && data.onHitSelfAction() != null) {
+        BattleAction self = world.getActions().build(data.onHitSelfAction(), binding());
+        actionHolder.schedule(self, ActionHolder.OWN_DELAY, false, target.actionHolder());
+      }
+      if (data.expireOnTrigger()) {
+        countdown = -1;
+        return;
+      }
+      first = false;
     }
   }
 
