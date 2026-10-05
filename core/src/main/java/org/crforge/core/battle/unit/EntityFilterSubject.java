@@ -13,7 +13,7 @@ import org.crforge.core.pathfinding.GridEntity;
         "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
             + " whether it is a clone,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
-            + " pushback, its buffs' invisible count, and whether it is hidden, which asks the"
+            + " pushback, whether its row sets Kamikaze or IgnoreResurrect, its buffs' invisible count, and whether it is hidden, which asks the"
             + " entity's own hidden test as the filter's hidden flag does, and whether it is"
             + " underground, which asks the entity's own underground test; the summoner is the"
             + " king tower. Supplied: a princess tower is a row with the summoner-tower column,"
@@ -142,6 +142,16 @@ final class EntityFilterSubject implements FilterSubject {
   @Override
   public boolean ignoresPushback() {
     return entity.getData().ignorePushback() || entity.getBuffs().ignoresPushBack();
+  }
+
+  @Override
+  public boolean kamikaze() {
+    return entity.getData().kamikaze();
+  }
+
+  @Override
+  public boolean ignoresResurrect() {
+    return entity.getData().ignoreResurrect();
   }
 
   /** Any listed instance of the rows that the given entity applied, in the entity's list. */
