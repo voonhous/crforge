@@ -1074,9 +1074,10 @@ public final class BattleRecords {
    * is its field of the same name; the dead are filtered unless the row says not; the tags it
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
    * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
-   * switches, or the names of its Filters list, which a newer data version writes in their place. A
-   * row that sets any other column, as a filter it builds on or a match on its instigator, is
-   * refused: read without it, the filter would match what the row does not.
+   * switches, or the names of its Filters list, which a newer data version writes in their place;
+   * MatchSelf, also of the newer version, passes only the object that asks. A row that sets any
+   * other column, as a filter it builds on, is refused: read without it, the filter would match
+   * what the row does not.
    *
    * @param name the row's name
    */
@@ -1158,7 +1159,8 @@ public final class BattleRecords {
   }
 
   /**
-   * The switches a filter's Filters list names, or null for a row without the list.
+   * The switches a filter's Filters list names, or null for a row without the list. A row may write
+   * the list as a single text, which the game reads as a list of that one kind.
    *
    * @throws UnsupportedOperationException for a kind no switch tests
    */
@@ -1166,8 +1168,10 @@ public final class BattleRecords {
     if (!row.has("Filters")) {
       return null;
     }
+    List<String> kinds =
+        row.value("Filters").isTextual() ? List.of(row.string("Filters")) : row.strings("Filters");
     Set<String> switches = new HashSet<>();
-    for (String kind : row.strings("Filters")) {
+    for (String kind : kinds) {
       String column = FILTER_LIST_SWITCHES.get(kind);
       if (column == null) {
         throw new UnsupportedOperationException(
@@ -1216,6 +1220,7 @@ public final class BattleRecords {
         .filterPrincessTowers(filterSwitch(row, listed, "FilterPrincessTowers"))
         .filterDead(!row.has("FilterDead") || row.bool("FilterDead"))
         .filterClones(filterSwitch(row, listed, "FilterClones"))
+        .matchSelf(row.bool("MatchSelf"))
         .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
         .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
         .build();

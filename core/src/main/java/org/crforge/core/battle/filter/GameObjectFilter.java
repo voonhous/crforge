@@ -22,13 +22,19 @@ import org.crforge.core.pathfinding.GridEntityState;
  * pushback, then the include and the exclude lists of rows.
  *
  * <p>{@code filterDead} is the one column set by default.
+ *
+ * <p>{@code matchSelf}, which a newer data version writes, passes only the object that asks: a
+ * filter that sets it is asked with whether the object is its asker, and refused when asked
+ * without.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line and held by the recorded cases: the team and type gates, the tag"
             + " exclusion, the slot exclusions in their order and each asked only when set, the"
-            + " name comparison, the character-only block and the two lists, and the one default.")
+            + " name comparison, the character-only block and the two lists, and the one default."
+            + " MatchSelf (a newer data version) is read from the test of the newer build: the"
+            + " asker's own identity before the team gate.")
 @Getter
 @Builder(toBuilder = true)
 public final class GameObjectFilter {
@@ -60,6 +66,7 @@ public final class GameObjectFilter {
   private final boolean filterPrincessTowers;
   @Builder.Default private final boolean filterDead = true;
   private final boolean filterClones;
+  private final boolean matchSelf;
   @Builder.Default private final Set<String> includeCharactersWithData = Set.of();
   @Builder.Default private final Set<String> excludeCharactersWithData = Set.of();
 
@@ -71,6 +78,32 @@ public final class GameObjectFilter {
    * @param name the row name the same-objects exclusion compares with
    */
   public boolean matches(FilterSubject object, int team, String name) {
+    if (matchSelf) {
+      throw new UnsupportedOperationException(
+          "a game object filter that sets MatchSelf is asked without its asker, which is not"
+              + " modelled");
+    }
+    return passes(object, team, name);
+  }
+
+  /**
+   * Whether an object passes the filter, asked by an object that may be the one tested: with {@code
+   * matchSelf} set, only the asker itself passes.
+   *
+   * @param object the object
+   * @param team the asker's team
+   * @param name the row name the same-objects exclusion compares with: the asker's
+   * @param asker true when the object is the asker itself
+   */
+  public boolean matches(FilterSubject object, int team, String name, boolean asker) {
+    if (matchSelf && !asker) {
+      return false;
+    }
+    return passes(object, team, name);
+  }
+
+  /** The test of every column but {@code matchSelf}. */
+  private boolean passes(FilterSubject object, int team, String name) {
     if (object.team() == team ? !matchTeamOwn : !matchTeamEnemy) {
       return false;
     }

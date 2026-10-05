@@ -309,7 +309,7 @@ class ActionCompositesTest {
     ActionHolder bandit = new ActionHolder(new RowOwner(7));
 
     owner.schedule(
-        new RunIfInstigatorMatches(row("check"), List.of(5, 7), won, lost), 0, true, bandit);
+        new RunIfInstigatorMatches(row("check"), null, List.of(5, 7), won, lost), 0, true, bandit);
     assertThat(queue(owner)).containsExactly("won 0");
     assertThat(owner.queuedInstigators()).containsExactly(owner);
     assertThat(queue(bandit)).as("nothing on the cause").isEmpty();
@@ -328,9 +328,10 @@ class ActionCompositesTest {
     ActionHolder shot = new ActionHolder(new RowOwner(ActionOwner.NO_UNIT_ROW));
 
     owner.schedule(
-        new RunIfInstigatorMatches(row("check"), List.of(7), won, lost), 0, true, knight);
-    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(7), won, null), 0, true, shot);
-    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(7), won, lost), 0, true);
+        new RunIfInstigatorMatches(row("check"), null, List.of(7), won, lost), 0, true, knight);
+    owner.schedule(
+        new RunIfInstigatorMatches(row("check"), null, List.of(7), won, null), 0, true, shot);
+    owner.schedule(new RunIfInstigatorMatches(row("check"), null, List.of(7), won, lost), 0, true);
     assertThat(queue(owner))
         .as("the miss branch once; nothing without one")
         .containsExactly("lost 0");
@@ -346,7 +347,8 @@ class ActionCompositesTest {
     ActionHolder owner = new ActionHolder(new RowOwner(1));
     ActionHolder shot = new ActionHolder(new RowOwner(ActionOwner.NO_UNIT_ROW));
 
-    owner.schedule(new RunIfInstigatorMatches(row("check"), List.of(), won, null), 0, true, shot);
+    owner.schedule(
+        new RunIfInstigatorMatches(row("check"), null, List.of(), won, null), 0, true, shot);
     assertThat(queue(owner)).containsExactly("won 0");
     assertThat(take()).containsExactly("checked check -1 won");
   }

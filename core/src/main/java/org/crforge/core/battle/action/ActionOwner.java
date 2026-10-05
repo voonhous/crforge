@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import java.util.List;
 import java.util.function.IntSupplier;
+import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.filter.ObjectCensus;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -828,6 +829,12 @@ public interface ActionOwner {
   default AliveTimer.Age aliveAge() {
     throw new UnsupportedOperationException(
         "an action run at an age of an owner other than an area effect is not modelled");
+  }
+
+  /** The owner as a game object filter asks about it. */
+  default FilterSubject actionFilterSubject() {
+    throw new UnsupportedOperationException(
+        "a filter's test of an owner that is not a world entity is not modelled");
   }
 
   /** The owner's team: 2 for a neutral side, else its side's lowest bit. */
