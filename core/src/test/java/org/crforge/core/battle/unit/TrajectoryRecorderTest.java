@@ -114,6 +114,29 @@ class TrajectoryRecorderTest {
   }
 
   @Test
+  @DisplayName(
+      "a recorded character without hit points, the Rage spell's bottle, is recorded with the"
+          + " towers fighting, its own hit points left out")
+  void aCharacterWithoutHitPointsIsRecordedWithTheTowersFighting() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11);
+    Battle battle = match.getBattle();
+    CharacterEntity bottle = match.deploy(0, GameData.unit("RageBottle"), 11, 0, 9000, 20000);
+    assertThat(bottle.getHitPoints()).as("the bottle's row has no hit points").isNull();
+    TrajectoryRecorder recorder = new TrajectoryRecorder(bottle);
+    match.getWorld().addObserver(recorder);
+
+    for (int step = 0; step < 5; step++) {
+      battle.step();
+    }
+
+    // Deploying at its point with no reference; the record ends without the hit points a unit
+    // with them carries while the towers fight.
+    assertThat(recorder.recordCount()).isPositive();
+    assertThat(recorder.text().lines().filter(line -> line.startsWith("  [0,")).findFirst())
+        .contains("  [0, 9000, 20000, 4, null, 0, null, null],");
+  }
+
+  @Test
   @DisplayName("a placement on a later tick records the same run, counted from its first tick")
   void aLaterPlacementRecordsTheSameRun() throws IOException {
     String expected = reference(REFERENCE);
