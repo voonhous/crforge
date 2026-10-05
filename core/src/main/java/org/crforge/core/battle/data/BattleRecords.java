@@ -205,21 +205,21 @@ public final class BattleRecords {
 
   /**
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
-   * area effect is created. A buff that boosts one target or lasts longer by level, the hit action
-   * on itself, the life condition, the tags other than the one that hides the pushback's
-   * presentation, the per-level lifetime and the push's floor and gate lift. Its projectile is
-   * modelled, but not a launch from its source or a spread one; its hit action only for a Clone, as
-   * a buff spawn, a group of buff spawns and a taunt, and on a shaped row as a choice by team; one
-   * hit per target only with a hit action; following only its parent; its spawns only in a shuffled
-   * order; and its shape only as a rectangle with a filter whose hits do nothing but their hit
-   * action.
+   * area effect is created. A buff that boosts one target or lasts longer by level, the life
+   * condition, the tags other than the one that hides the pushback's presentation, the per-level
+   * lifetime and the push's floor and gate lift. Its projectile is modelled, but not a launch from
+   * its source or a spread one; for a row with hit switches its hit action only for a Clone, as a
+   * buff spawn, a group of buff spawns and a taunt, and on a shaped row as a choice by team, one
+   * hit per target only with a hit action, and neither the hit action on itself nor the end on its
+   * first hit (both only in the filter form); following only its parent; its spawns only in a
+   * shuffled order; and its shape only as a rectangle with a filter whose hits do nothing but their
+   * hit action.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
           "Boost",
           "BuffTimeIncreasePerLevel",
           "BuffTimeIncreaseAfterTournamentCap",
-          "OnHitSelfAction",
           "AliveIfTrue",
           "Tags",
           "LifeDurationIncreasePerLevel",
@@ -1501,6 +1501,8 @@ public final class BattleRecords {
             .cloning(row.bool("Clone"))
             .onHitAction(actionName(row, "OnHitAction"))
             .oneHitPerTarget(row.bool("OneHitPerTarget"))
+            .onHitSelfAction(actionName(row, "OnHitSelfAction"))
+            .expireOnTrigger(row.bool("ExpireOnTrigger"))
             .followsParent(row.string("FollowBehaviour").equals("FollowParent"))
             .followsTarget(row.string("FollowBehaviour").equals("FollowTarget"))
             .deflectsProjectiles(row.bool("DeflectProjectilesEnabled"))
@@ -1535,11 +1537,13 @@ public final class BattleRecords {
         unmodelled.add("Shape");
       }
     }
-    // The hit action is modelled for a Clone, a Clone row whose hit action clones, and which
-    // neither deals damage nor applies a buff, as the shipped Clone does; and for a row that is not
-    // a Clone's whose hit action is a buff spawn, as the evolved Tesla's ring's is, a group of buff
-    // spawns, as the Goblin Curse's base is, a taunt, as the Goblin Demolisher's is, a group of
-    // taunts, as the hero Knight's is, or the evolved Dart Goblin's poison damage.
+    // For a row with hit switches, the hit action is modelled for a Clone, a Clone row whose hit
+    // action clones, and which neither deals damage nor applies a buff, as the shipped Clone does;
+    // and for a row that is not a Clone's whose hit action is a buff spawn, as the evolved Tesla's
+    // ring's is, a group of buff spawns, as the Goblin Curse's base is, a taunt, as the Goblin
+    // Demolisher's is, a group of taunts, as the hero Knight's is, or the evolved Dart Goblin's
+    // poison damage. The filter form's hit pass schedules any hit action on each object it lists,
+    // as it is built for that object, so it takes every one.
     boolean cloning =
         data.onHitAction() != null
             && tables.action(data.onHitAction()).classType().equals("ActionClone");
@@ -1565,16 +1569,26 @@ public final class BattleRecords {
             && data.shapeRadius() >= 1
             && buffSelect(data.onHitAction());
     if (data.onHitAction() != null
+        && !data.filterHits()
         && !(data.cloning() && cloning)
         && !(!data.cloning() && !data.shaped() && (buffSpawns || taunt || poison))
         && !byTeam
         && !circleBuffs) {
       unmodelled.add("OnHitAction");
     }
-    // One hit per target is read by the hit action's loop; whether anything else reads it is not
-    // established.
-    if (data.oneHitPerTarget() && data.onHitAction() == null) {
+    // For a row with hit switches one hit per target is read by the hit action's loop; whether
+    // anything else reads it is not established. The filter form's hit pass reads it for every
+    // object it lists.
+    if (data.oneHitPerTarget() && data.onHitAction() == null && !data.filterHits()) {
       unmodelled.add("OneHitPerTarget");
+    }
+    // The hit action on itself and the end on its first hit are read only by the filter form's
+    // hit pass.
+    if (data.onHitSelfAction() != null && !data.filterHits()) {
+      unmodelled.add("OnHitSelfAction");
+    }
+    if (data.expireOnTrigger() && !data.filterHits()) {
+      unmodelled.add("ExpireOnTrigger");
     }
     // FollowParent follows its parent; FollowTarget the target of the projectile whose impact made
     // it, the only maker that hands it one. Any other behaviour is not modelled.
@@ -1594,7 +1608,11 @@ public final class BattleRecords {
     if (data.filterHits()) {
       filterForm(data, unmodelled);
     }
-    if (data.cloning() && (!cloning || data.damage() != 0 || data.buff() != null)) {
+    // The filter form's hit pass does not read the Clone switch: what a Clone reaches is its
+    // filter's choice, and what it does its hit action's.
+    if (data.cloning()
+        && !data.filterHits()
+        && (!cloning || data.damage() != 0 || data.buff() != null)) {
       unmodelled.add("Clone");
     }
     if (data.projectile() != null) {
@@ -1627,20 +1645,18 @@ public final class BattleRecords {
   }
 
   /**
-   * Refuses, for the filter form, what each object it lists would get beyond its push, its damage
-   * and its buff: a pull (a buff that attracts), a hit action, a launch, a spawner, one hit per
-   * target, a target limit, the biggest targets first, a clone and a deflection, none of which the
-   * filter form's hit pass is held for. Its push is held for with every gate in place: a row that
-   * lifts them (PushbackAll), takes the separation off (RelativePushback) or keeps the longer push
-   * (ContinuousPushback) is refused by that column. A damage type that names a column the pass is
-   * not held for is refused by its Damage column.
+   * Refuses, for the filter form, what each object it lists would get beyond its push, its damage,
+   * its hit action and its buff, and what the pass does beyond passing by an object it has reached
+   * for a row that hits each once, its hit action on itself and its end on its first hit: a pull (a
+   * buff that attracts), a launch, a spawner, a target limit, the biggest targets first and a
+   * deflection, none of which the filter form's hit pass is held for. Its push is held for with
+   * every gate in place: a row that lifts them (PushbackAll), takes the separation off
+   * (RelativePushback) or keeps the longer push (ContinuousPushback) is refused by that column. A
+   * damage type that names a column the pass is not held for is refused by its Damage column.
    */
   private void filterForm(AreaEffectData data, List<String> unmodelled) {
     if (data.buff() != null && buff(data.buff()).attracts()) {
       unmodelled.add("Buff");
-    }
-    if (data.onHitAction() != null && !unmodelled.contains("OnHitAction")) {
-      unmodelled.add("OnHitAction");
     }
     if (data.projectile() != null) {
       unmodelled.add("Projectile");
@@ -1648,17 +1664,11 @@ public final class BattleRecords {
     if (data.spawnCharacter() != null && !unmodelled.contains("SpawnCharacter")) {
       unmodelled.add("SpawnCharacter");
     }
-    if (data.oneHitPerTarget() && !unmodelled.contains("OneHitPerTarget")) {
-      unmodelled.add("OneHitPerTarget");
-    }
     if (data.maximumTargets() != 0) {
       unmodelled.add("MaximumTargets");
     }
     if (data.hitBiggestTargets()) {
       unmodelled.add("HitBiggestTargets");
-    }
-    if (data.cloning() && !unmodelled.contains("Clone")) {
-      unmodelled.add("Clone");
     }
     if (data.deflectsProjectiles()) {
       unmodelled.add("DeflectProjectilesEnabled");

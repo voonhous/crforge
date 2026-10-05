@@ -198,4 +198,36 @@ class NewTableFormsTest {
     }
     assertThat(deaths).isEqualTo(26);
   }
+
+  @Test
+  @DisplayName(
+      "a filter form row's hit action, one hit per target, hit action on itself and end on its"
+          + " first hit are read, never refused, a Clone's switch among them")
+  void theHitColumnsOfTheFilterFormAreRead() {
+    List<String> columns =
+        List.of("OnHitAction", "OneHitPerTarget", "OnHitSelfAction", "ExpireOnTrigger", "Clone");
+    List<String> rows = new ArrayList<>();
+    for (GameRow row : tables.table("area_effect_objects").rows()) {
+      if (row.string("Filter").isEmpty() || !row.string("Shape").isEmpty()) {
+        continue;
+      }
+      if (columns.stream().noneMatch(row::has)) {
+        continue;
+      }
+      rows.add(row.name());
+      AreaEffectData data = records.areaEffect(row.name());
+      assertThat(data.filterHits()).as(row.name()).isTrue();
+      assertThat(data.unmodelledColumns()).as(row.name()).doesNotContainAnyElementsOf(columns);
+      assertThat(data.oneHitPerTarget()).as(row.name()).isEqualTo(row.bool("OneHitPerTarget"));
+      assertThat(data.expireOnTrigger()).as(row.name()).isEqualTo(row.bool("ExpireOnTrigger"));
+    }
+    assertThat(rows)
+        .hasSize(31)
+        .contains("Clone", "GoblinCurseBase", "CancelTauntAEO", "EarthquakeHiddenDamage");
+    AreaEffectData earthquake = records.areaEffect("EarthquakeHiddenDamage");
+    assertThat(earthquake.onHitAction()).isEqualTo("EarthquakeHiddenDamage_Hit");
+    assertThat(earthquake.unmodelledColumns()).isEmpty();
+    assertThat(records.areaEffect("BoostAOE_TrickOrTreat_Pekka").onHitSelfAction())
+        .isEqualTo("BoostSpawnPekka");
+  }
 }

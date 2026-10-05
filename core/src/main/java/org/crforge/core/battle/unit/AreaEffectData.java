@@ -43,9 +43,15 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param cloning true for a Clone: its on-hit action passes a clone, a unit a Clone passes by and
  *     one tagged against clones by
  * @param onHitAction the action each of its hits schedules on every unit in its circle it reaches,
- *     or in its rectangle for a shaped one, or null for none; only a Clone's, a group of buff
- *     spawns, a buff spawn, a taunt and, for a shaped one, a choice by team are modelled
- * @param oneHitPerTarget true when its hit action reaches each object once in its life
+ *     or in its rectangle for a shaped one, or on every object the filter form lists, or null for
+ *     none; for a row with hit switches only a Clone's, a group of buff spawns, a buff spawn, a
+ *     taunt and, for a shaped one, a choice by team are modelled
+ * @param oneHitPerTarget true when its hit action reaches each object once in its life; in the
+ *     filter form, when each hit passes by an object an earlier one reached
+ * @param onHitSelfAction the action the filter form schedules on itself once a hit, as the first
+ *     object it hits is reached, that object the cause; null for none
+ * @param expireOnTrigger true when the filter form ends with the first object it hits: its
+ *     countdown goes below 0 and the rest of its list gets nothing
  * @param followsParent true when it moves with the object it follows, its parent, standing on that
  *     object's point at each update
  * @param followsTarget true when it moves with the target of the projectile whose impact made it,
@@ -112,6 +118,8 @@ public record AreaEffectData(
     boolean cloning,
     String onHitAction,
     boolean oneHitPerTarget,
+    String onHitSelfAction,
+    boolean expireOnTrigger,
     boolean followsParent,
     boolean followsTarget,
     boolean deflectsProjectiles,
