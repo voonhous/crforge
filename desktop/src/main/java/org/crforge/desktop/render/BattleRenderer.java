@@ -10,8 +10,10 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.utils.Align;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -62,9 +64,17 @@ public class BattleRenderer {
   @Getter private boolean drawHpNumbers = false;
   @Getter private boolean drawCellCosts = false;
   @Getter private boolean drawRoutes = false;
-  @Getter private boolean drawLabels = true;
-  @Getter private boolean drawTargets = true;
+  @Getter private boolean drawLabels = false;
+  @Getter private boolean drawGrid = false;
+  @Getter private boolean drawTargets = false;
+  private final BattleArenaRenderer arena;
   private int inspectedEntity = -1;
+  private final Map<String, String> displayNames = new HashMap<>();
+  private final Map<String, String> unitSymbols = new HashMap<>();
+
+  public void toggleDrawGrid() {
+    drawGrid = !drawGrid;
+  }
 
   public void toggleDrawLabels() {
     drawLabels = !drawLabels;
@@ -80,6 +90,7 @@ public class BattleRenderer {
 
   /** View presets affect presentation only. Individual toggles remain available. */
   public void applyPreset(OverlayPreset preset) {
+    drawGrid = preset == OverlayPreset.PATHING;
     drawLabels = preset != OverlayPreset.CLEAN;
     drawTargets = preset == OverlayPreset.COMBAT;
     drawRanges = preset == OverlayPreset.COMBAT;
@@ -96,6 +107,7 @@ public class BattleRenderer {
 
   public BattleRenderer() {
     this.ctx = new RenderContext(12);
+    this.arena = new BattleArenaRenderer(ctx);
     this.backgrounds = new HudRenderer(ctx);
     this.cellCosts = new CellCostOverlayRenderer(ctx);
     this.routes = new RouteOverlayRenderer(ctx);
@@ -184,7 +196,7 @@ public class BattleRenderer {
     HudText hud = HudText.of(frame, inputs.view(), statusLines(inputs));
 
     if (legacyHud) backgrounds.renderBackgrounds(camera);
-    renderArena(tileMap);
+    arena.render(tileMap, view, drawGrid);
     if (drawCellCosts) {
       cellCosts.render(inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY(), view);
     }
@@ -193,6 +205,7 @@ public class BattleRenderer {
     renderHover(inputs);
     renderProjectiles(frame);
     renderHealthBars(frame);
+    renderUnitSymbols(frame);
     if (drawTargets) renderTargetLines(frame);
     if (drawPaths) {
       renderHeadings(frame);
@@ -204,9 +217,7 @@ public class BattleRenderer {
     if (drawRanges) {
       renderRanges(frame);
     }
-    if (drawLabels && hud.labels()) {
-      renderLabels(frame);
-    }
+    renderLabels(frame);
 
     // Kept current every frame, drawn only when toggled on. Both renderers take positions in game
     // units as drawn, so the view's mirror is applied as each sample and hit is handed over.
@@ -242,74 +253,6 @@ public class BattleRenderer {
       }
     }
     shapes.end();
-  }
-
-  /**
-   * The arena's cells from the battle's tile map, a tile's checkerboard and the tile grid, each
-   * cell where the view draws it.
-   */
-  private void renderArena(TileMap tileMap) {
-    ShapeRenderer shapes = ctx.getShapeRenderer();
-    shapes.begin(ShapeType.Filled);
-    for (int row = 0; row < tileMap.height(); row++) {
-      boolean riverRow = riverRow(tileMap, row);
-      for (int col = 0; col < tileMap.width(); col++) {
-        Color color = cellColor(tileMap, col, row, riverRow, view);
-        boolean water = (tileMap.bits(col, row) & TileMap.WATER_BIT) != 0;
-        float shade = !water && ((col / 2) + (row / 2)) % 2 == 0 ? CHECKER_DARKEN : 1f;
-        shade *= 0.65f;
-        shapes.setColor(color.r * shade, color.g * shade, color.b * shade, 1f);
-        shapes.rect(
-            view.left(col * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
-            view.bottom(row * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
-            CELL_PIXELS,
-            CELL_PIXELS);
-      }
-    }
-    shapes.end();
-
-    Gdx.gl.glEnable(GL20.GL_BLEND);
-    shapes.begin(ShapeType.Line);
-    shapes.setColor(COLOR_GRID);
-    float width = unitsToPixels(tileMap.widthUnits());
-    float height = unitsToPixels(tileMap.heightUnits());
-    for (int x = 0; x <= tileMap.width() / 2; x++) {
-      shapes.line(x * TILE_PIXELS, BOTTOM_UI_HEIGHT, x * TILE_PIXELS, BOTTOM_UI_HEIGHT + height);
-    }
-    for (int y = 0; y <= tileMap.height() / 2; y++) {
-      shapes.line(0, BOTTOM_UI_HEIGHT + y * TILE_PIXELS, width, BOTTOM_UI_HEIGHT + y * TILE_PIXELS);
-    }
-    shapes.end();
-  }
-
-  /** Whether a row of cells crosses the river: some cell of it is water. */
-  private static boolean riverRow(TileMap tileMap, int row) {
-    for (int col = 0; col < tileMap.width(); col++) {
-      if ((tileMap.bits(col, row) & TileMap.WATER_BIT) != 0) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * A cell's colour: water, blocked, a bridge across the river, or its side's half, in the colour
-   * the view draws that side in.
-   */
-  static Color cellColor(
-      TileMap tileMap, int col, int row, boolean riverRow, ViewOrientation view) {
-    int bits = tileMap.bits(col, row);
-    if ((bits & TileMap.WATER_BIT) != 0) {
-      return COLOR_RIVER;
-    }
-    if ((bits & TileMap.BLOCKED_BIT) != 0) {
-      return COLOR_BANNED;
-    }
-    if (riverRow) {
-      return COLOR_BRIDGE;
-    }
-    int half = row < tileMap.height() / 2 ? 0 : 1;
-    return view.blue(half) ? COLOR_BLUE_ZONE : COLOR_RED_ZONE;
   }
 
   /** Area effects: a translucent disc in the side's colour with an outline, under the bodies. */
@@ -348,17 +291,21 @@ public class BattleRenderer {
       float x = px(entity.x());
       float y = py(entity.y());
       float radius = unitsToPixels(entity.radius());
-      if (entity.kind() == EntityView.Kind.TOWER) {
-        shapes.setColor(COLOR_TOWER_BOUNDARY);
-        shapes.rect(x - radius, y - radius, radius * 2, radius * 2);
-      }
       Color color = bodyColor(entity);
       float alpha = entity.hidden() ? 0.25f : entity.deploying() ? 0.5f : 1f;
+      shapes.setColor(0.05f, 0.09f, 0.09f, 0.35f * alpha);
+      shapes.ellipse(x - radius - 2, y - radius - 5, radius * 2 + 4, radius * 1.4f);
       shapes.setColor(color.r, color.g, color.b, alpha);
-      if (entity.kind() == EntityView.Kind.BUILDING) {
+      if (entity.kind() == EntityView.Kind.TOWER) {
+        renderTower(shapes, x, y, radius, color, entity.king(), alpha);
+      } else if (entity.kind() == EntityView.Kind.BUILDING) {
         shapes.rect(x - radius, y - radius, radius * 2, radius * 2);
+        shapes.setColor(1, 1, 1, alpha * 0.2f);
+        shapes.rect(x - radius + 2, y + radius - 4, radius * 2 - 4, 2);
       } else {
-        shapes.circle(x, y, radius);
+        shapes.circle(x, y, radius, CIRCLE_SEGMENTS);
+        shapes.setColor(1, 1, 1, alpha * 0.15f);
+        shapes.circle(x - radius * 0.25f, y + radius * 0.3f, radius * 0.55f, CIRCLE_SEGMENTS);
       }
       if (entity.air()) {
         shapes.setColor(COLOR_AIR_UNIT);
@@ -375,9 +322,40 @@ public class BattleRenderer {
       }
       Color color = bodyColor(entity);
       shapes.setColor(color.r * 0.5f, color.g * 0.5f, color.b * 0.5f, 1f);
-      shapes.circle(px(entity.x()), py(entity.y()), unitsToPixels(entity.radius()));
+      if (entity.kind() == EntityView.Kind.TROOP) {
+        shapes.circle(
+            px(entity.x()), py(entity.y()), unitsToPixels(entity.radius()), CIRCLE_SEGMENTS);
+      }
     }
     shapes.end();
+  }
+
+  /** Small castle silhouettes scale with the existing tower footprint. */
+  private static void renderTower(
+      ShapeRenderer shapes, float x, float y, float r, Color team, boolean king, float alpha) {
+    shapes.setColor(0.19f, 0.24f, 0.27f, alpha);
+    shapes.rect(x - r, y - r, r * 2, r * 1.75f);
+    shapes.setColor(0.63f, 0.67f, 0.65f, alpha);
+    shapes.rect(x - r + 3, y - r + 4, r * 2 - 6, r * 1.75f - 4);
+    shapes.setColor(team.r, team.g, team.b, alpha);
+    shapes.rect(x - r + 3, y - r * 0.12f, r * 2 - 6, r * 0.5f);
+    shapes.setColor(0.76f, 0.79f, 0.73f, alpha);
+    for (int i = 0; i < 3; i++)
+      shapes.rect(x - r + i * r * 0.75f, y + r * 0.6f, r * 0.5f, r * 0.4f);
+    shapes.setColor(0.13f, 0.19f, 0.22f, alpha);
+    shapes.rect(x - r * 0.18f, y - r + 4, r * 0.36f, r * 0.52f);
+    if (king) {
+      shapes.setColor(0.96f, 0.78f, 0.38f, alpha);
+      shapes.rect(x - r * 0.25f, y - r * 0.05f, r * 0.5f, r * 0.16f);
+      for (int i = 0; i < 3; i++)
+        shapes.triangle(
+            x - r * 0.25f + i * r / 6,
+            y + r * 0.1f,
+            x - r * 0.08f + i * r / 6,
+            y + r * 0.1f,
+            x - r * 0.17f + i * r / 6,
+            y + r * 0.3f);
+    }
   }
 
   /**
@@ -505,7 +483,7 @@ public class BattleRenderer {
       float share = entity.healthShare();
       Color fill =
           share > HEALTH_THRESHOLD_HIGH
-              ? COLOR_HEALTH_GREEN
+              ? ArenaPalette.HEALTH
               : share > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW : COLOR_HEALTH_RED;
       bar(shapes, left, barY, width, share, fill);
       if (entity.maxShield() > 0) {
@@ -622,14 +600,45 @@ public class BattleRenderer {
     shapes.end();
   }
 
+  private void renderUnitSymbols(BattleFrame frame) {
+    var font = ctx.getEntityNameFont();
+    font.getData().setScale(0.7f);
+    ctx.getSpriteBatch().begin();
+    for (EntityView entity : frame.entities()) {
+      if (entity.kind() != EntityView.Kind.TROOP || unitsToPixels(entity.radius()) < 6) continue;
+      String symbol =
+          unitSymbols.computeIfAbsent(
+              entity.name(),
+              name -> {
+                String capitals = name.replaceAll("[^A-Z]", "");
+                return capitals.isEmpty()
+                    ? name.substring(0, 1)
+                    : capitals.substring(0, Math.min(2, capitals.length()));
+              });
+      ctx.getGlyphLayout().setText(font, symbol);
+      font.setColor(0.07f, 0.13f, 0.19f, entity.hidden() ? 0.3f : 1);
+      font.draw(
+          ctx.getSpriteBatch(),
+          symbol,
+          px(entity.x()) - ctx.getGlyphLayout().width / 2,
+          py(entity.y()) + ctx.getGlyphLayout().height / 2);
+    }
+    ctx.getSpriteBatch().end();
+    font.getData().setScale(1);
+    font.setColor(Color.WHITE);
+  }
+
   /** Each character's row name above its bars, and an area effect's name and life left. */
   private void renderLabels(BattleFrame frame) {
     ctx.getSpriteBatch().begin();
     for (EntityView entity : frame.entities()) {
+      if (!drawLabels && entity.id() != inspectedEntity) continue;
       String label;
       float y;
       if (entity.isCharacter()) {
-        label = entity.name();
+        label =
+            displayNames.computeIfAbsent(
+                entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "));
         if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
           label += " [WAIT]";
         } else if (entity.deploying()) {
@@ -652,8 +661,17 @@ public class BattleRenderer {
         continue;
       }
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
-      ctx.getEntityNameFont()
-          .draw(ctx.getSpriteBatch(), label, px(entity.x()) - ctx.getGlyphLayout().width / 2, y);
+      float left =
+          Math.max(
+              3,
+              Math.min(
+                  WorkspaceViewport.WORLD_WIDTH - ctx.getGlyphLayout().width - 3,
+                  px(entity.x()) - ctx.getGlyphLayout().width / 2));
+      y = Math.min(BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - 3, y);
+      ctx.getEntityNameFont().setColor(0.04f, 0.07f, 0.08f, 1);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, left + 1, y - 1);
+      ctx.getEntityNameFont().setColor(Color.WHITE);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, left, y);
     }
     ctx.getSpriteBatch().end();
   }
@@ -893,7 +911,7 @@ public class BattleRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  /** A body's fill: the side's tower colours for towers, else the side's entity colour. */
+  /** A body's team accent, independent of its tower or troop silhouette. */
   private Color bodyColor(EntityView entity) {
     return bodyColor(entity, view);
   }
@@ -904,12 +922,6 @@ public class BattleRenderer {
    */
   static Color bodyColor(EntityView entity, ViewOrientation view) {
     boolean blue = view.blue(entity.side());
-    if (entity.kind() == EntityView.Kind.TOWER) {
-      if (entity.king()) {
-        return blue ? COLOR_BLUE_CROWN_TOWER : COLOR_RED_CROWN_TOWER;
-      }
-      return blue ? COLOR_BLUE_PRINCESS_TOWER : COLOR_RED_PRINCESS_TOWER;
-    }
     return sideColor(entity.side(), view);
   }
 
@@ -919,7 +931,7 @@ public class BattleRenderer {
 
   /** A side's colour in a view: blue for the side at the bottom, red for the side at the top. */
   static Color sideColor(int side, ViewOrientation view) {
-    return view.blue(side) ? COLOR_BLUE_ENTITY : COLOR_RED_ENTITY;
+    return view.blue(side) ? ArenaPalette.BLUE : ArenaPalette.RED;
   }
 
   /** The window's pixel column of a position along the width, as the view draws it. */

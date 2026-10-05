@@ -71,6 +71,9 @@ public final class BattleWorkspace implements Disposable {
   private boolean inspecting;
   private String lastEvents = "";
   private String details = "";
+  private String loadedFolder = "";
+  private boolean revealFolder;
+  private final TextButton folderButton;
   private List<String> metadata = List.of();
 
   private record Toggle(TextButton button, BooleanSupplier value) {}
@@ -101,7 +104,7 @@ public final class BattleWorkspace implements Disposable {
     root.pad(14);
     stage.addActor(root);
     Table header = new Table();
-    Label brand = label("CRFORGE  /  " + (replay ? "REPLAY" : "BATTLE LAB"));
+    Label brand = new Label("CRFORGE  /  " + (replay ? "REPLAY" : "BATTLE LAB"), skin, "title");
     brand.setColor(ACCENT);
     header.add(brand).left().expandX();
     data = label("");
@@ -147,15 +150,27 @@ public final class BattleWorkspace implements Disposable {
     dataPanel.pad(10);
     dataDetails = wrapped("");
     dataPanel.add(dataDetails).growX();
-    dataPanel
+    Table dataActions = new Table();
+    dataActions
         .add(button("Copy", () -> Gdx.app.getClipboard().setContents(details)))
-        .width(72)
-        .height(32)
-        .padLeft(10);
+        .growX()
+        .height(28)
+        .padBottom(4)
+        .row();
+    folderButton =
+        button(
+            "Show folder",
+            () -> {
+              revealFolder = !revealFolder;
+              refreshDataDetails();
+            });
+    dataActions.add(folderButton).growX().height(28);
+    dataPanel.add(dataActions).width(100).padLeft(10);
     dataPanel.setVisible(false);
     root.add(dataPanel).growX().height(0).row();
 
     summary = label("");
+    summary.setName("session-summary");
     summary.setColor(MUTED);
     root.add(summary).left().padBottom(8).row();
 
@@ -173,7 +188,7 @@ public final class BattleWorkspace implements Disposable {
             () -> {
               followEvents();
             });
-    logHeader.add(latestEvents).height(26).padRight(4);
+    logHeader.add(latestEvents).width(64).height(26).padRight(4);
     logHeader.add(button("Copy", () -> Gdx.app.getClipboard().setContents(lastEvents))).height(26);
     handRail.add(logHeader).growX().padBottom(6).row();
     events = wrapped("No events yet.");
@@ -209,7 +224,8 @@ public final class BattleWorkspace implements Disposable {
           .padRight(4);
     }
     tools.add(presets).padBottom(8).row();
-    toggle(tools, "Unit names", renderer::isDrawLabels, renderer::toggleDrawLabels);
+    toggle(tools, "Tile grid", renderer::isDrawGrid, renderer::toggleDrawGrid);
+    toggle(tools, "All unit names", renderer::isDrawLabels, renderer::toggleDrawLabels);
     toggle(tools, "Target lines", renderer::isDrawTargets, renderer::toggleDrawTargets);
     toggle(
         tools, "Ranges [O]", renderer::isDrawRanges, () -> command.accept(WorkspaceAction.RANGES));
@@ -274,6 +290,7 @@ public final class BattleWorkspace implements Disposable {
       root.add(timeline).growX().padTop(8).row();
     }
     notice = wrapped("");
+    notice.setName("status-notice");
     notice.setColor(ACCENT);
     root.add(scroll(notice)).growX().minHeight(18).prefHeight(20).maxHeight(54).padTop(8).row();
   }
@@ -305,7 +322,7 @@ public final class BattleWorkspace implements Disposable {
   }
 
   private void heading(Table table, String text) {
-    Label title = label(text);
+    Label title = new Label(text, skin, "heading");
     title.setColor(ACCENT);
     table.add(title).padBottom(10).row();
   }
@@ -351,6 +368,9 @@ public final class BattleWorkspace implements Disposable {
   }
 
   private void layout() {
+    boolean compactHands = stage.getHeight() < 900;
+    topHand.compact(compactHands);
+    bottomHand.compact(compactHands);
     boolean hasHands = frame != null && !frame.sides().isEmpty();
     topHand.table.setVisible(hasHands);
     bottomHand.table.setVisible(hasHands);
@@ -437,6 +457,7 @@ public final class BattleWorkspace implements Disposable {
     List<String> updatedMetadata = List.of(version, source, folder, sha, target);
     if (updatedMetadata.equals(metadata)) return;
     metadata = updatedMetadata;
+    loadedFolder = folder;
     data.setText("Data: " + version);
     String updated =
         "Loaded: "
@@ -445,14 +466,18 @@ public final class BattleWorkspace implements Disposable {
             + target
             + "\nSource: "
             + source
-            + "\nFolder: "
-            + folder
             + "\nSHA: "
             + sha;
     if (!updated.equals(details)) {
       details = updated;
-      dataDetails.setText(details);
+      refreshDataDetails();
     }
+  }
+
+  private void refreshDataDetails() {
+    dataDetails.setText(details + (revealFolder ? "\nFolder: " + loadedFolder : ""));
+    folderButton.setText(revealFolder ? "Hide folder" : "Show folder");
+    root.invalidateHierarchy();
   }
 
   public void update(
@@ -521,7 +546,7 @@ public final class BattleWorkspace implements Disposable {
       events.setText(text.isBlank() ? "No events yet." : text);
       eventPane.layout();
       if (following) followEvents();
-      else latestEvents.setText("New events");
+      else latestEvents.setText("+ Latest");
     }
     if (replay) {
       progress.setValue(endTick > 0 ? Math.min(1f, frame.tick() / (float) endTick) : 0);
