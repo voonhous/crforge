@@ -23,12 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # crforge-data.lock pins the data repository's commit, so a change and its data agree.
+      # crforge-data.lock pins the data repository's commit, so a change and its data agree. The
+      # unit tests pin values of the lock's unitTestVersion, so they read that version's tables.
       - name: Read the data lock
         id: lock
         run: |
           echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
-          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n 's/^unitTestVersion=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Check out the game tables
@@ -62,7 +63,9 @@ jobs:
         run: ./gradlew test
 
   # Every recorded reference battle at the locked data commit, each case held to
-  # parity/reference-expectations/<version>.json. The cases are split across the matrix.
+  # parity/reference-expectations/<version>.json, for two data versions of the lock: version, the
+  # one under work, and unitTestVersion, kept as a regression set. The cases of each are split
+  # across the shards of the matrix.
   reference:
     needs: build
     if: needs.build.outputs.has-game-data == 'true'
@@ -71,6 +74,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The lock key naming the data version.
+        lock-key: [ version, unitTestVersion ]
         shard: [ 0, 1 ]
 
     env:
@@ -84,7 +89,7 @@ jobs:
         id: lock
         run: |
           echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
-          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sed -n 's/^${{ matrix.lock-key }}=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
 
       - name: Check out the game data
         uses: actions/checkout@v7
@@ -117,6 +122,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: reference-scorecard-${{ matrix.shard }}
+          name: reference-scorecard-${{ steps.lock.outputs.version }}-${{ matrix.shard }}
           path: parity/build/reference-scorecard/
           if-no-files-found: warn
