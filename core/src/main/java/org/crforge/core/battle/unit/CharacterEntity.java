@@ -702,6 +702,10 @@ public class CharacterEntity extends WorldEntity {
     if (getHitPoints() != null) {
       attach(new HitPointsComponent());
     }
+    // The level setter's tail: the row's starting buff, then its buff while not attacking.
+    if (data.startingBuff() != null) {
+      world.startingBuff(this);
+    }
     startNotAttacking();
   }
 

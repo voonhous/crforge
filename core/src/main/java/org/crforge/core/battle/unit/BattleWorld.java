@@ -3966,6 +3966,15 @@ public class BattleWorld implements HolderPasses {
               + data.unmodelledDeathColumns());
     }
     destroyedNotice(dying);
+    // Its starting buff comes off every unit and tower that lists an instance of it with the dying
+    // object as its parent; the level setter applies it with none.
+    if (data.startingBuff() != null) {
+      for (BattleEntity entity : holder.entities()) {
+        if (entity instanceof WorldEntity carrier && carrier.getBuffs() != null) {
+          carrier.getBuffs().removeParented(data.startingBuff(), dying);
+        }
+      }
+    }
     if (data.spawnAreaObject() != null) {
       for (BattleEntity entity : holder.entities()) {
         if (entity instanceof AreaEffectEntity area
@@ -6862,6 +6871,24 @@ public class BattleWorld implements HolderPasses {
    * @param unit the unit
    * @param time how long the buff lasts
    */
+  /**
+   * A unit's starting buff, which the level setter's tail applies as the unit is made, ahead of its
+   * buff while not attacking: from the unit itself, at its level and for its side, with no parent,
+   * for its row's StartingBuffTime.
+   *
+   * @param unit the unit being made
+   */
+  void startingBuff(CharacterEntity unit) {
+    UnitData data = unit.getData();
+    unit.getBuffs()
+        .apply(
+            buffData(data.startingBuff()),
+            data.startingBuffTimeMs(),
+            unit.getPackedLevel(),
+            unit,
+            unit.side());
+  }
+
   void notAttackingBuff(CharacterEntity unit, int time) {
     BuffData buff = buffData(unit.getData().buffWhenNotAttacking());
     unit.getBuffs().apply(buff, time, unit.getPackedLevel(), unit, unit.side());

@@ -124,6 +124,11 @@ public class TowerEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
     }
+    // A tower takes no buff as it is made: no tower row sets a starting buff.
+    if (data.startingBuff() != null) {
+      throw new UnsupportedOperationException(
+          data.name() + " sets a StartingBuff, which a tower is not held to take");
+    }
     this.setter = new GridStateSetter(getView(), null, getTargeting(), () -> null);
     SelectionChain selection = getSelection();
     selection.setStateSetter(setter);
