@@ -32,6 +32,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class BattleFishermanTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /** The Fisherman's point, on the bottom side's left, away from every tower. */
@@ -373,7 +376,7 @@ class BattleFishermanTest {
     assertThatThrownBy(
             () -> {
               for (int i = 0; i < 20; i++) {
-                dasherView.setPendingFlags(dasherView.getPendingFlags() | EntityFlags.DASHING);
+                dasherView.setPendingFlags(dasherView.getPendingFlags() | BITS.dashing());
                 dashing.step(1);
               }
             })

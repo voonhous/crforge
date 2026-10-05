@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.Route;
@@ -24,6 +25,9 @@ import org.junit.jupiter.api.Test;
 
 /** What a state change does to a unit's route, its target-lost timer and its deploy countdown. */
 class GridStateSetterTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   private static final int WIDTH = 36;
 
@@ -135,6 +139,7 @@ class GridStateSetterTest {
   @BeforeEach
   void setUp() {
     unit = new GridEntity();
+    unit.setFlagBits(BITS);
     unit.setName("owner");
     unit.setSide(0);
     unit.setX(3500);
@@ -244,7 +249,7 @@ class GridStateSetterTest {
     assertThat(seen).containsExactly("effect in " + GridEntityState.CASTING + " route empty true");
     assertThat(unit.getState()).isEqualTo(GridEntityState.STANDING);
     assertThat(gates[0]).as("the gate of the change back only").isEqualTo(1);
-    assertThat(unit.getPendingFlags() & EntityFlags.CASTING_ABILITY).isNotZero();
+    assertThat(unit.getPendingFlags() & BITS.castingAbility()).isNotZero();
   }
 
   @Test
@@ -295,7 +300,7 @@ class GridStateSetterTest {
 
     assertThat(timers.getAbilityCountdown()).as("933 ms").isEqualTo(18);
     assertThat(timers.getAbilityWarningCountdown()).as("50 ms").isEqualTo(1);
-    assertThat(unit.getPendingFlags() & EntityFlags.CASTING_ABILITY).isNotZero();
+    assertThat(unit.getPendingFlags() & BITS.castingAbility()).isNotZero();
     assertThat(movement.getRoute().isEmpty()).isTrue();
     assertThat(gates[0]).as("the combat gate at the change's end").isEqualTo(1);
   }
@@ -314,7 +319,7 @@ class GridStateSetterTest {
     withCharge.setState(unit, GridEntityState.STANDING);
 
     assertThat(timers.isAbilityReady()).isTrue();
-    assertThat(unit.getPendingFlags() & EntityFlags.ABILITY_COOLDOWN_PAUSED).isNotZero();
+    assertThat(unit.getPendingFlags() & BITS.abilityCooldownPaused()).isNotZero();
     assertThat(movement.getChargeProgress()).isEqualTo(MovementState.CHARGE_INACTIVE);
     assertThat(gates[0]).as("into the cast and out of it").isEqualTo(2);
   }
@@ -464,6 +469,7 @@ class GridStateSetterTest {
   @DisplayName("the setter refuses to act on another entity")
   void theSetterBelongsToOneUnit() {
     GridEntity other = new GridEntity();
+    other.setFlagBits(BITS);
     other.setName("other");
 
     assertThatThrownBy(() -> setter.setState(other, GridEntityState.ATTACKING))

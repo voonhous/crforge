@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -60,7 +59,7 @@ public final class DashStart {
       int width,
       int height,
       StateSetter setter) {
-    if ((owner.getFlags() & EntityFlags.NO_DASH) != 0) {
+    if ((owner.getFlags() & owner.getFlagBits().noDash()) != 0) {
       return;
     }
     if (movement != null) {
@@ -81,7 +80,7 @@ public final class DashStart {
       owner.setDirY(facing[1]);
     }
     setter.setState(owner, GridEntityState.DASHING);
-    owner.setPendingFlags(owner.getPendingFlags() | EntityFlags.DASHING);
+    owner.setPendingFlags(owner.getPendingFlags() | owner.getFlagBits().dashing());
   }
 
   /** One axis clamped into the arena: a coordinate at or below 0 gives 0. */

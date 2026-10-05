@@ -9,7 +9,6 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 
 /**
@@ -243,7 +242,7 @@ public final class ChampionController extends ActionInstance {
     boolean casting = false;
     boolean disabled = false;
     for (CharacterEntity unit : champions) {
-      disabled |= (unit.getView().getFlags() & EntityFlags.ABILITY_DISABLED) != 0;
+      disabled |= (unit.getView().getFlags() & unit.getView().getFlagBits().abilityDisabled()) != 0;
       pending |= unit.abilityPending();
       casting |=
           unit.abilityWarningCountdown() > 0
@@ -283,7 +282,8 @@ public final class ChampionController extends ActionInstance {
     if (cooldownMs >= 1 && state != PENDING) {
       boolean paused = false;
       for (CharacterEntity unit : champions) {
-        paused |= (unit.getView().getFlags() & EntityFlags.ABILITY_COOLDOWN_PAUSED) != 0;
+        paused |=
+            (unit.getView().getFlags() & unit.getView().getFlagBits().abilityCooldownPaused()) != 0;
       }
       if (!paused) {
         cooldownMs = Math.max(cooldownMs, STEP_MS) - STEP_MS;

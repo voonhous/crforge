@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
  */
 class BattleEliteArcherHeroTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String HERO = "EliteArcherHero";
@@ -99,7 +102,7 @@ class BattleEliteArcherHeroTest {
     assertThat(decoy.getView().isOccludes()).as("no building").isFalse();
     // The holder's add folds the decoy's row tags into its tag word before its registration visit,
     // so the push pass of that visit leaves it alone: it stands on the hero's point.
-    assertThat(decoy.getView().getFlags() & EntityFlags.AVOIDANCE_AS_OBSTACLE).isNotZero();
+    assertThat(decoy.getView().getFlags() & BITS.avoidanceAsObstacle()).isNotZero();
     assertThat(decoy.getView().getX()).isEqualTo(heroX);
     assertThat(decoy.getView().getY()).as("not pushed on its spawn tick").isEqualTo(heroY);
     step(battle);

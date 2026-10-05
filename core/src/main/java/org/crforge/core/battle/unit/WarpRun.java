@@ -49,12 +49,14 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
 final class WarpRun extends ActionInstance {
 
   /** The tags each step raises for the next step. */
-  static final long STEP_TAGS =
-      EntityFlags.NO_ATTACK
-          | EntityFlags.DISABLE_PHYSICAL
-          | EntityFlags.NO_DAMAGE
-          | EntityFlags.UNTARGETABLE
-          | EntityFlags.WARP;
+  private long stepTags() {
+    EntityFlags bits = unit.getView().getFlagBits();
+    return bits.noAttack()
+        | bits.disablePhysical()
+        | bits.noDamage()
+        | bits.untargetable()
+        | bits.warp();
+  }
 
   private final WarpCharacter row;
   private final WarpCharacter.Flight flight;
@@ -137,7 +139,7 @@ final class WarpRun extends ActionInstance {
     }
     FixedMath.normalize(vec, next);
     unit.warpTo(vec[0] + unit.getView().getX(), vec[1] + unit.getView().getY());
-    unit.raiseWarpTags(STEP_TAGS);
+    unit.raiseWarpTags(stepTags());
     unit.faceToward(destX, destY);
   }
 

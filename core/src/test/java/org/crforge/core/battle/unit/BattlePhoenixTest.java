@@ -27,6 +27,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class BattlePhoenixTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final int X = 3500;
@@ -218,9 +221,9 @@ class BattlePhoenixTest {
     assertThat(egg.getData().name()).isEqualTo("PhoenixEgg");
     assertThat(egg.isSpawnImmune()).isTrue();
     long rowTags =
-        EntityFlags.NO_GIANTBUFFER_CHEF_ENCHANTMENT
-            | EntityFlags.AVOIDANCE_AS_OBSTACLE
-            | EntityFlags.NO_MOVE_ALLOW_ATTRACT;
+        BITS.noGiantbufferChefEnchantment()
+            | BITS.avoidanceAsObstacle()
+            | BITS.noMoveAllowAttract();
     // Made after the pre-hooks, but the holder's add folds its row's tags as it takes the egg.
     assertThat(egg.getView().getFlags()).as("folded by the holder's add").isEqualTo(rowTags);
     scene.step(1);

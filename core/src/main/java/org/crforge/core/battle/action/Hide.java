@@ -3,7 +3,6 @@ package org.crforge.core.battle.action;
 import lombok.Getter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 
 /**
  * An action that hides the object it runs on, as the evolved Snowball hides the units it carries:
@@ -38,15 +37,20 @@ public final class Hide extends RowAction {
   /** True when the run finishes as its hider leaves the battle. */
   @Getter private final boolean stopWhenHiderDies;
 
+  /** The bit of the HIDDEN tag the run sets, as the game tags table numbers it. */
+  private final long hiddenTag;
+
   /**
    * @param row the row's shared columns
    * @param durationMs how long the run lasts; below 1 it lasts until it is stopped
    * @param stopWhenHiderDies true when the run finishes as its hider leaves the battle
+   * @param hiddenTag the bit of the HIDDEN tag, as the game tags table numbers it
    */
-  public Hide(ActionRow row, int durationMs, boolean stopWhenHiderDies) {
+  public Hide(ActionRow row, int durationMs, boolean stopWhenHiderDies, long hiddenTag) {
     super(row);
     this.durationMs = durationMs;
     this.stopWhenHiderDies = stopWhenHiderDies;
+    this.hiddenTag = hiddenTag;
   }
 
   @Override
@@ -75,7 +79,7 @@ public final class Hide extends RowAction {
 
     @Override
     protected void update(ActionHolder holder) {
-      addTags(EntityFlags.HIDDEN);
+      addTags(hiddenTag);
       if (durationMs >= 1 && timeMs >= durationMs) {
         finish();
         return;

@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 
@@ -62,7 +61,8 @@ public final class ContactRule {
    * moves, is pushed by them.
    */
   public static int collides(GridEntity entity) {
-    if ((entity.getFlags() & EntityFlags.NO_CHECK_COLLISIONS) != 0 || entity.isAttached()) {
+    if ((entity.getFlags() & entity.getFlagBits().noCheckCollisions()) != 0
+        || entity.isAttached()) {
       return 0;
     }
     int state = entity.getState();
@@ -85,7 +85,7 @@ public final class ContactRule {
         || state == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
       return 0;
     }
-    if ((entity.getFlags() & EntityFlags.NO_CHECK_AVOIDANCE) != 0) {
+    if ((entity.getFlags() & entity.getFlagBits().noCheckAvoidance()) != 0) {
       return 0;
     }
     return collides(entity);

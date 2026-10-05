@@ -332,6 +332,7 @@ class MovementReplayTest {
     private SpeedInputs speedInputs() {
       return new SpeedInputs(
           unit.getFlags(),
+          unit.getFlagBits(),
           unit.getState(),
           true,
           0,

@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
  */
 class BattleUppercutWindTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /** A battle with the towers passive, and what the uppercut, the knock and the wind did. */
@@ -163,7 +166,7 @@ class BattleUppercutWindTest {
     assertThat(scene.log)
         .containsExactly(
             "start mk " + tower.name() + " true",
-            "tags mk " + Long.toHexString(EntityFlags.NO_MOVE | EntityFlags.NO_ATTACK),
+            "tags mk " + Long.toHexString(BITS.noMove() | BITS.noAttack()),
             "tags mk 0");
   }
 

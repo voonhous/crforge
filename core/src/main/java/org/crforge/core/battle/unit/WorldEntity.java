@@ -235,6 +235,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.world = world;
     this.data = data;
     this.view = view;
+    // The view's flag words are numbered as the battle's game tags table numbers the tags.
+    view.setFlagBits(world.getFlagBits());
     this.targetView = new TargetView(view, targetingConfig);
     this.targeting = new TargetingState();
     targeting.setOwner(view);
@@ -643,7 +645,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public void attackCounted() {
         attackCount++;
         // With the count the hit raises ATTACKING for one step.
-        getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.ATTACKING);
+        getView()
+            .setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().attacking());
       }
 
       @Override
@@ -1015,7 +1018,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       // Barbarian Barrel's roll.
       @Override
       public boolean damageForbidden() {
-        return (view.getFlags() & EntityFlags.NO_DAMAGE) != 0;
+        return (view.getFlags() & view.getFlagBits().noDamage()) != 0;
       }
 
       // The damage entry refuses a hidden entity, unless the hit passes it.
@@ -1389,8 +1392,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       foldLayer();
     }
     if (captureWatched) {
-      long word = view.getFlags() & BattleWorld.CAPTURE_TAGS;
-      boolean hidden = (view.getFlags() & EntityFlags.HIDDEN) != 0;
+      long word = view.getFlags() & world.captureTags();
+      boolean hidden = (view.getFlags() & view.getFlagBits().hidden()) != 0;
       if (word != captureWord || hidden != captureHidden) {
         captureWord = word;
         captureHidden = hidden;
@@ -1428,11 +1431,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** The tags an uppercut and a knock raise and hold: the word's watched part. */
   long watchedTagMask() {
-    return EntityFlags.NO_MOVE
-        | EntityFlags.NO_ATTACK
-        | EntityFlags.LOCK_TARGET
-        | world.forceIsAir()
-        | EntityFlags.DISABLE_PHYSICAL;
+    EntityFlags bits = world.getFlagBits();
+    return bits.noMove()
+        | bits.noAttack()
+        | bits.lockTarget()
+        | bits.forceIsAir()
+        | bits.disablePhysical();
   }
 
   /**
@@ -2024,7 +2028,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** Locks the entity's selector from its next pre-hook, for one step. */
   void raiseLockTarget() {
-    getView().setPendingFlags(getView().getPendingFlags() | EntityFlags.LOCK_TARGET);
+    getView().setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().lockTarget());
   }
 
   /**

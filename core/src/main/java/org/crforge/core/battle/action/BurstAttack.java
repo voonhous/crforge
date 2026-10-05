@@ -4,7 +4,6 @@ import java.util.List;
 import lombok.Builder;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 
 /**
  * The Dagger Duchess's charge counter: a run that lasts for as long as its tower does, spends one
@@ -65,6 +64,8 @@ public final class BurstAttack extends RowAction {
    *     up; the first also at no charge
    * @param depletedAttackSequenceIndex the index the run sets while depleted; 0 or below for a row
    *     that is never marked depleted
+   * @param noAttackTag the bit of the NO_ATTACK tag the run sets with no charge left, as the game
+   *     tags table numbers it
    */
   @Builder
   public record Columns(
@@ -72,7 +73,8 @@ public final class BurstAttack extends RowAction {
       int rechargeTimeMs,
       int rechargeIncrement,
       List<Integer> attackSequenceIndices,
-      int depletedAttackSequenceIndex) {
+      int depletedAttackSequenceIndex,
+      long noAttackTag) {
 
     public Columns {
       attackSequenceIndices = List.copyOf(attackSequenceIndices);
@@ -170,9 +172,9 @@ public final class BurstAttack extends RowAction {
         }
       }
       if (charges == 0) {
-        addTags(EntityFlags.NO_ATTACK);
+        addTags(columns.noAttackTag());
       } else {
-        clearTags(EntityFlags.NO_ATTACK);
+        clearTags(columns.noAttackTag());
       }
       List<Integer> indices = columns.attackSequenceIndices();
       if (!active || indices.isEmpty()) {

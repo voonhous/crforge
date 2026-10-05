@@ -318,6 +318,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     this.countdown = data.lifeDurationMs();
     this.actionHolder = new ActionHolder(this, world.getHolder()::isInPendingPass);
     GridEntity view = new GridEntity();
+    view.setFlagBits(world.getFlagBits());
     view.setType(ReferenceValidator.TYPE_CONTACT);
     view.setSide(side);
     view.setX(x);
@@ -922,8 +923,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       return false;
     }
     long flags = target.getView().getFlags();
-    if ((flags & EntityFlags.UNTARGETABLE) != 0
-        || data.cloning() && (flags & EntityFlags.NO_CLONE) != 0) {
+    EntityFlags bits = target.getView().getFlagBits();
+    if ((flags & bits.untargetable()) != 0 || data.cloning() && (flags & bits.noClone()) != 0) {
       return false;
     }
     if (data.cloning()
@@ -1164,7 +1165,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (target.getData().building() && data.ignoreBuildings()) {
       return false;
     }
-    if ((target.getView().getFlags() & EntityFlags.UNTARGETABLE) != 0) {
+    if ((target.getView().getFlags() & target.getView().getFlagBits().untargetable()) != 0) {
       return false;
     }
     return accepts(target.getTargetView());

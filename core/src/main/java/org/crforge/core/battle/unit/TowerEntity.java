@@ -10,7 +10,6 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ChampionAbility;
 import org.crforge.core.battle.action.CookingHost;
 import org.crforge.core.battle.action.Filter;
-import org.crforge.core.battle.action.GameTags;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WithDuration;
@@ -317,7 +316,7 @@ public class TowerEntity extends WorldEntity {
    * waking king. A princess tower never is.
    */
   public boolean isInactive() {
-    return (getView().getFlags() & GameTags.KEEPS_TARGETING_OFF) != 0;
+    return (getView().getFlags() & getView().getFlagBits().keepsTargetingOff()) != 0;
   }
 
   private StateQueries stateQueries() {

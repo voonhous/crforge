@@ -20,6 +20,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class BattleAttackActionTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /** An evolved Valkyrie and three Barbarians walking into it, as valkyrie_ev1_barbarians. */
@@ -47,7 +50,7 @@ class BattleAttackActionTest {
     while (battle.getBattle().getTick() <= 40) {
       int tick = battle.getBattle().getTick();
       battle.getBattle().step();
-      if ((valkyrie.getView().getFlags() & EntityFlags.NO_PUSHED_BY_ENEMY) != 0) {
+      if ((valkyrie.getView().getFlags() & BITS.noPushedByEnemy()) != 0) {
         tagged.add(tick);
       }
     }
