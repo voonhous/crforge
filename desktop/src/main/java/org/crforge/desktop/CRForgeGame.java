@@ -71,10 +71,16 @@ public class CRForgeGame extends Game {
     if (aiPort > 0) {
       setScreen(new AIGameScreen(aiPort));
     } else if (replay != null) {
-      setScreen(new ReplayGameScreen(replay, versions.current()));
+      setScreen(new ReplayGameScreen(replay, versions));
     } else {
       setScreen(new DebugGameScreen(versions, first));
     }
+  }
+
+  @Override
+  public void dispose() {
+    super.dispose();
+    if (getScreen() != null) getScreen().dispose();
   }
 
   /**
@@ -100,7 +106,7 @@ public class CRForgeGame extends Game {
         return;
       }
       Screen previous = getScreen();
-      setScreen(new ReplayGameScreen(dropped, tables));
+      setScreen(new ReplayGameScreen(dropped, versions));
       if (previous != null) {
         previous.dispose();
       }

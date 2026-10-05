@@ -105,8 +105,9 @@ public class DesktopLauncher {
             ? "CRForge - AI Visualizer"
             : replay != null ? "CRForge - Replay Viewer" : "CRForge - Debug Visualizer";
     config.setTitle(title);
-    config.setWindowedMode(width, height);
-    config.setResizable(false);
+    config.setWindowedMode(aiPort > 0 ? width : 1120, aiPort > 0 ? height : 1040);
+    config.setResizable(aiPort <= 0);
+    if (aiPort <= 0) config.setWindowSizeLimits(1000, 760, -1, -1);
     config.useVsync(true);
     config.setForegroundFPS(60);
 
@@ -171,14 +172,15 @@ public class DesktopLauncher {
 
   /** The versions the screen's {@code V} key cycles through, starting on the tables loaded. */
   static DataVersions dataVersions(DataSelection.Choice choice, GameTables tables) {
-    if (choice.root() == null) {
-      return new DataVersions(null, List.of(), choice.tables().folder(), tables);
-    }
     return new DataVersions(
-        choice.root().folder(),
-        DataSelection.versions(choice.root().folder()),
+        choice.root() == null ? null : choice.root().folder(),
+        choice.root() == null ? List.of() : DataSelection.versions(choice.root().folder()),
         choice.tables().folder(),
-        tables);
+        tables,
+        choice.tables().source(),
+        choice.lock() == null || choice.lock().version() == null
+            ? "unknown"
+            : choice.lock().version());
   }
 
   /**

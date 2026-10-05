@@ -32,6 +32,8 @@ public final class DataVersions {
   private GameTables current;
 
   private Path currentFolder;
+  private String source;
+  private final String developmentVersion;
 
   /** The index into {@link #versions} of the version {@code V} last tried, or -1. */
   private int cursor;
@@ -54,10 +56,22 @@ public final class DataVersions {
    * @param current the current tables
    */
   public DataVersions(Path root, List<String> versions, Path currentFolder, GameTables current) {
+    this(root, versions, currentFolder, current, "configured tables folder", "unknown");
+  }
+
+  public DataVersions(
+      Path root,
+      List<String> versions,
+      Path currentFolder,
+      GameTables current,
+      String source,
+      String developmentVersion) {
     this.root = root;
     this.versions = root == null ? List.of() : List.copyOf(versions);
     this.current = current;
     this.currentFolder = currentFolder;
+    this.source = source;
+    this.developmentVersion = developmentVersion;
     this.cursor = startCursor();
     if (cursor >= 0 && sameFolder(this.versions.get(cursor))) {
       loaded.put(this.versions.get(cursor), current);
@@ -94,6 +108,14 @@ public final class DataVersions {
     return currentFolder;
   }
 
+  public String source() {
+    return source;
+  }
+
+  public String developmentVersion() {
+    return developmentVersion;
+  }
+
   /** The root's version folder names. */
   public List<String> versions() {
     return versions;
@@ -121,8 +143,16 @@ public final class DataVersions {
                   + " or check out crforge-data beside the project"
               : "no data versions in " + root.toAbsolutePath().normalize());
     }
-    cursor = (cursor + 1) % versions.size();
-    String version = versions.get(cursor);
+    return select(versions.get((cursor + 1) % versions.size()));
+  }
+
+  /** Loads an explicitly chosen version, retaining the current tables and source on failure. */
+  public Switched select(String version) {
+    int index = versions.indexOf(version);
+    if (index < 0) {
+      return new Switched(version, null, "unknown data version " + version + stillOn());
+    }
+    cursor = index;
     Path folder = root.resolve(version);
     GameTables tables = loaded.get(version);
     if (tables == null) {
@@ -159,6 +189,7 @@ public final class DataVersions {
     }
     current = tables;
     currentFolder = folder;
+    source = "selected from the data root";
     return new Switched(version, session, null);
   }
 
