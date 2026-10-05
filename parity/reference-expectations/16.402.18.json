@@ -245,7 +245,7 @@
   "new-content-v2/deck_two_heroes-play": {"outcome": "diagnostic_match"},
   "new-content-v2/evo_angrybarbarians": {"outcome": "unsupported", "feature": "AngryBarbarian_EV1_RangedProjectile writes its OnTargetReachedAction inline, as ActionSpawn, which is not modelled", "input": "the run"},
   "new-content-v2/evo_electrogiant": {"outcome": "unsupported", "feature": "ElectroGiant_EV1_Pulse_Attack_Interval sets AffectedByHitSpeed, which is not modelled", "input": "the run"},
-  "new-content-v2/evo_minionhorde": {"outcome": "unsupported", "feature": "MinionHorde_EV1 sets columns the battle does not model: [OnDamageTakenAction, OnDamageTakenActionInstigatorAsSelf]", "input": "the run"},
+  "new-content-v2/evo_minionhorde": {"outcome": "diagnostic_match"},
   "new-content-v2/evo_princess": {"outcome": "unsupported", "feature": "Princess_EV1_projectiles_action_on_shooter is an ActionRunActionOnShooter, which the battle does not have", "input": "the run"},
   "new-content-v2/hero_balloon": {"outcome": "diagnostic_match"},
   "new-content-v2/hero_balloon-play": {"outcome": "diagnostic_match"},
@@ -282,7 +282,7 @@
   "random-battles-16-v1/random_battle16_s0021": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0022": {"outcome": "unsupported", "feature": "BerserkerHero_spawn_buff spawns BerserkerHero_buff, which sets columns not modelled: [CharacterCrownTowerDamagePercent, GameTagsToSet]", "input": "the run"},
   "random-battles-16-v1/random_battle16_s0023": {"outcome": "mismatch", "first_divergent_tick": 551, "path": "$.entities[18].x"},
-  "random-battles-16-v1/random_battle16_s0024": {"outcome": "unsupported", "feature": "MinionHorde_EV1 sets columns the battle does not model: [OnDamageTakenAction, OnDamageTakenActionInstigatorAsSelf]", "input": "the run"},
+  "random-battles-16-v1/random_battle16_s0024": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0025": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0026": {"outcome": "mismatch", "first_divergent_tick": 699, "path": "$.entities.length"},
   "random-battles-16-v1/random_battle16_s0027": {"outcome": "diagnostic_match"},
@@ -441,8 +441,8 @@
   "tv-replays-v3/tv_replay_018": {"outcome": "unsupported", "feature": "MegaMinion_hero_mark_target's target Firecracker leaves, whose died action MegaMinion_hero_reset_ability is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_019": {"outcome": "unsupported", "feature": "ValkyrieHero_Pending_Buff spawns ValkyrieHero_Charge, which sets columns not modelled: [GameTagsToSet]", "input": "the run"},
   "tv-replays-v3/tv_replay_020": {"outcome": "unsupported", "feature": "MiniPekkaHero_run_timer_continuous steps under a buff on its owner's hit speed, whose scaling is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_021": {"outcome": "unsupported", "feature": "MinionHorde_EV1 sets columns the battle does not model: [OnDamageTakenAction, OnDamageTakenActionInstigatorAsSelf]", "input": "the run"},
-  "tv-replays-v3/tv_replay_022": {"outcome": "unsupported", "feature": "MinionHorde_EV1 sets columns the battle does not model: [OnDamageTakenAction, OnDamageTakenActionInstigatorAsSelf]", "input": "the run"},
+  "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
+  "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "cmd32_2_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"}
  }
 }
