@@ -29,6 +29,7 @@ import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
@@ -2156,6 +2157,50 @@ public class BattleWorld implements HolderPasses {
         out.add(entity.entity());
       }
     }
+    return out;
+  }
+
+  /**
+   * The objects a target resolver's Cone shape collects around a point, asked by an entity: the
+   * object query around the point that tests a building by its square, in the index's bucket order,
+   * x outer and y inner, each object once, that the filter lets through for the entity's team and
+   * row name - the entity itself the one a MatchSelf filter passes and the one whose buffs a buff
+   * checker looks for - and then those the cone keeps, pointed along its direction for the entity's
+   * heading.
+   *
+   * @param x the point along the width
+   * @param y the point along the length
+   * @param heading the asking entity's heading in degrees, which the cone turns with if it says so
+   * @param cone the resolver's shape
+   * @param filter the resolver's filter
+   * @param team the asking entity's team
+   * @param rowName the asking entity's row name
+   * @param asker the asking entity
+   */
+  List<WorldEntity> resolverConeCandidates(
+      int x,
+      int y,
+      int heading,
+      ConeShape cone,
+      GameObjectFilter filter,
+      int team,
+      String rowName,
+      BattleEntity asker) {
+    List<GridEntity> found =
+        index.query(new SpatialQuery(x, y, cone.radius(), 0, false, true, 0, -1));
+    List<WorldEntity> out = new ArrayList<>();
+    if (found == null) {
+      return out;
+    }
+    int direction = cone.direction(heading);
+    for (GridEntity view : found) {
+      WorldEntity entity = entityOf(view);
+      if (filter.matches(entity.filterSubject(), team, rowName, entity == asker, asker.getId())
+          && cone.keeps(direction, view.getX() - x, view.getY() - y, view.getCollisionRadius())) {
+        out.add(entity);
+      }
+    }
+    index.release(found);
     return out;
   }
 

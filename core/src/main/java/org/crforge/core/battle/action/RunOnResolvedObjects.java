@@ -9,16 +9,21 @@ import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * An action that runs another on the objects its target resolver finds, as the Ice Wizard hero's
- * ability looks for the enemy it has slowed.
+ * ability looks for the enemy it has slowed and the Minion Giant looks behind itself for a friendly
+ * Minion.
  *
  * <p>When it starts, the resolver collects around the owner's position: a Global shape offers every
  * live object of the battle, in id order and the owner among them, to the resolver's filter, asked
- * by the owner. With Amount exactly 1 each of the resolver's strategies in turn narrows what passed
- * to its ties - a strategy that keeps nothing leaving the pool as it was, one that keeps a single
- * candidate ending the search - and the first left is the one object found.
- * RESOLVER_STRATEGY_CLOSEST_TARGET keeps the smallest squared distance from the owner's position,
- * RESOLVER_STRATEGY_FURTHEST_TARGET the largest, RESOLVER_STRATEGY_LOWEST_MAX_HP the lowest maximum
- * hit points plus maximum shield.
+ * by the owner. A Cone shape ({@link ConeShape}) runs the circle query around that position over
+ * the battle's buckets, x outer and y inner, each object once - a building by its square, anything
+ * else strictly within the radius plus its collision radius - through the same filter asked by the
+ * owner, and keeps, in that order, what the cone keeps, the cone turned with the owner's heading
+ * when it says so: a character's facing, nothing for an area effect. With Amount exactly 1 each of
+ * the resolver's strategies in turn narrows what passed to its ties - a strategy that keeps nothing
+ * leaving the pool as it was, one that keeps a single candidate ending the search - and the first
+ * left is the one object found. RESOLVER_STRATEGY_CLOSEST_TARGET keeps the smallest squared
+ * distance from the owner's position, RESOLVER_STRATEGY_FURTHEST_TARGET the largest,
+ * RESOLVER_STRATEGY_LOWEST_MAX_HP the lowest maximum hit points plus maximum shield.
  *
  * <p>Action is then scheduled on the object found, built for it, with the owner as its cause and
  * the context the start carried; with RunActionsOnSelf it is scheduled on the owner instead, the
@@ -28,8 +33,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>Refused rather than guessed: an Amount other than 1 for a row that runs an Action on what it
  * finds (the order of the many pick is not traced on this version), an Amount below 1, and any
- * other strategy. A resolver whose shape is not a Global one, the custom position expressions and
- * the ignored ids are refused as the row is built.
+ * other strategy. A resolver whose shape is neither a Global nor a Cone one, the custom position
+ * expressions and the ignored ids are refused as the row is built.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -39,7 +44,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " turn, the closest by squared distance - the action on the object found with the"
             + " owner its cause and the start's context, RunActionsOnSelf swapping the two, and"
             + " the self action when nothing is found; held by BattleRunOnResolvedTest and the"
-            + " Ice Wizard hero's tap. A many pick with no action only asks whether anything"
+            + " Ice Wizard hero's tap; a Cone shape's circle query and cone test, held by"
+            + " BattleRunOnResolvedConeTest. A many pick with no action only asks whether anything"
             + " passed. Refused: a many pick that runs an action, an Amount below 1 and any other"
             + " strategy.")
 public final class RunOnResolvedObjects extends RowAction {
@@ -55,6 +61,15 @@ public final class RunOnResolvedObjects extends RowAction {
      * among those asked.
      */
     List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter);
+
+    /**
+     * The objects a Cone shape keeps around the owner's position: the circle query's, in its order,
+     * that the filter lets through, asked by the owner, and that the cone keeps.
+     *
+     * @param filter the resolver's filter
+     * @param cone the resolver's shape
+     */
+    List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter, ConeShape cone);
 
     /** The owner's position along the width. */
     int x();
@@ -93,6 +108,7 @@ public final class RunOnResolvedObjects extends RowAction {
    *
    * @param resolver the target resolver's row name
    * @param filter the resolver's filter
+   * @param cone the resolver's Cone shape, or null for a Global one
    * @param strategies the resolver's strategies, as the data names them
    * @param amount how many objects it may run the action on
    * @param action the name of the row run on what it finds, or null for none
@@ -103,6 +119,7 @@ public final class RunOnResolvedObjects extends RowAction {
   public record Columns(
       String resolver,
       GameObjectFilter filter,
+      ConeShape cone,
       List<String> strategies,
       int amount,
       String action,
@@ -142,7 +159,10 @@ public final class RunOnResolvedObjects extends RowAction {
       throw new UnsupportedOperationException(
           name() + " resolves " + columns.amount() + " objects, which is not modelled");
     }
-    List<SetIndicatorOnTarget.Candidate> pool = host.candidates(columns.filter());
+    List<SetIndicatorOnTarget.Candidate> pool =
+        columns.cone() == null
+            ? host.candidates(columns.filter())
+            : host.candidates(columns.filter(), columns.cone());
     if (columns.amount() != 1) {
       // The many pick takes up to Amount objects; with no action to run on them only whether
       // anything passed the filter matters, and any strategy keeps a non-empty pool non-empty.

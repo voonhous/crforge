@@ -15,6 +15,7 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
+import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinsteinAbility;
@@ -1501,6 +1502,26 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         for (WorldEntity entity :
             world.resolverCandidates(
                 filter, side() & 1, data.name(), action.name(), AreaEffectEntity.this)) {
+          out.add(new MarkCandidate(entity, action.name()));
+        }
+        return out;
+      }
+
+      @Override
+      public List<SetIndicatorOnTarget.Candidate> candidates(
+          GameObjectFilter filter, ConeShape cone) {
+        // An area effect has no heading: a Cone that turns with it points along its offset.
+        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+        for (WorldEntity entity :
+            world.resolverConeCandidates(
+                AreaEffectEntity.this.x(),
+                AreaEffectEntity.this.y(),
+                0,
+                cone,
+                filter,
+                side() & 1,
+                data.name(),
+                AreaEffectEntity.this)) {
           out.add(new MarkCandidate(entity, action.name()));
         }
         return out;
