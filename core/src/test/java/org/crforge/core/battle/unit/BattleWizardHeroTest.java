@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -35,7 +34,9 @@ import org.junit.jupiter.api.io.TempDir;
  * run starts, and the hero's next attack visit lands a whole hit at once. The action at the height
  * swaps the hero onto its flying row, which its champion slot then no longer follows, and whose
  * shot schedules its action on reaching its target on itself as it arrives: two area effects 1000
- * beyond its point, in the impact's tick.
+ * beyond its point, in the impact's tick. When the hold ends the descent starts, and its action at
+ * the start swaps the hero back onto its ground row, which its champion slot follows again; the
+ * hero comes down over 200 ms and the run ends.
  */
 class BattleWizardHeroTest {
 
@@ -268,7 +269,7 @@ class BattleWizardHeroTest {
   @Test
   @DisplayName(
       "held at the height the hero carries FORCE_IS_AIR and pushes 3500 on each step for 4600 ms;"
-          + " the descent that follows is refused")
+          + " the hold's last step turns to the descent, with a transition less 50 ms left")
   void theHeroIsHeld(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(withoutSwap(folder));
     CharacterEntity hero = scene.abilityUsed();
@@ -285,11 +286,58 @@ class BattleWizardHeroTest {
       assertThat(hero.getView().isAir()).isTrue();
       assertThat(hero.getTargetView().z()).isEqualTo(3500);
     }
-    // The hold's last step finds its counter out: the descent it would start is refused.
-    assertThatThrownBy(() -> scene.steps(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("WizardHero_ground_to_air brings")
-        .hasMessageContaining("back down, which is not modelled");
+    // The hold's last step finds its counter out: it still pushes the height, then turns to the
+    // descent with the whole transition and takes 50 ms off it.
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 93) + " phase 2 3 counter 0 150 [3500]");
+  }
+
+  @Test
+  @DisplayName(
+      "the hold's last step schedules the action at the start of the descent, which swaps the hero"
+          + " back onto its ground row in that step; the hero comes down in four steps, in the air"
+          + " while the counter is above 149, and the run then ends with its override cleared")
+  void theHeroComesBackDown() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity hero = scene.abilityUsed();
+    int turn = scene.stepUntilCasting(hero) + 7;
+    ChampionController slot = scene.slotFollowing(HERO);
+    while (scene.tick() <= turn + 92) {
+      scene.steps(1);
+    }
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+    assertThat(slot.champions()).as("not followed on the flying row").isEmpty();
+    // The hold's last step: its counter is out, the descent starts, and the action at its start
+    // runs in the same step: the swap back to the ground row.
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 93) + " phase 2 3 counter 0 150 [3500]");
+    assertThat(hero.getData().name()).isEqualTo(HERO);
+    // The layer is still the run's: FORCE_IS_AIR was raised by that last held step.
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 94) + " phase 3 3 counter 150 100 [2625]");
+    assertThat(hero.getView().isAir()).isTrue();
+    assertThat(hero.getTargetView().z()).isEqualTo(3500);
+    // The descent's first step raised FORCE_IS_AIR once more (its counter above 149); the second
+    // does not, so the hero stands on its ground row's layer from the pre-hook after it.
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 95) + " phase 3 3 counter 100 50 [1750]");
+    assertThat(hero.getView().isAir()).isTrue();
+    assertThat(hero.getTargetView().z()).isEqualTo(2625);
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 96) + " phase 3 3 counter 50 0 [875]");
+    assertThat(hero.getView().isAir()).as("its ground row's layer").isFalse();
+    assertThat(hero.getTargetView().z()).isEqualTo(1750);
+    assertThat(hero.flyingHeightOverride()).isEqualTo(3500);
+    // The step that finds the counter out pushes the row height and ends the run: the override
+    // is cleared there.
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo((turn + 97) + " phase 3 3 counter 0 0 [0]");
+    assertThat(hero.flyingHeightOverride()).isZero();
+    scene.steps(1);
+    assertThat(scene.runs).hasSize(1 + 5 + 93 + 4);
+    assertThat(hero.getView().isAir()).isFalse();
+    assertThat(hero.getTargetView().z()).isZero();
+    assertThat(slot.champions()).as("followed again on the ground row").containsExactly(hero);
   }
 
   /** A copy of the data whose action at the height leaves out the swap to the flying row. */

@@ -1346,6 +1346,19 @@ public class CharacterEntity extends WorldEntity {
     return false;
   }
 
+  /**
+   * Whether a ground-to-air run on the character is bringing it back down: descending, it pushes
+   * the character's height itself and raises FORCE_IS_AIR while more than 149 ms are left.
+   */
+  private boolean landedByRun() {
+    for (ActionInstance instance : actionHolder().running()) {
+      if (instance instanceof GroundToAirRun run && run.phase() == GroundToAirRun.DESCENDING) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Refuses a swap whose effect is not established. */
   private void refuseSwap(UnitData next) {
     UnitData current = getData();
@@ -1378,6 +1391,12 @@ public class CharacterEntity extends WorldEntity {
     // flying height only with direct paths, so a row that flies by them is refused.
     boolean liftedToFlight =
         !current.air() && next.air() && !next.flyDirectPaths() && liftedByRun();
+    // And a flying row taken that way may give way to a ground row while the run brings the unit
+    // back down, as the hero Wizard takes its ground row again as its descent starts: the layer is
+    // the run's FORCE_IS_AIR until the run stops raising it, then the ground row's, and the height
+    // the run's push; the movement config was built from a ground row.
+    boolean landedFromFlight =
+        current.air() && !next.air() && !current.flyDirectPaths() && landedByRun();
     // Likewise a unit that jumps the river may take a row that jumps it alike.
     boolean sameJump =
         current.jumpEnabled()
@@ -1385,7 +1404,7 @@ public class CharacterEntity extends WorldEntity {
             && current.jumpHeight() == next.jumpHeight()
             && current.jumpSpeed() == next.jumpSpeed();
     String refused = null;
-    if ((next.air() || current.air()) && !sameFlight && !liftedToFlight
+    if ((next.air() || current.air()) && !sameFlight && !liftedToFlight && !landedFromFlight
         || current.building()
         || next.building() && !breaksDown) {
       refused = "a building or a flying row";
