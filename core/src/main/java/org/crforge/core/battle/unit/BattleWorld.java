@@ -195,6 +195,12 @@ public class BattleWorld implements HolderPasses {
    * The share counts for the projectile's shooter, and the projectile's listening runs hear of it,
    * as the drain deals it.
    *
+   * <p>It lands a projectile's hit on its one target at the drain as well (see {@link
+   * #dealProjectileHit(ProjectileEntity, WorldEntity, int, int, int, int)}), whose guards are then
+   * tested as the drain deals it: a dasher hit on the step its immunity runs out, after its dash,
+   * has that immunity counted down by its own state visit of the step before the drain, and takes
+   * the hit; the game of 14.593.1 refuses it inside the impact.
+   *
    * <p>And it lands the two kills of a whole hit points at the drain: a fallen king's circle's (see
    * {@link #circleKill(WorldEntity, int)}) and a Kamikaze unit's of itself as its hit ends (see
    * {@link #kamikazeKill(WorldEntity)}). The circle runs in the match update, before the holder
@@ -423,6 +429,27 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
+   * A projectile's hit on its one target waiting for the drain, on a data version that lands it
+   * there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int,
+   * int)} deals it at once, with the flight's direction.
+   *
+   * @param projectile the projectile, standing at its aim
+   * @param target the entity the impact resolved against
+   * @param damage hit points the impact deals, before the target's guards and the clamp to zero
+   * @param hitId the id the impact carries
+   * @param directionX direction of the flight along the arena's width
+   * @param directionY direction of the flight along the arena's length
+   */
+  private record ProjectileHitDue(
+      ProjectileEntity projectile,
+      WorldEntity target,
+      int damage,
+      int hitId,
+      int directionX,
+      int directionY)
+      implements QueuedHit {}
+
+  /**
    * The kill of a fallen king's circle waiting for the drain, on a data version that lands it
    * there: dealt as {@link #circleKill(WorldEntity, int)} deals it at once.
    *
@@ -441,14 +468,15 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
-   * share of a character's or a projectile's area, a circle's kill or a Kamikaze unit's kill on a
-   * version that queues them.
+   * share of a character's or a projectile's area, a projectile's hit on its one target, a circle's
+   * kill or a Kamikaze unit's kill on a version that queues them.
    */
   private sealed interface QueuedHit
       permits TypedHit,
           DirectHitDue,
           AreaHitDue,
           ProjectileAreaHitDue,
+          ProjectileHitDue,
           ActionDamageDue,
           CircleKillDue,
           KamikazeKillDue {}
@@ -1863,6 +1891,36 @@ public class BattleWorld implements HolderPasses {
       return DamageResult.NOTHING;
     }
     return dealProjectileDamage(projectile, victim, damage, hitId, 0, 0);
+  }
+
+  /**
+   * Deals the damage of a projectile's hit on its one target: at once, as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} does, on a data
+   * version whose game deals it inside the impact; queued for the damage drain, in the order hits
+   * are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}). Queued, the
+   * target's guards are tested as the drain deals it, after every post-hook of the tick: a dasher
+   * whose immunity its own state visit of that tick counted down to 0 takes the hit.
+   *
+   * @param projectile the projectile, standing at its aim
+   * @param target the entity the impact resolved against
+   * @param damage hit points the impact deals, before the target's guards and the clamp to zero
+   * @param hitId the id the impact carries, counted by the battle
+   * @param directionX direction of the flight along the arena's width
+   * @param directionY direction of the flight along the arena's length
+   */
+  public void dealProjectileHit(
+      ProjectileEntity projectile,
+      WorldEntity target,
+      int damage,
+      int hitId,
+      int directionX,
+      int directionY) {
+    if (directHitAtDrain) {
+      queuedHits.add(
+          new ProjectileHitDue(projectile, target, damage, hitId, directionX, directionY));
+      return;
+    }
+    dealProjectileDamage(projectile, target, damage, hitId, directionX, directionY);
   }
 
   /**
@@ -4904,10 +4962,10 @@ public class BattleWorld implements HolderPasses {
    * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit or a share of a character's or a projectile's area, on a data version that queues
-   * them: the damage dealt as it is dealt at once, with its reflect, its observers, its death or
-   * the reference drop; a circle's or a Kamikaze unit's kill, on such a version, as it is dealt at
-   * once.
+   * direct hit, a share of a character's or a projectile's area, or a projectile's hit on its one
+   * target, on a data version that queues them: the damage dealt as it is dealt at once, with its
+   * reflect, its observers, its death or the reference drop; a circle's or a Kamikaze unit's kill,
+   * on such a version, as it is dealt at once.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -4929,6 +4987,16 @@ public class BattleWorld implements HolderPasses {
       if (queued instanceof ProjectileAreaHitDue share) {
         dealProjectileDamage(
             share.projectile(), share.victim(), share.damage(), share.hitId(), 0, 0);
+        continue;
+      }
+      if (queued instanceof ProjectileHitDue hit) {
+        dealProjectileDamage(
+            hit.projectile(),
+            hit.target(),
+            hit.damage(),
+            hit.hitId(),
+            hit.directionX(),
+            hit.directionY());
         continue;
       }
       if (queued instanceof ActionDamageDue actionDamage) {
@@ -6445,7 +6513,8 @@ public class BattleWorld implements HolderPasses {
    * holder. A row of the location class starts it at the row's start height; a row of the plain
    * class at the row's start height above the owner's live height. A row of either class aimed by
    * neither expression launches at the owner's current target, which is refused unless the owner is
-   * a character whose targeting component is off or holds nothing.
+   * a character whose targeting component is off or holds nothing, or whose row reads no target
+   * (see {@link #readsLaunchTarget(ProjectileData)}).
    *
    * @param owner the entity the action runs on
    * @param action the spawn row's name
@@ -6474,13 +6543,17 @@ public class BattleWorld implements HolderPasses {
     }
     // Either class aimed by neither expression launches at the owner's current target, read
     // before the start; an expression drops it. A dying unit's combat gate has switched its
-    // targeting off by the time its killed action runs, so it launches at none. A row that names
-    // its target in the context launches at that object, the live one of the id it read, and
-    // keeps it whatever its expressions.
+    // targeting off by the time its killed action runs if it died before its state visit, so it
+    // launches at none. One that died at the damage drain, after its visit, still holds its
+    // target; a row that reads none launches the same either way. A row that names its target in
+    // the context launches at that object, the live one of the id it read, and keeps it whatever
+    // its expressions.
+    ProjectileData data = records.projectile(row);
     if (!fromContext
         && aimX == null
         && aimY == null
-        && (!(owner instanceof CharacterEntity unit) || unit.referenceHeld())) {
+        && (!(owner instanceof CharacterEntity unit)
+            || unit.referenceHeld() && readsLaunchTarget(data))) {
       throw new UnsupportedOperationException(
           action
               + " launches "
@@ -6506,12 +6579,27 @@ public class BattleWorld implements HolderPasses {
       sx += toward[0];
       sy += toward[1];
     }
-    ProjectileEntity projectile = new ProjectileEntity(this, records.projectile(row), owner.side());
+    ProjectileEntity projectile = new ProjectileEntity(this, data, owner.side());
     ProjectileLauncher.launchFromAction(projectile, owner, target, sx, sy, sz, hx, hy);
     launch(projectile);
     for (WorldObserver observer : observers) {
       observer.actionProjectileLaunched(tick, owner, action, phase, projectile);
     }
+  }
+
+  /**
+   * Whether a projectile row launched at a target reads it. One that does not home flies to its
+   * aim, and with a radius of at least 1 its impact is the area at its impact point; the target
+   * would only take the row's on-hit target action, its target buff or its pushback, and be chained
+   * from. A row with none of these reads no target, so a launch at one is a launch at none.
+   */
+  private static boolean readsLaunchTarget(ProjectileData data) {
+    return data.homing()
+        || data.radius() < 1
+        || data.onHitTargetAction() != null
+        || data.targetBuff() != null
+        || data.pushback() > 0
+        || data.chainedHitRadius() > 0;
   }
 
   /**
