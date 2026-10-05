@@ -76,8 +76,10 @@ import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunIfInstigatorMatches;
 import org.crforge.core.battle.action.RunIfUnitGroupContains;
+import org.crforge.core.battle.action.RunOnAttached;
 import org.crforge.core.battle.action.RunOnInstigator;
 import org.crforge.core.battle.action.RunOnMatchingUnitsInGroup;
+import org.crforge.core.battle.action.RunOnResolvedObjects;
 import org.crforge.core.battle.action.Select;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
 import org.crforge.core.battle.action.SetCharacterLevel;
@@ -277,6 +279,18 @@ public final class ActionRows {
               Set.of("SubActions", "Condition", "PerActionConditions", "PassOptionalActionDelay")),
           Map.entry("ActionFilter", Set.of("Condition", "OnTrueAction", "OnFalseAction")),
           Map.entry("ActionRunOnInstigator", Set.of("ActionToExecute")),
+          // The hand-over to what rides the owner.
+          Map.entry("ActionRunOnAttached", Set.of("ActionToRun")),
+          // The run on what a target resolver finds. The custom position expressions and the
+          // ignored ids are refused by being left out.
+          Map.entry(
+              "ActionRunActionOnResolvedGameObjects",
+              Set.of(
+                  "Resolver",
+                  "Amount",
+                  "RunActionsOnSelf",
+                  "Action",
+                  "ActionToRunOnSelfIfNoObjectsFound")),
           Map.entry("ActionWaitToActivate", Set.of("Condition", "OnActivateAction")),
           Map.entry("ActionWithDuration", Set.of("ActionDuration")),
           // Its own columns, the condition and the bar it shows, only show something.
@@ -1470,6 +1484,8 @@ public final class ActionRows {
             case "ActionRunActionListOnObjectsInShapeWithPrio" -> shapeSelector(name, shared, f);
             case "ActionAirToGround" -> airToGround(name, shared, f);
             case "ActionGroundToAir" -> groundToAir(name, shared, f);
+            case "ActionRunOnAttached" -> new RunOnAttached(shared, rowName(f.get("ActionToRun")));
+            case "ActionRunActionOnResolvedGameObjects" -> resolvedObjects(name, shared, f);
             case "ActionResetPath" -> new ResetPath(shared);
             case "ActionResetTarget" -> new ResetTarget(shared);
             case "ActionBarbBarrelHeroReRoll" -> barbBarrelReRoll(name, shared, f);
@@ -1517,7 +1533,17 @@ public final class ActionRows {
             case "ActionRollingProjectile" -> rollingProjectile(name, shared, f);
             case "ActionCaptureCharacter" -> captureCharacter(name, shared, f);
             case "ActionHide" -> {
-              refuseUnread(name, f, false);
+              // A next action scheduled alongside and the stop gate are the runtime's own, the
+              // same for every class; a next action that waits for the hide's run is not.
+              refuseShared(
+                  name,
+                  f,
+                  "GameTagsToSet",
+                  "NextActionWait",
+                  "ExecuteIfTrue",
+                  "ActionPausedIfTrue",
+                  "ActionDelay",
+                  "UpdatePhase");
               // The loader stores true for an empty column.
               yield new Hide(
                   shared,
@@ -2926,6 +2952,66 @@ public final class ActionRows {
     }
 
     /**
+     * The columns of a run on what a target resolver finds: the resolver's filter and strategies,
+     * how many objects it may run on, whether it runs on its owner instead, and the names of its
+     * two actions, each built for the object it is scheduled on. Refused: a row without a resolver,
+     * a resolver whose shape is not a Global one, that has no filter or no strategy.
+     */
+    private RunOnResolvedObjects resolvedObjects(String name, ActionRow shared, JsonNode f) {
+      String resolverName = text(f, "Resolver", "");
+      if (resolverName.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " resolves with no target resolver, which is not modelled");
+      }
+      GameTable resolvers = tables.table(TARGET_RESOLVERS);
+      if (!resolvers.has(resolverName)) {
+        throw new IllegalArgumentException("no target resolver " + resolverName);
+      }
+      GameRow resolver = resolvers.row(resolverName);
+      String shape = resolver.string("Shape");
+      GameTable shapes = tables.table("shapes");
+      if (shape == null
+          || !shapes.has(shape)
+          || !"Global".equals(shapes.row(shape).string("ClassType"))) {
+        throw new UnsupportedOperationException(
+            name
+                + " resolves through "
+                + resolverName
+                + ", whose shape "
+                + shape
+                + " is not a Global one, which is not modelled");
+      }
+      String filter = resolver.string("Filter");
+      if (filter == null || filter.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " resolves through " + resolverName + " with no filter, which is not modelled");
+      }
+      List<String> strategies = new ArrayList<>();
+      JsonNode list = resolver.value("StrategyList");
+      if (list != null && list.isArray()) {
+        list.forEach(value -> strategies.add(value.asText()));
+      }
+      if (strategies.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " resolves through "
+                + resolverName
+                + " with no strategy, which is not modelled");
+      }
+      return new RunOnResolvedObjects(
+          shared,
+          RunOnResolvedObjects.Columns.builder()
+              .resolver(resolverName)
+              .filter(records.filter(filter))
+              .strategies(strategies)
+              .amount(integer(f, "Amount"))
+              .runActionsOnSelf(bool(f, "RunActionsOnSelf"))
+              .action(rowName(f.get("Action")))
+              .noObjectsAction(rowName(f.get("ActionToRunOnSelfIfNoObjectsFound")))
+              .build());
+    }
+
+    /**
      * A mark's columns: its resolver's filter and strategies, the names of its two actions, its two
      * tag masks, its pause and its search delay. Refused: a row without a resolver, a resolver
      * whose shape is not a Global one or that has no filter, and a row that waits for its next
@@ -3101,21 +3187,47 @@ public final class ActionRows {
     }
 
     /**
-     * An area-effect spawn row's columns: the area effect, whether the owner is the source, and the
-     * two offsets. A row of the location class, one that sets any other spawn column, writes its
-     * area effect inline, or names one whose row sets a column not modelled is refused.
+     * An area-effect spawn row's columns: the area effect, whether the owner is the source, the two
+     * offsets and, for the location class, its two position expressions, which give the point in
+     * place of the owner's, and UseDeploy, which the area-effect branch does not read; for the
+     * plain class, the action run on the area effect it spawns and whether that action shares the
+     * context. A location row without both expressions, a row that sets any other spawn column,
+     * writes its area effect inline, or names one whose row sets a column not modelled is refused.
      */
     private SpawnAreaEffect spawnAreaEffect(
         String name, String type, ActionRow shared, JsonNode f) {
-      if (!type.equals("ActionSpawn")) {
+      boolean location = !type.equals("ActionSpawn");
+      // A location row's point is its two expressions; one that leaves either out, or places by
+      // an absolute or relative point, takes another of the location slots' paths.
+      if (location
+          && (!f.hasNonNull("XPositionExpression") || !f.hasNonNull("YPositionExpression"))) {
         throw new UnsupportedOperationException(
-            name + " spawns an area effect to a location, which is not modelled");
+            name
+                + " spawns an area effect to a location without both position expressions, which"
+                + " is not modelled");
       }
+      Set<String> read =
+          location
+              ? Set.of(
+                  "SpawnData",
+                  "SpawnType",
+                  "ParentGOAsSource",
+                  "OffsetX",
+                  "OffsetY",
+                  "XPositionExpression",
+                  "YPositionExpression",
+                  "UseDeploy")
+              : Set.of(
+                  "SpawnData",
+                  "SpawnType",
+                  "ParentGOAsSource",
+                  "OffsetX",
+                  "OffsetY",
+                  "ActionToRunOnSpawned",
+                  "ShareContext");
       for (Iterator<String> columns = f.fieldNames(); columns.hasNext(); ) {
         String column = columns.next();
-        if (spawnColumns().contains(column)
-            && !Set.of("SpawnData", "SpawnType", "ParentGOAsSource", "OffsetX", "OffsetY")
-                .contains(column)) {
+        if (spawnColumns().contains(column) && !read.contains(column)) {
           throw new UnsupportedOperationException(
               name + " spawns an area effect and sets " + column + ", which is not modelled");
         }
@@ -3135,7 +3247,11 @@ public final class ActionRows {
           areaEffect,
           bool(f, "ParentGOAsSource"),
           integer(f, "OffsetX"),
-          integer(f, "OffsetY"));
+          integer(f, "OffsetY"),
+          location ? expression(f.get("XPositionExpression")) : null,
+          location ? expression(f.get("YPositionExpression")) : null,
+          location ? null : rowName(f.get("ActionToRunOnSpawned")),
+          !location && bool(f, "ShareContext"));
     }
 
     /**

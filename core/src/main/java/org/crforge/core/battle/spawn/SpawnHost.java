@@ -2,6 +2,7 @@ package org.crforge.core.battle.spawn;
 
 import java.util.List;
 import java.util.function.IntSupplier;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.unit.UnitData;
 
@@ -49,6 +50,39 @@ public interface SpawnHost extends SpawnObject {
   default void spawnAreaEffect(
       String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
     throw new UnsupportedOperationException(name() + " cannot spawn an area effect");
+  }
+
+  /**
+   * Creates an area effect a spawn row names, at a point - the one a location row's two expressions
+   * gave, or this object's for a plain row - moved by the row's offsets, the one along the length
+   * turned by this object's side, for the source's side and at its level, the source its parent;
+   * then schedules the row's action on what it spawned, built for it, with the source as its cause
+   * and a context.
+   *
+   * @param action the spawn row's name
+   * @param areaEffect the area effect row's name
+   * @param source the entity that caused the action
+   * @param x the point along the width, or null for this object's
+   * @param y the point along the length, or null for this object's
+   * @param offsetX the row's offset along the width, added as it stands
+   * @param offsetY the row's offset along the length, turned by this object's side
+   * @param onSpawned the name of the row scheduled on the area effect, or null for none
+   * @param context the context it carries, or null for none
+   * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
+   */
+  default void spawnAreaEffect(
+      String action,
+      String areaEffect,
+      SpawnHost source,
+      Integer x,
+      Integer y,
+      int offsetX,
+      int offsetY,
+      String onSpawned,
+      ActionContext context,
+      int phase) {
+    throw new UnsupportedOperationException(
+        name() + " cannot spawn an area effect to a location or with an action on it");
   }
 
   /**

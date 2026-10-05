@@ -12,6 +12,7 @@ import lombok.Setter;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.TargetLocks;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
@@ -36,6 +37,7 @@ import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.RunOnResolvedObjects;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
@@ -4190,6 +4192,66 @@ public class CharacterEntity extends WorldEntity {
         return getView().getState();
       }
     };
+  }
+
+  /**
+   * What an action that runs another on what its resolver finds asks of the battle about the
+   * character: the objects the filter lets through, asked by the character itself, its position,
+   * and a row built for and scheduled on what it found or on itself.
+   */
+  @Override
+  public RunOnResolvedObjects.Host resolvedObjectsHost(BattleAction action) {
+    return new RunOnResolvedObjects.Host() {
+      @Override
+      public List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter) {
+        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+        for (WorldEntity entity :
+            world.resolverCandidates(
+                filter, side() & 1, getData().name(), action.name(), CharacterEntity.this)) {
+          out.add(new MarkCandidate(entity, action.name()));
+        }
+        return out;
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int y() {
+        return getView().getY();
+      }
+
+      @Override
+      public void schedule(
+          SetIndicatorOnTarget.Candidate target,
+          String row,
+          ActionHolder cause,
+          ActionContext context) {
+        WorldEntity entity = ((MarkCandidate) target).entity();
+        BattleAction built = world.getActions().build(row, world.binding(entity));
+        entity.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+
+      @Override
+      public void scheduleOnOwner(String row, ActionHolder cause, ActionContext context) {
+        BattleAction built = world.getActions().build(row, world.binding(CharacterEntity.this));
+        actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+    };
+  }
+
+  /**
+   * Schedules a row on each rider of the character, in the order it made them, each built for its
+   * rider, with the given cause and no context.
+   */
+  @Override
+  public void runOnAttached(BattleAction action, String actionToRun, ActionHolder instigator) {
+    for (CharacterEntity rider : List.copyOf(riders)) {
+      BattleAction built = world.getActions().build(actionToRun, world.binding(rider));
+      rider.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, instigator);
+    }
   }
 
   @Override

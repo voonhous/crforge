@@ -272,6 +272,32 @@ public interface ActionOwner {
   }
 
   /**
+   * What an action that runs another on what its target resolver finds asks of the battle about the
+   * owner. Only a character runs one here.
+   *
+   * @param action the row
+   * @return the owner's answers
+   */
+  default RunOnResolvedObjects.Host resolvedObjectsHost(BattleAction action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
+   * Schedules a row on each character attached to the owner, in the order the owner made them, each
+   * built for its rider, with a cause, its own delay, not at once and with no context. Only a
+   * character carries riders here.
+   *
+   * @param action the row that hands the action over
+   * @param actionToRun the name of the row scheduled on each rider
+   * @param instigator the holder of the cause, or null for none
+   */
+  default void runOnAttached(BattleAction action, String actionToRun, ActionHolder instigator) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * Builds the run of a flying warp a hand-over launches on the owner, as the hand-over's update
    * does: the warp's row built for the owner, its run handed the target and the target's last
    * position, and started. The caller lists it. Only a character flies a warp.

@@ -86,6 +86,23 @@ public final class GameData {
     return GameTables.load(folder);
   }
 
+  /**
+   * Alters one more table of a folder the configured tables were already copied into by {@link
+   * #altered}; load the folder again to read the change.
+   *
+   * @param folder the folder
+   * @param table the table's file name, without its extension
+   * @param edit what is done to its rows, by name; the actions table keeps them under its own name
+   */
+  public static void alterLoaded(Path folder, String table, Consumer<ObjectNode> edit)
+      throws IOException {
+    Path file = folder.resolve(table + ".json");
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
+    edit.accept((ObjectNode) document.get(document.has("rows") ? "rows" : table));
+    mapper.writeValue(file.toFile(), document);
+  }
+
   /** The columns of a row in the rows of a table, to alter. */
   public static ObjectNode columns(ObjectNode rows, String row) {
     return (ObjectNode) rows.get(row).get("columns");

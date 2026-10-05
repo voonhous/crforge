@@ -1223,8 +1223,8 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a game object filter that sets a column the filter does not read, as a base filter or a"
-          + " buff checker, is refused rather than read without it")
+      "a game object filter that sets a column the filter does not read, as a base filter, is"
+          + " refused rather than read without it")
   void aFilterColumnNotReadIsRefused(@TempDir Path folder) throws IOException {
     BattleRecords altered =
         new BattleRecords(
@@ -1234,15 +1234,41 @@ class BattleRecordsTest {
                 rows -> {
                   ObjectNode troop = GameData.columns(rows, "friendly_troop");
                   troop.put("Base", "friendly_troop_no_buildings");
-                  troop.put("FilterIfBuffedByChecker", "Rage");
                 }));
     assertThatThrownBy(() -> altered.filter("friendly_troop"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "the game object filter friendly_troop sets columns not modelled: [Base,"
-                + " FilterIfBuffedByChecker]");
+        .hasMessage("the game object filter friendly_troop sets columns not modelled: [Base]");
     // A filter that sets only what the filter reads, and the text the game shows for it, is built.
     assertThat(altered.filter("friendly_troop_no_buildings").isMatchTeamOwn()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a filter whose Base names a filter all of whose columns it carries is built as its own"
+          + " columns say; one missing a column of its base is refused")
+  void aFilterBaseAlreadyResolvedIsRead(@TempDir Path folder) throws IOException {
+    BattleRecords altered =
+        new BattleRecords(
+            GameData.altered(
+                folder,
+                "game_object_filters",
+                rows -> {
+                  ObjectNode base = GameData.columns(rows, "friendly_troop_no_buildings");
+                  ObjectNode resolved = GameData.columns(rows, "friendly_troop");
+                  resolved.removeAll();
+                  resolved.setAll(base.deepCopy());
+                  resolved.put("Base", "FILTER.friendly_troop_no_buildings");
+                  resolved.put("FilterFlying", true);
+                  ObjectNode missing = GameData.columns(rows, "friendly_skeletons_can_be_dead");
+                  missing.put("Base", "FILTER.friendly_troop_no_buildings");
+                }));
+    assertThat(altered.filter("friendly_troop").isFilterFlying()).isTrue();
+    assertThat(altered.filter("friendly_troop").isMatchTeamOwn()).isTrue();
+    assertThatThrownBy(() -> altered.filter("friendly_skeletons_can_be_dead"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the game object filter friendly_skeletons_can_be_dead sets columns not modelled:"
+                + " [Base]");
   }
 
   private static long tagBits(String... names) {

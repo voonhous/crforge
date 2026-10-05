@@ -1,5 +1,7 @@
 package org.crforge.core.battle.filter;
 
+import java.util.Set;
+
 /** An object as a game object filter asks about it. */
 public interface FilterSubject {
 
@@ -80,4 +82,16 @@ public interface FilterSubject {
 
   /** True for a character whose row or one of whose buffs ignores pushback. */
   boolean ignoresPushback();
+
+  /**
+   * True when the object carries a buff of one of the rows that the given object applied: the
+   * buff's source is that object, or its source was a projectile that object launched. An object
+   * without buffs carries none.
+   *
+   * @param rows the buff rows, by name
+   * @param applierId the id of the object that applied it
+   */
+  default boolean buffedBy(Set<String> rows, int applierId) {
+    return false;
+  }
 }
