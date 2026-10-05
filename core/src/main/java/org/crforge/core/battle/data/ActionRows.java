@@ -35,6 +35,7 @@ import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
+import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.ContextToVariable;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
@@ -2971,10 +2972,12 @@ public final class ActionRows {
     }
 
     /**
-     * The columns of a run on what a target resolver finds: the resolver's filter and strategies,
-     * how many objects it may run on, whether it runs on its owner instead, and the names of its
-     * two actions, each built for the object it is scheduled on. Refused: a row without a resolver,
-     * a resolver whose shape is not a Global one, that has no filter or no strategy.
+     * The columns of a run on what a target resolver finds: the resolver's filter, shape and
+     * strategies, how many objects it may run on, whether it runs on its owner instead, and the
+     * names of its two actions, each built for the object it is scheduled on. A Cone shape's
+     * columns are its Circle's Radius and CheckOrigin and its own Angle, AngleOffset and
+     * UseGameObjectDirection. Refused: a row without a resolver, a resolver whose shape is neither
+     * a Global nor a Cone one, that has no filter or no strategy.
      */
     private RunOnResolvedObjects resolvedObjects(String name, ActionRow shared, JsonNode f) {
       String resolverName = text(f, "Resolver", "");
@@ -2989,16 +2992,28 @@ public final class ActionRows {
       GameRow resolver = resolvers.row(resolverName);
       String shape = resolver.string("Shape");
       GameTable shapes = tables.table("shapes");
-      if (shape == null
-          || !shapes.has(shape)
-          || !"Global".equals(shapes.row(shape).string("ClassType"))) {
+      String shapeType =
+          shape == null || !shapes.has(shape) ? null : shapes.row(shape).string("ClassType");
+      if (!"Global".equals(shapeType) && !"Cone".equals(shapeType)) {
         throw new UnsupportedOperationException(
             name
                 + " resolves through "
                 + resolverName
                 + ", whose shape "
                 + shape
-                + " is not a Global one, which is not modelled");
+                + " is neither a Global nor a Cone one, which is not modelled");
+      }
+      ConeShape cone = null;
+      if ("Cone".equals(shapeType)) {
+        GameRow row = shapes.row(shape);
+        cone =
+            ConeShape.builder()
+                .radius(row.intValue("Radius"))
+                .angle(row.intValue("Angle"))
+                .angleOffset(row.intValue("AngleOffset"))
+                .useDirection(row.bool("UseGameObjectDirection"))
+                .checkOrigin(row.bool("CheckOrigin"))
+                .build();
       }
       String filter = resolver.string("Filter");
       if (filter == null || filter.isEmpty()) {
@@ -3022,6 +3037,7 @@ public final class ActionRows {
           RunOnResolvedObjects.Columns.builder()
               .resolver(resolverName)
               .filter(records.filter(filter))
+              .cone(cone)
               .strategies(strategies)
               .amount(integer(f, "Amount"))
               .runActionsOnSelf(bool(f, "RunActionsOnSelf"))

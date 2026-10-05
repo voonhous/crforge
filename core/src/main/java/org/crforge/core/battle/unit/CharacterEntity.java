@@ -23,6 +23,7 @@ import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChainAttackHost;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
@@ -4219,6 +4220,26 @@ public class CharacterEntity extends WorldEntity {
         for (WorldEntity entity :
             world.resolverCandidates(
                 filter, side() & 1, getData().name(), action.name(), CharacterEntity.this)) {
+          out.add(new MarkCandidate(entity, action.name()));
+        }
+        return out;
+      }
+
+      @Override
+      public List<SetIndicatorOnTarget.Candidate> candidates(
+          GameObjectFilter filter, ConeShape cone) {
+        // A Cone turns with the heading the character faces, as a ring spawn's angle shift does.
+        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
+        for (WorldEntity entity :
+            world.resolverConeCandidates(
+                getView().getX(),
+                getView().getY(),
+                FixedMath.angleOfVector(getView().getDirX(), getView().getDirY()),
+                cone,
+                filter,
+                side() & 1,
+                getData().name(),
+                CharacterEntity.this)) {
           out.add(new MarkCandidate(entity, action.name()));
         }
         return out;
