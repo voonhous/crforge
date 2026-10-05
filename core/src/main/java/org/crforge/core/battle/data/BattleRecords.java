@@ -316,14 +316,18 @@ public final class BattleRecords {
    * battle code and no filter tests, read only by the expressions of the carrier's own action rows,
    * which read the tag word the buff is folded into; and a newer data version's
    * IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, which only the targeting visit's keep test reads, from
-   * the same tag word. A buff that sets any other is refused.
+   * the same tag word; and NO_DAMAGE, as the evolved Minion Horde's ghost buff sets it: the tag
+   * word's recompute folds every listed instance's tags in beside the row's and the runs', and the
+   * damage entry and the typed hit read NO_DAMAGE from that word, as for a row that sets it. A buff
+   * that sets any other is refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
       Set.of(
           "NO_PUSHED_BY_ENEMY",
           "NO_PUSHED_BY_ALLY",
           "UNIT_CUSTOM_TAG_1",
-          "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET");
+          "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET",
+          "NO_DAMAGE");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when
@@ -781,6 +785,7 @@ public final class BattleRecords {
             .onAttackAction(actionName(row, "OnAttackAction"))
             .onStartChargingAction(actionName(row, "OnStartChargingAction"))
             .shieldLostAction(actionName(row, "ShieldLostAction"))
+            .onDamageTakenAction(actionName(row, "OnDamageTakenAction"))
             .onAttackSelfAction(actionName(row, "OnAttackSelfAction"))
             .onHitTargetAction(actionName(row, "OnHitTargetAction"))
             .minimumRange(row.intValue("MinimumRange"))
@@ -1029,6 +1034,13 @@ public final class BattleRecords {
       if (sets(row, column)) {
         columns.add(column);
       }
+    }
+    // The action a hit on the unit runs is scheduled with the unit as its instigator when the row
+    // says so, else with the hit's source, and not at all for a hit without one: only the first is
+    // held, so a row that names an action without it is refused.
+    boolean instigatorAsSelf = row.bool("OnDamageTakenActionInstigatorAsSelf");
+    if (sets(row, "OnDamageTakenAction") && !instigatorAsSelf) {
+      columns.add("OnDamageTakenActionInstigatorAsSelf");
     }
     // The special attack is modelled in one shape: a troop that loads it in its ring and fires its
     // special projectile. A ring without a projectile is a special direct hit, and a building's

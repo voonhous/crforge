@@ -123,6 +123,15 @@ public interface DamageQueries {
    */
   default void beforeSubtraction() {}
 
+  /**
+   * Told at the end of the subtraction when the hit took hit points off the target, with the amount
+   * before the overkill of a killing hit is removed: a hit the shield takes tells nothing, a
+   * killing hit tells it, and so does a hit on a target already at no hit points, whose whole
+   * amount counts. The target's on-damage action is scheduled. Supplied as doing nothing, for a
+   * target without one.
+   */
+  default void hitPointsTaken(int amount) {}
+
   /** The battle tick a dedupe id is listed with. */
   default int battleTick() {
     return 0;
