@@ -12,7 +12,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -325,5 +327,245 @@ class BattleAreaEffectFilterFormTest {
       expected.add(updates.get(k));
     }
     assertThat(buffed).hasSize(32).isEqualTo(expected);
+  }
+
+  /**
+   * Records, in order, what a filter form row named {@code row} does to each object of side 1 it
+   * lists: the hit action it schedules on it, the damage it deals it (any area effect's typed hit
+   * on side 1, the only one the scenes cast) and the buff it applies to it, each with its tick and
+   * the object's row name.
+   */
+  private static List<String> hitEvents(Standard1v1Battle match, String row) {
+    List<String> events = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void onHitActionScheduled(
+                  int tick, AreaEffectEntity areaEffect, WorldEntity target, BattleAction action) {
+                if (areaEffect.getData().name().equals(row) && target.side() == 1) {
+                  events.add(tick + " action " + action.name() + " " + target.getData().name());
+                }
+              }
+
+              @Override
+              public void typedHitDealt(
+                  int tick,
+                  WorldEntity source,
+                  WorldEntity target,
+                  int amount,
+                  int damageId,
+                  DamageResult result) {
+                // An area effect's typed hit has no character as its source.
+                if (source == null && target.side() == 1) {
+                  events.add(tick + " hit " + amount + " " + target.getData().name());
+                }
+              }
+
+              @Override
+              public void areaBuff(
+                  int tick,
+                  AreaEffectEntity areaEffect,
+                  BuffData buff,
+                  int time,
+                  List<WorldEntity> targets) {
+                for (WorldEntity target : targets) {
+                  if (areaEffect.getData().name().equals(row) && target.side() == 1) {
+                    events.add(tick + " buff " + target.getData().name());
+                  }
+                }
+              }
+            });
+    return events;
+  }
+
+  /** The events of the given kind, without their ticks. */
+  private static List<String> ofKind(List<String> events, String kind) {
+    List<String> out = new ArrayList<>();
+    for (String event : events) {
+      String rest = event.substring(event.indexOf(' ') + 1);
+      if (rest.startsWith(kind + " ")) {
+        out.add(rest);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The configured tables with Poison rewritten in the filter form with a damage, its buff and the
+   * Goblin Curse's group of buff spawns as its hit action, then edited.
+   */
+  private static GameTables poisonWithHitAction(Path folder, Consumer<ObjectNode> edit)
+      throws IOException {
+    return filterForm(
+        folder,
+        "Poison",
+        columns -> {
+          columns.putObject("Damage").put("BaseDamage", 10);
+          columns.put("HitSpeedOffset", 250);
+          columns.put("OnHitAction", "GoblinCurseCreateBuffs");
+          edit.accept(columns);
+        });
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row's hit action is built for each object it lists and scheduled on it on"
+          + " every hit, after its damage and before its buff, the area effect the cause")
+  void theHitActionGoesOnEveryListedObjectOnEveryHit(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(poisonWithHitAction(folder, columns -> {}), LEVEL, false);
+    List<String> events = hitEvents(match, "Poison");
+    List<String> cursed = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void buffSpawned(
+                  int tick,
+                  WorldEntity owner,
+                  String action,
+                  BuffData buff,
+                  int time,
+                  int packedLevel,
+                  SpawnHost source) {
+                if (owner.getData().name().equals("PrincessTower") && owner.side() == 1) {
+                  cursed.add(buff.name());
+                }
+              }
+            });
+    match.play(200, match.getWorld().getRecords().card("Poison"), LEVEL, 0, 14500, 25500, "poison");
+    stepTo(match, 600);
+    // 32 hits on the tower, each scheduling the group on it in the update, after its damage is
+    // queued and before its buff; the damage lands at the tick's drain.
+    assertThat(ofKind(events, "action"))
+        .hasSize(32)
+        .containsOnly("action GoblinCurseCreateBuffs PrincessTower");
+    assertThat(ofKind(events, "hit")).hasSize(32);
+    assertThat(ofKind(events, "buff")).hasSize(32);
+    String first = events.get(0).split(" ")[0];
+    assertThat(events.subList(0, 3))
+        .containsExactly(
+            first + " action GoblinCurseCreateBuffs PrincessTower",
+            first + " buff PrincessTower",
+            first + " hit 10 PrincessTower");
+    // The group's buff spawns run on the tower.
+    assertThat(cursed).contains("GoblinCurse");
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row that hits each object once passes by an object it has reached: no damage,"
+          + " no hit action and no buff on any later hit")
+  void oneHitPerTargetPassesByAReachedObject(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            poisonWithHitAction(folder, columns -> columns.put("OneHitPerTarget", true)),
+            LEVEL,
+            false);
+    List<String> events = hitEvents(match, "Poison");
+    match.play(200, match.getWorld().getRecords().card("Poison"), LEVEL, 0, 14500, 25500, "poison");
+    stepTo(match, 600);
+    assertThat(ofKind(events, "action"))
+        .containsExactly("action GoblinCurseCreateBuffs PrincessTower");
+    assertThat(ofKind(events, "hit")).containsExactly("hit 10 PrincessTower");
+    assertThat(ofKind(events, "buff")).containsExactly("buff PrincessTower");
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row that expires on its trigger ends with the first object it hits: the"
+          + " nearest takes its damage, the rest of its list nothing, and it leaves after the"
+          + " update")
+  void expireOnTriggerEndsItWithTheFirstHit(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        filterForm(
+            folder,
+            "Zap",
+            columns -> {
+              columns.remove("Buff");
+              columns.putObject("Damage").put("BaseDamage", 75);
+              columns.put("LifeDuration", 10000);
+              columns.put("HitSpeed", 300);
+              columns.put("ExpireOnTrigger", true);
+            });
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    List<String> events = hitEvents(match, "Zap");
+    List<Integer> removed = new ArrayList<>();
+    List<Integer> updated = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void areaEffectUpdated(
+                  int tick,
+                  AreaEffectEntity areaEffect,
+                  int before,
+                  int after,
+                  int hits,
+                  int radius,
+                  List<Integer> dealt) {
+                if (areaEffect.getData().name().equals("Zap")) {
+                  updated.add(tick);
+                }
+              }
+
+              @Override
+              public void areaEffectRemoved(int tick, AreaEffectEntity areaEffect) {
+                if (areaEffect.getData().name().equals("Zap")) {
+                  removed.add(tick);
+                }
+              }
+            });
+    match.play(190, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 14500, 22500, "knight");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, 23500, "zap");
+    stepTo(match, 400);
+    // Its first update hits: the Knight, nearest, takes the damage; the tower, listed after it,
+    // nothing; and it is removed at the cleanup after that update.
+    assertThat(ofKind(events, "hit")).containsExactly("hit 75 Knight");
+    assertThat(updated).hasSize(1);
+    assertThat(removed).containsExactly(updated.get(0));
+  }
+
+  @Test
+  @DisplayName(
+      "a filter form row's hit action on itself runs once a hit, with the first object it hits,"
+          + " however many it lists")
+  void theSelfActionRunsOnceAHit(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        filterForm(
+            folder,
+            "Zap",
+            columns -> {
+              columns.remove("Buff");
+              columns.putObject("Damage").put("BaseDamage", 75);
+              columns.put("OnHitSelfAction", "rage_barbarian_spawn_bottle");
+            });
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    List<String> events = hitEvents(match, "Zap");
+    List<String> spawned = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void characterSpawned(
+                  int tick, SpawnHost source, CharacterEntity child, int createdX, int createdY) {
+                if (child.getData().name().equals("RageBarbarianBottle")) {
+                  spawned.add(child.side() + " at " + createdX + "," + createdY);
+                }
+              }
+            });
+    match.play(190, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 14500, 22500, "knight");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, 23500, "zap");
+    stepTo(match, 300);
+    assertThat(ofKind(events, "hit")).containsExactly("hit 75 Knight", "hit 75 PrincessTower");
+    // One spawn for the two objects hit, its cause the first: the spawn takes its cause's side
+    // and stands where it stood.
+    assertThat(spawned).hasSize(1);
+    assertThat(spawned.get(0)).startsWith("1 at 14500,");
   }
 }

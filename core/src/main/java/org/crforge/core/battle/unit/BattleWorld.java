@@ -5709,7 +5709,9 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           "the area effect " + row + " sets columns not modelled: " + data.unmodelledColumns());
     }
+    // The filter form's hit pass schedules its hit action whatever made the area effect.
     if (data.onHitAction() != null
+        && !data.filterHits()
         && !data.cloning()
         && !how.equals("action")
         && !how.equals("resetable")) {
