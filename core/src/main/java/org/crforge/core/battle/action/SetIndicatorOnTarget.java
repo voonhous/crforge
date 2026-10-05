@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
 import lombok.Builder;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
@@ -15,6 +16,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Each step of the run:
  *
  * <ol>
+ *   <li>A run that carries a context asks its pin, PinnedActiveExpression, with it. A pin that
+ *       holds would keep the run from searching and pin it to a point (refused here, below).
  *   <li>With PauseIfInCooldown, a run without a target whose owner's champion slot has cooldown
  *       left would not search (refused here, below). With a target the pause changes nothing: the
  *       run keeps the target either way.
@@ -39,10 +42,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>A leave notice of the object it has marked would run its died action on the owner and drop the
  * target; a notice of any other object does nothing.
  *
- * <p>Refused rather than guessed, at the step that reaches them: a pause in the owner's ability
- * cooldown without a target, an object other than a character or a building let through by the
- * filter, a strategy other than the two above, and the marked object leaving (its died action is
- * not modelled).
+ * <p>Refused rather than guessed, at the step that reaches them: a pin that holds, a pause in the
+ * owner's ability cooldown without a target, an object other than a character or a building let
+ * through by the filter, a strategy other than the two above, and the marked object leaving (its
+ * died action is not modelled).
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -56,7 +59,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " its cause and the counter's reset, the sticky target and the pause doing nothing"
             + " with one; held by ability_hero_mega_minion_vs_musketeer. Refused: a pause without a"
             + " target, any other strategy, an object other than a character or building found,"
-            + " and the marked object leaving.")
+            + " and the marked object leaving. The pin asked first each step with the run's"
+            + " context, only by a run that has one, held by BattleMarkPinTest; a pin that holds"
+            + " refused.")
 public final class SetIndicatorOnTarget extends RowAction {
 
   /** Milliseconds a step without a target adds to the counter: a constant, not the clock's step. */
@@ -128,6 +133,7 @@ public final class SetIndicatorOnTarget extends RowAction {
    * @param tagsWithTarget the tags set while there is a target
    * @param pauseIfInCooldown true when the search waits out the owner's ability cooldown
    * @param delayBeforeSearchMs the milliseconds between searches without a target
+   * @param pinnedActive the pin, asked each step with the run's context, or null for none
    */
   @Builder
   public record Columns(
@@ -139,7 +145,8 @@ public final class SetIndicatorOnTarget extends RowAction {
       long tagsWithoutTarget,
       long tagsWithTarget,
       boolean pauseIfInCooldown,
-      int delayBeforeSearchMs) {}
+      int delayBeforeSearchMs,
+      IntSupplier pinnedActive) {}
 
   private final Columns columns;
 
@@ -188,6 +195,16 @@ public final class SetIndicatorOnTarget extends RowAction {
     @Override
     protected void update(ActionHolder holder) {
       Columns columns = mark.columns;
+      // The pin, asked first each step, with the run's context, by a run that has one. A pin that
+      // holds keeps the run from searching and records a pinned point, whose reader is not
+      // traced: it is refused.
+      if (columns.pinnedActive() != null
+          && context() != null
+          && columns.pinnedActive().getAsInt() != 0) {
+        throw new UnsupportedOperationException(
+            mark.name()
+                + " is pinned by its PinnedActiveExpression, whose pinned point is not modelled");
+      }
       int previous = target == null ? -1 : target.id();
       // The pause only stops a search: with a target the run keeps it whether it is paused or not.
       if (target == null && columns.pauseIfInCooldown() && host.abilityCooldownMs() >= 1) {
