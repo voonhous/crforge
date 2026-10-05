@@ -97,7 +97,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * hero form's damage and knockback circles, lists what its filter passes in the circle about its
  * point, and each hit queues its damage on every one of them and pushes each away from its point.
  * When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at the cleanup
- * that finds the countdown below 1.
+ * that finds the countdown below 1. On a data version whose game keeps an area effect until its
+ * countdown is below 0, every row waits so, as the filter form always does: the life-end action
+ * comes with the update that takes the countdown below 0, and the cleanup after it removes it.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -384,11 +386,20 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Ends it: its countdown goes to 0, or below it for the filter form, so the next cleanup after
-   * its update removes it.
+   * Ends it: its countdown goes to 0, or below it where its life ends below 0, so the next cleanup
+   * after its update removes it.
    */
   void end() {
-    countdown = data.filterHits() ? -1 : 0;
+    countdown = lifeEndsBelowZero() ? -1 : 0;
+  }
+
+  /**
+   * Whether its life ends only once its countdown is below 0: always for the filter form, which
+   * only the newer data writes, and for every row on a data version whose game tests each area
+   * effect so (see {@link BattleWorld#areaLifeEndsBelowZero()}).
+   */
+  private boolean lifeEndsBelowZero() {
+    return data.filterHits() || world.areaLifeEndsBelowZero();
   }
 
   /**
@@ -505,7 +516,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     } else if (!circleHits(hits, radius, damage, speed, hit, bound)) {
       return;
     }
-    if (countdown <= 0 && data.onLifeTimeEndAction() != null) {
+    boolean lifeEnded = lifeEndsBelowZero() ? countdown < 0 : countdown <= 0;
+    if (lifeEnded && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       world.lifeTimeEndScheduled(this, ending.name());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -1242,12 +1254,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Whether the cleanup removes it: once its countdown is below 1, or, for the filter form, below
-   * 0, so a filter form row whose countdown reaches 0 exactly has one more update.
+   * Whether the cleanup removes it: once its countdown is below 1, or, where its life ends below 0,
+   * below 0, so a row whose countdown reaches 0 exactly has one more update.
    */
   @Override
   public boolean isRemovable() {
-    return data.filterHits() ? countdown < 0 : countdown < 1;
+    return lifeEndsBelowZero() ? countdown < 0 : countdown < 1;
   }
 
   /**
