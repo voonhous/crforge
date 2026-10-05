@@ -749,8 +749,13 @@ public final class ActionRows {
           Map.entry(
               "ActionRunIfInstigatorMatches",
               Set.of("GameObjectFilter", "MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
+          // A newer data version writes the adjustment as an expression in place of the number.
           Map.entry(
-              "ActionSetCharacterLevel", Set.of("RelativeLevelAdjustment", "AbsoluteLevelToSet")),
+              "ActionSetCharacterLevel",
+              Set.of(
+                  "RelativeLevelAdjustment",
+                  "AbsoluteLevelToSet",
+                  "RelativeLevelAdjustmentExpression")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
           Map.entry(
               "ActionGiantBufferCollectFriends",
@@ -1500,11 +1505,7 @@ public final class ActionRows {
                     globalIds(f.get("MatchName")),
                     action(f.get("ActionToRun")),
                     action(f.get("ActionToRunIfNoMatch")));
-            case "ActionSetCharacterLevel" ->
-                new SetCharacterLevel(
-                    shared,
-                    integer(f, "RelativeLevelAdjustment"),
-                    integer(f, "AbsoluteLevelToSet", 1));
+            case "ActionSetCharacterLevel" -> setCharacterLevel(name, shared, f);
             case "ActionMirroredExtraSpell" ->
                 new MirroredExtraSpell(shared, text(f, "Projectile", ""));
             case "ActionShootProjectilesInCharacterDirection" -> {
@@ -2556,6 +2557,29 @@ public final class ActionRows {
      * one, runs an action list on its owner, is a singleton, chains a next action or sets tags is
      * refused; so is one without a filter.
      */
+    /**
+     * A level change, by its number columns or, as a newer data version writes it, by an expression
+     * for the relative adjustment. A row that writes both forms is refused.
+     */
+    private SetCharacterLevel setCharacterLevel(String name, ActionRow shared, JsonNode f) {
+      if (!f.hasNonNull("RelativeLevelAdjustmentExpression")) {
+        return new SetCharacterLevel(
+            shared, integer(f, "RelativeLevelAdjustment"), integer(f, "AbsoluteLevelToSet", 1));
+      }
+      if (f.has("RelativeLevelAdjustment") || f.has("AbsoluteLevelToSet")) {
+        throw new UnsupportedOperationException(
+            name
+                + " writes its level as an expression and as a number, which no data version"
+                + " writes together");
+      }
+      IntSupplier adjustment = expression(f.get("RelativeLevelAdjustmentExpression"));
+      if (adjustment == null) {
+        throw new UnsupportedOperationException(
+            name + " writes an empty level expression, which is not modelled");
+      }
+      return SetCharacterLevel.ofExpression(shared, adjustment);
+    }
+
     private LaserBall laserBall(String name, ActionRow shared, JsonNode f) {
       for (String column :
           List.of(
