@@ -4536,9 +4536,10 @@ public class CharacterEntity extends WorldEntity {
   /**
    * What a shape selector's run on the character asks of the battle, as the Giant hero form's slap
    * selector runs on itself: the battle tick, the circle around its point that tests buildings by
-   * their squares, an object's hit points and shield, its own tag word, side and x and a pick's x,
-   * and the actions it schedules: on what it picked with itself as the cause, and on itself with
-   * the pick as the cause.
+   * their squares, an object's hit points and shield or its squared distance from the character,
+   * its own tag word, side and x and a pick's x, the holder of a pick, and the actions it
+   * schedules, each with the cause and the context the run hands it: on what it picked, and on
+   * itself.
    */
   @Override
   public ShapeSelectorHost shapeSelectorHost() {
@@ -4559,7 +4560,14 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public int score(int id, int mode) {
-        HitPoints hitPoints = ((WorldEntity) world.liveObject(id)).getHitPoints();
+        WorldEntity object = (WorldEntity) world.liveObject(id);
+        if (mode == ShapeSelector.CLOSEST) {
+          // The guarded squared distance from the owner's point, its bits flipped.
+          return FixedMath.INT_MAX
+              ^ FixedMath.squaredDistance(
+                  getView().getX(), getView().getY(), object.x(), object.y());
+        }
+        HitPoints hitPoints = object.getHitPoints();
         if (hitPoints == null) {
           return 0;
         }
@@ -4569,10 +4577,15 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
-      public void schedule(int targetId, String action) {
+      public ActionHolder holder(int id) {
+        return ((WorldEntity) world.liveObject(id)).actionHolder();
+      }
+
+      @Override
+      public void schedule(int targetId, String action, ActionHolder cause, ActionContext context) {
         WorldEntity target = (WorldEntity) world.liveObject(targetId);
         BattleAction built = world.getActions().build(action, world.binding(target));
-        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder());
+        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
       }
 
       @Override
@@ -4596,10 +4609,9 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
-      public void scheduleOnOwner(String action, int causeId) {
-        WorldEntity cause = (WorldEntity) world.liveObject(causeId);
+      public void scheduleOnOwner(String action, ActionHolder cause, ActionContext context) {
         BattleAction built = world.getActions().build(action, world.binding(CharacterEntity.this));
-        actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause.actionHolder());
+        actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
       }
     };
   }

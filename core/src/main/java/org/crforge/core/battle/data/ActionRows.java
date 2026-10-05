@@ -67,6 +67,7 @@ import org.crforge.core.battle.action.MegaMinionHeroAbility;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
+import org.crforge.core.battle.action.OverrideProjectileSpeed;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ResetPath;
@@ -103,6 +104,7 @@ import org.crforge.core.battle.action.WaitToActivate;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.action.WithDuration;
 import org.crforge.core.battle.action.WriteInstigatorInfoToContext;
+import org.crforge.core.battle.action.WriteResolverResultToContext;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.spawn.SpawnAreaEffect;
@@ -216,6 +218,18 @@ public final class ActionRows {
           // The context's two other actions: a value written under a key, and a key's value
           // copied into a variable.
           Map.entry("ActionBlackboardSetInt", Set.of("Key", "Value", "UseScratch")),
+          // The projectile speed override's one column.
+          Map.entry("ActionOverrideProjectileSpeed", Set.of("SpeedOverride")),
+          // The resolver write: its resolver, its board, its default and its result name.
+          // UseDefaultValue is loaded and never read by the write.
+          Map.entry(
+              "ActionWriteResolverResultToContext",
+              Set.of(
+                  "Resolver",
+                  "UseScratchBlackboard",
+                  "UseDefaultValue",
+                  "DefaultValue",
+                  "ResultName")),
           Map.entry(
               "ActionContextToVariable",
               Set.of("BlackboardKey", "OutputVariable", "UseScratch", "DefaultValue")),
@@ -1153,7 +1167,12 @@ public final class ActionRows {
         "InstigatorAsBuffController",
         "StartPositionZOffset",
         "TargetExprX",
-        "TargetExprY");
+        "TargetExprY",
+        // The projectile branch's target from the context, its board and the start's move
+        // toward that target.
+        "TargetFromContextName",
+        "UseScratchBlackboard",
+        "ProjectileStartOffset");
   }
 
   private final GameTables tables;
@@ -1291,6 +1310,7 @@ public final class ActionRows {
                     contextKey(text(f, "HitpointsKey", "")),
                     contextKey(text(f, "ShieldHitpointsKey", "")),
                     integer(f, "HitpointsLevelIndex", -1));
+            case "ActionWriteResolverResultToContext" -> writeResolverResult(name, shared, f);
             case "ActionBlackboardSetInt" ->
                 new BlackboardSetInt(
                     shared,
@@ -1481,6 +1501,8 @@ public final class ActionRows {
                     f.has("Variable")
                         ? binding.variableKey(f.get("Variable").asText())
                         : SetVariable.NO_VARIABLE);
+            case "ActionOverrideProjectileSpeed" ->
+                new OverrideProjectileSpeed(shared, expression(f.get("SpeedOverride")));
             case "ActionSetShield" -> new SetShield(shared, integer(f, "ShieldPercent"));
             case "ActionSetInstantHit" -> new SetInstantHit(shared);
             case "ActionRunActionAtHealth" ->
@@ -2129,21 +2151,13 @@ public final class ActionRows {
     /**
      * A shape selector's columns: its circle, its filter, how it scores, its delays and their
      * actions, whether it picks each object once, which by default it does, whether it waits for a
-     * target, its pause tags and its actions on the owner by the pick's side. A row that waits at
-     * most a while, runs an action as it finishes or on its owner whatever the side, makes its
-     * owner the cause of those, scores by maximum hit points or distance, has fewer actions than
-     * delays, is a singleton or chains a next action is refused; so is one without a filter, or
-     * whose shape is not a circle.
+     * target, its pause tags, its actions on the owner by the pick's side and whatever the side,
+     * whether those take the owner as their cause, and its finishing action. A row that waits at
+     * most a while, scores by maximum hit points, has fewer actions than delays, is a singleton or
+     * chains a next action is refused; so is one without a filter, or whose shape is not a circle.
      */
     private ShapeSelector shapeSelector(String name, ActionRow shared, JsonNode f) {
-      for (String column :
-          List.of(
-              "MaxWaitTimeForTarget",
-              "OnFinishedAction",
-              "ActionOnSelfWhenTriggered",
-              "ParentAsInstigatorForSelfActions",
-              "Singleton",
-              "NextAction")) {
+      for (String column : List.of("MaxWaitTimeForTarget", "Singleton", "NextAction")) {
         if (sets(f, column)) {
           throw new UnsupportedOperationException(
               name + " is a shape selector that sets " + column + ", which is not modelled");
@@ -2159,6 +2173,7 @@ public final class ActionRows {
             case "HighestCurrentHp" -> ShapeSelector.HIGHEST_CURRENT_HP;
             case "HighestCurrentHpIncludeShields" ->
                 ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS;
+            case "Closest" -> ShapeSelector.CLOSEST;
             default ->
                 throw new UnsupportedOperationException(
                     name
@@ -2189,6 +2204,9 @@ public final class ActionRows {
               .pauseTags(f.has("PauseTags") ? tagMask(f.get("PauseTags").asText()) : 0)
               .actionOnSelfLeft(rowName(f.get("ActionOnSelfWhenTriggeredLeft")))
               .actionOnSelfRight(rowName(f.get("ActionOnSelfWhenTriggeredRight")))
+              .actionOnSelf(rowName(f.get("ActionOnSelfWhenTriggered")))
+              .parentAsInstigatorForSelfActions(bool(f, "ParentAsInstigatorForSelfActions"))
+              .onFinishedAction(rowName(f.get("OnFinishedAction")))
               .build());
     }
 
@@ -3072,6 +3090,82 @@ public final class ActionRows {
     }
 
     /**
+     * A resolver write's columns: its resolver's filter, shape and strategies, its board, its
+     * default value and the key of its result name, hashed whatever the name, an empty one
+     * included. A Circle shape is read as a cone that keeps every angle: the circle query is the
+     * same, and a circle's narrowing keeps, with CheckOrigin, what lies within its radius by the
+     * centre, as such a cone's does, and everything without it. Refused: a resolver whose shape is
+     * not a Global, a Cone or a Circle one, or that has no filter or no strategy.
+     */
+    private WriteResolverResultToContext writeResolverResult(
+        String name, ActionRow shared, JsonNode f) {
+      WriteResolverResultToContext.Columns.ColumnsBuilder columns =
+          WriteResolverResultToContext.Columns.builder()
+              .useScratch(bool(f, "UseScratchBlackboard"))
+              .defaultValue(integer(f, "DefaultValue", -1))
+              .key(ActionContext.key(text(f, "ResultName", "")));
+      String resolverName = text(f, "Resolver", "");
+      if (resolverName.isEmpty()) {
+        return new WriteResolverResultToContext(shared, columns.build());
+      }
+      GameTable resolvers = tables.table(TARGET_RESOLVERS);
+      if (!resolvers.has(resolverName)) {
+        throw new IllegalArgumentException("no target resolver " + resolverName);
+      }
+      GameRow resolver = resolvers.row(resolverName);
+      String shape = resolver.string("Shape");
+      GameTable shapes = tables.table("shapes");
+      String shapeType =
+          shape == null || !shapes.has(shape) ? null : shapes.row(shape).string("ClassType");
+      ConeShape cone = null;
+      if ("Cone".equals(shapeType) || "Circle".equals(shapeType)) {
+        GameRow row = shapes.row(shape);
+        boolean circle = "Circle".equals(shapeType);
+        cone =
+            ConeShape.builder()
+                .radius(row.intValue("Radius"))
+                .angle(circle ? 360 : row.intValue("Angle"))
+                .angleOffset(circle ? 0 : row.intValue("AngleOffset"))
+                .useDirection(!circle && row.bool("UseGameObjectDirection"))
+                .checkOrigin(row.bool("CheckOrigin"))
+                .build();
+      } else if (!"Global".equals(shapeType)) {
+        throw new UnsupportedOperationException(
+            name
+                + " resolves through "
+                + resolverName
+                + ", whose shape "
+                + shape
+                + " is not a Global, a Cone or a Circle one, which is not modelled");
+      }
+      String filter = resolver.string("Filter");
+      if (filter == null || filter.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " resolves through " + resolverName + " with no filter, which is not modelled");
+      }
+      List<String> strategies = new ArrayList<>();
+      JsonNode list = resolver.value("StrategyList");
+      if (list != null && list.isArray()) {
+        list.forEach(value -> strategies.add(value.asText()));
+      }
+      if (strategies.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name
+                + " resolves through "
+                + resolverName
+                + " with no strategy, which is not modelled");
+      }
+      return new WriteResolverResultToContext(
+          shared,
+          columns
+              .resolver(resolverName)
+              .filter(records.filter(filter))
+              .cone(cone)
+              .strategies(strategies)
+              .build());
+    }
+
+    /**
      * A mark's columns: its resolver's filter and strategies, the names of its two actions, its two
      * tag masks, its pause and its search delay. Refused: a row without a resolver, a resolver
      * whose shape is not a Global one or that has no filter, and a row that waits for its next
@@ -3374,11 +3468,19 @@ public final class ActionRows {
                     "StartPositionZOffset",
                     "TargetExprX",
                     "TargetExprY",
-                    "ActionToRunOnSpawned")
+                    "ActionToRunOnSpawned",
+                    "TargetFromContextName",
+                    "UseScratchBlackboard",
+                    "ProjectileStartOffset")
                 .contains(column)) {
           throw new UnsupportedOperationException(
               name + " spawns a projectile and sets " + column + ", which is not modelled");
         }
+      }
+      // A row that names no context target keeps the existing aim, which reads no board.
+      if (!f.hasNonNull("TargetFromContextName") && f.has("UseScratchBlackboard")) {
+        throw new UnsupportedOperationException(
+            name + " spawns a projectile and picks a board without a context name, not modelled");
       }
       IntSupplier aimX = expression(f.get("TargetExprX"));
       IntSupplier aimY = expression(f.get("TargetExprY"));
@@ -3393,7 +3495,12 @@ public final class ActionRows {
           aimX,
           aimY,
           spawnClass,
-          bool(f, "ParentGOAsSource"));
+          bool(f, "ParentGOAsSource"),
+          f.hasNonNull("TargetFromContextName")
+              ? ActionContext.key(f.get("TargetFromContextName").asText())
+              : null,
+          bool(f, "UseScratchBlackboard"),
+          integer(f, "ProjectileStartOffset"));
     }
 
     /** A character spawn row's columns; any other spawn type is refused. */
@@ -3403,8 +3510,16 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " spawns " + spawnType + ", which is not modelled");
       }
-      // The projectile branch's columns, which the character branch does not read.
-      for (String column : List.of("StartPositionZOffset", "TargetExprX", "TargetExprY")) {
+      // The projectile branch's columns, which the character branch does not read, and the
+      // context target, which the perform hands every branch and this port does not follow.
+      for (String column :
+          List.of(
+              "StartPositionZOffset",
+              "TargetExprX",
+              "TargetExprY",
+              "TargetFromContextName",
+              "UseScratchBlackboard",
+              "ProjectileStartOffset")) {
         if (f.has(column)) {
           throw new UnsupportedOperationException(
               name + " spawns characters and sets " + column + ", which is not modelled");

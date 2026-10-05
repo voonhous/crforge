@@ -157,6 +157,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Gives the owner a speed in place of its row's, as a projectile speed override writes it. Only a
+   * projectile has the field.
+   *
+   * @param action the row's name, for a refusal
+   * @param speed the speed, which the flight takes while it is above 0
+   */
+  default void overrideProjectileSpeed(String action, int speed) {
+    throw new UnsupportedOperationException(
+        action + " overrides the speed of an owner other than a projectile, which is not modelled");
+  }
+
+  /**
    * What a shape selector's run asks of the battle around the owner. Only an area effect and a
    * character run one.
    *

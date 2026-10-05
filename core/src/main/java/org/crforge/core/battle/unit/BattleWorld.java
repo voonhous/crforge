@@ -6464,6 +6464,9 @@ public class BattleWorld implements HolderPasses {
       IntSupplier aimX,
       IntSupplier aimY,
       boolean spawnClass,
+      boolean fromContext,
+      Integer targetId,
+      int startOffset,
       int phase) {
     if (owner instanceof CharacterEntity unit && unit.isClone()) {
       throw new UnsupportedOperationException(
@@ -6471,8 +6474,11 @@ public class BattleWorld implements HolderPasses {
     }
     // Either class aimed by neither expression launches at the owner's current target, read
     // before the start; an expression drops it. A dying unit's combat gate has switched its
-    // targeting off by the time its killed action runs, so it launches at none.
-    if (aimX == null
+    // targeting off by the time its killed action runs, so it launches at none. A row that names
+    // its target in the context launches at that object, the live one of the id it read, and
+    // keeps it whatever its expressions.
+    if (!fromContext
+        && aimX == null
         && aimY == null
         && (!(owner instanceof CharacterEntity unit) || unit.referenceHeld())) {
       throw new UnsupportedOperationException(
@@ -6490,8 +6496,18 @@ public class BattleWorld implements HolderPasses {
     // The width's expression is evaluated first, then the length's.
     int hx = aimX == null ? sx : aimX.getAsInt();
     int hy = aimY == null ? sy : aimY.getAsInt();
+    WorldEntity target =
+        fromContext && targetId != null ? (WorldEntity) liveObject(targetId) : null;
+    // With a start offset and a target the start moves that far toward the target, after the
+    // aim took the owner's point as its default.
+    if (startOffset != 0 && target != null) {
+      int[] toward = {target.getView().getX() - sx, target.getView().getY() - sy};
+      FixedMath.normalize(toward, startOffset);
+      sx += toward[0];
+      sy += toward[1];
+    }
     ProjectileEntity projectile = new ProjectileEntity(this, records.projectile(row), owner.side());
-    ProjectileLauncher.launchFromAction(projectile, owner, sx, sy, sz, hx, hy);
+    ProjectileLauncher.launchFromAction(projectile, owner, target, sx, sy, sz, hx, hy);
     launch(projectile);
     for (WorldObserver observer : observers) {
       observer.actionProjectileLaunched(tick, owner, action, phase, projectile);

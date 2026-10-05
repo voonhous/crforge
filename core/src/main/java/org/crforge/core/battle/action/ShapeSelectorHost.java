@@ -26,23 +26,34 @@ public interface ShapeSelectorHost {
   List<Integer> collect(int radius, GameObjectFilter filter);
 
   /**
-   * An object's score: its hit points, with its shield's when the mode includes shields; 0 for an
-   * object without hit points.
+   * An object's score: its hit points, with its shield's when the mode includes shields, 0 for an
+   * object without hit points; for {@link ShapeSelector#CLOSEST} the largest int with the bits of
+   * the guarded squared distance from the owner's point to the object's flipped, so the nearest
+   * scores highest.
    *
    * @param id the object's id
-   * @param mode the selection mode, {@link ShapeSelector#HIGHEST_CURRENT_HP} or {@link
-   *     ShapeSelector#HIGHEST_CURRENT_HP_INCLUDE_SHIELDS}
+   * @param mode the selection mode, {@link ShapeSelector#HIGHEST_CURRENT_HP}, {@link
+   *     ShapeSelector#HIGHEST_CURRENT_HP_INCLUDE_SHIELDS} or {@link ShapeSelector#CLOSEST}
    */
   int score(int id, int mode);
 
   /**
-   * Schedules an action row on an object, built for that object, with the area effect as its cause:
-   * from the run pass, so an action with no delay waits for the next pending pass.
+   * The action holder of an object, the cause of what the row schedules for a pick.
+   *
+   * @param id the object's id
+   */
+  ActionHolder holder(int id);
+
+  /**
+   * Schedules an action row on an object, built for that object, with a cause and a context: from
+   * the run pass, so an action with no delay waits for the next pending pass.
    *
    * @param targetId the id of the object it runs on
    * @param action the action row's name
+   * @param cause the holder of its cause
+   * @param context the run's context, or null for none
    */
-  void schedule(int targetId, String action);
+  void schedule(int targetId, String action, ActionHolder cause, ActionContext context);
 
   /** The owner's tag word, which the row's pause tags are tested against. */
   default long ownerTags() {
@@ -69,12 +80,13 @@ public interface ShapeSelectorHost {
   }
 
   /**
-   * Schedules an action row on the owner itself, built for it, with a picked object as its cause.
+   * Schedules an action row on the owner itself, built for it, with a cause and a context.
    *
    * @param action the action row's name
-   * @param causeId the id of the object picked
+   * @param cause the holder of its cause: a picked object's, or the owner's own
+   * @param context the run's context, or null for none
    */
-  default void scheduleOnOwner(String action, int causeId) {
+  default void scheduleOnOwner(String action, ActionHolder cause, ActionContext context) {
     throw new UnsupportedOperationException(
         "a shape selector's action on its owner " + action + " is not modelled for this owner");
   }
