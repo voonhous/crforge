@@ -1975,7 +1975,9 @@ public final class ActionRows {
           CollectFriends.Columns.builder()
               .cooldownMs(integer(f, "Cooldown"))
               .maxFriendlyTroops(integer(f, "MaxFriendlyTroops"))
-              .targetFilter(records.filter(f.get("TargetFilter").asText()))
+              // A newer data version names a filter row it does not ship; the loader reads it as
+              // no filter.
+              .targetFilter(records.filterIfHeld(f.get("TargetFilter").asText()))
               .distanceToGetTargets(integer(f, "DistanceToGetTargets"))
               .distanceToBuff(integer(f, "DistanceToBuff"))
               .distanceToUnbuff(integer(f, "DistanceToUnbuff"))

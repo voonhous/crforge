@@ -2723,6 +2723,17 @@ public class CharacterEntity extends WorldEntity {
         || dashImmunity && unit.timers().getDashImmunityRemainingMs() >= 1;
   }
 
+  /**
+   * Whether it dodges damage, as a newer data version's is_dodging_damage asks: dashing under a row
+   * with a dash immunity, or with that immunity still counting after the dash. Unlike {@link
+   * #untouchable(boolean)} it does not count a tunnel or a parent.
+   */
+  boolean dodgingDamage() {
+    return getView().getState() == GridEntityState.DASHING
+            && getData().dashImmuneToDamageTimeMs() > 0
+        || unit.timers().getDashImmunityRemainingMs() >= 1;
+  }
+
   /** A dasher that lost its reference resumes, as the state visit's resume does. */
   @Override
   protected void resumeAfterDrop() {

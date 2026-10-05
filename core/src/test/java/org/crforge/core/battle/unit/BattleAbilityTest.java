@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -104,6 +105,51 @@ class BattleAbilityTest {
     match.getBattle().step();
 
     assertThat(world.locks().claim(buffer.getId(), knight.getId(), 1)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a collector whose filter names a row the tables do not hold finds no friend and fires at"
+          + " none")
+  void aCollectorWithAMissingFilterFindsNoFriend(@TempDir Path folder) throws IOException {
+    // The collector's filter renamed to a row no filter table holds, as a newer data version
+    // ships it; the game's loader reads the name as no filter and the battle runs on.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields"))
+                    .put("TargetFilter", "friendly_troops_for_rune_giant"));
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity knight =
+        match.deploy(0, records.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
+    CharacterEntity buffer =
+        match.deploy(
+            0, records.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+    List<String> abilities = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void abilityRequested(int t, CharacterEntity unit, boolean now) {
+                abilities.add(t + " requested");
+              }
+            });
+    BattleWorld world = match.getWorld();
+    // With the shipped filter the Knight is asked for on the twenty-first step and buffed by a
+    // projectile soon after; here the query lists nothing on every step.
+    int launched = 0;
+    for (int step = 0; step < 200; step++) {
+      match.getBattle().step();
+      launched += world.projectiles().size();
+    }
+
+    assertThat(world.locks().claim(buffer.getId(), knight.getId(), 1)).isFalse();
+    assertThat(launched).as("projectile visits").isZero();
+    assertThat(abilities).isEmpty();
   }
 
   @Test
