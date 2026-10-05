@@ -641,9 +641,10 @@ public class CharacterEntity extends WorldEntity {
       setter.setIngamePathfindExitGate(
           () -> combatGate(isActive(TARGETING_SLOT), setter::prepareRoute));
     }
-    // A row with an area object or a push makes them each time it enters the deploying state
-    // through its setter, a troop's as a building's.
-    if (data.spawnAreaObject() != null || data.pushesOnDeploy()) {
+    // A row with riders, an area object or a push makes them each time it enters the deploying
+    // state through its setter, a troop's as a building's: a unit that waited its turn enters it
+    // there.
+    if (data.spawnAttach() || data.spawnAreaObject() != null || data.pushesOnDeploy()) {
       setter.setDeployingEntry(this::enteredDeploying);
     }
     // A hook's states switch its components, check its reference and its cell, and end with the
@@ -2932,11 +2933,16 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * What the setter's entry to the deploying state makes of the character's row, in its order: the
-   * row's area object, then its push on the enemies around it. A card play's construction enters
-   * the state before it hands the character to the holder, and runs this then.
+   * riders of a row that attaches its spawner's children, the row's area object, then its push on
+   * the enemies around it. A card play's construction enters the state before it hands the
+   * character to the holder, and runs this then; a unit that waits its turn enters it in its state
+   * visit once the wait has run out, from whatever state it was in.
    */
   void enteredDeploying() {
     UnitData data = getData();
+    if (data.spawnAttach()) {
+      world.attachRiders(this);
+    }
     if (data.spawnAreaObject() != null) {
       world.spawnAreaObject(this);
     }

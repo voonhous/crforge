@@ -2971,12 +2971,13 @@ public class BattleWorld implements HolderPasses {
   /**
    * The riders of a character whose row attaches its spawner's children, made as it enters the
    * deploying state: in a card play, before the character itself is handed to the holder, so they
-   * take the lower ids and every pass visits them before it. As many as the row's spawn number, on
-   * the ring of its spawn radius - turned by its angle shift and facing when it sets one - or on
-   * the parent's point with no radius, each at the parent's level re-based on its rarity, set
-   * deploying for the parent's deploy time and facing as the parent faces, registered at once with
-   * its registration visit, which sees no parent yet, and attached to the parent after it: from its
-   * next movement visit it is placed around the parent.
+   * take the lower ids and every pass visits them before it; for a played unit that waits its turn,
+   * in its state visit once the wait has run out, so they follow it. As many as the row's spawn
+   * number, on the ring of its spawn radius - turned by its angle shift and facing when it sets one
+   * - or on the parent's point with no radius, each at the parent's level re-based on its rarity,
+   * set deploying for the parent's deploy time and facing as the parent faces, registered at once
+   * with its registration visit, which sees no parent yet, and attached to the parent after it:
+   * from its next movement visit it is placed around the parent.
    *
    * <p>Refused rather than guessed: a rider without hit points, a building, one that paths to its
    * point, one with a starting action, one that has riders of its own, and a ring drawn from the
