@@ -1,7 +1,6 @@
 package org.crforge.core.battle.data;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -20,9 +19,9 @@ import org.junit.jupiter.api.Test;
  * The tables of data version 16.402.18 write an area effect in the filter form: its targets chosen
  * by a filter in place of its air, ground and enemy switches, and its damage as a table of a base
  * and a tower damage or as the name of a damage type row; a unit's death damage is a death area
- * effect of that form. Each row of the form without a shape is read as the filter form, its damage
- * as its damage type, never as 0 or as hitting nothing; a shaped row whose damage is written so is
- * still refused as it is built.
+ * effect of that form. Each row of the form is read as the filter form, its damage as its damage
+ * type, never as 0 or as hitting nothing; a shaped row so written too, its shape where it lists
+ * what it reaches.
  *
  * <p>Run when the configured game tables are those of 16.402.18, or sit beside a folder of them as
  * in a checkout of the game data repository; skipped otherwise.
@@ -81,53 +80,40 @@ class NewTableFormsTest {
 
   @Test
   @DisplayName(
-      "an area effect's damage written as a table is read as its damage type, and refused for a"
-          + " shaped row")
+      "an area effect's damage written as a table is read as its damage type, for a shaped row"
+          + " too")
   void aDamageTableIsReadAsItsDamageType() {
     List<String> rows = damageWritten(true);
-    assertThat(rows).hasSize(42).contains("Zap", "GolemDeathExplosion");
+    assertThat(rows).hasSize(42).contains("Zap", "GolemDeathExplosion", "GiantHero_LandingAEO");
     for (String row : rows) {
       GameRow source = tables.table("area_effect_objects").row(row);
-      if (!source.string("Shape").isEmpty()) {
-        assertThatThrownBy(() -> records.areaEffect(row))
-            .as(row)
-            .isInstanceOf(UnsupportedOperationException.class)
-            .hasMessageStartingWith(
-                "the area_effect_objects row " + row + " sets Damage to a table of BaseDamage")
-            .hasMessageEndingWith(" where a number is read, which is not modelled");
-        continue;
-      }
       AreaEffectData data = records.areaEffect(row);
       assertThat(data.filterHits()).as(row).isTrue();
       assertThat(data.typedDamage()).as(row).isEqualTo(typeOf(null, source.value("Damage")));
       assertThat(data.unmodelledColumns()).as(row).doesNotContain("Damage", "Filter");
     }
     assertThat(records.areaEffect("Zap").typedDamage()).isEqualTo(new AreaDamageType(null, 75, 19));
+    // The Giant hero form's landing lists what it reaches in its shape's circle of 1000.
+    AreaEffectData landing = records.areaEffect("GiantHero_LandingAEO");
+    assertThat(landing.shaped()).isTrue();
+    assertThat(landing.shapeRadius()).isEqualTo(1000);
+    assertThat(landing.typedDamage()).isEqualTo(new AreaDamageType(null, 53, -1));
+    assertThat(landing.unmodelledColumns()).isEmpty();
   }
 
   @Test
   @DisplayName(
-      "an area effect's damage written as a damage type's name is read as that row, and refused"
-          + " for a shaped row")
+      "an area effect's damage written as a damage type's name is read as that row, for a shaped"
+          + " row too")
   void aDamageByNameIsReadAsThatRow() {
     List<String> rows = damageWritten(false);
-    assertThat(rows).hasSize(6).contains("ElectroWizardZap", "IceWizardCold");
+    assertThat(rows)
+        .hasSize(6)
+        .contains("ElectroWizardZap", "IceWizardCold", "IceGolemiteHero_Damage_AEO");
     for (String row : rows) {
       GameRow source = tables.table("area_effect_objects").row(row);
       JsonNode damage = source.value("Damage");
       assertThat(tables.table("damage_types").has(damage.asText())).as(row).isTrue();
-      if (!source.string("Shape").isEmpty()) {
-        assertThatThrownBy(() -> records.areaEffect(row))
-            .as(row)
-            .isInstanceOf(UnsupportedOperationException.class)
-            .hasMessage(
-                "the area_effect_objects row "
-                    + row
-                    + " sets Damage to the text \""
-                    + damage.asText()
-                    + "\" where a number is read, which is not modelled");
-        continue;
-      }
       GameRow type = tables.table("damage_types").row(damage.asText());
       AreaEffectData data = records.areaEffect(row);
       assertThat(data.filterHits()).as(row).isTrue();
@@ -141,6 +127,14 @@ class NewTableFormsTest {
                       ? type.intValue("TowerDamage")
                       : AreaDamageType.NO_TOWER_DAMAGE));
     }
+    // The Ice Golemite hero form's damage circle lists what it reaches in its shape's circle of
+    // 4000 and deals its named type: 27, and 2 to a crown tower.
+    AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");
+    assertThat(storm.shaped()).isTrue();
+    assertThat(storm.shapeRadius()).isEqualTo(4000);
+    assertThat(storm.typedDamage())
+        .isEqualTo(new AreaDamageType("IceGolemiteHero_AEO_Damage", 27, 2));
+    assertThat(storm.unmodelledColumns()).isEmpty();
   }
 
   @Test

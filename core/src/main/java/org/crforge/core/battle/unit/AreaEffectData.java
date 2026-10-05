@@ -90,10 +90,11 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param shapeRadius the radius of a circle shape; 0 for a rectangle
  * @param damageType the damage type a shaped row's damage is queued with as a typed hit, or null
  * @param filter the game object filter the shape's list passes its objects through, or, for the
- *     filter form, the one its circle's list does; null for none
- * @param filterHits true for the filter form: a row without a shape that names a filter and neither
- *     hit switch, which lists in its circle the objects its filter passes, nearest first, and deals
- *     its damage to each as its damage type
+ *     filter form, the one its circle's or its shape's list does; null for none
+ * @param filterHits true for the filter form: a row that names a filter and neither hit switch, and
+ *     for a shaped row no damage type column either, which lists in its circle, or in its shape for
+ *     a shaped row, the objects its filter passes, nearest first, and deals its damage to each as
+ *     its damage type
  * @param typedDamage the damage type the filter form deals to each object it lists, or null for
  *     none
  * @param unmodelledColumns the columns its row sets that the battle does not model
