@@ -41,6 +41,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * the same pass; otherwise it steps the run. An instance that finishes in its own step therefore
  * stays listed, and keeps setting its tags, until the next run pass.
  *
+ * <p><b>The context.</b> A schedule may carry a context: it goes with the queue entry or the start,
+ * with the row's hook as it is told it was scheduled, and with a next action, alongside or after
+ * the run. The start gate is asked, and the action started, with it; the run keeps it, and its stop
+ * gate is asked, and each step taken, with it. While the holder does any of this, {@link
+ * #currentContext()} answers that context, which an expression evaluated meanwhile reads.
+ *
  * <p>Two orders are the standard game's and are kept. A pending pass takes the entry it finds and
  * moves the last entry into its place, then looks at that place again, so four due entries {@code a
  * b c d} start as {@code a d c b}. The run pass removes an instance the same way.
@@ -72,7 +78,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " its holder's own pending pass, held by ActionHolderTest. Not"
             + " modelled: the row hook asked when an action is scheduled and when its run starts,"
             + " the target an entry carries, and the notice to an action's instigator. The cause"
-            + " an entry carries is the holder of the entity that caused it.")
+            + " an entry carries is the holder of the entity that caused it. The context a"
+            + " schedule carries, with the queue entry, the start gate and start, the run and its"
+            + " stop gate, the row's hook and a next action either way, held by ActionContextTest"
+            + " and pekka-resurrect-v2.")
 public class ActionHolder implements EntityActions {
 
   /** The delay that stands for the row's own. */
@@ -130,16 +139,21 @@ public class ActionHolder implements EntityActions {
    */
   public record Queued(BattleAction action, int ticks) {}
 
-  /** One queued action, what caused it and the ticks left before it is due. */
+  /**
+   * One queued action, what caused it, the context its schedule carried and the ticks left before
+   * it is due.
+   */
   private static final class Entry {
     private final BattleAction action;
     private final ActionHolder instigator;
+    private final ActionContext context;
     private int ticks;
 
-    private Entry(BattleAction action, ActionHolder instigator, int ticks) {
+    private Entry(BattleAction action, ActionHolder instigator, int ticks, ActionContext context) {
       this.action = action;
       this.instigator = instigator;
       this.ticks = ticks;
+      this.context = context;
     }
   }
 
@@ -157,6 +171,12 @@ public class ActionHolder implements EntityActions {
 
   /** True while a buff's hook schedules: only this holder's own pending pass starts at once. */
   private boolean ownPassOnly;
+
+  /**
+   * The context of what the holder is doing now - scheduling an action, starting one or stepping a
+   * run - which an expression evaluated meanwhile reads; null for none.
+   */
+  private ActionContext current;
 
   /** The tick of the last run pass. */
   @Getter private int lastTick;
@@ -227,16 +247,47 @@ public class ActionHolder implements EntityActions {
    */
   public void schedule(
       BattleAction action, int delayMs, boolean immediate, ActionHolder instigator) {
+    schedule(action, delayMs, immediate, instigator, null);
+  }
+
+  /**
+   * Schedules an action that an entity caused, carrying a context: the context goes with the
+   * action's queue entry or its start, with the row's hook as it is told it was scheduled, and with
+   * the next action scheduled alongside.
+   *
+   * @param action the action
+   * @param delayMs the delay in milliseconds, or {@link #OWN_DELAY} for the row's own
+   * @param immediate true to start the action at once when its delay is zero or less
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @param context the context, or null for none
+   */
+  public void schedule(
+      BattleAction action,
+      int delayMs,
+      boolean immediate,
+      ActionHolder instigator,
+      ActionContext context) {
     int delay = delayMs == OWN_DELAY ? action.delayMs() : delayMs;
     if (delay <= 0 && (immediate || inPendingPass())) {
-      start(action, instigator);
+      start(action, instigator, false, context);
     } else {
-      pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS));
+      pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS, context));
     }
-    action.scheduled(this, delay, immediate, instigator);
+    ActionContext before = current;
+    current = context;
+    try {
+      action.scheduled(this, delay, immediate, instigator, context);
+    } finally {
+      current = before;
+    }
     BattleAction next = action.nextAction();
     if (next != null && !action.nextActionWait()) {
-      schedule(next, Math.max(delay - action.delayMs() + next.delayMs(), 0), immediate, instigator);
+      schedule(
+          next,
+          Math.max(delay - action.delayMs() + next.delayMs(), 0),
+          immediate,
+          instigator,
+          context);
     }
   }
 
@@ -258,11 +309,16 @@ public class ActionHolder implements EntityActions {
    * @param instigator the holder of the entity that caused it, or null for none
    */
   public void start(BattleAction action, ActionHolder instigator) {
-    start(action, instigator, false);
+    start(action, instigator, false, null);
   }
 
-  /** Starts an action, as the pending pass does when it takes it from the queue or otherwise. */
-  private void start(BattleAction action, ActionHolder instigator, boolean queued) {
+  /**
+   * Starts an action, as the pending pass does when it takes it from the queue or otherwise; the
+   * start gate is asked and the action started with the context, its run keeps it, and a next
+   * action that waits is scheduled with it.
+   */
+  private void start(
+      BattleAction action, ActionHolder instigator, boolean queued, ActionContext context) {
     if (action.singleton()) {
       // A row is one of the game's rows, whichever entity's tree it was built in: a second tree
       // built from the same row finds the first one's run. The first listed run of the row ends
@@ -287,20 +343,35 @@ public class ActionHolder implements EntityActions {
         }
       }
     }
-    if (!holds(action.executeIf(), true)) {
-      return;
+    ActionContext before = current;
+    current = context;
+    try {
+      if (!holds(action.executeIf(), true)) {
+        return;
+      }
+      listener.starting(action, passPhase, queued);
+      ActionInstance instance = action.start(this, instigator, context);
+      listener.started(action, passPhase);
+      if (instance != null) {
+        instance.addTags(action.tags());
+        instance.setContext(context);
+        running.add(instance);
+      }
+      BattleAction next = action.nextAction();
+      if (next != null && action.nextActionWait()) {
+        schedule(next, OWN_DELAY, false, instigator, context);
+      }
+    } finally {
+      current = before;
     }
-    listener.starting(action, passPhase, queued);
-    ActionInstance instance = action.start(this, instigator);
-    listener.started(action, passPhase);
-    if (instance != null) {
-      instance.addTags(action.tags());
-      running.add(instance);
-    }
-    BattleAction next = action.nextAction();
-    if (next != null && action.nextActionWait()) {
-      schedule(next, OWN_DELAY, false, instigator);
-    }
+  }
+
+  /**
+   * The context of what the holder is doing now - scheduling an action, starting one or stepping a
+   * run - or null for none. An expression evaluated meanwhile reads its keys from it.
+   */
+  public ActionContext currentContext() {
+    return current;
   }
 
   /**
@@ -388,7 +459,7 @@ public class ActionHolder implements EntityActions {
             && (wanted == BattleAction.ANY_PHASE || wanted == phase)
             && !holds(entry.action.pausedIf(), false)) {
           removeBySwap(pending, i);
-          start(entry.action, entry.instigator, true);
+          start(entry.action, entry.instigator, true, entry.context);
         } else {
           i++;
         }
@@ -409,14 +480,25 @@ public class ActionHolder implements EntityActions {
         listener.removed(instance);
         continue;
       }
-      if (holds(instance.getAction().forceStopIf(), false)) {
+      // The stop gate is asked, and the run stepped, with the context its start carried.
+      ActionContext before = current;
+      current = instance.context();
+      boolean stopped;
+      try {
+        stopped = holds(instance.getAction().forceStopIf(), false);
+        if (!stopped) {
+          instance.update(this);
+        }
+      } finally {
+        current = before;
+      }
+      if (stopped) {
         instance.finish();
         listener.forceStopped(instance);
         removeBySwap(running, i);
         listener.removed(instance);
         continue;
       }
-      instance.update(this);
       if (instance.isFinished()) {
         listener.finished(instance);
       }
