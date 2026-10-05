@@ -12,10 +12,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import java.util.stream.Stream;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.AliveTimer;
+import org.crforge.core.battle.action.AttackChain;
 import org.crforge.core.battle.action.BarbBarrelHeroReRoll;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
@@ -1060,6 +1062,35 @@ public final class ActionRows {
               "ActionRunForcedAnimationOnce",
               Set.of(
                   "PlaybackDuration", "CustomStateNumber", "PointToInstigator", "ForcedDuration")),
+          // The stop of a forced animation: its perform only tells the character's view, so it
+          // changes nothing the simulation reads.
+          Map.entry("ActionStopForcedAnimation", Set.of()),
+          // The attack chain's columns: the resolver, the links, the actions, the phase buff and
+          // the gates. The ones its run refuses are read to refuse a row that sets them.
+          Map.entry(
+              "ActionAttackChain",
+              Set.of(
+                  "TargetResolver",
+                  "ChainCount",
+                  "ResetTargetAfterReach",
+                  "PerformAttackOnReach",
+                  "ReachRange",
+                  "MaxDurationMs",
+                  "ChainCompleteIfTrue",
+                  "PauseIfAttackSpeedZero",
+                  "StopMovementWhenAtTarget",
+                  "ForgetTargetRange",
+                  "ForgetRangeAlwaysOn",
+                  "ForgetAllTargetsIfNoNewOnes",
+                  "ForgetOldestTargetIfNoNewOnes",
+                  "CanUseDefaultTargetAsFallback",
+                  "OnChainBegan",
+                  "OnReachTarget",
+                  "OnTargetDied",
+                  "OnChainComplete",
+                  "OnNoTargetFound",
+                  "OnFinishedAction",
+                  "ChainPhaseBuff")),
           // A run that waits for its owner to be damaged or attacked, then runs its action on the
           // owner at most once a threshold. Its run keeps a countdown, -1 as it starts and 50 less
           // a step down to 0; told its owner was damaged under TriggerOnParentDamaged, with the
@@ -1690,7 +1721,9 @@ public final class ActionRows {
             case "ActionChefTower" -> chefCooking(shared, f);
             case "ActionGiantBufferBuff" -> giantBufferBuff(shared, f);
             case "ActionPlayEffect" -> new InertAction(shared, lasting(name, f.get("EffectFlags")));
-            case "ActionRunForcedAnimationOnce" -> new InertAction(shared);
+            case "ActionRunForcedAnimationOnce", "ActionStopForcedAnimation" ->
+                new InertAction(shared);
+            case "ActionAttackChain" -> attackChain(name, shared, f);
             case "ActionRunActionOnCallbackWithThreshold" -> {
               if (bool(f, "TriggerOnAttacked")) {
                 throw new UnsupportedOperationException(
@@ -3109,6 +3142,27 @@ public final class ActionRows {
       if (resolverName.isEmpty()) {
         return new WriteResolverResultToContext(shared, columns.build());
       }
+      ResolverParts parts = resolverParts(name, resolverName);
+      return new WriteResolverResultToContext(
+          shared,
+          columns
+              .resolver(resolverName)
+              .filter(parts.filter())
+              .cone(parts.cone())
+              .strategies(parts.strategies())
+              .build());
+    }
+
+    /** A resolver's filter, its shape as a cone (null for a Global one) and its strategies. */
+    private record ResolverParts(
+        GameObjectFilter filter, ConeShape cone, List<String> strategies) {}
+
+    /**
+     * A resolver's parts as a row asks through it. A Circle shape is read as a cone that keeps
+     * every angle. Refused: a resolver whose shape is not a Global, a Cone or a Circle one, or that
+     * has no filter or no strategy.
+     */
+    private ResolverParts resolverParts(String name, String resolverName) {
       GameTable resolvers = tables.table(TARGET_RESOLVERS);
       if (!resolvers.has(resolverName)) {
         throw new IllegalArgumentException("no target resolver " + resolverName);
@@ -3156,13 +3210,75 @@ public final class ActionRows {
                 + resolverName
                 + " with no strategy, which is not modelled");
       }
-      return new WriteResolverResultToContext(
+      return new ResolverParts(records.filter(filter), cone, strategies);
+    }
+
+    /**
+     * An attack chain's columns, a column it leaves out taking the loader's default: 1 to reset the
+     * target after a reach, a longest duration of 10000 ms, and the default target as a fallback.
+     * Refused: a reach that attacks, a reach range of its own, the forget columns, the default
+     * target as a fallback, a no-target action, no resolver or one of more than one strategy, and
+     * the shared columns its run does not read.
+     */
+    private AttackChain attackChain(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "NextAction",
+          "NextActionWait",
+          "ForceStopIfTrue",
+          "ActionPausedIfTrue",
+          "Singleton",
+          "PerformAttackOnReach",
+          "ForgetRangeAlwaysOn",
+          "ForgetAllTargetsIfNoNewOnes",
+          "ForgetOldestTargetIfNoNewOnes",
+          "OnNoTargetFound");
+      if (integer(f, "ReachRange", -1) >= 0 || integer(f, "ForgetTargetRange", 0) != 0) {
+        throw new UnsupportedOperationException(
+            name + " sets a reach or forget range on an ActionAttackChain, not modelled");
+      }
+      if (bool(f, "CanUseDefaultTargetAsFallback", true)) {
+        throw new UnsupportedOperationException(
+            name + " falls back on the default target, which is not modelled");
+      }
+      String resolverName = text(f, "TargetResolver", "");
+      if (resolverName.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " chains with no target resolver, which is not modelled");
+      }
+      ResolverParts parts = resolverParts(name, resolverName);
+      if (parts.strategies().size() != 1) {
+        throw new UnsupportedOperationException(
+            name
+                + " chains through "
+                + resolverName
+                + ", of more than one strategy, whose ranking is not modelled");
+      }
+      parts.strategies().forEach(s -> RunOnResolvedObjects.checkStrategy(s, name, resolverName));
+      String buff = text(f, "ChainPhaseBuff", "");
+      if (!buff.isEmpty()) {
+        records.buff(buff);
+      }
+      return new AttackChain(
           shared,
-          columns
+          AttackChain.Columns.builder()
               .resolver(resolverName)
-              .filter(records.filter(filter))
-              .cone(cone)
-              .strategies(strategies)
+              .filter(parts.filter())
+              .cone(parts.cone())
+              .strategies(parts.strategies())
+              .chainCount(integer(f, "ChainCount", 0))
+              .resetTargetAfterReach(bool(f, "ResetTargetAfterReach", true))
+              .onChainBegan(rowName(f.get("OnChainBegan")))
+              .onReachTarget(rowName(f.get("OnReachTarget")))
+              .onTargetDied(rowName(f.get("OnTargetDied")))
+              .onChainComplete(rowName(f.get("OnChainComplete")))
+              .onFinishedAction(rowName(f.get("OnFinishedAction")))
+              .chainPhaseBuff(buff.isEmpty() ? null : buff)
+              .maxDurationMs(integer(f, "MaxDurationMs", 10000))
+              .chainCompleteIf(expression(f.get("ChainCompleteIfTrue")))
+              .pauseIfAttackSpeedZero(bool(f, "PauseIfAttackSpeedZero"))
+              .stopMovementWhenAtTarget(bool(f, "StopMovementWhenAtTarget"))
               .build());
     }
 
@@ -3344,17 +3460,34 @@ public final class ActionRows {
     /**
      * An area-effect spawn row's columns: the area effect, whether the owner is the source, the two
      * offsets and, for the location class, its two position expressions, which give the point in
-     * place of the owner's, and UseDeploy, which the area-effect branch does not read; for the
-     * plain class, the action run on the area effect it spawns and whether that action shares the
-     * context. A location row without both expressions, a row that sets any other spawn column,
-     * writes its area effect inline, or names one whose row sets a column not modelled is refused.
+     * place of the owner's, and UseDeploy and the two target expressions, which the area-effect
+     * branch does not read (the target expressions only aim a projectile); for the plain class, the
+     * action run on the area effect it spawns and whether that action shares the context. A
+     * location row that sets no position column at all spawns at the owner's point, as the plain
+     * class does: the location's x and y fall through the absolute, relative, expression and
+     * mirrored columns to the owner's own. A location row with only one expression, a row that sets
+     * any other spawn column, writes its area effect inline, or names one whose row sets a column
+     * not modelled is refused.
      */
     private SpawnAreaEffect spawnAreaEffect(
         String name, String type, ActionRow shared, JsonNode f) {
       boolean location = !type.equals("ActionSpawn");
       // A location row's point is its two expressions; one that leaves either out, or places by
       // an absolute or relative point, takes another of the location slots' paths.
+      boolean ownerPoint =
+          location
+              && Stream.of(
+                      "AbsoluteX",
+                      "AbsoluteY",
+                      "RelativeX",
+                      "RelativeY",
+                      "MirroredX",
+                      "MirroredY",
+                      "XPositionExpression",
+                      "YPositionExpression")
+                  .noneMatch(column -> sets(f, column));
       if (location
+          && !ownerPoint
           && (!f.hasNonNull("XPositionExpression") || !f.hasNonNull("YPositionExpression"))) {
         throw new UnsupportedOperationException(
             name
@@ -3371,7 +3504,9 @@ public final class ActionRows {
                   "OffsetY",
                   "XPositionExpression",
                   "YPositionExpression",
-                  "UseDeploy")
+                  "UseDeploy",
+                  "TargetExprX",
+                  "TargetExprY")
               : Set.of(
                   "SpawnData",
                   "SpawnType",
