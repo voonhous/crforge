@@ -64,6 +64,16 @@ public final class ActionContext {
   }
 
   /**
+   * The value under a key in one board alone, or null.
+   *
+   * @param fromScratch true for the scratch board, false for the main board
+   * @param key the key
+   */
+  public Integer readBoard(boolean fromScratch, int key) {
+    return (fromScratch ? scratch : main).get(key);
+  }
+
+  /**
    * The value under a key: the main board's, else the scratch board's, else null.
    *
    * @param key the key
