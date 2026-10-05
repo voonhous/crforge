@@ -13,9 +13,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * with LoadFirstHit is credited the load time less the attack time and clears its attack; a plain
  * unit with an attack running starts the target-lost countdown, under which the visit lets the
  * attack run on for the attack finish time before it selects again. A previous reference that was
- * the removed entity is forgotten. A reference removed with no replacement that the component's
- * last visit kept for a lethal pending damage skips the retarget load, whoever killed it, so the
- * component selects again on its next visit.
+ * the removed entity is forgotten, and so is its id among the remembered targets of a unit that
+ * ever remembers them. A reference removed with no replacement that the component's last visit kept
+ * for a lethal pending damage skips the retarget load, whoever killed it, so the component selects
+ * again on its next visit.
  *
  * <p>The notice runs inside the closing cleanup of the tick the entity died in, so no visit ever
  * meets a dead reference.
@@ -64,6 +65,11 @@ public final class RemovalNotice {
     }
     if (t.getPreviousReference() != null && t.getPreviousReference() == removed) {
       t.setPreviousReference(null);
+    }
+    // A unit that ever remembers its targets forgets the one that left: the first time its id is
+    // listed, the rest keeping their order.
+    if (cfg.remembersAnyTargets()) {
+      t.getRememberedTargetIds().remove(Integer.valueOf(removed.id()));
     }
   }
 

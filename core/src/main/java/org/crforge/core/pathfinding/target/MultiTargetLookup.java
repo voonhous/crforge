@@ -25,9 +25,11 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
  *       clipped sideways by the side clip.
  * </ul>
  *
- * <p>Of the rest, a higher priority wins, then a strictly smaller squared distance, so the earlier
- * of equals stays. The pick is kept only when the validator takes it again and it lies inside the
- * owner's attack range - the attack range, not the sight reach.
+ * <p>While the attack sequence entry at the index remembers its targets, a candidate the last
+ * remembering hit step reached ranks 1000 above its priority. Of the rest, a higher priority wins,
+ * then a strictly smaller squared distance, so the earlier of equals stays. The pick is kept only
+ * when the validator takes it again and it lies inside the owner's attack range - the attack range,
+ * not the sight reach.
  *
  * <p>Unlike the selector it has no alive test, no distance reduction, no tower-like sight range and
  * no lowest hit points rule.
@@ -41,6 +43,9 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
             + " third target. A list of unique targets is refused by the owner, as no row sets"
             + " one.")
 public final class MultiTargetLookup {
+
+  /** What a remembered candidate ranks above its own priority. */
+  static final int REMEMBERED_PRIORITY = 1000;
 
   private MultiTargetLookup() {
     // Utility class
@@ -68,6 +73,9 @@ public final class MultiTargetLookup {
     List<TargetView> candidates =
         queries.lookupCandidates(ownerX, ownerY, sight + Math.max(crownExtra, buildingExtra));
 
+    // While the entry the index selects remembers its targets, one the last hit step reached ranks
+    // 1000 above its own priority.
+    boolean remembers = cfg.remembersTargetsAt(t.getAttackSequenceIndex());
     TargetView best = null;
     int bestPriority = TargetPriority.ORDINARY;
     int bestDistance = Integer.MAX_VALUE;
@@ -98,6 +106,9 @@ public final class MultiTargetLookup {
         }
       }
       int priority = TargetPriority.priority(t, candidate, queries);
+      if (remembers && t.getRememberedTargetIds().contains(candidate.id())) {
+        priority += REMEMBERED_PRIORITY;
+      }
       int extra = candidate.crownTower() ? crownExtra : candidate.building() ? buildingExtra : 0;
       int reach = candidate.radius() + sight + extra;
       if (squared > reach * reach) {

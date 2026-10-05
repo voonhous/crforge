@@ -82,7 +82,7 @@ public final class ProjectileLauncher {
       }
       return;
     }
-    ProjectileData first = unit.customFirstProjectile();
+    ProjectileData first = launcher.customFirstProjectile();
     WorldEntity targetEntity = target == null ? null : world.entityOf(target.getEntity());
     // The launcher's listed runs have the projectile before it flies: the evolved Dart Goblin's
     // dart choice may pick its special dart. A custom first projectile would be handed to them
@@ -295,7 +295,7 @@ public final class ProjectileLauncher {
     GridEntity view = launcher.getView();
     int ox = view.getX();
     int oy = view.getY();
-    int radius = unit.projectileStartRadius();
+    int radius = launcher.projectileStartRadius();
     int dx = hx - ox;
     int dy = hy - oy;
     if (unit.multipleProjectiles() >= 1
@@ -321,7 +321,7 @@ public final class ProjectileLauncher {
     }
     int sx = ox + dx;
     int sy = yOffset + dy + oy;
-    int sz = unit.projectileStartZ() + view.getZ();
+    int sz = launcher.projectileStartZ() + view.getZ();
     projectile.launch(launcher, target, sx, sy, sz, hx, hy);
   }
 

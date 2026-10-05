@@ -85,6 +85,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * @param multipleTargets number of targets a single attack hits, below two for a single target
  * @param uniqueMultipleTargets true when each of those targets must be a different entity
  * @param allTargetsHit true when a missing extra target falls back to the unit's own reference
+ * @param rememberMultipleTargets the row's answer to whether a multi-target hit remembers the
+ *     targets it reached, which an attack sequence entry may override
  * @param attackDashTime milliseconds added to the attack timer when timing the hit of a dash
  *     attack. The column is carried across from the character data, but the block that reads it
  *     only announces the dash hit and is not ported, so nothing reads it today
@@ -172,6 +174,7 @@ public record TargetingConfig(
     int multipleTargets,
     boolean uniqueMultipleTargets,
     boolean allTargetsHit,
+    boolean rememberMultipleTargets,
     int attackDashTime,
     int attackFinishTime,
     boolean overrideAttackFinishTime,
@@ -271,6 +274,65 @@ public record TargetingConfig(
       return null;
     }
     return attackSequenceEntries.get(stepId);
+  }
+
+  /**
+   * How many targets a hit reaches at an index of the attack sequence: the step's number when the
+   * index is not {@link TargetingState#NO_SEQUENCE_STEP} and the step sets one, else the row's
+   * MultipleTargets.
+   */
+  public int multipleTargetsAt(int index) {
+    if (index != TargetingState.NO_SEQUENCE_STEP) {
+      AttackSequenceEntry step = entry(stepId(index));
+      if (step != null && step.multipleTargetsOverride() != AttackSequenceEntry.NO_OVERRIDE) {
+        return step.multipleTargetsOverride();
+      }
+    }
+    return multipleTargets;
+  }
+
+  /**
+   * Whether a hit at an index of the attack sequence remembers the targets it reached: for an index
+   * inside the order whose step answers, its answer, anything but 0 being yes; else the row's.
+   */
+  public boolean remembersTargetsAt(int index) {
+    if (index >= 0 && index < attackSequenceLength) {
+      AttackSequenceEntry step = entry(stepId(index));
+      if (step != null && step.rememberMultipleTargets() != AttackSequenceEntry.NO_OVERRIDE) {
+        return step.rememberMultipleTargets() != 0;
+      }
+    }
+    return rememberMultipleTargets;
+  }
+
+  /**
+   * Whether the unit ever remembers targets: the row says so, or one of its steps, in the list as
+   * built rather than by the order, answers exactly 1.
+   */
+  public boolean remembersAnyTargets() {
+    if (rememberMultipleTargets) {
+      return true;
+    }
+    if (attackSequenceEntries != null) {
+      for (AttackSequenceEntry step : attackSequenceEntries) {
+        if (step != null && step.rememberMultipleTargets() == 1) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The start delay of the step at an index of the attack sequence, in milliseconds: 0 outside the
+   * order.
+   */
+  public int attackStartDelayAt(int index) {
+    if (index < 0 || index >= attackSequenceLength) {
+      return 0;
+    }
+    AttackSequenceEntry step = entry(stepId(index));
+    return step == null ? 0 : step.attackStartDelay();
   }
 
   /** The step id stored at the given index of the attack sequence. */

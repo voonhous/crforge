@@ -565,6 +565,11 @@ public final class TargetingVisit {
     if (cfg.dashCooldown() > 0) {
       t.setDashWindupMs(0);
     }
+    // An attack that starts, from another state with the timer at 0, arms the start delay of the
+    // entry the index selects; the timer's advance then holds it at 0 until the delay has run out.
+    if (e.getState() != STATE_ATTACKING && t.getAttackTimerMs() == 0) {
+      t.setAttackStartDelayMs(cfg.attackStartDelayAt(t.getAttackSequenceIndex()));
+    }
     queries.stateSetter().setState(e, STATE_ATTACKING);
     // Every attack tick turns the unit toward the reference it has once the setter is done; one
     // that goes on without a reference keeps its facing.
@@ -652,7 +657,8 @@ public final class TargetingVisit {
       int burstDelay,
       int burstsNow) {
     TargetView target = t.getReference();
-    int multiple = cfg.multipleTargets();
+    // The entry the index selects may set its own number of targets.
+    int multiple = cfg.multipleTargetsAt(t.getAttackSequenceIndex());
     int index = burstsNow;
     if (burstDelay >= 1) {
       if (burstsNow - 1 >= 0 && multiple >= 2) {
@@ -682,6 +688,14 @@ public final class TargetingVisit {
       }
     }
     if (multiple >= 2 && cfg.burst() == 0) {
+      // A hit step whose entry remembers its targets lists the reference it started with, then
+      // every further target it reaches, each once; the list replaces the remembered one after the
+      // step's last hit.
+      boolean remembers = cfg.remembersTargetsAt(t.getAttackSequenceIndex());
+      List<Integer> reached = new ArrayList<>();
+      if (remembers && target != null) {
+        reached.add(target.id());
+      }
       boolean unique = cfg.uniqueMultipleTargets();
       List<TargetView> remaining = unique ? new ArrayList<>(queries.uniqueMultiTargets()) : null;
       int last = multiple - 1;
@@ -695,6 +709,9 @@ public final class TargetingVisit {
         }
         if (hitTarget != null) {
           queries.hitSink().hit(hitTarget, i, extra, i == last);
+          if (remembers && !reached.contains(hitTarget.id())) {
+            reached.add(hitTarget.id());
+          }
           if (remaining != null && !remaining.isEmpty()) {
             int k = remaining.indexOf(hitTarget);
             if (k >= 0) {
@@ -706,6 +723,10 @@ public final class TargetingVisit {
         if (i == last) {
           break;
         }
+      }
+      if (remembers) {
+        t.getRememberedTargetIds().clear();
+        t.getRememberedTargetIds().addAll(reached);
       }
     }
   }

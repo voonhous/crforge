@@ -2085,6 +2085,58 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * The projectile the first of each hit's projectiles is: in an order of two or more, the custom
+   * first projectile of the entry at the index itself, when it names one; otherwise the row's, or
+   * null for none. The index picks from the entries as listed, not through the order.
+   */
+  public ProjectileData customFirstProjectile() {
+    AttackSequence sequence = data.attackSequence();
+    if (sequence.replacesAttack()) {
+      int index = targeting.getAttackSequenceIndex();
+      if (index < 0 || index >= sequence.entries().size()) {
+        throw new UnsupportedOperationException(
+            name() + " reads its attack sequence entry " + index + " as listed, not modelled");
+      }
+      ProjectileData first = sequence.entries().get(index).customFirstProjectile();
+      if (first != null) {
+        return first;
+      }
+    }
+    return data.customFirstProjectile();
+  }
+
+  /**
+   * The distance from the entity a launch starts at: in an order of two or more, the entry's start
+   * radius when the order's entry at the index sets one, else the row's ProjectileStartRadius.
+   */
+  public int projectileStartRadius() {
+    AttackSequence sequence = data.attackSequence();
+    if (sequence.replacesAttack()) {
+      int radius =
+          sequence.entryAt(targeting.getAttackSequenceIndex()).customProjectileStartRadius();
+      if (radius != -1) {
+        return radius;
+      }
+    }
+    return data.projectileStartRadius();
+  }
+
+  /**
+   * The height above the entity a launch starts at: in an order of two or more, the entry's start
+   * height when the order's entry at the index sets one, else the row's ProjectileStartZ.
+   */
+  public int projectileStartZ() {
+    AttackSequence sequence = data.attackSequence();
+    if (sequence.replacesAttack()) {
+      int z = sequence.entryAt(targeting.getAttackSequenceIndex()).customProjectileStartZ();
+      if (z != -1) {
+        return z;
+      }
+    }
+    return data.projectileStartZ();
+  }
+
+  /**
    * The projectile one of the entity's hits launches, after its listed runs have had it: each run,
    * from the last listed to the first, is handed what the one after it left. Only the evolved Dart
    * Goblin's dart choice picks another; every other run hands back what it was given.
@@ -2287,7 +2339,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param target what the hit was aimed at, or null when the entity had given it up
    */
   private void runAttackAction(TargetView target) {
-    if (data.onAttackAction() == null || target == null) {
+    String action = attackActionName();
+    if (action == null || target == null) {
       return;
     }
     WorldEntity cause = world.entityOf(target.getEntity());
@@ -2295,10 +2348,37 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       throw new UnsupportedOperationException(
           name() + " hit something that is not an entity of the battle, not modelled");
     }
-    if (attackActionRow == null) {
-      attackActionRow = world.getActions().build(data.onAttackAction(), world.binding(this));
+    BattleAction row;
+    if (action.equals(data.onAttackAction())) {
+      if (attackActionRow == null) {
+        attackActionRow = world.getActions().build(action, world.binding(this));
+      }
+      row = attackActionRow;
+    } else {
+      row =
+          entryActionRows.computeIfAbsent(
+              action, name -> world.getActions().build(name, world.binding(this)));
     }
-    actionHolder().schedule(attackActionRow, ActionHolder.OWN_DELAY, false, cause.actionHolder());
+    actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, cause.actionHolder());
+  }
+
+  /**
+   * The attack action a hit schedules: the custom one of the entry the index selects, at any length
+   * of the order, when the index is not -1 and the entry names one; otherwise the row's
+   * OnAttackAction, or null for none.
+   */
+  private String attackActionName() {
+    AttackSequence sequence = data.attackSequence();
+    int index = targeting.getAttackSequenceIndex();
+    if (index != TargetingState.NO_SEQUENCE_STEP
+        && index < sequence.order().size()
+        && !sequence.entries().isEmpty()) {
+      String custom = sequence.entryAt(index).customOnAttackAction();
+      if (custom != null) {
+        return custom;
+      }
+    }
+    return data.onAttackAction();
   }
 
   /** The row the entity's row runs on itself as it attacks, built on first use. */

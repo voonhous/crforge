@@ -1178,7 +1178,7 @@ class BattleRecordsTest {
                 rows -> {
                   ObjectNode entry =
                       (ObjectNode) GameData.columns(rows, unit).get("AttackSequenceList").get(0);
-                  entry.put("CustomOnAttackAction", "SomeAction");
+                  entry.put("CustomUnreadColumn", 1);
                 }));
     assertThat(altered.unit(unit).unmodelledColumns()).contains("AttackSequenceList");
 

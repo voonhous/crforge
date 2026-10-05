@@ -183,6 +183,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param multipleTargets how many targets one hit reaches, below two for one
  * @param allTargetsHit true when an extra target the lookup does not find is its reference again
  * @param uniqueMultipleTargets true when the extra targets are drawn from one list, each hit once
+ * @param rememberMultipleTargets true when a multi-target hit remembers the targets it reached, so
+ *     the lookup of a further target prefers them; an attack sequence entry may say otherwise
  * @param buffOnDamage the buff its hit applies to what it hits, or null for none
  * @param buffOnDamageTimeMs how long that buff lasts on what it hits
  * @param groupMaxSize the most children of its row a spawn group holds; 0 for no limit
@@ -373,6 +375,7 @@ public record UnitData(
     int multipleTargets,
     boolean allTargetsHit,
     boolean uniqueMultipleTargets,
+    boolean rememberMultipleTargets,
     String buffOnDamage,
     int buffOnDamageTimeMs,
     int groupMaxSize,
