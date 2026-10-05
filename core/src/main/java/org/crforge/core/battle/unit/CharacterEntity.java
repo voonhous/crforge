@@ -1313,7 +1313,7 @@ public class CharacterEntity extends WorldEntity {
    * The champion slot of the side's king that follows the character, the first before the second;
    * null for none, a clone, or a battle without a king's slots.
    */
-  private ChampionController followingSlot() {
+  ChampionController followingSlot() {
     TowerEntity king = world.kingTower(side());
     if (king == null) {
       return null;

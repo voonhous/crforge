@@ -10,10 +10,12 @@ import org.junit.jupiter.api.Test;
 class BattleFunctionsTest {
 
   @Test
-  @DisplayName("47 functions with the ids 0 to 46, each once")
-  void fortySevenIds() {
-    assertThat(BattleFunctions.ALL).hasSize(47);
-    for (int id = 0; id < 47; id++) {
+  @DisplayName(
+      "48 functions with the ids 0 to 47, each once: the 47 of 14.593.1 and a newer version's one")
+  void fortyEightIds() {
+    assertThat(BattleFunctions.ALL).hasSize(48);
+    assertThat(BattleFunctions.byId(47).name()).isEqualTo("ability_charges_left");
+    for (int id = 0; id < 48; id++) {
       assertThat(BattleFunctions.byId(id).id()).isEqualTo(id);
     }
   }

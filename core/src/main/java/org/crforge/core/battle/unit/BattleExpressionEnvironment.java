@@ -51,7 +51,9 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " row and play, held by hero_goblins; is_deploying as a character in the"
             + " deploying state, 0 for any other object, held by hero_mega_minion;"
             + " is_combat_enabled as the context's targeting component switched on, held by"
-            + " ability_hero_mega_minion_vs_musketeer;"
+            + " ability_hero_mega_minion_vs_musketeer; ability_charges_left (a newer data"
+            + " version) as the charges left of the slot that follows a character whose row's"
+            + " ability has charges, -1 otherwise, read from the newer build's function;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -96,6 +98,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_CHAMPION = BattleFunctions.id("is_champion");
   private static final int IS_DEPLOYING = BattleFunctions.id("is_deploying");
   private static final int IS_COMBAT_ENABLED = BattleFunctions.id("is_combat_enabled");
+  private static final int ABILITY_CHARGES_LEFT = BattleFunctions.id("ability_charges_left");
+
+  /** What ability_charges_left answers for an object without counted charges to read. */
+  private static final int NO_CHARGES = -1;
 
   /** The game tags that force an object onto a layer, which target_is_ground would read first. */
   private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
@@ -351,12 +357,33 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
           ? 1
           : 0;
     }
+    if (id == ABILITY_CHARGES_LEFT) {
+      return abilityChargesLeft();
+    }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.
       return 0;
     }
     throw new UnsupportedOperationException(
         "the battle does not answer " + BattleFunctions.byId(id).name() + " yet");
+  }
+
+  /**
+   * The charges left of the champion slot that follows the context, as a newer data version's
+   * ability_charges_left reads them: the slot's count, -1 when it does not count them. -1 for an
+   * object that is not a character, one whose row has no ability or an ability of no charges, and
+   * one no slot of its side's king follows (a clone among them).
+   */
+  private int abilityChargesLeft() {
+    if (!(context instanceof CharacterEntity character)) {
+      return NO_CHARGES;
+    }
+    AbilityData ability = character.getData().ability();
+    if (ability == null || ability.maxCharges() < 1) {
+      return NO_CHARGES;
+    }
+    ChampionController slot = character.followingSlot();
+    return slot == null ? NO_CHARGES : slot.getCharges();
   }
 
   /**
