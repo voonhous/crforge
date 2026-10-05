@@ -182,6 +182,13 @@ public class BattleWorld implements HolderPasses {
    * typed hit, so a unit the hit kills keeps its movement visit of that tick and dies where that
    * visit left it; the game of 14.593.1 deals the hit at once, and the death switches the unit's
    * movement off before the movement pass.
+   *
+   * <p>The same rule lands each victim's share of a character's area damage at the drain (see
+   * {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)}): the area of a direct hit and of a
+   * dash landing; no row of 16.402.18 sets a death damage. The area still pushes its victims at
+   * once, before their damage lands, so a victim the area kills is pushed too.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
   private static final Set<String> DIRECT_HIT_AT_DRAIN = Set.of("16.402.18");
 
@@ -326,8 +333,24 @@ public class BattleWorld implements HolderPasses {
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY)
       implements QueuedHit {}
 
-  /** A hit the damage drain deals: a typed hit, or a direct hit on a version that queues it. */
-  private sealed interface QueuedHit permits TypedHit, DirectHitDue {}
+  /**
+   * One victim's share of a character's area damage waiting for the drain, on a data version that
+   * lands it there: dealt as {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)} deals it
+   * at once.
+   *
+   * @param attacker the entity whose hit made the area
+   * @param victim the entity the area collected
+   * @param damage hit points the area deals it, before its guards and the clamp to zero
+   * @param hitId the id the hit carries
+   */
+  private record AreaHitDue(WorldEntity attacker, WorldEntity victim, int damage, int hitId)
+      implements QueuedHit {}
+
+  /**
+   * A hit the damage drain deals: a typed hit, or a direct hit or a share of a character's area on
+   * a version that queues them.
+   */
+  private sealed interface QueuedHit permits TypedHit, DirectHitDue, AreaHitDue {}
 
   /**
    * The hits dealt this tick that wait for the drain, in the order they were dealt: one queue, so a
@@ -1606,16 +1629,31 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals one victim's share of the area of an entity's hit, and tells every observer what it did.
+   * Deals one victim's share of the area of an entity's hit, and tells every observer what it did:
+   * at once on a data version whose game deals it inside the area, queued for the damage drain, in
+   * the order hits are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}).
    * A victim that has left the battle takes nothing.
    *
    * @param attacker the entity whose hit made the area
    * @param victim the entity the area collected
    * @param damage hit points the area deals it, before its guards and the clamp to zero
    * @param hitId the id the hit carries
-   * @return what the damage did to the victim
+   * @return what the damage did to the victim; nothing yet for a share queued for the drain
    */
   public DamageResult dealAreaDamage(
+      WorldEntity attacker, WorldEntity victim, int damage, int hitId) {
+    if (directHitAtDrain) {
+      queuedHits.add(new AreaHitDue(attacker, victim, damage, hitId));
+      return DamageResult.NOTHING;
+    }
+    return dealAreaDamageNow(attacker, victim, damage, hitId);
+  }
+
+  /**
+   * Deals one victim's share of the area of an entity's hit at once, and tells every observer what
+   * it did. A victim that has left the battle takes nothing.
+   */
+  private DamageResult dealAreaDamageNow(
       WorldEntity attacker, WorldEntity victim, int damage, int hitId) {
     if (victim == null || known.get(victim.getView()) != victim) {
       return DamageResult.NOTHING;
@@ -4487,8 +4525,8 @@ public class BattleWorld implements HolderPasses {
    * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit, on a data version that queues it: the damage dealt as it is dealt at once, with its
-   * reflect, its observers, its death or the reference drop.
+   * direct hit or a share of a character's area, on a data version that queues them: the damage
+   * dealt as it is dealt at once, with its reflect, its observers, its death or the reference drop.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -4501,6 +4539,10 @@ public class BattleWorld implements HolderPasses {
             direct.damage(),
             direct.directionX(),
             direct.directionY());
+        continue;
+      }
+      if (queued instanceof AreaHitDue area) {
+        dealAreaDamageNow(area.attacker(), area.victim(), area.damage(), area.hitId());
         continue;
       }
       TypedHit hit = (TypedHit) queued;
