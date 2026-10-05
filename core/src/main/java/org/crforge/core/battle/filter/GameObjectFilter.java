@@ -27,6 +27,12 @@ import org.crforge.core.pathfinding.GridEntityState;
  * filter that sets it is asked with whether the object is its asker, and refused when asked
  * without.
  *
+ * <p>A newer data version's Filters list may also name three kinds no switch tests: {@code
+ * filterSelf} drops the asker itself, and is refused, like {@code matchSelf}, when asked without
+ * whether the object is its asker; {@code filterKamikaze} and {@code filterIgnoreResurrect} drop a
+ * character whose row sets Kamikaze or IgnoreResurrect, in the character-only block. Each is a
+ * plain question, so its place among the other exclusions does not change the answer.
+ *
  * <p>The two buff checkers a newer data version writes come last: FilterIfNotBuffedByChecker keeps
  * only an object that carries one of its buff rows applied by the asker, FilterIfBuffedByChecker
  * drops one that does. A buff counts as the asker's when the asker is its source, or when its
@@ -43,7 +49,10 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " asker's own identity before the team gate. The two buff checkers (a newer data"
             + " version) from the same test: a listed row whose source, or whose source"
             + " projectile's launcher, is the asker; held by BattleRunOnResolvedTest and the Ice"
-            + " Wizard hero's tap.")
+            + " Wizard hero's tap. The Filters list's kinds Self, Kamikaze and IgnoreResurrect (a"
+            + " newer data version) from the same test: the object's id against the asker's, and"
+            + " the character row's Kamikaze and IgnoreResurrect columns; IgnoreResurrect, which the"
+            + " Skeleton King's death listener asks, held by BattleFilterKindsTest.")
 @Getter
 @Builder(toBuilder = true)
 public final class GameObjectFilter {
@@ -76,6 +85,18 @@ public final class GameObjectFilter {
   @Builder.Default private final boolean filterDead = true;
   private final boolean filterClones;
   private final boolean matchSelf;
+
+  /** The Filters list's kind Self: the asker itself is dropped. */
+  private final boolean filterSelf;
+
+  /** The Filters list's kind Kamikaze: a character whose row sets Kamikaze is dropped. */
+  private final boolean filterKamikaze;
+
+  /**
+   * The Filters list's kind IgnoreResurrect: a character whose row sets IgnoreResurrect is dropped.
+   */
+  private final boolean filterIgnoreResurrect;
+
   @Builder.Default private final Set<String> includeCharactersWithData = Set.of();
   @Builder.Default private final Set<String> excludeCharactersWithData = Set.of();
 
@@ -104,6 +125,11 @@ public final class GameObjectFilter {
           "a game object filter that sets MatchSelf is asked without its asker, which is not"
               + " modelled");
     }
+    if (filterSelf) {
+      throw new UnsupportedOperationException(
+          "a game object filter that lists the kind Self is asked without its asker, which is not"
+              + " modelled");
+    }
     refuseCheckersWithoutAsker();
     return passes(object, team, name);
   }
@@ -119,7 +145,7 @@ public final class GameObjectFilter {
 
   /**
    * Whether an object passes the filter, asked by an object that may be the one tested: with {@code
-   * matchSelf} set, only the asker itself passes.
+   * matchSelf} set, only the asker itself passes; with {@code filterSelf}, the asker itself fails.
    *
    * @param object the object
    * @param team the asker's team
@@ -127,7 +153,7 @@ public final class GameObjectFilter {
    * @param asker true when the object is the asker itself
    */
   public boolean matches(FilterSubject object, int team, String name, boolean asker) {
-    if (matchSelf && !asker) {
+    if (matchSelf && !asker || filterSelf && asker) {
       return false;
     }
     refuseCheckersWithoutAsker();
@@ -146,7 +172,7 @@ public final class GameObjectFilter {
    * @param askerId the asker's id
    */
   public boolean matches(FilterSubject object, int team, String name, boolean asker, int askerId) {
-    if (matchSelf && !asker) {
+    if (matchSelf && !asker || filterSelf && asker) {
       return false;
     }
     if (!passes(object, team, name)) {
@@ -158,7 +184,7 @@ public final class GameObjectFilter {
     return refuseBuffsFromAsker.isEmpty() || !object.buffedBy(refuseBuffsFromAsker, askerId);
   }
 
-  /** The test of every column but {@code matchSelf}. */
+  /** The test of every column but {@code matchSelf}, {@code filterSelf} and the buff checkers. */
   private boolean passes(FilterSubject object, int team, String name) {
     if (object.team() == team ? !matchTeamOwn : !matchTeamEnemy) {
       return false;
@@ -215,7 +241,9 @@ public final class GameObjectFilter {
                 || state == GridEntityState.FOLLOWING_REMOVED_BUILDING)
         || filterInvisible && object.invisibleCounter() > 0
         || filterCloning && state == GridEntityState.CLONE_SETUP
-        || filterPushbackIgnore && object.ignoresPushback()) {
+        || filterPushbackIgnore && object.ignoresPushback()
+        || filterKamikaze && object.kamikaze()
+        || filterIgnoreResurrect && object.ignoresResurrect()) {
       return false;
     }
     if (!includeCharactersWithData.isEmpty()

@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.filter.GameObjectFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,8 +24,9 @@ import org.junit.jupiter.api.io.TempDir;
  * A game object filter may name the kinds of object it leaves out as a list, Filters, in place of
  * one switch per kind: Hidden for FilterHidden, NoHitpointComponent for
  * FilterIfNoHitpointComponent, and so on. Each name is the switch of the same test, so a row
- * written either way is the same filter. The kinds the switches have no test for (Self, Kamikaze,
- * IgnoreResurrect) are refused, as is a row that writes both forms.
+ * written either way is the same filter. The three kinds the switches have no test for (Self,
+ * Kamikaze, IgnoreResurrect) are read as the filter's own fields of those kinds; any other kind is
+ * refused, as is a row that writes both forms.
  */
 class GameObjectFilterListTest {
 
@@ -90,27 +92,47 @@ class GameObjectFilterListTest {
     assertThat(listed).as("rows written as a list").isGreaterThan(20);
   }
 
+  /** EnemyTowersOnly with a Filters list of Hidden and the given kind. */
+  private static BattleRecords listing(Path folder, String kind) throws IOException {
+    return new BattleRecords(
+        GameData.altered(
+            Files.createDirectories(folder.resolve(kind)),
+            "game_object_filters",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "EnemyTowersOnly");
+              columns.set("Filters", columns.arrayNode().add("Hidden").add(kind));
+            }));
+  }
+
   @Test
-  @DisplayName("a list naming a kind the switches have no test for is refused")
-  void aKindWithoutASwitchIsRefused(@TempDir Path folder) throws IOException {
-    for (String kind : List.of("Self", "Kamikaze", "IgnoreResurrect", "Teleporting")) {
-      GameTables tables =
-          GameData.altered(
-              Files.createDirectories(folder.resolve(kind)),
-              "game_object_filters",
-              rows -> {
-                ObjectNode columns = GameData.columns(rows, "EnemyTowersOnly");
-                columns.set("Filters", columns.arrayNode().add("Hidden").add(kind));
-              });
-      BattleRecords records = new BattleRecords(tables);
-      assertThatThrownBy(() -> records.filter("EnemyTowersOnly"))
-          .as(kind)
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessage(
-              "the game object filter EnemyTowersOnly lists the kind "
-                  + kind
-                  + " in Filters, which is not modelled");
+  @DisplayName(
+      "a list naming Self, Kamikaze or IgnoreResurrect, which no switch tests, sets that kind's"
+          + " own field alone")
+  void theKindsWithoutASwitchAreTheirOwnFields(@TempDir Path folder) throws IOException {
+    GameObjectFilter plain = GameData.records().filter("EnemyTowersOnly");
+    Map<String, GameObjectFilter> expected =
+        Map.of(
+            "Self", plain.toBuilder().filterHidden(true).filterSelf(true).build(),
+            "Kamikaze", plain.toBuilder().filterHidden(true).filterKamikaze(true).build(),
+            "IgnoreResurrect",
+                plain.toBuilder().filterHidden(true).filterIgnoreResurrect(true).build());
+    for (Map.Entry<String, GameObjectFilter> kind : expected.entrySet()) {
+      assertThat(listing(folder, kind.getKey()).filter("EnemyTowersOnly"))
+          .as(kind.getKey())
+          .usingRecursiveComparison()
+          .isEqualTo(kind.getValue());
     }
+  }
+
+  @Test
+  @DisplayName("a list naming a kind neither a switch nor the filter's own fields test is refused")
+  void anUnknownKindIsRefused(@TempDir Path folder) throws IOException {
+    BattleRecords records = listing(folder, "Teleporting");
+    assertThatThrownBy(() -> records.filter("EnemyTowersOnly"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "the game object filter EnemyTowersOnly lists the kind Teleporting in Filters, which"
+                + " is not modelled");
   }
 
   @Test

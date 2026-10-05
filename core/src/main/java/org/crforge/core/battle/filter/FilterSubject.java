@@ -83,6 +83,12 @@ public interface FilterSubject {
   /** True for a character whose row or one of whose buffs ignores pushback. */
   boolean ignoresPushback();
 
+  /** True for a character whose row sets Kamikaze. */
+  boolean kamikaze();
+
+  /** True for a character whose row sets IgnoreResurrect: its death counts as no soul. */
+  boolean ignoresResurrect();
+
   /**
    * True when the object carries a buff of one of the rows that the given object applied: the
    * buff's source is that object, or its source was a projectile that object launched. An object

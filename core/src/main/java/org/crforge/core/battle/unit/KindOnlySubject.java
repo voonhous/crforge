@@ -121,4 +121,14 @@ final class KindOnlySubject implements FilterSubject {
   public boolean ignoresPushback() {
     throw unmodelled();
   }
+
+  @Override
+  public boolean kamikaze() {
+    throw unmodelled();
+  }
+
+  @Override
+  public boolean ignoresResurrect() {
+    throw unmodelled();
+  }
 }
