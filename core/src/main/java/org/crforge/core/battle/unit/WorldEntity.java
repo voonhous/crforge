@@ -1824,6 +1824,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return new EntityFilterSubject(this);
   }
 
+  @Override
+  public FilterSubject actionFilterSubject() {
+    return filterSubject();
+  }
+
   /** The battle's live objects as a filter asks about them, for this entity's team and row. */
   @Override
   public ObjectCensus census() {
