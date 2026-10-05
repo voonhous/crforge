@@ -196,6 +196,22 @@ public class BattleWorld implements HolderPasses {
   private boolean directHitAtDrain;
 
   /**
+   * The data versions whose game keeps every area effect until its countdown is below 0, so one
+   * whose countdown reaches 0 exactly has one more update, and runs its life-end action on that
+   * update; its end, as an object it follows leaves or an attack ends its signal, sets the
+   * countdown to -1. The rule is the game build's, not a table value: the game of data version
+   * 16.402.18 tests each area effect so, a row with hit switches as well as one with a filter; the
+   * game of 14.593.1 removes it once its countdown is below 1, runs the life-end action at 0 and
+   * ends it at 0.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> AREA_LIFE_ENDS_BELOW_ZERO = Set.of("16.402.18");
+
+  /** True when the battle's data version keeps an area effect until its countdown is below 0. */
+  private boolean areaLifeEndsBelowZero;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -490,6 +506,15 @@ public class BattleWorld implements HolderPasses {
         movementGlobals.withPushbackEndDropsRoute(
             PUSHBACK_END_DROPS_ROUTE.contains(tables.version()));
     this.directHitAtDrain = DIRECT_HIT_AT_DRAIN.contains(tables.version());
+    this.areaLifeEndsBelowZero = AREA_LIFE_ENDS_BELOW_ZERO.contains(tables.version());
+  }
+
+  /**
+   * Whether the battle's data version keeps an area effect until its countdown is below 0 (see
+   * {@link #AREA_LIFE_ENDS_BELOW_ZERO}).
+   */
+  boolean areaLifeEndsBelowZero() {
+    return areaLifeEndsBelowZero;
   }
 
   /**
