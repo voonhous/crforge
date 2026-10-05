@@ -22,6 +22,13 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param onlyEnemies true when its hits spare its own side
  * @param ignoreBuildings true when its hits spare buildings
  * @param pushback how far a hit pushes its victims; 0 for none
+ * @param pushbackAll in the filter form, true when its push lifts the gates that would refuse it:
+ *     the object's row ignoring pushback, a buff, its no-pushback flag and its being dragged
+ * @param relativePushback in the filter form, true when its push takes the object's separation from
+ *     its point off the pushback first, so the object is pushed to the edge of that circle
+ * @param continuousPushback in the filter form, true when its push is asked with a pushback in
+ *     flight, keeping the longer one; with oneHitPerTarget, an object an earlier hit reached is
+ *     pushed again on each hit, and gets nothing else
  * @param maximumTargets the most victims a hit takes; 0 for no limit. In the filter form, the most
  *     objects of its list a hit reaches, an object it passes by not counted
  * @param sharedDamage true when a hit's damage is shared out among its victims
@@ -105,6 +112,9 @@ public record AreaEffectData(
     boolean onlyEnemies,
     boolean ignoreBuildings,
     int pushback,
+    boolean pushbackAll,
+    boolean relativePushback,
+    boolean continuousPushback,
     int maximumTargets,
     boolean sharedDamage,
     String onStartingAction,
