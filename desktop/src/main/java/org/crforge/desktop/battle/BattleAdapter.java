@@ -233,7 +233,11 @@ public final class BattleAdapter {
       if (card != null) {
         hand.set(
             slot,
-            new BattleFrame.CardView(card.name(), card.cost(), session.isPending(side, slot)));
+            new BattleFrame.CardView(
+                card.name(),
+                card.cost(),
+                session.isPending(side, slot),
+                session.cardUnavailableReason(side, slot)));
       }
     }
     MatchCard next = session.nextCard(side);
@@ -243,6 +247,8 @@ public final class BattleAdapter {
         matchSide.wholeElixir(),
         match.crowns(side),
         Collections.unmodifiableList(hand),
-        next == null ? null : new BattleFrame.CardView(next.name(), next.cost(), false));
+        next == null
+            ? null
+            : new BattleFrame.CardView(next.name(), next.cost(), false, "not in hand"));
   }
 }

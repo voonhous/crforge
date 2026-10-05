@@ -79,16 +79,16 @@ public class BattleRenderer {
   }
 
   /** View presets affect presentation only. Individual toggles remain available. */
-  public void applyPreset(String preset) {
-    drawLabels = !preset.equals("Clean");
-    drawTargets = preset.equals("Combat");
-    drawRanges = preset.equals("Combat");
-    drawDamageNumbers = preset.equals("Combat");
-    drawAoeDamage = preset.equals("Combat");
-    drawHpNumbers = preset.equals("Combat");
-    drawPaths = preset.equals("Pathing");
-    drawRoutes = preset.equals("Pathing");
-    drawCellCosts = preset.equals("Pathing");
+  public void applyPreset(OverlayPreset preset) {
+    drawLabels = preset != OverlayPreset.CLEAN;
+    drawTargets = preset == OverlayPreset.COMBAT;
+    drawRanges = preset == OverlayPreset.COMBAT;
+    drawDamageNumbers = preset == OverlayPreset.COMBAT;
+    drawAoeDamage = preset == OverlayPreset.COMBAT;
+    drawHpNumbers = preset == OverlayPreset.COMBAT;
+    drawPaths = preset == OverlayPreset.PATHING;
+    drawRoutes = preset == OverlayPreset.PATHING;
+    drawCellCosts = preset == OverlayPreset.PATHING;
   }
 
   /** Which way up the frame being drawn has the arena, from the screen's view settings. */

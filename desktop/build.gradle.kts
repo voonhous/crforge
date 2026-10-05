@@ -68,3 +68,17 @@ tasks.named<JavaExec>("run") {
         }
     }
 }
+
+// Opt-in graphics integration checks. Requires a display/OpenGL; never part of headless check.
+tasks.register<JavaExec>("uiSmoke") {
+    group = "verification"
+    description = "Exercise workspace input and layout in a hidden LWJGL window (14.593.1 tables)."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("org.crforge.desktop.WorkspaceSmoke")
+    if (System.getProperty("os.name").lowercase().contains("mac")) jvmArgs("-XstartOnFirstThread")
+    systemProperty("crforge.projectDir", rootProject.projectDir.absolutePath)
+    systemProperty("crforge.uiSmokeOutput", layout.buildDirectory.dir("ui-smoke").get().asFile.absolutePath)
+    val tables = (findProperty("crforge.gameTables") as String?) ?: System.getenv("CRFORGE_GAME_TABLES")
+    if (tables != null) systemProperty("crforge.gameTables", tables)
+}

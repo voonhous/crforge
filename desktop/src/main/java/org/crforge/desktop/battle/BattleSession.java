@@ -14,7 +14,6 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
-import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.UnitData;
@@ -258,6 +257,27 @@ public final class BattleSession {
   }
 
   /**
+   * Why a hand card cannot be selected/submitted now, or null. Placement is checked separately.
+   * Mirror and variant item costs are resolved by the battle when their play runs.
+   */
+  public String cardUnavailableReason(int side, int slot) {
+    LadderMatch match = match();
+    if (match == null) return "no hand in a golden scenario (R starts a Ladder battle)";
+    if (halted != null || isOver()) return "the battle has stopped (R resets)";
+    MatchCard card = handCard(side, slot);
+    if (card == null) return "slot " + (slot + 1) + " is empty";
+    if (isPending(side, slot)) return card.name() + " is already played and waits to run";
+    if (!card.mirror() && card.variant() == null) {
+      int reserved =
+          pending.values().stream().filter(p -> p.side() == side).mapToInt(Pending::cost).sum();
+      int index = match.side(side).getHand().slots()[slot];
+      int code = match.gate(side, index, card.cost() + reserved);
+      if (code != 0) return card.name() + " refused, " + refusal(code);
+    }
+    return null;
+  }
+
+  /**
    * Gives a play of a hand slot's card at a point, as the side's player does: refused on the spot
    * with a message, or queued to run {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks later.
    *
@@ -268,37 +288,16 @@ public final class BattleSession {
    * @return true when the play was given
    */
   public boolean play(int side, int slot, int x, int y) {
+    String unavailable = cardUnavailableReason(side, slot);
+    if (unavailable != null) {
+      say(side, ": " + unavailable);
+      return false;
+    }
     LadderMatch match = match();
-    if (match == null) {
-      say(side, ": no hand in a golden scenario (R starts a Ladder battle)");
-      return false;
-    }
-    if (halted != null) {
-      say(side, ": the battle has stopped (R resets)");
-      return false;
-    }
     MatchCard card = handCard(side, slot);
-    if (card == null) {
-      say(side, ": slot " + (slot + 1) + " is empty");
-      return false;
-    }
-    if (isPending(side, slot)) {
-      say(side, ": " + card.name() + " is already played and waits to run");
-      return false;
-    }
-    MatchSide matchSide = match.side(side);
-    int deckIndex = matchSide.getHand().slots()[slot];
-    int setAside =
-        pending.values().stream().filter(p -> p.side() == side).mapToInt(Pending::cost).sum();
-    // The Mirror and a variant card are gated on their item's cost, built as they run; the run's
-    // gate is theirs alone.
+    int deckIndex = match.side(side).getHand().slots()[slot];
     boolean itemCost = card.mirror() || card.variant() != null;
     if (!itemCost) {
-      int code = match.gate(side, deckIndex, card.cost() + setAside);
-      if (code != 0) {
-        say(side, ": " + card.name() + " refused, " + refusal(code));
-        return false;
-      }
       CardPlacement.Result preview = preview(side, slot, x, y);
       if (!preview.placed()) {
         say(
