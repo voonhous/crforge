@@ -176,6 +176,19 @@ public class BattleWorld implements HolderPasses {
   private static final Set<String> PUSHBACK_END_DROPS_ROUTE = Set.of("16.402.18");
 
   /**
+   * The data versions whose game lands a direct hit's damage at the holder's damage drain, after
+   * every post-hook, instead of inside the attacker's targeting visit. The rule is the game
+   * build's, not a table value: the game of data version 16.402.18 queues the hit as it queues a
+   * typed hit, so a unit the hit kills keeps its movement visit of that tick and dies where that
+   * visit left it; the game of 14.593.1 deals the hit at once, and the death switches the unit's
+   * movement off before the movement pass.
+   */
+  private static final Set<String> DIRECT_HIT_AT_DRAIN = Set.of("16.402.18");
+
+  /** True when the battle's data version lands a direct hit's damage at the damage drain. */
+  private boolean directHitAtDrain;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -283,7 +296,8 @@ public class BattleWorld implements HolderPasses {
       int directionX,
       int directionY,
       AreaEffectEntity areaSource,
-      AreaDamageType areaDamage) {
+      AreaDamageType areaDamage)
+      implements QueuedHit {
 
     TypedHit(
         WorldEntity source,
@@ -297,8 +311,29 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** The typed hits dealt this tick, in the order they were dealt. */
-  private final List<TypedHit> typedHits = new ArrayList<>();
+  /**
+   * One direct hit waiting for the drain, on a data version that lands it there: what the
+   * attacker's targeting visit hands the damage entry, dealt as {@link #dealDamage(WorldEntity,
+   * TargetView, int, int, int)} deals it at once.
+   *
+   * @param attacker the entity whose hit it is
+   * @param target the view the hit resolved against
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   */
+  private record DirectHitDue(
+      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY)
+      implements QueuedHit {}
+
+  /** A hit the damage drain deals: a typed hit, or a direct hit on a version that queues it. */
+  private sealed interface QueuedHit permits TypedHit, DirectHitDue {}
+
+  /**
+   * The hits dealt this tick that wait for the drain, in the order they were dealt: one queue, so a
+   * direct hit and a typed hit land in the order they were dealt.
+   */
+  private final List<QueuedHit> queuedHits = new ArrayList<>();
 
   /** The game tags the battle's expressions may name, by name, each with its index. */
   private final Map<String, Integer> gameTagIndex = new HashMap<>();
@@ -424,6 +459,7 @@ public class BattleWorld implements HolderPasses {
     this.movementGlobals =
         movementGlobals.withPushbackEndDropsRoute(
             PUSHBACK_END_DROPS_ROUTE.contains(tables.version()));
+    this.directHitAtDrain = DIRECT_HIT_AT_DRAIN.contains(tables.version());
   }
 
   /**
@@ -621,6 +657,28 @@ public class BattleWorld implements HolderPasses {
   public DamageResult dealDamage(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
     return dealDamage(attacker, target, damage, directionX, directionY, false);
+  }
+
+  /**
+   * Deals the damage of one entity's direct hit, as its targeting visit's hit application hands it
+   * to the damage entry: at once, as {@link #dealDamage(WorldEntity, TargetView, int, int, int)}
+   * does, on a data version whose game deals it inside the visit; queued for the damage drain, in
+   * the order hits are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}).
+   * A hit dealt after the tick's drain waits for the next tick's, as a typed hit does.
+   *
+   * @param attacker the entity whose hit it is
+   * @param target the view the hit resolved against
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   */
+  public void dealDirectHit(
+      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
+    if (directHitAtDrain) {
+      queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
+    } else {
+      dealDamage(attacker, target, damage, directionX, directionY);
+    }
   }
 
   /**
@@ -4311,7 +4369,7 @@ public class BattleWorld implements HolderPasses {
   public void queueTypedHit(WorldEntity source, WorldEntity target, DamageType type, int amount) {
     int directionX = source == null ? 0 : target.getView().getX() - source.getView().getX();
     int directionY = source == null ? 0 : target.getView().getY() - source.getView().getY();
-    typedHits.add(new TypedHit(source, target, type, amount, directionX, directionY, null));
+    queuedHits.add(new TypedHit(source, target, type, amount, directionX, directionY, null));
   }
 
   /**
@@ -4325,7 +4383,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void queueTypedHit(
       AreaEffectEntity source, WorldEntity target, DamageType type, int amount) {
-    typedHits.add(new TypedHit(null, target, type, amount, 0, 0, source));
+    queuedHits.add(new TypedHit(null, target, type, amount, 0, 0, source));
   }
 
   /**
@@ -4338,7 +4396,7 @@ public class BattleWorld implements HolderPasses {
    * @param damage the row's damage type
    */
   void queueAreaDamage(AreaEffectEntity source, WorldEntity target, AreaDamageType damage) {
-    typedHits.add(
+    queuedHits.add(
         new TypedHit(
             null,
             target,
@@ -4371,14 +4429,26 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals every queued typed hit, in the order they were queued: the type's pipeline, a damage id
-   * from the battle's hit counter when the type takes one, the typed hit's entry, then the type's
-   * action on the source and its action on the target, and the observers are told.
+   * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
+   * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
+   * the type's action on the source and its action on the target, and the observers are told. A
+   * direct hit, on a data version that queues it: the damage dealt as it is dealt at once, with its
+   * reflect, its observers, its death or the reference drop.
    */
   private void drainTypedHits() {
-    List<TypedHit> due = new ArrayList<>(typedHits);
-    typedHits.clear();
-    for (TypedHit hit : due) {
+    List<QueuedHit> due = new ArrayList<>(queuedHits);
+    queuedHits.clear();
+    for (QueuedHit queued : due) {
+      if (queued instanceof DirectHitDue direct) {
+        dealDamage(
+            direct.attacker(),
+            direct.target(),
+            direct.damage(),
+            direct.directionX(),
+            direct.directionY());
+        continue;
+      }
+      TypedHit hit = (TypedHit) queued;
       WorldEntity target = hit.target();
       if (target.getHitPoints() == null) {
         continue;
@@ -7217,7 +7287,8 @@ public class BattleWorld implements HolderPasses {
 
   @Override
   public void afterPostHooks() {
-    // The typed hits land after every post-hook and before phase 3; the observers see them landed.
+    // The queued hits land after every post-hook and before phase 3: the typed hits and, on a data
+    // version that queues them, the direct hits. The observers see them landed.
     drainTypedHits();
     List<WorldEntity> snapshotOfPresent = present();
     List<ProjectileEntity> snapshotOfProjectiles = projectiles();

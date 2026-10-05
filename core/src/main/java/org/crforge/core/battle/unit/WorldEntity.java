@@ -674,7 +674,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
-        world.dealDamage(WorldEntity.this, target, damage, directionX, directionY);
+        // At once, or at the damage drain on a data version whose game lands it there.
+        world.dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
       }
 
       @Override
