@@ -1955,8 +1955,10 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * A push request away from a point, as the evolved Executioner's strong hit asks it: every gate
-   * in place and nothing lifted, the whole distance, refused while a pushback is in flight.
+   * A push request away from a point, as the evolved Executioner's strong hit and the filter form
+   * of an area effect ask it: every gate in place and nothing lifted, the whole distance, refused
+   * while a pushback is in flight. Its movement is not switched on: each caller asks first that it
+   * is on.
    *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
