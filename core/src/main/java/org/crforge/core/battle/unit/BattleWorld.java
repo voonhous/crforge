@@ -4261,11 +4261,13 @@ public class BattleWorld implements HolderPasses {
    * when the row spawns for the enemy, else for its side; it deploys when the row delays its
    * deploy, and for the child's own deploy time, facing the way the dying object faced; it has no
    * first-tick immunity. It is registered with its registration visit inside the pass of the death
-   * and joins the live list at the tick's closing cleanup.
+   * and joins the live list at the tick's closing cleanup, whose fold starts it as it starts any
+   * object the spawner queued: its row's starting action - the Witch Mother's curse hog's jump
+   * check - is scheduled then and runs in its first pending pass of the next tick.
    *
-   * <p>Refused rather than guessed: a ring (a death spawn radius), and a child that is a building,
-   * paths to its point or has a starting action. A dying row that spawns the same unit instead is
-   * refused with the death columns.
+   * <p>Refused rather than guessed: a ring (a death spawn radius), and a child that is a building
+   * or paths to its point. A dying row that spawns the same unit instead is refused with the death
+   * columns.
    */
   private void buffDeathSpawns(WorldEntity dying) {
     if (dying.getBuffs() == null || dying.getData().building()) {
@@ -4277,18 +4279,15 @@ public class BattleWorld implements HolderPasses {
         continue;
       }
       UnitData child = spawnedRow(buff.deathSpawn());
-      if (buff.deathSpawnRadius() != 0
-          || child.building()
-          || child.spawnPathfindSpeed() != 0
-          || child.onStartingAction() != null) {
+      if (buff.deathSpawnRadius() != 0 || child.building() || child.spawnPathfindSpeed() != 0) {
         throw new UnsupportedOperationException(
             dying.name()
                 + " died carrying "
                 + buff.name()
                 + ", whose death spawn "
                 + child.name()
-                + " stands on a ring, is a building, paths to its point or starts an action,"
-                + " which is not modelled");
+                + " stands on a ring, is a building or paths to its point, which is not"
+                + " modelled");
       }
       int side = buff.deathSpawnIsEnemy() ? dying.side() ^ 1 : dying.side();
       int fromX = dying.getView().getX();
@@ -4329,6 +4328,8 @@ public class BattleWorld implements HolderPasses {
           spawned.getView().setDirY(dying.getView().getDirY());
         }
         cloneSpawn(dying, spawned);
+        // The spawner queues the child for the holder; the fold that takes it in starts it.
+        spawned.startOnAdmission();
         holder.addRegistered(spawned);
         for (WorldObserver observer : observers) {
           observer.characterSpawned(tick, dying, spawned, x, y);
