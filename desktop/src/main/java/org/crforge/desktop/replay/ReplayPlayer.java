@@ -96,6 +96,13 @@ public final class ReplayPlayer {
     paused = !paused;
   }
 
+  /** A manual step stays paused and discards any fractional playback time. */
+  public boolean stepOnce() {
+    paused = true;
+    accumulator = 0f;
+    return step();
+  }
+
   /** Doubles the speed, up to {@link #SPEED_MAX}. */
   public void faster() {
     speed = Math.min(SPEED_MAX, speed * 2f);

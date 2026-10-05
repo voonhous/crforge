@@ -3,6 +3,7 @@ package org.crforge.desktop.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -26,9 +27,8 @@ import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.BattleRenderer;
-import org.crforge.desktop.render.CardLayout;
+import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.GoldenOverlay;
-import org.crforge.desktop.render.RenderConstants;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 
@@ -87,6 +87,8 @@ public class DebugGameScreen implements Screen {
 
   private final BattleRenderer renderer;
   private final OrthographicCamera camera;
+  private final BattleWorkspace workspace;
+  private InputAdapter controls;
   private final Vector3 touchPos = new Vector3();
 
   /** The view settings: standing, side 0 at the bottom; F does not flip it, T hides annotations. */
@@ -124,29 +126,31 @@ public class DebugGameScreen implements Screen {
     this.versions = versions;
     this.renderer = new BattleRenderer();
 
-    // Viewport includes UI margins
-    TileMap tileMap = TileMap.standard1v1();
-    float viewWidth = RenderConstants.unitsToPixels(tileMap.widthUnits());
-    float viewHeight =
-        RenderConstants.unitsToPixels(tileMap.heightUnits())
-            + RenderConstants.TOP_UI_HEIGHT
-            + RenderConstants.BOTTOM_UI_HEIGHT;
-
-    this.camera = new OrthographicCamera(viewWidth, viewHeight);
-    camera.position.set(viewWidth / 2, viewHeight / 2, 0);
-    camera.update();
+    this.camera = new OrthographicCamera();
 
     this.session = first;
     setupInput();
+    workspace =
+        new BattleWorkspace(
+            camera, renderer, view, false, key -> controls.keyDown(key), this::selectCard);
+    workspace.configureVersions(
+        versions.versions(),
+        versions.current().version(),
+        version -> switchDataVersion(versions.select(version)));
   }
 
   private void setupInput() {
-    Gdx.input.setInputProcessor(
+    controls =
         new InputAdapter() {
           @Override
           public boolean keyDown(int keycode) {
             switch (keycode) {
               case Input.Keys.SPACE -> paused = !paused;
+              case Input.Keys.PERIOD -> stepOnce();
+              case Input.Keys.I -> {
+                deselect();
+                workspace.setInspecting(!workspace.isInspecting());
+              }
               case Input.Keys.R -> resetBattle();
               case Input.Keys.P -> {
                 renderer.toggleDrawPaths();
@@ -231,12 +235,16 @@ public class DebugGameScreen implements Screen {
             }
             return true;
           }
-        });
+        };
   }
 
   private void updateHover(int screenX, int screenY) {
+    if (!workspace.onArena(screenX, screenY)) {
+      hoverTileX = hoverTileY = hoverCellX = hoverCellY = -1;
+      return;
+    }
     touchPos.set(screenX, screenY, 0);
-    camera.unproject(touchPos);
+    workspace.unproject(touchPos);
 
     // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT. The view
     // maps the pixel to the battle's tile, which is the pixel's own on this standing screen.
@@ -259,17 +267,11 @@ public class DebugGameScreen implements Screen {
   }
 
   private void handleLeftClick(int screenX, int screenY) {
+    if (!workspace.onArena(screenX, screenY)) return;
     touchPos.set(screenX, screenY, 0);
-    camera.unproject(touchPos);
-
-    // 1. Card selection: the bottom panel is blue's hand, the top panel red's
-    if (touchPos.y < RenderConstants.BOTTOM_UI_HEIGHT) {
-      checkHandSelection(touchPos.x, touchPos.y, 0, false);
-      return;
-    }
-    float topUiStart = camera.viewportHeight - RenderConstants.TOP_UI_HEIGHT;
-    if (touchPos.y > topUiStart) {
-      checkHandSelection(touchPos.x, touchPos.y, 1, true);
+    workspace.unproject(touchPos);
+    if (workspace.isInspecting()) {
+      workspace.inspectAt(touchPos.x, touchPos.y);
       return;
     }
 
@@ -291,14 +293,6 @@ public class DebugGameScreen implements Screen {
     }
   }
 
-  private void checkHandSelection(float worldX, float worldY, int side, boolean isTop) {
-    int index =
-        CardLayout.hitTest(worldX, worldY, isTop, camera.viewportWidth, camera.viewportHeight);
-    if (index != -1) {
-      selectCard(side, index);
-    }
-  }
-
   private void selectCard(int side, int slot) {
     MatchCard card = session.handCard(side, slot);
     if (card == null) {
@@ -307,6 +301,7 @@ public class DebugGameScreen implements Screen {
     }
     this.selectedSide = side;
     this.selectedSlot = slot;
+    workspace.setInspecting(false);
     log.info(
         "[tick {}] Selected ({}): {} (cost {})",
         session.tick(),
@@ -337,6 +332,7 @@ public class DebugGameScreen implements Screen {
 
   /** Shows a new battle from its first step, clearing what the last one left on the screen. */
   private void startSession(BattleSession next) {
+    workspace.reset();
     session = next;
     goldenScenario.clear();
     newAreaHits.clear();
@@ -351,13 +347,17 @@ public class DebugGameScreen implements Screen {
    * stays and the refusal joins its messages; V again tries the version after it.
    */
   private void switchDataVersion() {
-    DataVersions.Switched switched = versions.next();
+    switchDataVersion(versions.next());
+  }
+
+  private void switchDataVersion(DataVersions.Switched switched) {
     if (switched.session() == null) {
       session.note(switched.refusal());
       log.warn("Data version switch refused: {}", switched.refusal());
       return;
     }
     startSession(switched.session());
+    workspace.versionChanged(switched.version());
     session.note(
         "data version "
             + versions.current().version()
@@ -377,6 +377,7 @@ public class DebugGameScreen implements Screen {
   private void startGoldenScenario() {
     GoldenScenario.Case scenarioCase = GoldenScenario.load(goldenScenario.nextCaseName());
     session = BattleSession.scenario(versions.current(), scenarioCase);
+    workspace.reset();
     goldenScenario.begin(scenarioCase, session.tick());
     newAreaHits.clear();
     deselect();
@@ -435,10 +436,21 @@ public class DebugGameScreen implements Screen {
     }
   }
 
+  /** Pauses and advances exactly one tick, including all diagnostics from normal playback. */
+  private void stepOnce() {
+    paused = true;
+    accumulator = 0;
+    if (session.getHalted() != null || session.isOver()) return;
+    if (session.step()) sampleGoldenScenario();
+    else logLatestMessage();
+    newAreaHits.addAll(session.getAreaHits().drain());
+  }
+
   @Override
   public void render(float delta) {
     // Clear screen
-    Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
+    var background = BattleWorkspace.background();
+    Gdx.gl.glClearColor(background.r, background.g, background.b, 1);
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
     try {
@@ -460,8 +472,31 @@ public class DebugGameScreen implements Screen {
       }
 
       camera.update();
+      workspace.setData(
+          versions.current().version(),
+          versions.source(),
+          versions.currentFolder().toAbsolutePath().normalize().toString(),
+          versions.current().contentSha(),
+          versions.developmentVersion());
       BattleFrame frame = BattleAdapter.frame(session, view.getOrientation()::sideName);
-      boolean previewing = selectedSlot >= 0 && hoverOnArena();
+      List<String> status = new ArrayList<>(goldenScenario.statusLines());
+      if (renderer.isDrawCellCosts()) {
+        status.add(
+            renderer.hoveredCellStatus(session.getBattle().getWorld(), hoverCellX, hoverCellY));
+      }
+      workspace.update(
+          frame,
+          paused,
+          simSpeed,
+          session.isOver() || session.getHalted() != null,
+          null,
+          status,
+          selectedSide,
+          selectedSlot,
+          -1);
+      workspace.beginArena();
+      updateHover(Gdx.input.getX(), Gdx.input.getY());
+      boolean previewing = !workspace.isInspecting() && selectedSlot >= 0 && hoverOnArena();
       MatchCard selected = selectedSlot >= 0 ? session.handCard(selectedSide, selectedSlot) : null;
       DeployCard selectedCard = session.deployCard(selected);
       CardPlacement.Result preview =
@@ -489,8 +524,10 @@ public class DebugGameScreen implements Screen {
               goldenOverlay(),
               goldenScenario.statusLines(),
               List.of(versions.statusLine(), M_NOTE, F_NOTE),
-              view));
+              view),
+          false);
       newAreaHits.clear();
+      workspace.draw(delta);
     } catch (Exception e) {
       log.error("CRASH during game loop!", e);
       paused = true;
@@ -500,16 +537,18 @@ public class DebugGameScreen implements Screen {
 
   @Override
   public void resize(int width, int height) {
-    // No-op: fixed-size debug window
+    workspace.resize(width, height);
   }
 
   @Override
   public void show() {
+    Gdx.input.setInputProcessor(new InputMultiplexer(workspace.input(), controls));
     log.info(
         """
         === CRForge Debug Visualizer (battle core) ===
         Battle:
           SPACE - Pause/Resume
+          .     - Pause and advance one tick
           R     - Reset to a new Ladder battle
           +/-   - Speed up/slow down
 
@@ -518,6 +557,7 @@ public class DebugGameScreen implements Screen {
           5-8   - Select red card
           Click - Select a card, or play the selected one
           Right click - Deselect
+          I     - Toggle unit inspection
 
         Combat overlays:
           O     - Toggle attack, minimum and sight range circles
@@ -538,7 +578,7 @@ public class DebugGameScreen implements Screen {
 
         View:
           F     - Not offered here: flips the replay viewer only
-          T     - Hide/show the text annotations
+          T     - Hide/show the diagnostics sidebar
         ==============================================""");
   }
 
@@ -553,6 +593,7 @@ public class DebugGameScreen implements Screen {
 
   @Override
   public void dispose() {
+    workspace.dispose();
     renderer.dispose();
   }
 }

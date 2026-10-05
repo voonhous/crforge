@@ -42,12 +42,16 @@ public class RenderContext {
   private final GlyphLayout glyphLayout;
 
   public RenderContext() {
+    this(9);
+  }
+
+  public RenderContext(int entityLabelSize) {
     this.shapeRenderer = new ShapeRenderer();
     this.spriteBatch = new SpriteBatch();
 
     FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.classpath(FONT_PATH));
 
-    this.entityNameFont = generateFont(generator, 9);
+    this.entityNameFont = generateFont(generator, entityLabelSize);
     this.damageFont = generateFont(generator, 11);
     this.font = generateFont(generator, 12);
     this.timerFont = generateFont(generator, 15);

@@ -3,6 +3,7 @@ package org.crforge.desktop.screen;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -10,15 +11,14 @@ import com.badlogic.gdx.math.Vector3;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.BattleRenderer;
+import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.GoldenOverlay;
-import org.crforge.desktop.render.RenderConstants;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 import org.crforge.desktop.replay.ReplayFile;
@@ -53,6 +53,8 @@ public class ReplayGameScreen implements Screen {
   private final ReplayPlayer player;
   private final BattleRenderer renderer;
   private final OrthographicCamera camera;
+  private final BattleWorkspace workspace;
+  private InputAdapter controls;
   private final Vector3 touchPos = new Vector3();
 
   /** The view settings: flipped at first, F flips them, T hides the annotations. */
@@ -78,25 +80,27 @@ public class ReplayGameScreen implements Screen {
    * A screen playing a replay from tick 0.
    *
    * @param replay the replay, refused or playable
-   * @param tables the tables it was read against
+   * @param versions the loaded tables and their provenance
    */
-  public ReplayGameScreen(ReplayFile replay, GameTables tables) {
-    this.player = new ReplayPlayer(replay, tables);
+  public ReplayGameScreen(ReplayFile replay, DataVersions versions) {
+    this.player = new ReplayPlayer(replay, versions.current());
     this.renderer = new BattleRenderer();
 
-    TileMap tileMap = TileMap.standard1v1();
-    float viewWidth = RenderConstants.unitsToPixels(tileMap.widthUnits());
-    float viewHeight =
-        RenderConstants.unitsToPixels(tileMap.heightUnits())
-            + RenderConstants.TOP_UI_HEIGHT
-            + RenderConstants.BOTTOM_UI_HEIGHT;
-    this.camera = new OrthographicCamera(viewWidth, viewHeight);
-    camera.position.set(viewWidth / 2, viewHeight / 2, 0);
-    camera.update();
+    this.camera = new OrthographicCamera();
+    setupInput();
+    workspace =
+        new BattleWorkspace(
+            camera, renderer, view, true, key -> controls.keyDown(key), (side, slot) -> {});
+    workspace.setData(
+        versions.current().version(),
+        versions.source(),
+        versions.currentFolder().toAbsolutePath().normalize().toString(),
+        versions.current().contentSha(),
+        versions.developmentVersion());
   }
 
   private void setupInput() {
-    Gdx.input.setInputProcessor(
+    controls =
         new InputAdapter() {
           @Override
           public boolean keyDown(int keycode) {
@@ -107,10 +111,12 @@ public class ReplayGameScreen implements Screen {
               }
               case Input.Keys.R -> {
                 player.restart();
+                workspace.reset();
                 newAreaHits.clear();
                 loggedStop = null;
                 log.info("Replay restarted from tick 0");
               }
+              case Input.Keys.PERIOD -> player.stepOnce();
               case Input.Keys.EQUALS, Input.Keys.PLUS -> {
                 player.faster();
                 log.info("Replay speed: {}x", player.getSpeed());
@@ -150,14 +156,27 @@ public class ReplayGameScreen implements Screen {
             updateHover(screenX, screenY);
             return false;
           }
-        });
+
+          @Override
+          public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            if (button != Input.Buttons.LEFT || !workspace.onArena(screenX, screenY)) return false;
+            touchPos.set(screenX, screenY, 0);
+            workspace.unproject(touchPos);
+            workspace.inspectAt(touchPos.x, touchPos.y);
+            return true;
+          }
+        };
   }
 
   private void updateHover(int screenX, int screenY) {
     mouseX = screenX;
     mouseY = screenY;
+    if (!workspace.onArena(screenX, screenY)) {
+      hoverTileX = hoverTileY = hoverCellX = hoverCellY = -1;
+      return;
+    }
     touchPos.set(screenX, screenY, 0);
-    camera.unproject(touchPos);
+    workspace.unproject(touchPos);
     // The battle's tile and cell under the mouse, whichever way up the arena is drawn.
     ViewOrientation orientation = view.getOrientation();
     hoverTileX = orientation.tileColumnAt(touchPos.x);
@@ -168,13 +187,16 @@ public class ReplayGameScreen implements Screen {
 
   @Override
   public void render(float delta) {
-    Gdx.gl.glClearColor(0.1f, 0.1f, 0.1f, 1);
+    var background = BattleWorkspace.background();
+    Gdx.gl.glClearColor(background.r, background.g, background.b, 1);
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
     try {
       camera.update();
       BattleSession session = player.getSession();
       if (session == null) {
-        renderer.renderLines(camera, refusedLines());
+        workspace.showRefused(refusedLines());
+        workspace.beginArena();
+        workspace.draw(delta);
         return;
       }
       player.advance(delta);
@@ -184,6 +206,22 @@ public class ReplayGameScreen implements Screen {
       BattleFrame frame = BattleAdapter.frame(session, orientation::sideName);
       List<String> status = new ArrayList<>(player.statusLines(orientation));
       status.addAll(NOTES);
+      if (renderer.isDrawCellCosts()) {
+        status.add(
+            renderer.hoveredCellStatus(session.getBattle().getWorld(), hoverCellX, hoverCellY));
+      }
+      workspace.update(
+          frame,
+          player.isPaused(),
+          player.getSpeed(),
+          player.finished(),
+          player.stopReason(),
+          status,
+          -1,
+          -1,
+          player.getReplay().header().endTick());
+      workspace.beginArena();
+      updateHover(Gdx.input.getX(), Gdx.input.getY());
       renderer.render(
           frame,
           camera,
@@ -201,8 +239,10 @@ public class ReplayGameScreen implements Screen {
               GoldenOverlay.none(),
               status,
               List.of(),
-              view));
+              view),
+          false);
       newAreaHits.clear();
+      workspace.draw(delta);
     } catch (Exception e) {
       log.error("CRASH during replay loop!", e);
       Gdx.app.exit();
@@ -213,7 +253,11 @@ public class ReplayGameScreen implements Screen {
   private List<String> refusedLines() {
     List<String> lines = new ArrayList<>();
     lines.add("REPLAY NOT PLAYED");
-    lines.addAll(player.getReplay().describe(view.getOrientation()));
+    lines.addAll(player.getReplay().refusals());
+    for (String line : player.getReplay().describe(view.getOrientation())) {
+      if (line.startsWith("  refused,")) break;
+      lines.add(line);
+    }
     lines.add("");
     lines.add("Drop another replay file on the window to open it.");
     return lines;
@@ -234,21 +278,23 @@ public class ReplayGameScreen implements Screen {
 
   @Override
   public void resize(int width, int height) {
-    // No-op: fixed-size window
+    workspace.resize(width, height);
   }
 
   @Override
   public void show() {
-    setupInput();
+    Gdx.input.setInputProcessor(new InputMultiplexer(workspace.input(), controls));
     log.info(
         """
         === CRForge Replay Viewer (battle core) ===
           SPACE - Pause/Resume
+          .     - Pause and advance one tick
           R     - Restart the replay from tick 0
           +/-   - Speed up/slow down
           P O D A H G N - Overlays, as on the debug screen
           F     - Flip the view (opens with side 1 at the bottom)
-          T     - Hide/show the text annotations
+          T     - Hide/show the diagnostics sidebar
+          Click - Inspect a unit
           Drop a replay .json on the window to open it
         ===========================================""");
   }
@@ -264,6 +310,7 @@ public class ReplayGameScreen implements Screen {
 
   @Override
   public void dispose() {
+    workspace.dispose();
     renderer.dispose();
   }
 }

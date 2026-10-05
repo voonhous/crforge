@@ -62,12 +62,40 @@ public class BattleRenderer {
   @Getter private boolean drawHpNumbers = false;
   @Getter private boolean drawCellCosts = false;
   @Getter private boolean drawRoutes = false;
+  @Getter private boolean drawLabels = true;
+  @Getter private boolean drawTargets = true;
+  private int inspectedEntity = -1;
+
+  public void toggleDrawLabels() {
+    drawLabels = !drawLabels;
+  }
+
+  public void toggleDrawTargets() {
+    drawTargets = !drawTargets;
+  }
+
+  public void setInspectedEntity(int id) {
+    inspectedEntity = id;
+  }
+
+  /** View presets affect presentation only. Individual toggles remain available. */
+  public void applyPreset(String preset) {
+    drawLabels = !preset.equals("Clean");
+    drawTargets = preset.equals("Combat");
+    drawRanges = preset.equals("Combat");
+    drawDamageNumbers = preset.equals("Combat");
+    drawAoeDamage = preset.equals("Combat");
+    drawHpNumbers = preset.equals("Combat");
+    drawPaths = preset.equals("Pathing");
+    drawRoutes = preset.equals("Pathing");
+    drawCellCosts = preset.equals("Pathing");
+  }
 
   /** Which way up the frame being drawn has the arena, from the screen's view settings. */
   private ViewOrientation view = ViewOrientation.STANDARD;
 
   public BattleRenderer() {
-    this.ctx = new RenderContext();
+    this.ctx = new RenderContext(12);
     this.backgrounds = new HudRenderer(ctx);
     this.cellCosts = new CellCostOverlayRenderer(ctx);
     this.routes = new RouteOverlayRenderer(ctx);
@@ -102,6 +130,10 @@ public class BattleRenderer {
 
   public void toggleDrawRoutes() {
     drawRoutes = !drawRoutes;
+  }
+
+  public String hoveredCellStatus(BattleWorld world, int column, int row) {
+    return drawCellCosts ? cellCosts.hoverStatus(world.getGrid(), column, row) : "";
   }
 
   /**
@@ -140,12 +172,18 @@ public class BattleRenderer {
 
   /** Renders one frame. */
   public void render(BattleFrame frame, OrthographicCamera camera, Inputs inputs) {
+    render(frame, camera, inputs, true);
+  }
+
+  /** The workspace draws its own controls outside the arena's viewport. */
+  public void render(
+      BattleFrame frame, OrthographicCamera camera, Inputs inputs, boolean legacyHud) {
     ctx.setProjection(camera);
     TileMap tileMap = inputs.world().getTileMap();
     view = inputs.view().getOrientation();
     HudText hud = HudText.of(frame, inputs.view(), statusLines(inputs));
 
-    backgrounds.renderBackgrounds(camera);
+    if (legacyHud) backgrounds.renderBackgrounds(camera);
     renderArena(tileMap);
     if (drawCellCosts) {
       cellCosts.render(inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY(), view);
@@ -155,7 +193,7 @@ public class BattleRenderer {
     renderHover(inputs);
     renderProjectiles(frame);
     renderHealthBars(frame);
-    renderTargetLines(frame);
+    if (drawTargets) renderTargetLines(frame);
     if (drawPaths) {
       renderHeadings(frame);
     }
@@ -166,7 +204,7 @@ public class BattleRenderer {
     if (drawRanges) {
       renderRanges(frame);
     }
-    if (hud.labels()) {
+    if (drawLabels && hud.labels()) {
       renderLabels(frame);
     }
 
@@ -186,7 +224,24 @@ public class BattleRenderer {
     if (drawHpNumbers) {
       renderHpNumbers(frame);
     }
-    renderHud(frame, camera, inputs, hud);
+    renderInspection(frame);
+    if (legacyHud) renderHud(frame, camera, inputs, hud);
+  }
+
+  private void renderInspection(BattleFrame frame) {
+    if (inspectedEntity < 0) return;
+    ShapeRenderer shapes = ctx.getShapeRenderer();
+    shapes.begin(ShapeType.Line);
+    shapes.setColor(Color.WHITE);
+    for (EntityView entity : frame.entities()) {
+      if (entity.id() != inspectedEntity) continue;
+      shapes.circle(
+          px(entity.x()), py(entity.y()), Math.max(10, unitsToPixels(entity.radius())) + 3);
+      if (entity.hasTarget()) {
+        shapes.line(px(entity.x()), py(entity.y()), px(entity.targetX()), py(entity.targetY()));
+      }
+    }
+    shapes.end();
   }
 
   /**
@@ -201,12 +256,9 @@ public class BattleRenderer {
       for (int col = 0; col < tileMap.width(); col++) {
         Color color = cellColor(tileMap, col, row, riverRow, view);
         boolean water = (tileMap.bits(col, row) & TileMap.WATER_BIT) != 0;
-        if (!water && ((col / 2) + (row / 2)) % 2 == 0) {
-          shapes.setColor(
-              color.r * CHECKER_DARKEN, color.g * CHECKER_DARKEN, color.b * CHECKER_DARKEN, 1f);
-        } else {
-          shapes.setColor(color);
-        }
+        float shade = !water && ((col / 2) + (row / 2)) % 2 == 0 ? CHECKER_DARKEN : 1f;
+        shade *= 0.65f;
+        shapes.setColor(color.r * shade, color.g * shade, color.b * shade, 1f);
         shapes.rect(
             view.left(col * TileMap.CELL_UNITS, TileMap.CELL_UNITS),
             view.bottom(row * TileMap.CELL_UNITS, TileMap.CELL_UNITS),

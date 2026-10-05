@@ -44,6 +44,30 @@ class DataVersionsTest {
   }
 
   @Test
+  void explicitSelectionRetainsLoadedProvenanceUntilItSucceeds() throws IOException {
+    refused("2.0.0");
+    GameTables loaded = GameTables.load(good);
+    DataVersions versions =
+        new DataVersions(
+            root,
+            List.of("1.0.0", "2.0.0", "3.0.0"),
+            good,
+            loaded,
+            "crforge.gameTables",
+            "16.402.18");
+    assertThat(versions.select("missing").session()).isNull();
+    assertThat(versions.select("2.0.0").session()).isNull();
+    assertThat(versions.current()).isSameAs(loaded);
+    assertThat(versions.source()).isEqualTo("crforge.gameTables");
+    assertThat(versions.developmentVersion()).isEqualTo("16.402.18");
+    assertThat(versions.select("3.0.0").session()).isNotNull();
+    assertThat(versions.currentFolder()).isEqualTo(other);
+    assertThat(versions.source()).isEqualTo("selected from the data root");
+    assertThat(versions.developmentVersion()).isEqualTo("16.402.18");
+    assertThat(versions.next().version()).isEqualTo("1.0.0");
+  }
+
+  @Test
   @DisplayName("V starts a new battle on the next version's tables, and wraps to the first")
   void switchesToTheNextVersion() {
     DataVersions versions = versions(good, List.of("1.0.0", "3.0.0"));
@@ -71,6 +95,8 @@ class DataVersionsTest {
     refused("2.0.0");
     DataVersions versions = versions(good, List.of("1.0.0", "2.0.0", "3.0.0"));
     GameTables first = versions.current();
+    String source = versions.source();
+    String hash = versions.current().contentSha();
 
     DataVersions.Switched switched = versions.next();
 
@@ -84,6 +110,8 @@ class DataVersionsTest {
         .contains("R resets on " + first.version());
     assertThat(versions.current()).isSameAs(first);
     assertThat(versions.currentFolder()).isEqualTo(good);
+    assertThat(versions.source()).isEqualTo(source);
+    assertThat(versions.current().contentSha()).isEqualTo(hash);
     // The ladder of the version still on works, which is what R starts.
     assertThat(versions.ladder().step()).isTrue();
 
@@ -92,6 +120,7 @@ class DataVersionsTest {
     assertThat(next.refusal()).isNull();
     assertThat(next.version()).isEqualTo("3.0.0");
     assertThat(versions.currentFolder()).isEqualTo(other);
+    assertThat(versions.source()).isEqualTo("selected from the data root");
   }
 
   @Test
