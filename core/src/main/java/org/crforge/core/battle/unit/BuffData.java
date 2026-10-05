@@ -11,6 +11,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param rarity the rarity an instance's level is packed against
  * @param speedMultiplier the movement speed percent: a boost from 1 up, a slow below 0, none at 0
  * @param hitSpeedMultiplier the attack time step percent, read the same way; -100 stops it
+ * @param damageMultiplier the percent the carrier's hits are scaled by as their attacker, 0 for
+ *     none; read only to refuse a hit its carrier deals while it is listed, as the scaling's sum is
+ *     not traced
  * @param spawnSpeedMultiplier the spawner time step percent, read the same way
  * @param hitFrequency the time between two hits of its damage over time; 0 for none, below 0 for
  *     one hit on the first visit
@@ -92,6 +95,7 @@ public record BuffData(
     RarityTable rarity,
     int speedMultiplier,
     int hitSpeedMultiplier,
+    int damageMultiplier,
     int spawnSpeedMultiplier,
     int hitFrequency,
     int damagePerSecond,

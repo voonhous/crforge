@@ -116,6 +116,15 @@ public final class HitPoints {
     return true;
   }
 
+  /**
+   * Ends the lifetime decay, as a data swap onto a row without a lifetime does: no step from now,
+   * and the hundredths carried so far dropped.
+   */
+  public void endDecay() {
+    decayStep = 0;
+    decayCarry = 0;
+  }
+
   /** True while the hit points are above zero. */
   public boolean alive() {
     return hitPoints > 0;

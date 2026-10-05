@@ -1577,12 +1577,13 @@ public final class ActionRows {
             case "ActionRollingProjectile" -> rollingProjectile(name, shared, f);
             case "ActionCaptureCharacter" -> captureCharacter(name, shared, f);
             case "ActionHide" -> {
-              // A next action scheduled alongside and the stop gate are the runtime's own, the
-              // same for every class; a next action that waits for the hide's run is not.
+              // A next action scheduled alongside, the stop gate and the row's tags are the
+              // runtime's own, the same for every class: the hide's run carries the tags as every
+              // run does, as the Tombstone hero's passive monster's hide sets no physical
+              // interaction. A next action that waits for the hide's run is not.
               refuseShared(
                   name,
                   f,
-                  "GameTagsToSet",
                   "NextActionWait",
                   "ExecuteIfTrue",
                   "ActionPausedIfTrue",
