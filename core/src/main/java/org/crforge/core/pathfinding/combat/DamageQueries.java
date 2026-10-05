@@ -100,6 +100,16 @@ public interface DamageQueries {
   }
 
   /**
+   * Told of the amount the entry settled on, after the two sides' percentages and before the
+   * bookkeeping: the target's running actions hear of the hit, and a counter among them may change
+   * the amount. Answers the amount to go on with; 0 deals nothing. Supplied as the amount
+   * unchanged, for a target whose runs hear nothing.
+   */
+  default int heard(int amount) {
+    return amount;
+  }
+
+  /**
    * Told once the bookkeeping lets a hit through - past the battle's hold, the untouchable test and
    * the dedupe list - before the subtraction: the character that dealt the hit counts it. Supplied
    * as doing nothing, for a hit no character dealt.

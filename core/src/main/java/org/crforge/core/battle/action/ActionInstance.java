@@ -118,6 +118,16 @@ public abstract class ActionInstance {
   }
 
   /**
+   * What the run does as a hit reaches its entity's damage entry, after the two sides' percentages
+   * and before the bookkeeping. By default nothing, as the base slot does; only a counter answers
+   * it, and may change the hit's amount.
+   *
+   * @param holder the entity's holder
+   * @param hit the hit
+   */
+  protected void damageHeard(ActionHolder holder, DamageHeard hit) {}
+
+  /**
    * What the run does as its entity's player pays for a unit's ability. By default nothing, as the
    * base slot does; only a champion slot answers it.
    *

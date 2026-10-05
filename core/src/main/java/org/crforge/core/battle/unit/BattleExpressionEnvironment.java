@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import java.util.List;
 import org.crforge.core.battle.action.ActionContext;
+import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.ExpressionEnvironment;
 import org.crforge.core.fidelity.Fidelity;
@@ -486,12 +487,18 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   /**
    * as_int(key, default), a newer data version's function: the value under the key in the context
-   * of what the entity's holder is doing now, the main board first and then the scratch board, else
-   * the default, -1 without one. The game reads the context unchecked, so it never evaluates as_int
-   * without one; here that is refused.
+   * of what the entity's holder is doing now (or, with none, of what the holder running the action
+   * is doing, for an action of the entity's tree run on another entity), the main board first and
+   * then the scratch board, else the default, -1 without one. The game reads the context unchecked,
+   * so it never evaluates as_int without one; here that is refused.
    */
   private int asInt(int[] arguments) {
     ActionContext actionContext = context.actionHolder().currentContext();
+    if (actionContext == null) {
+      // An action of the entity's tree running on another entity's holder reads the context that
+      // holder was handed.
+      actionContext = ActionHolder.activeContext();
+    }
     if (actionContext == null) {
       throw new UnsupportedOperationException(
           "as_int on " + context.name() + " with no action context, which is not established");

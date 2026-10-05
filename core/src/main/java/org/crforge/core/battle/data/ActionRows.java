@@ -37,6 +37,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.ContextToVariable;
+import org.crforge.core.battle.action.Counter;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DealDamage;
@@ -94,6 +95,7 @@ import org.crforge.core.battle.action.SoulDrain;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
+import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.TimerQuest;
@@ -802,6 +804,25 @@ public final class ActionRows {
                   "AbsoluteLevelToSet",
                   "RelativeLevelAdjustmentExpression")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
+          // A run that counters a hit on its owner: the damage reaction's timers and actions, and
+          // the counter's gates and scale.
+          Map.entry(
+              "ActionCounter",
+              Set.of(
+                  "Duration",
+                  "Cooldown",
+                  "TriggerCount",
+                  "DamageKey",
+                  "SelfAction",
+                  "InstigatorAction",
+                  "IncludedFilter",
+                  "DefenseScalar",
+                  "AttackerRangeThreshold",
+                  "CounterProjectiles",
+                  "CounterFlying",
+                  "DeployActive")),
+          // A hit of an inline damage on its owner, with an amount added by an expression.
+          Map.entry("ActionTakeDamage", Set.of("Damage", "AddedDamage")),
           Map.entry(
               "ActionGiantBufferCollectFriends",
               Set.of(
@@ -1618,6 +1639,10 @@ public final class ActionRows {
                   integer(f, "ProjectileCount"),
                   integer(f, "ProjectileDistance"));
             }
+            case "ActionCounter" -> counter(name, shared, f);
+            case "ActionTakeDamage" ->
+                new TakeDamage(
+                    shared, takenDamage(name, f.get("Damage")), expression(f.get("AddedDamage")));
             case "ActionDealDamage" ->
                 new DealDamage(
                     shared, integer(f, "BaseDamageAmount"), damageType(f.get("BaseDamageType")));
@@ -3468,6 +3493,87 @@ public final class ActionRows {
               .portalTimerMs(integer(f, "PortalTimer"))
               .onAboutToDie(action(f.get("OnAboutToDieAction")))
               .build());
+    }
+
+    /**
+     * A counter's row: its timers and actions as the damage reaction's loader reads them (Duration,
+     * Cooldown and TriggerCount default 0; the context key is hashed only when named), then its own
+     * (DefenseScalar 100 and AttackerRangeThreshold 1800 by default). CounterProjectiles, whose
+     * counter strikes back at the projectile's shooter, is refused: no row sets it.
+     */
+    private Counter counter(String name, ActionRow shared, JsonNode f) {
+      if (bool(f, "CounterProjectiles")) {
+        throw new UnsupportedOperationException(
+            name + " sets CounterProjectiles, which is not modelled");
+      }
+      String key = text(f, "DamageKey", "");
+      String included = text(f, "IncludedFilter", "");
+      return new Counter(
+          shared,
+          Counter.Columns.builder()
+              .durationMs(integer(f, "Duration", 0))
+              .cooldownMs(integer(f, "Cooldown", 0))
+              .triggerCount(integer(f, "TriggerCount", 0))
+              .selfAction(action(f.get("SelfAction")))
+              .instigatorAction(action(f.get("InstigatorAction")))
+              .damageKey(key.isEmpty() ? 0 : ActionContext.key(key))
+              .defenseScalar(integer(f, "DefenseScalar", 100))
+              .includedFilter(included.isEmpty() ? null : records.filter(included))
+              .attackerRangeThreshold(integer(f, "AttackerRangeThreshold", 1800))
+              .counterFlying(bool(f, "CounterFlying"))
+              .deployActive(bool(f, "DeployActive"))
+              .build());
+    }
+
+    /**
+     * A damage-taking row's inline damage: BaseDamage (0 when left out), TowerDamage (none when
+     * left out), its Flags (one comma-separated text or a list) and an Effect only the view shows.
+     * Refused: a damage that is not a table, one without NoScaling, whose level scaling by the
+     * source is untraced, a flag other than Reflected, NoScaling, NoProtection and NoAmplification,
+     * and any other field.
+     */
+    private TakeDamage.Damage takenDamage(String name, JsonNode value) {
+      if (value == null || !value.isObject()) {
+        throw new UnsupportedOperationException(
+            name + " writes its Damage as other than a table, which is not modelled");
+      }
+      Set<String> flags = new HashSet<>();
+      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
+        String field = it.next();
+        if (!Set.of("BaseDamage", "TowerDamage", "Flags", "Effect").contains(field)) {
+          throw new UnsupportedOperationException(
+              name + " sets " + field + " in its Damage, which is not modelled");
+        }
+      }
+      // The flags are written as one comma-separated text or as a list of names.
+      JsonNode written = value.get("Flags");
+      List<String> names = new ArrayList<>();
+      if (written != null && written.isArray()) {
+        written.forEach(flag -> names.add(flag.asText()));
+      } else if (written != null && !written.isNull()) {
+        names.addAll(List.of(text(value, "Flags", "").split(",")));
+      }
+      for (String flag : names) {
+        if (!flag.isBlank()) {
+          flags.add(flag.trim());
+        }
+      }
+      for (String flag : flags) {
+        if (!Set.of("Reflected", "NoScaling", "NoProtection", "NoAmplification").contains(flag)) {
+          throw new UnsupportedOperationException(
+              name + " sets the damage flag " + flag + ", which is not modelled");
+        }
+      }
+      if (!flags.contains("NoScaling")) {
+        throw new UnsupportedOperationException(
+            name + " deals a damage its source's level scales, which is not modelled");
+      }
+      return new TakeDamage.Damage(
+          integer(value, "BaseDamage", 0),
+          integer(value, "TowerDamage", TakeDamage.NO_TOWER_DAMAGE),
+          flags.contains("Reflected"),
+          flags.contains("NoProtection"),
+          flags.contains("NoAmplification"));
     }
 
     /** A named action, a row inline by name, or null for none. */

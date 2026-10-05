@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChainAttackHost;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.ConeShape;
+import org.crforge.core.battle.action.Counter;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
@@ -4123,6 +4124,60 @@ public class CharacterEntity extends WorldEntity {
    */
   void summonReveal() {
     combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
+  }
+
+  /** The step a counter scales by the character's hit speed, which below 1 means a stun. */
+  private static final int COUNTER_SCALE_STEP_MS = 50;
+
+  /**
+   * What a counter's run on the character asks as a hit reaches it, the gates in the game's order:
+   * the source must be a character, a building or a tower (a projectile or an area effect is never
+   * countered: no row counters projectiles); one the included filter passes, asked for the
+   * character's team, skips the next two tests; else one in the air is countered only under
+   * CounterFlying, and one whose row's Range is beyond the threshold never. Then the character must
+   * not carry the no-attack tag, must have its targeting on or be deploying under DeployActive, and
+   * its hit speed must scale a step to at least 1. A counter clears the attack in progress on its
+   * targeting and raises the no-pushback tag in the one-step word.
+   */
+  @Override
+  public Counter.Host counterHost(Counter action) {
+    return (columns, source) -> {
+      if (!(source instanceof WorldEntity attacker)) {
+        return null;
+      }
+      GameObjectFilter included = columns.includedFilter();
+      if (included == null || !included.matches(attacker.filterSubject(), side() & 1, name())) {
+        if (!columns.counterFlying() && attacker.layerAir()) {
+          return null;
+        }
+        if (attacker.getData().range() > columns.attackerRangeThreshold()) {
+          return null;
+        }
+      }
+      GridEntity view = getView();
+      if ((view.getFlags() & view.getFlagBits().noAttack()) != 0) {
+        return null;
+      }
+      if (!isActive(TARGETING_SLOT)
+          && !(view.getState() == GridEntityState.DEPLOYING && columns.deployActive())) {
+        return null;
+      }
+      if (getBuffs().hitSpeed(COUNTER_SCALE_STEP_MS) < 1) {
+        return null;
+      }
+      // The attacker's buff on damage is applied as its hit is dealt, before the drain counters
+      // the hit, where the game applies it only to a hit the entry lets through.
+      if (attacker.getData().buffOnDamage() != null) {
+        throw new UnsupportedOperationException(
+            action.name()
+                + " counters a hit of "
+                + attacker.name()
+                + ", whose BuffOnDamage on a countered hit is not modelled");
+      }
+      getTargeting().clearAttack();
+      view.setPendingFlags(view.getPendingFlags() | view.getFlagBits().noPushback());
+      return attacker.actionHolder();
+    };
   }
 
   /**

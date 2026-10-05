@@ -94,6 +94,11 @@ public final class DamageApplication {
         }
       }
     }
+    // The target's runs hear of the hit; a counter that takes all of it leaves nothing to deal.
+    damage = queries.heard(damage);
+    if (damage == 0) {
+      return DamageResult.NOTHING;
+    }
     return bookkeeping(hitPoints, damage, dedupeId, directionX, directionY, queries);
   }
 
@@ -186,6 +191,13 @@ public final class DamageApplication {
     // ordinary hit's entry does.
     if (queries.damageHeld() || queries.hidden() || queries.untouchable()) {
       return DamageResult.NOTHING;
+    }
+    if (amount >= 1) {
+      // The target's runs hear of a hit that deals something, as at the entry.
+      amount = queries.heard(amount);
+      if (amount == 0) {
+        return DamageResult.NOTHING;
+      }
     }
     if (damageId != 0 && hitPoints.isDedupeListed(damageId)) {
       return DamageResult.NOTHING;
