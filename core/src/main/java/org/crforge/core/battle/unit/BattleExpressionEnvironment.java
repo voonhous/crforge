@@ -14,6 +14,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.TargetView;
 
 /**
@@ -60,6 +61,9 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " id, from the newer build's symbol map;"
             + " is_dodging_damage (a newer data version) as a character dashing under a row with"
             + " a dash immunity or with that immunity still counting, 0 for any other object;"
+            + " has_crown_tower_in_range on a character as the other side's princess towers still"
+            + " in the battle, then its king, any within the argument of the tower's edge and the"
+            + " context's own, read alike in the newer build;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -75,7 +79,8 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " for one never written, and then one of its game tags, true when the context"
             + " entity carries every bit of it. Not modelled: the force-layer tags target_is_ground"
             + " would read first, refused; target_max_hp on a tower or on a reference that has"
-            + " left the battle, refused; the other 21 functions, which fail"
+            + " left the battle, refused; has_crown_tower_in_range on an object that is not a"
+            + " character or of the neutral side, refused; the other 20 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -107,6 +112,8 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int ABILITY_CHARGES_LEFT = BattleFunctions.id("ability_charges_left");
   private static final int IS_VALID_POSITION = BattleFunctions.id("is_valid_position");
   private static final int IS_DODGING_DAMAGE = BattleFunctions.id("is_dodging_damage");
+  private static final int HAS_CROWN_TOWER_IN_RANGE =
+      BattleFunctions.id("has_crown_tower_in_range");
 
   /** What ability_charges_left answers for an object without counted charges to read. */
   private static final int NO_CHARGES = -1;
@@ -390,12 +397,65 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       // counting after its dash; any other object answers 0.
       return context instanceof CharacterEntity character && character.dodgingDamage() ? 1 : 0;
     }
+    if (id == HAS_CROWN_TOWER_IN_RANGE) {
+      return hasCrownTowerInRange(arguments[0]);
+    }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.
       return 0;
     }
     throw new UnsupportedOperationException(
         "the battle does not answer " + BattleFunctions.byId(id).name() + " yet");
+  }
+
+  /**
+   * has_crown_tower_in_range(range): 1 when a crown tower of the other side is within the range of
+   * the context, measured from the tower's edge and the context's own, as target_in_range measures
+   * from its reference: the squared distance between the two centres at most the square of the
+   * tower's collision radius plus the range plus the context's row's collision radius.
+   *
+   * <p>The towers are the other side's princess towers, in the order its list of map objects holds
+   * them, then its king. Nothing tests that a tower is alive or awake: a destroyed princess tower
+   * counts until the cleanup that removes it takes it off the list, and a sleeping king counts.
+   * Only the context's own row's collision radius is added, and only for a character, which every
+   * context of this function in the data is; another kind of object, and an object of the neutral
+   * side, which has no other side, are refused.
+   */
+  private int hasCrownTowerInRange(int range) {
+    if (context.getView().getType() != ReferenceValidator.TYPE_CHARACTER) {
+      throw new UnsupportedOperationException(
+          "has_crown_tower_in_range on "
+              + context.name()
+              + ", which is not a character, is not modelled");
+    }
+    int side = context.side();
+    if (side == NEUTRAL_SIDE) {
+      throw new UnsupportedOperationException(
+          "has_crown_tower_in_range on "
+              + context.name()
+              + " of the neutral side, not established");
+    }
+    int otherSide = (side & 1) ^ 1;
+    long reach = (long) range + context.getData().collisionRadius();
+    for (TowerEntity tower : world.princessTowers(otherSide)) {
+      if (withinReach(tower, reach)) {
+        return 1;
+      }
+    }
+    TowerEntity king = world.kingTower(otherSide);
+    if (king == null) {
+      throw new UnsupportedOperationException(
+          "has_crown_tower_in_range on " + context.name() + " with no king on the other side");
+    }
+    return withinReach(king, reach) ? 1 : 0;
+  }
+
+  /** Whether a tower's centre lies within its collision radius plus a reach of the context's. */
+  private boolean withinReach(TowerEntity tower, long reach) {
+    long dx = tower.getView().getX() - context.getView().getX();
+    long dy = tower.getView().getY() - context.getView().getY();
+    long limit = tower.getView().getCollisionRadius() + reach;
+    return dx * dx + dy * dy <= limit * limit;
   }
 
   /**

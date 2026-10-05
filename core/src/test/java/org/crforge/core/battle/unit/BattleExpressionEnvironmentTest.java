@@ -327,6 +327,78 @@ class BattleExpressionEnvironmentTest {
         .isZero();
   }
 
+  @Test
+  @DisplayName(
+      "has_crown_tower_in_range answers 1 within the argument of an enemy princess tower's or king's"
+          + " edge and the context's own, a destroyed tower until the cleanup that removes it,"
+          + " and never for the context's own side's towers")
+  void hasCrownTowerInRangeReadsTheEnemyTowers() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    Battle battle = match.getBattle();
+    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
+    int princessX = princess.getView().getX();
+    int princessY = princess.getView().getY();
+    int princessRadius = princess.getView().getCollisionRadius();
+    int kingRadius = king.getView().getCollisionRadius();
+    assertThat(princessRadius).isPositive();
+    assertThat(kingRadius).isPositive();
+
+    // A Knight of side 0, radius 500, 3000 below the edge of side 1's princess tower.
+    CharacterEntity knight =
+        match.deploy(
+            0,
+            GameData.unit("Knight"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            princessX,
+            princessY - princessRadius - 3000);
+    // A Knight of side 1 beside it, next to its own side's princess tower.
+    CharacterEntity ownKnight =
+        match.deploy(
+            0,
+            GameData.unit("Knight"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            1,
+            princessX + 1500,
+            princessY - princessRadius - 3000);
+    // A Knight of side 0 4000 below the edge of side 1's king.
+    CharacterEntity byTheKing =
+        match.deploy(
+            0,
+            GameData.unit("Knight"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            king.getView().getX(),
+            king.getView().getY() - kingRadius - 4000);
+    battle.step();
+    BattleExpressionEnvironment knightSees =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+    assertThat(knight.getView().getY()).isEqualTo(princessY - princessRadius - 3000);
+    assertThat(evaluate("has_crown_tower_in_range(2500)", knightSees)).isEqualTo(1);
+    assertThat(evaluate("has_crown_tower_in_range(2499)", knightSees)).isZero();
+
+    assertThat(
+            evaluate(
+                "has_crown_tower_in_range(5000)",
+                new BattleExpressionEnvironment(ownKnight, match.getWorld())))
+        .as("its own side's towers")
+        .isZero();
+
+    BattleExpressionEnvironment byTheKingSees =
+        new BattleExpressionEnvironment(byTheKing, match.getWorld());
+    assertThat(evaluate("has_crown_tower_in_range(3500)", byTheKingSees)).isEqualTo(1);
+    assertThat(evaluate("has_crown_tower_in_range(3499)", byTheKingSees)).isZero();
+
+    // A destroyed princess tower counts until the cleanup that removes it.
+    match.getWorld().dealDamage(princess.getTargetView(), 100000, 0, 1);
+    assertThat(evaluate("has_crown_tower_in_range(2500)", knightSees))
+        .as("destroyed, not yet removed")
+        .isEqualTo(1);
+    battle.step();
+    assertThat(evaluate("has_crown_tower_in_range(2500)", knightSees)).as("removed").isZero();
+  }
+
   /** A Knight of side 0 that has taken a still unit of side 1 as its reference. */
   private static CharacterEntity referencing(Standard1v1Battle match, String row) {
     CharacterEntity knight =
