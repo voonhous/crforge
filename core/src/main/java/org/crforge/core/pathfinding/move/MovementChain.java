@@ -154,6 +154,11 @@ public final class MovementChain {
     }
   }
 
+  /** The match-wide movement settings the passes of this visit read. */
+  public MovementGlobals globals() {
+    return globals;
+  }
+
   /** The position the entity is heading for, or null when it has none. */
   public ReferencePoint reference() {
     return reference;

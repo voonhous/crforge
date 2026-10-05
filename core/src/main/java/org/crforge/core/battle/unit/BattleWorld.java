@@ -167,7 +167,19 @@ public class BattleWorld implements HolderPasses {
   @Getter private final ValidatorQueries validatorQueries = new BattleValidatorQueries(this);
 
   @Getter private final CellCosts costs = CellCosts.standard();
-  @Getter private final MovementGlobals movementGlobals;
+
+  /**
+   * The data versions whose game drops a unit's route when its pushback's flight ends. The rule is
+   * the game build's, not a table value: the game of data version 16.402.18 drops it, the game of
+   * 14.593.1 keeps it and walks back toward the waypoint it held before the push.
+   */
+  private static final Set<String> PUSHBACK_END_DROPS_ROUTE = Set.of("16.402.18");
+
+  /**
+   * The match-wide movement settings: the standard game's, with the rules of the data version the
+   * battle's tables are loaded from.
+   */
+  @Getter private MovementGlobals movementGlobals;
 
   /** The neighbour answers the push pass and the avoidance handler ask for. */
   @Getter private final NeighbourQuery neighbourQuery;
@@ -409,6 +421,9 @@ public class BattleWorld implements HolderPasses {
     declare(tables);
     this.records = new BattleRecords(tables);
     this.actions = new ActionRows(tables, records);
+    this.movementGlobals =
+        movementGlobals.withPushbackEndDropsRoute(
+            PUSHBACK_END_DROPS_ROUTE.contains(tables.version()));
   }
 
   /**
