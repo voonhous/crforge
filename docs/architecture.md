@@ -121,6 +121,10 @@ org.crforge.core/
 
 `./gradlew :desktop:run` opens the debug screen on the battle core (`org.crforge.core.battle`): a Ladder 1v1 battle on the standard arena, towers and cards at level 11, that can be paused, run at 0.25x to 8x speed, and played by hand from either side's hand. The AI visualizer (`--args="--ai-port 9876"`) still runs the original engine.
 
+The battle workspace is resizable, with the arena fitted to its original proportions and using the full content height. A compact column beside it holds the top side's hand, recent events, and the bottom side's hand. Each hand uses a two-by-two card grid so names and shortcuts remain readable without taking height from the arena. Events can be scrolled and copied. The toolbar offers pause, one-tick stepping, restart and speed controls. Playback speed and the elixir multiplier are labeled separately. The right sidebar contains a unit inspector, overlay controls and session diagnostics. Cards have separate selected, unaffordable and queued states; queued plays reserve elixir when determining affordability.
+
+The live toolbar explicitly selects **Deploy** or **Inspect**; `I` toggles between them. In Inspect mode, click a unit to pin its identity, original side, health, shield, position, movement state, ranges and target position. Selecting a card returns to deployment mode. Replays always use inspection mode and show the progress strip; live battles have no replay strip. **Clean**, **Combat** and **Pathing** presets configure the overlays; individual controls remain available. Unit names and target lines can also be toggled separately.
+
 ### Game tables
 
 The battle core reads the game's tables of one data version. The visualizer finds them in a **data root**, a checkout of the game data repository with one folder of tables per data version (`<root>/<version>/`) beside `references/`:
@@ -149,7 +153,9 @@ content sha: 8aa80152...
 
 With no rule that applies it stops with a message naming `crforge.dataRoot`, `CRFORGE_DATA_ROOT`, `crforge.gameTables` and `CRFORGE_GAME_TABLES`; with a folder it cannot read it stops naming the folder (and the root's versions); and when the battle core refuses a battle on the chosen tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
 
-`V` switches the screen to the data root's next version folder, in version order and wrapping round, and starts a new Ladder battle on its tables; each version's tables are loaded once and kept. The status column shows the current data version (`data: 14.593.1 (V: 2 versions)`). When a version's tables cannot be read, or the battle core refuses a battle on them (16.402.18 today), the battle on screen stays, the reason joins its messages, `R` resets on the version still on and `V` again tries the version after the refused one.
+The header always shows the **actually loaded** data version, including in replays and with the sidebar hidden. **Data details** shows its selection source, tables folder and content hash alongside the development target from `crforge-data.lock`; these details can be copied. A local `crforge.gameTables` override can select a different version from the lock's development target.
+
+The sidebar's version selector lets you choose an available version, then **Load + restart** starts a new Ladder battle on it. `V` still cycles through the data root's versions in order. Tables are loaded once and cached. If loading or battle construction fails, the existing battle, active version and provenance remain unchanged, and the refusal appears in Recent events. `R` resets on the version still loaded; `V` tries the version after the failed selection.
 
 ### The battle
 
@@ -167,6 +173,8 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | Key           | Action                                                                        |
 |---------------|-------------------------------------------------------------------------------|
 | `SPACE`       | Pause / resume                                                                |
+| `.`           | Pause and advance exactly one tick                                            |
+| `I`           | Toggle unit inspection; click a unit to pin its details                        |
 | `R`           | Reset to a new Ladder battle                                                  |
 | `P`           | Toggle heading lines (each troop's direction of travel)                       |
 | `O`           | Toggle attack, minimum and sight range circles                                |
@@ -180,20 +188,22 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `E`           | Export the recorded trajectories of the played units to `build/trajectories`  |
 | `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
 | `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
-| `T`           | Hide / show the text annotations (see below)                                  |
+| `T`           | Hide / show the diagnostics sidebar                                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                                            |
 | `1`-`4`       | Select a card from the blue player's hand                                     |
 | `5`-`8`       | Select a card from the red player's hand                                      |
-| Left click    | Select a card from a hand panel, or play the selected card on the arena       |
+| Left click    | Select/deploy a card, or inspect a unit in Inspect mode                        |
 | Right click   | Deselect the current card                                                     |
 
 The number keys only *select* a card; playing always goes through a left click on the arena.
 
 `F` does not flip the Ladder screen: its hand panels, number keys and clicks play for a side by the arena and panels as drawn standing, so the screen keeps side 0 at the bottom in blue.
 
-`T` hides the text annotations and shows them again; they are shown at first, on both screens. The annotations are the status column (the tick and entity count, the overlays that are on, the replay's or golden scenario's status, the data version and the controls legend) and the message column with its halted line. The battle itself (bodies, towers, health and shield bars, and the characters' and area effects' name labels), the hands, elixir, clock, crowns and result line, and the overlays with keys of their own (`P`, `O`, `D`, `A`, `H`, `G`, `N`) stay as they are.
+`T` collapses the diagnostics sidebar on either screen. Playback controls, the loaded data version, tick, clock, hands, events and stop reason remain visible. Overlay settings are independent of sidebar visibility. Paused, finished, halted and refused sessions have distinct status labels. A refused replay shows scrollable reasons and can be replaced by dropping another replay file onto the window.
 
 ### Replays
+
+The replay workspace shares the playback toolbar, inspector, data header and overlay controls. Its progress bar shows the current tick against the recorded end tick, when provided; it is a progress indicator, not a seek control. Both hand panels retain their original side numbers when the view is flipped.
 
 `./gradlew :desktop:run --args="--replay <file>"` (in the IDE, run `DesktopLauncher` with the program arguments `--replay <file>`) opens the replay viewer on a replay file instead of a Ladder battle. The tables are chosen as above, so `--args="--data-version 16.402.18 --replay <file>"` reads it against that version. A replay file dropped on the debug visualizer's or the viewer's window opens the same way, read against the version on screen.
 
@@ -219,11 +229,13 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 | Key           | Action                                                   |
 |---------------|----------------------------------------------------------|
 | `SPACE`       | Pause / resume                                           |
+| `.`           | Pause and advance exactly one tick                       |
 | `R`           | Restart the replay from tick 0                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                       |
 | `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
 | `F`           | Flip the view: side 1 at the bottom (the default) or side 0 |
-| `T`           | Hide / show the text annotations, as on the debug screen |
+| `T`           | Hide / show the diagnostics sidebar                     |
+| Left click    | Inspect a unit                                          |
 
 Cards are not selected or played from the viewer: the plays are the replay's own.
 

@@ -29,6 +29,23 @@ class ReplayPlayerTest {
   }
 
   @Test
+  void manualStepPausesRunsOneTickAndDiscardsFractionalPlaybackTime() {
+    ReplayPlayer player = player(Replays.archerQueen());
+    player.advance(STEP_SECONDS * 0.75f);
+    assertThat(player.stepOnce()).isTrue();
+    assertThat(player.getSession().tick()).isEqualTo(1);
+    assertThat(player.isPaused()).isTrue();
+    assertThat(player.advance(1f)).isZero();
+    player.togglePause();
+    assertThat(player.advance(STEP_SECONDS * 0.5f)).isZero();
+    assertThat(player.stepOnce()).isTrue();
+    assertThat(player.getSession().tick()).isEqualTo(2);
+    while (player.step()) {}
+    assertThat(player.stepOnce()).isFalse();
+    assertThat(player.getSession().tick()).isEqualTo(400);
+  }
+
+  @Test
   @DisplayName("the replay's play and ability command run at their ticks and are noted")
   void commandsRunAndAreNoted() {
     ReplayPlayer player = player(Replays.archerQueen());
