@@ -1,5 +1,6 @@
 package org.crforge.core.battle.unit;
 
+import java.util.Set;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -141,5 +142,20 @@ final class EntityFilterSubject implements FilterSubject {
   @Override
   public boolean ignoresPushback() {
     return entity.getData().ignorePushback() || entity.getBuffs().ignoresPushBack();
+  }
+
+  /** Any listed instance of the rows that the given entity applied, in the entity's list. */
+  @Override
+  public boolean buffedBy(Set<String> rows, int applierId) {
+    BuffComponent buffs = entity.getBuffs();
+    if (buffs == null) {
+      return false;
+    }
+    for (BuffInstance instance : buffs.items()) {
+      if (rows.contains(instance.getBuff().name()) && instance.appliedBy(applierId)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

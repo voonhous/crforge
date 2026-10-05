@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,9 +97,13 @@ class BattleBossBanditTest {
   }
 
   @Test
-  @DisplayName("a projectile's kill for a launcher with a killed-done action is refused")
-  void aProjectileKillForAKillerIsRefused() {
+  @DisplayName(
+      "a projectile's kill reaches its launcher: the Musketeer's killed-done action is scheduled"
+          + " on it, the Knight its cause")
+  void aProjectileKillReachesItsLauncher() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    List<String> log = new ArrayList<>();
+    match.getWorld().addObserver(observer(log));
     UnitData shooter =
         GameData.unit("Musketeer").toBuilder()
             .onKilledDoneAction("BossBandit_won_against_bandit_check")
@@ -111,16 +114,14 @@ class BattleBossBanditTest {
     knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     knight.getHitPoints().setHitPoints(1);
 
-    assertThatThrownBy(
-            () -> {
-              for (int tick = 0; tick < TICKS; tick++) {
-                match.getBattle().step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "Musketeer's projectile killed Knight, and the hook it hands its launcher is not"
-                + " modelled");
+    for (int tick = 0; tick < TICKS; tick++) {
+      match.getBattle().step();
+    }
+    // Scheduled outside a pending pass, from the projectile's hit, and checked as it runs.
+    assertThat(log)
+        .contains(
+            "killed_done Musketeer Knight BossBandit_won_against_bandit_check false",
+            "checked Musketeer BossBandit_won_against_bandit_check Knight Knight null");
   }
 
   /** Logs every hit, the area hits among them, every hook scheduled and every check of a cause. */

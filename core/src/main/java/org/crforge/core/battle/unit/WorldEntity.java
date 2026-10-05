@@ -10,6 +10,7 @@ import java.util.function.IntSupplier;
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
@@ -1797,6 +1798,35 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   public void spawnAreaEffect(
       String action, String areaEffect, SpawnHost source, int offsetX, int offsetY, int phase) {
     world.spawnAreaEffect(this, action, areaEffect, source, offsetX, offsetY, phase);
+  }
+
+  @Override
+  public void spawnAreaEffect(
+      String action,
+      String areaEffect,
+      SpawnHost source,
+      Integer x,
+      Integer y,
+      int offsetX,
+      int offsetY,
+      String onSpawned,
+      ActionContext context,
+      int phase) {
+    AreaEffectEntity spawned =
+        world.spawnAreaEffect(
+            this,
+            action,
+            areaEffect,
+            source,
+            x == null ? x() : x,
+            y == null ? y() : y,
+            offsetX,
+            offsetY,
+            phase);
+    if (onSpawned != null) {
+      spawned.runOnSpawned(
+          onSpawned, source instanceof WorldEntity cause ? cause.actionHolder() : null, context);
+    }
   }
 
   @Override

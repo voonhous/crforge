@@ -26,6 +26,12 @@ import org.crforge.core.pathfinding.GridEntityState;
  * <p>{@code matchSelf}, which a newer data version writes, passes only the object that asks: a
  * filter that sets it is asked with whether the object is its asker, and refused when asked
  * without.
+ *
+ * <p>The two buff checkers a newer data version writes come last: FilterIfNotBuffedByChecker keeps
+ * only an object that carries one of its buff rows applied by the asker, FilterIfBuffedByChecker
+ * drops one that does. A buff counts as the asker's when the asker is its source, or when its
+ * source was a projectile the asker launched. An object with no buffs fails the first and passes
+ * the second. A filter with either is asked with the asker's id, and refused when asked without.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -34,7 +40,10 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " exclusion, the slot exclusions in their order and each asked only when set, the"
             + " name comparison, the character-only block and the two lists, and the one default."
             + " MatchSelf (a newer data version) is read from the test of the newer build: the"
-            + " asker's own identity before the team gate.")
+            + " asker's own identity before the team gate. The two buff checkers (a newer data"
+            + " version) from the same test: a listed row whose source, or whose source"
+            + " projectile's launcher, is the asker; held by BattleRunOnResolvedTest and the Ice"
+            + " Wizard hero's tap.")
 @Getter
 @Builder(toBuilder = true)
 public final class GameObjectFilter {
@@ -71,6 +80,18 @@ public final class GameObjectFilter {
   @Builder.Default private final Set<String> excludeCharactersWithData = Set.of();
 
   /**
+   * FilterIfNotBuffedByChecker: the buff rows of which an object must carry one its asker applied;
+   * empty for no such test.
+   */
+  @Builder.Default private final Set<String> requireBuffsFromAsker = Set.of();
+
+  /**
+   * FilterIfBuffedByChecker: the buff rows of which an object must carry none its asker applied;
+   * empty for no such test.
+   */
+  @Builder.Default private final Set<String> refuseBuffsFromAsker = Set.of();
+
+  /**
    * Whether an object passes the filter.
    *
    * @param object the object
@@ -83,7 +104,17 @@ public final class GameObjectFilter {
           "a game object filter that sets MatchSelf is asked without its asker, which is not"
               + " modelled");
     }
+    refuseCheckersWithoutAsker();
     return passes(object, team, name);
+  }
+
+  /** Refuses a buff checker asked without the asker's id. */
+  private void refuseCheckersWithoutAsker() {
+    if (!requireBuffsFromAsker.isEmpty() || !refuseBuffsFromAsker.isEmpty()) {
+      throw new UnsupportedOperationException(
+          "a game object filter with a buff checker is asked without its asker, which is not"
+              + " modelled");
+    }
   }
 
   /**
@@ -99,7 +130,32 @@ public final class GameObjectFilter {
     if (matchSelf && !asker) {
       return false;
     }
+    refuseCheckersWithoutAsker();
     return passes(object, team, name);
+  }
+
+  /**
+   * Whether an object passes the filter, asked by an object whose id the buff checkers compare: an
+   * object kept by FilterIfNotBuffedByChecker carries a listed buff the asker applied, and one kept
+   * by FilterIfBuffedByChecker carries none.
+   *
+   * @param object the object
+   * @param team the asker's team
+   * @param name the row name the same-objects exclusion compares with: the asker's
+   * @param asker true when the object is the asker itself
+   * @param askerId the asker's id
+   */
+  public boolean matches(FilterSubject object, int team, String name, boolean asker, int askerId) {
+    if (matchSelf && !asker) {
+      return false;
+    }
+    if (!passes(object, team, name)) {
+      return false;
+    }
+    if (!requireBuffsFromAsker.isEmpty() && !object.buffedBy(requireBuffsFromAsker, askerId)) {
+      return false;
+    }
+    return refuseBuffsFromAsker.isEmpty() || !object.buffedBy(refuseBuffsFromAsker, askerId);
   }
 
   /** The test of every column but {@code matchSelf}. */

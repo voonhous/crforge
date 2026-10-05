@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import lombok.Getter;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 
 /**
@@ -36,6 +37,12 @@ public final class BuffInstance {
 
   /** The side it was applied for. */
   private final int side;
+
+  /**
+   * The id of the entity that launched the projectile that applied it, kept as it was applied and
+   * after the projectile has gone; -1 when no projectile applied it, or one with no launcher left.
+   */
+  private int sourceLauncherId = -1;
 
   /**
    * The entity whose removal, or whose being removable, removes it: the area effect that applied a
@@ -74,6 +81,9 @@ public final class BuffInstance {
     this.packedLevel = packedLevel;
     this.source = source;
     this.side = side;
+    if (source instanceof ProjectileEntity projectile && projectile.getOwner() != null) {
+      this.sourceLauncherId = projectile.getOwner().getId();
+    }
     // The instance keeps a parent only for a buff that stacks.
     this.parent = buff.enableStacking() ? parent : null;
     // The new instance's spawner: its start time and its limit (0xe2cd74).
@@ -91,6 +101,7 @@ public final class BuffInstance {
     BuffInstance copy = new BuffInstance(key, buff, remaining, packedLevel, source, side, parent);
     copy.total = total;
     copy.hitCounter = hitCounter;
+    copy.sourceLauncherId = sourceLauncherId;
     return copy;
   }
 
@@ -218,6 +229,15 @@ public final class BuffInstance {
       next = buff.spawnPauseTimeMs();
     }
     spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
+  }
+
+  /**
+   * Whether the entity of the given id applied it, as a filter's buff checker asks: it is the
+   * source still known, or it launched the projectile that applied it.
+   */
+  boolean appliedBy(int id) {
+    return source instanceof BattleEntity entity && entity.getId() == id
+        || sourceLauncherId != -1 && sourceLauncherId == id;
   }
 
   /** The source that left the battle is forgotten; the instance stays. */

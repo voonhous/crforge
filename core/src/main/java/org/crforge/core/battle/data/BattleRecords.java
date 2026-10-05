@@ -1129,9 +1129,10 @@ public final class BattleRecords {
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
    * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
    * switches, or the names of its Filters list, which a newer data version writes in their place;
-   * MatchSelf, also of the newer version, passes only the object that asks. A row that sets any
-   * other column, as a filter it builds on, is refused: read without it, the filter would match
-   * what the row does not.
+   * MatchSelf, also of the newer version, passes only the object that asks, and its two buff
+   * checkers keep or drop an object by the buffs the asker applied to it. A row that sets any other
+   * column, as a filter it builds on, is refused: read without it, the filter would match what the
+   * row does not.
    *
    * @param name the row's name
    */
@@ -1140,10 +1141,12 @@ public final class BattleRecords {
     checkArgument(table.has(name), () -> "the game tables have no game object filter " + name);
     GameRow row = table.row(name).tracking();
     GameObjectFilter filter = filterOf(row);
+    boolean baseResolved = baseResolved(table, row);
     List<String> unread = new ArrayList<>();
     for (String column : row.columns().keySet()) {
       if (!row.read().contains(column)
           && !PRESENTATION_FILTER_COLUMNS.contains(column)
+          && !(column.equals("Base") && baseResolved)
           && sets(row, column)) {
         unread.add(column);
       }
@@ -1154,6 +1157,30 @@ public final class BattleRecords {
           "the game object filter " + name + " sets columns not modelled: " + unread);
     }
     return filter;
+  }
+
+  /**
+   * Whether a filter row's Base, a newer data version's "FILTER.name", is already resolved in the
+   * row: the base row is a filter of this table and every column it sets the row sets to the same
+   * value, so the row read alone is the filter the base and the row make together. Any other Base
+   * is left unread, and refused.
+   */
+  private static boolean baseResolved(GameTable table, GameRow row) {
+    // Read from the raw columns, so that a Base not resolved stays unread and is refused.
+    JsonNode value = row.columns().get("Base");
+    if (value == null || !value.isTextual() || !value.asText().startsWith("FILTER.")) {
+      return false;
+    }
+    String baseName = value.asText().substring("FILTER.".length());
+    if (!table.has(baseName)) {
+      return false;
+    }
+    for (Map.Entry<String, JsonNode> column : table.row(baseName).columns().entrySet()) {
+      if (!column.getValue().equals(row.columns().get(column.getKey()))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** The columns of a game object filter's row that only show something: the text it shows. */
@@ -1277,6 +1304,8 @@ public final class BattleRecords {
         .matchSelf(row.bool("MatchSelf"))
         .includeCharactersWithData(Set.copyOf(row.strings("IncludeCharactersWithData")))
         .excludeCharactersWithData(Set.copyOf(row.strings("ExcludeCharactersWithData")))
+        .requireBuffsFromAsker(Set.copyOf(row.strings("FilterIfNotBuffedByChecker")))
+        .refuseBuffsFromAsker(Set.copyOf(row.strings("FilterIfBuffedByChecker")))
         .build();
   }
 
@@ -1595,6 +1624,7 @@ public final class BattleRecords {
             .spawnRandomizeSequence(row.bool("SpawnRandomizeSequence"))
             .spawnClones(row.bool("SpawnClones"))
             .stayAfterParentDies(row.bool("StayAfterParentDies"))
+            .linkToInstigatorLife(row.bool("LinkToInstigatorLife"))
             .shaped(sets(row, "Shape"))
             .filter(
                 (sets(row, "Shape") || filterHits) && sets(row, "Filter")

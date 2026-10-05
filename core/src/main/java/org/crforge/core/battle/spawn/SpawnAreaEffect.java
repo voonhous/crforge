@@ -1,5 +1,7 @@
 package org.crforge.core.battle.spawn;
 
+import java.util.function.IntSupplier;
+import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionRow;
@@ -52,6 +54,20 @@ public final class SpawnAreaEffect extends RowAction {
   private final int offsetY;
 
   /**
+   * A location row's point, its two expressions evaluated with the context as the action starts;
+   * null for the plain class, which takes the owner's point.
+   */
+  private final IntSupplier x;
+
+  private final IntSupplier y;
+
+  /** The name of the row scheduled on the area effect it spawns, or null for none. */
+  private final String onSpawned;
+
+  /** True when that row carries the context the start carried. */
+  private final boolean shareContext;
+
+  /**
    * @param row the row's shared columns
    * @param areaEffect the area effect row's name
    * @param parentGoAsSource true to take the holder's owner as the source in place of the cause
@@ -60,11 +76,59 @@ public final class SpawnAreaEffect extends RowAction {
    */
   public SpawnAreaEffect(
       ActionRow row, String areaEffect, boolean parentGoAsSource, int offsetX, int offsetY) {
+    this(row, areaEffect, parentGoAsSource, offsetX, offsetY, null, null);
+  }
+
+  /**
+   * @param row the row's shared columns
+   * @param areaEffect the area effect row's name
+   * @param parentGoAsSource true to take the holder's owner as the source in place of the cause
+   * @param offsetX the offset along the width
+   * @param offsetY the offset along the length, before the owner's side turns it
+   * @param x a location row's point along the width, or null for the owner's point
+   * @param y a location row's point along the length, or null for the owner's point
+   */
+  public SpawnAreaEffect(
+      ActionRow row,
+      String areaEffect,
+      boolean parentGoAsSource,
+      int offsetX,
+      int offsetY,
+      IntSupplier x,
+      IntSupplier y) {
+    this(row, areaEffect, parentGoAsSource, offsetX, offsetY, x, y, null, false);
+  }
+
+  /**
+   * @param row the row's shared columns
+   * @param areaEffect the area effect row's name
+   * @param parentGoAsSource true to take the holder's owner as the source in place of the cause
+   * @param offsetX the offset along the width
+   * @param offsetY the offset along the length, before the owner's side turns it
+   * @param x a location row's point along the width, or null for the owner's point
+   * @param y a location row's point along the length, or null for the owner's point
+   * @param onSpawned the name of the row scheduled on the area effect it spawns, or null
+   * @param shareContext true to hand that row the context the start carried
+   */
+  public SpawnAreaEffect(
+      ActionRow row,
+      String areaEffect,
+      boolean parentGoAsSource,
+      int offsetX,
+      int offsetY,
+      IntSupplier x,
+      IntSupplier y,
+      String onSpawned,
+      boolean shareContext) {
     super(row);
+    this.onSpawned = onSpawned;
+    this.shareContext = shareContext;
     this.areaEffect = areaEffect;
     this.parentGoAsSource = parentGoAsSource;
     this.offsetX = offsetX;
     this.offsetY = offsetY;
+    this.x = x;
+    this.y = y;
   }
 
   @Override
@@ -74,6 +138,11 @@ public final class SpawnAreaEffect extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    return start(holder, instigator, null);
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator, ActionContext context) {
     if (!(holder.getOwner() instanceof SpawnHost owner)) {
       throw new UnsupportedOperationException(name() + " runs on an object that cannot spawn");
     }
@@ -84,6 +153,20 @@ public final class SpawnAreaEffect extends RowAction {
       source = cause;
     } else {
       throw new UnsupportedOperationException(name() + " has no source to spawn from");
+    }
+    if (x != null || onSpawned != null) {
+      owner.spawnAreaEffect(
+          name(),
+          areaEffect,
+          source,
+          x == null ? null : x.getAsInt(),
+          y == null ? null : y.getAsInt(),
+          offsetX,
+          offsetY,
+          onSpawned,
+          shareContext ? context : null,
+          holder.passPhase());
+      return null;
     }
     owner.spawnAreaEffect(name(), areaEffect, source, offsetX, offsetY, holder.passPhase());
     return null;

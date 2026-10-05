@@ -54,6 +54,9 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " ability_hero_mega_minion_vs_musketeer; ability_charges_left (a newer data"
             + " version) as the charges left of the slot that follows a character whose row's"
             + " ability has charges, -1 otherwise, read from the newer build's function;"
+            + " is_valid_position (a newer data version) as a point on the map off water, read"
+            + " from the newer build's function; self (a newer data version) as the context's"
+            + " id, from the newer build's symbol map;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -99,6 +102,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_DEPLOYING = BattleFunctions.id("is_deploying");
   private static final int IS_COMBAT_ENABLED = BattleFunctions.id("is_combat_enabled");
   private static final int ABILITY_CHARGES_LEFT = BattleFunctions.id("ability_charges_left");
+  private static final int IS_VALID_POSITION = BattleFunctions.id("is_valid_position");
 
   /** What ability_charges_left answers for an object without counted charges to read. */
   private static final int NO_CHARGES = -1;
@@ -143,6 +147,12 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   /** The name of a newer data version's function that reads a context key. */
   private static final String AS_INT_NAME = "as_int";
 
+  /** A newer data version's symbol for the context object's own id. */
+  private static final String SELF_NAME = "self";
+
+  /** The call id of {@code self}, apart from every table's. */
+  static final int SELF = 9_001;
+
   /** The id the environment calls as_int by, below every tag, variable and data row id. */
   static final int AS_INT = 9_000;
 
@@ -173,6 +183,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     BattleFunctions.Entry entry = BattleFunctions.byName(name);
     if (entry != null) {
       return new Function(entry.id(), entry.minArguments(), entry.maxArguments());
+    }
+    // The newer build's symbol map takes self, by its exact name, ahead of the variables.
+    if (name.equals(SELF_NAME)) {
+      return new Function(SELF, 0, 0);
     }
     // A name the function table does not know may be one of the battle's variables, and then one
     // of its game tags.
@@ -210,6 +224,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   public int call(int id, int[] arguments) {
     if (id == AS_INT) {
       return asInt(arguments);
+    }
+    if (id == SELF) {
+      // The context object's id, as the newer build reads its symbol.
+      return context.getId();
     }
     if (id >= DATA_ROW_BASE) {
       // The call id is the global id plus the base, in 32 bits; a negative one answers 0.
@@ -360,12 +378,30 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (id == ABILITY_CHARGES_LEFT) {
       return abilityChargesLeft();
     }
+    if (id == IS_VALID_POSITION) {
+      return validPosition(arguments[0], arguments[1]);
+    }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.
       return 0;
     }
     throw new UnsupportedOperationException(
         "the battle does not answer " + BattleFunctions.byId(id).name() + " yet");
+  }
+
+  /**
+   * A newer data version's is_valid_position: 1 for a point on the map that is not water, 0 for one
+   * off the map (either coordinate below 0, or at or past the map's width or height) or on a water
+   * cell. It reads no object.
+   */
+  private int validPosition(int x, int y) {
+    TileMap map = world.getTileMap();
+    if ((x | y) < 0
+        || x >= map.width() * TileMap.CELL_UNITS
+        || y >= map.height() * TileMap.CELL_UNITS) {
+      return 0;
+    }
+    return map.isWater(x / TileMap.CELL_UNITS, y / TileMap.CELL_UNITS) ? 0 : 1;
   }
 
   /**
