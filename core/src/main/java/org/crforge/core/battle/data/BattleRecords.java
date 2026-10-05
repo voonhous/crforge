@@ -1183,6 +1183,18 @@ public final class BattleRecords {
     return true;
   }
 
+  /**
+   * A game object filter a reference column names, or null when the game object filters table holds
+   * no row of that name. The game's loader looks such a column up by name and reads a name it does
+   * not find as no filter, and the battle runs on; the action that holds it decides what no filter
+   * does.
+   *
+   * @param name the row's name
+   */
+  public GameObjectFilter filterIfHeld(String name) {
+    return tables.table(GAME_OBJECT_FILTERS).has(name) ? filter(name) : null;
+  }
+
   /** The columns of a game object filter's row that only show something: the text it shows. */
   private static final Set<String> PRESENTATION_FILTER_COLUMNS = Set.of("FilterDescriptionTID");
 
