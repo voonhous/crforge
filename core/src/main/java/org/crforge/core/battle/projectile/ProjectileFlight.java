@@ -68,7 +68,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " re-aim by elite_archer_knight, the spawned fan by firecracker_knight, and the landing at the constant height by"
             + " royal_giant_tower; the target buff on the circle after the damage by"
             + " snowball_knights, and on the one target before it by witch_mother_skeletons, after"
-            + " it by electro_dragon_knights, whose chained hop is held there too; the"
+            + " it by electro_dragon_knights, whose chained hop is held there too, and the hop"
+            + " after its launcher left by random_battle_s0003 and random_battle_s0019; the"
             + " circle's before the damage by no run; the pingpong sweep, its halfway forgetting,"
             + " its landing at the start and its launcher's release by axe_man_knights, the sweep's"
             + " step under a buff by no run; the random delay, the stop at the first landed hit and"
@@ -476,15 +477,12 @@ final class ProjectileFlight {
     if (data.spawnProjectile() != null && p.getSpawnChain() >= 1) {
       world.impactProjectile(p);
     }
-    // A hopping projectile under its count hops on to the nearest character it may hit; at its
-    // count, or with nobody in reach, it stays released.
+    // A hopping projectile under its count hops on to the nearest character it may hit, whether
+    // its launcher is still in the battle or not; at its count, or with nobody in reach, it stays
+    // released.
     if (data.chainedHitRadius() >= 1 && p.getChainedHits() < data.chainedHitCount()) {
       WorldEntity next = world.chainTarget(p);
       if (next != null) {
-        if (p.getOwner() == null) {
-          throw new UnsupportedOperationException(
-              p.name() + " hops on after its launcher left, which is not modelled");
-        }
         p.hop(next);
       }
     }
