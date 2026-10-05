@@ -287,7 +287,9 @@ public final class BattleRecords {
    * The tags a unit's own row may set, each read where the battle reads the tag word: those of the
    * Phoenix's egg, and those of the Goblins hero's banner - no damage taken (the damage entry), no
    * contact (the push pass and its gate, and a filter's excluded tags) and no targeting (the
-   * targeting and its validator). A row that sets any other is refused as the unit is created.
+   * targeting and its validator); and the Elite Archer hero's decoy's no attack, read where the
+   * battle reads NO_ATTACK for its other holders, the targeting visit clearing the attack each
+   * step. A row that sets any other is refused as the unit is created.
    */
   private static final Set<String> MODELLED_ROW_TAGS =
       Set.of(
@@ -296,7 +298,8 @@ public final class BattleRecords {
           "NO_MOVE_ALLOW_ATTRACT",
           "NO_DAMAGE",
           "NO_CHECKCOLLISIONS",
-          "UNTARGETABLE");
+          "UNTARGETABLE",
+          "NO_ATTACK");
 
   /**
    * The tags a buff may set: the two the push pass reads, which keep the carrier's enemies, or its
