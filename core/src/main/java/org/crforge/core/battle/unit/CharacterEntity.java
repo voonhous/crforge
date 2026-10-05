@@ -1994,10 +1994,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * A push request away from a point, as the evolved Executioner's strong hit and the filter form
-   * of an area effect ask it: every gate in place and nothing lifted, the whole distance, refused
-   * while a pushback is in flight. Its movement is not switched on: each caller asks first that it
-   * is on.
+   * A push request away from a point, as the evolved Executioner's strong hit asks it: every gate
+   * in place and nothing lifted, the whole distance, refused while a pushback is in flight. Its
+   * movement is not switched on: each caller asks first that it is on.
    *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
@@ -2017,6 +2016,38 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false,
+            false);
+    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+  }
+
+  /**
+   * A push request away from a point, as the filter form of an area effect asks it with its push
+   * columns: the gates lifted when asked, the separation taken off when asked, and accepted with a
+   * pushback in flight, keeping the longer one, when asked; never as the character's own attack and
+   * never while it is hidden. Its movement is not switched on: the caller asks first that it is on.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   * @param liftGates true to push it whatever its row, buffs, flags or being dragged say
+   * @param subtract true to take the current separation off the distance first
+   * @param keepLonger true to accept it with a pushback in flight, keeping the longer one
+   */
+  void pushedByArea(
+      int x, int y, int distance, boolean liftGates, boolean subtract, boolean keepLonger) {
+    MovementState movement = unit.movement();
+    int ran =
+        PushbackRequest.request(
+            movement,
+            getView(),
+            pushbackQueries,
+            x,
+            y,
+            distance,
+            liftGates,
+            false,
+            subtract,
+            keepLonger,
             false);
     world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
@@ -2483,6 +2514,25 @@ public class CharacterEntity extends WorldEntity {
             amount,
             target.getView().getX() - getView().getX(),
             target.getView().getY() - getView().getY());
+      }
+
+      @Override
+      public boolean makesArea() {
+        return world.guardRunMakesArea();
+      }
+
+      @Override
+      public int spawnArea(String action, String row, int phase) {
+        return world
+            .spawnAreaEffect(CharacterEntity.this, action, row, CharacterEntity.this, 0, 0, phase)
+            .getId();
+      }
+
+      @Override
+      public void endArea(int id) {
+        if (world.liveOrQueued(id) instanceof AreaEffectEntity areaEffect) {
+          areaEffect.end();
+        }
       }
 
       @Override

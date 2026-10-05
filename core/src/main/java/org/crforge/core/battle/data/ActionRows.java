@@ -664,7 +664,8 @@ public final class ActionRows {
                   "ContinuosPushBack",
                   "DistanceProportinalPush",
                   "PushBackDamage",
-                  "HitFilter")),
+                  "HitFilter",
+                  "SpawnAEO")),
           // The lock, its timing and the warp row it schedules; the two speed bytes are read only
           // to refuse a row with either clear.
           Map.entry(
@@ -2687,9 +2688,10 @@ public final class ActionRows {
 
     /**
      * A guard spawn's columns: its guard's row, where the guard appears and charges to, the push
-     * and its damage, and the filter of its query; the tags its run on the guard sets. Refused: a
-     * row that sets tags, a singleton, a next action, a gate or a phase of its own, one without a
-     * filter, and one whose guard the battle cannot take.
+     * and its damage, and the filter of its query; the area effect a newer data version's run makes
+     * in place of its push; the tags its run on the guard sets. Refused: a row that sets tags, a
+     * singleton, a next action, a gate or a phase of its own, one without a filter, one whose guard
+     * the battle cannot take, and one whose area effect sets a column not modelled.
      */
     private SpawnGuard spawnGuard(String name, ActionRow shared, JsonNode f) {
       refuseShared(
@@ -2710,6 +2712,14 @@ public final class ActionRows {
       // action is built rather than when it runs.
       String guard = text(f, "SpawnData", "");
       records.unit(guard);
+      String areaEffect = text(f, "SpawnAEO", "");
+      if (!areaEffect.isEmpty()) {
+        List<String> unmodelled = records.areaEffect(areaEffect).unmodelledColumns();
+        if (!unmodelled.isEmpty()) {
+          throw new UnsupportedOperationException(
+              name + " makes " + areaEffect + ", which sets columns not modelled: " + unmodelled);
+        }
+      }
       return new SpawnGuard(
           shared,
           SpawnGuard.Columns.builder()
@@ -2722,6 +2732,7 @@ public final class ActionRows {
               .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
               .pushBackDamage(integer(f, "PushBackDamage"))
               .hitFilter(records.filter(f.get("HitFilter").asText()))
+              .spawnAeo(areaEffect.isEmpty() ? null : areaEffect)
               .guardTags(tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"))
               .shadowTag(tagMask("NO_SHADOW"))
               .build());

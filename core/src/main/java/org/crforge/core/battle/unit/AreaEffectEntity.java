@@ -579,8 +579,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * is on: anything else, a tower or a troop still deploying among them, is left where it is, and
    * its movement is not switched on (the area push of a row with hit switches switches it on). It
    * is asked for the whole pushback away from the area effect's point, every gate in place and
-   * nothing lifted, refused while a pushback is in flight; whether the object is alive is not
-   * asked, as its damage is only queued.
+   * nothing lifted, refused while a pushback is in flight, unless the row says otherwise: its
+   * PushbackAll lifts the gates, its RelativePushback takes the separation off first and its
+   * ContinuousPushback asks with a pushback in flight, keeping the longer one, and pushes an object
+   * a row that hits each once has reached again, giving it nothing else. Whether the object is
+   * alive is not asked, as its damage is only queued.
    *
    * <p>The pull, for a row whose buff attracts, reaches the same characters, after the push and
    * whatever the buff's time: the buff push along the vector from where the character stood before
@@ -624,12 +627,19 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     for (int i = 0; i < listed.size() && left > 0; i++) {
       WorldEntity target = listed.get(i);
       // One hit per target: an object already reached is passed by, anything else listed as
-      // reached. (A row that pushes a reached object again, ContinuousPushback, is refused.)
+      // reached. A row that pushes continuously pushes a reached object again, and pulls it, when
+      // its movement is on, and gives it nothing else; neither counts against the row's maximum.
+      boolean again = false;
       if (data.oneHitPerTarget()) {
         if (reached.contains(target.getId())) {
-          continue;
+          if (!data.continuousPushback()
+              || !(target instanceof CharacterEntity character && character.movementOn())) {
+            continue;
+          }
+          again = true;
+        } else {
+          reached.add(target.getId());
         }
-        reached.add(target.getId());
       }
       // A character whose movement component is on is the one the push and the pull reach; the
       // vector to the centre is taken before the push asks for anything.
@@ -638,13 +648,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       int dx = x - target.getView().getX();
       int dy = y - target.getView().getY();
       // The push first, before the damage.
-      if (data.pushback() >= 1 && mover != null) {
-        mover.pushedFrom(x, y, data.pushback());
+      if (mover != null) {
+        push(mover);
       }
       // Then the pull of an attracting buff, whatever the buff's time: the buff push toward the
       // area effect's point, waiting in the unit's push accumulators for its next movement visit.
       if (buff != null && buff.attracts() && mover != null) {
         pulls.add(pull(mover, dx, dy, buff));
+      }
+      if (again) {
+        continue;
       }
       if (data.typedDamage() != null) {
         world.queueAreaDamage(this, target, data.typedDamage());
@@ -689,6 +702,25 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     if (projectile != null && !data.targetProjectiles()) {
       launchFilterProjectile(projectile, null, x, y);
     }
+  }
+
+  /**
+   * The filter form's push of an object it lists whose movement is on, with a pushback of at least
+   * 1: away from the area effect's point, its gates lifted by PushbackAll, the separation taken off
+   * by RelativePushback, and asked with a pushback in flight, the longer kept, by
+   * ContinuousPushback; never as the object's own attack, and never of a hidden object.
+   */
+  private void push(CharacterEntity character) {
+    if (data.pushback() < 1) {
+      return;
+    }
+    character.pushedByArea(
+        x,
+        y,
+        data.pushback(),
+        data.pushbackAll(),
+        data.relativePushback(),
+        data.continuousPushback());
   }
 
   /** What the biggest are taken by: an object's hit points and shield, 0 without hit points. */

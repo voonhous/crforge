@@ -207,13 +207,13 @@ public final class BattleRecords {
    * The columns of an area effect the battle does not model: a row that sets one is refused as the
    * area effect is created. A buff that boosts one target or lasts longer by level, the life
    * condition, the tags other than the one that hides the pushback's presentation, the per-level
-   * lifetime and the push's floor and gate lift. Its projectile is modelled, but not a launch from
-   * its source or a spread one; for a row with hit switches its hit action only for a Clone, as a
-   * buff spawn, a group of buff spawns and a taunt, and on a shaped row as a choice by team, one
-   * hit per target only with a hit action, and neither the hit action on itself nor the end on its
-   * first hit (both only in the filter form); following only its parent; its spawns only in a
-   * shuffled order; and its shape only as a rectangle with a filter whose hits do nothing but their
-   * hit action.
+   * lifetime and the push's floor; its gate lift only in the filter form, whose load reads it. Its
+   * projectile is modelled, but not a launch from its source or a spread one; for a row with hit
+   * switches its hit action only for a Clone, as a buff spawn, a group of buff spawns and a taunt,
+   * and on a shaped row as a choice by team, one hit per target only with a hit action, and neither
+   * the hit action on itself nor the end on its first hit (both only in the filter form); following
+   * only its parent; its spawns only in a shuffled order; and its shape only as a rectangle with a
+   * filter whose hits do nothing but their hit action.
    */
   private static final List<String> UNMODELLED_AREA_EFFECT_COLUMNS =
       List.of(
@@ -224,8 +224,7 @@ public final class BattleRecords {
           "Tags",
           "LifeDurationIncreasePerLevel",
           "LifeDurationIncreaseAfterTournamentCap",
-          "MinPushback",
-          "PushbackAll");
+          "MinPushback");
 
   private static final String GAME_TAGS = "game_tags";
 
@@ -1555,6 +1554,9 @@ public final class BattleRecords {
             .affectsHidden(row.bool("AffectsHidden"))
             .controlsBuff(row.bool("ControlsBuff"))
             .pushback(row.intValue("Pushback"))
+            .pushbackAll(row.bool("PushbackAll"))
+            .relativePushback(row.bool("RelativePushback"))
+            .continuousPushback(row.bool("ContinuousPushback"))
             .maximumTargets(row.intValue("MaximumTargets"))
             .sharedDamage(row.bool("SharedDamage"))
             .onStartingAction(inlineActionName(row, "OnStartingAction"))
@@ -1681,6 +1683,19 @@ public final class BattleRecords {
     }
     if (data.filterHits()) {
       filterForm(data, unmodelled);
+    } else {
+      // The push columns beyond its distance are read only by the filter form's hit pass: a row
+      // with hit switches pushes by its own path, which lifting the gates, the separation and
+      // keeping the longer push are not held for.
+      if (data.pushbackAll()) {
+        unmodelled.add("PushbackAll");
+      }
+      if (data.relativePushback()) {
+        unmodelled.add("RelativePushback");
+      }
+      if (data.continuousPushback()) {
+        unmodelled.add("ContinuousPushback");
+      }
     }
     // The filter form's hit pass does not read the Clone switch: what a Clone reaches is its
     // filter's choice, and what it does its hit action's.
@@ -1728,10 +1743,10 @@ public final class BattleRecords {
    * does beyond passing by an object it has reached for a row that hits each once, its target
    * limit, its biggest targets first, its hit action on itself and its end on its first hit: a
    * launch from the area effect's source (a start height below 0), a spawner and a deflection, none
-   * of which the filter form's hit pass is held for. Its push is held for with every gate in place:
-   * a row that lifts them (PushbackAll), takes the separation off (RelativePushback) or keeps the
-   * longer push (ContinuousPushback) is refused by that column. A damage type that names a column
-   * the pass is not held for is refused by its Damage column.
+   * of which the filter form's hit pass is held for. Its push is held for with its gates in place
+   * or lifted (PushbackAll), the separation taken off (RelativePushback) and the longer push kept
+   * (ContinuousPushback). A damage type that names a column the pass is not held for is refused by
+   * its Damage column.
    */
   private void filterForm(AreaEffectData data, List<String> unmodelled) {
     if (data.projectile() != null && data.projectileStartHeight() < 0) {

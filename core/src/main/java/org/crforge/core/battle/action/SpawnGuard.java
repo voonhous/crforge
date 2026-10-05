@@ -29,9 +29,18 @@ import org.crforge.core.pathfinding.GridEntityState;
  * enemy side, clamped into the arena. The run then goes on until the step after the guard leaves
  * the dashing state, which it pushes on too, and finishes.
  *
+ * <p>On a data version whose game makes the charge's pushes and hits an area effect's (see {@link
+ * GuardHost#makesArea()}), the second run reads none of the push columns: on the step its push pass
+ * would run it makes the row's area effect (SpawnAEO), once, at the guard's point, the guard its
+ * source and the object it follows, and ends it as the run finishes; the area effect pushes and
+ * hits. An area effect that leaves before is made again on the next such step. Without SpawnAEO
+ * nothing is pushed or hit.
+ *
  * <p>Refused as the row is built: tags, a singleton, a next action, the gates, a step by the hit
  * speed and a phase of its own, none of which the shipped row sets; and a row without a filter or
- * whose guard is not a character. As it starts: an owner other than an area effect.
+ * whose guard is not a character, and an area effect whose row sets a column not modelled. As it
+ * starts: an owner other than an area effect, and an area effect on a data version whose guard run
+ * pushes and hits by itself, which reads no such column.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -41,8 +50,11 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " and the deploy's entry; the wait while more than one step is left, the push pass"
             + " with the gates skipped, the separation and the longer push kept, a hit once per"
             + " run, the deploy cut, the charge point and the finish after the dash. Held by"
-            + " little_prince_ability_giant and little_prince_ability_knights. Not modelled: the"
-            + " statistics the start reports and the hit's presentation. Refused: tags, a"
+            + " little_prince_ability_giant and little_prince_ability_knights. The area effect made"
+            + " in place of the push pass, on the newer data version, at the charge's step, ended"
+            + " by the finish: held by ability_little_prince, where it stands on the guard from"
+            + " its charge's step to its run's finish. Not modelled: the statistics the start"
+            + " reports and the hit's presentation. Refused: tags, a"
             + " singleton, a next action, the gates, a step by the hit speed, a phase of its own,"
             + " a row without a filter and an owner other than an area effect.")
 public final class SpawnGuard extends RowAction {
@@ -62,6 +74,8 @@ public final class SpawnGuard extends RowAction {
    * @param distanceProportionalPush true to take the current separation off a push
    * @param pushBackDamage the damage of a hit, at the first level
    * @param hitFilter the filter its query asks
+   * @param spawnAeo the area effect the second run makes in place of its push pass, on a data
+   *     version whose guard run makes one; null for none
    * @param guardTags the tags the second run sets for as long as it is listed
    * @param shadowTag the tag it sets while more than one step of the deploy is left
    */
@@ -76,6 +90,7 @@ public final class SpawnGuard extends RowAction {
       boolean distanceProportionalPush,
       int pushBackDamage,
       GameObjectFilter hitFilter,
+      String spawnAeo,
       long guardTags,
       long shadowTag) {}
 
@@ -122,6 +137,10 @@ public final class SpawnGuard extends RowAction {
    * @return the run, carrying its tags; the caller lists it on the guard
    */
   public ActionInstance guardRun(GuardHost host, int x, int y) {
+    if (columns.spawnAeo() != null && !host.makesArea()) {
+      throw new UnsupportedOperationException(
+          name() + " sets SpawnAEO, which its data version's guard run does not read");
+    }
     GuardRun run = new GuardRun(host, x, y);
     run.addTags(columns.guardTags() | columns.shadowTag());
     return run;
@@ -153,6 +172,9 @@ public final class SpawnGuard extends RowAction {
     private boolean charging;
     private final List<Integer> hit = new ArrayList<>();
 
+    /** The id of the area effect the run made, or -1 for none or one that has left. */
+    private int area = -1;
+
     private GuardRun(GuardHost host, int x, int y) {
       super(SpawnGuard.this);
       this.host = host;
@@ -163,11 +185,19 @@ public final class SpawnGuard extends RowAction {
     @Override
     protected void update(ActionHolder holder) {
       List<String> calls = new ArrayList<>();
-      step(calls);
+      step(calls, holder.passPhase());
       host.stepped(charging, getTags(), isFinished(), calls);
     }
 
-    private void step(List<String> calls) {
+    /** An area effect it made that leaves is forgotten, so the next step makes it again. */
+    @Override
+    protected void objectLeft(int leftId) {
+      if (leftId == area) {
+        area = -1;
+      }
+    }
+
+    private void step(List<String> calls, int phase) {
       if (host.state() == GridEntityState.DEPLOYING) {
         int left = host.deployCountdownMs();
         if (left > STEP_MS) {
@@ -181,7 +211,13 @@ public final class SpawnGuard extends RowAction {
       } else {
         clearTags(columns.shadowTag());
       }
-      if (columns.pushBackStrength() >= 1) {
+      if (host.makesArea()) {
+        // The newer game's run reads no push column: the area effect it makes pushes and hits.
+        if (columns.spawnAeo() != null && area < 0) {
+          area = host.spawnArea(name(), columns.spawnAeo(), phase);
+          calls.add("area " + columns.spawnAeo() + " " + area);
+        }
+      } else if (columns.pushBackStrength() >= 1) {
         pushPass(calls);
       }
       if (charging) {
@@ -193,7 +229,7 @@ public final class SpawnGuard extends RowAction {
         calls.add("deploy_cut");
       }
       if (!host.hasTargeting()) {
-        finish();
+        end(calls);
         calls.add("finish no_component");
         return;
       }
@@ -210,8 +246,17 @@ public final class SpawnGuard extends RowAction {
     /** While the guard dashes the run goes on; out of the dash it finishes. */
     private void chargingEnd(List<String> calls) {
       if (host.state() != GridEntityState.DASHING) {
-        finish();
+        end(calls);
         calls.add("finish charge_over");
+      }
+    }
+
+    /** Finishes the run, ending the area effect it made, which is still there. */
+    private void end(List<String> calls) {
+      finish();
+      if (area >= 0) {
+        host.endArea(area);
+        calls.add("area_end " + area);
       }
     }
 
