@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -12,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Disposable;
 
@@ -30,13 +32,10 @@ final class WorkspaceTheme implements Disposable {
   }
 
   private void createSkin() {
-    FreeTypeFontGenerator generator =
-        new FreeTypeFontGenerator(Gdx.files.classpath("fonts/RobotoMono-Regular.ttf"));
-    FreeTypeFontGenerator.FreeTypeFontParameter parameter =
-        new FreeTypeFontGenerator.FreeTypeFontParameter();
-    parameter.size = 14;
-    skin.add("default-font", generator.generateFont(parameter), BitmapFont.class);
-    generator.dispose();
+    font("default-font", "Lato-Regular.ttf", 15);
+    font("heading-font", "Lato-Bold.ttf", 13);
+    font("title-font", "Lato-Bold.ttf", 19);
+    font("mono-font", "RobotoMono-Regular.ttf", 13);
     Pixmap pixel = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
     pixel.setColor(Color.WHITE);
     pixel.fill();
@@ -46,15 +45,18 @@ final class WorkspaceTheme implements Disposable {
     skin.add("white", new TextureRegionDrawable(new TextureRegion(texture)), Drawable.class);
     skin.add(
         "default", new Label.LabelStyle(skin.getFont("default-font"), Color.valueOf("e8edf5ff")));
+    skin.add("heading", new Label.LabelStyle(skin.getFont("heading-font"), Color.WHITE));
+    skin.add("title", new Label.LabelStyle(skin.getFont("title-font"), Color.valueOf("e8edf5ff")));
+    skin.add("mono", new Label.LabelStyle(skin.getFont("mono-font"), MUTED));
     TextButton.TextButtonStyle button = new TextButton.TextButtonStyle();
     button.font = skin.getFont("default-font");
     button.fontColor = Color.valueOf("e8edf5ff");
     button.disabledFontColor = Color.valueOf("78899fff");
-    button.up = skin.newDrawable("white", Color.valueOf("263447ff"));
-    button.over = skin.newDrawable("white", Color.valueOf("344860ff"));
-    button.down = skin.newDrawable("white", Color.valueOf("326e70ff"));
-    button.checked = skin.newDrawable("white", Color.valueOf("28575fff"));
-    button.disabled = skin.newDrawable("white", Color.valueOf("1c2634ff"));
+    button.up = surface("button-up", "243142", "354358");
+    button.over = surface("button-over", "30435a", "647c92");
+    button.down = surface("button-down", "234c53", "76d7cb");
+    button.checked = surface("button-checked", "23454e", "76d7cb");
+    button.disabled = surface("button-disabled", "18222f", "273344");
     skin.add("default", button);
     ScrollPane.ScrollPaneStyle scroll = new ScrollPane.ScrollPaneStyle();
     scroll.vScrollKnob = skin.newDrawable("white", Color.valueOf("42526aff"));
@@ -80,6 +82,34 @@ final class WorkspaceTheme implements Disposable {
     bar.knobBefore = skin.newDrawable("white", ACCENT);
     bar.knobBefore.setMinHeight(5);
     skin.add("default-horizontal", bar);
+  }
+
+  private void font(String name, String path, int size) {
+    FreeTypeFontGenerator generator =
+        new FreeTypeFontGenerator(Gdx.files.classpath("fonts/" + path));
+    try {
+      FreeTypeFontGenerator.FreeTypeFontParameter parameter =
+          new FreeTypeFontGenerator.FreeTypeFontParameter();
+      parameter.size = size;
+      parameter.minFilter = Texture.TextureFilter.Linear;
+      parameter.magFilter = Texture.TextureFilter.Linear;
+      skin.add(name, generator.generateFont(parameter), BitmapFont.class);
+    } finally {
+      generator.dispose();
+    }
+  }
+
+  private Drawable surface(String name, String fill, String border) {
+    Pixmap pixmap = new Pixmap(9, 9, Pixmap.Format.RGBA8888);
+    pixmap.setColor(Color.valueOf(border));
+    pixmap.fillRectangle(1, 0, 7, 9);
+    pixmap.fillRectangle(0, 1, 9, 7);
+    pixmap.setColor(Color.valueOf(fill));
+    pixmap.fillRectangle(1, 1, 7, 7);
+    Texture texture = new Texture(pixmap);
+    pixmap.dispose();
+    skin.add(name, texture);
+    return new NinePatchDrawable(new NinePatch(texture, 3, 3, 3, 3));
   }
 
   Label label(String text) {

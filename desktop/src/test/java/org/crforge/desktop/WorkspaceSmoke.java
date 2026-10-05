@@ -65,9 +65,30 @@ public class WorkspaceSmoke extends CRForgeGame {
         click("Step [.]", true);
         require(session.tick() == tick + 1, "step button advances once");
       }
+      if (frames == 6) click("Tile grid", true);
       if (frames == 7) {
+        require(find(stage().getRoot(), "Tile grid", true).isChecked(), "grid toggle is active");
+        capture("grid");
+        click("Tile grid", true);
         require(session.tick() == tick + 1, "step stays paused");
         click("Data details", true);
+      }
+      if (frames == 8) {
+        require(
+            !labels(stage().getRoot()).contains("Folder: "),
+            "metadata hides local folder by default");
+        click("Show folder", true);
+        require(
+            labels(stage().getRoot()).contains("Folder: "),
+            "folder is available on explicit request");
+        String previousClipboard = Gdx.app.getClipboard().getContents();
+        click("Copy", true);
+        String copied = Gdx.app.getClipboard().getContents();
+        require(
+            !copied.contains(versions.currentFolder().toAbsolutePath().toString()),
+            "copy omits local folder even when revealed");
+        Gdx.app.getClipboard().setContents(previousClipboard == null ? "" : previousClipboard);
+        click("Hide folder", true);
       }
       if (frames == 10) {
         capture("data-details");
@@ -128,6 +149,7 @@ public class WorkspaceSmoke extends CRForgeGame {
         clickArena(entity.x() / 18000f, entity.y() / 32000f);
       }
       if (frames == 30) {
+        capture("inspector");
         for (int i = 0; i < 10; i++)
           session.note("Event " + i + ": " + "wrapping detail ".repeat(24));
       }
@@ -143,10 +165,9 @@ public class WorkspaceSmoke extends CRForgeGame {
         com.badlogic.gdx.scenes.scene2d.ui.ScrollPane log =
             stage().getRoot().findActor("event-log");
         require(log.getScrollY() == 0, "new events preserve scroll position");
-        click("New events", true);
+        click("+ Latest", true);
         require(log.getScrollPercentY() == 1, "Latest resumes following events");
         require(labels(stage().getRoot()).contains("Witch #"), "inspection uses arena projection");
-        capture("inspector");
         session.halt("Smoke check: unsupported behavior");
         key(Input.Keys.T);
       }
@@ -276,6 +297,13 @@ public class WorkspaceSmoke extends CRForgeGame {
     var bounds =
         org.crforge.desktop.render.WorkspaceViewport.fit(
             0, 0, (int) arena.getWidth(), (int) arena.getHeight());
+    Vector2 arenaOrigin = arena.localToStageCoordinates(new Vector2());
+    Actor summary = stage().getRoot().findActor("session-summary");
+    Actor notice = stage().getRoot().findActor("status-notice");
+    float summaryY = summary.localToStageCoordinates(new Vector2()).y;
+    float noticeTop = notice.localToStageCoordinates(new Vector2(0, notice.getHeight())).y;
+    require(arenaOrigin.y + arena.getHeight() <= summaryY, "arena stays below summary: " + name);
+    require(arenaOrigin.y >= noticeTop, "arena stays above notice: " + name);
     System.out.println("ARENA " + name + ": " + bounds.width() + "x" + bounds.height());
     TextButton witch = find(stage().getRoot(), "Witch", false);
     if (witch != null) {

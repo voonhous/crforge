@@ -24,7 +24,7 @@ class BattleRendererTest {
   private static final TileMap MAP = TileMap.standard1v1();
 
   @Test
-  @DisplayName("the river is water, the bridges cross it, and each half takes its side's colour")
+  @DisplayName("the river and bridges stay distinct while both halves share a neutral ground")
   void arenaColours() {
     int river = riverRow();
     int water = -1;
@@ -38,39 +38,20 @@ class BattleRendererTest {
     }
     assertThat(water).as("a water cell on the river row").isNotNegative();
     assertThat(bridge).as("a bridge cell on the river row").isNotNegative();
-    assertThat(BattleRenderer.cellColor(MAP, water, river, true, ViewOrientation.STANDARD))
-        .isEqualTo(RenderConstants.COLOR_RIVER);
-    assertThat(BattleRenderer.cellColor(MAP, bridge, river, true, ViewOrientation.STANDARD))
-        .isEqualTo(RenderConstants.COLOR_BRIDGE);
-
-    // A cell in front of each king: the bottom half is blue's, the top half red's.
+    assertThat(ArenaPalette.ground(MAP.bits(water, river), true)).isEqualTo(ArenaPalette.WATER);
+    assertThat(ArenaPalette.ground(MAP.bits(bridge, river), true)).isEqualTo(ArenaPalette.BRIDGE);
     int middle = MAP.width() / 2;
-    assertThat(BattleRenderer.cellColor(MAP, middle, 10, false, ViewOrientation.STANDARD))
-        .isEqualTo(RenderConstants.COLOR_BLUE_ZONE);
-    assertThat(
-            BattleRenderer.cellColor(
-                MAP, middle, MAP.height() - 11, false, ViewOrientation.STANDARD))
-        .isEqualTo(RenderConstants.COLOR_RED_ZONE);
+    assertThat(ArenaPalette.ground(MAP.bits(middle, 10), false)).isEqualTo(ArenaPalette.GRASS);
+    assertThat(ArenaPalette.ground(MAP.bits(middle, MAP.height() - 11), false))
+        .isEqualTo(ArenaPalette.GRASS);
   }
 
   @Test
-  @DisplayName("flipped, side 0's half and bodies are red and side 1's are blue")
+  @DisplayName("flipped, side 0's bodies are red and side 1's are blue")
   void flippedColours() {
-    int middle = MAP.width() / 2;
-    // Side 0's half (the battle's low rows) is drawn red at the top, side 1's blue at the bottom.
-    assertThat(BattleRenderer.cellColor(MAP, middle, 10, false, ViewOrientation.FLIPPED))
-        .isEqualTo(RenderConstants.COLOR_RED_ZONE);
-    assertThat(
-            BattleRenderer.cellColor(
-                MAP, middle, MAP.height() - 11, false, ViewOrientation.FLIPPED))
-        .isEqualTo(RenderConstants.COLOR_BLUE_ZONE);
-
-    assertThat(BattleRenderer.sideColor(0, ViewOrientation.FLIPPED))
-        .isEqualTo(RenderConstants.COLOR_RED_ENTITY);
-    assertThat(BattleRenderer.sideColor(1, ViewOrientation.FLIPPED))
-        .isEqualTo(RenderConstants.COLOR_BLUE_ENTITY);
-    assertThat(BattleRenderer.sideColor(0, ViewOrientation.STANDARD))
-        .isEqualTo(RenderConstants.COLOR_BLUE_ENTITY);
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.FLIPPED)).isEqualTo(ArenaPalette.RED);
+    assertThat(BattleRenderer.sideColor(1, ViewOrientation.FLIPPED)).isEqualTo(ArenaPalette.BLUE);
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.STANDARD)).isEqualTo(ArenaPalette.BLUE);
 
     BattleFrame frame = BattleAdapter.frame(BattleSession.ladder(GameTables.loadConfigured()));
     for (EntityView tower : frame.entities()) {
@@ -80,24 +61,8 @@ class BattleRendererTest {
       boolean sideOne = tower.side() == 1;
       Color flipped = BattleRenderer.bodyColor(tower, ViewOrientation.FLIPPED);
       Color standing = BattleRenderer.bodyColor(tower, ViewOrientation.STANDARD);
-      if (tower.king()) {
-        assertThat(flipped)
-            .isEqualTo(
-                sideOne
-                    ? RenderConstants.COLOR_BLUE_CROWN_TOWER
-                    : RenderConstants.COLOR_RED_CROWN_TOWER);
-        assertThat(standing)
-            .isEqualTo(
-                sideOne
-                    ? RenderConstants.COLOR_RED_CROWN_TOWER
-                    : RenderConstants.COLOR_BLUE_CROWN_TOWER);
-      } else {
-        assertThat(flipped)
-            .isEqualTo(
-                sideOne
-                    ? RenderConstants.COLOR_BLUE_PRINCESS_TOWER
-                    : RenderConstants.COLOR_RED_PRINCESS_TOWER);
-      }
+      assertThat(flipped).isEqualTo(sideOne ? ArenaPalette.BLUE : ArenaPalette.RED);
+      assertThat(standing).isEqualTo(sideOne ? ArenaPalette.RED : ArenaPalette.BLUE);
     }
   }
 

@@ -8,7 +8,7 @@ import org.crforge.desktop.battle.EntityView;
 /** Text presentation of the currently pinned entity. */
 final class UnitInspector extends Label {
   UnitInspector(Skin skin) {
-    super("Choose Inspect, then click a unit.", skin);
+    super("Choose Inspect, then click a unit.", skin, "mono");
     setWrap(true);
   }
 
