@@ -188,6 +188,11 @@ public class BattleWorld implements HolderPasses {
    * dash landing; no row of 16.402.18 sets a death damage. The area still pushes its victims at
    * once, before their damage lands, so a victim the area kills is pushed too.
    *
+   * <p>It lands each victim's share of a projectile's area impact at the drain too (see {@link
+   * #dealProjectileAreaDamage(ProjectileEntity, WorldEntity, int, int)}), pushed at once as well.
+   * The share counts for the projectile's shooter, and the projectile's listening runs hear of it,
+   * as the drain deals it.
+   *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
   private static final Set<String> DIRECT_HIT_AT_DRAIN = Set.of("16.402.18");
@@ -363,10 +368,25 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * A hit the damage drain deals: a typed hit, or a direct hit or a share of a character's area on
-   * a version that queues them.
+   * One victim's share of a projectile's area impact waiting for the drain, on a data version that
+   * lands it there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int,
+   * int, int)} deals it at once, without a direction.
+   *
+   * @param projectile the projectile, standing at its aim
+   * @param victim the entity the area collected
+   * @param damage hit points the impact deals it, before its guards and the clamp to zero
+   * @param hitId the id the impact carries
    */
-  private sealed interface QueuedHit permits TypedHit, DirectHitDue, AreaHitDue {}
+  private record ProjectileAreaHitDue(
+      ProjectileEntity projectile, WorldEntity victim, int damage, int hitId)
+      implements QueuedHit {}
+
+  /**
+   * A hit the damage drain deals: a typed hit, or a direct hit or a share of a character's or a
+   * projectile's area on a version that queues them.
+   */
+  private sealed interface QueuedHit
+      permits TypedHit, DirectHitDue, AreaHitDue, ProjectileAreaHitDue {}
 
   /**
    * The hits dealt this tick that wait for the drain, in the order they were dealt: one queue, so a
@@ -1703,6 +1723,29 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.areaDamaged(tick, owner, area, outcome);
     }
+  }
+
+  /**
+   * Deals one victim's share of a projectile's area impact: at once, as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it without a
+   * direction, on a data version whose game deals it inside the impact; queued for the damage
+   * drain, in the order hits are dealt, on one whose game lands it there (see {@link
+   * #DIRECT_HIT_AT_DRAIN}). Dealt at the drain, the share counts for the projectile's shooter as it
+   * is then, and the projectile's listening runs hear of it there.
+   *
+   * @param projectile the projectile, standing at its aim
+   * @param victim the entity the area collected
+   * @param damage hit points the impact deals it, before its guards and the clamp to zero
+   * @param hitId the id the impact carries
+   * @return what the damage did to the victim; nothing yet for a share queued for the drain
+   */
+  public DamageResult dealProjectileAreaDamage(
+      ProjectileEntity projectile, WorldEntity victim, int damage, int hitId) {
+    if (directHitAtDrain) {
+      queuedHits.add(new ProjectileAreaHitDue(projectile, victim, damage, hitId));
+      return DamageResult.NOTHING;
+    }
+    return dealProjectileDamage(projectile, victim, damage, hitId, 0, 0);
   }
 
   /**
@@ -4550,8 +4593,9 @@ public class BattleWorld implements HolderPasses {
    * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit or a share of a character's area, on a data version that queues them: the damage
-   * dealt as it is dealt at once, with its reflect, its observers, its death or the reference drop.
+   * direct hit or a share of a character's or a projectile's area, on a data version that queues
+   * them: the damage dealt as it is dealt at once, with its reflect, its observers, its death or
+   * the reference drop.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -4568,6 +4612,11 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof AreaHitDue area) {
         dealAreaDamageNow(area.attacker(), area.victim(), area.damage(), area.hitId());
+        continue;
+      }
+      if (queued instanceof ProjectileAreaHitDue share) {
+        dealProjectileDamage(
+            share.projectile(), share.victim(), share.damage(), share.hitId(), 0, 0);
         continue;
       }
       TypedHit hit = (TypedHit) queued;
@@ -7419,7 +7468,8 @@ public class BattleWorld implements HolderPasses {
   @Override
   public void afterPostHooks() {
     // The queued hits land after every post-hook and before phase 3: the typed hits and, on a data
-    // version that queues them, the direct hits. The observers see them landed.
+    // version that queues them, the direct hits and the shares of an area. The observers see them
+    // landed.
     drainTypedHits();
     List<WorldEntity> snapshotOfPresent = present();
     List<ProjectileEntity> snapshotOfProjectiles = projectiles();

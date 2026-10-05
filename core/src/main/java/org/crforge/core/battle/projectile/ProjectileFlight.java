@@ -492,7 +492,9 @@ final class ProjectileFlight {
 
   /**
    * The impact of a projectile with a radius: everything in the circle around the aim takes the
-   * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it.
+   * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it. On
+   * a data version whose game queues it, each victim's share lands at the damage drain, after every
+   * post-hook, while its push starts at once.
    */
   private static void areaImpact(
       ProjectileEntity p,
@@ -558,9 +560,9 @@ final class ProjectileFlight {
 
           @Override
           public DamageResult damage(TargetView victim, int dealt, int id) {
-            // The area hands the damage on without a direction.
-            return world.dealProjectileDamage(
-                p, world.entityOf(victim.getEntity()), dealt, id, 0, 0);
+            // The area hands the damage on without a direction, at once or queued for the damage
+            // drain, as the data version's game deals it.
+            return world.dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
           }
 
           @Override
