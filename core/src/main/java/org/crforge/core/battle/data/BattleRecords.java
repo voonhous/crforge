@@ -261,9 +261,8 @@ public final class BattleRecords {
    * The columns of a unit the battle does not model, whatever it does: a unit whose row sets one is
    * refused as it is created. A shield's push as it breaks, hiding before the first hit, a buff at
    * a share of its hit points, a dash's contact damage, fixed distance, area effect and closing
-   * action, a limit on the elixir a collector makes, a spawner's launches, and its second and third
-   * characters. The action a completed charge runs is refused apart, unless it is of a class whose
-   * run is established.
+   * action, a limit on the elixir a collector makes, and a spawner's launches. The action a
+   * completed charge runs is refused apart, unless it is of a class whose run is established.
    */
   private static final List<String> UNMODELLED_UNIT_COLUMNS =
       List.of(
@@ -275,9 +274,7 @@ public final class BattleRecords {
           "AreaEffectOnDash",
           "OnAfterDashAction",
           "ManaGenerateLimit",
-          "SpawnProjectile",
-          "SpawnCharacter2",
-          "SpawnCharacter3");
+          "SpawnProjectile");
 
   /**
    * The columns of a spawner the battle does not model, refused only for a unit whose spawner makes
@@ -756,6 +753,10 @@ public final class BattleRecords {
             .loadFirstHit(row.bool("LoadFirstHit"))
             .spawnCharacter(
                 row.string("SpawnCharacter").isEmpty() ? null : row.string("SpawnCharacter"))
+            .spawnCharacter2(
+                row.string("SpawnCharacter2").isEmpty() ? null : row.string("SpawnCharacter2"))
+            .spawnCharacter3(
+                row.string("SpawnCharacter3").isEmpty() ? null : row.string("SpawnCharacter3"))
             .spawnNumber(row.intValue("SpawnNumber"))
             .spawnIntervalMs(row.intValue("SpawnInterval"))
             .spawnPauseTimeMs(row.intValue("SpawnPauseTime"))
@@ -1010,6 +1011,18 @@ public final class BattleRecords {
       }
       if (row.intValue("SpawnNumber") == 0 && row.intValue("SpawnInterval") == 0) {
         columns.add("SpawnCharacter");
+      }
+      // The waves take the rows in turn, as many turns as rows are set besides the first; a third
+      // row without a second would make the second wave of no row, which no row sets.
+      if (sets(row, "SpawnCharacter3") && !sets(row, "SpawnCharacter2")) {
+        columns.add("SpawnCharacter3");
+      }
+    } else {
+      // A second or third row without a first, which no row sets, is not held.
+      for (String column : List.of("SpawnCharacter2", "SpawnCharacter3")) {
+        if (sets(row, column)) {
+          columns.add(column);
+        }
       }
     }
     for (String tag : row.string("GameTagsToSet").split(",")) {

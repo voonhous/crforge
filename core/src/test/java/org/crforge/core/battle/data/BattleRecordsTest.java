@@ -928,9 +928,11 @@ class BattleRecordsTest {
     assertThat(rider.spawnAttachMaxRotation()).isZero();
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
-    // The listed columns first, then those the row sets that nothing reads, in name order.
-    assertThat(records.unit("SuperWitch").unmodelledColumns())
-        .containsExactly("SpawnCharacter2", "SpawnCharacterLevelIndex2");
+    // A second spawn row is read; the level this data gives it is a column nothing reads.
+    UnitData superWitch = records.unit("SuperWitch");
+    assertThat(superWitch.spawnCharacter2()).isEqualTo("Bat");
+    assertThat(superWitch.spawnCharacter3()).isNull();
+    assertThat(superWitch.unmodelledColumns()).containsExactly("SpawnCharacterLevelIndex2");
   }
 
   @Test

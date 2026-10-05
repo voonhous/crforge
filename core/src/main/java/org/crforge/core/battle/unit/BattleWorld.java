@@ -2666,12 +2666,13 @@ public class BattleWorld implements HolderPasses {
    * its own.
    *
    * @param spawner the character whose spawner fires
+   * @param row the row the firing makes: the spawn character whose turn it is
    * @param count how many children the firing makes
    * @param radius the ring's radius, or 0 to place in front
    */
-  void liveSpawn(CharacterEntity spawner, int count, int radius) {
+  void liveSpawn(CharacterEntity spawner, String row, int count, int radius) {
     UnitData data = spawner.getData();
-    UnitData child = spawnedRow(data.spawnCharacter());
+    UnitData child = spawnedRow(row);
     if (radius != 0 && data.deathSpawnMinRadius() != 0) {
       throw new UnsupportedOperationException(
           spawner.name()
