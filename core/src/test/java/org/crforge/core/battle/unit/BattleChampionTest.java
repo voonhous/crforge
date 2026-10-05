@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 /**
  * A champion's ability where the reference runs do not take it: a second play of the champion card
  * while the first copy lives, a command outside a match, a clone of a unit carrying a buff that is
- * not cloned, and a deck with two champion cards.
+ * not cloned, and decks with two and three champion cards.
  */
 class BattleChampionTest {
 
@@ -147,9 +147,10 @@ class BattleChampionTest {
   }
 
   @Test
-  @DisplayName("a deck with two champion cards, which a Ladder deck never holds, is refused")
-  void aDeckWithTwoChampionsIsRefused() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+  @DisplayName(
+      "a deck with two champion cards binds both slots, walked from the last card: the later card"
+          + " to slot 1, the earlier to slot 2, whose champion's ability then passes")
+  void aDeckWithTwoChampionsBindsBothSlots() {
     List<String> deck =
         List.of(
             "ArcherQueen",
@@ -160,10 +161,52 @@ class BattleChampionTest {
             "Skeletons",
             "Skeletons",
             "Skeletons");
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0; match == null || !inHand(match, "ArcherQueen"); word++) {
+      battle = new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+      match = battle.startLadderMatch(deck, KNIGHTS, word, 0);
+    }
+    ChampionController first = battle.getWorld().kingTower(0).championSlot(1);
+    ChampionController second = battle.getWorld().kingTower(0).championSlot(2);
+    assertThat(first.getChampion().name()).isEqualTo("GoldenKnight");
+    assertThat(first.getDeckIndex()).isEqualTo(1);
+    assertThat(second.getChampion().name()).isEqualTo("ArcherQueen");
+    assertThat(second.getDeckIndex()).isZero();
+
+    // The Archer Queen's play is followed by the second slot, which answers her ability.
+    playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q");
+    CharacterEntity queen = battle.getPlays().get(0).units().get(0);
+    assertThat(second.getDeployIndex()).isEqualTo(queen.getDeployIndex());
+    int used = afterDeployWithElixir(battle, match);
+    battle.useAbility(used, 0, "q_0", "a");
+    run(battle, used);
+    assertThat(lastUse(battle).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(lastUse(battle).outcome().requested()).containsExactly(queen);
+    assertThat(second.getCooldownMs()).isPositive();
+    assertThat(first.getCooldownMs()).isZero();
+  }
+
+  @Test
+  @DisplayName("a deck with three champion cards, more than a king's two slots, is refused")
+  void aDeckWithThreeChampionsIsRefused() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    List<String> deck =
+        List.of(
+            "ArcherQueen",
+            "GoldenKnight",
+            "MightyMiner",
+            "Skeletons",
+            "Skeletons",
+            "Skeletons",
+            "Skeletons",
+            "Skeletons");
 
     assertThatThrownBy(() -> battle.startLadderMatch(deck, KNIGHTS, 0, 0))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("side 0's deck holds 2 champion cards, which no reference holds");
+        .hasMessage(
+            "side 0's deck holds 3 champion cards, more than the king's two slots, which no"
+                + " reference holds");
   }
 
   /** Whether a card is in one of side 0's hand slots. */
