@@ -3,6 +3,7 @@ package org.crforge.core.pathfinding.move;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -28,6 +29,9 @@ import org.junit.jupiter.api.Test;
  */
 class AvoidanceHandlerTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final CellGrid GRID =
       new CellGrid(TileMap.standard1v1(), true, PathfindingGlobals.PATHFINDING_BUILDING_COST);
 
@@ -48,6 +52,7 @@ class AvoidanceHandlerTest {
   void setUp() {
     component = MovementState.forSide(0, 3500, 10000);
     owner = new GridEntity();
+    owner.setFlagBits(BITS);
     owner.setId(1);
     owner.setX(3500);
     owner.setY(10000);
@@ -63,6 +68,7 @@ class AvoidanceHandlerTest {
   /** A neighbour with no movement component of its own: an obstacle to steer around. */
   private static GridEntity obstacle(int id, int x, int y) {
     GridEntity entity = new GridEntity();
+    entity.setFlagBits(BITS);
     entity.setId(id);
     entity.setX(x);
     entity.setY(y);
@@ -179,7 +185,7 @@ class AvoidanceHandlerTest {
   void aMoverFlaggedAsAnObstacleDropsTheWaypoint() {
     component.setRoute(Route.of(GOAL_NODE, NEXT_NODE));
     GridEntity other = mover(2, 3750, 10750, 0, 256, GridEntityState.MOVING);
-    other.setFlags(EntityFlags.AVOIDANCE_AS_OBSTACLE);
+    other.setFlags(BITS.avoidanceAsObstacle());
 
     run(List.of(other));
 
@@ -306,7 +312,7 @@ class AvoidanceHandlerTest {
   @DisplayName("a unit taken out of physical interaction avoids nothing at all")
   void aUnitOutOfPhysicalInteractionDoesNothing() {
     component.setRoute(Route.of(GOAL_NODE, NEXT_NODE));
-    owner.setFlags(EntityFlags.DISABLE_PHYSICAL);
+    owner.setFlags(BITS.disablePhysical());
 
     run(List.of(obstacle(2, 3750, 10750)));
 
@@ -318,7 +324,7 @@ class AvoidanceHandlerTest {
   @DisplayName("a unit flagged as an obstacle itself avoids nothing at all")
   void aUnitFlaggedAsAnObstacleDoesNothing() {
     component.setRoute(Route.of(GOAL_NODE, NEXT_NODE));
-    owner.setFlags(EntityFlags.AVOIDANCE_AS_OBSTACLE);
+    owner.setFlags(BITS.avoidanceAsObstacle());
 
     run(List.of(obstacle(2, 3750, 10750)));
 
@@ -331,7 +337,7 @@ class AvoidanceHandlerTest {
   void neighboursThatTakeNoPartAreSkipped() {
     component.setRoute(Route.of(GOAL_NODE, NEXT_NODE));
     GridEntity ghost = obstacle(2, 3750, 10750);
-    ghost.setFlags(EntityFlags.DISABLE_PHYSICAL);
+    ghost.setFlags(BITS.disablePhysical());
     run(List.of(ghost));
     assertThat(component.getRoute().toArray()).containsExactly(GOAL_NODE, NEXT_NODE);
     assertThat(component.getAvoidanceBlend()).isZero();

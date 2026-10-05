@@ -39,6 +39,9 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class BattleWizardHeroTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String HERO = "WizardHero";
@@ -259,7 +262,7 @@ class BattleWizardHeroTest {
     int before = tower.getHitPoints().getHitPoints();
     scene.steps(1);
     assertThat(tower.getHitPoints().getHitPoints()).as("the damage area's hit").isLessThan(before);
-    assertThat(tower.getView().getFlags() & EntityFlags.NO_PUSHED_BY_ALLY).isNotZero();
+    assertThat(tower.getView().getFlags() & BITS.noPushedByAlly()).isNotZero();
   }
 
   @Test

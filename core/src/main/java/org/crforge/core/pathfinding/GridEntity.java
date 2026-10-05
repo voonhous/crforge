@@ -83,9 +83,9 @@ public class GridEntity {
   private int state;
 
   /**
-   * Behaviour flags, a 64-bit word. Bits up to 58 are in use, so this must stay a {@code long}: the
-   * high bits carry the movement and targeting restrictions such as "may not be pushed by an ally"
-   * and "may not move".
+   * Behaviour flags, a 64-bit word, one bit per game tag as {@link #flagBits} numbers them. The
+   * tags table has more than 32 rows, so this must stay a {@code long}: the high bits carry the
+   * movement and targeting restrictions such as "may not be pushed by an ally" and "may not move".
    */
   private long flags;
 
@@ -94,6 +94,13 @@ public class GridEntity {
    * #flags}.
    */
   private long pendingFlags;
+
+  /**
+   * Which bit of {@link #flags} and {@link #pendingFlags} each flag is, as the battle's game tags
+   * table numbers the tags; every entity of a battle shares the battle's. An entity made outside a
+   * battle has {@link EntityFlags#NONE}, under which no flag has a bit.
+   */
+  private EntityFlags flagBits = EntityFlags.NONE;
 
   /** Radius, in game units, of the circle the entity occupies for collision and for the overlay. */
   private int collisionRadius;

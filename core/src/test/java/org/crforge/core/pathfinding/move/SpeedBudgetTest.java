@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.move;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ class SpeedBudgetTest {
   private static final SpeedConfig CONFIG = SpeedConfig.forGroundUnit(KNIGHT_SPEED);
 
   private static SpeedInputs inputs(int state) {
-    return new SpeedInputs(0L, state, false, 0, 0, 0, 0, new int[0], true, -1);
+    return new SpeedInputs(0L, EntityFlags.NONE, state, false, 0, 0, 0, 0, new int[0], true, -1);
   }
 
   @Test
@@ -51,7 +52,8 @@ class SpeedBudgetTest {
   @Test
   void aDashWindUpStopsTheUnitEvenWhileMoving() {
     SpeedInputs windingUp =
-        new SpeedInputs(0L, GridEntityState.MOVING, true, 1, 0, 0, 0, new int[0], true, -1);
+        new SpeedInputs(
+            0L, EntityFlags.NONE, GridEntityState.MOVING, true, 1, 0, 0, 0, new int[0], true, -1);
     assertThat(SpeedBudget.speedBudget(windingUp, CONFIG, SpeedGlobals.standard())).isZero();
     assertThat(MovementGates.facingGate(windingUp)).isZero();
     assertThat(MovementGates.avoidanceGate(windingUp)).isZero();
@@ -61,7 +63,18 @@ class SpeedBudgetTest {
   @Test
   void aSlowModifierScalesTheBudgetDown() {
     SpeedInputs slowed =
-        new SpeedInputs(0L, GridEntityState.MOVING, false, 0, 0, 0, 0, new int[] {-35}, true, -1);
+        new SpeedInputs(
+            0L,
+            EntityFlags.NONE,
+            GridEntityState.MOVING,
+            false,
+            0,
+            0,
+            0,
+            0,
+            new int[] {-35},
+            true,
+            -1);
     assertThat(SpeedBudget.speedBudget(slowed, CONFIG, SpeedGlobals.standard())).isEqualTo(39);
   }
 
@@ -76,6 +89,7 @@ class SpeedBudgetTest {
     SpeedInputs charged =
         new SpeedInputs(
             0L,
+            EntityFlags.NONE,
             GridEntityState.MOVING,
             false,
             0,

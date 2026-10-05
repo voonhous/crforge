@@ -2,7 +2,6 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 
 /**
@@ -48,7 +47,7 @@ public final class MovementGates {
    * movement-blocking countdown runs.
    */
   public static int avoidanceGate(SpeedInputs entity) {
-    if ((entity.flags() & EntityFlags.NO_CHECK_AVOIDANCE) != 0) {
+    if ((entity.flags() & entity.flagBits().noCheckAvoidance()) != 0) {
       return 0;
     }
     if (GridEntityState.inMask(entity.state(), GridEntityState.AVOIDANCE_GATE_MASK)) {
@@ -77,7 +76,7 @@ public final class MovementGates {
     if (SpeedBudget.targetingActive(entity)) {
       return 0;
     }
-    if ((entity.flags() & EntityFlags.NO_CHECK_COLLISIONS) != 0) {
+    if ((entity.flags() & entity.flagBits().noCheckCollisions()) != 0) {
       return 0;
     }
     if (entity.blockCountdownMs() > 0) {

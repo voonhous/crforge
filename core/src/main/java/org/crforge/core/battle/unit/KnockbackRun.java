@@ -6,7 +6,6 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
 
@@ -76,17 +75,17 @@ final class KnockbackRun extends ActionInstance {
       throw new UnsupportedOperationException(
           row.name() + " passes its cause on to its landing action but has none, not modelled");
     }
-    addTags(EntityFlags.ABILITY_POSTPONED);
+    addTags(unit.getView().getFlagBits().abilityPostponed());
     counter = row.getDurationMs();
     unit.startLayering();
-    unit.raiseWatched(unit.world().forceIsAir() | EntityFlags.DISABLE_PHYSICAL);
+    unit.raiseWatched(unit.world().forceIsAir() | unit.getView().getFlagBits().disablePhysical());
     unit.world().knockbackStarted(unit, row.name(), phase, instigator, counter);
   }
 
   @Override
   protected void update(ActionHolder holder) {
     int before = counter;
-    long tags = EntityFlags.DISABLE_PHYSICAL;
+    long tags = unit.getView().getFlagBits().disablePhysical();
     if (counter > AIR_UNTIL) {
       tags |= unit.world().forceIsAir();
     }

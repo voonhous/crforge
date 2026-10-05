@@ -197,6 +197,7 @@ public class RouteOverlayRenderer {
     SpeedInputs inputs =
         new SpeedInputs(
             gridEntity.getFlags(),
+            gridEntity.getFlagBits(),
             gridEntity.getState(),
             true,
             targeting.getDashWindupMs(),

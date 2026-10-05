@@ -82,8 +82,8 @@ public final class AvoidanceHandler {
       MovementQueries queries,
       MovementChain chain) {
     long flags = owner.getFlags();
-    if ((flags & EntityFlags.DISABLE_PHYSICAL) != 0
-        || (flags & EntityFlags.AVOIDANCE_AS_OBSTACLE) != 0) {
+    EntityFlags bits = owner.getFlagBits();
+    if ((flags & bits.disablePhysical()) != 0 || (flags & bits.avoidanceAsObstacle()) != 0) {
       return;
     }
     int dirX = owner.getDirX();
@@ -119,14 +119,15 @@ public final class AvoidanceHandler {
       if ((queries.neighbourAcceptsContact(other) & 1) == 0) {
         continue;
       }
-      if ((other.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
+      if ((other.getFlags() & other.getFlagBits().disablePhysical()) != 0) {
         continue;
       }
       // Positive when the neighbour lies to one side of the unit's facing, negative on the other.
       int cross = dirX * (ownerY - other.getY()) + dirY * (other.getX() - ownerX);
 
       boolean moving =
-          other.isMovementActive() && (other.getFlags() & EntityFlags.AVOIDANCE_AS_OBSTACLE) == 0;
+          other.isMovementActive()
+              && (other.getFlags() & other.getFlagBits().avoidanceAsObstacle()) == 0;
       if (moving) {
         int dot = other.getDirX() * dirX + other.getDirY() * dirY;
         chain.mark("neighbour_state_override");

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -14,6 +15,9 @@ import org.junit.jupiter.api.Test;
 
 /** Where a dash is aimed, which way the dasher faces, and the state it asks for. */
 class DashStartTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   private static final int WIDTH = 36;
   private static final int HEIGHT = 64;
@@ -30,6 +34,7 @@ class DashStartTest {
   /** A Bandit-sized dasher, radius 600, facing up the arena. */
   private static GridEntity dasherAt(int x, int y) {
     GridEntity owner = new GridEntity();
+    owner.setFlagBits(BITS);
     owner.setX(x);
     owner.setY(y);
     owner.setCollisionRadius(600);
@@ -64,7 +69,7 @@ class DashStartTest {
     assertThat(owner.getDirX()).isEqualTo(1);
     assertThat(owner.getDirY()).isEqualTo(256);
     assertThat(asked).containsExactly(GridEntityState.DASHING);
-    assertThat(owner.getPendingFlags() & EntityFlags.DASHING).isNotZero();
+    assertThat(owner.getPendingFlags() & BITS.dashing()).isNotZero();
     assertThat(owner.getX()).as("the start moves nothing").isEqualTo(3665);
   }
 
@@ -118,7 +123,7 @@ class DashStartTest {
   @DisplayName("a dasher under the no-dash flag does nothing at all")
   void noDashStopsEverything() {
     GridEntity owner = dasherAt(3665, 10965);
-    owner.setFlags(EntityFlags.NO_DASH);
+    owner.setFlags(BITS.noDash());
     MovementState movement = MovementState.forSide(0, 3665, 10965);
     movement.setRoute(Route.of(1159, 1123));
 

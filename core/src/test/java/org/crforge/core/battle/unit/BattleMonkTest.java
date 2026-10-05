@@ -21,14 +21,16 @@ import org.junit.jupiter.api.Test;
  */
 class BattleMonkTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /** Long enough for a placed Monk to deploy, cast and see its follow-up state out. */
   private static final int TICKS = 300;
 
   /** The two tags the Monk carries in its follow-up state. */
-  private static final long TAGS =
-      EntityFlags.AVOIDANCE_AS_OBSTACLE | EntityFlags.NO_MOVE_ALLOW_ATTRACT;
+  private static final long TAGS = BITS.avoidanceAsObstacle() | BITS.noMoveAllowAttract();
 
   /** A Monk placed for the bottom side, standing where it deploys, with what its ability did. */
   private static final class Scene {

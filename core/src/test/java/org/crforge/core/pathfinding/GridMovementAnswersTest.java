@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.move.MovementConfig;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.SpeedConfig;
@@ -21,6 +22,9 @@ import org.junit.jupiter.api.Test;
  * read them - the dash in particular - belong to units the driver does not manage yet.
  */
 class GridMovementAnswersTest {
+
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   /** Attack range column of the unit under test, in game units. */
   private static final int RANGE = 1200;
@@ -66,7 +70,7 @@ class GridMovementAnswersTest {
     GridUnitState hovering =
         unitWithReferenceAt(null, MovementConfig.forGroundUnit().withHovering(true));
     assertThat(answersFor(hovering).hovering()).isEqualTo(1);
-    for (long tag : new long[] {EntityFlags.FORCE_IS_AIR, EntityFlags.FORCE_IS_GROUND}) {
+    for (long tag : new long[] {BITS.forceIsAir(), BITS.forceIsGround()}) {
       hovering.entity().setFlags(tag);
       assertThat(answersFor(hovering).hovering()).isZero();
     }
@@ -93,6 +97,7 @@ class GridMovementAnswersTest {
   /** The same unit with movement columns of its own. */
   private static GridUnitState unitWithReferenceAt(Integer distance, MovementConfig movement) {
     GridEntity owner = new GridEntity();
+    owner.setFlagBits(BITS);
     owner.setX(0);
     owner.setY(0);
     owner.setCollisionRadius(UNIT_RADIUS);
@@ -104,6 +109,7 @@ class GridMovementAnswersTest {
     targeting.setMovementComponentActive(true);
     if (distance != null) {
       GridEntity target = new GridEntity();
+      target.setFlagBits(BITS);
       target.setX(0);
       target.setY(distance);
       target.setCollisionRadius(TARGET_RADIUS);

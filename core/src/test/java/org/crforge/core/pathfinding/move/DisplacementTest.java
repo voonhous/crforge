@@ -3,6 +3,8 @@ package org.crforge.core.pathfinding.move;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -22,6 +24,9 @@ import org.junit.jupiter.api.Test;
  */
 class DisplacementTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final CellGrid GRID =
       new CellGrid(TileMap.standard1v1(), true, PathfindingGlobals.PATHFINDING_BUILDING_COST);
 
@@ -38,6 +43,7 @@ class DisplacementTest {
     component.setRouteDirX(81);
     component.setRouteDirY(243);
     owner = new GridEntity();
+    owner.setFlagBits(BITS);
     owner.setX(3500);
     owner.setY(10000);
     owner.setDirX(0);
@@ -209,7 +215,7 @@ class DisplacementTest {
     displace(3250, 10250, 60, 1);
 
     assertThat(component.getChargeProgress()).isEqualTo(10590);
-    assertThat(owner.getPendingFlags()).isEqualTo(1L << 3);
+    assertThat(owner.getPendingFlags()).isEqualTo(BITS.charging());
   }
 
   @Test

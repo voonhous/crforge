@@ -3,7 +3,6 @@ package org.crforge.core.pathfinding.move;
 import java.util.List;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
-import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -89,10 +88,10 @@ public final class PushPass {
     if ((ContactRule.collides(owner) & 1) == 0) {
       return;
     }
-    if ((owner.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
+    if ((owner.getFlags() & owner.getFlagBits().disablePhysical()) != 0) {
       return;
     }
-    if ((owner.getFlags() & EntityFlags.AVOIDANCE_AS_OBSTACLE) != 0) {
+    if ((owner.getFlags() & owner.getFlagBits().avoidanceAsObstacle()) != 0) {
       return;
     }
     int ownerX = owner.getX();
@@ -106,8 +105,8 @@ public final class PushPass {
       return;
     }
     int staticRadiusTerm = Math.min(radius, STATIC_RADIUS_CLAMP);
-    boolean noEnemyPush = (owner.getFlags() & EntityFlags.NO_PUSHED_BY_ENEMY) != 0;
-    boolean noAllyPush = (owner.getFlags() & EntityFlags.NO_PUSHED_BY_ALLY) != 0;
+    boolean noEnemyPush = (owner.getFlags() & owner.getFlagBits().noPushedByEnemy()) != 0;
+    boolean noAllyPush = (owner.getFlags() & owner.getFlagBits().noPushedByAlly()) != 0;
     int staticNeighbours = 0;
 
     for (GridEntity other : others) {
@@ -121,7 +120,7 @@ public final class PushPass {
       if ((ContactRule.collides(other) & 1) == 0) {
         continue;
       }
-      if ((other.getFlags() & EntityFlags.DISABLE_PHYSICAL) != 0) {
+      if ((other.getFlags() & other.getFlagBits().disablePhysical()) != 0) {
         continue;
       }
       chain.mark("neighbour_alive");
@@ -136,12 +135,12 @@ public final class PushPass {
         if (noEnemyPush) {
           continue;
         }
-        mask = EntityFlags.NO_PUSHED_BY_ENEMY;
+        mask = other.getFlagBits().noPushedByEnemy();
       } else {
         if (noAllyPush) {
           continue;
         }
-        mask = EntityFlags.NO_PUSHED_BY_ALLY;
+        mask = other.getFlagBits().noPushedByAlly();
       }
       int massTerm = (other.getFlags() & mask) != 0 ? -1 : otherMass;
       // Static means without a movement component at all: a unit waiting to deploy is not static.

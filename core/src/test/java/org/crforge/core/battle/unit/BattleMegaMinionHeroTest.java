@@ -26,6 +26,9 @@ import org.junit.jupiter.api.Test;
  */
 class BattleMegaMinionHeroTest {
 
+  /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
+  private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String HERO = "MegaMinionHero";
@@ -68,7 +71,7 @@ class BattleMegaMinionHeroTest {
     int deploying = 0;
     while (hero.getView().getState() == GridEntityState.DEPLOYING) {
       assertThat(runs(hero)).contains(MARK, HAND_OVER);
-      assertThat(hero.getView().getFlags() & EntityFlags.ABILITY_DISABLED).isNotZero();
+      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
       // The hand-over writes the disabled state for the step, which wins the working out.
       assertThat(slot.getState()).isEqualTo(ChampionController.DISABLED);
       deploying++;
@@ -78,7 +81,7 @@ class BattleMegaMinionHeroTest {
     for (int i = 0; i < 80; i++) {
       step(battle);
       assertThat(runs(hero)).contains(MARK, HAND_OVER);
-      assertThat(hero.getView().getFlags() & EntityFlags.ABILITY_DISABLED).isNotZero();
+      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
     }
   }
 
@@ -95,7 +98,7 @@ class BattleMegaMinionHeroTest {
     int limit = tick + 60;
     while (mark(hero).target() == null) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      assertThat(hero.getView().getFlags() & EntityFlags.ABILITY_DISABLED).isNotZero();
+      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
       step(battle);
     }
     CharacterEntity knight = named(battle, "Knight").get(0);
@@ -103,7 +106,7 @@ class BattleMegaMinionHeroTest {
     // The pick's action runs on the hero in its next pending pass, the Knight its cause, and puts
     // the bot buff on the Knight.
     step(battle);
-    assertThat(hero.getView().getFlags() & EntityFlags.ABILITY_DISABLED).isZero();
+    assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isZero();
     List<BuffInstance> buffs =
         knight.getBuffs().items().stream()
             .filter(buff -> buff.getBuff().name().equals(BOT_BUFF))
@@ -114,7 +117,7 @@ class BattleMegaMinionHeroTest {
     for (int i = 0; i < 40; i++) {
       step(battle);
       assertThat(mark(hero).target().id()).isEqualTo(knight.getId());
-      assertThat(hero.getView().getFlags() & EntityFlags.ABILITY_DISABLED).isZero();
+      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isZero();
       // A stacking buff from the same parent is not listed twice.
       assertThat(
               knight.getBuffs().items().stream().filter(b -> b.getBuff().name().equals(BOT_BUFF)))
@@ -160,11 +163,11 @@ class BattleMegaMinionHeroTest {
     CharacterEntity hero = named(battle, HERO).get(0);
     CharacterEntity knight = launchedAtKnight(battle, hero);
     long warpTags =
-        EntityFlags.NO_ATTACK
-            | EntityFlags.DISABLE_PHYSICAL
-            | EntityFlags.NO_DAMAGE
-            | EntityFlags.UNTARGETABLE
-            | EntityFlags.WARP;
+        BITS.noAttack()
+            | BITS.disablePhysical()
+            | BITS.noDamage()
+            | BITS.untargetable()
+            | BITS.warp();
     // The launch step ran the warp's first update: its tags are in the word from the next step.
     assertThat(hero.getView().getPendingFlags() & warpTags).isEqualTo(warpTags);
     step(battle);

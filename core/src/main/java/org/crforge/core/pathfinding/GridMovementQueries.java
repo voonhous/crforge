@@ -200,7 +200,8 @@ public final class GridMovementQueries implements MovementQueries {
    * tag word, else as its row says.
    */
   private boolean hovers() {
-    long forced = EntityFlags.FORCE_IS_AIR | EntityFlags.FORCE_IS_GROUND;
+    EntityFlags bits = unit.entity().getFlagBits();
+    long forced = bits.forceIsAir() | bits.forceIsGround();
     return (unit.entity().getFlags() & forced) == 0 && unit.movementConfig().hovering();
   }
 
@@ -238,6 +239,7 @@ public final class GridMovementQueries implements MovementQueries {
     TargetingState targeting = unit.targeting();
     return new SpeedInputs(
         entity.getFlags(),
+        entity.getFlagBits(),
         entity.getState(),
         true,
         targeting.getDashWindupMs(),

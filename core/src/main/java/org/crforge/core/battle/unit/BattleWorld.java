@@ -440,6 +440,12 @@ public class BattleWorld implements HolderPasses {
   /** The battle's action rows, from the tables it was loaded with. */
   @Getter private ActionRows actions;
 
+  /**
+   * Which bit of an entity's tag word each flag is, as the loaded game tags table numbers the tags;
+   * every entity of the battle shares it. No flag has a bit until the tables are loaded.
+   */
+  @Getter private EntityFlags flagBits = EntityFlags.NONE;
+
   /** How many characters the battle has made, which a summon's name carries. */
   private int charactersMade;
 
@@ -454,6 +460,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void load(GameTables tables) {
     declare(tables);
+    this.flagBits = EntityFlags.of(tables);
     this.records = new BattleRecords(tables);
     this.actions = new ActionRows(tables, records);
     this.movementGlobals =
@@ -2305,7 +2312,7 @@ public class BattleWorld implements HolderPasses {
                 unit.abilityPending(),
                 unit.abilityWarningCountdown(),
                 unit.getView().getFlags()
-                    & (EntityFlags.ABILITY_DISABLED | EntityFlags.ABILITY_COOLDOWN_PAUSED),
+                    & (flagBits.abilityDisabled() | flagBits.abilityCooldownPaused()),
                 unit.isClone()));
       }
     }
@@ -4559,7 +4566,8 @@ public class BattleWorld implements HolderPasses {
               + source.getData().name()
               + " scales by its source's level or runs an action on its source, not modelled");
     }
-    boolean noDamage = (target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0;
+    boolean noDamage =
+        (target.getView().getFlags() & target.getView().getFlagBits().noDamage()) != 0;
     int amount =
         type.pipeline(hit.amount(), noDamage, false, null, 0, target.getBuffs()::damageReduction);
     int damageId = type.acquireDamageId() ? nextHitId() : 0;
@@ -4589,7 +4597,7 @@ public class BattleWorld implements HolderPasses {
   private void drainAreaDamage(TypedHit hit) {
     WorldEntity target = hit.target();
     AreaEffectEntity source = hit.areaSource();
-    if ((target.getView().getFlags() & EntityFlags.NO_DAMAGE) != 0) {
+    if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) != 0) {
       return;
     }
     int amount =
@@ -4620,7 +4628,8 @@ public class BattleWorld implements HolderPasses {
    */
   private static int pipeline(TypedHit hit) {
     WorldEntity source = hit.source();
-    boolean noDamage = (hit.target().getView().getFlags() & EntityFlags.NO_DAMAGE) != 0;
+    boolean noDamage =
+        (hit.target().getView().getFlags() & hit.target().getView().getFlagBits().noDamage()) != 0;
     if (source == null) {
       if (hit.type().enableLevelScaling()) {
         throw new UnsupportedOperationException(
@@ -6036,17 +6045,22 @@ public class BattleWorld implements HolderPasses {
   /** The not-placeable value alone, which a cell blocks a roll's destination with. */
   private static final int ROLL_BLOCKING_CELL = TileMap.NOT_PLACEABLE_BIT;
 
-  /** The tags a capture's drag raises on its unit for one step. */
-  static final long CAPTURE_TAGS =
-      EntityFlags.NO_DASH
-          | EntityFlags.BUILDING_DEATH_SPAWN_FIND_LOCATION
-          | EntityFlags.ABILITY_DISABLED
-          | EntityFlags.NO_REFLECTED_ATTACK
-          | EntityFlags.CAPTURED;
+  /**
+   * The tags a capture's drag raises on its unit for one step. NO_REFLECTED_ATTACK adds nothing
+   * under a tags table that does not list it.
+   */
+  long captureTags() {
+    return flagBits.noDash()
+        | flagBits.buildingDeathSpawnFindLocation()
+        | flagBits.abilityDisabled()
+        | flagBits.noReflectedAttack()
+        | flagBits.captured();
+  }
 
   /** The tags a capture's drag raises on its unit for one step besides, without a capture buff. */
-  static final long CAPTURE_HOLD_TAGS =
-      EntityFlags.NO_MOVE | EntityFlags.NO_SUMMON | EntityFlags.NO_ATTACK;
+  long captureHoldTags() {
+    return flagBits.noMove() | flagBits.noSummon() | flagBits.noAttack();
+  }
 
   /**
    * The deflection pass a roll runs at its projectile's point as it starts and after each step,
@@ -6202,7 +6216,7 @@ public class BattleWorld implements HolderPasses {
 
   /** Whether a unit's tag word holds the hidden tag. */
   public boolean taggedHidden(WorldEntity unit) {
-    return (unit.getView().getFlags() & EntityFlags.HIDDEN) != 0;
+    return (unit.getView().getFlags() & unit.getView().getFlagBits().hidden()) != 0;
   }
 
   /**
@@ -6230,7 +6244,7 @@ public class BattleWorld implements HolderPasses {
             unit.name() + " is captured beside the reflecting " + other.name() + ", not modelled");
       }
     }
-    unit.raiseCaptureTags(withoutBuff ? CAPTURE_TAGS | CAPTURE_HOLD_TAGS : CAPTURE_TAGS);
+    unit.raiseCaptureTags(withoutBuff ? captureTags() | captureHoldTags() : captureTags());
   }
 
   /**
@@ -6785,7 +6799,7 @@ public class BattleWorld implements HolderPasses {
     WorldEntity chosen = null;
     for (WorldEntity entity : present) {
       if ((entity.side() & 1) == (projectile.side() & 1)
-          || (entity.getView().getFlags() & EntityFlags.UNTARGETABLE) != 0
+          || (entity.getView().getFlags() & entity.getView().getFlagBits().untargetable()) != 0
           || projectile.getHitIds().contains(entity.getId())
           || entity.getHitPoints() == null
           || !entity.getTargetView().acceptsAttacker(projectile.askerView(), false)) {
@@ -7010,12 +7024,12 @@ public class BattleWorld implements HolderPasses {
 
   /** The bit of FORCE_IS_GROUND in an entity's tag word, as the data numbers the game tags. */
   long forceIsGround() {
-    return actions.tagMask("FORCE_IS_GROUND");
+    return flagBits.forceIsGround();
   }
 
   /** The bit of FORCE_IS_AIR in an entity's tag word, as the data numbers the game tags. */
   long forceIsAir() {
-    return actions.tagMask("FORCE_IS_AIR");
+    return flagBits.forceIsAir();
   }
 
   void selectorStarted(AreaEffectEntity areaEffect, String action, int phase, List<Integer> due) {
