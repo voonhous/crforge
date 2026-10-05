@@ -72,6 +72,7 @@ public final class EntityFlags {
   private final long warp;
   private final long noClone;
   private final long noMoveAllowAttract;
+  private final long ignoreRangeExtensionToKeepTarget;
 
   /**
    * The bits as the given tables number the game tags.
@@ -121,6 +122,7 @@ public final class EntityFlags {
     warp = bit(tags, "WARP");
     noClone = bit(tags, "NO_CLONE");
     noMoveAllowAttract = bit(tags, "NO_MOVE_ALLOW_ATTRACT");
+    ignoreRangeExtensionToKeepTarget = bit(tags, "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET");
   }
 
   /**
@@ -351,5 +353,13 @@ public final class EntityFlags {
   /** Movement is forbidden except when the entity is pulled by something else. */
   public long noMoveAllowAttract() {
     return noMoveAllowAttract;
+  }
+
+  /**
+   * The entity keeps its reference only within its plain range, without the extension a unit is
+   * otherwise allowed before it gives one up (a newer data version's tag; 0 in a table without it).
+   */
+  public long ignoreRangeExtensionToKeepTarget() {
+    return ignoreRangeExtensionToKeepTarget;
   }
 }

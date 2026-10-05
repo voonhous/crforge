@@ -156,7 +156,7 @@ public final class TargetingVisit {
       return;
     }
 
-    boolean referenceInRange = checkReferenceStillReachable(t, cfg, globals, queries);
+    boolean referenceInRange = checkReferenceStillReachable(t, e, cfg, globals, queries);
     if (cfg.reselectsEveryVisit() && t.getRetargetCooldownMs() == 0) {
       clearReference(t, e, outcome);
     }
@@ -242,16 +242,26 @@ public final class TargetingVisit {
   // -------------------------------------------------------------------------------------------
 
   /**
-   * Whether the reference is still close enough to attack. A unit firing a projectile keeps a
-   * reference that has slipped a little further away while its current hit is still under way.
+   * Whether the reference is still close enough to attack. A unit keeps a reference a little past
+   * its range, by the keep extension, unless it is a building or carries the tag that drops the
+   * extension (a newer data version's IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, read from its tag
+   * word). A unit firing a projectile keeps a reference that has slipped a little further away
+   * while its current hit is still under way.
    */
   private static boolean checkReferenceStillReachable(
-      TargetingState t, TargetingConfig cfg, TargetingGlobals globals, TargetingQueries queries) {
+      TargetingState t,
+      GridEntity e,
+      TargetingConfig cfg,
+      TargetingGlobals globals,
+      TargetingQueries queries) {
     TargetView reference = t.getReference();
     if (reference == null) {
       return false;
     }
-    int extension = cfg.isBuilding() ? 0 : globals.rangeExtensionToKeepTarget();
+    boolean noExtension =
+        cfg.isBuilding()
+            || (e.getFlags() & e.getFlagBits().ignoreRangeExtensionToKeepTarget()) != 0;
+    int extension = noExtension ? 0 : globals.rangeExtensionToKeepTarget();
     boolean inRange = RangeTest.referenceInRange(t, reference, extension);
     if (!inRange && globals.preserveTargetIfHitStarted() && cfg.hasProjectile()) {
       if (RangeTest.referenceInRange(t, reference, PROJECTILE_KEEP_EXTENSION)
