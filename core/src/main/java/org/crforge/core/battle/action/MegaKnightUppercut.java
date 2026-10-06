@@ -9,7 +9,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * target it attacks, pushes that target on its first update toward the nearest tower of the
  * target's own side, past every gate of the pushback request, schedules its action on the target
  * with the unit as the cause, and then holds the unit for its follow-up delay, neither moving nor
- * attacking. A target without a movement component ends the run at once.
+ * attacking. A push that went through also clears the target's avoidance blend unless the row turns
+ * that off, so the target flies straight. A target without a movement component ends the run at
+ * once.
  *
  * <p>Refused as the row is built: a push through the request's gates, the follow-up dash, and the
  * shared columns its run does not read.
@@ -19,7 +21,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the start's hold and target, the push point by the nearest tower"
             + " of the target's side and then the opposite king, the push through the entry past"
-            + " the gates, the action on the target, the hold for the follow-up delay, the end"
+            + " the gates, the action on the target, the blend cleared after a push that went"
+            + " through, the hold for the follow-up delay, the end"
             + " with another target in range or none, the mark of the target in the targeting"
             + " queue and the target forgotten as it leaves; held by mega_knight_ev1_uppercut."
             + " Refused: the push through the request's gates, the follow-up dash, the start"
@@ -41,6 +44,9 @@ public final class MegaKnightUppercut extends RowAction {
   /** How long the unit is held after the push. */
   @Getter private final int dashFollowUpDelayMs;
 
+  /** True when a push that went through clears the target's avoidance blend. */
+  @Getter private final boolean resetAvoidanceAtPushback;
+
   /** The action scheduled on the target after the push, or null for none. */
   @Getter private final BattleAction actionOnTargets;
 
@@ -51,6 +57,8 @@ public final class MegaKnightUppercut extends RowAction {
    * @param distanceProportionalPush true to take the separation off the push's distance first
    * @param resetPushbackIfStronger true to keep a longer pushback already in flight
    * @param dashFollowUpDelayMs how long the unit is held after the push
+   * @param resetAvoidanceAtPushback true to clear the target's avoidance blend after a push that
+   *     went through
    * @param actionOnTargets the action scheduled on the target after the push, or null
    */
   public MegaKnightUppercut(
@@ -60,6 +68,7 @@ public final class MegaKnightUppercut extends RowAction {
       boolean distanceProportionalPush,
       boolean resetPushbackIfStronger,
       int dashFollowUpDelayMs,
+      boolean resetAvoidanceAtPushback,
       BattleAction actionOnTargets) {
     super(row);
     this.pushBackStrength = pushBackStrength;
@@ -67,6 +76,7 @@ public final class MegaKnightUppercut extends RowAction {
     this.distanceProportionalPush = distanceProportionalPush;
     this.resetPushbackIfStronger = resetPushbackIfStronger;
     this.dashFollowUpDelayMs = dashFollowUpDelayMs;
+    this.resetAvoidanceAtPushback = resetAvoidanceAtPushback;
     this.actionOnTargets = actionOnTargets;
   }
 
