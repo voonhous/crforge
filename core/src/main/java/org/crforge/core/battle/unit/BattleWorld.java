@@ -185,6 +185,13 @@ public class BattleWorld implements HolderPasses {
    * visit left it; the game of 14.593.1 deals the hit at once, and the death switches the unit's
    * movement off before the movement pass.
    *
+   * <p>The attacker's buff on damage follows its direct hit to the drain (see {@link
+   * #hitBuffOnDamage(WorldEntity, WorldEntity)}): the drain applies it right after the hit's
+   * damage, once the damage entry has let the hit through, a hit that kills included. That is after
+   * the tick's buff pass, so a 500 ms stun is first counted down on the next tick and holds its
+   * target for all of its ten visits; the game of 14.593.1 applies it inside the hit, before the
+   * buff pass of the same tick, and holds the target one tick less.
+   *
    * <p>The same rule lands each victim's share of a character's area damage at the drain (see
    * {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)}): the area of a direct hit and of a
    * dash landing; no row of 16.402.18 sets a death damage. The area still pushes its victims at
@@ -392,7 +399,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * One direct hit waiting for the drain, on a data version that lands it there: what the
    * attacker's targeting visit hands the damage entry, dealt as {@link #dealDamage(WorldEntity,
-   * TargetView, int, int, int)} deals it at once.
+   * TargetView, int, int, int)} deals it at once, then followed by the attacker's buff on damage
+   * when the hit landed.
    *
    * @param attacker the entity whose hit it is
    * @param target the view the hit resolved against
@@ -4996,12 +5004,14 @@ public class BattleWorld implements HolderPasses {
     queuedHits.clear();
     for (QueuedHit queued : due) {
       if (queued instanceof DirectHitDue direct) {
-        dealDamage(
-            direct.attacker(),
-            direct.target(),
-            direct.damage(),
-            direct.directionX(),
-            direct.directionY());
+        DamageResult result =
+            dealDamage(
+                direct.attacker(),
+                direct.target(),
+                direct.damage(),
+                direct.directionX(),
+                direct.directionY());
+        drainBuffOnDamage(direct.attacker(), direct.target(), result);
         continue;
       }
       if (queued instanceof AreaHitDue area) {
@@ -5061,6 +5071,16 @@ public class BattleWorld implements HolderPasses {
       // The death runs inside the hit, before the type's actions are scheduled.
       if (result.died()) {
         target.die(source);
+      }
+      // On a data version whose game applies a buff on damage at the drain, it applies the source's
+      // after a typed hit it lets through as well (0xfd097c); no reference holds a typed hit from
+      // such a source.
+      if (directHitAtDrain
+          && result.landed()
+          && source != null
+          && source.getData().buffOnDamage() != null) {
+        throw new UnsupportedOperationException(
+            source.name() + " deals a typed hit with a BuffOnDamage, not modelled");
       }
       if (hit.source() != null && hit.type().actionOnSource() != null) {
         hit.source()
@@ -7418,6 +7438,44 @@ public class BattleWorld implements HolderPasses {
   void notAttackingBuff(CharacterEntity unit, int time) {
     BuffData buff = buffData(unit.getData().buffWhenNotAttacking());
     unit.getBuffs().apply(buff, time, unit.getPackedLevel(), unit, unit.side());
+  }
+
+  /**
+   * A hit's buff on damage as the attacker's hit application reaches it, after its direct hit or an
+   * attack sequence entry's action: applied at once on a data version whose game applies it inside
+   * the hit; nothing on one whose game applies it at the damage drain (see {@link
+   * #DIRECT_HIT_AT_DRAIN}), whose hit application no longer calls the apply (0xfc616c), so the
+   * queued direct hit carries it there (see {@link #drainBuffOnDamage(WorldEntity, TargetView,
+   * DamageResult)}).
+   *
+   * @param attacker the entity whose hit it is
+   * @param target what the hit reached
+   */
+  void hitBuffOnDamage(WorldEntity attacker, WorldEntity target) {
+    if (directHitAtDrain) {
+      return;
+    }
+    buffOnDamage(attacker, target);
+  }
+
+  /**
+   * A queued direct hit's buff on damage, as the drain deals the hit: applied right after the
+   * damage, the hit's death and its reflect, when the damage entry let the hit through (the drain
+   * calls 0xfd097c only for a record its bookkeeping 0xfcaebc accepted), a hit that kills included;
+   * nothing for an attacker whose row sets none, or a target that has left the battle.
+   *
+   * @param attacker the entity whose hit it is
+   * @param target the view the hit resolved against
+   * @param result what the hit's damage did
+   */
+  private void drainBuffOnDamage(WorldEntity attacker, TargetView target, DamageResult result) {
+    if (!result.landed() || attacker.getData().buffOnDamage() == null) {
+      return;
+    }
+    WorldEntity entity = known.get(target.getEntity());
+    if (entity != null) {
+      buffOnDamage(attacker, entity);
+    }
   }
 
   /**
