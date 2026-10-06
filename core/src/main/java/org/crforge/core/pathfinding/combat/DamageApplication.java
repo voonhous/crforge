@@ -43,7 +43,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " are the battle's answers. The target's buffs lower the amount through the battle's"
             + " damage reduction before the floor at one, held by monk_ability_tower,"
             + " monk_ability_musketeer, knight_ev1_tower_knight and"
-            + " knight_ev1_fireball_valkyrie. Supplied, not settled: nothing is untouchable or immune."
+            + " knight_ev1_fireball_valkyrie. The entry lowers a typed hit and a buff's damage over"
+            + " time by that reduction again after their own stage did, held by"
+            + " DamageEntryReductionTest. Supplied, not settled: nothing is untouchable or immune."
             + " Not modelled: the death handler, the"
             + " credit to the attacker, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
@@ -108,19 +110,21 @@ public final class DamageApplication {
   }
 
   /**
-   * Deals a hit of damage over time from a buff: refused only where damage is forbidden, then the
-   * bookkeeping and the subtraction as for an ordinary hit, with no dedupe id and no heading. The
-   * bookkeeping does not ask whether the target is hidden, so a hidden target takes it.
+   * Deals a hit of damage over time from a buff: refused only where damage is forbidden; an amount
+   * of at least 1 is lowered by the target's damage reduction once more, as the entry every queued
+   * hit passes lowers it, and floored at 1; then the bookkeeping and the subtraction as for an
+   * ordinary hit, with no dedupe id and no heading. The bookkeeping does not ask whether the target
+   * is hidden, so a hidden target takes it.
    *
    * @param hitPoints the target's hit points
-   * @param damage the amount, after the target's damage reduction
+   * @param damage the amount, after the target's damage reduction the buff's own hit took off
    * @param queries what the chain asks about the target and the battle
    */
   public static DamageResult overTime(HitPoints hitPoints, int damage, DamageQueries queries) {
     if (queries.damageForbidden()) {
       return DamageResult.NOTHING;
     }
-    return bookkeeping(hitPoints, damage, 0, 0, 0, queries);
+    return bookkeeping(hitPoints, entryReduction(damage, queries), 0, 0, 0, queries);
   }
 
   /**
@@ -180,7 +184,9 @@ public final class DamageApplication {
    * Deals a typed hit, the pipeline already run: refused while the battle holds damage, when the
    * target is hidden or untouchable and when its id is already listed, which leaves that id's tick
    * as it was; otherwise the id is listed and the shield and the hit points are lowered as by an
-   * ordinary hit.
+   * ordinary hit. An amount of at least 1 is first lowered by the target's damage reduction once
+   * more, as the entry every queued hit passes lowers it, and floored at 1: the pipeline's
+   * protection stage has already taken the reduction off once, so a typed hit loses it twice.
    *
    * @param hitPoints the target's hit points
    * @param amount the amount after the type's pipeline
@@ -204,6 +210,7 @@ public final class DamageApplication {
       return DamageResult.NOTHING;
     }
     if (amount >= 1) {
+      amount = entryReduction(amount, queries);
       // The target's runs hear of a hit that deals something, as at the entry.
       amount = queries.heard(amount);
       if (amount == 0) {
@@ -226,6 +233,19 @@ public final class DamageApplication {
             ? shieldBefore - hitPoints.getShield()
             : hitPointsBefore - hitPoints.getHitPoints();
     return new DamageResult(result.landed(), lost, result.died());
+  }
+
+  /**
+   * The target's damage reduction as the entry every queued hit passes takes it off: for a target
+   * with the buff component, an amount of at least 1 lowered by the reduction and floored at 1. The
+   * entry asks it of every hit whatever reduction the hit's own stage took off before - a typed
+   * hit's protection stage, a buff's damage over time - so those hits lose the reduction twice.
+   */
+  private static int entryReduction(int amount, DamageQueries queries) {
+    if (amount < 1 || !queries.targetHasBuffComponent()) {
+      return amount;
+    }
+    return Math.max(queries.modifyDamage(amount), 1);
   }
 
   /** A percentage of the damage, truncated and floored at one. */

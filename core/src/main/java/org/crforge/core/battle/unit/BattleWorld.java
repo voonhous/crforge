@@ -5268,9 +5268,9 @@ public class BattleWorld implements HolderPasses {
    * otherwise the type's amount for the target - its tower amount for a crown tower when it gives
    * one, its base amount else - scaled by the area effect's level against its rarity as card
    * damage, then lowered by the target's protection and floored at 0. An amount of 0 is dealt as
-   * nothing at all; any other, with no damage id, through the typed hit's entry, which no source
-   * counts and whose shield break names the area effect as its cause, and the death the area effect
-   * caused.
+   * nothing at all; any other, with no damage id, through the typed hit's entry, which lowers it by
+   * the target's protection once more and floors it at 1, which no source counts and whose shield
+   * break names the area effect as its cause, and the death the area effect caused.
    */
   private void drainAreaDamage(TypedHit hit) {
     WorldEntity target = hit.target();

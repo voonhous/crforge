@@ -724,7 +724,8 @@ public final class BuffComponent implements BattleComponent {
         damage = buff.buildingDamagePercent() * damage / PERCENT;
       }
     }
-    // The damage goes through the carrier's own damage reduction first.
+    // The damage goes through the carrier's own damage reduction first; the damage entry takes it
+    // off once more.
     if (damage >= 1) {
       damage = damageReduction(damage);
       if (entity.getHitPoints() != null) {
@@ -799,7 +800,9 @@ public final class BuffComponent implements BattleComponent {
    * within the protection cap either way - truncated. A negative percent raises the amount. Asked
    * at the hit-points entry, by the pending damage's lethal test, by a typed hit that the target's
    * protection lowers and by a buff's damage over time; a row that exempts a buff's own damage is
-   * refused with its row.
+   * refused with its row. The entry asks it of every hit it deals, an amount of at least 1 floored
+   * at 1 after it, the typed hit's and the damage over time's included, so those two lose the
+   * reduction twice: once in their own stage, floored at 0, and once at the entry.
    *
    * @param amount the amount that reaches the carrier
    * @return the amount after the reduction
