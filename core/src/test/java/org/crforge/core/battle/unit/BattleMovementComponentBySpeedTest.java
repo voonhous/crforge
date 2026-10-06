@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -12,8 +11,7 @@ import org.junit.jupiter.api.Test;
  * Which characters have a movement component, and what a data swap does to it. The level setter
  * builds one only for a row with a speed of at least 1, building or not, so a character row without
  * a speed stands once it has deployed; a data swap onto a row with a speed builds one, and a swap
- * onto a row without a lifetime ends the drain of one that had it. A hit dealt while its dealer
- * carries a buff with a damage multiplier, whose share of the damage is not traced, is refused.
+ * onto a row without a lifetime ends the drain of one that had it.
  */
 class BattleMovementComponentBySpeedTest {
 
@@ -78,24 +76,5 @@ class BattleMovementComponentBySpeedTest {
     steps(battle, 20);
     assertThat(knight.getHitPoints().getHitPoints()).as("no more drain").isEqualTo(hitPoints);
     assertThat(knight.getView().getY()).as("it walks").isGreaterThan(10000);
-  }
-
-  @Test
-  @DisplayName(
-      "a hit dealt while the dealer carries a buff with a damage multiplier is refused, the"
-          + " multiplier's share of the damage not being traced")
-  void aHitUnderADamageMultiplierIsRefused() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
-    battle.deploy(0, GameData.records().unit("Knight"), LEVEL, 0, 3500, 15000, "knight");
-    battle.deploy(0, GameData.records().unit("Knight"), LEVEL, 1, 3500, 16500, "enemy");
-    steps(battle, 1);
-    CharacterEntity knight = unit(battle);
-    knight
-        .getBuffs()
-        .apply(GameData.records().buff("crazy_FullFire"), 100000, knight.getPackedLevel(), null, 0);
-    assertThatThrownBy(() -> steps(battle, 200))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(
-            "knight hits while it carries crazy_FullFire, whose DamageMultiplier is not modelled");
   }
 }

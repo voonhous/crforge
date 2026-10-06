@@ -73,6 +73,7 @@ public final class EntityFlags {
   private final long noClone;
   private final long noMoveAllowAttract;
   private final long ignoreRangeExtensionToKeepTarget;
+  private final long unkillable;
 
   /**
    * The bits as the given tables number the game tags.
@@ -123,6 +124,7 @@ public final class EntityFlags {
     noClone = bit(tags, "NO_CLONE");
     noMoveAllowAttract = bit(tags, "NO_MOVE_ALLOW_ATTRACT");
     ignoreRangeExtensionToKeepTarget = bit(tags, "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET");
+    unkillable = bit(tags, "UNKILLABLE");
   }
 
   /**
@@ -361,5 +363,14 @@ public final class EntityFlags {
    */
   public long ignoreRangeExtensionToKeepTarget() {
     return ignoreRangeExtensionToKeepTarget;
+  }
+
+  /**
+   * A hit that does not pierce immunity leaves the entity at 1 hit point at least, and a projectile
+   * attacker keeps it as a target whatever damage is on its way (a newer data version's tag; 0 in a
+   * table without it).
+   */
+  public long unkillable() {
+    return unkillable;
   }
 }

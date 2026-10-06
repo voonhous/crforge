@@ -93,6 +93,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p><b>Scales.</b> The speed, the attack time step and the spawn time step each take the largest
  * boost of the listed rows, from 100, times what the largest slow leaves of 100: Rage makes a step
  * of 50 one of 65, and a stun of -100 makes it 0.
+ *
+ * <p><b>Attacker's percents.</b> The rows' damage multipliers, and their percents for a crown
+ * tower, fold to the largest value above 100 times the smallest from 1 to 99, over 100; a value
+ * below 1 counts for nothing. The damage entry scales a hit the carrier deals by the first and a
+ * hit on a crown tower by the second after it, each truncated and floored at 1.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -122,7 +127,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the row: projectiles, chains, morphs, an action other than a start or"
             + " remove action that names its row, tags other than the one"
             + " that keeps enemies from pushing the carrier, switching team,"
-            + " shields, hit point and damage multipliers, and an action on a reduction. The"
+            + " shields, hit point multipliers, and an action on a reduction. The"
             + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
             + " the protection cap, at the hit-points entry, held by monk_ability_tower,"
             + " monk_ability_musketeer, knight_ev1_tower_knight and knight_ev1_fireball_valkyrie;"
@@ -814,6 +819,42 @@ public final class BuffComponent implements BattleComponent {
     int cap = world.protectionCapPercent();
     int percent = Math.max(Math.min(total, cap), -cap);
     return (PERCENT - percent) * amount / PERCENT;
+  }
+
+  /**
+   * The percent the hits the carrier deals are scaled by, as the damage entry reads it: the listed
+   * rows' DamageMultiplier folded as each listing and each removal folds it - the largest value
+   * above 100, from 100, times the smallest value from 1 to 99, from 100, over 100, truncated. A
+   * value below 1 counts for nothing, so a multiplier of -100 leaves the hits as they are.
+   */
+  public int damagePercent() {
+    return foldPercents(BuffData::damageMultiplier);
+  }
+
+  /**
+   * The percent the hits the carrier deals on a crown tower are scaled by after {@link
+   * #damagePercent()}: the listed rows' CharacterCrownTowerDamagePercent folded the same way.
+   */
+  public int crownTowerDamagePercent() {
+    return foldPercents(BuffData::characterCrownTowerDamagePercent);
+  }
+
+  /** The fold of one of the two attacker's percents over the listed rows. */
+  private int foldPercents(ToIntFunction<BuffData> column) {
+    int up = PERCENT;
+    int down = PERCENT;
+    for (BuffInstance instance : items) {
+      int value = column.applyAsInt(instance.getBuff());
+      if (value < 1) {
+        continue;
+      }
+      if (value > PERCENT) {
+        up = Math.max(up, value);
+      } else if (value < PERCENT) {
+        down = Math.min(down, value);
+      }
+    }
+    return FixedMath.divOrZero(down * up, PERCENT);
   }
 
   /** Whether a listed buff keeps its carrier from being pushed back. */

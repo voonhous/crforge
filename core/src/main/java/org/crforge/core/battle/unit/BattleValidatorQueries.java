@@ -26,7 +26,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " references' selections and drops, and the shield gate by pending_shield_guards;"
             + " the dash and healing tests by no run; the damage reduction of the target's buffs"
             + " on the amount by BattleMonkTest alone, since no damage on its way to a Monk"
-            + " under its ability is lethal in the references.")
+            + " under its ability is lethal in the references. An unkillable target spared the"
+            + " rule: translated, held by no run.")
 final class BattleValidatorQueries implements ValidatorQueries {
 
   private final BattleWorld world;
@@ -66,6 +67,12 @@ final class BattleValidatorQueries implements ValidatorQueries {
     }
     int windup = entity.getTargeting().getDashWindupMs();
     return windup > 0 && entity.getData().dashImmuneToDamageTimeMs() >= 1 && windup <= duration;
+  }
+
+  /** The target's tag word holds UNKILLABLE, as a buff of the Berserker hero form sets it. */
+  @Override
+  public boolean unkillable(TargetView target) {
+    return world.entityOf(target.getEntity()).unkillable();
   }
 
   /** The healing test: a buff the target carries heals at its first level. */

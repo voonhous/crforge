@@ -5174,6 +5174,7 @@ public class BattleWorld implements HolderPasses {
                 areaSource.getData().rarity());
       }
       if (source != null && !damage.noAmplification()) {
+        refuseTypedPercents(source, "a damage-taking action's hit");
         amount = Math.max(amount, 0);
       }
       if (!damage.noProtection()) {
@@ -5296,6 +5297,9 @@ public class BattleWorld implements HolderPasses {
               hit.amount(), noDamage, false, null, 0, hit.target().getBuffs()::damageReduction);
     }
     boolean present = !source.isLeft();
+    if (present && hit.type().enableDamageMultiplier()) {
+      refuseTypedPercents(source, "a typed hit");
+    }
     RarityTable rarity = present ? source.getData().rarity() : RarityTable.COMMON;
     return hit.type()
         .pipeline(
@@ -5305,6 +5309,20 @@ public class BattleWorld implements HolderPasses {
             rarity,
             source.getPackedLevel(),
             hit.target().getBuffs()::damageReduction);
+  }
+
+  /**
+   * Refuses a typed hit, or a damage-taking action's hit, whose source carries a buff percent other
+   * than 100: the game scales such a hit by the source's percents in its type's stage, floored at
+   * 0, and once more at the damage entry, floored at 1, which the typed hit's entry here does not
+   * model; no reference holds such a hit.
+   */
+  private static void refuseTypedPercents(WorldEntity source, String hit) {
+    if (source.getBuffs().damagePercent() != 100
+        || source.getBuffs().crownTowerDamagePercent() != 100) {
+      throw new UnsupportedOperationException(
+          hit + " from " + source.name() + ", whose buffs scale its damage, is not modelled");
+    }
   }
 
   /**

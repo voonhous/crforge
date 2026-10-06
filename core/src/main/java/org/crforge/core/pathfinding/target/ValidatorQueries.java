@@ -90,4 +90,12 @@ public interface ValidatorQueries {
   default boolean pendingDamageAccepted(TargetView target, int amount) {
     return false;
   }
+
+  /**
+   * True when the target's tag word holds UNKILLABLE, which spares it the pending-damage rule: a
+   * projectile attacker keeps it whatever damage is on its way.
+   */
+  default boolean unkillable(TargetView target) {
+    return false;
+  }
 }

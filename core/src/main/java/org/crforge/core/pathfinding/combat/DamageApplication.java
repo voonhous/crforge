@@ -43,15 +43,18 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " are the battle's answers. The target's buffs lower the amount through the battle's"
             + " damage reduction before the floor at one, held by monk_ability_tower,"
             + " monk_ability_musketeer, knight_ev1_tower_knight and"
-            + " knight_ev1_fireball_valkyrie. Supplied, not settled: nothing is untouchable or immune,"
-            + " no attacker's buff changes the amount. Not modelled: the death handler, the"
+            + " knight_ev1_fireball_valkyrie. Supplied, not settled: nothing is untouchable or immune."
+            + " Not modelled: the death handler, the"
             + " credit to the attacker, an absorber, the shield break, a"
             + " target both sides may damage, the presentation and the actions a hit runs on"
             + " arrival. The reflected attack, which runs between the subtraction and the death"
             + " test, is the battle's: it runs around this chain, held by electro_giant_struck and"
             + " electro_giant_tower. The target told of a hit that took hit points, after the"
             + " death test and whatever the hit left, for its on-damage action, held by"
-            + " evo_minionhorde.")
+            + " evo_minionhorde. The attacker's percents from the buffs the hit's source carries,"
+            + " and an unkillable target held at 1 hit point by a hit that does not pierce"
+            + " immunity, held by hero_berserker; the crown tower percent by"
+            + " BattleBuffDamagePercentTest alone. A drain on an unkillable object is refused.")
 public final class DamageApplication {
 
   private DamageApplication() {
@@ -130,7 +133,8 @@ public final class DamageApplication {
    */
   public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
     queries.hitCounted();
-    return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true);
+    // A kill pierces immunity: an unkillable object dies of it all the same.
+    return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true, true);
   }
 
   /**
@@ -146,8 +150,13 @@ public final class DamageApplication {
     if (queries.untouchable()) {
       return DamageResult.NOTHING;
     }
+    if (queries.unkillable()) {
+      throw new UnsupportedOperationException(
+          "a drain on an unkillable object, whether it pierces the object's immunity is not"
+              + " established");
+    }
     queries.hitCounted();
-    return subtract(hitPoints, damage, 0, 0, queries, true);
+    return subtract(hitPoints, damage, 0, 0, queries, true, false);
   }
 
   /**
@@ -210,7 +219,8 @@ public final class DamageApplication {
       hitPoints.listDedupe(damageId, queries.battleTick());
     }
     queries.hitCounted();
-    DamageResult result = subtract(hitPoints, amount, directionX, directionY, queries, false);
+    DamageResult result =
+        subtract(hitPoints, amount, directionX, directionY, queries, false, false);
     int lost =
         shieldBefore > 0
             ? shieldBefore - hitPoints.getShield()
@@ -243,17 +253,22 @@ public final class DamageApplication {
       hitPoints.listDedupe(dedupeId, queries.battleTick());
     }
     queries.hitCounted();
-    return subtract(hitPoints, damage, directionX, directionY, queries, false);
+    return subtract(hitPoints, damage, directionX, directionY, queries, false, false);
   }
 
-  /** The shield, then the hit points; a kill ignores the battle's hold. */
+  /**
+   * The shield, then the hit points; a kill ignores the battle's hold. A hit that does not pierce
+   * immunity leaves an unkillable target at 1 hit point at least, after the overkill is taken out
+   * of what it lost: such a target does not die of it.
+   */
   private static DamageResult subtract(
       HitPoints hitPoints,
       int damage,
       int directionX,
       int directionY,
       DamageQueries queries,
-      boolean ignoreHolds) {
+      boolean ignoreHolds,
+      boolean piercesImmunity) {
     if (!ignoreHolds && queries.battleEnded()) {
       return DamageResult.NOTHING;
     }
@@ -280,6 +295,9 @@ public final class DamageApplication {
     if (hitPoints.getHitPoints() < 0) {
       // The overkill of a killing hit is not part of what the target lost.
       applied += hitPoints.getHitPoints();
+    }
+    if (!piercesImmunity && queries.unkillable() && hitPoints.getHitPoints() < 1) {
+      hitPoints.setHitPoints(1);
     }
     boolean died = hitPoints.getHitPoints() < 1;
     if (died) {
