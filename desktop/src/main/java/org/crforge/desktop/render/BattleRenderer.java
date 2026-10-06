@@ -25,6 +25,7 @@ import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.EntityView;
+import org.crforge.desktop.battle.UnitStatus;
 
 /**
  * Draws a battle core session from the frames {@link org.crforge.desktop.battle.BattleAdapter}
@@ -78,9 +79,16 @@ public class BattleRenderer {
   @Getter private boolean drawGrid = false;
   @Getter private boolean drawTargets = false;
   private final BattleArenaRenderer arena;
+  private final StatusRenderer statuses;
+  @Getter private boolean drawStatuses = true;
+
   private int inspectedEntity = -1;
   private final Map<String, String> displayNames = new HashMap<>();
   private final Map<String, String> unitSymbols = new HashMap<>();
+
+  public void toggleDrawStatuses() {
+    drawStatuses = !drawStatuses;
+  }
 
   public void toggleDrawGrid() {
     drawGrid = !drawGrid;
@@ -122,6 +130,7 @@ public class BattleRenderer {
             HEALTH_BAR_HEIGHT,
             ctx.getEntityNameFont().getCapHeight() + 2 * (HEALTH_BAR_BORDER + HP_TEXT_PADDING));
     this.arena = new BattleArenaRenderer(ctx);
+    this.statuses = new StatusRenderer(ctx);
     this.backgrounds = new HudRenderer(ctx);
     this.cellCosts = new CellCostOverlayRenderer(ctx);
     this.routes = new RouteOverlayRenderer(ctx);
@@ -220,6 +229,7 @@ public class BattleRenderer {
     renderProjectiles(frame);
     renderHealthBars(frame);
     renderUnitSymbols(frame);
+    if (drawStatuses) statuses.render(frame, view);
     if (drawTargets) renderTargetLines(frame);
     if (drawPaths) {
       renderHeadings(frame);
@@ -307,6 +317,7 @@ public class BattleRenderer {
       float radius = unitsToPixels(entity.radius());
       Color color = bodyColor(entity);
       float alpha = entity.hidden() ? 0.25f : entity.deploying() ? 0.5f : 1f;
+      if (drawStatuses && entity.hasStatus(UnitStatus.Kind.CLONE)) alpha *= 0.55f;
       shapes.setColor(0.05f, 0.09f, 0.09f, 0.35f * alpha);
       shapes.ellipse(x - radius - 2, y - radius - 5, radius * 2 + 4, radius * 1.4f);
       shapes.setColor(color.r, color.g, color.b, alpha);
