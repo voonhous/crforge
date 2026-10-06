@@ -26,7 +26,6 @@ import java.util.Set;
  *     {@link #EVENT_TYPES}; else they are pinned to none
  * @param battlePins the battle header's fields pinned to one value beyond those every version pins,
  *     by field
- * @param arena the one value of the battle header's and each avatar's {@code arena}
  * @param avatarPins each avatar's fields pinned to one value, by field
  * @param avatarCarried each avatar's fields carried, by field, with what each is
  * @param accountHighOptional whether an avatar may leave out the high word of its account id, read
@@ -46,7 +45,6 @@ public record ReplayFormat(
     Map<String, String> rootPins,
     boolean events,
     Map<String, String> battlePins,
-    String arena,
     Map<String, String> avatarPins,
     Map<String, String> avatarCarried,
     boolean accountHighOptional,
@@ -74,7 +72,6 @@ public record ReplayFormat(
           Map.of(),
           false,
           Map.of(),
-          "54000001",
           ordered("expLevel", "1", "npc", "false"),
           Map.of(),
           false,
@@ -98,7 +95,6 @@ public record ReplayFormat(
           ordered("srq", "[]", "srs", "[]"),
           true,
           ordered("cardlvlmin", "0", "rrb", "false", "seb", "false"),
-          "54000144",
           ordered("npc", "false"),
           ordered(
               "expLevel",
@@ -217,7 +213,6 @@ public record ReplayFormat(
         rootPins,
         events,
         battlePins,
-        arena,
         avatarPins,
         avatarCarried,
         accountHighOptional,
