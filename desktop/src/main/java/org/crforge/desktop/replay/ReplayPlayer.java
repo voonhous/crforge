@@ -167,14 +167,23 @@ public final class ReplayPlayer {
   }
 
   /**
-   * What the status column shows of the replay: the file, the tick against the end tick, why it
-   * stopped once it has, the battle's result and the replay's own, and the speed.
+   * What the status column shows of the replay: the file, the client version and capture time its
+   * capture block names, if it has one, the tick against the end tick, why it stopped once it has,
+   * the battle's result and the replay's own, and the speed.
    *
    * @param view the screen's orientation, which names the sides in the battle's result
    */
   public List<String> statusLines(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
     lines.add("replay: " + replay.path().getFileName());
+    replay
+        .capture()
+        .ifPresent(
+            capture ->
+                lines.add(
+                    "recorded: client "
+                        + capture.clientVersion()
+                        + (capture.capturedAt() == null ? "" : ", " + capture.capturedAt())));
     if (session == null) {
       lines.add("refused: see the reasons");
       return lines;

@@ -96,7 +96,8 @@ public class ReplayGameScreen implements Screen {
         versions.source(),
         versions.currentFolder().toAbsolutePath().normalize().toString(),
         versions.current().contentSha(),
-        versions.developmentVersion());
+        versions.developmentVersion(),
+        replay.dataLine());
   }
 
   private boolean handleAction(WorkspaceAction action) {

@@ -60,6 +60,11 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * is read by 14.593.1's. In 16.402.18's replays each side's king level is its player data's {@code
  * kt}, and the players' profiles, the cards' cosmetics and the replay's events are carried.
  *
+ * <p>A replay may carry a capture block ({@link ReplayCapture}), written by the tool that saved it:
+ * the client version, data version and content sha it was recorded on. It is no battle input, in
+ * every version's format; a replay whose block names data other than the tables' is refused, naming
+ * both.
+ *
  * <p>The caller names the kind of scenario ({@link ScenarioShape}). A replay is read as above. A
  * generated case is read by the fields of the version's generated cases ({@link
  * ReplayFormat#generated}), which for 16.402.18 are 14.593.1's, with the version's command types; a
@@ -281,6 +286,7 @@ public final class ReplayScenario {
               + ", whose generated cases' fields no recorded battle has established",
           "the scenario shape " + shape.id());
     }
+    capture(scenario);
     int seed = required(scenario, "rndSeed").asInt();
     mapping.put("rndSeed", "consumed: BattleWorld.seed, the battle stream's seed");
     mapping.put("time", "carried: the replay's wall clock, no battle input");
@@ -297,7 +303,15 @@ public final class ReplayScenario {
     onlyFields(
         scenario,
         "$",
-        with(format.rootPins().keySet(), "rndSeed", "time", "endTick", "battle", "cmd", "evt"));
+        with(
+            format.rootPins().keySet(),
+            "rndSeed",
+            "time",
+            "endTick",
+            "battle",
+            "cmd",
+            "evt",
+            ReplayCapture.FIELD));
     JsonNode battle = required(scenario, "battle");
     onlyFields(
         battle,
@@ -1272,6 +1286,65 @@ public final class ReplayScenario {
     }
     throw new UnsupportedScenarioException(
         "a row of table " + tableId + ", which the game tables do not hold", field + "=" + id);
+  }
+
+  /**
+   * The replay's capture block ({@link ReplayCapture}), in any format: an object of its fields
+   * only, each a string, the client version and the content sha always given. It is no battle
+   * input, but it names the data the replay was recorded on: a content sha other than the tables',
+   * or a data version other than theirs, is refused, naming both.
+   */
+  private void capture(JsonNode scenario) {
+    JsonNode block = scenario.get(ReplayCapture.FIELD);
+    if (block == null) {
+      return;
+    }
+    mapping.put(
+        ReplayCapture.FIELD,
+        "checked: the data the replay was recorded on, as the tool that saved it names it (client"
+            + " version, data version, content sha, capture time); its content sha and data version"
+            + " must be the tables', and it is no battle input");
+    if (!block.isObject()) {
+      refuse("a capture block that is not an object", ReplayCapture.FIELD + "=" + block);
+      return;
+    }
+    onlyFields(block, ReplayCapture.FIELD, ReplayCapture.FIELDS.toArray(String[]::new));
+    for (String field : ReplayCapture.FIELDS) {
+      JsonNode value = block.get(field);
+      if (value != null && !value.isTextual()) {
+        refuse(
+            "a capture block field that is not a string",
+            ReplayCapture.FIELD + "." + field + "=" + value);
+      }
+    }
+    for (String field : List.of(ReplayCapture.CLIENT_VERSION, ReplayCapture.CONTENT_SHA)) {
+      if (block.get(field) == null) {
+        refuse("a capture block that names no " + field, ReplayCapture.FIELD + "." + field);
+      }
+    }
+    Optional<ReplayCapture> named = ReplayCapture.of(scenario);
+    if (named.isEmpty()) {
+      return;
+    }
+    ReplayCapture capture = named.get();
+    String input;
+    if (!capture.contentSha().equals(tables.contentSha())) {
+      input = ReplayCapture.CONTENT_SHA + "=" + capture.contentSha();
+    } else if (capture.contentVersion() != null
+        && !capture.contentVersion().equals(tables.version())) {
+      input = ReplayCapture.CONTENT_VERSION + "=" + capture.contentVersion();
+    } else {
+      return;
+    }
+    refuse(
+        "a replay recorded on "
+            + capture.recordedOn()
+            + ", read against the game tables of data version "
+            + tables.version()
+            + " (content sha "
+            + tables.contentSha()
+            + ")",
+        ReplayCapture.FIELD + "." + input);
   }
 
   /** Accepts only the value the mapping was established on. */

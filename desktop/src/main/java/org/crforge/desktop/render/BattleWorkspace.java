@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.BiConsumer;
@@ -455,7 +456,18 @@ public final class BattleWorkspace implements Disposable {
 
   /** Metadata is always the tables actually loaded, independent of hidden diagnostics. */
   public void setData(String version, String source, String folder, String sha, String target) {
-    List<String> updatedMetadata = List.of(version, source, folder, sha, target);
+    setData(version, source, folder, sha, target, null);
+  }
+
+  /**
+   * Metadata of the tables actually loaded, with a replay's line: whether its capture block named
+   * the data or the data version is assumed.
+   *
+   * @param replay the replay's line, or null outside a replay
+   */
+  public void setData(
+      String version, String source, String folder, String sha, String target, String replay) {
+    List<String> updatedMetadata = Arrays.asList(version, source, folder, sha, target, replay);
     if (updatedMetadata.equals(metadata)) return;
     metadata = updatedMetadata;
     loadedFolder = folder;
@@ -468,7 +480,8 @@ public final class BattleWorkspace implements Disposable {
             + "\nSource: "
             + source
             + "\nSHA: "
-            + sha;
+            + sha
+            + (replay == null ? "" : "\n" + replay);
     if (!updated.equals(details)) {
       details = updated;
       refreshDataDetails();
