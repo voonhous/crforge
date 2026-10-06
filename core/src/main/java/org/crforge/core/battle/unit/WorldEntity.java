@@ -419,6 +419,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
+    // Which object the reflected attack names as its source, whose percents would scale it, and
+    // whether it holds an unkillable target at 1 hit point, are not established.
+    if (unkillable()
+        || reflecting.getBuffs().damagePercent() != 100
+        || reflecting.getBuffs().crownTowerDamagePercent() != 100) {
+      throw new UnsupportedOperationException(
+          "a reflected attack from "
+              + reflecting.name()
+              + " on "
+              + name()
+              + ", with a damage percent or an unkillable target, is not modelled");
+    }
     int shieldBefore = hitPoints.getShield();
     boolean crownTower = targetView.isCrownTowerTarget();
     DamageResult result =
@@ -1088,22 +1100,27 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return buffs.damageReduction(damage);
       }
 
-      // The attacker's buffs scale the damage by their damage multipliers, which is not traced: a
-      // hit dealt while the dealer carries a buff that sets one is refused.
+      // The entry scales the damage by the percents of the buffs its source carries: the
+      // character or tower that dealt a direct hit or the area of its hit. A projectile or an area
+      // effect, the source of its own hits, carries none, so its shooter's or owner's buffs leave
+      // its hits alone.
       @Override
       public int attackerDamagePercent() {
-        if (dealer != null) {
-          for (BuffInstance instance : dealer.getBuffs().items()) {
-            if (instance.getBuff().damageMultiplier() != 0) {
-              throw new UnsupportedOperationException(
-                  dealer.name()
-                      + " hits while it carries "
-                      + instance.getBuff().name()
-                      + ", whose DamageMultiplier is not modelled");
-            }
-          }
-        }
-        return 100;
+        return cause instanceof WorldEntity source ? source.getBuffs().damagePercent() : 100;
+      }
+
+      // After the first, on a crown tower, the percent the source's buffs give for one.
+      @Override
+      public int attackerCrownTowerPercent() {
+        return cause instanceof WorldEntity source
+            ? source.getBuffs().crownTowerDamagePercent()
+            : 100;
+      }
+
+      // The subtraction holds an entity whose tag word holds UNKILLABLE at 1 hit point at least.
+      @Override
+      public boolean unkillable() {
+        return WorldEntity.this.unkillable();
       }
     };
   }
@@ -1169,6 +1186,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   public boolean hidden() {
     return false;
+  }
+
+  /**
+   * Whether the entity's tag word holds UNKILLABLE, as a buff of the Berserker hero form sets it: a
+   * hit that does not pierce immunity leaves it at 1 hit point at least, and a projectile attacker
+   * keeps it as a target whatever damage is on its way.
+   */
+  public boolean unkillable() {
+    return (view.getFlags() & view.getFlagBits().unkillable()) != 0;
   }
 
   /** Whether the entity tunnels to its placement, untouchable there. A tower never tunnels. */

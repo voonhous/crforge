@@ -107,9 +107,10 @@ public final class BattleRecords {
       Set.of(
           "Name",
           "Rarity",
-          // Read only to refuse a hit the carrier deals while the buff is listed: the attacker's
-          // share of the damage entry is not traced.
+          // Folded into the two percents the damage entry scales a hit the carrier deals by, the
+          // second only on a crown tower.
           "DamageMultiplier",
+          "CharacterCrownTowerDamagePercent",
           "Invisible",
           // Read only by the clone creator, which leaves such a buff off a clone; a clone of a
           // carrier is refused.
@@ -320,8 +321,12 @@ public final class BattleRecords {
    * word's recompute folds every listed instance's tags in beside the row's and the runs', and the
    * damage entry and the typed hit read NO_DAMAGE from that word, as for a row that sets it; and
    * ABILITY_PENDING, as the Valkyrie hero form's charge buff sets it, which only the health bar's
-   * view reads from the tag word: no battle code, filter or row tests it. A buff that sets any
-   * other is refused.
+   * view reads from the tag word: no battle code, filter or row tests it; and UNKILLABLE, as the
+   * Berserker hero form's buff sets it, which only the subtraction, holding the carrier's hit
+   * points at 1 against a hit that does not pierce immunity, and the target validator, sparing the
+   * carrier the pending damage rule, read from the tag word; and NO_ATTACK and
+   * NO_MOVE_ALLOW_ATTRACT, as the Electro Wizard hero form's recovery buffs set them, which every
+   * reader tests in the same tag word as a row's. A buff that sets any other is refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
       Set.of(
@@ -330,7 +335,10 @@ public final class BattleRecords {
           "UNIT_CUSTOM_TAG_1",
           "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET",
           "NO_DAMAGE",
-          "ABILITY_PENDING");
+          "ABILITY_PENDING",
+          "UNKILLABLE",
+          "NO_ATTACK",
+          "NO_MOVE_ALLOW_ATTRACT");
 
   /**
    * The actions a buff schedules on its carrier as an instance is listed and removed: read when
@@ -2205,6 +2213,7 @@ public final class BattleRecords {
         .damagePerSecond(row.intValue("DamagePerSecond"))
         .crownTowerDamagePerHit(row.intValue("CrownTowerDamagePerHit"))
         .crownTowerDamagePercent(row.intValue("CrownTowerDamagePercent"))
+        .characterCrownTowerDamagePercent(row.intValue("CharacterCrownTowerDamagePercent"))
         .buildingDamagePercent(row.intValue("BuildingDamagePercent"))
         .hitTickFromSource(row.bool("HitTickFromSource"))
         .attractPercentage(row.intValue("AttractPercentage"))

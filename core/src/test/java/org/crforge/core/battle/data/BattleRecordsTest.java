@@ -725,7 +725,7 @@ class BattleRecordsTest {
             "character_buffs",
             rows ->
                 GameData.columns(rows, "Valkyrie_NotPushed_BUF")
-                    .put("GameTagsToSet", "NO_PUSHED_BY_ENEMY,NO_ATTACK"));
+                    .put("GameTagsToSet", "NO_PUSHED_BY_ENEMY,NO_DASH"));
     assertThat(new BattleRecords(tables).buff("Valkyrie_NotPushed_BUF").unmodelledColumns())
         .containsExactly("GameTagsToSet");
   }

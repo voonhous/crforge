@@ -205,7 +205,8 @@ public final class ReferenceValidator {
         return false;
       }
     }
-    if (cfg.hasProjectile() && mode) {
+    // An unkillable target is spared the rule: no damage on its way can kill it.
+    if (cfg.hasProjectile() && mode && !queries.unkillable(target)) {
       return pendingDamageRule(t, target, queries, acceptanceFlag);
     }
     return accepted(t, target, acceptanceFlag);

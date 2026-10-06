@@ -132,6 +132,14 @@ public interface DamageQueries {
    */
   default void hitPointsTaken(int amount) {}
 
+  /**
+   * True when the target's tag word holds UNKILLABLE: a hit that does not pierce immunity leaves it
+   * at 1 hit point at least. Supplied as false, for a target that never carries the tag.
+   */
+  default boolean unkillable() {
+    return false;
+  }
+
   /** The battle tick a dedupe id is listed with. */
   default int battleTick() {
     return 0;

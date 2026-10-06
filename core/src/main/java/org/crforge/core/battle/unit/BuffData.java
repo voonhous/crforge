@@ -21,6 +21,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param crownTowerDamagePerHit a crown tower's damage per hit at the first level; 0 to use the
  *     percent
  * @param crownTowerDamagePercent how much more or less a crown tower takes, in percent
+ * @param characterCrownTowerDamagePercent the percent the carrier's hits on a crown tower are
+ *     scaled by as their attacker, after the damage multiplier; 0 for none
  * @param buildingDamagePercent the share of the damage a building takes, in percent; 0 for all
  * @param hitTickFromSource true when its hits of damage over time follow the clock of the area
  *     effect that applied it rather than each instance's own count
@@ -101,6 +103,7 @@ public record BuffData(
     int damagePerSecond,
     int crownTowerDamagePerHit,
     int crownTowerDamagePercent,
+    int characterCrownTowerDamagePercent,
     int buildingDamagePercent,
     boolean hitTickFromSource,
     int attractPercentage,
