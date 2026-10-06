@@ -74,7 +74,7 @@ graph LR
 | [Card Data Schema](schema.md) | JSON schema for cards/units/projectiles/buffs, loading pipeline, reference resolution |
 | [Level Scaling](level_scaling.md) | Rarity multiplier tables, tower stat scaling formulas |
 | [Secret Stats](secret_stats.md) | Undocumented unit stats measured from in-game observation |
-| [Game Versions](game-versions.md) | Which data versions each game client version has run, and which one is under work |
+| [Game Versions](game-versions.md) | Which data versions each game client version has run |
 | [Card Tracker](card_tracker.md) | Implementation status for all 121 cards |
 | [Measuring Missing Fields](reverse_engineering.md) | Guide for measuring unit stats from in-game observation |
 | [Python Gymnasium Bridge](../python/README.md) | ZMQ transport, observation/action spaces, reward structure, opponent policies |
