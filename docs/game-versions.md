@@ -9,12 +9,12 @@ The game carries two version numbers, and they move apart:
 
 Kind: `shipped` is the data set a client version comes with; `update` is a data set that client version was given later, without a client update.
 
-| Client version | Data version | Content sha | Kind | First seen |
-| --- | --- | --- | --- | --- |
-| 16.402.12 | 16.402.2 | f26e4f9bf73e48ad6a92648279959030bfa2fd6a | shipped | 2026-09-25 |
-| 16.402.12 | 16.402.15 | 67d4a2de5d141b69d86536850082a9ba5b937459 | update | 2026-09-25 |
-| 16.402.17 | 16.402.18 | 8aa8015226b0062c7e16a793522de91e564ffdaf | update | 2026-10-04 |
-| 16.402.17 | 16.426.22 | 7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec | update | 2026-10-06 |
+| Client version | Data version | Content sha | Kind | First seen | Balance notes |
+| --- | --- | --- | --- | --- | --- |
+| 16.402.12 | 16.402.2 | f26e4f9bf73e48ad6a92648279959030bfa2fd6a | shipped | 2026-09-25 | not known |
+| 16.402.12 | 16.402.15 | 67d4a2de5d141b69d86536850082a9ba5b937459 | update | 2026-09-25 | not known |
+| 16.402.17 | 16.402.18 | 8aa8015226b0062c7e16a793522de91e564ffdaf | update | 2026-10-04 | not known |
+| 16.402.17 | 16.426.22 | 7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec | update | 2026-10-06 | [Season 88 - RoyaleAPI](https://royaleapi.com/blog/season-88-balance-final-october-2026)<br>[Season 88 - riggedroyale](https://riggedroyale.com/blog/clash-royale-balance-changes-october-2026) |
 
 ## What a new data version on an unchanged client means
 
