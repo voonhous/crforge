@@ -1,11 +1,13 @@
 package org.crforge.parity;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.crforge.core.battle.data.GameClients;
 
 /**
  * The replay fields that differ between data versions, and how {@link ReplayScenario} reads each in
@@ -158,8 +160,13 @@ public record ReplayFormat(
    */
   public static final ReplayFormat GENERATED_16_402_18 = V14_593_1.forDataVersion("16.402.18");
 
-  private static final Map<String, ReplayFormat> BY_VERSION =
-      Map.of(V14_593_1.dataVersion(), V14_593_1, V16_402_18.dataVersion(), V16_402_18);
+  /**
+   * The format of each data version whose replays' fields have been decided. The fields are the
+   * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
+   * version that client runs ({@link GameClients#CLIENT_16_402_17}); its replays of 16.426.22 write
+   * the same fields.
+   */
+  private static final Map<String, ReplayFormat> BY_VERSION = byVersion();
 
   /**
    * The fields of each data version's generated cases, once the version's recorded battles of such
@@ -171,6 +178,16 @@ public record ReplayFormat(
           V14_593_1,
           GENERATED_16_402_18.dataVersion(),
           GENERATED_16_402_18);
+
+  /** The table of {@link #BY_VERSION}. */
+  private static Map<String, ReplayFormat> byVersion() {
+    Map<String, ReplayFormat> byVersion = new HashMap<>();
+    byVersion.put(V14_593_1.dataVersion(), V14_593_1);
+    for (String version : GameClients.CLIENT_16_402_17) {
+      byVersion.put(version, V16_402_18.forDataVersion(version));
+    }
+    return Map.copyOf(byVersion);
+  }
 
   /**
    * The format of a data version's replays.

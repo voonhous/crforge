@@ -1,7 +1,9 @@
 package org.crforge.parity;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.crforge.core.battle.data.GameClients;
 
 /**
  * The command type numbers of one data version's replays: which {@code ct} is a card play and which
@@ -15,15 +17,24 @@ import java.util.Optional;
  */
 public record CommandTypes(String dataVersion, int play, int ability) {
 
-  /** The command types of each data version whose replays have established them. */
-  private static final Map<String, CommandTypes> BY_VERSION =
-      Map.of(
-          "14.593.1",
-          new CommandTypes("14.593.1", 124, 178),
-          // The game client of this data version numbers its commands anew: 124 and 178 are no
-          // longer a play and an ability command, and are refused in its replays.
-          "16.402.18",
-          new CommandTypes("16.402.18", 153, 189));
+  /**
+   * The command types of each data version whose replays have established them. The numbers are the
+   * game client's: client 16.402.17's replays of data version 16.402.18 established them for every
+   * data version that client runs ({@link GameClients#CLIENT_16_402_17}).
+   */
+  private static final Map<String, CommandTypes> BY_VERSION = byVersion();
+
+  /** The table of {@link #BY_VERSION}. */
+  private static Map<String, CommandTypes> byVersion() {
+    Map<String, CommandTypes> byVersion = new HashMap<>();
+    byVersion.put("14.593.1", new CommandTypes("14.593.1", 124, 178));
+    // Client 16.402.17 numbers its commands anew: 124 and 178 are no longer a play and an ability
+    // command, and are refused in its replays.
+    for (String version : GameClients.CLIENT_16_402_17) {
+      byVersion.put(version, new CommandTypes(version, 153, 189));
+    }
+    return Map.copyOf(byVersion);
+  }
 
   /**
    * The command types of a data version.
