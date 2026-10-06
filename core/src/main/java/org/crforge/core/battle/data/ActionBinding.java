@@ -1,12 +1,13 @@
 package org.crforge.core.battle.data;
 
-import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import java.util.function.IntUnaryOperator;
 import java.util.function.LongSupplier;
 
 /**
  * What an action row needs from the entity it is built for: its expressions compiled for that
- * entity, the keys of the variables it writes, the entity's tag word, and its spawn rate.
+ * entity, the keys of the variables it writes, the entity's tag word, its spawn rate and what its
+ * buffs make of a hit speed step.
  */
 public interface ActionBinding {
 
@@ -36,10 +37,11 @@ public interface ActionBinding {
   }
 
   /**
-   * Whether a buff changes the entity's hit speed as it stands: never for an entity without buffs,
-   * which is every entity that is not a character or a tower.
+   * What the entity's buffs as they stand make of a hit speed step: the largest boost times what
+   * the largest slow leaves of the step, each division truncating. The step itself for an entity
+   * without buffs, which is every entity that is not a character or a tower.
    */
-  default BooleanSupplier hitSpeedBuffed() {
-    return () -> false;
+  default IntUnaryOperator hitSpeed() {
+    return base -> base;
   }
 }

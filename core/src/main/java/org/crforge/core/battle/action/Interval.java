@@ -11,6 +11,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * carries the pause tag, when it does not move at all. At zero or below it adds the interval to
  * what is left, so it does not drift, and schedules the action on its owner, the owner as its
  * cause, carrying the context the run's start carried. It never ends on its own.
+ *
+ * <p>The rate is asked on every step, so a buff listed or taken off mid-interval changes only the
+ * steps from then on. A rate below 1 - a stun's - moves nothing and fires nothing on that step.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -19,12 +22,17 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " by adding the interval, the action scheduled on the owner, the pause tag and that"
             + " it never ends; a pause tag of several names, any one of which holds it, and a"
             + " singleton run re-triggered with nothing restarted, held by"
-            + " building_evolutions_barbarians. The rate percentage answers as given: the row"
-            + " builder gives a row"
-            + " affected by the spawn speed its owner's spawn rate, which no run holds with a"
-            + " buff, and any other 100. The action carries the context the run's start carried,"
-            + " held by ActionContextTest.")
+            + " building_evolutions_barbarians. The rate percentage answers as given, asked each"
+            + " step, a rate below 1 moving nothing: the row builder gives a row that follows the"
+            + " hit speed what its owner's buffs make of 100 (held by evo_electrogiant up to its"
+            + " first pulse's hit, and by a recorded evolved Electro Giant under Rage whose second"
+            + " and third pulses come 7 and 28 ticks early), else a row affected by the spawn speed"
+            + " its owner's spawn rate, which no run holds with a buff, else 100. The action"
+            + " carries the context the run's start carried, held by ActionContextTest.")
 public final class Interval extends RowAction {
+
+  /** The rate of a row that follows no speed, and the hit speed a row that follows it scales. */
+  public static final int USUAL_RATE = 100;
 
   private final int intervalMs;
   private final int startCounterMs;
@@ -81,7 +89,12 @@ public final class Interval extends RowAction {
       if ((ownerTags.getAsLong() & pauseMask) != 0) {
         return;
       }
-      counter -= ratePercent.getAsInt() / 2;
+      int rate = ratePercent.getAsInt();
+      if (rate < 1) {
+        // A stopped rate holds the counter where it is and fires nothing.
+        return;
+      }
+      counter -= rate / 2;
       if (counter <= 0) {
         counter += intervalMs;
         if (action != null) {
