@@ -25,7 +25,8 @@ import org.junit.jupiter.api.io.TempDir;
  * and the Monk's third hit pushes the Giant sideways, the flight starting on tick 417. The flight's
  * budget runs out on tick 428 (the Giant stands) and its last visit on tick 429 steps it 25 units
  * back; tick 430 is its first walking step. The same battle runs on the configured tables and on
- * those tables relabelled as data version 16.402.18, which differ only in the version's rule.
+ * those tables relabelled as data version 16.402.18 or 16.426.22, which differ only in the
+ * version's rule. Both are data versions of game client 16.402.17, whose rule it is.
  */
 class BattlePushbackEndRouteTest {
 
@@ -98,7 +99,19 @@ class BattlePushbackEndRouteTest {
       "on data version 16.402.18 a pushback's end drops the Giant's route, and its first step"
           + " follows a fresh route from where the push left it")
   void theEndOfThePushbackDropsTheRoute() throws IOException {
-    Standard1v1Battle match = scene(relabelled(folder, "16.402.18"));
+    assertTheRouteIsDropped(scene(relabelled(folder, "16.402.18")));
+  }
+
+  @Test
+  @DisplayName(
+      "on data version 16.426.22, which the same game client runs, a pushback's end drops the"
+          + " Giant's route too")
+  void theEndOfThePushbackDropsTheRouteOnTheNewerDataOfTheSameClient() throws IOException {
+    assertTheRouteIsDropped(scene(relabelled(folder, "16.426.22")));
+  }
+
+  /** The Giant's route dropped as its flight ends, and its next step on a fresh route. */
+  private static void assertTheRouteIsDropped(Standard1v1Battle match) {
     stepTo(match, FLIGHT_END - 1);
     MovementState movement = giant(match).getUnit().movement();
     assertThat(movement.getPushbackInFlight()).as("in flight, standing").isEqualTo(1);

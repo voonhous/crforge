@@ -4,21 +4,27 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 
 /**
- * The game tables of data version 16.402.18 for the tests: the configured tables when they are of
- * that version, else a folder of them beside the configured ones, as in a checkout of the game data
- * repository. A test that needs them is skipped without them.
+ * The game tables of a data version of game client 16.402.17 for the tests, 16.402.18 unless named:
+ * the configured tables when they are of that version, else a folder of them beside the configured
+ * ones, as in a checkout of the game data repository. A test that needs them is skipped without
+ * them.
  */
 final class Version16Tables {
 
-  /** The data version. */
+  /** The data version the tests read unless they name another. */
   static final String VERSION = "16.402.18";
 
-  /** The tables, loaded once. */
-  private static GameTables tables;
+  /** The data version client 16.402.17 runs since 2026-10-06. */
+  static final String VERSION_16_426_22 = "16.426.22";
+
+  /** The tables of each version, each loaded once. */
+  private static final Map<String, GameTables> TABLES = new HashMap<>();
 
   private Version16Tables() {
     // Utility class
@@ -29,26 +35,38 @@ final class Version16Tables {
    *
    * @return the tables of 16.402.18
    */
-  static synchronized GameTables load() {
+  static GameTables load() {
+    return load(VERSION);
+  }
+
+  /**
+   * The tables of a data version, or the calling test skipped when there are none.
+   *
+   * @param version the data version
+   * @return its tables
+   */
+  static synchronized GameTables load(String version) {
+    GameTables tables = TABLES.get(version);
     if (tables == null) {
-      Optional<Path> folder = folder();
-      assumeTrue(folder.isPresent(), "no game tables of " + VERSION + " configured");
+      Optional<Path> folder = folder(version);
+      assumeTrue(folder.isPresent(), "no game tables of " + version + " configured");
       tables = GameTables.load(folder.get());
+      TABLES.put(version, tables);
     }
     return tables;
   }
 
   /** The configured folder when it is of the version, else a folder of the version beside it. */
-  private static Optional<Path> folder() {
+  private static Optional<Path> folder(String version) {
     Optional<Path> configured = GameTables.configuredDirectory();
     if (configured.isEmpty()) {
       return Optional.empty();
     }
     Path folder = configured.get().toAbsolutePath();
-    if (folder.getFileName().toString().equals(VERSION)) {
+    if (folder.getFileName().toString().equals(version)) {
       return Optional.of(folder);
     }
-    Path beside = folder.resolveSibling(VERSION);
+    Path beside = folder.resolveSibling(version);
     return Files.isDirectory(beside) ? Optional.of(beside) : Optional.empty();
   }
 }
