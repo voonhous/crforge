@@ -274,6 +274,20 @@ public class BattleWorld implements HolderPasses {
   private boolean deathActionAtDeathSlot;
 
   /**
+   * The data versions whose game's evolved Mega Knight uppercut clears its target's avoidance blend
+   * after a push the pushback entry took, as the row's ResetAvoidanceAtPushback says (true unless
+   * the row turns it off). The rule is the game build's: the game of data version 16.402.18 has the
+   * column, the game of 14.593.1 has no such column and never clears the blend, so a target
+   * steering around something is pushed along the turned path there.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> UPPERCUT_RESETS_AVOIDANCE = Set.of("16.402.18");
+
+  /** True when the battle's data version's uppercut clears its target's avoidance blend. */
+  private boolean uppercutResetsAvoidance;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -666,6 +680,15 @@ public class BattleWorld implements HolderPasses {
     this.areaLifeEndsBelowZero = AREA_LIFE_ENDS_BELOW_ZERO.contains(tables.version());
     this.guardRunMakesArea = GUARD_RUN_MAKES_AREA.contains(tables.version());
     this.deathActionAtDeathSlot = DEATH_ACTION_AT_DEATH_SLOT.contains(tables.version());
+    this.uppercutResetsAvoidance = UPPERCUT_RESETS_AVOIDANCE.contains(tables.version());
+  }
+
+  /**
+   * Whether the battle's data version's uppercut clears its target's avoidance blend after its push
+   * (see {@link #UPPERCUT_RESETS_AVOIDANCE}).
+   */
+  boolean uppercutResetsAvoidance() {
+    return uppercutResetsAvoidance;
   }
 
   /**

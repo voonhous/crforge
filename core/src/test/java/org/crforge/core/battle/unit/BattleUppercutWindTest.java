@@ -201,6 +201,29 @@ class BattleUppercutWindTest {
 
   @Test
   @DisplayName(
+      "the uppercut's push keeps the pushed unit's avoidance blend in a data version whose"
+          + " uppercut has no switch to clear it")
+  void thePushKeepsTheBlendWithoutTheSwitch() {
+    Scene scene = new Scene();
+    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 14000, "mk");
+    CharacterEntity knight = scene.unit(1, "Knight", 3500, 15600, "k");
+    // Just deployed, before its first hit; held where it stands.
+    scene.step(22);
+    mk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    mk.getUnit().targeting().setReference(knight.getTargetView());
+    mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), knight.actionHolder());
+    knight.getUnit().movement().setAvoidanceBlend(-150);
+
+    scene.step(1);
+
+    assertThat(knight.getUnit().movement().getAttackPushback()).as("an attack's push").isEqualTo(1);
+    assertThat(scene.world().uppercutResetsAvoidance()).isFalse();
+    // One walking step's decay before the push, none after it.
+    assertThat(knight.getUnit().movement().getAvoidanceBlend()).isEqualTo(-140);
+  }
+
+  @Test
+  @DisplayName(
       "an uppercut started with no current target is refused: the run would read the targeting"
           + " component's previous reference")
   void anUppercutWithoutATargetIsRefused() {

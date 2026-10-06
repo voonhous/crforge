@@ -20,8 +20,9 @@ import org.crforge.core.pathfinding.target.RangeTest;
  * behind it on the line from the nearest tower of its own side - the side's princess towers, then
  * the king facing the unit's side - so the push drives it toward that tower, through the pushback
  * entry past every gate of the request; then the row's action is scheduled on it with the unit as
- * the cause, and the unit carries NO_ATTACK, NO_MOVE and LOCK_TARGET for one step and is held for
- * the follow-up delay. A target with no movement component switched on, or one following a removed
+ * the cause, a push the entry took clears the target's avoidance blend unless the row turns that
+ * off, and the unit carries NO_ATTACK, NO_MOVE and LOCK_TARGET for one step and is held for the
+ * follow-up delay. A target with no movement component switched on, or one following a removed
  * building, is not pushed and ends the run. Each later update ends the run when the unit has no
  * target or attacks another one in range; with another target out of range it marks the uppercut's
  * target in its targeting queue, at a priority the queue's flush never takes; then the delay runs
@@ -33,7 +34,9 @@ import org.crforge.core.pathfinding.target.RangeTest;
     note =
         "Settled line for line: the start's hold and target, the push point, the push through"
             + " the entry, the action on the target, the hold for the delay, the ends, the mark"
-            + " and the leave notice; held by mega_knight_ev1_uppercut. Refused: the start"
+            + " and the leave notice; held by mega_knight_ev1_uppercut. The blend cleared after a"
+            + " push the entry took, on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest."
+            + " Refused: the start"
             + " without a current target, which reads the targeting component's previous"
             + " reference, a push point with no tower or king found, which turns to the facing,"
             + " and a target other than a character with a movement component.")
@@ -217,18 +220,27 @@ final class UppercutRun extends ActionInstance {
     if (!pushedUnit.isActive(CharacterEntity.MOVEMENT_SLOT)) {
       return false;
     }
-    pushedUnit.pushEntry(
-        x,
-        y,
-        row.getPushBackStrength(),
-        true,
-        row.isDistanceProportionalPush(),
-        row.isResetPushbackIfStronger());
+    int entered =
+        pushedUnit.pushEntry(
+            x,
+            y,
+            row.getPushBackStrength(),
+            true,
+            row.isDistanceProportionalPush(),
+            row.isResetPushbackIfStronger());
     BattleAction onTargets = row.getActionOnTargets();
     if (onTargets != null) {
       BattleAction built =
           unit.world().getActions().build(onTargets.name(), unit.world().binding(pushedUnit));
       pushedUnit.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, unit.actionHolder());
+    }
+    // A push the entry took clears the target's avoidance blend, so no push step is turned by
+    // the way it was steering: it flies straight toward its tower. Only the data versions whose
+    // game has the row's switch do this.
+    if (entered == 1
+        && unit.world().uppercutResetsAvoidance()
+        && row.isResetAvoidanceAtPushback()) {
+      pushedUnit.getUnit().movement().setAvoidanceBlend(0);
     }
     return true;
   }
