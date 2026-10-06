@@ -3,6 +3,7 @@ package org.crforge.desktop.battle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
@@ -31,6 +32,40 @@ public final class TableCopies {
     try (Stream<Path> files = Files.list(source)) {
       for (Path file : files.filter(f -> f.toString().endsWith(".json")).toList()) {
         Files.copy(file, folder.resolve(file.getFileName()));
+      }
+    }
+    return folder;
+  }
+
+  /**
+   * A copy of the configured tables whose every file's header names another content sha: the same
+   * rows, as another set of game data would be named.
+   *
+   * @param root the data root
+   * @param version the version folder's name
+   * @param contentSha the content sha the copy's headers name
+   * @return the folder
+   */
+  public static Path withContentSha(Path root, String version, String contentSha)
+      throws IOException {
+    Path folder = copy(root, version);
+    String original = GameTables.load(folder).contentSha();
+    try (Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.filter(f -> f.toString().endsWith(".json")).toList()) {
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        String header = "\"content_sha\": \"" + original + "\"";
+        int at = text.indexOf(header);
+        if (at < 0) {
+          throw new IOException(file + " names no content sha " + original);
+        }
+        Files.writeString(
+            file,
+            text.substring(0, at)
+                + "\"content_sha\": \""
+                + contentSha
+                + "\""
+                + text.substring(at + header.length()),
+            StandardCharsets.UTF_8);
       }
     }
     return folder;

@@ -3,8 +3,11 @@ package org.crforge.desktop;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3WindowAdapter;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -15,6 +18,7 @@ import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.RenderConstants;
 import org.crforge.desktop.replay.ReplayFile;
+import org.crforge.parity.ReplayCapture;
 
 /**
  * Desktop launcher for CRForge. Starts the LibGDX application with debug visualization.
@@ -28,10 +32,13 @@ import org.crforge.desktop.replay.ReplayFile;
  * visualizer ({@code --ai-port}) still runs the original engine and reads no tables.
  *
  * <p>{@code --replay <file>} opens the replay viewer on a replay file instead of a Ladder battle:
- * the launcher reads the replay against the tables and prints its battle header and every reason
- * the replay is refused, if it is (see {@link ReplayFile}), the battle core's refusal of the tables
- * among them, and opens the window on that list rather than stopping. A replay file dropped on the
- * debug visualizer's window opens the same way.
+ * the launcher reads the replay against the tables of the data it was recorded on ({@link
+ * #openReplay}: the data root's version whose content sha the replay's capture block names, else
+ * the tables chosen, marked assumed for a replay without a block) and prints its battle header and
+ * every reason the replay is refused, if it is (see {@link ReplayFile}), the battle core's refusal
+ * of the tables among them, and opens the window on that list rather than stopping. A replay file
+ * dropped on the debug visualizer's window opens the same way, except that the version is never
+ * fixed for it.
  */
 public class DesktopLauncher {
 
@@ -40,6 +47,8 @@ public class DesktopLauncher {
 
   /** The exit code when the replay given cannot be read. */
   static final int NO_REPLAY = 2;
+
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   /** The argument that names a replay file to open. */
   static final String REPLAY_ARGUMENT = "--replay";
@@ -76,7 +85,9 @@ public class DesktopLauncher {
       if (replayFile.isPresent()) {
         // A replay lists the battle core's refusal of the tables among its reasons, so no first
         // Ladder battle is built for it.
-        replay = loadReplay(replayFile.get(), tables, System.out, System.err);
+        replay =
+            openReplay(
+                replayFile.get(), versions, choice.explicitVersion(), System.out, System.err);
         if (replay == null) {
           System.exit(NO_REPLAY);
           return;
@@ -234,8 +245,79 @@ public class DesktopLauncher {
   }
 
   /**
+   * Opens a replay file on the tables of the data it was recorded on, and prints its description.
+   *
+   * <p>A replay whose capture block names a content sha other than the current tables' is read on
+   * the data root's version with that sha, which becomes the current version (said in the output
+   * and the data details). When no version of the root has it, or the data version was fixed at
+   * launch ({@code fixedBy}), the current tables stay and the replay is refused, never played on
+   * other data: the first reason says why, and the mapping's names what the replay was recorded on.
+   * A replay without a block is read on the current tables, its data version marked assumed.
+   *
+   * @param file the replay file
+   * @param versions the data versions, whose current tables may change
+   * @param fixedBy the rule that fixed the data version at launch, or null when it is not fixed
+   * @param out where the description goes
+   * @param err where the failure goes
+   * @return the replay, refused or playable, or null when the file cannot be read as JSON
+   */
+  static ReplayFile openReplay(
+      Path file, DataVersions versions, String fixedBy, PrintStream out, PrintStream err) {
+    JsonNode document;
+    try {
+      document = JSON.readTree(Files.readAllBytes(file));
+    } catch (IOException | RuntimeException e) {
+      err.println(
+          "Cannot read the replay at " + file.toAbsolutePath().normalize() + ": " + e.getMessage());
+      return null;
+    }
+    String tablesRefusal = null;
+    Optional<ReplayCapture> capture = ReplayCapture.of(document);
+    if (capture.isPresent()
+        && !capture.get().contentSha().equals(versions.current().contentSha())) {
+      if (fixedBy != null) {
+        tablesRefusal =
+            "the data version is fixed by "
+                + fixedBy
+                + ", and the replay was recorded on "
+                + capture.get().recordedOn()
+                + "; it is not played on other data";
+      } else {
+        DataVersions.ContentMatch match = versions.selectContent(capture.get().contentSha());
+        if (match.refusal() != null) {
+          tablesRefusal = match.refusal();
+        } else if (match.from() != null) {
+          out.println(
+              "the replay names content sha "
+                  + capture.get().contentSha()
+                  + ": switched from data version "
+                  + match.from()
+                  + " to "
+                  + match.version()
+                  + " ("
+                  + versions.currentFolder().toAbsolutePath().normalize()
+                  + ")");
+        }
+      }
+    }
+    ReplayFile replay;
+    try {
+      replay = ReplayFile.parse(file, document, versions.current(), tablesRefusal);
+    } catch (RuntimeException e) {
+      err.println(
+          "Cannot read the replay at " + file.toAbsolutePath().normalize() + ": " + e.getMessage());
+      return null;
+    }
+    for (String line : replay.describe()) {
+      out.println(line);
+    }
+    return replay;
+  }
+
+  /**
    * Reads a replay file against the tables and prints its description: the file, its battle header,
-   * and every reason it is refused, if it is.
+   * and every reason it is refused, if it is. The tables are not changed for the replay's capture
+   * block, which the mapping checks against them ({@link #openReplay} picks the replay's own).
    *
    * @param file the replay file
    * @param tables the game tables

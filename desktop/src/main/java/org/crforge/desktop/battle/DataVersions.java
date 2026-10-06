@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.desktop.DataSelection;
 
 /**
  * The data versions the debug screen can switch between: the version folders of a data root, the
@@ -46,6 +47,19 @@ public final class DataVersions {
    * @param refusal why the switch was refused, or null when it was made
    */
   public record Switched(String version, BattleSession session, String refusal) {}
+
+  /**
+   * The result of looking up a content sha in the root.
+   *
+   * @param version the version folder whose tables have the sha, or null when none has it
+   * @param from the version on screen before, when the lookup switched to another; else null
+   * @param refusal why no version was switched to, or null when the current tables have the sha or
+   *     a switch was made
+   */
+  public record ContentMatch(String version, String from, String refusal) {}
+
+  /** The source of tables a replay's capture block named ({@link #selectContent}). */
+  public static final String NAMED_BY_REPLAY = "named by the replay's capture block";
 
   /**
    * The versions of a root, starting on the tables already loaded.
@@ -191,6 +205,69 @@ public final class DataVersions {
     currentFolder = folder;
     source = "selected from the data root";
     return new Switched(version, session, null);
+  }
+
+  /**
+   * Makes the tables of a content sha current, for a replay whose capture block names it: the
+   * current tables when they have it, else the root's first version whose tables have it, loaded
+   * once and kept, without starting a battle (the replay's own reading lists any refusal of the
+   * battle core). Each version's sha is read from the header of one of its table files ({@link
+   * DataSelection#contentSha}) unless its tables are loaded already. When no version has the sha,
+   * or its tables cannot be read, the current tables stay.
+   *
+   * @param contentSha the content sha the replay names
+   * @return the version switched to, or why none was
+   */
+  public ContentMatch selectContent(String contentSha) {
+    if (contentSha.equals(current.contentSha())) {
+      return new ContentMatch(cursor >= 0 ? versions.get(cursor) : current.version(), null, null);
+    }
+    String from = cursor >= 0 ? versions.get(cursor) : current.version();
+    for (int i = 0; i < versions.size(); i++) {
+      String version = versions.get(i);
+      GameTables tables = loaded.get(version);
+      String sha =
+          tables != null
+              ? tables.contentSha()
+              : DataSelection.contentSha(root.resolve(version)).orElse(null);
+      if (!contentSha.equals(sha)) {
+        continue;
+      }
+      Path folder = root.resolve(version);
+      if (tables == null) {
+        try {
+          tables = GameTables.load(folder);
+        } catch (RuntimeException e) {
+          return new ContentMatch(
+              null,
+              null,
+              "cannot read the tables of data version "
+                  + version
+                  + " at "
+                  + folder.toAbsolutePath().normalize()
+                  + ", whose content sha the replay names: "
+                  + e.getMessage());
+        }
+        loaded.put(version, tables);
+      }
+      cursor = i;
+      current = tables;
+      currentFolder = folder;
+      source = NAMED_BY_REPLAY;
+      return new ContentMatch(version, from, null);
+    }
+    return new ContentMatch(
+        null,
+        null,
+        root == null
+            ? "there is no data root to look for the content sha "
+                + contentSha
+                + " the replay was recorded on in; it is not played on other data"
+            : "no data version of the data root "
+                + root.toAbsolutePath().normalize()
+                + " has the content sha "
+                + contentSha
+                + " the replay was recorded on; it is not played on other data");
   }
 
   private String stillOn() {

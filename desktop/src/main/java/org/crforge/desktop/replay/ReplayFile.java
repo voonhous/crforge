@@ -16,6 +16,7 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 import org.crforge.parity.CommandTypes;
+import org.crforge.parity.ReplayCapture;
 import org.crforge.parity.ReplayScenario;
 import org.crforge.parity.ReplaySmokeRun;
 import org.crforge.parity.ScenarioPlan;
@@ -38,6 +39,12 @@ import org.crforge.parity.ScenarioPlan;
  *
  * <p>The header is read leniently, naming each id by its row in the tables where it can, so that a
  * refused replay can still be described.
+ *
+ * <p>A replay may carry a capture block ({@link ReplayCapture}), written by the tool that saved it:
+ * the client version, data version and content sha it was recorded on, and when. Its description
+ * names them, and whether the tables' data version is the one the block names, or only assumed for
+ * a replay without a block. A block that names other data than the tables' is one of the mapping's
+ * refusals; whoever chose the tables may list why it could not find the replay's own first.
  */
 public final class ReplayFile {
 
@@ -51,6 +58,8 @@ public final class ReplayFile {
 
   private final Path path;
   private final String dataVersion;
+  private final String contentSha;
+  private final ReplayCapture capture;
   private final Header header;
   private final List<String> refusals;
   private final ScenarioPlan plan;
@@ -74,9 +83,16 @@ public final class ReplayFile {
       Map<Integer, Integer> commandTypes) {}
 
   private ReplayFile(
-      Path path, String dataVersion, Header header, List<String> refusals, ScenarioPlan plan) {
+      Path path,
+      GameTables tables,
+      ReplayCapture capture,
+      Header header,
+      List<String> refusals,
+      ScenarioPlan plan) {
     this.path = path;
-    this.dataVersion = dataVersion;
+    this.dataVersion = tables.version();
+    this.contentSha = tables.contentSha();
+    this.capture = capture;
     this.header = header;
     this.refusals = List.copyOf(refusals);
     this.plan = plan;
@@ -103,9 +119,28 @@ public final class ReplayFile {
    * @return the replay, refused or playable
    */
   public static ReplayFile parse(Path path, JsonNode document, GameTables tables) {
+    return parse(path, document, tables, null);
+  }
+
+  /**
+   * Reads a replay document, with the reason its tables are not the ones it names, if there is one.
+   *
+   * @param path where it came from, for presentation
+   * @param document the replay document
+   * @param tables the game tables it is read against
+   * @param tablesRefusal why the replay's own data could not be read on, listed as its first
+   *     reason; null when there is none
+   * @return the replay, refused or playable
+   */
+  public static ReplayFile parse(
+      Path path, JsonNode document, GameTables tables, String tablesRefusal) {
     ReplayScenario mapping = new ReplayScenario(tables);
     Header header = header(document, mapping);
-    List<String> refusals = collapse(mapping.survey(document));
+    List<String> refusals = new ArrayList<>();
+    if (tablesRefusal != null) {
+      refusals.add(tablesRefusal);
+    }
+    refusals.addAll(collapse(mapping.survey(document)));
     ScenarioPlan plan = null;
     if (refusals.isEmpty()) {
       plan = new ReplayScenario(tables).translate(document);
@@ -128,7 +163,8 @@ public final class ReplayFile {
                 + reason(e));
       }
     }
-    return new ReplayFile(path, tables.version(), header, refusals, plan);
+    return new ReplayFile(
+        path, tables, ReplayCapture.of(document).orElse(null), header, refusals, plan);
   }
 
   /** Where the replay came from. */
@@ -139,6 +175,54 @@ public final class ReplayFile {
   /** The data version of the tables the replay was read against. */
   public String dataVersion() {
     return dataVersion;
+  }
+
+  /** The replay's capture block, or empty when it has none. */
+  public Optional<ReplayCapture> capture() {
+    return Optional.ofNullable(capture);
+  }
+
+  /**
+   * Whether the data version is the one the replay names: its capture block's content sha is the
+   * tables'. Otherwise the data version is assumed (no block) or not the replay's (refused).
+   */
+  public boolean dataNamed() {
+    return capture != null && capture.contentSha().equals(contentSha);
+  }
+
+  /** What the replay was recorded on, as its capture block names it, with when. */
+  private String recordedOn() {
+    if (capture == null) {
+      return "not named by the replay (no capture block)";
+    }
+    return capture.recordedOn()
+        + (capture.capturedAt() == null ? "" : ", captured " + capture.capturedAt());
+  }
+
+  /** The tables' data version and how it relates to the replay's. */
+  private String dataVersionLine() {
+    String tables = dataVersion + " (content sha " + contentSha + "), ";
+    if (capture == null) {
+      return tables + "assumed: the replay does not name the data it was recorded on";
+    }
+    return tables + (dataNamed() ? "named by the replay" : "not the replay's");
+  }
+
+  /**
+   * The line the viewer's data details give the replay: whether its capture block named the data,
+   * with the client version and capture time, or the data version is assumed.
+   */
+  public String dataLine() {
+    if (capture == null) {
+      return "Replay: data version assumed, the replay does not name the data it was recorded on";
+    }
+    if (!dataNamed()) {
+      return "Replay: recorded on other data, " + capture.recordedOn();
+    }
+    return "Replay: data named by its capture block (client "
+        + capture.clientVersion()
+        + (capture.capturedAt() == null ? "" : ", captured " + capture.capturedAt())
+        + ")";
   }
 
   /** The replay's battle header. */
@@ -182,6 +266,8 @@ public final class ReplayFile {
   public List<String> describe(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
     lines.add("replay: " + path.toAbsolutePath().normalize());
+    lines.add("  recorded on: " + recordedOn());
+    lines.add("  data version: " + dataVersionLine());
     lines.add("  game mode: " + header.gameMode() + ", location " + header.location());
     for (int side = 0; side < header.decks().size(); side++) {
       lines.add(

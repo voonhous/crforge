@@ -5,7 +5,6 @@ import com.badlogic.gdx.Screen;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import lombok.extern.slf4j.Slf4j;
-import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.replay.ReplayFile;
@@ -18,7 +17,7 @@ import org.crforge.desktop.screen.ReplayGameScreen;
  * runs the battle core on the given game tables (switching between the data versions of a data
  * root), or AI visualizer mode when an AI port is specified, which runs the original engine. Given
  * a replay, it opens the replay viewer instead of the debug screen; a replay file dropped on the
- * window opens there too, read against the current tables.
+ * window opens there too, read against the tables of the data it names, else the current ones.
  */
 @Slf4j
 public class CRForgeGame extends Game {
@@ -84,9 +83,10 @@ public class CRForgeGame extends Game {
   }
 
   /**
-   * Opens the first JSON file dropped on the window as a replay, read against the current tables
-   * and described as {@code --replay} reads one; a file that cannot be read is logged and the
-   * screen kept.
+   * Opens the first JSON file dropped on the window as a replay, read against the tables of the
+   * data its capture block names (the root's version with its content sha, which becomes current)
+   * or else the current tables, and described as {@code --replay} reads one; a file that cannot be
+   * read is logged and the screen kept.
    *
    * @param files the dropped files' paths
    */
@@ -94,13 +94,12 @@ public class CRForgeGame extends Game {
     if (versions == null) {
       return;
     }
-    GameTables tables = versions.current();
     for (String file : files) {
       if (!file.toLowerCase().endsWith(".json")) {
         continue;
       }
       Path path = Paths.get(file);
-      ReplayFile dropped = DesktopLauncher.loadReplay(path, tables, System.out, System.err);
+      ReplayFile dropped = DesktopLauncher.openReplay(path, versions, null, System.out, System.err);
       if (dropped == null) {
         log.info("Dropped file {} is not a replay that can be read", path);
         return;
