@@ -2708,26 +2708,40 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void queueActionDamage(ActionOwner source, TakeDamage.Damage damage, int added) {
-    world.queueActionDamage(
-        source instanceof WorldEntity entity ? entity : null, this, damage, added);
+    world.queueActionDamage(source, this, damage, added);
   }
 
   /**
    * Takes a damage-taking action's hit from the drain, its amount already settled: the damage entry
-   * as for any hit, the source counting it and named as its cause, and the entity's runs told
-   * whether its damage is a Reflected one.
+   * as for any hit, the dealer counting it, the source named as its cause, and the entity's runs
+   * told whether its damage is a Reflected one.
    *
-   * @param source the entity that caused the action, or null for none
+   * @param dealer the character or tower that caused the action and counts the hit, or null for
+   *     none
+   * @param cause what the hit came from - that entity, or the area effect whose hit ran the action
+   *     - which a shield the hit breaks names as the cause of its action; null for none
    * @param amount the amount the drain settled on
    * @param reflected true under the damage's Reflected flag
+   * @param passesHidden true under the damage's DamagesHidden flag: the damage entry lets the hit
+   *     through while the entity is hidden
    * @return what the hit did; a death it causes is the battle's to run
    */
   DamageResult takeActionDamage(
-      WorldEntity source, int amount, boolean reflected, int directionX, int directionY) {
+      WorldEntity dealer,
+      SpawnHost cause,
+      int amount,
+      boolean reflected,
+      boolean passesHidden,
+      int directionX,
+      int directionY) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
     refuseReflect("a damage-taking action's hit");
+    if (passesHidden && hidden() && !reachableWhileHidden()) {
+      throw new UnsupportedOperationException(
+          "a damage that reaches hidden units reaches " + name() + ", which is not modelled");
+    }
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.damage(
@@ -2736,8 +2750,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             0,
             directionX,
             directionY,
-            damageQueries(false, source, true, null, source, reflected));
-    shieldHit(amount, shieldBefore, source);
+            damageQueries(passesHidden, dealer, true, null, cause, reflected));
+    shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
     return result;
   }

@@ -507,6 +507,8 @@ public class BattleWorld implements HolderPasses {
    * and the added amount, with the direction from the source to the target as it was queued.
    *
    * @param source the entity that caused the action, or null for none
+   * @param areaSource the area effect whose hit ran the action, or null for none; never set with a
+   *     source
    * @param target the entity it lands on
    * @param damage the row's damage
    * @param added the added amount
@@ -515,6 +517,7 @@ public class BattleWorld implements HolderPasses {
    */
   private record ActionDamageDue(
       WorldEntity source,
+      AreaEffectEntity areaSource,
       WorldEntity target,
       TakeDamage.Damage damage,
       int added,
@@ -4917,18 +4920,36 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Queues a damage-taking action's hit, which the drain deals after the post-hooks of the tick;
-   * one queued after that lands on the next tick.
+   * one queued after that lands on the next tick. Its source is the character, building or tower
+   * that caused the action, or the area effect whose hit ran it; anything else that caused it is no
+   * source, and the level scaling of a damage from such a cause is refused.
    *
-   * @param source the entity that caused the action, or null for none
+   * @param cause what caused the action, or null for nothing
    * @param target the entity it lands on
    * @param damage the row's damage
    * @param added the added amount
    */
   void queueActionDamage(
-      WorldEntity source, WorldEntity target, TakeDamage.Damage damage, int added) {
-    int directionX = source == null ? 0 : target.getView().getX() - source.getView().getX();
-    int directionY = source == null ? 0 : target.getView().getY() - source.getView().getY();
-    queuedHits.add(new ActionDamageDue(source, target, damage, added, directionX, directionY));
+      ActionOwner cause, WorldEntity target, TakeDamage.Damage damage, int added) {
+    WorldEntity source = cause instanceof WorldEntity entity ? entity : null;
+    AreaEffectEntity areaSource = cause instanceof AreaEffectEntity area ? area : null;
+    if (cause != null && source == null && areaSource == null && damage.levelScaled()) {
+      throw new UnsupportedOperationException(
+          "a damage-taking action's hit scaled by the level of "
+              + cause.actionRowName()
+              + ", neither a character nor an area effect, is not modelled");
+    }
+    int directionX = 0;
+    int directionY = 0;
+    if (source != null) {
+      directionX = target.getView().getX() - source.getView().getX();
+      directionY = target.getView().getY() - source.getView().getY();
+    } else if (areaSource != null) {
+      directionX = target.getView().getX() - areaSource.getX();
+      directionY = target.getView().getY() - areaSource.getY();
+    }
+    queuedHits.add(
+        new ActionDamageDue(source, areaSource, target, damage, added, directionX, directionY));
   }
 
   /**
@@ -5103,12 +5124,17 @@ public class BattleWorld implements HolderPasses {
   /**
    * Deals a damage-taking action's hit: nothing to a target without hit points; nothing at all from
    * a target that takes no damage; otherwise the damage's amount for the target - its tower amount
-   * against a crown tower when it gives one - plus the added amount, floored at 0 behind the
-   * source's percentages (which no buff changes) unless NoAmplification, then lowered by the
-   * target's protection and floored at 0 unless NoProtection. The damage entry deals it with the
-   * source counting it, the target's runs told whether it is a Reflected hit, and the death it
-   * causes runs at once. A source that has left the battle is no source. A source whose row sets a
-   * buff on damage, which the drain applies after a hit it lets through, is refused.
+   * against a crown tower when it gives one - plus the added amount, scaled by the source's level
+   * unless NoScaling, floored at 0 behind the source's percentages (which no buff changes) unless
+   * NoAmplification - an area effect has none - then lowered by the target's protection and floored
+   * at 0 unless NoProtection. The damage entry deals it with the source counting it (an area effect
+   * counts nothing), the target's runs told whether it is a Reflected hit, the hidden test lifted
+   * under DamagesHidden, and the death it causes runs at once. A source that has left the battle is
+   * no source; the level scaling of a hit from one is refused. A source whose row sets a buff on
+   * damage, which the drain applies after a hit it lets through, is refused.
+   *
+   * <p>The level scaling is the card damage scaling of the source's own row and level: a
+   * character's, a building's or a tower's, or an area effect's.
    */
   private void drainActionDamage(ActionDamageDue due) {
     WorldEntity target = due.target();
@@ -5116,10 +5142,39 @@ public class BattleWorld implements HolderPasses {
       return;
     }
     WorldEntity source = due.source() == null || due.source().isLeft() ? null : due.source();
+    AreaEffectEntity areaSource =
+        due.areaSource() == null || liveObject(due.areaSource().getId()) != due.areaSource()
+            ? null
+            : due.areaSource();
     TakeDamage.Damage damage = due.damage();
+    if (damage.levelScaled()
+        && source == null
+        && areaSource == null
+        && (due.source() != null || due.areaSource() != null)) {
+      throw new UnsupportedOperationException(
+          "a damage-taking action's hit scaled by the level of a source no longer in the battle"
+              + " is not modelled");
+    }
     int amount = 0;
     if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) == 0) {
       amount = damage.amount(target.getTargetView().isCrownTowerTarget()) + due.added();
+      if (damage.levelScaled() && source != null) {
+        amount =
+            LevelScaling.scale(
+                ScalingGlobals.standard(),
+                amount,
+                source.getPackedLevel(),
+                ScalingMode.CARD_DAMAGE,
+                source.getData().rarity());
+      } else if (damage.levelScaled() && areaSource != null) {
+        amount =
+            LevelScaling.scale(
+                ScalingGlobals.standard(),
+                amount,
+                areaSource.getPackedLevel(),
+                ScalingMode.CARD_DAMAGE,
+                areaSource.getData().rarity());
+      }
       if (source != null && !damage.noAmplification()) {
         amount = Math.max(amount, 0);
       }
@@ -5129,9 +5184,15 @@ public class BattleWorld implements HolderPasses {
     }
     DamageResult result =
         target.takeActionDamage(
-            source, amount, damage.reflected(), due.directionX(), due.directionY());
+            source,
+            areaSource != null ? areaSource : source,
+            amount,
+            damage.reflected(),
+            damage.damagesHidden(),
+            due.directionX(),
+            due.directionY());
     if (result.died()) {
-      target.die(source);
+      target.die(areaSource != null ? areaSource : source);
     }
     if (result.landed() && source != null && source.getData().buffOnDamage() != null) {
       throw new UnsupportedOperationException(

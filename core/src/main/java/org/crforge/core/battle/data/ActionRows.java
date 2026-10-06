@@ -3806,9 +3806,8 @@ public final class ActionRows {
     /**
      * A damage-taking row's inline damage: BaseDamage (0 when left out), TowerDamage (none when
      * left out), its Flags (one comma-separated text or a list) and an Effect only the view shows.
-     * Refused: a damage that is not a table, one without NoScaling, whose level scaling by the
-     * source is untraced, a flag other than Reflected, NoScaling, NoProtection and NoAmplification,
-     * and any other field.
+     * Refused: a damage that is not a table, a flag other than Reflected, NoScaling, NoProtection,
+     * NoAmplification and DamagesHidden, and any other field.
      */
     private TakeDamage.Damage takenDamage(String name, JsonNode value) {
       if (value == null || !value.isObject()) {
@@ -3837,21 +3836,20 @@ public final class ActionRows {
         }
       }
       for (String flag : flags) {
-        if (!Set.of("Reflected", "NoScaling", "NoProtection", "NoAmplification").contains(flag)) {
+        if (!Set.of("Reflected", "NoScaling", "NoProtection", "NoAmplification", "DamagesHidden")
+            .contains(flag)) {
           throw new UnsupportedOperationException(
               name + " sets the damage flag " + flag + ", which is not modelled");
         }
-      }
-      if (!flags.contains("NoScaling")) {
-        throw new UnsupportedOperationException(
-            name + " deals a damage its source's level scales, which is not modelled");
       }
       return new TakeDamage.Damage(
           integer(value, "BaseDamage", 0),
           integer(value, "TowerDamage", TakeDamage.NO_TOWER_DAMAGE),
           flags.contains("Reflected"),
           flags.contains("NoProtection"),
-          flags.contains("NoAmplification"));
+          flags.contains("NoAmplification"),
+          !flags.contains("NoScaling"),
+          flags.contains("DamagesHidden"));
     }
 
     /** A named action, a row inline by name, or null for none. */
