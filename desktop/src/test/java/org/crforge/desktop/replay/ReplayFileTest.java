@@ -115,7 +115,7 @@ class ReplayFileTest {
   void everyRefusedField() {
     ObjectNode document = Replays.archerQueen();
     document.putArray("srq");
-    ((ObjectNode) document.path("battle")).put("arena", 54000144);
+    ((ObjectNode) document.path("battle")).put("hm", true);
     ((ObjectNode) document.path("battle").path("avatar0")).put("clan_name", "Test Clan");
 
     ReplayFile replay = ReplayFile.parse(folder.resolve("x.json"), document, Replays.tables());
@@ -123,7 +123,7 @@ class ReplayFileTest {
     assertThat(replay.refusals())
         .containsExactly(
             "the field srq, which has no mapping: $.srq",
-            "a value of arena other than 54000001, which has no production input: arena=54000144",
+            "a value of hm other than false, which has no production input: hm=true",
             "the field clan_name, which has no mapping: battle.avatar0.clan_name");
   }
 

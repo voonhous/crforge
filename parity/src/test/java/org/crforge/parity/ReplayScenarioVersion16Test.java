@@ -121,20 +121,38 @@ class ReplayScenarioVersion16Test {
   }
 
   @Test
+  void carriesTheArenaOfAnyTrophyArena() {
+    // A replay from another trophy arena's TV channel: the arena names the players' trophy arena,
+    // which sets no battle input; the map is the location's.
+    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("arena", 54000020);
+    ((ObjectNode) battle.path("avatar0")).put("arena", 54000020);
+    ((ObjectNode) battle.path("avatar1")).put("arena", 54000020);
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    mapping.translate(scenario);
+    assertThat(mapping.mapping())
+        .containsEntry("battle.arena", ReplayScenario.ARENA_CARRIED)
+        .containsEntry("battle.avatarN.arena", ReplayScenario.ARENA_CARRIED)
+        .doesNotContainKey("arena");
+  }
+
+  @Test
   void refusesAnotherValueOfAPinnedFieldOfTheVersion() {
     ObjectNode scenario = Scenarios.knightOfVersion16();
     scenario.putArray("srq").add(1);
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", true);
     battle.put("cardlvlmin", 1);
-    battle.put("arena", 54000001);
     ((ObjectNode) battle.path("avatar0")).put("npc", true);
 
     List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
 
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
-        .containsExactly("srq=[1]", "arena=54000001", "cardlvlmin=1", "seb=true", "npc=true");
+        .containsExactly("srq=[1]", "cardlvlmin=1", "seb=true", "npc=true");
   }
 
   @Test
@@ -158,7 +176,7 @@ class ReplayScenarioVersion16Test {
     assertThat(plan.accounts()).containsExactly(new int[] {0, 1}, new int[] {0, 2});
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
     assertThat(mapping.mapping())
-        .containsEntry("arena", "pinned: 54000001")
+        .containsEntry("battle.arena", ReplayScenario.ARENA_CARRIED)
         .containsEntry("expLevel", "pinned: 1")
         .containsEntry("evt", "pinned: []")
         .doesNotContainKeys("srq", "srs", "cardlvlmin", "battle.hbd[i].kt");
@@ -180,7 +198,6 @@ class ReplayScenarioVersion16Test {
     scenario.putArray("srq");
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", false);
-    battle.put("arena", 54000144);
     ((ObjectNode) battle.path("hbd").get(0)).put("kt", 1);
 
     List<ReplayScenario.Refusal> refusals =
@@ -189,10 +206,7 @@ class ReplayScenarioVersion16Test {
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
         .containsExactly(
-            "$.srq",
-            "battle.seb",
-            "arena=54000144",
-            "battle.hbd={\"em\":{\"oe\":[],\"de\":[]},\"kt\":1}");
+            "$.srq", "battle.seb", "battle.hbd={\"em\":{\"oe\":[],\"de\":[]},\"kt\":1}");
   }
 
   @Test

@@ -49,6 +49,19 @@ class ReplayScenarioTest {
   }
 
   @Test
+  void carriesTheArenaOfAnyTrophyArena() {
+    // The arena names the players' trophy arena, which sets no battle input; the map is the
+    // location's.
+    ObjectNode scenario = Scenarios.knight();
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("arena", 54000020);
+    ((ObjectNode) battle.path("avatar0")).put("arena", 54000020);
+    ((ObjectNode) battle.path("avatar1")).put("arena", 54000020);
+
+    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
+  }
+
+  @Test
   void readsADeckCardsSlotFlagsAndTheItemsOfItsEvolutionSlotsPlays() {
     ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.knightEvolvedThirdPlay());
 

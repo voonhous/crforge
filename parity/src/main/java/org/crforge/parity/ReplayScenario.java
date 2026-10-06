@@ -111,6 +111,14 @@ public final class ReplayScenario {
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
+  /**
+   * How the battle header's and each avatar's {@code arena} are read: the players' trophy arena,
+   * whose row holds trophy, chest, matchmaking and presentation columns only and is not among the
+   * tables the battle reads. The battle's map is the location's.
+   */
+  static final String ARENA_CARRIED =
+      "carried: the players' trophy arena, presentation; the map is the location's";
+
   /** The evolution field of a play's packed item: bits 0..3. */
   private static final int ITEM_FIELD_MASK = 0xf;
 
@@ -325,7 +333,8 @@ public final class ReplayScenario {
     pin(battle, "hm", "false");
     pin(battle, "trail", "170000000");
     pin(battle, "te", "-1");
-    pin(battle, "arena", format.arena());
+    required(battle, "arena");
+    mapping.put("battle.arena", ARENA_CARRIED);
     format.battlePins().forEach((field, value) -> pin(battle, field, value));
     List<Integer> playerDataChoices = playerData(battle);
 
@@ -719,7 +728,7 @@ public final class ReplayScenario {
     // exp level, whose king level is KING_LEVEL, has a production input.
     // A format whose king level is in the player data has no exp level pinned.
     format.avatarPins().forEach((name, value) -> pin(avatar, name, value));
-    pin(avatar, "arena", format.arena());
+    required(avatar, "arena");
     onlyFields(
         avatar,
         field,
@@ -739,6 +748,7 @@ public final class ReplayScenario {
                 ? "; a high word left out is 0, as the side's commands give it"
                 : ""));
     mapping.put("battle.avatarN.name", "carried: presentation");
+    mapping.put("battle.avatarN.arena", ARENA_CARRIED);
     format
         .avatarCarried()
         .forEach((name, what) -> mapping.put("battle.avatarN." + name, "carried: " + what));
