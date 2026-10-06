@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Stream;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionRow;
@@ -389,6 +389,7 @@ public final class ActionRows {
                   "StartCounterAt",
                   "ActionToExecute",
                   "PauseTag",
+                  "AffectedByHitSpeed",
                   "AffectedBySpawnSpeed")),
           Map.entry(
               "ActionFlipFlop",
@@ -1469,8 +1470,9 @@ public final class ActionRows {
                         + " sets OnMaxResetsReachedAction, the action after its last interval,"
                         + " which is not modelled");
               }
+              // The game's loader takes a row without the column as one that follows the hit
+              // speed.
               boolean affected = bool(f, "AffectedByHitSpeed", true);
-              BooleanSupplier buffed = binding.hitSpeedBuffed();
               yield new TimerQuest(
                   shared,
                   ints(f, "Intervals"),
@@ -1480,7 +1482,7 @@ public final class ActionRows {
                   expression(f.get("UpgradeBarIfTrue")),
                   ints(f, "AmountToIncreaseOnUpgradeBarList"),
                   action(f.get("OnIntervalReachedAction")),
-                  affected ? buffed : () -> false);
+                  affected ? binding.hitSpeed() : IntUnaryOperator.identity());
             }
             case "ActionGoblinsteinAbility" -> {
               refuseShared(
@@ -1517,9 +1519,7 @@ public final class ActionRows {
                     action(f.get("ActionToExecute")),
                     f.has("PauseTag") ? tagMask(f.get("PauseTag").asText()) : 0,
                     binding.tags(),
-                    // A row affected by the spawn speed steps at the owner's spawn rate, which
-                    // its buffs set; any other at the usual 100.
-                    bool(f, "AffectedBySpawnSpeed") ? binding.spawnRate() : () -> 100);
+                    intervalRate(f, binding));
             case "ActionFlipFlop" ->
                 new FlipFlop(
                     shared,
@@ -1931,6 +1931,20 @@ public final class ActionRows {
               name + " sets " + column + " on a " + text(f, "ClassType", "") + ", not modelled");
         }
       }
+    }
+
+    /**
+     * The rate an interval's steps follow, in percent, read afresh on each step: for a row that
+     * follows the hit speed, what the owner's buffs make of 100; else, for one that follows the
+     * spawn speed, the owner's spawn rate; else the usual 100. The first of the two the row sets
+     * decides, the hit speed before the spawn speed.
+     */
+    private IntSupplier intervalRate(JsonNode f, ActionBinding binding) {
+      if (bool(f, "AffectedByHitSpeed")) {
+        IntUnaryOperator hitSpeed = binding.hitSpeed();
+        return () -> hitSpeed.applyAsInt(Interval.USUAL_RATE);
+      }
+      return bool(f, "AffectedBySpawnSpeed") ? binding.spawnRate() : () -> Interval.USUAL_RATE;
     }
 
     /** Refuses a row that sets a column its class does not read, show or share. */

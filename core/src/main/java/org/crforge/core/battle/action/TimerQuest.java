@@ -1,18 +1,19 @@
 package org.crforge.core.battle.action;
 
 import java.util.List;
-import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
+import java.util.function.IntUnaryOperator;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * An action that keeps a run counting toward its intervals, which a bar shows: each step of the run
- * adds 50 to its progress, and when the progress reaches the interval it schedules its action on
- * its owner, the owner as its cause, the row's own delay and not asked to start at once, and counts
- * one interval done. While intervals are left the interval is taken off the progress; once as many
- * are done as the row allows, the run stays listed and does nothing more. It never ends by itself:
- * only its stop gate or its owner leaving ends it.
+ * adds 50 to its progress, or for a row that follows the hit speed what its owner's buffs as they
+ * stand on that step make of 50 (65 under Rage, 0 under a stun), and when the progress reaches the
+ * interval it schedules its action on its owner, the owner as its cause, the row's own delay and
+ * not asked to start at once, and counts one interval done. While intervals are left the interval
+ * is taken off the progress; once as many are done as the row allows, the run stays listed and does
+ * nothing more. It never ends by itself: only its stop gate or its owner leaving ends it.
  *
  * <p>The progress starts at the row's start value, never below 0. A row with one interval uses it
  * every time; a row with several takes the one at the count done, the last once past them. A row
@@ -29,8 +30,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  * of the ability button, which only the button shows.
  *
  * <p>Its bar's names, files, inversion and the interval the other player is shown are read only by
- * what the bar shows. Refused rather than guessed: a step taken while a buff changes the owner's
- * hit speed, which the progress follows by a scaling not established.
+ * what the bar shows.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -40,15 +40,17 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " left, idle after the last, and no end of its own; held by hero_goblins. The start"
             + " delay counted down 50 a step before any counting, and the upgrade gate asked on"
             + " the owner each counting step, adding the upgrade amount instead of 50 or filling"
-            + " the progress for a negative one; held by hero_mini_pekka. Refused: a step under a"
-            + " hit speed buff, and the action after the last interval and the segmented bar, as"
-            + " columns.")
+            + " the progress for a negative one; held by hero_mini_pekka. A counting step under a"
+            + " hit speed buff adds what the buffs make of 50, asked each step;"
+            + " random_battle16_s0046 reaches it and agrees, though no recorded battle yet moves"
+            + " on the scaling. Refused: the action after the last interval and the segmented"
+            + " bar, as columns.")
 public final class TimerQuest extends RowAction {
 
   /** What a row with no intervals counts to. */
   public static final int DEFAULT_INTERVAL_MS = 1000;
 
-  /** What one step adds to the progress with no hit speed buff. */
+  /** What one step adds to the progress with no hit speed buff, and what a buff scales. */
   private static final int STEP_MS = 50;
 
   private final List<Integer> intervalsMs;
@@ -58,7 +60,7 @@ public final class TimerQuest extends RowAction {
   private final IntSupplier upgradeIf;
   private final List<Integer> upgradeAmountsMs;
   private final BattleAction onIntervalReached;
-  private final BooleanSupplier hitSpeedBuffed;
+  private final IntUnaryOperator hitSpeed;
 
   /**
    * @param row the row's shared columns
@@ -72,7 +74,8 @@ public final class TimerQuest extends RowAction {
    * @param upgradeAmountsMs what a step adds while the gate holds, each in milliseconds; empty adds
    *     0; with several, no fewer than the intervals counted out
    * @param onIntervalReached scheduled as each interval is reached, or null
-   * @param hitSpeedBuffed whether a buff changes the owner's hit speed as it stands
+   * @param hitSpeed what a counting step without an upgrade adds of a base step: the owner's hit
+   *     speed scaling for a row that follows the hit speed, else the step unchanged
    */
   public TimerQuest(
       ActionRow row,
@@ -83,7 +86,7 @@ public final class TimerQuest extends RowAction {
       IntSupplier upgradeIf,
       List<Integer> upgradeAmountsMs,
       BattleAction onIntervalReached,
-      BooleanSupplier hitSpeedBuffed) {
+      IntUnaryOperator hitSpeed) {
     super(row);
     if (intervalsMs.size() > 1 && maxResets > intervalsMs.size()) {
       throw new UnsupportedOperationException(
@@ -102,7 +105,7 @@ public final class TimerQuest extends RowAction {
     // The game's loader lists one amount of 0 for a row that lists none.
     this.upgradeAmountsMs = upgradeAmountsMs.isEmpty() ? List.of(0) : List.copyOf(upgradeAmountsMs);
     this.onIntervalReached = onIntervalReached;
-    this.hitSpeedBuffed = hitSpeedBuffed;
+    this.hitSpeed = hitSpeed;
   }
 
   @Override
@@ -141,12 +144,8 @@ public final class TimerQuest extends RowAction {
         int amount = pick(upgradeAmountsMs);
         progress = amount < 0 ? interval : progress + amount;
       } else {
-        if (hitSpeedBuffed.getAsBoolean()) {
-          throw new UnsupportedOperationException(
-              name()
-                  + " steps under a buff on its owner's hit speed, whose scaling is not modelled");
-        }
-        progress += STEP_MS;
+        // The buffs as they stand on this step; the start delay above is never scaled.
+        progress += hitSpeed.applyAsInt(STEP_MS);
       }
       if (progress >= interval) {
         if (onIntervalReached != null) {

@@ -146,6 +146,41 @@ class BattleMiniPekkaHeroQuestTest {
     assertThat(progress).containsExactlyElementsOf(expectedProgress);
   }
 
+  @Test
+  @DisplayName(
+      "under a buff on the hero's hit speed a counting step adds what the buffs make of 50, read"
+          + " afresh on each step: 50 before Rage, 65 under it")
+  void aHitSpeedBuffScalesTheStep() {
+    Standard1v1Battle battle = playedBattle();
+    CharacterEntity hero = playHero(battle);
+    // Kept in place and out of reach, so no hit gives it its tag.
+    hero.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    // Past the start delay, which counts 50 a step whatever the buffs.
+    for (int i = 0; i < DELAY_STEPS + 2; i++) {
+      battle.getBattle().step();
+    }
+    assertThat(progressSteps(battle, hero, 5)).as("no buff").containsOnly(50);
+
+    hero.spawnBuff("test", "Rage", 5000, hero);
+    // The step that lists the buff and the one after it are left out: only the steps that read
+    // the listed buff from start to end are asserted.
+    progressSteps(battle, hero, 2);
+    assertThat(hero.getBuffs().hitSpeed(50)).isEqualTo(65);
+    assertThat(progressSteps(battle, hero, 10)).as("Rage makes 65 of 50").containsOnly(65);
+  }
+
+  /** The timer's progress gained on each of the next steps. */
+  private static List<Integer> progressSteps(
+      Standard1v1Battle battle, CharacterEntity hero, int steps) {
+    List<Integer> out = new ArrayList<>();
+    for (int i = 0; i < steps; i++) {
+      long before = ((CountingRun) timerRun(hero)).counter();
+      battle.getBattle().step();
+      out.add((int) (((CountingRun) timerRun(hero)).counter() - before));
+    }
+    return out;
+  }
+
   /** A ladder battle whose side 0 holds the Mini Pekka in its hero slot and in its hand. */
   private static Standard1v1Battle playedBattle() {
     for (int word = 0; ; word++) {

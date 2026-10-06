@@ -8,9 +8,9 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
+import java.util.function.IntUnaryOperator;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import lombok.Getter;
@@ -714,12 +714,10 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** A step its buffs would scale, to tell whether any buff changes an entity's hit speed. */
-  private static final int HIT_SPEED_PROBE_MS = 1000;
-
   /**
    * What an action row built for an arena entity reads from it: its expressions compiled for it and
-   * evaluated afresh each time, the battle's variable keys, its tag word and its spawn rate.
+   * evaluated afresh each time, the battle's variable keys, its tag word, its spawn rate and what
+   * its buffs make of a hit speed step.
    *
    * @param owner the entity the row is built for
    */
@@ -750,8 +748,8 @@ public class BattleWorld implements HolderPasses {
       }
 
       @Override
-      public BooleanSupplier hitSpeedBuffed() {
-        return () -> owner.getBuffs().hitSpeed(HIT_SPEED_PROBE_MS) != HIT_SPEED_PROBE_MS;
+      public IntUnaryOperator hitSpeed() {
+        return base -> owner.getBuffs().hitSpeed(base);
       }
     };
   }

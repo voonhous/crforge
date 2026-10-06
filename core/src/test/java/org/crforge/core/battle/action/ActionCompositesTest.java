@@ -427,6 +427,33 @@ class ActionCompositesTest {
   }
 
   @Test
+  @DisplayName(
+      "an interval asks its rate each step and takes off half of it; a rate below 1 moves nothing"
+          + " and fires nothing, even with the counter at zero")
+  void intervalRate() {
+    Leaf t1 = new Leaf("t1");
+    int[] rate = {130};
+    ActionHolder h = new ActionHolder();
+    h.start(new Interval(row("i"), 150, 100, t1, 0, () -> 0, () -> rate[0]));
+    ActionInstance run = h.running().get(0);
+    h.runPass(1);
+    assertThat(counter(run)).as("half of 130").isEqualTo(35);
+    rate[0] = 0;
+    h.runPass(2);
+    assertThat(counter(run)).as("a stopped rate holds the counter").isEqualTo(35);
+    rate[0] = 70;
+    h.runPass(3);
+    assertThat(counter(run)).as("half of 70 reaches zero, fires and reloads").isEqualTo(150);
+    assertThat(queue(h)).containsExactly("t1 0");
+
+    ActionHolder stopped = new ActionHolder();
+    stopped.start(new Interval(row("i"), 150, 0, t1, 0, () -> 0, () -> 0));
+    stopped.runPass(1);
+    assertThat(counter(stopped.running().get(0))).isZero();
+    assertThat(queue(stopped)).as("a counter at zero does not fire on a stopped step").isEmpty();
+  }
+
+  @Test
   @DisplayName("a wait ends the step its condition holds, scheduling its action if it has one")
   void waitToActivate() {
     Leaf t1 = new Leaf("t1");
