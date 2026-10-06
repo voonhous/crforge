@@ -12,15 +12,24 @@ import org.crforge.core.fidelity.FidelityStatus;
  * amount against a crown tower when it gives one, its base amount else - plus the added amount; the
  * source's level scaling unless NoScaling; the source's percentages, floored at 0, unless
  * NoAmplification; the target's protection, floored at 0, unless NoProtection; then the damage
- * entry, which tells the target's runs whether the hit is a Reflected one.
+ * entry, which tells the target's runs whether the hit is a Reflected one and lets it through to a
+ * hidden target under DamagesHidden.
+ *
+ * <p>The level scaling is the card damage scaling of the source's own row: the amount times the
+ * multiplier of the source row's rarity for the step of the source's level, over 100, on a 32-bit
+ * product, with step 0 and a row without a rarity leaving the amount as it is. The source is the
+ * character, building or tower that caused the action, or the area effect whose hit ran it; a hit
+ * without a source is not scaled.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the owner with hit points, the added amount evaluated with the start's context,"
-            + " the source, the queue, the amount at the drain and the flags read. Supplied: no"
-            + " attacker's buff changes the amount. Refused: a damage without NoScaling, whose"
-            + " level scaling is untraced, and the flags and columns no row of the data needs.")
+            + " the source, the queue, the amount at the drain, the level scaling by a character's"
+            + " or an area effect's own row and level, and the flags read. Supplied: no attacker's"
+            + " buff changes the amount. Refused: a scaled damage from another kind of source or"
+            + " from a source no longer in the battle, and the flags and columns no row of the"
+            + " data needs.")
 public final class TakeDamage extends RowAction {
 
   /** A tower amount a damage that gives none carries. */
@@ -35,13 +44,18 @@ public final class TakeDamage extends RowAction {
    * @param reflected true under the Reflected flag, which a counter never counters
    * @param noProtection true under NoProtection: the target's protection is skipped
    * @param noAmplification true under NoAmplification: the source's percentages are skipped
+   * @param levelScaled true without the NoScaling flag: the source's level scales the amount
+   * @param damagesHidden true under DamagesHidden: the damage entry lets the hit through to a
+   *     hidden target
    */
   public record Damage(
       int baseDamage,
       int towerDamage,
       boolean reflected,
       boolean noProtection,
-      boolean noAmplification) {
+      boolean noAmplification,
+      boolean levelScaled,
+      boolean damagesHidden) {
 
     /**
      * The amount against a target, before the added amount.
