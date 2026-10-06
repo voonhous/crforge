@@ -75,8 +75,7 @@ class DirectHitTest {
   }
 
   @Test
-  @DisplayName(
-      "the step's pushback is asked for before the target's damage, as 0xe69fb4 precedes it")
+  @DisplayName("the step's pushback is asked for before the target's damage")
   void theStepPushbackComesBeforeTheDamage() {
     DirectHit.resolve(t, target, 202, false, queries);
 

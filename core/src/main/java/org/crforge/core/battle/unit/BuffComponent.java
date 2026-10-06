@@ -633,8 +633,8 @@ public final class BuffComponent implements BattleComponent {
       instance.step(STEP_MS);
       askLifeCondition(instance);
       followSource(instance);
-      // The spawner comes after the source's clock and before the damage over time
-      // (0xe2c6f4..0xe2c820); its child is made at once, inside the visit.
+      // The spawner comes after the source's clock and before the damage over time; its child is
+      // made at once, inside the visit.
       if (instance.stepSpawner(spawnRate())) {
         world.buffSpawn(entity, instance);
         instance.spawnerFired();

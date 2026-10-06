@@ -133,9 +133,9 @@ public class EntityHolder {
 
   /**
    * Hands an entity to the holder and registers it on the spot, with the id of another object filed
-   * beside it, as a buff's spawner hands over a child that needs its spawner alive (0xe31164): the
-   * fold admits it only while an object with that id is listed and not removable. Releasing it
-   * otherwise is not modelled: that fold is refused.
+   * beside it, as a buff's spawner hands over a child that needs its spawner alive: the fold admits
+   * it only while an object with that id is listed and not removable. Releasing it otherwise is not
+   * modelled: that fold is refused.
    *
    * @param entity the entity
    * @param requiredId the id of the object it needs, or 0 for none
@@ -177,8 +177,8 @@ public class EntityHolder {
    * pending additions into the live list, which stays sorted by id: an entity of a lower kind lands
    * ahead of every entity of a higher one however late it arrived. The admitted entities are told
    * of their registration in ascending id. One handed over already removable, such as an area
-   * object spent in the update that made it, is never admitted (the game's cleanup 0xe31880 walks
-   * its queue before its live list, and folds only after both).
+   * object spent in the update that made it, is never admitted (the cleanup walks its queue before
+   * its live list, and folds only after both).
    */
   public void cleanup() {
     // A removal can make another entity removable - a rider let go by its parent - so the rounds
@@ -190,7 +190,7 @@ public class EntityHolder {
       return;
     }
     // An entity filed with another object's id is admitted only while that object is listed and
-    // not removable (0xe31260); the release of one that fails the test is refused.
+    // not removable; the release of one that fails the test is refused.
     for (BattleEntity entity : pendingAdditions) {
       Integer required = requiredIds.get(entity);
       if (required != null && !listedAndNotRemovable(required)) {
@@ -243,7 +243,7 @@ public class EntityHolder {
    * @return true when the round removed anything
    */
   private boolean removalRound() {
-    // The entities waiting to be admitted are walked first (0xe31880's first loop): one handed
+    // The entities waiting to be admitted are walked first (the cleanup's first loop): one handed
     // over already removable, such as an area object spent in the update that made it, is never
     // admitted. Each hears of its own leaving while it is still waiting, as the game's notice
     // walks the queue before the queue lets it go; it gets no owner-leaving call, which the game

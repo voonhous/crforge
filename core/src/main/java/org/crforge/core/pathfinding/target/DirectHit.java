@@ -80,9 +80,8 @@ public final class DirectHit {
     // visit, which is the direction the target stores if this hit kills it.
     int directionX = t.getLastReferenceX() - t.getOwner().getX();
     int directionY = t.getLastReferenceY() - t.getOwner().getY();
-    // The step's MeleePushback reaches the direct hit ungated (0xe69c04, 0xe69c14,
-    // 0xe69f1c..0xe69f7c): the target, when it has a movement component, is pushed from the owner
-    // before the damage is dealt (0xe69fb4 precedes the hit-points call).
+    // The step's MeleePushback reaches the direct hit ungated: the target, when it has a movement
+    // component, is pushed from the owner before the damage is dealt.
     queries.stepPushback(target);
     int dealt = target.isCrownTowerTarget() ? crownTowerDamage : damage;
     queries.dealDamage(target, dealt, hitId, directionX, directionY);

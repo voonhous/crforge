@@ -23,6 +23,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Code, comments, tests and fixtures describe behaviour in their own words: no hex location
+      # references and no assembly snippets.
+      - name: Check for hex location references
+        run: |
+          pattern='0x[c-f][0-9a-f]{5}\b|\b(adrp|blr?|cbn?z|tbn?z|csel|cset|ldp|ldr|ldrb|movk|stp|str|strb|tst) [wx][0-9]+'
+          if git grep -nIiP "$pattern" -- . ':!scratch'; then
+            echo "::error::hex location references or assembly snippets found (listed above)"
+            exit 1
+          fi
+
       # crforge-data.lock pins the data repository's commit, so a change and its data agree. The
       # unit tests pin values of the lock's unitTestVersion, so they read that version's tables.
       - name: Read the data lock
