@@ -878,7 +878,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * The buff the entity's row applies to what its direct hit reached, for its BuffOnDamageTime.
    * Nothing for a row without one. A hit on a target the entity has given up would apply it to
-   * nothing the reference shows, so it is refused.
+   * nothing the reference shows, so it is refused. On a data version whose game applies it at the
+   * damage drain the queued hit applies it there instead.
    *
    * @param target what the hit was aimed at, or null
    */
@@ -890,7 +891,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       throw new UnsupportedOperationException(
           name() + " applies its BuffOnDamage with a hit on nothing, not modelled");
     }
-    world.buffOnDamage(this, world.entityOf(target.getEntity()));
+    world.hitBuffOnDamage(this, world.entityOf(target.getEntity()));
   }
 
   /** Each of the entity's hits its tags let through; a tower's does nothing. */
