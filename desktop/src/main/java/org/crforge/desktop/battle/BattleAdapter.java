@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.IntFunction;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.match.Hand;
@@ -12,7 +13,9 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.Timeline;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.battle.unit.AreaEffectEntity;
+import org.crforge.core.battle.unit.BuffData;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.UnitData;
@@ -27,10 +30,38 @@ import org.crforge.core.pathfinding.target.TargetView;
  * the holder's live list and the match's sides and clock. The battle core knows nothing of the
  * renderers; this is the only place the desktop module reads its entities.
  *
- * <p>Nothing is derived that the battle does not hold: every value is read from the battle's own
- * objects as they stand between two steps, and nothing is written back.
+ * <p>Snapshots read the battle's objects between steps. Known buff rows receive presentation
+ * labels; their timers and clone identity come from the core, and nothing is written back.
  */
 public final class BattleAdapter {
+
+  // Explicit row identities: ZapFreeze is electrical, and snares/clone setup also stop attacks.
+  // Unknown rows stay visible as generic effects instead of guessing from "Freeze" in a name.
+  private static final Set<String> FREEZES =
+      Set.of(
+          "Freeze",
+          "ContinueFreeze",
+          "Event_Freeze",
+          "IceWizardHero_FreezeBuff",
+          "IceWizardHero_FreezeBuff_dummy",
+          "IceGolemiteHero_Freeze_Buff_Base",
+          "IceGolemiteHero_Freeze_Buff_Small",
+          "IceGolemiteHero_Freeze_Buff_Medium",
+          "IceGolemiteHero_Freeze_Buff_Large",
+          "IceGolemiteHero_Freeze_Buff_Tower");
+
+  private static final Set<String> STUNS =
+      Set.of(
+          "ZapFreeze",
+          "Stun",
+          "ElectroGiantZapFreeze",
+          "MysteryBuff_ZapFreeze",
+          "Knight_crazy_2_stun",
+          "buff_goblinstein_doctor",
+          "electro_dragon_hit_buff",
+          "GiantHero_Slap_Stun",
+          "Zap_EV1_WithDamage",
+          "Tesla_EV1_WithDamage");
 
   private BattleAdapter() {
     // Utility class
@@ -150,7 +181,41 @@ public final class BattleAdapter {
         0,
         0,
         character == null ? 0 : character.getSpeedBudget(),
-        character == null ? null : character.getUnit());
+        character == null ? null : character.getUnit(),
+        statuses(entity));
+  }
+
+  private static List<UnitStatus> statuses(WorldEntity entity) {
+    List<UnitStatus> statuses = new ArrayList<>();
+    if (entity instanceof CharacterEntity character && character.isClone()) {
+      statuses.add(new UnitStatus(UnitStatus.Kind.CLONE, "Clone", -1, -1, null, -1));
+    }
+    for (var instance : entity.getBuffs().items()) {
+      if (instance.getRemaining() == 0) continue;
+      BuffData buff = instance.getBuff();
+      UnitStatus.Kind kind =
+          FREEZES.contains(buff.name())
+              ? UnitStatus.Kind.FROZEN
+              : STUNS.contains(buff.name()) ? UnitStatus.Kind.STUNNED : UnitStatus.Kind.OTHER;
+      statuses.add(
+          new UnitStatus(
+              kind,
+              buff.cloneBuff() ? "Clone setup" : buff.name(),
+              instance.getRemaining(),
+              instance.getTotal(),
+              sourceName(instance.getSource()),
+              instance.getSide()));
+    }
+    return List.copyOf(statuses);
+  }
+
+  private static String sourceName(SpawnHost source) {
+    if (source == null) return null;
+    if (source instanceof WorldEntity unit) return unit.getData().name() + " #" + unit.getId();
+    if (source instanceof AreaEffectEntity area) return area.getData().name() + " #" + area.getId();
+    if (source instanceof ProjectileEntity projectile)
+      return projectile.getData().name() + " #" + projectile.getId();
+    return source.name();
   }
 
   private static EntityView projectile(ProjectileEntity projectile) {
@@ -184,7 +249,8 @@ public final class BattleAdapter {
         projectile.getAimX(),
         projectile.getAimY(),
         0,
-        null);
+        null,
+        List.of());
   }
 
   private static EntityView areaEffect(AreaEffectEntity area) {
@@ -222,7 +288,8 @@ public final class BattleAdapter {
         0,
         0,
         0,
-        null);
+        null,
+        List.of());
   }
 
   private static BattleFrame.SideView side(BattleSession session, LadderMatch match, int side) {
