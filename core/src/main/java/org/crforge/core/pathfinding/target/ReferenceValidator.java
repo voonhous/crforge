@@ -73,10 +73,9 @@ public final class ReferenceValidator {
     }
     // With the bypass, a target with no hit points still validates until it leaves the holder: a
     // target killed earlier in the pass until the cleanup removes it, and a fallen king, which
-    // stays
-    // in the holder, for the rest of the battle. The standard game's wrapper (0xe66624) skips the
-    // alive slot whenever the component's bypass byte is set (0xe666a8..0xe666ac), and every unit's
-    // is; its killer keeps the dead king through the end delay.
+    // stays in the holder, for the rest of the battle. The standard game skips the alive slot
+    // whenever the component's bypass is set, and every unit's is; its killer keeps the dead king
+    // through the end delay.
     if (!t.isAliveCheckBypass()) {
       if (target == null || !target.alive()) {
         return false;

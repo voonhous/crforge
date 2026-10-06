@@ -44,7 +44,7 @@
   {"tick": 229, "event": "launch", "projectile": "proj_4000007", "config": "ZapMachineProjectile", "owner": "Sparky_0", "target": "Enemy_0", "x": 1875, "y": 13361, "z": 1800, "aim": [3269, 9145], "aim_z": 0},
   {"tick": 229, "event": "pushback", "unit": "Sparky_0", "started": 1, "frm": [3269, 9145], "x": 1499, "y": 14500, "target": [1264, 15212], "budget": 200},
   {"tick": 232, "event": "launch", "projectile": "proj_4000008", "config": "TowerPrincessProjectile", "owner": "PrincessTower_0_1", "target": "Enemy_0", "x": 3474, "y": 6798, "z": 3000, "aim": [3269, 9145], "aim_z": 0},
-  {"tick": 233, "event": "relocate", "unit": "Sparky_0", "caller": "0xe6f4a4", "x": 1329, "y": 15020, "to": [1079, 14770]},
+  {"tick": 233, "event": "relocate", "unit": "Sparky_0", "x": 1329, "y": 15020, "to": [1079, 14770]},
   {"tick": 233, "event": "impact", "projectile": "proj_4000007", "target": "Enemy_0", "damage": 1331, "hp": 0, "x": 3269, "y": 9145, "z": 0},
   {"tick": 233, "event": "death", "target": "Enemy_0"},
   {"tick": 304, "event": "launch", "projectile": "proj_4000009", "config": "TowerPrincessProjectile", "owner": "PrincessTower_1_1", "target": "Sparky_0", "x": 3484, "y": 25201, "z": 3000, "aim": [3020, 16691], "aim_z": 0},

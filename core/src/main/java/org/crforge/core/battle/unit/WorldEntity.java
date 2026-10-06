@@ -600,9 +600,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       // The step's pushback of at least 1 moves a target with a movement component away from where
-      // the owner stands (0xe69f28..0xe69fb4, then 0xe725c4), the gates lifted by the step's
-      // IsMeleePushbackAll; one without, a building or a tower, stays where it is. The area
-      // branch's push is not modelled.
+      // the owner stands, the gates lifted by the step's IsMeleePushbackAll; one without, a
+      // building or a tower, stays where it is. The area branch's push is not modelled.
       @Override
       public void stepPushback(TargetView target) {
         int pushback = stepMeleePushback();

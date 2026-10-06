@@ -379,9 +379,9 @@ public final class TargetIndicatorAttack extends RowAction {
     /**
      * The ring test as the finder asks it, with its flag set: with an inner reach of 1 or more,
      * only the object's squared distance at least its radius plus the inner reach, squared; the
-     * outer edge is the query's. The game's test (0xe3a7a8) checks both edges only with the flag
-     * clear (0xe3a838..0xe3a83c: {@code tst w19, #1; csel w8, w9, w8, eq}), and the finder passes
-     * it set, so a building the query lists by its square is kept however far its centre is.
+     * outer edge is the query's. The ring test checks both edges only with the flag clear, and the
+     * finder passes it set, so a building the query lists by its square is kept however far its
+     * centre is.
      */
     private boolean inRing(int id, int x, int y, int inner) {
       if (inner < 1) {

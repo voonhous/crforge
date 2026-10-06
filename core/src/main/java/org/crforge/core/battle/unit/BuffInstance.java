@@ -86,7 +86,7 @@ public final class BuffInstance {
     }
     // The instance keeps a parent only for a buff that stacks.
     this.parent = buff.enableStacking() ? parent : null;
-    // The new instance's spawner: its start time and its limit (0xe2cd74).
+    // The new instance's spawner: its start time and its limit.
     this.spawnTimer = buff.spawnStartTimeMs();
     this.spawnsLeft = buff.spawnLimit();
   }
@@ -194,9 +194,9 @@ public final class BuffInstance {
   }
 
   /**
-   * One visit's step of the spawner's timer (0xe2c6f4..0xe2c744): for a buff with a spawn, an
-   * interval of at least 1 and firings left, the timer loses half the carrier's spawn rate; it
-   * fires when that leaves it at 0 or below.
+   * One visit's step of the spawner's timer: for a buff with a spawn, an interval of at least 1 and
+   * firings left, the timer loses half the carrier's spawn rate; it fires when that leaves it at 0
+   * or below.
    *
    * @param spawnRate the carrier's spawn time percent, 100 without a buff
    * @return true when the spawner fires on this visit
@@ -211,10 +211,9 @@ public final class BuffInstance {
   }
 
   /**
-   * What a firing leaves of the spawner (0xe2c7cc..0xe2c820): one more of the wave made and one
-   * firing fewer for a limited spawner; the next firing the interval away within a wave, or the
-   * pause away once the wave is made, and never less than 1 ms away; a timer that went below 0
-   * carries.
+   * What a firing leaves of the spawner: one more of the wave made and one firing fewer for a
+   * limited spawner; the next firing the interval away within a wave, or the pause away once the
+   * wave is made, and never less than 1 ms away; a timer that went below 0 carries.
    */
   void spawnerFired() {
     spawnWaveMade++;

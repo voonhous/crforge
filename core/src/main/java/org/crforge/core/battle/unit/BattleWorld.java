@@ -3216,13 +3216,12 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * One firing of a buff's spawner (0xe2c748..0xe2c7c8, the character spawner 0xe2506c): one child
-   * of the buff's spawn object, made for its carrier's side at the carrier's level re-based on the
-   * child's rarity, in front of the carrier as a character's spawner places it - the carrier's
-   * collision radius and its own away toward the enemy, at the first quarter turn the in-front test
-   * accepts - with no deploy and no first-tick immunity, registered at once with its registration
-   * visit, and joining the live list at the next cleanup's fold. A clone carrier's child is a
-   * clone.
+   * One firing of a buff's spawner, through the character spawner: one child of the buff's spawn
+   * object, made for its carrier's side at the carrier's level re-based on the child's rarity, in
+   * front of the carrier as a character's spawner places it - the carrier's collision radius and
+   * its own away toward the enemy, at the first quarter turn the in-front test accepts - with no
+   * deploy and no first-tick immunity, registered at once with its registration visit, and joining
+   * the live list at the next cleanup's fold. A clone carrier's child is a clone.
    *
    * <p>A child of the carrier's own row whose row limits its group, made by a carrier in a group,
    * is linked into the carrier's chain right after it. A buff whose spawner needs its carrier alive
@@ -3259,13 +3258,13 @@ public class BattleWorld implements HolderPasses {
               + ", without hit points, a building, pathing to its point or starting an action,"
               + " which is not modelled");
     }
-    // The group (0xe250a4..0xe250dc, 0xe25728..0xe25770): a carrier of the child's own row that is
-    // in a group counts its chain, and the call ends once the chain holds the limit.
+    // The group: a carrier of the child's own row that is in a group counts its chain, and the call
+    // ends once the chain holds the limit.
     boolean grouped =
         child.groupMaxSize() >= 1 && spawner.inChain() && data.name().equals(child.name());
     if (grouped && spawner.chainSize() >= child.groupMaxSize()) {
-      // The spawner makes nothing then and the firing still counts (0xe25754..0xe25760), but
-      // whether a unit that died has left the chain it is counted in is not established.
+      // The spawner makes nothing then and the firing still counts, but whether a unit that died
+      // has left the chain it is counted in is not established.
       throw new UnsupportedOperationException(
           spawner.name()
               + "'s "
@@ -3302,8 +3301,7 @@ public class BattleWorld implements HolderPasses {
       spawner.linkSpawnIntoChain(spawned);
     }
     cloneSpawn(spawner, spawned);
-    // With SpawnerAliveRequired the spawner's id is filed beside the child (the stack argument
-    // with_id, 0xe25af0..0xe25b08), which the fold reads.
+    // With SpawnerAliveRequired the spawner's id is filed beside the child, which the fold reads.
     holder.addRegistered(spawned, buff.spawnerAliveRequired() ? spawner.getId() : 0);
     for (WorldObserver observer : observers) {
       observer.characterSpawned(tick, spawner, spawned, x, y);
@@ -3759,7 +3757,7 @@ public class BattleWorld implements HolderPasses {
     ProjectileData data = projectile.getData();
     if (projectile.getDeflections() >= 1 && data.deflectedCharacterSpawn() != null) {
       // A deflected projectile's impact makes its deflected spawn in place of its spawned
-      // character, as many of them (0xe36c98..0xe36ccc); that spawn is held by no reference.
+      // character, as many of them; that spawn is held by no reference.
       throw new UnsupportedOperationException(
           data.name()
               + " is deflected and its impact makes "
@@ -3796,9 +3794,9 @@ public class BattleWorld implements HolderPasses {
               Standard1v1Battle.LANE_BASED_DEPLOY_SEQUENCE);
       int cx = inset(x + offset[0], w);
       int cy = inset(y + offset[1], h);
-      // The creation takes the child's lane from where it is made with the impact point's x as
-      // the reference and no flag (0xe36d9c..0xe36dc4): a child made across the centre column
-      // from the impact, whose nearest road is the impact's own, is swapped to the impact's side.
+      // The creation takes the child's lane from where it is made with the impact point's x as the
+      // reference and no flag: a child made across the centre column from the impact, whose nearest
+      // road is the impact's own, is swapped to the impact's side.
       int childLane = LaneAssignment.lane(w, h, w, cx, cy, x, 0, tileMap::bits);
       int made = spawnCounts.merge(projectile.name(), 1, Integer::sum) - 1;
       CharacterEntity spawned =
@@ -3818,19 +3816,18 @@ public class BattleWorld implements HolderPasses {
       if (data.spawnCharacterDeployTimeMs() >= 1) {
         spawned.deployFor(data.spawnCharacterDeployTimeMs());
       }
-      // The child is queued (0xe36e98, the add that registers it now): it joins the live list at
-      // the next cleanup's fold, which starts it, scheduling its row's starting action then.
-      // It carries the projectile's play (0xe36df4..0xe36e18), so a champion slot that follows the
-      // play follows it.
+      // The child is queued by the add that registers it now: it joins the live list at the next
+      // cleanup's fold, which starts it, scheduling its row's starting action then. It carries the
+      // projectile's play, so a champion slot that follows the play follows it.
       spawned.setDeployIndex(projectile.getDeployIndex());
       spawned.startOnAdmission();
       holder.addRegistered(spawned);
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, projectile, spawned, cx, cy);
       }
-      // The relocation reads where the child stands after its registration visit (0xe36e9c..
-      // 0xe36eb0), so the step that visit took is kept, and runs only for a child on the ground
-      // (0xe38fe4, its height and height offset, 0xe36ebc).
+      // The relocation reads where the child stands after its registration visit, so the step
+      // that visit took is kept, and runs only for a child on the ground (its height and height
+      // offset).
       GridEntity view = spawned.getView();
       if (view.getZ() + view.getHeightOffset() == 0) {
         int packed =
@@ -5073,8 +5070,8 @@ public class BattleWorld implements HolderPasses {
         target.die(source);
       }
       // On a data version whose game applies a buff on damage at the drain, it applies the source's
-      // after a typed hit it lets through as well (0xfd097c); no reference holds a typed hit from
-      // such a source.
+      // after a typed hit it lets through as well; no reference holds a typed hit from such a
+      // source.
       if (directHitAtDrain
           && result.landed()
           && source != null
@@ -5606,9 +5603,8 @@ public class BattleWorld implements HolderPasses {
    * Whether the spawner starts a child deploying although its spawn does not ask for a deploy: a
    * row without hit points, a bomb or a bottle, whose deploy time (the spawn's own when positive,
    * else the row's) is at least 1 and which does not walk to its spawn point. The spawner's deploy
-   * decision (0xe2ff4c..0xe2ff90: the row's Hitpoints at level 0 through 0xcbbdd4, the deploy time,
-   * SpawnPathfindSpeed) is or-ed with the spawn's own deploy flag before the state is set to
-   * deploying (0xe30270..0xe30288).
+   * decision (the row's Hitpoints at level 0, the deploy time, SpawnPathfindSpeed) is or-ed with
+   * the spawn's own deploy flag before the state is set to deploying.
    */
   private static boolean deploysWithoutAsking(UnitData data, int spawnDeployTimeMs) {
     int deployTimeMs = spawnDeployTimeMs > 0 ? spawnDeployTimeMs : data.deployTimeMs();
@@ -7444,9 +7440,8 @@ public class BattleWorld implements HolderPasses {
    * A hit's buff on damage as the attacker's hit application reaches it, after its direct hit or an
    * attack sequence entry's action: applied at once on a data version whose game applies it inside
    * the hit; nothing on one whose game applies it at the damage drain (see {@link
-   * #DIRECT_HIT_AT_DRAIN}), whose hit application no longer calls the apply (0xfc616c), so the
-   * queued direct hit carries it there (see {@link #drainBuffOnDamage(WorldEntity, TargetView,
-   * DamageResult)}).
+   * #DIRECT_HIT_AT_DRAIN}), whose hit application no longer calls the apply, so the queued direct
+   * hit carries it there (see {@link #drainBuffOnDamage(WorldEntity, TargetView, DamageResult)}).
    *
    * @param attacker the entity whose hit it is
    * @param target what the hit reached
@@ -7461,8 +7456,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * A queued direct hit's buff on damage, as the drain deals the hit: applied right after the
    * damage, the hit's death and its reflect, when the damage entry let the hit through (the drain
-   * calls 0xfd097c only for a record its bookkeeping 0xfcaebc accepted), a hit that kills included;
-   * nothing for an attacker whose row sets none, or a target that has left the battle.
+   * applies it only for a record its bookkeeping accepted), a hit that kills included; nothing for
+   * an attacker whose row sets none, or a target that has left the battle.
    *
    * @param attacker the entity whose hit it is
    * @param target the view the hit resolved against

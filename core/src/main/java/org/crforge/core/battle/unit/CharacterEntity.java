@@ -1690,7 +1690,7 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * How many units the character's chain holds, from its first unit, walking back along the links,
-   * to its last (0xe25738..0xe25750).
+   * to its last.
    */
   int chainSize() {
     CharacterEntity head = this;
@@ -1706,8 +1706,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Links a child the character's spawner made into its chain right after it, ahead of the unit
-   * that followed it, and marks the child as in a group (0xe257b4..0xe257f4). Unlike a spawn row's
-   * group link, nothing else is recorded.
+   * that followed it, and marks the child as in a group. Unlike a spawn row's group link, nothing
+   * else is recorded.
    *
    * @param child the child just made
    */
