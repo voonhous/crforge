@@ -27,6 +27,7 @@ import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.Counter;
 import org.crforge.core.battle.action.DamagingPushBack;
+import org.crforge.core.battle.action.DashingAttackChain;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.FriendCollecting;
 import org.crforge.core.battle.action.GhostEvo;
@@ -2414,6 +2415,22 @@ public class CharacterEntity extends WorldEntity {
     return run;
   }
 
+  /**
+   * Starts a dashing attack chain on the character: its first object picked and the dash begun on
+   * it, or the run left waiting. A clone, a rider and a carrier are refused, whose chain no
+   * reference holds.
+   */
+  @Override
+  public ActionInstance dashingAttackChain(DashingAttackChain action, ActionHolder holder) {
+    if (isClone() || parent != null || !riders().isEmpty()) {
+      throw new UnsupportedOperationException(
+          action.name() + " on " + name() + ", a clone, a rider or a carrier, not modelled");
+    }
+    DashingAttackChainRun run = new DashingAttackChainRun(action, this);
+    run.start();
+    return run;
+  }
+
   /** Starts the evolved Goblin Drill's relocation on the character, which must be a building. */
   @Override
   public ActionInstance goblinDrillRelocate(GoblinDrillEvoRelocate action, ActionHolder holder) {
@@ -3530,12 +3547,14 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The ability's effect, on the visit its trigger delay reaches zero: its dash, with the unit able
-   * to act; its activation action, scheduled on the unit, the unit as its cause, which from the
-   * post-hooks waits for the phase-3 pending pass; its buff, applied to the unit itself for its
-   * time, at the unit's level, the unit its parent and its source; its lane switch, which ends the
-   * cast; the character it leaves on the unit's spot; the area effect it creates at the unit, given
-   * the lifetime its souls buy for an ability that collects them; then its follow-up state, which
-   * ends the cast too. Its other effects are refused as it is requested.
+   * to act, in a data version whose game still dashes there (in 16.402.18 the ability's activation
+   * action dashes instead, see {@link BattleWorld#abilityFireDashes()}); its activation action,
+   * scheduled on the unit, the unit as its cause, which from the post-hooks waits for the phase-3
+   * pending pass; its buff, applied to the unit itself for its time, at the unit's level, the unit
+   * its parent and its source; its lane switch, which ends the cast; the character it leaves on the
+   * unit's spot; the area effect it creates at the unit, given the lifetime its souls buy for an
+   * ability that collects them; then its follow-up state, which ends the cast too. Its other
+   * effects are refused as it is requested.
    *
    * <p>It runs inside the state visit, after the cast's two countdowns step and before the cast's
    * end is tested, so the rest of the visit sees the state it leaves: a unit it took out of the
@@ -3544,7 +3563,7 @@ public class CharacterEntity extends WorldEntity {
   private void abilityFired() {
     AbilityData ability = getData().ability();
     world.abilityFired(this);
-    if (ability.dashRange() >= 1 && isActive(TARGETING_SLOT)) {
+    if (ability.dashRange() >= 1 && isActive(TARGETING_SLOT) && world.abilityFireDashes()) {
       abilityDash(ability);
     }
     if (ability.onActivationAction() != null) {
@@ -3725,8 +3744,6 @@ public class CharacterEntity extends WorldEntity {
     }
     List<String> cleansed = ALWAYS_DASH_GOLDENKNIGHT ? getBuffs().cleanseStuns() : List.of();
     world.abilityDashed(this, candidates, cleansed, chosen);
-    switchComponent(MOVEMENT_SLOT, true);
-    dashReset();
     if (chosen == null) {
       throw new UnsupportedOperationException(
           name()
@@ -3734,16 +3751,29 @@ public class CharacterEntity extends WorldEntity {
               + ability.name()
               + " finds no target to dash at, whose stop and new request no reference holds");
     }
+    dashOnto(chosen);
+  }
+
+  /**
+   * The unit's dash onto an object, as its ability's dash and a dashing attack chain begin it: its
+   * movement component switched on, its dash ended, the object taken as its reference through the
+   * setter's re-check, and its dash started at the object's point, stopping short of it by the
+   * object's collision radius.
+   */
+  void dashOnto(WorldEntity target) {
+    switchComponent(MOVEMENT_SLOT, true);
+    dashReset();
+    SelectionChain selection = unit.selection();
     ReferenceSetter.setReference(
         unit.targeting(),
-        chosen.getTargetView(),
+        target.getTargetView(),
         false,
         false,
         false,
         selection,
         selection.getOutcome());
     chainedDashStart(
-        chosen.getView().getX(), chosen.getView().getY(), chosen.getView().getCollisionRadius());
+        target.getView().getX(), target.getView().getY(), target.getView().getCollisionRadius());
   }
 
   /**

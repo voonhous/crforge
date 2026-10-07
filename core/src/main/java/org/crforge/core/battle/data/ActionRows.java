@@ -42,6 +42,7 @@ import org.crforge.core.battle.action.ContextToVariable;
 import org.crforge.core.battle.action.Counter;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
+import org.crforge.core.battle.action.DashingAttackChain;
 import org.crforge.core.battle.action.DealDamage;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
@@ -1108,6 +1109,19 @@ public final class ActionRows {
                   "OnNoTargetFound",
                   "OnFinishedAction",
                   "ChainPhaseBuff")),
+          // The dashing attack chain's columns: the resolver, the dashes, the reset and the
+          // actions, the ones its run refuses read to refuse a row that sets them.
+          Map.entry(
+              "ActionDashingAttackChain",
+              Set.of(
+                  "TargetResolver",
+                  "DashCount",
+                  "ResetTargetAfterDash",
+                  "OnDashChainBegan",
+                  "OnDashReachTarget",
+                  "OnTargetDied",
+                  "OnChainComplete",
+                  "OnNoTargetFound")),
           // A run that waits for its owner to be damaged or attacked, then runs its action on the
           // owner at most once a threshold. Its run keeps a countdown, -1 as it starts and 50 less
           // a step down to 0; told its owner was damaged under TriggerOnParentDamaged, with the
@@ -1758,6 +1772,7 @@ public final class ActionRows {
             case "ActionRunForcedAnimationOnce", "ActionStopForcedAnimation" ->
                 new InertAction(shared);
             case "ActionAttackChain" -> attackChain(name, shared, f);
+            case "ActionDashingAttackChain" -> dashingAttackChain(name, shared, f);
             case "ActionRunActionOnCallbackWithThreshold" -> {
               if (bool(f, "TriggerOnAttacked")) {
                 throw new UnsupportedOperationException(
@@ -3353,6 +3368,60 @@ public final class ActionRows {
               .chainCompleteIf(expression(f.get("ChainCompleteIfTrue")))
               .pauseIfAttackSpeedZero(bool(f, "PauseIfAttackSpeedZero"))
               .stopMovementWhenAtTarget(bool(f, "StopMovementWhenAtTarget"))
+              .build());
+    }
+
+    /**
+     * A dashing attack chain's columns, a column it leaves out taking the loader's default: no
+     * dashes and the target reset after the dash. Refused: a row of other than one dash, one that
+     * keeps the target, one that names any of the chain's actions, no resolver or one of more than
+     * one strategy, and the shared columns its run does not read.
+     */
+    private DashingAttackChain dashingAttackChain(String name, ActionRow shared, JsonNode f) {
+      refuseShared(
+          name,
+          f,
+          "NextAction",
+          "NextActionWait",
+          "ForceStopIfTrue",
+          "ActionPausedIfTrue",
+          "Singleton",
+          "OnDashChainBegan",
+          "OnDashReachTarget",
+          "OnTargetDied",
+          "OnChainComplete",
+          "OnNoTargetFound");
+      int dashCount = integer(f, "DashCount", 0);
+      if (dashCount != 1) {
+        throw new UnsupportedOperationException(
+            name + " dashes " + dashCount + " times, whose chain no reference holds");
+      }
+      if (!bool(f, "ResetTargetAfterDash", true)) {
+        throw new UnsupportedOperationException(
+            name + " keeps its target after the dash, which no reference holds");
+      }
+      String resolverName = text(f, "TargetResolver", "");
+      if (resolverName.isEmpty()) {
+        throw new UnsupportedOperationException(
+            name + " dashes with no target resolver, which is not modelled");
+      }
+      ResolverParts parts = resolverParts(name, resolverName);
+      if (parts.strategies().size() != 1) {
+        throw new UnsupportedOperationException(
+            name
+                + " dashes through "
+                + resolverName
+                + ", of more than one strategy, whose ranking is not modelled");
+      }
+      parts.strategies().forEach(s -> RunOnResolvedObjects.checkStrategy(s, name, resolverName));
+      return new DashingAttackChain(
+          shared,
+          DashingAttackChain.Columns.builder()
+              .resolver(resolverName)
+              .filter(parts.filter())
+              .cone(parts.cone())
+              .strategies(parts.strategies())
+              .dashCount(dashCount)
               .build());
     }
 

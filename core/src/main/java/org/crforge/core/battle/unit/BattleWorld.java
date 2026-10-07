@@ -305,6 +305,22 @@ public class BattleWorld implements HolderPasses {
   private boolean chainFirstSearchWaitsForHop;
 
   /**
+   * The data versions whose game's ability effect no longer dashes. The game of 14.593.1 dashes as
+   * an ability with a dash range fires: at the nearest object within that range its targeting would
+   * take, the unit's stuns removed first. The game of data version 16.402.18 reads the dash range
+   * only in the gate that lets the ability start, and its effect runs the activation action, the
+   * buff, the area effect, the lane switch and the character left behind, but no dash: the Golden
+   * Knight, whose ability row there names both a dash range and an activation action, dashes
+   * through that action's dashing attack chain instead.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> ABILITY_FIRE_WITHOUT_DASH = GameVersions.CLIENT_16_402_17_DATA;
+
+  /** True when the battle's data version's ability effect no longer dashes. */
+  private boolean abilityFireWithoutDash;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -724,6 +740,7 @@ public class BattleWorld implements HolderPasses {
     this.deathActionAtDeathSlot = DEATH_ACTION_AT_DEATH_SLOT.contains(tables.version());
     this.uppercutResetsAvoidance = UPPERCUT_RESETS_AVOIDANCE.contains(tables.version());
     this.chainFirstSearchWaitsForHop = CHAIN_FIRST_SEARCH_WAITS_FOR_HOP.contains(tables.version());
+    this.abilityFireWithoutDash = ABILITY_FIRE_WITHOUT_DASH.contains(tables.version());
   }
 
   /**
@@ -732,6 +749,14 @@ public class BattleWorld implements HolderPasses {
    */
   boolean chainFirstSearchWaitsForHop() {
     return chainFirstSearchWaitsForHop;
+  }
+
+  /**
+   * Whether the battle's data version's ability effect dashes (see {@link
+   * #ABILITY_FIRE_WITHOUT_DASH}).
+   */
+  boolean abilityFireDashes() {
+    return !abilityFireWithoutDash;
   }
 
   /**
