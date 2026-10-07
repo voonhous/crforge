@@ -553,31 +553,18 @@ public class TowerEntity extends WorldEntity {
           name() + " cooks, which only a king tower is modelled to do");
     }
     return new CookingHost() {
-      /** The side's towers as the first step found them; one that leaves is refused. */
-      private List<Integer> listed;
-
+      /**
+       * The side's princess-slot towers, read afresh every step. A destroyed tower leaves the list
+       * in the cleanup that takes it out of the battle, so it adds nothing from the next step on;
+       * until that cleanup it is listed and read like any other, its state and buffs as they were.
+       */
       @Override
       public List<Integer> towers() {
         List<Integer> ids = new ArrayList<>();
         for (TowerEntity tower : world.princessTowers(side())) {
-          if (!HitPoints.alive(tower.getHitPoints())) {
-            throw destroyed(tower.name());
-          }
           ids.add(tower.getId());
         }
-        if (listed == null) {
-          listed = List.copyOf(ids);
-        } else if (!listed.equals(ids)) {
-          throw destroyed("a princess tower");
-        }
         return ids;
-      }
-
-      private UnsupportedOperationException destroyed(String tower) {
-        return new UnsupportedOperationException(
-            "the Royal Chef's cooking with "
-                + tower
-                + " destroyed, whose contribution is not modelled");
       }
 
       @Override
