@@ -2,14 +2,10 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -49,30 +45,6 @@ class BattleBuffOnDamageDrainTest {
   private static final int AFTER = 14;
 
   @TempDir Path folder;
-
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
 
   /** Side 0's left princess tower, the one the Wizard stands in reach of. */
   private static TowerEntity leftTower(Standard1v1Battle match) {
@@ -149,7 +121,7 @@ class BattleBuffOnDamageDrainTest {
       "on data version 16.402.18 the zap's ZapFreeze is applied at the damage drain: whole at the"
           + " end of its tick, held for ten ticks, the tower's attack resuming on the eleventh")
   void theStunIsAppliedAtTheDrain() throws IOException {
-    Record record = run(relabelled(folder, GameVersions.DATA_16_402_18));
+    Record record = run(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
     assertThat(record.left.subList(0, 11))
         .containsExactly(500, 450, 400, 350, 300, 250, 200, 150, 100, 50, -1);
     assertThat(record.resumed).isEqualTo(record.zapTick + 11);

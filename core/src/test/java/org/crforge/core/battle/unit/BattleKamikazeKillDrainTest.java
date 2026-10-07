@@ -2,12 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -39,30 +35,6 @@ class BattleKamikazeKillDrainTest {
   private static final int KILL = 128;
 
   @TempDir Path folder;
-
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
 
   /** The towers at the first level, fighting; the Fire Spirit and the Valkyrie played. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -101,7 +73,8 @@ class BattleKamikazeKillDrainTest {
       "on data version 16.402.18 the Kamikaze kill lands at the damage drain, so the Valkyrie"
           + " still walks at the Fire Spirit on the tick of its hit")
   void theValkyrieStillWalksAtTheSpirit() throws IOException {
-    Standard1v1Battle match = beforeTheKill(relabelled(folder, GameVersions.DATA_16_402_18));
+    Standard1v1Battle match =
+        beforeTheKill(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
     CharacterEntity valkyrie = match.getPlays().get(1).units().get(0);
     assertThat(valkyrie.getView().getX()).as("one more step at the spirit").isEqualTo(3416);
     assertThat(valkyrie.getView().getY()).isEqualTo(18034);

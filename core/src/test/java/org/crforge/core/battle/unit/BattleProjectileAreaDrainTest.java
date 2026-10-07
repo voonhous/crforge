@@ -2,12 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -59,30 +55,6 @@ class BattleProjectileAreaDrainTest {
 
   @TempDir Path folder;
 
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
-
   /** The towers at the first level, holding fire; the Knight, the Dark Prince and the Fireball. */
   private static Standard1v1Battle scene(GameTables tables) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, false);
@@ -127,7 +99,7 @@ class BattleProjectileAreaDrainTest {
           + " Knight's hit, so the shield takes both and the Dark Prince keeps its hit points")
   void theImpactLandsAfterTheDirectHit() throws IOException {
     CharacterEntity darkPrince =
-        throughBothHits(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
+        throughBothHits(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18)));
     assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
     assertThat(darkPrince.getHitPoints().getHitPoints())
         .as("the Fireball's excess lost with the shield")

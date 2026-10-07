@@ -2,16 +2,12 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -53,30 +49,6 @@ class BattleAreaEffectLifeTest {
   private static final int END = 400;
 
   @TempDir Path folder;
-
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
 
   /** What the scene saw of one area effect. */
   private static final class Life {
@@ -143,7 +115,7 @@ class BattleAreaEffectLifeTest {
       "on data version 16.402.18 an area effect whose countdown reaches 0 has one more update and"
           + " leaves once its countdown is below 0")
   void anAreaEffectStaysUntilItsCountdownIsBelowZero() throws IOException {
-    Map<String, Life> lives = scene(relabelled(folder, GameVersions.DATA_16_402_18));
+    Map<String, Life> lives = scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
 
     Life death = lives.get(DEATH_AREA);
     assertThat(death.created).isEqualTo(DEATH);

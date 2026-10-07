@@ -6,14 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -98,15 +96,7 @@ class BattleGuardChargeAreaTest {
     columns.put("RelativePushback", true);
     columns.put("ContinuousPushback", true);
     mapper.writeValue(areas.toFile(), document);
-    try (Stream<Path> files = Files.list(folder)) {
-      for (Path file : files.toList()) {
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode table = (ObjectNode) mapper.readTree(file.toFile());
-          table.put("version", GameVersions.DATA_16_402_18);
-          mapper.writeValue(file.toFile(), table);
-        }
-      }
-    }
+    GameData.relabel(folder, GameVersions.DATA_16_402_18);
     return GameTables.load(folder);
   }
 
