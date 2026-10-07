@@ -28,35 +28,35 @@ The data version in this table is the game client's label: the `version` of the 
 - The numbers and rows are the data's, so they may differ. A reference battle recorded on one data version is evidence for that data version only, and a replay made after the data moved plays on the new data. A replay's provenance names its content version and content hash; the replay tools refuse tables of another one.
 - The simulator tracks one data version at a time (`version=` of `crforge-data.lock`). A newer row in the table above records that the data exists; it does not move the version under work.
 
-## Client lines: which client versions share the battle rules
+## Client ranges: which client versions share the battle rules
 
-A client version is `major.minor.patch`; its **line** is `major.minor` (16.402.17 is in line 16.402). The game updates clients in two ways:
+The game updates clients in two ways:
 
-- **Optional update.** The game offers a newer patch, but a player can decline it, keep logging in on the older patch, receive the new data and play live battles, including against players who updated.
-- **Required update.** Older clients can no longer log in until they update.
+- **Optional update.** The game offers a newer version, but a player can decline it, keep logging in on the older version, receive the new data and keep playing.
+- **Required update.** Older clients can no longer log in until they update. A required update can come with a new patch of the same `major.minor` as well as with a new `major.minor`.
 
-Two players on different patches meet in the same battle, and a battle has to play out the same for both of them. So the patches the game keeps in live play together, the ones an optional update leaves running, share the battle rules: the rules belong to the line, and a change to them comes with a required update. This is inferred from how the game handles updates, not from comparing the clients' code.
+So at any time the game accepts a range of client versions, from a minimum to the newest. Players on different versions of that range meet in the same battle, and a battle has to play out the same for both of them, so the versions of one range share the battle rules. A change to the rules comes with a required update, which raises the minimum and starts a new range. This is inferred from how the game handles updates, not from comparing the clients' code.
 
 What follows for the simulator:
 
-- The battle rules are those of the line, and the numbers are those of the data (the content sha). One studied client binary of a line stands for every patch of that line, as long as the game keeps that patch in live play.
-- A required update is where new rules can appear, and where a client binary of the new line has to be studied.
-- `GameVersions.CLIENT_16_402_17` and `CLIENT_16_402_17_DATA` are named after the binary studied; they stand for line 16.402.
+- The battle rules are those of the client range, and the numbers are those of the data (the content sha). One studied client binary of a range stands for every version in it.
+- A required update is where new rules can appear, and where a client binary of the new range has to be studied.
+- `GameVersions.CLIENT_16_402_17` and `CLIENT_16_402_17_DATA` are named after the binary studied; they stand for the range below.
 
-### Line 16.402
+### Clients 16.402.12 to current
 
-| Patch | Seen as | First seen |
+| Client version | Seen as | First seen |
 | --- | --- | --- |
 | 16.402.12 | a studied client binary | 2026-09-25 |
 | 16.402.14 | an installed client on a test phone, offered the optional update on 2026-10-07 | 2026-10-07 |
 | 16.402.17 | a studied client binary; still the App Store's version in the US on 2026-10-07 | 2026-10-04 |
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
-On 2026-10-07 a 16.402.14 client was offered the newer patch as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays. No required update has been seen in this line.
+On 2026-10-07 a 16.402.14 client was offered the newer version as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays.
 
 ## Keeping the table
 
 - Add a row the first time a client version or a data version is seen, before any game tables or reference battles of it are made.
 - Write "not known" for a value that was not recorded, never a guess.
 - Take the data version from the client's copy of the fingerprint, never from the asset CDN's; put the CDN's label in its own column.
-- Add a patch to its line's table when it is first seen, and record a required update as the start of a new line, with its own table.
+- Add a client version to its range's table when it is first seen, and record a required update as the start of a new range, with its own table.
