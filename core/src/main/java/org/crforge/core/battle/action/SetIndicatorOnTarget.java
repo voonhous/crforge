@@ -7,6 +7,7 @@ import lombok.Builder;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.GridEntityState;
 
 /**
  * An action that keeps a marked target for its owner, as the Mega Minion hero's mark does: a run
@@ -20,10 +21,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  *       with it; one that holds pins the run for the step, at the point PinnedPositionXExpression
  *       and PinnedPositionYExpression answer with the same context. A pinned run does not search.
  *       Nothing in the run reads the pinned point.
- *   <li>With PauseIfInCooldown, a run without a target whose owner's champion slot has cooldown
- *       left would not search (refused here, below, unless the run is pinned, which keeps it from
- *       searching either way). With a target the pause changes nothing: the run keeps the target
- *       either way.
+ *   <li>With PauseIfInCooldown the run is paused while the champion slot that follows its owner has
+ *       cooldown left, unless the owner's ability is pending, or the owner casts with its ability's
+ *       effect still to fire. A paused run does not search, as a pinned one does not; its counter
+ *       runs on. With a target the pause changes nothing: the run keeps the target either way.
  *   <li>Without a target, and not pinned, it searches when its counter is -1 (its first step: the
  *       run starts it at -1) or has reached DelayBeforeSearchForNextTarget. The search offers every
  *       live object of the owner's battle, in id order and the owner among them, to the resolver's
@@ -42,13 +43,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  *       the delay has passed without one it searches every step.
  * </ol>
  *
- * <p>A leave notice of the object it has marked would run its died action on the owner and drop the
- * target; a notice of any other object does nothing.
+ * <p>A leave notice of the object it has marked schedules its died action, OnTargetDiedAction, on
+ * the owner with its row's own delay, the owner its cause and no context, and drops the target; a
+ * notice of any other object does nothing. The target is dropped whether or not the row names a
+ * died action.
  *
- * <p>Refused rather than guessed, at the step that reaches them: a pause in the owner's ability
- * cooldown without a target and without a pin, an object other than a character or a building let
- * through by the filter, a strategy other than the two above, and the marked object leaving (its
- * died action is not modelled).
+ * <p>Refused rather than guessed, at the step that reaches them: an object other than a character
+ * or a building let through by the filter, and a strategy other than the two above.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -60,10 +61,17 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " hero_mega_minion. The pick by the lowest maximum hit points then the furthest, the"
             + " tags of having a target, the new target's action on the owner with the target as"
             + " its cause and the counter's reset, the sticky target and the pause doing nothing"
-            + " with one; held by ability_hero_mega_minion_vs_musketeer. Refused: a pause without a"
-            + " target, any other strategy, an object other than a character or building found,"
-            + " and the marked object leaving. The pin cleared and asked first each step with the"
-            + " run's context, only by a run that has one, and a pin that holds keeping the run"
+            + " with one; held by ability_hero_mega_minion_vs_musketeer. The marked object leaving:"
+            + " the died action scheduled on the owner, the owner its cause, and the target"
+            + " dropped, held by cg_megaminion_hero_mark_dies (a death during the warp) and by a"
+            + " recorded death before any tap, where the mark searches again once its delay has"
+            + " passed. The pause without a target, its counter running on, held by"
+            + " BattleMegaMinionMarkDiedTest; with the shipped cooldown it runs out with the"
+            + " search delay, so no recording tells it apart. Its lift while the ability is"
+            + " pending, or cast with its effect still to fire, is held by nothing. Refused: any"
+            + " other strategy and an object other than a character or building found. The pin"
+            + " cleared and asked first each step with the run's context, only by a run that has"
+            + " one, and a pin that holds keeping the run"
             + " from searching, held by BattleMarkPinTest and BattleMegaMinionReturnTest. The"
             + " pinned point is recorded; no reader of it is traced.")
 public final class SetIndicatorOnTarget extends RowAction {
@@ -128,6 +136,12 @@ public final class SetIndicatorOnTarget extends RowAction {
 
     /** The owner's state. */
     int state();
+
+    /** True while the owner's ability is pending, waiting for its gate to let the cast start. */
+    boolean abilityPending();
+
+    /** The steps left before the owner's ability's effect fires; 0 or below once it has. */
+    int abilityWarningCountdown();
   }
 
   /**
@@ -138,7 +152,8 @@ public final class SetIndicatorOnTarget extends RowAction {
    * @param strategies the resolver's strategies, as the data names them
    * @param onPickNewTarget the action run on the owner for a new target, the target its cause, or
    *     null
-   * @param onTargetDied the name of the row run as the target leaves, or null
+   * @param onTargetDied the action run on the owner as the target leaves, the owner its cause, or
+   *     null
    * @param tagsWithoutTarget the tags set while there is no target
    * @param tagsWithTarget the tags set while there is a target
    * @param pauseIfInCooldown true when the search waits out the owner's ability cooldown
@@ -153,7 +168,7 @@ public final class SetIndicatorOnTarget extends RowAction {
       GameObjectFilter filter,
       List<String> strategies,
       BattleAction onPickNewTarget,
-      String onTargetDied,
+      BattleAction onTargetDied,
       long tagsWithoutTarget,
       long tagsWithTarget,
       boolean pauseIfInCooldown,
@@ -180,13 +195,14 @@ public final class SetIndicatorOnTarget extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder) {
-    return new Run(this, holder.getOwner().markHost(this));
+    return new Run(this, holder, holder.getOwner().markHost(this));
   }
 
   /** One run of the mark. */
   public static final class Run extends ActionInstance {
 
     private final SetIndicatorOnTarget mark;
+    private final ActionHolder holder;
     private final Host host;
 
     /** Milliseconds since the last search, or -1 before the first. */
@@ -203,9 +219,10 @@ public final class SetIndicatorOnTarget extends RowAction {
 
     private int pinnedY;
 
-    private Run(SetIndicatorOnTarget mark, Host host) {
+    private Run(SetIndicatorOnTarget mark, ActionHolder holder, Host host) {
       super(mark);
       this.mark = mark;
+      this.holder = holder;
       this.host = host;
     }
 
@@ -245,18 +262,16 @@ public final class SetIndicatorOnTarget extends RowAction {
         pinnedY = columns.pinnedY() == null ? 0 : columns.pinnedY().getAsInt();
       }
       // The pause only stops a search: with a target, or pinned, the run does not search either
-      // way.
+      // way. It holds while the slot that follows the owner has cooldown left, unless the owner's
+      // ability is pending, or the owner casts with its ability's effect still to fire.
+      boolean paused =
+          columns.pauseIfInCooldown()
+              && !host.abilityPending()
+              && host.abilityCooldownMs() >= 1
+              && !(host.state() == GridEntityState.CASTING && host.abilityWarningCountdown() >= 1);
       if (target == null
           && !pinned
-          && columns.pauseIfInCooldown()
-          && host.abilityCooldownMs() >= 1) {
-        throw new UnsupportedOperationException(
-            mark.name()
-                + " waits out its owner's ability cooldown, which is not modelled (the pause's"
-                + " lift for an active champion is untraced)");
-      }
-      if (target == null
-          && !pinned
+          && !paused
           && (counterMs == -1 || counterMs >= columns.delayBeforeSearchMs())) {
         target = search(columns);
       }
@@ -283,17 +298,20 @@ public final class SetIndicatorOnTarget extends RowAction {
       }
     }
 
+    /**
+     * The marked object leaving: the died action scheduled on the owner with its row's own delay,
+     * the owner its cause and no context, then the target dropped.
+     */
     @Override
     protected void objectLeft(int leftId) {
-      if (target != null && target.id() == leftId) {
-        throw new UnsupportedOperationException(
-            mark.name()
-                + "'s target "
-                + target.rowName()
-                + " leaves, whose died action "
-                + mark.columns.onTargetDied()
-                + " is not modelled");
+      if (target == null || target.id() != leftId) {
+        return;
       }
+      BattleAction died = mark.columns.onTargetDied();
+      if (died != null) {
+        holder.schedule(died, ActionHolder.OWN_DELAY, false, holder);
+      }
+      target = null;
     }
 
     /** The resolver's search: the candidates the filter lets through, narrowed by each strategy. */
