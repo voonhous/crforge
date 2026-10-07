@@ -14,11 +14,11 @@ import java.util.List;
 import java.util.Optional;
 import org.crforge.core.arena.Arena;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.RenderConstants;
 import org.crforge.desktop.replay.ReplayFile;
-import org.crforge.parity.ReplayCapture;
 
 /**
  * Desktop launcher for CRForge. Starts the LibGDX application with debug visualization.

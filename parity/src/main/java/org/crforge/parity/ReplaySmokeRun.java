@@ -14,7 +14,6 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +21,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ReplayBattle;
+import org.crforge.core.battle.replay.ReplayScenario;
+import org.crforge.core.battle.replay.ScenarioPlan;
+import org.crforge.core.battle.replay.ScenarioShape;
+import org.crforge.core.battle.replay.UnsupportedScenarioException;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -283,7 +288,7 @@ public final class ReplaySmokeRun {
     manifest.put("adapter", adapter);
     ScenarioPlan plan = translator.translate(scenario);
 
-    Standard1v1Battle battle = build(tables, plan);
+    Standard1v1Battle battle = ReplayBattle.build(tables, plan);
 
     ByteArrayOutputStream trace = new ByteArrayOutputStream();
     int observations = 0;
@@ -297,7 +302,7 @@ public final class ReplaySmokeRun {
       executed++;
       // Each play that ran in the step carries the item the simulator built for it, which the
       // scenario's packed item must be.
-      checked = checkItems(battle, plan, checked);
+      checked = ReplayBattle.checkItems(battle, plan, checked);
       observations += write(trace, SmokeObserver.observe(battle, schema), observations);
     }
     byte[] bytes = trace.toByteArray();
@@ -355,118 +360,6 @@ public final class ReplaySmokeRun {
     }
     manifest.put("status", "completed");
     return bytes;
-  }
-
-  /**
-   * Builds the battle a translated scenario gives, before its first step: the towers, the seed,
-   * each player's data, the Ladder match between the two decks, and every command queued in the
-   * scenario's order, each play and ability command named {@code cmd<index>} after its index in the
-   * scenario.
-   *
-   * @param tables the game tables
-   * @param plan the translated scenario
-   * @return the battle, not yet stepped
-   */
-  public static Standard1v1Battle build(GameTables tables, ScenarioPlan plan) {
-    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.towers(), true);
-    battle.getWorld().seed(plan.seed());
-    // Each player's data is handed over before the decks are dealt, in the scenario's order.
-    for (int choices : plan.playerDataChoices()) {
-      battle.addPlayerData(choices);
-    }
-    // A player's word, which joins its deck shuffle's draw, is the low word of its account id. Each
-    // deck card comes with its slot flags.
-    battle.startLadderMatch(
-        plan.decks().get(0),
-        plan.decks().get(1),
-        plan.accounts().get(0)[1],
-        plan.accounts().get(1)[1],
-        plan.slotFlags().get(0),
-        plan.slotFlags().get(1));
-    // The commands are queued in the scenario's order, plays and ability commands alike: within a
-    // tick they run in the order they were queued.
-    Map<Integer, ScenarioPlan.Play> playsByIndex = new HashMap<>();
-    Map<Integer, ScenarioPlan.Ability> abilitiesByIndex = new HashMap<>();
-    plan.plays().forEach(play -> playsByIndex.put(play.index(), play));
-    plan.abilities().forEach(ability -> abilitiesByIndex.put(ability.index(), ability));
-    int commands = plan.plays().size() + plan.abilities().size();
-    for (int index = 0; index < commands; index++) {
-      ScenarioPlan.Play play = playsByIndex.get(index);
-      ScenarioPlan.Ability ability = abilitiesByIndex.get(index);
-      if (play != null) {
-        if (play.repeats() != null) {
-          // A Mirror's play repeats its side's last card, as the battle's Mirror builds it.
-          battle.playMirror(
-              play.runTick(),
-              play.card(),
-              play.level(),
-              play.side(),
-              play.x(),
-              play.y(),
-              "cmd" + index);
-        } else if (play.option() != null) {
-          // A variant card's play runs as the option the battle's player picks as it gives it.
-          battle.playVariant(
-              play.runTick(),
-              play.card(),
-              play.level(),
-              play.side(),
-              play.x(),
-              play.y(),
-              "cmd" + index);
-        } else {
-          battle.play(
-              play.runTick(),
-              battle.getWorld().getRecords().card(play.card()),
-              play.level(),
-              play.side(),
-              play.x(),
-              play.y(),
-              "cmd" + index);
-        }
-      } else {
-        battle.useAbility(ability.runTick(), ability.side(), ability.objectId(), "cmd" + index);
-      }
-    }
-    return battle;
-  }
-
-  /**
-   * Checks the items of the plays that ran since the last check against the scenario's.
-   *
-   * @param battle the battle {@link #build} built from the plan
-   * @param plan the translated scenario
-   * @param checked how many of the battle's plays have been checked
-   * @return how many have been checked now
-   * @throws UnsupportedScenarioException for a play whose item is not the one the battle built
-   */
-  public static int checkItems(Standard1v1Battle battle, ScenarioPlan plan, int checked) {
-    List<Standard1v1Battle.Play> run = battle.getPlays();
-    if (checked == run.size()) {
-      return checked;
-    }
-    Map<String, ScenarioPlan.Play> planned = new HashMap<>();
-    plan.plays().forEach(play -> planned.put("cmd" + play.index(), play));
-    for (int i = checked; i < run.size(); i++) {
-      Standard1v1Battle.Play play = run.get(i);
-      ScenarioPlan.Play given = planned.get(play.name());
-      if (given == null) {
-        throw new IllegalStateException(
-            "the battle ran a play the scenario does not give: " + play);
-      }
-      if (given.repeats() != null) {
-        ReplayScenario.checkMirrorItem(given, play.mirror());
-        continue;
-      }
-      if (given.option() != null) {
-        ReplayScenario.checkVariantItem(given, play.variant());
-        continue;
-      }
-      int deckIndex = plan.decks().get(given.side()).indexOf(given.card());
-      ReplayScenario.checkItem(
-          given, plan.slotFlags().get(given.side())[deckIndex], play.evolution());
-    }
-    return run.size();
   }
 
   /**

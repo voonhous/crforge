@@ -13,6 +13,8 @@ dependencies {
 
     // Version16Tables skips a test whose game tables are not configured
     testFixturesImplementation(libs.junit.jupiter)
+    // Scenarios writes replay scenarios, which are JSON
+    testFixturesImplementation(libs.jackson.databind)
 
     // Lombok
     compileOnly(libs.lombok)

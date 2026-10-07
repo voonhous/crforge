@@ -1,10 +1,11 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 /**
  * The fields that name a data content, the data version and its content sha, in the files the
- * parity tools read and write: a replay's capture block ({@link ReplayCapture}), a reference corpus
- * listing, an expectations file, a scorecard and a smoke run's identity. A content is the game
- * tables' {@code GameTables.version()} and {@code GameTables.contentSha()}.
+ * replay and reference battle tools read and write: a replay's capture block ({@link
+ * ReplayCapture}), a reference corpus listing, an expectations file, a scorecard and a smoke run's
+ * identity. A content is the game tables' {@code GameTables.version()} and {@code
+ * GameTables.contentSha()}.
  */
 public final class ContentFields {
 

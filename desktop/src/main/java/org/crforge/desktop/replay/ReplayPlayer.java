@@ -8,24 +8,24 @@ import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.replay.ReplayBattle;
+import org.crforge.core.battle.replay.ScenarioPlan;
+import org.crforge.core.battle.replay.UnsupportedScenarioException;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.render.ViewOrientation;
-import org.crforge.parity.ReplaySmokeRun;
-import org.crforge.parity.ScenarioPlan;
-import org.crforge.parity.UnsupportedScenarioException;
 
 /**
  * Plays a replay on the battle core, as the replay screen shows it, with no graphics: the battle
- * built from the replay ({@link ReplaySmokeRun#build}) with every command queued at its tick, the
+ * built from the replay ({@link ReplayBattle#build}) with every command queued at its tick, the
  * clock that steps it, pause and speed, and a restart from tick 0.
  *
  * <p>Each play and ability command that runs is noted in the session's messages (its side, named by
  * the screen's colours as the messages are read, its card or unit, and the tick it ran on), and
  * each play's item is checked against the item the battle built for it ({@link
- * ReplaySmokeRun#checkItems}), as a parity run checks it: a play that ran with another item halts
- * the session with the reason, since the battle has left the replay.
+ * ReplayBattle#checkItems}), as a parity run checks it: a play that ran with another item halts the
+ * session with the reason, since the battle has left the replay.
  *
  * <p>The replay stops at its end tick, or when the battle ends by its own rule, whichever is first;
  * a replay that gives no end tick plays until the battle ends. A refused replay has no session.
@@ -89,7 +89,7 @@ public final class ReplayPlayer {
     ScenarioPlan plan = replay.plan();
     Map<String, String> cards = new HashMap<>();
     plan.plays().forEach(play -> cards.put(name(play.index()), play.card()));
-    session = BattleSession.of(ReplaySmokeRun.build(tables, plan), cards);
+    session = BattleSession.of(ReplayBattle.build(tables, plan), cards);
   }
 
   public void togglePause() {
@@ -263,7 +263,7 @@ public final class ReplayPlayer {
       }
     }
     try {
-      playsRead = ReplaySmokeRun.checkItems(battle, replay.plan(), playsRead);
+      playsRead = ReplayBattle.checkItems(battle, replay.plan(), playsRead);
     } catch (UnsupportedScenarioException e) {
       playsRead = plays.size();
       session.halt("the battle left the replay, " + e.getMessage());
@@ -299,7 +299,7 @@ public final class ReplayPlayer {
         .orElse(playName);
   }
 
-  /** A command's play name, as {@link ReplaySmokeRun#build} names it. */
+  /** A command's play name, as {@link ReplayBattle#build} names it. */
   private static String name(int index) {
     return "cmd" + index;
   }

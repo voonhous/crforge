@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 import java.util.List;
 import org.crforge.core.battle.unit.Standard1v1Battle;
