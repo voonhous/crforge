@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -50,7 +50,7 @@ class SkeletonKingChargesTest {
     final List<CharacterEntity> spawned = new ArrayList<>();
 
     Scene() {
-      GameTables tables = Version16Tables.load();
+      GameTables tables = GameData.tables();
       records = new BattleRecords(tables);
       int word = 0;
       while (!inHand(

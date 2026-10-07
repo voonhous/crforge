@@ -19,9 +19,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * first vector cleared, its hit list emptied and its reference given up), the reference set onto
  * the object through the setter's re-check, and the dash started at the object's point, stopping
  * short by its collision radius. That dash is the character's own: a character whose row sets
- * DashCount goes on chaining from one landing to the next as its dashing state ends, exactly as
- * after its ability's dash in the earlier data version. With no object the run stays listed and
- * looks again on each step.
+ * DashCount goes on chaining from one landing to the next as its dashing state ends. With no object
+ * the run stays listed and looks again on each step.
  *
  * <p>Each step, once the dash has begun: while the character is dashing, a dead reference is added
  * to the run's hit list; the first step it is no longer dashing, the run counts the dash as landed.

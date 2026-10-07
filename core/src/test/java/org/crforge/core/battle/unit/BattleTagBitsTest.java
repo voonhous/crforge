@@ -24,8 +24,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A game tag's bit in an entity's tag word is its row's index in the game tags table, for the tag a
  * row sets and for the code that tests it alike. A table that drops a tag ahead of others moves
- * every later tag down one bit, as the table of data version 16.402.18 drops NO_REFLECTED_ATTACK
- * (index 38 in 14.593.1) and appends four tags at its end.
+ * every later tag down one bit, as the tables of one data version and the next may differ, and a
+ * tag appended at its end takes the next index.
  *
  * <p>The scene: the bottom side's Mini P.E.K.K.A. walks up the left lane and meets the top side's
  * Giant coming down it, the Giant's row altered to set one tag. With NO_DAMAGE the Mini
@@ -45,26 +45,21 @@ class BattleTagBitsTest {
   /** A tick after the one the Mini P.E.K.K.A.'s hits kill the unaltered Giant on. */
   private static final int AFTER_DEATH = 400;
 
-  /** The tag the 16.402.18 table drops, and its index in the configured one. */
-  private static final String DROPPED = "NO_REFLECTED_ATTACK";
+  /** The tag the shifted table drops, ahead of NO_DAMAGE and UNTARGETABLE. */
+  private static final String DROPPED = "HAS_CAPTURE";
 
-  /** The tags the 16.402.18 table appends after its last one. */
-  private static final List<String> APPENDED =
-      List.of(
-          "SKELETROOPER_HIT",
-          "ABILITY_PENDING",
-          "UNKILLABLE",
-          "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET");
+  /** The tag the shifted table appends after its last one. */
+  private static final List<String> APPENDED = List.of("TEST_APPENDED_TAG");
 
   @TempDir Path folder;
 
   /**
    * The configured tables copied into a folder, the Giant's row setting the given tags and, when
-   * asked, the game tags listed as the 16.402.18 table lists them.
+   * asked, the game tags shifted: one dropped ahead of the Giant's, one appended.
    *
    * @param folder the folder to copy them into
    * @param giantTags the GameTagsToSet the Giant's row is given
-   * @param shifted whether the tags table drops NO_REFLECTED_ATTACK and appends four tags
+   * @param shifted whether the tags table drops HAS_CAPTURE and appends a tag
    */
   private static GameTables tables(Path folder, String giantTags, boolean shifted)
       throws IOException {
@@ -95,8 +90,8 @@ class BattleTagBitsTest {
   }
 
   /**
-   * Drops NO_REFLECTED_ATTACK, moves every later tag down one index and appends the four new tags,
-   * leaving the rows listed in index order.
+   * Drops HAS_CAPTURE, moves every later tag down one index and appends the new tag, leaving the
+   * rows listed in index order.
    */
   private static void dropAndAppend(ObjectNode rows) {
     int dropped = rows.get(DROPPED).get("index").asInt();

@@ -127,6 +127,7 @@ class BattleRunOnResolvedConeTest {
         folder,
         "characters",
         characters -> GameData.columns(characters, "MiniPekka").put("OnStartingAction", START));
+    GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
 

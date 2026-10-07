@@ -2,40 +2,30 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The Little Prince's guard on data version 16.402.18. The guard spawn row of that version names an
- * area effect, ChampionGuardCleave, and its game's guard run reads none of the row's push columns:
- * on the step that starts the charge it makes the area effect at the guard's point, the guard its
- * source and the object it follows, and ends it as the run finishes. What the charge pushes and
- * hits is the area effect's: a filter form row that pushes every enemy ground character it lists to
- * the edge of its 2500 circle on every update and hits each once.
+ * The Little Prince's guard. The guard spawn row names an area effect, ChampionGuardCleave, and the
+ * game's guard run reads none of the row's push columns: on the step that starts the charge it
+ * makes the area effect at the guard's point, the guard its source and the object it follows, and
+ * ends it as the run finishes. What the charge pushes and hits is the area effect's: a filter form
+ * row that pushes every enemy ground character it lists to the edge of its 2500 circle on every
+ * update and hits each once.
  *
- * <p>The scene: the configured tables relabelled as data version 16.402.18, with the guard spawn
- * row and the area effect as that version writes them. The guard's area effect,
- * DummySpawnLittlePrinceGuard, is placed for the bottom side; its start makes the guard 850 ms
- * later, which deploys for 300 ms and charges 4000 up the lane past a top side Knight walking down
- * toward it.
+ * <p>The scene: the guard's area effect, DummySpawnLittlePrinceGuard, is placed for the bottom
+ * side; its start makes the guard 850 ms later, which deploys for 300 ms and charges 4000 up the
+ * lane past a top side Knight walking down toward it.
  */
 class BattleGuardChargeAreaTest {
 
@@ -54,51 +44,6 @@ class BattleGuardChargeAreaTest {
 
   /** The guard's charge area effect, as data version 16.402.18 writes it. */
   private static final String CLEAVE = "ChampionGuardCleave";
-
-  @TempDir Path folder;
-
-  /**
-   * The configured tables, relabelled as data version 16.402.18, with the guard spawn row naming
-   * the charge's area effect and that area effect added, as that version writes them.
-   */
-  private GameTables guardTables() throws IOException {
-    GameData.altered(
-        folder,
-        "actions",
-        actions -> {
-          ObjectNode fields = (ObjectNode) actions.get("Spawn_ChampionGuardCharge").get("fields");
-          fields.put("SpawnAEO", CLEAVE);
-          fields.put("PushBackDamage", 125);
-        });
-    ObjectMapper mapper = new ObjectMapper();
-    Path areas = folder.resolve("area_effect_objects.json");
-    ObjectNode document = (ObjectNode) mapper.readTree(areas.toFile());
-    ObjectNode rows = (ObjectNode) document.get("rows");
-    int index = 0;
-    for (Iterator<JsonNode> it = rows.elements(); it.hasNext(); ) {
-      index = Math.max(index, it.next().path("index").asInt() + 1);
-    }
-    ObjectNode cleave = rows.putObject(CLEAVE);
-    cleave.put("index", index);
-    cleave.put("class", "LogicAreaEffectObjectData");
-    ObjectNode columns = cleave.putObject("columns");
-    columns.put("Name", CLEAVE);
-    columns.put("Rarity", "Common");
-    columns.put("LifeDuration", 99999);
-    columns.put("HitSpeed", 50);
-    columns.put("Radius", 2500);
-    columns.put("Filter", "PassiveForcedHitGroundCharacters");
-    columns.put("FollowBehaviour", "FollowParent");
-    columns.putObject("Damage").put("BaseDamage", 125);
-    columns.put("OneHitPerTarget", true);
-    columns.put("Pushback", 2500);
-    columns.put("PushbackAll", true);
-    columns.put("RelativePushback", true);
-    columns.put("ContinuousPushback", true);
-    mapper.writeValue(areas.toFile(), document);
-    GameData.relabel(folder, GameVersions.DATA_16_402_18);
-    return GameTables.load(folder);
-  }
 
   /** What the scene saw. */
   private static final class Scene {
@@ -232,10 +177,10 @@ class BattleGuardChargeAreaTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the guard's charge makes its row's area effect at the guard's"
+      "the guard's charge makes its row's area effect at the guard's"
           + " point on the step the charge starts, which stands on the guard until the run ends")
-  void theChargeMakesTheAreaEffect() throws IOException {
-    Scene scene = new Scene(guardTables());
+  void theChargeMakesTheAreaEffect() {
+    Scene scene = new Scene(GameData.tables());
 
     assertThat(scene.guard).as("the guard").isNotNull();
     assertThat(scene.chargeStarted).as("the charge").isPositive();
@@ -262,12 +207,12 @@ class BattleGuardChargeAreaTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the guard's run neither pushes nor hits on its own: its area"
+      "the guard's run neither pushes nor hits on its own: its area"
           + " effect hits the Knight once and pushes it on every update while it is reached")
-  void theAreaEffectPushesAndHits() throws IOException {
-    Scene scene = new Scene(guardTables());
+  void theAreaEffectPushesAndHits() {
+    Scene scene = new Scene(GameData.tables());
 
-    // 125 at the guard's level, as the 14.593.1 guard's own 100 is 256 there.
+    // The area effect's 125 at the guard's level.
     assertThat(scene.knightTyped).as("one typed hit, the area effect's").hasSize(1);
     int hitTick = Integer.parseInt(scene.knightTyped.get(0).split(" ")[0]);
     assertThat(scene.knightTyped.get(0)).endsWith(" 320");

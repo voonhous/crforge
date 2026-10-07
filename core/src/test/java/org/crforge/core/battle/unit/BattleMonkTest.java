@@ -196,7 +196,8 @@ class BattleMonkTest {
     int x = scene.monk.getView().getX();
     int y = scene.monk.getView().getY();
     int hitPoints = scene.monk.getHitPoints().getHitPoints();
-    scene.match.placeAreaEffect(scene.tick, "GoblinDrillDamage", LEVEL, 1, 4250, 11000, "Drill");
+    // An area that hits and pushes 1000: the thrown bomb's explosion.
+    scene.match.placeAreaEffect(scene.tick, "ThrownBombExplosion", LEVEL, 1, 4250, 11000, "Bomb");
     for (int i = 0; i < 20; i++) {
       scene.step();
     }

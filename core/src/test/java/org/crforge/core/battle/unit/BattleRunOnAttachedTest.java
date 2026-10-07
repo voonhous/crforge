@@ -53,6 +53,7 @@ class BattleRunOnAttachedTest {
     GameData.columns((ObjectNode) document.get("rows"), "GoblinGiant")
         .put("OnStartingAction", HAND_OVER);
     mapper.writeValue(file.toFile(), document);
+    GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
 

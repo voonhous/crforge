@@ -80,7 +80,7 @@ class BattleSkeletonBalloonEvoTest {
   @Test
   @DisplayName(
       "the bottom side's balloon drops its first container at (-350, +450) once it falls to 75%,"
-          + " its last at (+350, 0) as it dies, and each spawns seven Skeletons 12 ticks later")
+          + " its last at (+350, 0) as it dies, and each spawns seven Skeletons 13 ticks later")
   void twoContainersDrop() {
     Scene scene = new Scene();
     scene.balloon = scene.still(0, BALLOON, LEVEL, 9000, 14000, "balloon");
@@ -96,9 +96,10 @@ class BattleSkeletonBalloonEvoTest {
             "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH (9350, 14000)");
     assertThat(scene.balloonAlive).containsExactly(true, false);
     assertThat(scene.spawns).hasSize(14).containsOnly("Skeleton");
-    // LifeDuration 600: the spawn runs on the twelfth update after the tick it was made on.
-    assertThat(scene.spawnTicks.get(0)).isEqualTo(scene.containerTicks.get(0) + 12);
-    assertThat(scene.spawnTicks.get(7)).isEqualTo(scene.containerTicks.get(1) + 12);
+    // LifeDuration 600: the life-end spawn runs on the update that takes the countdown below 0,
+    // the thirteenth after the tick it was made on.
+    assertThat(scene.spawnTicks.get(0)).isEqualTo(scene.containerTicks.get(0) + 13);
+    assertThat(scene.spawnTicks.get(7)).isEqualTo(scene.containerTicks.get(1) + 13);
   }
 
   @Test

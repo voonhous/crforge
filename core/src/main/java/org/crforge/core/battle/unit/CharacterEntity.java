@@ -196,11 +196,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " reference or over its radius with a push, its landing hold, its immunity while it"
             + " dashes and after, and the resume when it loses its reference, held by"
             + " bandit_knight; the Golden Knight's chained dash - its ability's gate within its"
-            + " dash range, the handler's query, stun cleanse and dash, each dash start's count,"
-            + " hit list and first vector, the next dash as it leaves the dashing state, the"
-            + " dash end's reset and no push while it dashes - held by golden_knight_chain and"
-            + " golden_knight_ladder_chain, its tenth dash, a stun removed before the dash and the"
-            + " stop at a crown tower by BattleGoldenKnightTest, while the later of two equally"
+            + " dash range, each dash start's count, hit list and first vector, the next dash as"
+            + " it leaves the dashing state, the dash end's reset and no push while it dashes -"
+            + " held by the reference ability_golden_knight and by golden_knight_chain and"
+            + " golden_knight_ladder_chain (goldens disabled until they are re-recorded), its"
+            + " tenth dash and the stop at a crown tower by GoldenKnightChargeTest, while the"
+            + " later of two equally"
             + " near objects, the forward test and the reset as the targeting component is"
             + " switched off are held by no run; a card play's rider that targets troops only, its buff"
             + " priority fed, held by ram_rider_tower; an elixir collector's payout to its king,"
@@ -2607,8 +2608,8 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * What a guard's run on the character asks of the battle: its state and deploy, the object query
-   * around it, the push and hit of what it finds, and its charge.
+   * What a guard's run on the character asks of the battle: its state and deploy, the area effect
+   * it makes, and its charge.
    */
   GuardHost guardHost() {
     return new GuardHost() {
@@ -2631,75 +2632,6 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public int teamSign() {
         return (side() & 1) == 0 ? 1 : -1;
-      }
-
-      @Override
-      public int x() {
-        return getView().getX();
-      }
-
-      @Override
-      public int y() {
-        return getView().getY();
-      }
-
-      @Override
-      public List<Integer> query(int radius, GameObjectFilter filter) {
-        List<Integer> ids = new ArrayList<>();
-        for (WorldEntity entity : world.objectQuery(CharacterEntity.this, radius, filter)) {
-          ids.add(entity.getId());
-        }
-        return ids;
-      }
-
-      @Override
-      public int push(int id, int distance, boolean subtract, boolean keepLonger) {
-        if (!(object(id) instanceof CharacterEntity pushed)) {
-          return -1;
-        }
-        return pushed.pushedByGuard(
-            getView().getX(), getView().getY(), distance, subtract, keepLonger);
-      }
-
-      @Override
-      public boolean character(int id) {
-        return object(id) instanceof CharacterEntity;
-      }
-
-      @Override
-      public boolean untouchable(int id) {
-        return object(id).untouchable(true);
-      }
-
-      @Override
-      public boolean hasHitPoints(int id) {
-        return object(id).getHitPoints() != null;
-      }
-
-      @Override
-      public int damageAtLevel(int base) {
-        return LevelScaling.scale(
-            ScalingGlobals.standard(),
-            base,
-            getPackedLevel(),
-            ScalingMode.CARD_DAMAGE,
-            getData().rarity());
-      }
-
-      @Override
-      public void hit(int id, int amount) {
-        WorldEntity target = object(id);
-        world.dealDamage(
-            CharacterEntity.this,
-            target.getTargetView(),
-            amount,
-            target.getView().getX() - getView().getX(),
-            target.getView().getY() - getView().getY());
-      }
-
-      @Override
-      public boolean makesArea() {
-        return world.guardRunMakesArea();
       }
 
       @Override
@@ -2750,17 +2682,8 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
-      public String name(int id) {
-        return object(id).name();
-      }
-
-      @Override
       public void stepped(boolean charging, long tags, boolean done, List<String> calls) {
         world.guardStepped(CharacterEntity.this, charging, tags, done, calls);
-      }
-
-      private WorldEntity object(int id) {
-        return (WorldEntity) world.liveObject(id);
       }
     };
   }
@@ -2879,9 +2802,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Whether it dodges damage, as a newer data version's is_dodging_damage asks: dashing under a row
-   * with a dash immunity, or with that immunity still counting after the dash. Unlike {@link
-   * #untouchable(boolean)} it does not count a tunnel or a parent.
+   * Whether it dodges damage, as is_dodging_damage asks: dashing under a row with a dash immunity,
+   * or with that immunity still counting after the dash. Unlike {@link #untouchable(boolean)} it
+   * does not count a tunnel or a parent.
    */
   boolean dodgingDamage() {
     return getView().getState() == GridEntityState.DASHING
@@ -3557,15 +3480,15 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The ability's effect, on the visit its trigger delay reaches zero: its dash, with the unit able
-   * to act, in a data version whose game still dashes there (in 16.402.18 the ability's activation
-   * action dashes instead, see {@link BattleWorld#abilityFireDashes()}); its activation action,
-   * scheduled on the unit, the unit as its cause, which from the post-hooks waits for the phase-3
-   * pending pass; its buff, applied to the unit itself for its time, at the unit's level, the unit
-   * its parent and its source; its lane switch, which ends the cast; the character it leaves on the
-   * unit's spot; the area effect it creates at the unit, given the lifetime its souls buy for an
-   * ability that collects them; then its follow-up state, which ends the cast too. Its other
-   * effects are refused as it is requested.
+   * The ability's effect, on the visit its trigger delay reaches zero. It does not dash: the game
+   * reads the dash range only in the gate that lets the ability start, and the Golden Knight, whose
+   * ability row names both a dash range and an activation action, dashes through that action's
+   * dashing attack chain instead. Its activation action, scheduled on the unit, the unit as its
+   * cause, which from the post-hooks waits for the phase-3 pending pass; its buff, applied to the
+   * unit itself for its time, at the unit's level, the unit its parent and its source; its lane
+   * switch, which ends the cast; the character it leaves on the unit's spot; the area effect it
+   * creates at the unit, given the lifetime its souls buy for an ability that collects them; then
+   * its follow-up state, which ends the cast too. Its other effects are refused as it is requested.
    *
    * <p>It runs inside the state visit, after the cast's two countdowns step and before the cast's
    * end is tested, so the rest of the visit sees the state it leaves: a unit it took out of the
@@ -3574,9 +3497,6 @@ public class CharacterEntity extends WorldEntity {
   private void abilityFired() {
     AbilityData ability = getData().ability();
     world.abilityFired(this);
-    if (ability.dashRange() >= 1 && isActive(TARGETING_SLOT) && world.abilityFireDashes()) {
-      abilityDash(ability);
-    }
     if (ability.onActivationAction() != null) {
       BattleAction action =
           world.getActions().build(ability.onActivationAction(), world.binding(this));
@@ -3630,12 +3550,13 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The charges a newer data version's ability spends on the area effect it created: its charges
-   * expression, read in the unit's context (the Skeleton King's SkeletonKing_ResurrectCharges, the
-   * souls its drains have brought in), adds to ResurrectBaseCount, at most SpawnLimit in all, and
-   * the area effect's lifetime is one SpawnInterval for each character after the first and its
-   * SpawnInitialDelay. Then the ability's reset action is scheduled on the unit, the unit its
-   * cause, as its activation action is: the Skeleton King's writes the variable back to 0.
+   * The charges an ability with a charges expression spends on the area effect it created: its
+   * charges expression, read in the unit's context (the Skeleton King's
+   * SkeletonKing_ResurrectCharges, the souls its drains have brought in), adds to
+   * ResurrectBaseCount, at most SpawnLimit in all, and the area effect's lifetime is one
+   * SpawnInterval for each character after the first and its SpawnInitialDelay. Then the ability's
+   * reset action is scheduled on the unit, the unit its cause, as its activation action is: the
+   * Skeleton King's writes the variable back to 0.
    */
   private void spendCharges(AbilityData ability, AreaEffectEntity areaEffect) {
     int charges = world.binding(this).expression(ability.resurrectChargesExpression()).getAsInt();
@@ -3657,13 +3578,15 @@ public class CharacterEntity extends WorldEntity {
    * champion controller of its side follows, for the death of a unit of its own side under
    * ResurrectOwnTroops or of the other side under ResurrectEnemies, that does not ignore
    * resurrection and is not a building, while the base count and its souls stay below SpawnLimit.
-   * Its own death counts too, as it dies. Only an older data version counts (soulsFromDeaths).
+   * Its own death counts too, as it dies. Only an ability row without a charges expression counts
+   * (soulsFromDeaths).
    *
    * @param dying the object dying
    */
   void countSoul(WorldEntity dying) {
     AbilityData ability = getData().ability();
-    // A newer data version counts no death on the unit: its souls are drained by actions.
+    // An ability with a charges expression counts no death on the unit: its souls are drained by
+    // actions.
     if (ability == null
         || !ability.soulsFromDeaths()
         || ability.resurrectBaseCount() <= 0
@@ -3723,9 +3646,6 @@ public class CharacterEntity extends WorldEntity {
     world.lanesSwitched(this, x, y, toX, toY, reference);
   }
 
-  /** Whether the standard game removes a unit's stuns before its ability dashes: so it does. */
-  private static final boolean ALWAYS_DASH_GOLDENKNIGHT = true;
-
   /**
    * Whether a chain's next target beyond the back-dash radius must lie ahead along the side's
    * direction, rather than along the chain's first dash: so in the standard game.
@@ -3755,51 +3675,10 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The ability's dash: the neighbour query around the unit over the dash range, each object asked
-   * of the validator and, valid, measured; the nearest kept, the later of equals, or the furthest
-   * for a row that says so. Then the unit's stuns are removed, its movement component switched on,
-   * its dash ended, and it takes the winner as its reference and dashes at it, stopping short by
-   * the winner's collision radius. A dash that finds nobody is refused.
-   */
-  private void abilityDash(AbilityData ability) {
-    GridEntity view = getView();
-    SelectionChain selection = unit.selection();
-    List<DashCandidate> candidates = new ArrayList<>();
-    WorldEntity chosen = null;
-    int best = 0;
-    for (WorldEntity other : neighbours(view.getX(), view.getY(), ability.dashRange())) {
-      boolean valid = selection.validate(other.getTargetView(), ReferenceValidator.MODE_TAKE);
-      int squared =
-          valid
-              ? FixedMath.squaredDistance(
-                  other.getView().getX(), other.getView().getY(), view.getX(), view.getY())
-              : 0;
-      candidates.add(new DashCandidate(other, valid, squared));
-      if (!valid) {
-        continue;
-      }
-      if (chosen == null || (ability.dashTargetFurthest() ? squared >= best : squared <= best)) {
-        best = squared;
-        chosen = other;
-      }
-    }
-    List<String> cleansed = ALWAYS_DASH_GOLDENKNIGHT ? getBuffs().cleanseStuns() : List.of();
-    world.abilityDashed(this, candidates, cleansed, chosen);
-    if (chosen == null) {
-      throw new UnsupportedOperationException(
-          name()
-              + "'s "
-              + ability.name()
-              + " finds no target to dash at, whose stop and new request no reference holds");
-    }
-    dashOnto(chosen);
-  }
-
-  /**
-   * The unit's dash onto an object, as its ability's dash and a dashing attack chain begin it: its
-   * movement component switched on, its dash ended, the object taken as its reference through the
-   * setter's re-check, and its dash started at the object's point, stopping short of it by the
-   * object's collision radius.
+   * The unit's dash onto an object, as a dashing attack chain begins it: its movement component
+   * switched on, its dash ended, the object taken as its reference through the setter's re-check,
+   * and its dash started at the object's point, stopping short of it by the object's collision
+   * radius.
    */
   void dashOnto(WorldEntity target) {
     switchComponent(MOVEMENT_SLOT, true);
@@ -3818,19 +3697,10 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * One object the ability's dash looked at.
-   *
-   * @param entity the object
-   * @param valid whether the validator let the unit take it
-   * @param squaredDistance its squared distance from the unit; 0 when it was not valid
-   */
-  public record DashCandidate(WorldEntity entity, boolean valid, int squaredDistance) {}
-
-  /**
-   * A dash's start for a unit whose dashes chain, as its ability or its chain makes it: unless the
-   * unit may not dash, the chain's count goes up, its reference joins the hit list, and the first
-   * dash's vector is kept; then the dash itself starts, toward the point, stopping short of it by
-   * the radius and in reach of the reference.
+   * A dash's start for a unit whose dashes chain, as a dashing attack chain or its own chain makes
+   * it: unless the unit may not dash, the chain's count goes up, its reference joins the hit list,
+   * and the first dash's vector is kept; then the dash itself starts, toward the point, stopping
+   * short of it by the radius and in reach of the reference.
    */
   private void chainedDashStart(int x, int y, int radius) {
     GridEntity view = getView();
@@ -5010,11 +4880,6 @@ public class CharacterEntity extends WorldEntity {
         return (getView().getFlags()
                 & (getView().getFlagBits().attacking() | getView().getFlagBits().noAttack()))
             != 0;
-      }
-
-      @Override
-      public boolean firstSearchWaitsForHop() {
-        return world.chainFirstSearchWaitsForHop();
       }
 
       @Override

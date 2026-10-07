@@ -23,21 +23,20 @@ import org.crforge.core.pathfinding.GridEntityState;
  *
  * <p>{@code filterDead} is the one column set by default.
  *
- * <p>{@code matchSelf}, which a newer data version writes, passes only the object that asks: a
- * filter that sets it is asked with whether the object is its asker, and refused when asked
- * without.
+ * <p>{@code matchSelf} passes only the object that asks: a filter that sets it is asked with
+ * whether the object is its asker, and refused when asked without.
  *
- * <p>A newer data version's Filters list may also name three kinds no switch tests: {@code
- * filterSelf} drops the asker itself, and is refused, like {@code matchSelf}, when asked without
- * whether the object is its asker; {@code filterKamikaze} and {@code filterIgnoreResurrect} drop a
- * character whose row sets Kamikaze or IgnoreResurrect, in the character-only block. Each is a
- * plain question, so its place among the other exclusions does not change the answer.
+ * <p>A Filters list may also name three kinds no switch tests: {@code filterSelf} drops the asker
+ * itself, and is refused, like {@code matchSelf}, when asked without whether the object is its
+ * asker; {@code filterKamikaze} and {@code filterIgnoreResurrect} drop a character whose row sets
+ * Kamikaze or IgnoreResurrect, in the character-only block. Each is a plain question, so its place
+ * among the other exclusions does not change the answer.
  *
- * <p>The two buff checkers a newer data version writes come last: FilterIfNotBuffedByChecker keeps
- * only an object that carries one of its buff rows applied by the asker, FilterIfBuffedByChecker
- * drops one that does. A buff counts as the asker's when the asker is its source, or when its
- * source was a projectile the asker launched. An object with no buffs fails the first and passes
- * the second. A filter with either is asked with the asker's id, and refused when asked without.
+ * <p>The two buff checkers come last: FilterIfNotBuffedByChecker keeps only an object that carries
+ * one of its buff rows applied by the asker, FilterIfBuffedByChecker drops one that does. A buff
+ * counts as the asker's when the asker is its source, or when its source was a projectile the asker
+ * launched. An object with no buffs fails the first and passes the second. A filter with either is
+ * asked with the asker's id, and refused when asked without.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -45,12 +44,12 @@ import org.crforge.core.pathfinding.GridEntityState;
         "Settled line for line and held by the recorded cases: the team and type gates, the tag"
             + " exclusion, the slot exclusions in their order and each asked only when set, the"
             + " name comparison, the character-only block and the two lists, and the one default."
-            + " MatchSelf (a newer data version) is read from the test of the newer build: the"
-            + " asker's own identity before the team gate. The two buff checkers (a newer data"
-            + " version) from the same test: a listed row whose source, or whose source"
+            + " MatchSelf is read from the build's test: the"
+            + " asker's own identity before the team gate. The two buff checkers"
+            + " from the same test: a listed row whose source, or whose source"
             + " projectile's launcher, is the asker; held by BattleRunOnResolvedTest and the Ice"
-            + " Wizard hero's tap. The Filters list's kinds Self, Kamikaze and IgnoreResurrect (a"
-            + " newer data version) from the same test: the object's id against the asker's, and"
+            + " Wizard hero's tap. The Filters list's kinds Self, Kamikaze and IgnoreResurrect"
+            + " from the same test: the object's id against the asker's, and"
             + " the character row's Kamikaze and IgnoreResurrect columns; IgnoreResurrect, which the"
             + " Skeleton King's death listener asks, held by BattleFilterKindsTest.")
 @Getter

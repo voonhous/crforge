@@ -123,8 +123,9 @@ class BattleGoblinHeroTest {
   @Test
   @DisplayName(
       "a command naming the banner by its game object id pays the ability's elixir and the banner"
-          + " casts as a troop does: 500 ms in the casting state, then the second wave, three"
-          + " goblins 200 ms apart beside and before it, and the banner goes 50 ms after the last")
+          + " casts as a troop does: 500 ms in the casting state, then the second wave, two goblins"
+          + " 200 ms apart on either side of it and behind it, and the banner goes 250 ms after the"
+          + " last")
   void theBannersAbilitySendsTheSecondWave() {
     LadderMatch[] match = new LadderMatch[1];
     Standard1v1Battle battle = plantBanner(match);
@@ -153,13 +154,13 @@ class BattleGoblinHeroTest {
         assertThat(outcome.elixirBefore() - outcome.elixirAfter()).isEqualTo(KingElixir.SCALE);
         assertThat(outcome.requested()).containsExactly(banner);
       }
-      if (k == 10 || k == 18) {
-        // The first and the last goblin of the wave stand where their expressions put them: beside
-        // the banner toward the middle and a tile before it, then a tile behind it.
+      if (k == 10 || k == 14) {
+        // The two goblins of the wave stand where their expressions put them: beside the banner
+        // toward the middle, then away from it, each half a tile behind it.
         CharacterEntity last = dummies.get(dummies.size() - 1);
         int toMiddle = x > 9000 ? -1000 : 1000;
-        assertThat(last.getView().getX()).isEqualTo(k == 10 ? x + toMiddle : x);
-        assertThat(last.getView().getY()).isEqualTo(k == 10 ? y + 1000 : y - 1000);
+        assertThat(last.getView().getX()).isEqualTo(k == 10 ? x + toMiddle : x - toMiddle);
+        assertThat(last.getView().getY()).isEqualTo(y - 500);
         assertThat(last.side()).isZero();
       }
     }
@@ -169,16 +170,14 @@ class BattleGoblinHeroTest {
       assertThat(state[k]).as("step %d", k).isEqualTo(GridEntityState.CASTING);
     }
     assertThat(state[10]).isNotEqualTo(GridEntityState.CASTING);
-    // The group's spawns at 0, 200 and 400 ms, then its kill at 450 ms takes the banner.
+    // The group's spawns at 0 and 200 ms, then its kill at 450 ms takes the banner.
     assertThat(wave[9]).isZero();
     assertThat(wave[10]).isEqualTo(1);
     assertThat(wave[13]).isEqualTo(1);
     assertThat(wave[14]).isEqualTo(2);
-    assertThat(wave[17]).isEqualTo(2);
-    assertThat(wave[18]).isEqualTo(3);
     assertThat(standing[18]).isTrue();
     assertThat(standing[19]).isFalse();
-    assertThat(wave[23]).isEqualTo(3);
+    assertThat(wave[23]).isEqualTo(2);
   }
 
   /**

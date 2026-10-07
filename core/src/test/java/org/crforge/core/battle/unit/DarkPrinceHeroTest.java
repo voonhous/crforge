@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -45,7 +45,7 @@ class DarkPrinceHeroTest {
       "the tap swaps the hero onto its walking row and spawns its mount; the warp-back loop then"
           + " warps it 200 back a tick, ten times, as its count reaches 500")
   void theTapDismountsAndWarpsBack() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     battle.play(220, records.card("DarkPrince"), LEVEL, 0, 3500, 14000, "h");

@@ -703,7 +703,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
-        // At once, or at the damage drain on a data version whose game lands it there.
+        // Queued for the damage drain.
         world.dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
       }
 
@@ -904,22 +904,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * The buff the entity's row applies to what its direct hit reached, for its BuffOnDamageTime.
+   * The buff the entity's row applies to what its direct hit reached, for its BuffOnDamageTime: not
+   * applied here, as the game applies it at the damage drain, where the queued hit carries it.
    * Nothing for a row without one. A hit on a target the entity has given up would apply it to
-   * nothing the reference shows, so it is refused. On a data version whose game applies it at the
-   * damage drain the queued hit applies it there instead.
+   * nothing the reference shows, so it is refused.
    *
    * @param target what the hit was aimed at, or null
    */
   private void buffOnDamage(TargetView target) {
-    if (data.buffOnDamage() == null) {
-      return;
-    }
-    if (target == null) {
+    if (data.buffOnDamage() != null && target == null) {
       throw new UnsupportedOperationException(
           name() + " applies its BuffOnDamage with a hit on nothing, not modelled");
     }
-    world.hitBuffOnDamage(this, world.entityOf(target.getEntity()));
   }
 
   /** Each of the entity's hits its tags let through; a tower's does nothing. */
@@ -2099,9 +2095,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * lowered to their share but never below 1. A projectile already in flight keeps the level it was
    * launched at. Nothing else of the entity changes.
    *
-   * <p>A fall is reached only by a negative adjustment, which only a newer data version writes; the
-   * build of the first data version kept the hit points and the shield as they stood on a fall, a
-   * difference no row of that version can reach.
+   * <p>A fall is reached only by a negative adjustment, which only the expression form writes.
    *
    * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
    * The shield's maximum follows the level too, and a shield that is up, under an old maximum of at

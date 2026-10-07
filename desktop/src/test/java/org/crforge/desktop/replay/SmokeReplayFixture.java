@@ -17,7 +17,7 @@ public class SmokeReplayFixture {
     ((com.fasterxml.jackson.databind.node.ObjectNode) deck.get(7)).put("d", 28000008);
     var commands = doc.putArray("cmd");
     for (int i = 0; i < 2; i++) {
-      var command = commands.addObject().put("ct", 124).putObject("c");
+      var command = commands.addObject().put("ct", Replays.PLAY).putObject("c");
       command.put("t", 200 + i * 40).put("t2", 220 + i * 40);
       command.put("idHi", 0).put("idLo", 1).put("px", 14500).put("py", 25500).put("sid", -1);
       command

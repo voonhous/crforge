@@ -99,8 +99,11 @@ class RiderTest {
                 }
               }
             });
-    // Killed between two steps, the Giant leaves at the next step's opening cleanup.
+    // Killed between two steps, the Giant dies at the next step's damage drain and leaves at the
+    // opening cleanup of the step after.
     match.getWorld().kill(giant, null);
+    match.getBattle().step();
+    presentAfter.clear();
     match.getBattle().step();
 
     assertThat(letGo).containsExactly("GoblinGiant_0_0", "GoblinGiant_0_1");

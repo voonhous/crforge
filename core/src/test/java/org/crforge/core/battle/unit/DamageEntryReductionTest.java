@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -53,7 +53,7 @@ class DamageEntryReductionTest {
       "a Zap on the Valkyrie hero under its whirlwind's damage reduction takes the reduction off"
           + " in the damage type's stage and again at the damage entry")
   void zapLosesTheReductionTwice() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
 
     // The Zap on the hero without the buff: what a Zap deals at this level.
@@ -69,7 +69,7 @@ class DamageEntryReductionTest {
       "a Poison's damage over time on the Valkyrie hero under its whirlwind's damage reduction"
           + " takes the reduction off as the buff hits and again at the damage entry")
   void poisonLosesTheReductionTwice() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
 
     int plain = firstHitOnHero(tables, records, "Poison", false);

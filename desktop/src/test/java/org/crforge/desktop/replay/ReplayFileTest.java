@@ -2,7 +2,6 @@ package org.crforge.desktop.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -11,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.BeforeAll;
@@ -59,7 +57,7 @@ class ReplayFileTest {
     assertThat(replay.header().endTick()).isEqualTo(400);
     assertThat(replay.header().commands()).isEqualTo(2);
     assertThat(replay.header().commandTypes())
-        .containsExactly(Map.entry(124, 1), Map.entry(178, 1));
+        .containsExactly(Map.entry(153, 1), Map.entry(189, 1));
     assertThat(replay.plan().plays()).hasSize(1);
     assertThat(replay.plan().abilities()).hasSize(1);
     assertThat(replay.recordedResult()).isEqualTo("none in the replay");
@@ -76,7 +74,7 @@ class ReplayFileTest {
     assertThat(lines)
         .contains(
             "  end tick: 400",
-            "  commands: 2 (type 124 x1, a card play; type 178 x1, an ability command)",
+            "  commands: 2 (type 153 x1, a card play; type 189 x1, an ability command)",
             "  recorded result: none in the replay",
             "  mapping: every field read; 1 plays, 1 ability commands");
   }
@@ -87,9 +85,10 @@ class ReplayFileTest {
     ObjectNode document = Replays.archerQueen();
     ArrayNode commands = (ArrayNode) document.path("cmd");
     commands.add(commands.get(0).deepCopy());
-    ((ObjectNode) commands.get(0)).put("ct", 153);
-    ((ObjectNode) commands.get(2)).put("ct", 153);
-    ((ObjectNode) commands.get(1)).put("ct", 189);
+    // The play and the ability command of another data version, 14.593.1.
+    ((ObjectNode) commands.get(0)).put("ct", 124);
+    ((ObjectNode) commands.get(2)).put("ct", 124);
+    ((ObjectNode) commands.get(1)).put("ct", 178);
 
     ReplayFile replay = ReplayFile.parse(folder.resolve("x.json"), document, Replays.tables());
 
@@ -97,47 +96,47 @@ class ReplayFileTest {
     assertThat(replay.plan()).isNull();
     assertThat(replay.refusals())
         .containsExactly(
-            "the command type 153: cmd[0].ct and 1 more (2 in all)",
-            "the command type 189: cmd[1].ct");
+            "the command type 124: cmd[0].ct and 1 more (2 in all)",
+            "the command type 178: cmd[1].ct");
     assertThat(replay.describe())
         .contains(
-            "  commands: 3 (type 153 x2, not mapped in data version "
+            "  commands: 3 (type 124 x2, not mapped in data version "
                 + Replays.tables().version()
-                + "; type 189 x1, not mapped in data version "
+                + "; type 178 x1, not mapped in data version "
                 + Replays.tables().version()
                 + ")",
             "  refused, 2 reasons:",
-            "    - the command type 153: cmd[0].ct and 1 more (2 in all)");
+            "    - the command type 124: cmd[0].ct and 1 more (2 in all)");
   }
 
   @Test
   @DisplayName("every field the mapping refuses is listed, not only the first")
   void everyRefusedField() {
     ObjectNode document = Replays.archerQueen();
-    document.putArray("srq");
+    document.putArray("srq").add(1);
     ((ObjectNode) document.path("battle")).put("hm", true);
-    ((ObjectNode) document.path("battle").path("avatar0")).put("clan_name", "Test Clan");
+    ((ObjectNode) document.path("battle").path("avatar0")).put("clan", "Test Clan");
 
     ReplayFile replay = ReplayFile.parse(folder.resolve("x.json"), document, Replays.tables());
 
     assertThat(replay.refusals())
         .containsExactly(
-            "the field srq, which has no mapping: $.srq",
+            "a value of srq other than [], which has no production input: srq=[1]",
             "a value of hm other than false, which has no production input: hm=true",
-            "the field clan_name, which has no mapping: battle.avatar0.clan_name");
+            "the field clan, which has no mapping: battle.avatar0.clan");
   }
 
   @Test
   @DisplayName("tables the battle core refuses are listed beside the mapping's refusals")
   void refusedTablesAndMapping() {
     ObjectNode document = Replays.archerQueen();
-    ((ObjectNode) document.path("cmd").get(0)).put("ct", 153);
+    ((ObjectNode) document.path("cmd").get(0)).put("ct", 124);
 
     ReplayFile replay = ReplayFile.parse(folder.resolve("x.json"), document, refusedTables);
 
     assertThat(replay.playable()).isFalse();
     assertThat(replay.refusals()).hasSize(2);
-    assertThat(replay.refusals().get(0)).isEqualTo("the command type 153: cmd[0].ct");
+    assertThat(replay.refusals().get(0)).isEqualTo("the command type 124: cmd[0].ct");
     assertThat(replay.refusals().get(1))
         .startsWith(
             "the battle core refuses the game tables of data version "
@@ -161,13 +160,11 @@ class ReplayFileTest {
   }
 
   @Test
-  @DisplayName("a replay of 16.402.18 is read by that version's fields, refused only by the core")
+  @DisplayName("a replay of 16.402.18 with every field its version writes is read and playable")
   void replayOfVersion16() throws IOException {
-    Optional<GameTables> version16 = Replays.version16Tables();
-    assumeTrue(version16.isPresent(), "no game tables of " + Replays.VERSION_16 + " configured");
-    Path file = Replays.write(folder, "replay.json", Replays.archerQueenOfVersion16());
+    Path file = Replays.write(folder, "replay.json", Replays.archerQueenWithEveryField());
 
-    ReplayFile replay = ReplayFile.read(file, version16.get());
+    ReplayFile replay = ReplayFile.read(file, Replays.tables());
 
     assertThat(replay.dataVersion()).isEqualTo(Replays.VERSION_16);
     assertThat(replay.header().location()).isEqualTo("PvP_spiritempress");
@@ -175,15 +172,9 @@ class ReplayFileTest {
         .containsExactly(Map.entry(153, 1), Map.entry(189, 1));
     assertThat(replay.describe())
         .contains("  commands: 2 (type 153 x1, a card play; type 189 x1, an ability command)");
-    // The mapping reads every field: what can be left is the battle core's refusal to set up the
-    // battle on these tables, as long as it refuses them.
-    assertThat(replay.refusals()).hasSizeLessThanOrEqualTo(1);
-    assertThat(replay.refusals())
-        .allSatisfy(
-            refusal ->
-                assertThat(refusal)
-                    .startsWith("the battle core refuses to set up the replay's battle:"));
-    assertThat(replay.playable()).isEqualTo(replay.refusals().isEmpty());
+    // The mapping reads every field, and the battle core plays the configured tables.
+    assertThat(replay.refusals()).isEmpty();
+    assertThat(replay.playable()).isTrue();
   }
 
   @Test

@@ -209,10 +209,11 @@ class BattleAreaEffectFilterTargetsTest {
 
   @Test
   @DisplayName(
-      "with TargetProjectiles left on the filter form launches one projectile onto each object it"
-          + " hits, nearest first, from that object's point")
+      "with TargetProjectiles on, as a row that leaves it out has it, the filter form launches one"
+          + " projectile onto each object it hits, nearest first, from that object's point")
   void oneProjectileOntoEachTarget(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(delivery(folder, columns -> {}));
+    // The configured row turns it off; left out, it is on.
+    Scene scene = new Scene(delivery(folder, columns -> columns.remove("TargetProjectiles")));
     scene.still("Knight", X, Y + 1000, "far");
     scene.still("Knight", X, Y - 500, "near");
     scene.place("RoyalDeliveryArea", 45);

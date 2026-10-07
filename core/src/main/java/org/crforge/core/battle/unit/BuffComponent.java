@@ -81,11 +81,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * every projectile of the carrier's hits.
  *
  * <p><b>Hooks.</b> A new instance schedules its row's start action as it is listed, a refresh
- * nothing; every removal - the expiry, the not-attacking section's, an attack's, the stun cleanse,
- * a parent leaving - schedules its row's remove action before the counts drop, and a death removes
- * nothing. Each goes on the carrier's own holder with the carrier as its cause and the row's own
- * delay, starting at once only inside that holder's own pending pass. A clone's copy of an instance
- * with either is refused.
+ * nothing; every removal - the expiry, the not-attacking section's, an attack's, a parent leaving -
+ * schedules its row's remove action before the counts drop, and a death removes nothing. Each goes
+ * on the carrier's own holder with the carrier as its cause and the row's own delay, starting at
+ * once only inside that holder's own pending pass. A clone's copy of an instance with either is
+ * refused.
  *
  * <p><b>Tags.</b> The tags every listed instance's row sets join the carrier's tag word at its
  * pre-hook, from the one after the instance is listed to the last before it is removed.
@@ -148,8 +148,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " rows in the carrier's tag word from its next pre-hook while they are listed, held"
             + " by valkyrie_ev1_barbarians and BattleAttackActionTest. The start action on a new"
             + " instance and the remove action on a removal, held by buff_after_hits_ghost_evo"
-            + " and buff_after_hits_barbarians_bats; none on a refresh, the cleanse's and none at"
-            + " a death by BattleBuffAfterHitsTest. Held by evo_skeletons_vs_musketeer: an"
+            + " and buff_after_hits_barbarians_bats (goldens disabled until they are re-recorded);"
+            + " none on a refresh and none at a death by BattleBuffAfterHitsTest. Held by evo_skeletons_vs_musketeer: an"
             + " instance's spawner, one child in front of its carrier on the instance's first"
             + " visit, linked into its carrier's group chain; translated but held by no run: an"
             + " interval, a wave and a pause past the first firing; refused: a firing with the"
@@ -161,9 +161,6 @@ public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
   public static final int SLOT = 3;
-
-  /** The hit speed multiplier at or below which a buff stops its carrier's attacks: a stun. */
-  private static final int STUN_HIT_SPEED_MULTIPLIER = -100;
 
   /** Milliseconds one visit takes off each instance. */
   private static final int STEP_MS = 50;
@@ -545,26 +542,6 @@ public final class BuffComponent implements BattleComponent {
       }
     }
     return null;
-  }
-
-  /**
-   * The stun cleanse: every listed instance whose buff stops its carrier's attacks - a hit speed
-   * multiplier of -100 or below - removed, from the last to the first.
-   *
-   * @return the removed instances' buffs, in removal order
-   */
-  List<String> cleanseStuns() {
-    List<String> removed = new ArrayList<>();
-    for (int i = items.size() - 1; i >= 0; i--) {
-      BuffInstance instance = items.get(i);
-      if (instance.getBuff().hitSpeedMultiplier() <= STUN_HIT_SPEED_MULTIPLIER) {
-        items.remove(i);
-        onRemoved(instance);
-        world.buffRemoved(entity, instance);
-        removed.add(instance.getBuff().name());
-      }
-    }
-    return removed;
   }
 
   /**

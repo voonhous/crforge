@@ -85,13 +85,24 @@ class BattleAbilityTest {
   @Test
   @DisplayName(
       "a collector's lock is granted after the phase-3 pass and dropped once its friend has died")
-  void aLockGoesWithItsFriend() {
-    Standard1v1Battle match = passiveTowers();
+  void aLockGoesWithItsFriend(@TempDir Path folder) throws IOException {
+    // The shipped collector names a filter row the tables do not hold, and finds no friend (see
+    // aCollectorWithAMissingFilterFindsNoFriend); here it names the filter row the tables hold for
+    // the Giant Buffer and the Royal Chef.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields"))
+                    .put("TargetFilter", "friendly_troops_for_chef_giant_buffer"));
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     CharacterEntity knight =
-        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
+        match.deploy(0, records.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
     CharacterEntity buffer =
         match.deploy(
-            0, GameData.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+            0, records.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
     // The collector first looks on the twenty-first step, and the locks grant in its post-pass.
     for (int step = 0; step < 21; step++) {
       match.getBattle().step();
@@ -100,7 +111,8 @@ class BattleAbilityTest {
     assertThat(world.locks().claim(buffer.getId(), knight.getId(), 1)).isTrue();
 
     world.kill(knight, null);
-    // The death's cleanup takes it out of the live list; the next pre-pass drops its lock.
+    // The kill lands at the next step's damage drain and the death's cleanup takes it out of the
+    // live list; the pre-pass of the step after drops its lock.
     match.getBattle().step();
     match.getBattle().step();
 
@@ -111,17 +123,11 @@ class BattleAbilityTest {
   @DisplayName(
       "a collector whose filter names a row the tables do not hold finds no friend and fires at"
           + " none")
-  void aCollectorWithAMissingFilterFindsNoFriend(@TempDir Path folder) throws IOException {
-    // The collector's filter renamed to a row no filter table holds, as a newer data version
-    // ships it; the game's loader reads the name as no filter and the battle runs on.
-    GameTables tables =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields"))
-                    .put("TargetFilter", "friendly_troops_for_rune_giant"));
-    BattleRecords records = new BattleRecords(tables);
+  void aCollectorWithAMissingFilterFindsNoFriend() {
+    // The shipped collector's filter, friendly_troops_for_rune_giant, is a row no filter table
+    // holds; the game's loader reads the name as no filter and the battle runs on.
+    GameTables tables = GameData.tables();
+    BattleRecords records = GameData.records();
     Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     CharacterEntity knight =
         match.deploy(0, records.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
@@ -139,8 +145,9 @@ class BattleAbilityTest {
               }
             });
     BattleWorld world = match.getWorld();
-    // With the shipped filter the Knight is asked for on the twenty-first step and buffed by a
-    // projectile soon after; here the query lists nothing on every step.
+    // With a filter the tables hold the Knight is asked for on the twenty-first step and buffed by
+    // a projectile soon after (see aLockGoesWithItsFriend); here the query lists nothing on every
+    // step.
     int launched = 0;
     for (int step = 0; step < 200; step++) {
       match.getBattle().step();

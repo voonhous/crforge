@@ -59,7 +59,10 @@ class ReplayDataTest {
     versions = new DataVersions(root, List.of("1.0.0", "2.0.0"), first, GameTables.load(first));
   }
 
-  /** The synthetic Archer Queen replay, with a capture block naming the given content sha. */
+  /**
+   * The synthetic Archer Queen replay of data version 16.402.18, with a capture block naming the
+   * given content sha.
+   */
   private Path replay(String contentSha) throws IOException {
     ObjectNode document = fixture();
     ObjectNode capture = document.putObject("capture");
@@ -72,7 +75,7 @@ class ReplayDataTest {
 
   private static ObjectNode fixture() throws IOException {
     try (InputStream in =
-        ReplayDataTest.class.getResourceAsStream("/replays/archer_queen_ability.json")) {
+        ReplayDataTest.class.getResourceAsStream("/replays/archer_queen_version16.json")) {
       return (ObjectNode) MAPPER.readTree(in);
     }
   }

@@ -44,8 +44,10 @@ class BattleMarkPinTest {
           "Knight", "Archer", "Giant", "Minions", "Musketeer", "Fireball", "Arrows", "MegaMinion");
 
   /**
-   * The configured tables with a pin on the mark and, when asked, the newer starting group that
-   * creates a context and starts the mark in it.
+   * The configured tables with a pin on the mark, read from a key no row writes (the hand-over the
+   * mark starts writes the shipped pin's), the hero's starting group replaced by one that creates a
+   * context and starts the mark in it at once; or, when not asked for the group, the hero starting
+   * the mark itself, with no context.
    */
   private static GameTables withPin(Path folder, String pin, boolean inGroup) throws IOException {
     GameData.altered(
@@ -62,13 +64,12 @@ class BattleMarkPinTest {
           fields.putArray("SubActions").addObject().put("action", MARK);
           fields.putArray("SubActionsDelay").add(0);
         });
-    if (inGroup) {
-      ObjectMapper mapper = new ObjectMapper();
-      Path file = folder.resolve("characters.json");
-      ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-      GameData.columns((ObjectNode) document.get("rows"), HERO).put("OnStartingAction", START);
-      mapper.writeValue(file.toFile(), document);
-    }
+    ObjectMapper mapper = new ObjectMapper();
+    Path file = folder.resolve("characters.json");
+    ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
+    GameData.columns((ObjectNode) document.get("rows"), HERO)
+        .put("OnStartingAction", inGroup ? START : MARK);
+    mapper.writeValue(file.toFile(), document);
     return GameTables.load(folder);
   }
 
@@ -126,8 +127,7 @@ class BattleMarkPinTest {
       "a mark started in a context asks its pin, which answers 0 while nothing wrote the key: it"
           + " marks the Knight as before")
   void aPinThatAnswersZeroChangesNothing(@TempDir Path folder) throws IOException {
-    Standard1v1Battle battle =
-        heroAndKnight(withPin(folder, "as_int(#MegaMinionWarpActive, 0)", true));
+    Standard1v1Battle battle = heroAndKnight(withPin(folder, "as_int(#TestPinned, 0)", true));
 
     int marked = markedWithin200(battle);
     assertThat(marked).isEqualTo(characters(battle, "Knight").get(0).getId());
@@ -138,8 +138,7 @@ class BattleMarkPinTest {
       "a pin that holds, read from the context with its default 1, keeps the mark from searching:"
           + " it never marks the Knight")
   void aPinThatHoldsKeepsTheMarkFromSearching(@TempDir Path folder) throws IOException {
-    Standard1v1Battle battle =
-        heroAndKnight(withPin(folder, "as_int(#MegaMinionWarpActive, 1)", true));
+    Standard1v1Battle battle = heroAndKnight(withPin(folder, "as_int(#TestPinned, 1)", true));
 
     int pinnedSteps = 0;
     for (int i = 0; i < 80; i++) {

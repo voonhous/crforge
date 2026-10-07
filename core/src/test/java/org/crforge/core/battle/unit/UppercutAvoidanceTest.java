@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +30,7 @@ class UppercutAvoidanceTest {
   @Test
   @DisplayName("the uppercut's push clears the pushed unit's avoidance blend")
   void thePushClearsTheBlend() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     List<WorldEntity> started = new ArrayList<>();

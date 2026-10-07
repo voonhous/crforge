@@ -14,7 +14,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioShape;
@@ -391,8 +390,8 @@ class ReplaySmokeRunTest {
 
   @Test
   void aCaseGeneratedForVersion16_402_18RunsWhenTheRunNamesItsShape() throws IOException {
-    GameTables tables = Version16Tables.load();
-    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnightOfVersion16());
+    GameTables tables = GameTables.loadConfigured();
+    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnight());
 
     ReplaySmokeRun.InProcessRun generated =
         ReplaySmokeRun.runInProcess(SmokeSchema.V2, 260, scenario, tables, ScenarioShape.GENERATED);
@@ -422,10 +421,11 @@ class ReplaySmokeRunTest {
     Path generated = folder.resolve("generated");
     Path unknown = folder.resolve("unknown");
 
-    int exit = run(Scenarios.knight(), generated, identity, 30, "generated");
+    int exit = run(Scenarios.generatedKnight(), generated, identity, 30, "generated");
     int refused = run(Scenarios.knight(), unknown, identity, 30, "recorded");
 
-    // A 14.593.1 case is in its own version's replay shape: generated, it runs the same battle.
+    // The case generated for the version leaves out what its replays add beyond it, each king's
+    // level 1 among them: generated, it runs the same battle as the replay.
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     run(Scenarios.knight(), folder.resolve("replay"), identity, 30);
     assertThat(Files.readAllBytes(generated.resolve("observations.jsonl")))

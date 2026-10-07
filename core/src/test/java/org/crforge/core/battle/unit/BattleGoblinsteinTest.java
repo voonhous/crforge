@@ -113,7 +113,7 @@ class BattleGoblinsteinTest {
   @Test
   @DisplayName(
       "the tether hits each enemy within its width of the segment from the doctor to the monster"
-          + " for 107 at every pass, and spares one farther off")
+          + " for 94 at every pass, and spares one farther off")
   void theTetherHitsTheEnemiesAlongIt() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     List<String> passes = new ArrayList<>();
@@ -171,9 +171,10 @@ class BattleGoblinsteinTest {
     doctor.requestAbility();
     run(battle, 200);
 
-    assertThat(passes).hasSize(8);
+    // TetherDuration 3500 at a pass every 500 ms.
+    assertThat(passes).hasSize(7);
     assertThat(passes).allMatch(pass -> pass.endsWith(" [near]"));
-    assertThat(hits).hasSize(8).allMatch(hit -> hit.equals("near 107"));
+    assertThat(hits).hasSize(7).allMatch(hit -> hit.equals("near 94"));
     assertThat(far.getHitPoints().getHitPoints()).isEqualTo(far.getHitPoints().getMaximum());
   }
 
@@ -206,11 +207,21 @@ class BattleGoblinsteinTest {
               }
             });
     battle.play(0, GameData.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
+    // The monster is killed in tick 0, after its pre-pass: the kill lands at that tick's damage
+    // drain, and a cleanup removes the monster before the run's first step, in tick 1.
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void afterPrePass(int tick, List<WorldEntity> present) {
+                if (tick == 0) {
+                  battle.getPlays().get(0).units().get(0).killBy(null);
+                }
+              }
+            });
     run(battle, 0);
-    CharacterEntity monster = battle.getPlays().get(0).units().get(0);
     CharacterEntity doctor = battle.getPlays().get(0).units().get(1);
-    // The opening cleanup of tick 1 removes the monster, before the run's first step.
-    monster.killBy(null);
     run(battle, 1);
     assertThat(doctor.chainHead()).isSameAs(doctor);
     assertThat(log).containsExactly("connect null");

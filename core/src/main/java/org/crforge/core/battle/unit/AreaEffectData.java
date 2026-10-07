@@ -81,8 +81,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param spawnClones true when each it makes is a clone
  * @param stayAfterParentDies true when it stays, standing on its last point, as the object it
  *     follows leaves; false to end with it
- * @param linkToInstigatorLife true when its life ends as its parent leaves the battle, as a newer
- *     data version's LinkToInstigatorLife says
+ * @param linkToInstigatorLife true when its life ends as its parent leaves the battle, as its row's
+ *     LinkToInstigatorLife says
  * @param shaped true when each update lists its targets in its shape, a rectangle or a circle,
  *     through its filter, in place of its radius's circle
  * @param shapeWidth the width of that rectangle; 0 for a circle

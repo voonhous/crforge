@@ -37,7 +37,7 @@ import org.crforge.core.battle.replay.ScenarioShape;
  * Runs the recorded reference battles of one content version and holds each case's outcome to the
  * expectations kept with the code.
  *
- * <p>A references folder (one content version, e.g. {@code references/14.593.1} of the game data
+ * <p>A references folder (one content version, e.g. {@code references/16.402.18} of the game data
  * repository) holds {@code corpora/<corpus>.json}, each listing its cases (an id, a reference
  * folder, the scenario's SHA-256 and the horizon) and the content the references were recorded
  * with, and one folder per reference battle: {@code scenario.json}, {@code reference.json} (the

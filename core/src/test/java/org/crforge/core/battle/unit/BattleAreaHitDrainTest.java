@@ -2,27 +2,20 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When the damage of a character's area hit lands within its tick. The game of data version
- * 16.402.18 queues each victim's share for the holder's damage drain, as it queues a direct hit, so
- * a unit the area kills still takes its movement visit of that tick; the game of 14.593.1 deals
- * each share inside the attacker's targeting visit, and the death switches the unit's movement off
- * before the movement pass.
+ * When the damage of a character's area hit lands within its tick. The game queues each victim's
+ * share for the holder's damage drain, as it queues a direct hit, so a unit the area kills still
+ * takes its movement visit of that tick.
  *
  * <p>The scene: the bottom side's Valkyrie walks up the left lane and meets the top side's Giant
  * coming down it. The Giant, which targets buildings only, walks on while the Valkyrie's area hits
  * it, with 266 hit points left from tick 385 on, and the area of the hit that lands on tick 415
- * kills it while it walks. The same battle runs on the configured tables and on those tables
- * relabelled as data version 16.402.18, which differ only in the version's rule.
+ * kills it while it walks.
  */
 class BattleAreaHitDrainTest {
 
@@ -47,8 +40,6 @@ class BattleAreaHitDrainTest {
 
   private static final int STEP_Y = 14768;
 
-  @TempDir Path folder;
-
   /** The towers at the first level, fighting; the Valkyrie and the Giant played. */
   private static Standard1v1Battle scene(GameTables tables) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
@@ -72,10 +63,10 @@ class BattleAreaHitDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 an area hit lands at the damage drain, so the Giant it kills"
+      "an area hit lands at the damage drain, so the Giant it kills"
           + " still takes its walking step of that tick")
-  void theGiantKilledByTheAreaStillWalksItsStep() throws IOException {
-    Standard1v1Battle match = scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
+  void theGiantKilledByTheAreaStillWalksItsStep() {
+    Standard1v1Battle match = scene(GameData.tables());
     stepTo(match, DEATH - 1);
     CharacterEntity giant = giant(match);
     assertThat(giant.getHitPoints().getHitPoints()).as("alive before the hit").isEqualTo(266);
@@ -86,22 +77,5 @@ class BattleAreaHitDrainTest {
     assertThat(giant.getHitPoints().getHitPoints()).as("killed").isZero();
     assertThat(giant.getView().getX()).as("one walking step on").isEqualTo(STEP_X);
     assertThat(giant.getView().getY()).isEqualTo(STEP_Y);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the area hit kills the Giant inside the targeting visit, and it"
-          + " does not move in that tick")
-  void theGiantKilledByTheAreaStandsOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    Standard1v1Battle match = scene(GameData.tables());
-    stepTo(match, DEATH - 1);
-    CharacterEntity giant = giant(match);
-    assertThat(giant.getHitPoints().getHitPoints()).isEqualTo(266);
-
-    stepTo(match, DEATH);
-    assertThat(giant.getHitPoints().getHitPoints()).as("killed").isZero();
-    assertThat(giant.getView().getX()).as("where the last tick left it").isEqualTo(LAST_X);
-    assertThat(giant.getView().getY()).isEqualTo(LAST_Y);
   }
 }

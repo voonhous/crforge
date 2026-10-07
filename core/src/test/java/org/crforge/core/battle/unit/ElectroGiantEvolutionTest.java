@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.CountingRun;
 import org.crforge.core.battle.data.BattleRecords;
@@ -40,7 +40,7 @@ class ElectroGiantEvolutionTest {
       "the pulse interval loses 50 a step with no buff and 65 a step under Rage, the rate read on"
           + " each step")
   void thePulseIntervalFollowsTheHitSpeed() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity giant =
@@ -71,7 +71,7 @@ class ElectroGiantEvolutionTest {
       "each pulse lowers an enemy Musketeer's level by one, the second through the debuff's stacked"
           + " action, its full hit points falling with the maximum, and leaves a crown tower's level")
   void thePulseDebuffLowersTheLevelOncePerPulse() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     // The giant 5500 below side 1's right princess tower, within its pulse's reach; the Musketeer

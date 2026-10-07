@@ -73,6 +73,7 @@ class BattleAreaSpawnRunTest {
         folder,
         "characters",
         rows -> GameData.columns(rows, "Knight").put("OnStartingAction", start));
+    GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
 

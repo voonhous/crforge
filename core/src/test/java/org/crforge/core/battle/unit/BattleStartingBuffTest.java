@@ -136,6 +136,8 @@ class BattleStartingBuffTest {
     assertThat(other.getBuffs().items()).hasSize(2);
 
     world.kill(skeleton, null);
+    // The kill lands at the next step's damage drain.
+    match.getBattle().step();
 
     assertThat(knight.getBuffs().items())
         .as("the instance the skeleton is the parent of goes at its death")

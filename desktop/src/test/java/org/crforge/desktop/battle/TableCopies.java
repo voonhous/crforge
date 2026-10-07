@@ -89,4 +89,26 @@ public final class TableCopies {
     mapper.writeValue(variables.toFile(), document);
     return folder;
   }
+
+  /**
+   * A copy whose every file's header names another data version: the same rows under a version the
+   * battle core does not model, so a battle on them is refused as it is built.
+   *
+   * @param root the data root
+   * @param version the version folder's name
+   * @param dataVersion the data version the copy's headers name
+   * @return the folder
+   */
+  public static Path labelled(Path root, String version, String dataVersion) throws IOException {
+    Path folder = copy(root, version);
+    ObjectMapper mapper = new ObjectMapper();
+    try (Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.filter(f -> f.toString().endsWith(".json")).toList()) {
+        ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
+        document.put(GameTables.VERSION_FIELD, dataVersion);
+        mapper.writeValue(file.toFile(), document);
+      }
+    }
+    return folder;
+  }
 }

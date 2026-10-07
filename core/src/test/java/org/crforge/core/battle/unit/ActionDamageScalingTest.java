@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.data.ActionRows;
@@ -62,7 +62,7 @@ class ActionDamageScalingTest {
   @Test
   @DisplayName("a Three Musketeer's bayonet hit deals its damage scaled by the musketeer's level")
   void bayonetScalesByTheMusketeersLevel() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     List<Hit> hits = hits(battle);
@@ -86,7 +86,7 @@ class ActionDamageScalingTest {
   @Test
   @DisplayName("Earthquake's hidden damage reaches a hidden Tesla, scaled by the area's level")
   void earthquakeHiddenDamageReachesAHiddenTesla() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     List<Hit> hits = hits(battle);
@@ -122,7 +122,7 @@ class ActionDamageScalingTest {
   @Test
   @DisplayName("the evolved Electro Giant's pulse damage reads as a damage-taking action")
   void electroGiantPulseDamageReads() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity knight =

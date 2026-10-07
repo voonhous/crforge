@@ -8,7 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -52,7 +52,7 @@ class GoldenKnightChargeTest {
       "a tap with no enemy within the dash range does not dash: the knight walks faster under the"
           + " charge buff until an enemy comes within 5500, then dashes at it")
   void aTapWithNoTargetWaitsForOne() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     Standard1v1Battle battle = battle(tables);
     LadderMatch match = battle.getMatch();
     playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 6000, "g");
@@ -86,7 +86,7 @@ class GoldenKnightChargeTest {
       "the charge dashes at the closest enemy and the knight's own chain goes on to the others;"
           + " once it stops dashing the charge buff is gone and it walks again")
   void theChargeChainsThroughTheKnightsOwnDashes() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     Standard1v1Battle battle = battle(tables);
     LadderMatch match = battle.getMatch();
     playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 14000, "g");
@@ -112,6 +112,97 @@ class GoldenKnightChargeTest {
     assertThat(lastDash).isLessThan(states.size() - 1);
     assertThat(knight.getView().getState()).isNotEqualTo(GridEntityState.DASHING);
     assertThat(knight.getBuffs().carries(CHARGE_BUFF)).isFalse();
+  }
+
+  @Test
+  @DisplayName("a chain stops at its tenth dash with targets left in reach")
+  void aChainStopsAtItsCount() {
+    GameTables tables = GameData.tables();
+    Standard1v1Battle battle = battle(tables);
+    LadderMatch match = battle.getMatch();
+    playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 12000, "g");
+    CharacterEntity knight = battle.getPlays().get(0).units().get(0);
+    for (int i = 0; i < 14; i++) {
+      standing(battle, "Skeleton", 2900 + 400 * (i % 4), 15900 + 400 * (i / 4), "s" + i);
+    }
+    Chain chain = new Chain(battle);
+    int tap = afterDeployWithElixir(battle, match);
+    battle.useAbility(tap, 0, "g_0", "a");
+    chain.untilItEnds(battle);
+
+    assertThat(chain.started).hasSize(10).doesNotHaveDuplicates();
+    // Each landing kills its Skeleton, the tenth too, so the chain ends with no reference.
+    assertThat(chain.ends).containsExactly("10 null");
+    assertThat(knight.getView().getState()).isNotEqualTo(GridEntityState.DASHING);
+  }
+
+  @Test
+  @DisplayName(
+      "a chain whose next target is a crown tower stops there, with another target in reach")
+  void aChainStopsAtACrownTower() {
+    GameTables tables = GameData.tables();
+    Standard1v1Battle battle = battle(tables);
+    LadderMatch match = battle.getMatch();
+    playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 16000, "g");
+    // The charge's selector takes enemy characters alone: its first dash is at this Skeleton,
+    // 3000 short of the left princess tower, which is the nearest object to the landing. The
+    // second Skeleton is farther from that landing than the tower, and within the secondary range
+    // of the tower's point, so only the stop at a crown tower ends the chain.
+    standing(battle, "Skeleton", 3500, 22500, "near");
+    standing(battle, "Skeleton", 8000, 24000, "far");
+    Chain chain = new Chain(battle);
+    int tap = afterDeployWithElixir(battle, match);
+    battle.useAbility(tap, 0, "g_0", "a");
+    chain.untilItEnds(battle);
+
+    assertThat(chain.started).containsExactly("near", "PrincessTower_1_1");
+    assertThat(chain.ends).containsExactly("2 PrincessTower_1_1");
+  }
+
+  /** An enemy of side 1 placed directly, standing still. */
+  private static void standing(Standard1v1Battle battle, String row, int x, int y, String name) {
+    CharacterEntity enemy =
+        battle.deploy(battle.getBattle().getTick(), GameData.unit(row), LEVEL, 1, x, y, name);
+    enemy.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+  }
+
+  /** The names of the chain's dash targets as each dash starts, and its end. */
+  private static final class Chain {
+    final List<String> started = new ArrayList<>();
+    final List<String> ends = new ArrayList<>();
+
+    Chain(Standard1v1Battle battle) {
+      battle
+          .getWorld()
+          .addObserver(
+              new WorldObserver() {
+                @Override
+                public void chainDashStarted(
+                    int tick,
+                    CharacterEntity unit,
+                    int fromX,
+                    int fromY,
+                    int aimX,
+                    int aimY,
+                    int radius) {
+                  started.add(unit.getUnit().targeting().getReference().getEntity().getName());
+                }
+
+                @Override
+                public void chainDashEnded(
+                    int tick, CharacterEntity unit, int count, TargetView reference) {
+                  ends.add(
+                      count + " " + (reference == null ? null : reference.getEntity().getName()));
+                }
+              });
+    }
+
+    void untilItEnds(Standard1v1Battle battle) {
+      for (int k = 0; k < 300 && ends.isEmpty(); k++) {
+        battle.getBattle().step();
+      }
+      assertThat(ends).as("the chain's end").hasSize(1);
+    }
   }
 
   /** A battle whose side 0 holds the Golden Knight in its opening hand. */

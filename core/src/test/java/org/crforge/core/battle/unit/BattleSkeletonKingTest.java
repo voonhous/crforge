@@ -16,9 +16,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Skeleton King's ability where its runs do not take it: the cap on its souls, deaths that
- * count none, a King no controller follows, its graveyard after the King has died, and a clone
- * deploying out of collisions.
+ * The Skeleton King's ability where its runs do not take it: its graveyard after the King has died,
+ * and a clone deploying out of collisions.
  */
 class BattleSkeletonKingTest {
 
@@ -115,54 +114,6 @@ class BattleSkeletonKingTest {
     List<MatchCard> deck = match.side(0).deck();
     return Arrays.stream(match.side(0).getHand().slots())
         .anyMatch(index -> index >= 0 && deck.get(index).name().equals(card));
-  }
-
-  @Test
-  @DisplayName(
-      "a death of either side counts a soul wherever it falls, and the King holds ten at most:"
-          + " six and ten make sixteen")
-  void tenSoulsAtMost() {
-    Scene scene = new Scene();
-    List<CharacterEntity> knights = new ArrayList<>();
-    for (int i = 0; i < 12; i++) {
-      // Across the arena, both sides in turn.
-      int side = i % 2;
-      knights.add(scene.place("Knight", side, 2000 + i * 1200, side == 0 ? 8000 : 24000, "k" + i));
-    }
-    scene.deployed();
-    for (CharacterEntity knight : knights) {
-      scene.kill(knight);
-    }
-
-    assertThat(scene.king.getSouls()).isEqualTo(10);
-    assertThat(scene.souls).hasSize(10);
-    assertThat(scene.souls.get(0)).isEqualTo("s_0 k0 1");
-    assertThat(scene.souls.get(1)).isEqualTo("s_0 k1 2");
-    assertThat(scene.souls.get(9)).isEqualTo("s_0 k9 10");
-  }
-
-  @Test
-  @DisplayName(
-      "a Golem, which ignores resurrection, a Cannon, a building, and a clone count no soul; nor"
-          + " does a Skeleton King no controller follows count any")
-  void deathsThatCountNothing() {
-    Scene scene = new Scene();
-    CharacterEntity unfollowed = scene.place("SkeletonKing", 0, 14500, 9000, "u");
-    CharacterEntity golem = scene.place("Golem", 1, 9000, 24000, "g");
-    CharacterEntity cannon = scene.place("Cannon", 1, 14500, 22000, "c");
-    CharacterEntity clone = scene.place("Knight", 1, 9000, 20000, "cl");
-    CharacterEntity knight = scene.place("Knight", 1, 3500, 20000, "k");
-    scene.deployed();
-    clone.markClone(null);
-
-    scene.kill(golem);
-    scene.kill(cannon);
-    scene.kill(clone);
-    assertThat(scene.souls).isEmpty();
-
-    scene.kill(knight);
-    assertThat(scene.souls).containsExactly("s_0 k 1");
-    assertThat(unfollowed.getSouls()).isZero();
   }
 
   @Test

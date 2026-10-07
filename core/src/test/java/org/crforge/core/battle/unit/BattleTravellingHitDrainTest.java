@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -15,18 +14,14 @@ import org.junit.jupiter.api.Test;
 
 /**
  * When the travelling hit of a projectile flying to a point lands its damage, seen through a Hunter
- * volley that kills a walking Battle Ram. The game of data version 16.402.18 queues each pellet's
- * damage for the holder's damage drain, after every movement visit of the tick: the ram walks its
- * step of that tick first and dies at the drain, so its Barbarians ring the point it walked to. The
- * pellets of one volley are one group, and a pellet whose queued damage takes the ram's queued
- * total to its hit points and shield marks it in the group: the volley's later pellets pass over it
- * and fly on. The game of 14.593.1 deals each pellet's damage at once, inside the Hunter's
- * targeting visit, so the ram dies where it stood at the end of the tick before, and the later
- * pellets find it without hit points.
+ * volley that kills a walking Battle Ram. The game queues each pellet's damage for the holder's
+ * damage drain, after every movement visit of the tick: the ram walks its step of that tick first
+ * and dies at the drain, so its Barbarians ring the point it walked to. The pellets of one volley
+ * are one group, and a pellet whose queued damage takes the ram's queued total to its hit points
+ * and shield marks it in the group: the volley's later pellets pass over it and fly on.
  *
- * <p>One scene on each version: the bottom side's Hunter stands in the left lane, and the top
- * side's Battle Ram walks down that lane at the bottom side's left princess tower; the towers do
- * not fight.
+ * <p>The scene: the bottom side's Hunter stands in the left lane, and the top side's Battle Ram
+ * walks down that lane at the bottom side's left princess tower; the towers do not fight.
  */
 class BattleTravellingHitDrainTest {
 
@@ -111,25 +106,13 @@ class BattleTravellingHitDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 a Hunter volley's damage lands at the drain: the walking ram"
+      "a Hunter volley's damage lands at the drain: the walking ram"
           + " dies after its step and its Barbarians ring the point it walked to")
   void theRamDiesAfterItsStep() {
-    Death death = scene(Version16Tables.load());
+    Death death = scene(GameData.tables());
     // The ring is centred where the ram stood after its step of the death tick, not before it.
     assertThat(death.centreY()).isLessThan(death.beforeY() - 50);
     // The volley killed it in one tick, and its later pellets passed over it.
-    assertThat(death.volleyPellets()).isEqualTo(10);
-    assertThat(death.pelletsFlyingOn()).isBetween(1, 9);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the same volley deals its damage at once: the ram dies where it"
-          + " stood before its step, and its Barbarians ring that point")
-  void theRamDiesBeforeItsStepOnTheOlderVersion() {
-    Death death = scene(GameData.tables());
-    assertThat(Math.abs(death.centreX() - death.beforeX())).isLessThanOrEqualTo(1);
-    assertThat(Math.abs(death.centreY() - death.beforeY())).isLessThanOrEqualTo(1);
     assertThat(death.volleyPellets()).isEqualTo(10);
     assertThat(death.pelletsFlyingOn()).isBetween(1, 9);
   }

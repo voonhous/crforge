@@ -132,6 +132,8 @@ class BattleShieldLostTest {
 
     scene.world().kill(wizard, knight);
     scene.world().circleKill(recruit, 1000);
+    // Both land at the next step's damage drain.
+    scene.match.getBattle().step();
 
     assertThat(wizard.getHitPoints().getHitPoints()).isPositive();
     assertThat(recruit.getHitPoints().getHitPoints()).isPositive();

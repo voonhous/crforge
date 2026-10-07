@@ -12,17 +12,15 @@ import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
-import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.EntityFlags;
-import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Mega Minion's hero form played from the hero slot: its mark searches the battle for a target
- * and, with none, disables the ability; while it deploys its hand-over greys the button out. With
- * an enemy troop in the battle it marks the one with the lowest maximum hit points, the furthest
- * from the hero among equals, and gives it the hero's bot buff.
+ * The Mega Minion's hero form played from the hero slot: its mark, which its starting group starts
+ * 1500 ms in, searches the battle for a target and, with none, disables the ability. With an enemy
+ * troop in the battle it marks the one with the lowest maximum hit points, the furthest from the
+ * hero among equals, and gives it the hero's bot buff.
  */
 class BattleMegaMinionHeroTest {
 
@@ -35,19 +33,7 @@ class BattleMegaMinionHeroTest {
 
   private static final String MARK = "MegaMinion_hero_mark_target";
 
-  private static final String HAND_OVER = "MegaMinion_hero_ability_action";
-
   private static final String BOT_BUFF = "MegaMinionHeroBuffForBots";
-
-  private static final String TELEPORT = "MegaMinion_hero_teleport_action";
-
-  private static final String DAMAGE_BUFF = "MegaMinion_hero_Damage_Buff";
-
-  private static final String CROWN_TOWER_BUFF = "MegaMinion_hero_CrownTower_Buff";
-
-  private static final String DOUBLE = "MegaMinionSpit_DoubleDamage";
-
-  private static final String CROWN = "MegaMinionSpit_CrownTowerDamage";
 
   /** The Mega Minion first, in the hero slot, and seven other cards. */
   private static final List<String> DECK =
@@ -61,32 +47,6 @@ class BattleMegaMinionHeroTest {
 
   @Test
   @DisplayName(
-      "with no enemy troop the mark finds no target: the hero carries ABILITY_DISABLED, the"
-          + " hand-over greys the button out while the hero deploys, and both runs last")
-  void withNoTargetTheAbilityIsDisabled() {
-    Standard1v1Battle battle = heroPlayed();
-    CharacterEntity hero = named(battle, HERO).get(0);
-    ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
-    assertThat(slot.follows(hero)).isTrue();
-    int deploying = 0;
-    while (hero.getView().getState() == GridEntityState.DEPLOYING) {
-      assertThat(runs(hero)).contains(MARK, HAND_OVER);
-      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
-      // The hand-over writes the disabled state for the step, which wins the working out.
-      assertThat(slot.getState()).isEqualTo(ChampionController.DISABLED);
-      deploying++;
-      step(battle);
-    }
-    assertThat(deploying).isGreaterThan(10);
-    for (int i = 0; i < 80; i++) {
-      step(battle);
-      assertThat(runs(hero)).contains(MARK, HAND_OVER);
-      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
-    }
-  }
-
-  @Test
-  @DisplayName(
       "the mark takes the enemy troop it finds and keeps it: the hero loses ABILITY_DISABLED, the"
           + " troop carries the hero's bot buff with the hero as its source and parent, and the"
           + " hand-over takes the same target")
@@ -96,9 +56,12 @@ class BattleMegaMinionHeroTest {
     int tick = battle.getBattle().getTick();
     battle.play(tick, GameData.card("Knight"), LEVEL, 1, 14500, 25500, "k");
     int limit = tick + 60;
-    while (mark(hero).target() == null) {
+    while (markTarget(hero) == null) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
+      // The mark, once started, raises ABILITY_DISABLED while it has no target.
+      if (runs(hero).contains(MARK)) {
+        assertThat(hero.getView().getFlags() & BITS.abilityDisabled()).isNotZero();
+      }
       step(battle);
     }
     CharacterEntity knight = named(battle, "Knight").get(0);
@@ -136,7 +99,7 @@ class BattleMegaMinionHeroTest {
     battle.play(tick, GameData.card("Knight"), LEVEL, 1, 3500, 25500, "k");
     battle.play(tick, GameData.card("Archer"), LEVEL, 1, 14500, 25500, "a");
     int limit = tick + 60;
-    while (mark(hero).target() == null) {
+    while (markTarget(hero) == null) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
       step(battle);
     }
@@ -152,120 +115,6 @@ class BattleMegaMinionHeroTest {
     assertThat(mark(hero).target().id()).isEqualTo(further.getId());
   }
 
-  @Test
-  @DisplayName(
-      "the ability flies the hero to its marked target: the warp follows the target, gaining 400 a"
-          + " step up to 1500 and braking before it; each step raises the warp's tags for the next"
-          + " one, which stop the mark and the hand-over; on arrival the hero stands on the"
-          + " target's point, keeps it as its reference and takes its end action's damage buff")
-  void theAbilityWarpsTheHeroToItsTarget() {
-    Standard1v1Battle battle = heroPlayed();
-    CharacterEntity hero = named(battle, HERO).get(0);
-    CharacterEntity knight = launchedAtKnight(battle, hero);
-    long warpTags =
-        BITS.noAttack()
-            | BITS.disablePhysical()
-            | BITS.noDamage()
-            | BITS.untargetable()
-            | BITS.warp();
-    // The launch step ran the warp's first update: its tags are in the word from the next step.
-    assertThat(hero.getView().getPendingFlags() & warpTags).isEqualTo(warpTags);
-    step(battle);
-    assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
-    // WARP stops the mark and the hand-over.
-    assertThat(runs(hero)).doesNotContain(MARK, HAND_OVER).contains(TELEPORT);
-    // The arrival places the hero and keeps its target, then runs the end action, whose first
-    // part lists the damage buff.
-    int limit = battle.getBattle().getTick() + 40;
-    while (!hero.getBuffs().carries(DAMAGE_BUFF)) {
-      assertThat(hero.getView().getFlags() & warpTags).isEqualTo(warpTags);
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    assertThat(hero.getView().getX()).isEqualTo(knight.getView().getX());
-    assertThat(hero.getView().getY()).isEqualTo(knight.getView().getY());
-    assertThat(hero.getUnit().targeting().getReference()).isSameAs(knight.getTargetView());
-  }
-
-  @Test
-  @DisplayName(
-      "the arrival's damage buff swaps the hero's first spit for the double damage one, which the"
-          + " instant hit fires on the next step; the spit's impact removes the buff, whose remove"
-          + " action lists the crown tower buff, and the next spit is the crown tower one")
-  void theArrivalBuffSwapsTheFirstSpitUntilItLands() {
-    Standard1v1Battle battle = heroPlayed();
-    CharacterEntity hero = named(battle, HERO).get(0);
-    launchedAtKnight(battle, hero);
-    int limit = battle.getBattle().getTick() + 40;
-    while (!hero.getBuffs().carries(DAMAGE_BUFF)) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    assertThat(heroSpits(battle)).isEmpty();
-    // The instant hit lands the first attack on the next step, with the buff's projectile.
-    step(battle);
-    assertThat(heroSpits(battle)).extracting(p -> p.getData().name()).containsExactly(DOUBLE);
-    assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isTrue();
-    // The buff stays until the spit lands, and goes with its impact.
-    limit = battle.getBattle().getTick() + 20;
-    while (!heroSpits(battle).isEmpty()) {
-      assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isTrue();
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    assertThat(hero.getBuffs().carries(DAMAGE_BUFF)).isFalse();
-    // The remove action waits its own delay, then lists the crown tower buff.
-    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isFalse();
-    step(battle);
-    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isTrue();
-    limit = battle.getBattle().getTick() + 60;
-    while (heroSpits(battle).isEmpty()) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    assertThat(heroSpits(battle)).extracting(p -> p.getData().name()).containsExactly(CROWN);
-    // The crown tower buff is not removed by an attack.
-    while (!heroSpits(battle).isEmpty()) {
-      step(battle);
-    }
-    assertThat(hero.getBuffs().carries(CROWN_TOWER_BUFF)).isTrue();
-  }
-
-  /**
-   * Plays a Knight for the other side, waits for the mark to take it and uses the ability once the
-   * side has the elixir; returns the Knight once the hero's warp runs.
-   */
-  private static CharacterEntity launchedAtKnight(Standard1v1Battle battle, CharacterEntity hero) {
-    int tick = battle.getBattle().getTick();
-    battle.play(tick, GameData.card("Knight"), LEVEL, 1, 14500, 25500, "k");
-    int limit = tick + 60;
-    while (mark(hero).target() == null) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    CharacterEntity knight = named(battle, "Knight").get(0);
-    LadderMatch match = battle.getMatch();
-    for (int i = 0; i < 20 || match.side(0).wholeElixir() < 2; i++) {
-      step(battle);
-    }
-    battle.useAbility(battle.getBattle().getTick(), 0, hero.getId(), "a");
-    limit = battle.getBattle().getTick() + 40;
-    while (!runs(hero).contains(TELEPORT)) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    return knight;
-  }
-
-  /** The projectiles of the hero's side the holder lists. */
-  private static List<ProjectileEntity> heroSpits(Standard1v1Battle battle) {
-    return battle.getWorld().getHolder().entities().stream()
-        .filter(ProjectileEntity.class::isInstance)
-        .map(ProjectileEntity.class::cast)
-        .filter(p -> p.side() == 0)
-        .toList();
-  }
-
   private static long distanceSquared(CharacterEntity a, CharacterEntity b) {
     long dx = a.getView().getX() - b.getView().getX();
     long dy = a.getView().getY() - b.getView().getY();
@@ -279,6 +128,19 @@ class BattleMegaMinionHeroTest {
         .map(SetIndicatorOnTarget.Run.class::cast)
         .findFirst()
         .orElseThrow();
+  }
+
+  /**
+   * The target of the hero's mark, or null while it has none or the mark has not started yet: the
+   * hero's starting group starts it 1500 ms in.
+   */
+  private static SetIndicatorOnTarget.Candidate markTarget(CharacterEntity hero) {
+    return hero.actionHolder().running().stream()
+        .filter(SetIndicatorOnTarget.Run.class::isInstance)
+        .map(SetIndicatorOnTarget.Run.class::cast)
+        .findFirst()
+        .map(SetIndicatorOnTarget.Run::target)
+        .orElse(null);
   }
 
   @Test

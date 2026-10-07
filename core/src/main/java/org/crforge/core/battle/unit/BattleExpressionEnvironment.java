@@ -53,27 +53,27 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " row and play, held by hero_goblins; is_deploying as a character in the"
             + " deploying state, 0 for any other object, held by hero_mega_minion;"
             + " is_combat_enabled as the context's targeting component switched on, held by"
-            + " ability_hero_mega_minion_vs_musketeer; ability_charges_left (a newer data"
-            + " version) as the charges left of the slot that follows a character whose row's"
-            + " ability has charges, -1 otherwise, read from the newer build's function;"
-            + " is_valid_position (a newer data version) as a point on the map off water, read"
-            + " from the newer build's function; self (a newer data version) as the context's"
-            + " id, from the newer build's symbol map;"
-            + " is_dodging_damage (a newer data version) as a character dashing under a row with"
+            + " ability_hero_mega_minion_vs_musketeer; ability_charges_left"
+            + " as the charges left of the slot that follows a character whose row's"
+            + " ability has charges, -1 otherwise, read from the build's function;"
+            + " is_valid_position as a point on the map off water, read"
+            + " from the build's function; self as the context's"
+            + " id, from the build's symbol map;"
+            + " is_dodging_damage as a character dashing under a row with"
             + " a dash immunity or with that immunity still counting, 0 for any other object;"
             + " has_crown_tower_in_range on a character as the other side's princess towers still"
             + " in the battle, then its king, any within the argument of the tower's edge and the"
-            + " context's own, read alike in the newer build; is_crown_tower (a newer data"
-            + " version) as the context's own crown-tower answer, its hits' one: the king and"
-            + " the princess towers, read from the newer build's function; character_level (a"
-            + " newer data version) as the context's level counted from 0: the signed steps"
+            + " context's own, read alike in the build; is_crown_tower"
+            + " as the context's own crown-tower answer, its hits' one: the king and"
+            + " the princess towers, read from the build's function; character_level"
+            + " as the context's level counted from 0: the signed steps"
             + " above its rarity's first level plus the rarity's relative level, read from the"
-            + " newer build's function;"
+            + " build's function;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
             + " re-based on its rarity, held by evo_pekka_vs_musketeer and"
-            + " evo_pekka_kills_giant_knight_musketeer; as_int (a newer data version) as the"
+            + " evo_pekka_kills_giant_knight_musketeer; as_int as the"
             + " value under its key in the context of what the entity's holder is doing, else its"
             + " default, else -1, and a context key #name as the name's hash, held by"
             + " pekka-resurrect-v2. Supplied, not"
@@ -165,10 +165,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   /** The id a game tag's index is added to: every function id lies below it. */
   static final int GAME_TAG_BASE = 10_000;
 
-  /** The name of a newer data version's function that reads a context key. */
+  /** The name of the function that reads a context key. */
   private static final String AS_INT_NAME = "as_int";
 
-  /** A newer data version's symbol for the context object's own id. */
+  /** The symbol for the context object's own id. */
   private static final String SELF_NAME = "self";
 
   /** The call id of {@code self}, apart from every table's. */
@@ -197,7 +197,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   @Override
   public Function resolve(String name) {
-    // A newer data version's function, ahead of the table, whose ids are 14.593.1's.
+    // A function ahead of the table, whose ids end before it.
     if (name.equalsIgnoreCase(AS_INT_NAME)) {
       return new Function(AS_INT, 1, 2);
     }
@@ -205,7 +205,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     if (entry != null) {
       return new Function(entry.id(), entry.minArguments(), entry.maxArguments());
     }
-    // The newer build's symbol map takes self, by its exact name, ahead of the variables.
+    // The build's symbol map takes self, by its exact name, ahead of the variables.
     if (name.equals(SELF_NAME)) {
       return new Function(SELF, 0, 0);
     }
@@ -247,7 +247,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       return asInt(arguments);
     }
     if (id == SELF) {
-      // The context object's id, as the newer build reads its symbol.
+      // The context object's id, as the build reads its symbol.
       return context.getId();
     }
     if (id >= DATA_ROW_BASE) {
@@ -480,9 +480,9 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   }
 
   /**
-   * A newer data version's is_valid_position: 1 for a point on the map that is not water, 0 for one
-   * off the map (either coordinate below 0, or at or past the map's width or height) or on a water
-   * cell. It reads no object.
+   * is_valid_position: 1 for a point on the map that is not water, 0 for one off the map (either
+   * coordinate below 0, or at or past the map's width or height) or on a water cell. It reads no
+   * object.
    */
   private int validPosition(int x, int y) {
     TileMap map = world.getTileMap();
@@ -495,10 +495,10 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   }
 
   /**
-   * The charges left of the champion slot that follows the context, as a newer data version's
-   * ability_charges_left reads them: the slot's count, -1 when it does not count them. -1 for an
-   * object that is not a character, one whose row has no ability or an ability of no charges, and
-   * one no slot of its side's king follows (a clone among them).
+   * The charges left of the champion slot that follows the context, as ability_charges_left reads
+   * them: the slot's count, -1 when it does not count them. -1 for an object that is not a
+   * character, one whose row has no ability or an ability of no charges, and one no slot of its
+   * side's king follows (a clone among them).
    */
   private int abilityChargesLeft() {
     if (!(context instanceof CharacterEntity character)) {
@@ -567,11 +567,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   }
 
   /**
-   * as_int(key, default), a newer data version's function: the value under the key in the context
-   * of what the entity's holder is doing now (or, with none, of what the holder running the action
-   * is doing, for an action of the entity's tree run on another entity), the main board first and
-   * then the scratch board, else the default, -1 without one. The game reads the context unchecked,
-   * so it never evaluates as_int without one; here that is refused.
+   * as_int(key, default): the value under the key in the context of what the entity's holder is
+   * doing now (or, with none, of what the holder running the action is doing, for an action of the
+   * entity's tree run on another entity), the main board first and then the scratch board, else the
+   * default, -1 without one. The game reads the context unchecked, so it never evaluates as_int
+   * without one; here that is refused.
    */
   private int asInt(int[] arguments) {
     ActionContext actionContext = context.actionHolder().currentContext();

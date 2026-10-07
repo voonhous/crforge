@@ -74,7 +74,7 @@ class BattleSkeletonsEvoTest {
   @Test
   @DisplayName(
       "each hit makes one evolved Skeleton in front of the attacker, the two collision radii away"
-          + " toward the enemy, in the buff visit of the tick of the hit")
+          + " toward the enemy, in the buff visit of the tick after the hit")
   void eachHitMakesOneSkeletonInFront() {
     Scene scene = new Scene();
     scene.still(0, SKELETON, 9000, 12000, "skeleton");
@@ -85,7 +85,9 @@ class BattleSkeletonsEvoTest {
     assertThat(scene.hitTicks).hasSizeGreaterThanOrEqualTo(2);
     assertThat(scene.spawns).isNotEmpty();
     assertThat(scene.spawns.get(0)).isEqualTo("skeleton Skeleton_EV1 (9000, 13000)");
-    assertThat(scene.spawnTicks.get(0)).isEqualTo(scene.hitTicks.get(0));
+    // The hit lands at the damage drain, which counts it and lists the buff after that tick's
+    // buff visit.
+    assertThat(scene.spawnTicks.get(0)).isEqualTo(scene.hitTicks.get(0) + 1);
     // One child per instance: the next comes with the next hit.
     assertThat(scene.spawns.get(1)).doesNotStartWith("skeleton ");
     assertThat(scene.spawnTicks.get(1)).isGreaterThan(scene.spawnTicks.get(0));

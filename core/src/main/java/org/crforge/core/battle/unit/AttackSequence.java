@@ -105,7 +105,7 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
      * MinimumRange whenever the index selects the entry, at any length of the order, the owner's
      * collision radius still added; the sight range, the launch's start height and distance and,
      * through the attack timer, the hit speed multiplier in an order of two or more; and the
-     * columns of a newer data version as each describes.
+     * entry's later columns as each describes.
      */
     public boolean overridesMore() {
       return variableDamageTime != 0;

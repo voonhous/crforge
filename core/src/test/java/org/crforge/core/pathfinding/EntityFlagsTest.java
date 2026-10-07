@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,9 +22,8 @@ class EntityFlagsTest {
   @TempDir Path folder;
 
   @Test
-  @DisplayName("on the configured tables of 14.593.1 every flag keeps the bit it had")
-  void theConfiguredBitsAreUnchanged() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
+  @DisplayName("on the configured tables every flag has its tag row's index as its bit")
+  void theConfiguredBitsAreTheRowIndices() {
     EntityFlags bits = EntityFlags.of(GameData.tables());
     assertThat(bits.dashing()).isEqualTo(1L << 2);
     assertThat(bits.charging()).isEqualTo(1L << 3);
@@ -49,22 +47,23 @@ class EntityFlagsTest {
     assertThat(bits.noSummon()).isEqualTo(1L << 31);
     assertThat(bits.noSpecialAttack()).isEqualTo(1L << 35);
     assertThat(bits.hasCapture()).isEqualTo(1L << 37);
-    assertThat(bits.noReflectedAttack()).isEqualTo(1L << 38);
-    assertThat(bits.forceIsGround()).isEqualTo(1L << 40);
-    assertThat(bits.noPushback()).isEqualTo(1L << 41);
-    assertThat(bits.noDamage()).isEqualTo(1L << 42);
-    assertThat(bits.noGiantbufferChefEnchantment()).isEqualTo(1L << 44);
-    assertThat(bits.forceIsAir()).isEqualTo(1L << 45);
-    assertThat(bits.captured()).isEqualTo(1L << 46);
-    assertThat(bits.disablePhysical()).isEqualTo(1L << 47);
-    assertThat(bits.castingAbility()).isEqualTo(1L << 51);
-    assertThat(bits.untargetable()).isEqualTo(1L << 52);
-    assertThat(bits.noPushedByAlly()).isEqualTo(1L << 53);
-    assertThat(bits.avoidanceAsObstacle()).isEqualTo(1L << 54);
-    assertThat(bits.abilityCooldownPaused()).isEqualTo(1L << 55);
-    assertThat(bits.warp()).isEqualTo(1L << 56);
-    assertThat(bits.noClone()).isEqualTo(1L << 57);
-    assertThat(bits.noMoveAllowAttract()).isEqualTo(1L << 58);
+    assertThat(bits.forceIsGround()).isEqualTo(1L << 39);
+    assertThat(bits.noPushback()).isEqualTo(1L << 40);
+    assertThat(bits.noDamage()).isEqualTo(1L << 41);
+    assertThat(bits.noGiantbufferChefEnchantment()).isEqualTo(1L << 43);
+    assertThat(bits.forceIsAir()).isEqualTo(1L << 44);
+    assertThat(bits.captured()).isEqualTo(1L << 45);
+    assertThat(bits.disablePhysical()).isEqualTo(1L << 46);
+    assertThat(bits.castingAbility()).isEqualTo(1L << 50);
+    assertThat(bits.untargetable()).isEqualTo(1L << 51);
+    assertThat(bits.noPushedByAlly()).isEqualTo(1L << 52);
+    assertThat(bits.avoidanceAsObstacle()).isEqualTo(1L << 53);
+    assertThat(bits.abilityCooldownPaused()).isEqualTo(1L << 54);
+    assertThat(bits.warp()).isEqualTo(1L << 55);
+    assertThat(bits.noClone()).isEqualTo(1L << 56);
+    assertThat(bits.noMoveAllowAttract()).isEqualTo(1L << 57);
+    // The tables hold no NO_REFLECTED_ATTACK row, so the flag has no bit.
+    assertThat(bits.noReflectedAttack()).isZero();
     assertThat(bits.keepsTargetingOff()).isEqualTo((1L << 20) | (1L << 21));
   }
 
@@ -73,16 +72,16 @@ class EntityFlagsTest {
       "a table that drops a tag moves every later flag down one bit, the dropped one has none")
   void aDroppedTagMovesTheLaterBits() throws IOException {
     EntityFlags configured = EntityFlags.of(GameData.tables());
-    EntityFlags shifted = EntityFlags.of(withoutTag(folder, "NO_REFLECTED_ATTACK"));
-    assertThat(shifted.noReflectedAttack()).isZero();
-    assertThat(shifted.hasCapture())
+    EntityFlags shifted = EntityFlags.of(withoutTag(folder, "HAS_CAPTURE"));
+    assertThat(shifted.hasCapture()).isZero();
+    assertThat(shifted.noSpecialAttack())
         .as("before the dropped row")
-        .isEqualTo(configured.hasCapture());
+        .isEqualTo(configured.noSpecialAttack());
     assertThat(shifted.noMove()).isEqualTo(configured.noMove());
     assertThat(shifted.forceIsGround()).isEqualTo(configured.forceIsGround() >>> 1);
-    assertThat(shifted.noDamage()).isEqualTo(1L << 41);
-    assertThat(shifted.untargetable()).isEqualTo(1L << 51);
-    assertThat(shifted.noMoveAllowAttract()).isEqualTo(1L << 57);
+    assertThat(shifted.noDamage()).isEqualTo(1L << 40);
+    assertThat(shifted.untargetable()).isEqualTo(1L << 50);
+    assertThat(shifted.noMoveAllowAttract()).isEqualTo(1L << 56);
   }
 
   @Test

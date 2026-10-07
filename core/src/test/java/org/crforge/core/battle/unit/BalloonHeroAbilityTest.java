@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -90,7 +90,7 @@ class BalloonHeroAbilityTest {
           + " projectile starts 250 toward it, speeds up every 150 ms and spawns the trooper where"
           + " it lands, whose landing hurts the enemy")
   void theTrooperFallsOnTheClosestEnemy() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     List<Launch> launches = new ArrayList<>();
     Standard1v1Battle battle = battle(tables, launches);
@@ -152,7 +152,7 @@ class BalloonHeroAbilityTest {
       "with nobody in the circle the selector finishes without a pick, and its finishing action's"
           + " failsafe launches the projectile from the hero's own point at no target, once")
   void theFailsafeLaunchesAtNoTarget() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     List<Launch> launches = new ArrayList<>();
     Standard1v1Battle battle = battle(tables, launches);

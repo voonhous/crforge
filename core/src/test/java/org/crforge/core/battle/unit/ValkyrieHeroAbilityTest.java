@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -65,7 +65,7 @@ class ValkyrieHeroAbilityTest {
           + " whirlwind's area effect spawns at its point every 250 ms, fourteen in all, and the"
           + " finishing action forbids its attack")
   void theWhirlwindChargesThenSpinsInPlace() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     battle.play(200, records.card("Valkyrie"), LEVEL, 0, 3500, 15500, "v");

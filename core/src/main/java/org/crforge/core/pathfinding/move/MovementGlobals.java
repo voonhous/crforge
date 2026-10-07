@@ -16,8 +16,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  *     states is the matching pathfind speed rather than the fixed 1000 units
  * @param pushbackEndDropsRoute whether the end of a pushback's flight drops the route the entity
  *     held, so that its next walk searches a fresh one from where the pushback left it; a rule of
- *     the game's version rather than a published value, off in the standard game of data version
- *     14.593.1
+ *     the game build rather than a published value, off unless set. The battle core's world sets it
+ *     as it is built; the legacy grid pathfinding system leaves it off
  */
 public record MovementGlobals(
     int width,

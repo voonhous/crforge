@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -10,9 +11,12 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -21,6 +25,12 @@ import org.junit.jupiter.api.io.TempDir;
  * An area effect's projectile where the reference runs leave it: whom the chooser of a Lightning
  * picks, a hit with nobody to strike, the update's end skipped then, and the area effect as the
  * projectile's launcher.
+ *
+ * <p>The chooser is the hit-switch form's: an area effect row with HitsAir, HitsGround and
+ * OnlyEnemies and no filter. No configured row is written so (the configured Lightning is in the
+ * filter form, see BattleAreaEffectFilterTargetsTest), so the scenes play a Lightning rewritten in
+ * that form: its filter, offset, target limit and one-hit-per-target dropped, the switches set and
+ * a hit every 460 ms.
  */
 class BattleAreaEffectLaunchTest {
 
@@ -34,9 +44,32 @@ class BattleAreaEffectLaunchTest {
 
   private static final int Y = 11000;
 
+  /** The configured tables with the Lightning rewritten in the hit-switch form. */
+  private static GameTables hitSwitches;
+
+  @TempDir static Path tablesFolder;
+
+  @BeforeAll
+  static void rewriteTheLightning() throws IOException {
+    hitSwitches =
+        GameData.altered(
+            tablesFolder,
+            "area_effect_objects",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "Lightning");
+              columns.remove(
+                  List.of("Filter", "HitSpeedOffset", "MaximumTargets", "OneHitPerTarget"));
+              columns.put("HitSpeed", 460);
+              columns.put("HitsAir", true);
+              columns.put("HitsGround", true);
+              columns.put("OnlyEnemies", true);
+            });
+  }
+
   /** A battle with the towers passive that logs every launch of an area effect. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match = new Standard1v1Battle(hitSwitches, LEVEL, false);
+    final BattleRecords records = match.getWorld().getRecords();
     final List<AreaEffectEntity.Choice> choices = new ArrayList<>();
     final List<ProjectileEntity> launched = new ArrayList<>();
     final List<String> impacts = new ArrayList<>();
@@ -74,7 +107,7 @@ class BattleAreaEffectLaunchTest {
 
     /** A unit placed at a tick that never moves, under a name of its own. */
     CharacterEntity still(int tick, int side, String row, int x, int y, String name) {
-      CharacterEntity unit = match.deploy(tick, GameData.unit(row), LEVEL, side, x, y, name);
+      CharacterEntity unit = match.deploy(tick, records.unit(row), LEVEL, side, x, y, name);
       unit.setActive(CharacterEntity.MOVEMENT_SLOT, false);
       return unit;
     }
@@ -189,10 +222,13 @@ class BattleAreaEffectLaunchTest {
         }
       }
       scene.step(CAST_TICK);
-      // A Lightning whose third hit falls on its last update, with a life-end action.
+      // A Lightning whose third hit falls on its last update, with a life-end action: a hit every
+      // 500 ms and a life of 1450, so the update whose step reaches 1500 ms both takes its
+      // countdown below 0 and holds the third hit.
       AreaEffectData row =
-          GameData.records().areaEffect("Lightning").toBuilder()
+          scene.records.areaEffect("Lightning").toBuilder()
               .hitSpeedMs(500)
+              .lifeDurationMs(1450)
               .onLifeTimeEndAction("goblin_machine_signal_core")
               .build();
       BattleWorld world = scene.match.getWorld();
@@ -244,8 +280,9 @@ class BattleAreaEffectLaunchTest {
               }
             });
     scene.match.placeAreaEffect(CAST_TICK, "RoyalDeliveryArea", LEVEL, 0, X, Y, "RD");
-    // Its fortieth update launches; the same step's cleanup removes it.
-    scene.step(CAST_TICK + 39);
+    // Its row's HitSpeedOffset of 2000 ms falls in its forty-first update, which starts at 2000 ms
+    // and launches; the countdown below 0 then, the same step's cleanup removes it.
+    scene.step(CAST_TICK + 40);
     assertThat(scene.launched).isEmpty();
     ProjectileEntity[] seen = new ProjectileEntity[1];
     String[] names = new String[1];

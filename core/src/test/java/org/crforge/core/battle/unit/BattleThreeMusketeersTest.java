@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -111,9 +112,9 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "the buff on damage follows a bayonet that landed, in its hit's tick, before its typed hit"
-          + " lands")
-  void theBuffOnDamageFollowsTheBayonet(@TempDir Path folder) throws IOException {
+      "a bayonet whose row sets a buff on damage is refused as its damage-taking hit lands: the"
+          + " buff would follow the hit to the damage drain")
+  void theBuffOnDamageOfABayonetIsRefused(@TempDir Path folder) throws IOException {
     GameTables freezing =
         GameData.altered(
             folder,
@@ -124,11 +125,14 @@ class BattleThreeMusketeersTest {
             });
     Scene scene = new Scene(freezing);
     scene.still(1, "Knight", X, Y + 2000, "K");
-    while (scene.typed.isEmpty() && scene.tick < 80) {
-      scene.step(1);
-    }
-    int hit = Integer.parseInt(scene.typed.get(0).split(" ")[0]);
-    assertThat(scene.buffs).first().isEqualTo(hit + " K ZapFreeze");
+    assertThatThrownBy(
+            () -> {
+              while (scene.tick < 80) {
+                scene.step(1);
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("deals a damage-taking action's hit with a BuffOnDamage");
   }
 
   @Test
@@ -161,17 +165,33 @@ class BattleThreeMusketeersTest {
       "an entry's action in a sequence of one on a multi-target attacker, or beside a projectile,"
           + " is refused as the unit is made")
   void unheldEntryActionsAreRefused(@TempDir Path folder) throws IOException {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    // The Electro Wizard, which hits two targets, given a sequence of one entry with an action.
+    GameTables single =
+        GameData.altered(
+            Files.createDirectories(folder.resolve("single")),
+            "characters",
+            rows ->
+                GameData.columns(rows, "ElectroWizard")
+                    .putArray("AttackSequenceList")
+                    .addObject()
+                    .put("DoAttackAction", "ThreeMusketeer_Rework_Bayonet_Attack"));
+    Standard1v1Battle match = new Standard1v1Battle(single);
     assertThatThrownBy(
             () ->
                 new CharacterEntity(
-                    match.getWorld(), GameData.unit("ElectroWizard_crazy_1"), "E", 0, X, Y, LEVEL))
+                    match.getWorld(),
+                    match.getWorld().getRecords().unit("ElectroWizard"),
+                    "E",
+                    0,
+                    X,
+                    Y,
+                    LEVEL))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("in a sequence of one on a multi-target attacker");
 
     GameTables both =
         GameData.altered(
-            folder,
+            Files.createDirectories(folder.resolve("both")),
             "characters",
             rows ->
                 ((ObjectNode) GameData.columns(rows, MUSKETEER).get("AttackSequenceList").get(1))

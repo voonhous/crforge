@@ -141,8 +141,8 @@ final class ProjectileFlight {
     boolean drags = data.dragBackSpeed() >= 1;
     if (drags && (world.ownerLost(p) || world.hookTargetLost(p))) {
       // A hooking projectile whose owner has left, or can no longer act, ends here, and so does
-      // one whose target is gone where the game asks: no step, no release where it stands and no
-      // impact. The target it pulled stays where it is; an owner waiting for the pull resumes.
+      // one whose target is gone: no step, no release where it stands and no impact. The target it
+      // pulled stays where it is; an owner waiting for the pull resumes.
       world.hookEnded(p);
       p.release();
       return;
@@ -171,7 +171,7 @@ final class ProjectileFlight {
           speed = 0;
           dragsOwner = true;
         } else if (target != null && data.dragBackAsAttractor()) {
-          speed = attracted(target, speed, world.getHookPullSpeedFloor());
+          speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
         }
       }
       if (target != null
@@ -444,30 +444,22 @@ final class ProjectileFlight {
       world.onHitTarget(p, p.getTarget());
     }
     // The target buff goes before the damage when the row says so, else after it: after, a victim
-    // the damage killed has run its death already; before, it dies carrying the buff. On a data
-    // version whose game lands the hit at the damage drain, the buff after the damage is not
-    // applied here: it goes to the drain with the hit, to each victim the drain lets it through to.
-    boolean buffFirst = data.applyBuffBeforeDamage();
-    boolean buffs = data.targetBuff() != null;
-    boolean buffAfterHere = buffs && !buffFirst && !world.projectileBuffAtDrain();
+    // the damage killed has run its death already; before, it dies carrying the buff. The buff
+    // after the damage is not applied here: the game lands the hit at the damage drain, and the
+    // buff goes there with the hit, to each victim the drain lets it through to.
+    boolean buffFirst = data.applyBuffBeforeDamage() && data.targetBuff() != null;
     if (data.radius() >= 1) {
-      if (buffs && buffFirst) {
+      if (buffFirst) {
         world.projectileAreaBuff(p, px, py);
       }
       areaImpact(p, world, px, py, damage, towerDamage, hitId);
-      if (buffAfterHere) {
-        world.projectileAreaBuff(p, px, py);
-      }
     } else {
       WorldEntity target = p.getTarget();
       if (target != null) {
-        if (buffs && buffFirst) {
+        if (buffFirst) {
           world.projectileTargetBuff(p, target);
         }
         singleImpact(p, world, target.getTargetView(), damage, towerDamage, hitId);
-        if (buffAfterHere) {
-          world.projectileTargetBuff(p, target);
-        }
       }
     }
     // A projectile that flies to a point hits what its body covers at its aim once more.
@@ -499,9 +491,9 @@ final class ProjectileFlight {
 
   /**
    * The impact of a projectile with a radius: everything in the circle around the aim takes the
-   * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it. On
-   * a data version whose game queues it, each victim's share lands at the damage drain, after every
-   * post-hook, while its push starts at once.
+   * damage, or the crown-tower damage, and the launcher's own side too unless the row spares it.
+   * Each victim's share lands at the damage drain, after every post-hook, while its push starts at
+   * once.
    */
   private static void areaImpact(
       ProjectileEntity p,
@@ -567,8 +559,7 @@ final class ProjectileFlight {
 
           @Override
           public DamageResult damage(TargetView victim, int dealt, int id) {
-            // The area hands the damage on without a direction, at once or queued for the damage
-            // drain, as the data version's game deals it.
+            // The area hands the damage on without a direction, queued for the damage drain.
             return world.dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
           }
 
@@ -594,7 +585,7 @@ final class ProjectileFlight {
     int dealt = target.isCrownTowerTarget() ? towerDamage : damage;
     int directionX = p.getAimX() - p.getStartX();
     int directionY = p.getAimY() - p.getStartY();
-    // At once, or queued for the damage drain, as the data version's game deals it.
+    // Queued for the damage drain.
     world.dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
   }
 }

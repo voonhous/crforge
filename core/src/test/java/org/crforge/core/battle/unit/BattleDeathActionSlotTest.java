@@ -10,21 +10,18 @@ import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Where a unit's death action is scheduled, and with what as its cause. The game of data version
- * 16.402.18 schedules it from the death slot, with the dying unit as its own cause, so an area
- * effect it spawns is for the dying unit's side; its death handler schedules only the killed
- * action, with the killer as the cause. The game of 14.593.1 schedules both from the death handler,
- * with the killer as their cause, so the area effect is for the killer's side.
+ * Where a unit's death action is scheduled, and with what as its cause. The game schedules it from
+ * the death slot, with the dying unit as its own cause, so an area effect it spawns is for the
+ * dying unit's side; its death handler schedules only the killed action, with the killer as the
+ * cause.
  *
  * <p>The scene: the configured tables, with a test death action on the Knight that spawns an area
- * effect without taking its parent as the source; side 0's Knight is killed by side 1's Knight. The
- * same tables run labelled as their own version and as data version 16.402.18.
+ * effect without taking its parent as the source; side 0's Knight is killed by side 1's Knight.
  */
 class BattleDeathActionSlotTest {
 
@@ -36,11 +33,8 @@ class BattleDeathActionSlotTest {
 
   @TempDir Path folder;
 
-  /**
-   * The configured tables with the test death action on the Knight, every file labelled with the
-   * given data version.
-   */
-  private GameTables tables(String version) throws IOException {
+  /** The configured tables with the test death action on the Knight. */
+  private GameTables tables() throws IOException {
     GameData.altered(
         folder,
         "actions",
@@ -57,7 +51,6 @@ class BattleDeathActionSlotTest {
         folder,
         "characters",
         rows -> GameData.columns(rows, "Knight").put("OnDeathAction", DEATH_ACTION));
-    GameData.relabel(folder, version);
     return GameTables.load(folder);
   }
 
@@ -112,23 +105,12 @@ class BattleDeathActionSlotTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the death action is scheduled from the death slot with the dying"
-          + " unit as its cause, and its area effect is for the dying unit's side")
+      "the death action is scheduled from the death slot with the dying unit as its cause, and its"
+          + " area effect is for the dying unit's side")
   void theDeathActionIsTheDyingUnits() throws IOException {
-    Outcome outcome = killTheKnight(tables(GameVersions.DATA_16_402_18));
+    Outcome outcome = killTheKnight(tables());
     assertThat(outcome.scheduled())
         .containsExactly("dying by dying side 0 [%s]".formatted(DEATH_ACTION));
     assertThat(outcome.areaSides()).containsExactly(0);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the death action is scheduled by the death handler with the"
-          + " killer as its cause, and its area effect is for the killer's side")
-  void theDeathActionIsTheKillersOnTheOlderVersion() throws IOException {
-    Outcome outcome = killTheKnight(tables(GameVersions.DATA_14_593_1));
-    assertThat(outcome.scheduled())
-        .containsExactly("dying by killer side 1 [%s]".formatted(DEATH_ACTION));
-    assertThat(outcome.areaSides()).containsExactly(1);
   }
 }

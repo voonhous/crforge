@@ -39,13 +39,28 @@ class BattlePekkaEvoTest {
     return steps;
   }
 
-  /** Steps until the unit carries the buff, at most the given ticks. */
-  private static boolean stepUntilCarried(
+  /** The most steps a heal is waited for. */
+  private static final int SOUL_TICKS = 40;
+
+  /**
+   * The steps from the one that kills to the one whose end finds the heal buff on the Pekka: the
+   * kill sends a soul to it (PekkaEV1_SoulDrain), whose flight of 700 ms is 14 steps of 50 ms, and
+   * its arrival lists the heal buff for 50 ms.
+   */
+  private static final int SOUL_STEPS = 14;
+
+  /**
+   * Steps until the unit carries the buff, at most the given ticks; answers the steps taken, or -1
+   * when it never does.
+   */
+  private static int stepsUntilCarried(
       Standard1v1Battle match, CharacterEntity unit, String buff, int ticks) {
-    for (int i = 0; i < ticks && !unit.getBuffs().carries(buff); i++) {
+    int steps = 0;
+    while (steps < ticks && !unit.getBuffs().carries(buff)) {
       match.getBattle().step();
+      steps++;
     }
-    return unit.getBuffs().carries(buff);
+    return unit.getBuffs().carries(buff) ? steps : -1;
   }
 
   @Test
@@ -55,7 +70,8 @@ class BattlePekkaEvoTest {
     CharacterEntity[] units = facing(match, "Knight");
     stepUntilDead(match, units[1], 400);
 
-    assertThat(stepUntilCarried(match, units[0], "PekkaEV1_HealMed", 3)).isTrue();
+    assertThat(stepsUntilCarried(match, units[0], "PekkaEV1_HealMed", SOUL_TICKS))
+        .isEqualTo(SOUL_STEPS);
     assertThat(units[0].getBuffs().carries("PekkaEV1_HealMin")).isFalse();
     assertThat(units[0].getBuffs().carries("PekkaEV1_HealMax")).isFalse();
   }
@@ -67,7 +83,8 @@ class BattlePekkaEvoTest {
     CharacterEntity[] units = facing(match, "Skeleton");
     stepUntilDead(match, units[1], 400);
 
-    assertThat(stepUntilCarried(match, units[0], "PekkaEV1_HealMin", 3)).isTrue();
+    assertThat(stepsUntilCarried(match, units[0], "PekkaEV1_HealMin", SOUL_TICKS))
+        .isEqualTo(SOUL_STEPS);
     assertThat(units[0].getBuffs().carries("PekkaEV1_HealMed")).isFalse();
   }
 
@@ -88,7 +105,8 @@ class BattlePekkaEvoTest {
 
     HitPoints hitPoints = units[0].getHitPoints();
     assertThat(hitPoints.getHitPoints()).isEqualTo(hitPoints.getMaximum());
-    assertThat(stepUntilCarried(match, units[0], "PekkaEV1_HealMax", 3)).isTrue();
+    assertThat(stepsUntilCarried(match, units[0], "PekkaEV1_HealMax", SOUL_TICKS))
+        .isEqualTo(SOUL_STEPS);
     for (int i = 0; i < 20; i++) {
       match.getBattle().step();
     }

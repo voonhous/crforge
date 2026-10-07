@@ -143,6 +143,8 @@ class BattlePhoenixTest {
     Scene bottom = new Scene(ring);
     CharacterEntity phoenix = bottom.place(0, "Phoenix", X, Y);
     bottom.match.getWorld().kill(phoenix, null);
+    // The kill lands at the next step's damage drain.
+    bottom.step(1);
     assertThat(bottom.shots)
         .containsExactly(
             "PhoenixFireball 3500 20000 3000 aim 3000 20866",
@@ -152,6 +154,7 @@ class BattlePhoenixTest {
     Scene top = new Scene(ring);
     CharacterEntity other = top.place(1, "Phoenix", X, Y);
     top.match.getWorld().kill(other, null);
+    top.step(1);
     assertThat(top.shots)
         .containsExactly(
             "PhoenixFireball 3500 20000 3000 aim 4000 19134",
@@ -171,7 +174,11 @@ class BattlePhoenixTest {
             rows -> GameData.columns(rows, "Phoenix").put("DeathSpawnMinRadius", 500));
     Scene least = new Scene(drawn);
     CharacterEntity first = least.place(0, "Phoenix", X, Y);
-    assertThatThrownBy(() -> least.match.getWorld().kill(first, null))
+    assertThatThrownBy(
+            () -> {
+              least.match.getWorld().kill(first, null);
+              least.step(1);
+            })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("draws each one's radius");
 
@@ -182,7 +189,11 @@ class BattlePhoenixTest {
             rows -> GameData.columns(rows, "Phoenix").put("SpawnLimit", 2));
     Scene limit = new Scene(limited);
     CharacterEntity second = limit.place(0, "Phoenix", X, Y);
-    assertThatThrownBy(() -> limit.match.getWorld().kill(second, null))
+    assertThatThrownBy(
+            () -> {
+              limit.match.getWorld().kill(second, null);
+              limit.step(1);
+            })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("what its spawner's limit has left");
 
@@ -193,7 +204,11 @@ class BattlePhoenixTest {
             rows -> GameData.columns(rows, "PhoenixFireball").put("PingpongVisualTime", 500));
     Scene sweep = new Scene(sweeping);
     CharacterEntity third = sweep.place(0, "Phoenix", X, Y);
-    assertThatThrownBy(() -> sweep.match.getWorld().kill(third, null))
+    assertThatThrownBy(
+            () -> {
+              sweep.match.getWorld().kill(third, null);
+              sweep.step(1);
+            })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("its targeting component would hold");
 
@@ -201,7 +216,11 @@ class BattlePhoenixTest {
     CharacterEntity original = cloned.place(0, "Knight", X, Y - 3000);
     CharacterEntity clone = cloned.place(0, "Phoenix", X, Y);
     clone.markClone(original);
-    assertThatThrownBy(() -> cloned.match.getWorld().kill(clone, null))
+    assertThatThrownBy(
+            () -> {
+              cloned.match.getWorld().kill(clone, null);
+              cloned.step(1);
+            })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("is a clone");
   }
@@ -214,8 +233,9 @@ class BattlePhoenixTest {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity phoenix = scene.place(0, "Phoenix", X, Y);
     scene.match.getWorld().kill(phoenix, null);
-    // The fireball, aimed at its own start, lands on its first flight visit.
-    scene.step(1);
+    // The kill lands at the next step's damage drain; the fireball, aimed at its own start, lands
+    // on its first flight visit, in the step after.
+    scene.step(2);
     assertThat(scene.spawned).hasSize(1);
     CharacterEntity egg = scene.spawned.get(0);
     assertThat(egg.getData().name()).isEqualTo("PhoenixEgg");

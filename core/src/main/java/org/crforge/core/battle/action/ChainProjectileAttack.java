@@ -179,9 +179,10 @@ public final class ChainProjectileAttack extends RowAction {
       this.x = host.ownerX();
       this.y = host.ownerY();
       this.z = host.ownerZ();
-      // A stopped timer makes the first search wait, as every later one does, until the first
-      // hop's projectile has gone; a timer at 0 runs it on the step after the first hop.
-      this.hopTimerMs = host.firstSearchWaitsForHop() ? -1 : 0;
+      // The run starts with its hop timer stopped, so its first next-target search waits, as every
+      // later one does, until the first hop's projectile has gone, and the second hop is launched
+      // on the step the run finds it gone.
+      this.hopTimerMs = -1;
     }
 
     /** The ids of every hop's projectile so far, in order. */

@@ -681,11 +681,7 @@ public final class ActionRows {
                   "StopAeoIfParentHasCombatDisabled",
                   "StayAliveAfterParentDiesDuration")),
           Map.entry("ActionFilterByEnemy", Set.of("IsEnemyAction", "IsSameTeamAction")),
-          // The alive timer, by the class name of either data version: 14.593.1's ends in Data,
-          // 16.402.18's does not; the class is the same.
-          Map.entry(
-              "ActionAeoRunActionAtAliveTimerData",
-              Set.of("AliveTimeList", "Actions", "AllowRepeatAction")),
+          // The alive timer.
           Map.entry(
               "ActionAeoRunActionAtAliveTimer",
               Set.of("AliveTimeList", "Actions", "AllowRepeatAction")),
@@ -705,6 +701,8 @@ public final class ActionRows {
                   "OnAttackActionList",
                   "TargetEffectList",
                   "MainEffectList")),
+          // The guard's push columns and its filter are accepted and read by no part of its run:
+          // the area effect the run makes pushes and hits.
           Map.entry(
               "ActionSpawnGuard",
               Set.of(
@@ -831,7 +829,7 @@ public final class ActionRows {
           Map.entry(
               "ActionRunIfInstigatorMatches",
               Set.of("GameObjectFilter", "MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
-          // A newer data version writes the adjustment as an expression in place of the number.
+          // The adjustment written as an expression in place of the number.
           Map.entry(
               "ActionSetCharacterLevel",
               Set.of(
@@ -1147,16 +1145,6 @@ public final class ActionRows {
           Map.entry("ActionMirroredExtraSpell", Set.of("Projectile")),
           // A row of projectiles shot across the line of the projectile it runs on. ShooterData is
           // read by no part of the perform; a row that sets it is refused until it is traced.
-          // CustomForwardOffset moves only a character's line, which is refused as it runs.
-          Map.entry(
-              "ActionShootProjectilesInCharacterDirection",
-              Set.of(
-                  "ProjectileType",
-                  "ProjectileCount",
-                  "ProjectileDistance",
-                  "CustomForwardOffset")),
-          // The same row of projectiles in data version 16.402.18, which has no forward offset and
-          // no character line. ShooterData is again read by no part of the perform.
           Map.entry(
               "ActionCreateParallelProjectiles",
               Set.of("ProjectileType", "ProjectileCount", "ProjectileDistance")),
@@ -1633,8 +1621,7 @@ public final class ActionRows {
               yield new FilterByEnemy(
                   shared, action(f.get("IsSameTeamAction")), action(f.get("IsEnemyAction")));
             }
-            case "ActionAeoRunActionAtAliveTimerData", "ActionAeoRunActionAtAliveTimer" ->
-                aliveTimer(name, shared, f);
+            case "ActionAeoRunActionAtAliveTimer" -> aliveTimer(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // A projectile row's swap: the new row must read as a projectile the battle models,
               // and nothing else may be set.
@@ -1742,8 +1729,7 @@ public final class ActionRows {
             case "ActionSetCharacterLevel" -> setCharacterLevel(name, shared, f);
             case "ActionMirroredExtraSpell" ->
                 new MirroredExtraSpell(shared, text(f, "Projectile", ""));
-            case "ActionShootProjectilesInCharacterDirection",
-                "ActionCreateParallelProjectiles" -> {
+            case "ActionCreateParallelProjectiles" -> {
               String projectile = text(f, "ProjectileType", "");
               yield new CreateParallelProjectiles(
                   shared,
@@ -2155,7 +2141,7 @@ public final class ActionRows {
           CollectFriends.Columns.builder()
               .cooldownMs(integer(f, "Cooldown"))
               .maxFriendlyTroops(integer(f, "MaxFriendlyTroops"))
-              // A newer data version names a filter row it does not ship; the loader reads it as
+              // The shipped row names a filter row the tables do not ship; the loader reads it as
               // no filter.
               .targetFilter(records.filterIfHeld(f.get("TargetFilter").asText()))
               .distanceToGetTargets(integer(f, "DistanceToGetTargets"))
@@ -2852,8 +2838,8 @@ public final class ActionRows {
      * refused; so is one without a filter.
      */
     /**
-     * A level change, by its number columns or, as a newer data version writes it, by an expression
-     * for the relative adjustment. A row that writes both forms is refused.
+     * A level change, by its number columns or, as the shipped rows write it, by an expression for
+     * the relative adjustment. A row that writes both forms is refused.
      */
     private SetCharacterLevel setCharacterLevel(String name, ActionRow shared, JsonNode f) {
       if (!f.hasNonNull("RelativeLevelAdjustmentExpression")) {
@@ -2906,11 +2892,11 @@ public final class ActionRows {
     }
 
     /**
-     * A guard spawn's columns: its guard's row, where the guard appears and charges to, the push
-     * and its damage, and the filter of its query; the area effect a newer data version's run makes
-     * in place of its push; the tags its run on the guard sets. Refused: a row that sets tags, a
-     * singleton, a next action, a gate or a phase of its own, one without a filter, one whose guard
-     * the battle cannot take, and one whose area effect sets a column not modelled.
+     * A guard spawn's columns: its guard's row, where the guard appears and charges to, the area
+     * effect its run makes, which pushes and hits, and the tags its run on the guard sets. Its push
+     * columns and its filter are read by no part of the run. Refused: a row that sets tags, a
+     * singleton, a next action, a gate or a phase of its own, one whose guard the battle cannot
+     * take, and one whose area effect sets a column not modelled.
      */
     private SpawnGuard spawnGuard(String name, ActionRow shared, JsonNode f) {
       refuseShared(
@@ -2923,10 +2909,6 @@ public final class ActionRows {
           "ActionPausedIfTrue",
           "ForceStopIfTrue",
           "UpdatePhase");
-      if (text(f, "HitFilter", "").isEmpty()) {
-        throw new UnsupportedOperationException(
-            name + " is a guard spawn without a filter, which is not modelled");
-      }
       // The guard must read as a unit here, so a row the battle cannot take is refused as the
       // action is built rather than when it runs.
       String guard = text(f, "SpawnData", "");
@@ -2945,12 +2927,6 @@ public final class ActionRows {
               .spawnData(guard)
               .appearBehindAtDistance(integer(f, "AppearBehindAtDistance"))
               .targetRadius(f.hasNonNull("TargetRadius") ? f.get("TargetRadius").asInt() : 1000)
-              .pushBackStrength(integer(f, "PushBackStrength"))
-              .pushBackRadius(integer(f, "PushBackRadius"))
-              .continuousPushBack(bool(f, "ContinuosPushBack"))
-              .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
-              .pushBackDamage(integer(f, "PushBackDamage"))
-              .hitFilter(records.filter(f.get("HitFilter").asText()))
               .spawnAeo(areaEffect.isEmpty() ? null : areaEffect)
               .guardTags(tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"))
               .shadowTag(tagMask("NO_SHADOW"))

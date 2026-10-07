@@ -126,6 +126,7 @@ class BattleRunOnResolvedTest {
         folder,
         "characters",
         characters -> GameData.columns(characters, searcher).put("OnStartingAction", START));
+    GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
 

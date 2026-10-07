@@ -15,20 +15,21 @@ class BattleAreaEffectTest {
   @Test
   @DisplayName("an area effect is its row's columns, in the row's own units")
   void theRow() {
-    AreaEffectData drill = GameData.records().areaEffect("GoblinDrillDamage");
-    assertThat(drill.lifeDurationMs()).isEqualTo(1);
-    assertThat(drill.radius()).isEqualTo(2000);
-    assertThat(drill.damage()).isEqualTo(33);
-    assertThat(drill.crownTowerDamagePercent()).isEqualTo(-70);
-    assertThat(drill.pushback()).isEqualTo(1000);
-    assertThat(drill.onlyEnemies()).isTrue();
-    assertThat(drill.hitsGround()).isTrue();
-    assertThat(drill.hitsAir()).isFalse();
-    assertThat(drill.unmodelledColumns()).isEmpty();
-    assertThat(drill.buff()).isNull();
-    assertThat(drill.spawnAreaEffectObject()).isNull();
+    AreaEffectData explosion = GameData.records().areaEffect("MightyMinerExplosion");
+    assertThat(explosion.radius()).isEqualTo(3000);
+    assertThat(explosion.typedDamage().baseDamage()).isEqualTo(130);
+    assertThat(explosion.typedDamage().towerDamage()).isEqualTo(AreaDamageType.NO_TOWER_DAMAGE);
+    assertThat(explosion.pushback()).isEqualTo(1800);
+    assertThat(explosion.filter()).isEqualTo("CommonAreaDamageFilter");
+    assertThat(explosion.filterHits()).isTrue();
+    assertThat(explosion.unmodelledColumns()).isEmpty();
+    assertThat(explosion.buff()).isNull();
+    assertThat(explosion.spawnAreaEffectObject()).isNull();
 
     AreaEffectData zap = GameData.records().areaEffect("Zap");
+    assertThat(zap.lifeDurationMs()).isEqualTo(1);
+    assertThat(zap.typedDamage().baseDamage()).isEqualTo(75);
+    assertThat(zap.typedDamage().towerDamage()).isEqualTo(19);
     assertThat(zap.buff()).isEqualTo("ZapFreeze");
     assertThat(zap.buffTimeMs()).isEqualTo(500);
     assertThat(zap.capBuffTimeToAreaEffectTime()).isFalse();
@@ -38,7 +39,7 @@ class BattleAreaEffectTest {
     assertThat(rage.buff()).isEqualTo("Rage");
     assertThat(rage.buffTimeMs()).isEqualTo(1000);
     assertThat(rage.capBuffTimeToAreaEffectTime()).isTrue();
-    assertThat(rage.onlyOwnTroops()).isTrue();
+    assertThat(rage.filter()).isEqualTo("all_friendly_troops");
     assertThat(rage.spawnAreaEffectObject()).isEqualTo("RageDamage");
     assertThat(rage.unmodelledColumns()).isEmpty();
   }
@@ -52,7 +53,7 @@ class BattleAreaEffectTest {
     assertThat(poison.speedMultiplier()).isEqualTo(-15);
     assertThat(poison.damagePerSecond()).isEqualTo(36);
     assertThat(poison.hitFrequency()).isEqualTo(1000);
-    assertThat(poison.crownTowerDamagePercent()).isEqualTo(-75);
+    assertThat(poison.crownTowerDamagePercent()).isEqualTo(-78);
     assertThat(poison.enableStacking()).isTrue();
     assertThat(poison.unmodelledColumns()).isEmpty();
 

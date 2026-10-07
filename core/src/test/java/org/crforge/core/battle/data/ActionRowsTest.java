@@ -155,20 +155,48 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "Vines' selector reads its circle, its filter, its scoring by hit points and shield, its"
-          + " delays and the rows of their actions, and picks each object once")
+      "the Golden Knight's charge selector reads its circle, its filter, its scoring by distance,"
+          + " its delay and the row of its action, and picks each object once")
   void aShapeSelectorIsBuilt() {
-    BattleAction built = GameData.actions().build("Vines_Target_Selector", INERT_BINDING);
+    BattleAction built = GameData.actions().build("GoldenKnight_Charge_Target", INERT_BINDING);
     assertThat(built).isInstanceOf(ShapeSelector.class);
     ShapeSelector.Columns columns = ((ShapeSelector) built).getColumns();
     assertThat(columns.oncePerTarget()).isTrue();
-    assertThat(columns.targetSelectionMode())
-        .isEqualTo(ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS);
+    assertThat(columns.targetSelectionMode()).isEqualTo(ShapeSelector.CLOSEST);
     assertThat(columns.targetFilter()).isNotNull();
-    assertThat(columns.shapeRadius()).isEqualTo(2500);
-    assertThat(columns.delaysMs()).containsExactly(0, 50, 150);
-    assertThat(columns.actions())
-        .containsExactly("Vines_Action_Group", "Vines_Action_Group", "Vines_Action_Group");
+    assertThat(columns.shapeRadius()).isEqualTo(5500);
+    assertThat(columns.delaysMs()).containsExactly(0);
+    assertThat(columns.actions()).containsExactly("GoldenKnight_Dummy_Target");
+    assertThat(columns.waitForTarget()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a shape selector that waits at most a while, scores by maximum hit points, has fewer"
+          + " actions than delays, has no filter or a shape other than a circle is refused")
+  void aShapeSelectorIsRefused(@TempDir Path folder) throws IOException {
+    String row = "GiantHero_Target_Selector";
+    Map<String, Consumer<ObjectNode>> changes =
+        Map.of(
+            "sets MaxWaitTimeForTarget", f -> f.put("MaxWaitTimeForTarget", 1000),
+            "scores by HighestMaxHp", f -> f.put("TargetSelectionMode", "HighestMaxHp"),
+            "fewer actions than delays", f -> f.putArray("Delays").add(0).add(50),
+            "without a filter", f -> f.remove("TargetFilter"),
+            "is a Rectangle", f -> f.put("Shape", "BabyDragon_EV1_wind_aeo_shape"));
+    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
+      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
+      Files.createDirectories(dir);
+      GameTables altered =
+          GameData.altered(
+              dir,
+              "actions",
+              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
+      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
+          .as(change.getKey())
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(change.getKey());
+    }
   }
 
   @Test
@@ -381,35 +409,6 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "a shape selector that waits at most a while, scores by maximum hit points, has fewer"
-          + " actions than delays, has no filter or a shape other than a circle is refused")
-  void aShapeSelectorIsRefused(@TempDir Path folder) throws IOException {
-    String row = "Vines_Target_Selector";
-    Map<String, Consumer<ObjectNode>> changes =
-        Map.of(
-            "sets MaxWaitTimeForTarget", f -> f.put("MaxWaitTimeForTarget", 1000),
-            "scores by HighestMaxHp", f -> f.put("TargetSelectionMode", "HighestMaxHp"),
-            "fewer actions than delays", f -> f.putArray("Delays").add(0).add(50).add(100).add(150),
-            "without a filter", f -> f.remove("TargetFilter"),
-            "is a Rectangle", f -> f.put("Shape", "BabyDragon_EV1_wind_aeo_shape"));
-    for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
-      Path dir = folder.resolve(change.getKey().replace(' ', '_'));
-      Files.createDirectories(dir);
-      GameTables altered =
-          GameData.altered(
-              dir,
-              "actions",
-              rows -> change.getValue().accept((ObjectNode) rows.get(row).get("fields")));
-      ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
-      assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
-          .as(change.getKey())
-          .isInstanceOf(UnsupportedOperationException.class)
-          .hasMessageContaining(change.getKey());
-    }
-  }
-
-  @Test
-  @DisplayName(
       "Vines' air-to-ground row reads its two durations and its ground tag; a column it leaves out"
           + " takes the loader's default")
   void anAirToGroundIsBuilt(@TempDir Path folder) throws IOException {
@@ -547,8 +546,8 @@ class ActionRowsTest {
         (ExecutionerEvoProjectile)
             GameData.actions().build("AxeMan_EV1_Projectile_Controller", INERT_BINDING);
     assertThat(controller.getDamage()).isEqualTo(70);
-    assertThat(controller.getStrongDamage()).isEqualTo(105);
-    assertThat(controller.getStrongDamageRange()).isEqualTo(3500);
+    assertThat(controller.getStrongDamage()).isEqualTo(94);
+    assertThat(controller.getStrongDamageRange()).isEqualTo(2500);
     assertThat(controller.getFirstStrongHitPushback()).isEqualTo(1000);
     assertThat(controller.getStrongHitAction().name()).isEqualTo("AxeMan_EV1_Projectile_StrongHit");
 
@@ -597,11 +596,11 @@ class ActionRowsTest {
         (RollingProjectile)
             GameData.actions().build("SnowballSpell_EV1_rolling_projectile", INERT_BINDING);
     assertThat(roll.getColumns().speed()).isEqualTo(300);
-    assertThat(roll.getColumns().distanceY()).isEqualTo(4500);
+    assertThat(roll.getColumns().distanceY()).isEqualTo(4000);
     assertThat(roll.getColumns().distanceX()).isZero();
     assertThat(roll.getColumns().radius()).isEqualTo(2500);
     assertThat(roll.getColumns().buffOnHit()).isEqualTo("snowball_spell_ev1_hit");
-    assertThat(roll.getColumns().buffTimeMs()).isEqualTo(4000);
+    assertThat(roll.getColumns().buffTimeMs()).isEqualTo(3000);
     assertThat(roll.getColumns().targetFilter()).isNotNull();
 
     CaptureCharacter capture =
@@ -629,14 +628,14 @@ class ActionRowsTest {
             GameData.actions().build("snowball_spell_ev1_run_action_on_release", INERT_BINDING);
     assertThat(release.getActionToRun().name()).isEqualTo("snowball_spell_ev1_after_release");
     // The evolved Goblin Cage's capture: a drag delay and a pause, a pull centre, a cooldown, an
-    // action per completed capture, damage per hit and no capture buff; its animation labels, the
+    // action per completed capture, damage per hit and a capture buff; its animation labels, the
     // pull frames and the grab point only show something.
     CaptureCharacter cage =
         (CaptureCharacter) GameData.actions().build("GoblinCage_EV1_CaptureUnit", INERT_BINDING);
     CaptureCharacter.Columns g = cage.getColumns();
     assertThat(g.captureRadius()).isEqualTo(3000);
     assertThat(g.numberOfUnitsToCapture()).isEqualTo(1);
-    assertThat(g.damagePerHit()).isEqualTo(132);
+    assertThat(g.damagePerHit()).isEqualTo(143);
     assertThat(g.hitFrequencyMs()).isEqualTo(1000);
     assertThat(g.dragDelayMs()).isEqualTo(100);
     assertThat(g.timePausedWhenGrabbingMs()).isEqualTo(500);
@@ -644,10 +643,10 @@ class ActionRowsTest {
     assertThat(g.hideDistance()).isEqualTo(200);
     assertThat(g.pullCenterOffsetX()).isZero();
     assertThat(g.pullCenterOffsetY()).isEqualTo(-1000);
-    assertThat(g.captureCooldownMs()).isEqualTo(500);
+    assertThat(g.captureCooldownMs()).isEqualTo(300);
     assertThat(g.onCaptureAction()).isEqualTo("goblin_cage_ev1_fight_effect");
     assertThat(g.hideAction()).isEqualTo("GoblinCage_EV1_hide_captured_unit");
-    assertThat(g.buffDuringCapture()).isNull();
+    assertThat(g.buffDuringCapture()).isEqualTo("GoblinCage_EV1_incapacitate_target");
     assertThat(g.onFirstCaptureAction()).isNull();
     assertThat(g.actionOnCapturedObject()).isNull();
     assertThat(g.heightModifier()).as("the loader's default").isEqualTo(-15000);
@@ -912,7 +911,7 @@ class ActionRowsTest {
     assertThat(built.forceStopIf()).isNotNull();
     assertThat(built.singleton()).isFalse();
     DamagingPushBack.Columns columns = ((DamagingPushBack) built).getColumns();
-    assertThat(columns.pushBackStrength()).isEqualTo(2500);
+    assertThat(columns.pushBackStrength()).isEqualTo(2000);
     assertThat(columns.pushBackRadius()).isEqualTo(1000);
     assertThat(columns.continuousPushBack()).isTrue();
     assertThat(columns.distanceProportionalPush()).isFalse();
@@ -925,8 +924,8 @@ class ActionRowsTest {
 
   @Test
   @DisplayName(
-      "the Little Prince's guard spawn reads its guard, where it appears and charges to, its push"
-          + " and damage, its filter, and the tags of its run on the guard")
+      "the Little Prince's guard spawn reads its guard, where it appears and charges to, the area"
+          + " effect its run makes, and the tags of its run on the guard")
   void aGuardSpawnIsBuilt() {
     BattleAction built = GameData.actions().build("Spawn_ChampionGuardCharge", INERT_BINDING);
     assertThat(built).isInstanceOf(SpawnGuard.class);
@@ -935,12 +934,7 @@ class ActionRowsTest {
     assertThat(columns.spawnData()).isEqualTo("ChampionGuard");
     assertThat(columns.appearBehindAtDistance()).isEqualTo(2000);
     assertThat(columns.targetRadius()).isEqualTo(4000);
-    assertThat(columns.pushBackStrength()).isEqualTo(2500);
-    assertThat(columns.pushBackRadius()).isEqualTo(2500);
-    assertThat(columns.continuousPushBack()).isTrue();
-    assertThat(columns.distanceProportionalPush()).isTrue();
-    assertThat(columns.pushBackDamage()).isEqualTo(100);
-    assertThat(columns.hitFilter()).isNotNull();
+    assertThat(columns.spawnAeo()).isEqualTo("ChampionGuardCleave");
     assertThat(columns.guardTags())
         .isEqualTo(GameData.actions().tagMask("NO_CHECKCOLLISIONS,NO_CHECKAVOIDANCE,NO_BUFFS"));
     assertThat(columns.shadowTag()).isEqualTo(GameData.actions().tagMask("NO_SHADOW"));
@@ -949,7 +943,7 @@ class ActionRowsTest {
   @Test
   @DisplayName(
       "a guard spawn that sets tags, is a singleton, chains a next action, has a gate or a phase of"
-          + " its own, has no filter or whose target radius is left out takes the default 1000")
+          + " its own is refused; one whose target radius is left out takes the default 1000")
   void aGuardSpawnIsRefused(@TempDir Path folder) throws IOException {
     String row = "Spawn_ChampionGuardCharge";
     Map<String, Consumer<ObjectNode>> changes =
@@ -958,8 +952,7 @@ class ActionRowsTest {
             "Singleton", f -> f.put("Singleton", true),
             "NextAction", f -> f.putObject("NextAction").put("action", "LittlePrinceWaitGuard"),
             "ExecuteIfTrue", f -> f.put("ExecuteIfTrue", "1"),
-            "UpdatePhase", f -> f.put("UpdatePhase", 2),
-            "a filter", f -> f.remove("HitFilter"));
+            "UpdatePhase", f -> f.put("UpdatePhase", 2));
     for (Map.Entry<String, Consumer<ObjectNode>> change : changes.entrySet()) {
       Path dir = folder.resolve(change.getKey().replace(' ', '_'));
       Files.createDirectories(dir);
@@ -1141,7 +1134,7 @@ class ActionRowsTest {
     TargetIndicatorAttack.Columns columns = ((TargetIndicatorAttack) built).getColumns();
     assertThat(columns.loadTimeMs()).isEqualTo(1500);
     assertThat(columns.attackDelayMs()).isEqualTo(1000);
-    assertThat(columns.attackCooldownMs()).isEqualTo(2500);
+    assertThat(columns.attackCooldownMs()).isEqualTo(4000);
     assertThat(columns.range()).isEqualTo(5000);
     assertThat(columns.minimumRange()).isEqualTo(2500);
     assertThat(columns.targetFilter()).isNotNull();
@@ -1595,32 +1588,11 @@ class ActionRowsTest {
     assertThatThrownBy(() -> GameData.actions().build("ElectroWizardAOE", INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("to a location");
-    // The Ice Golemite hero form's damage, knockback, slow and freeze circles are held.
+    // The Ice Golemite hero form's damage and slow circles are held.
     for (String held :
-        List.of(
-            "IceGolemiteHero_Spawn_Damage_AEO",
-            "IceGolemiteHero_Spawn_KnockBack_AEO",
-            "IceGolemiteHero_Spawn_Slow_AEO",
-            "IceGolemiteHero_Spawn_Freeze_AEO")) {
+        List.of("IceGolemiteHero_Spawn_Damage_AEO", "IceGolemiteHero_Spawn_Slow_AEO")) {
       assertThat(GameData.actions().build(held, INERT_BINDING)).as(held).isNotNull();
     }
-    // A circle whose hit action chooses anything but a buff spawn is not.
-    Files.createDirectories(folder.resolve("select"));
-    GameTables select =
-        GameData.altered(
-            folder.resolve("select"),
-            "actions",
-            rows ->
-                ((ObjectNode)
-                        rows.get("IceGolemiteHero_Select_Slow_Buff")
-                            .get("fields")
-                            .get("SubActions")
-                            .get(0))
-                    .put("action", "IceGolemiteHero_AEO_HitEffect"));
-    ActionRows selectRows = new ActionRows(select, new BattleRecords(select));
-    assertThatThrownBy(() -> selectRows.build("IceGolemiteHero_Spawn_Slow_AEO", INERT_BINDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("IceGolemiteHero_Slow_AEO, which sets columns not modelled");
 
     // The hero Wizard's air shot spawns its two area effects with an offset along the length.
     assertThat(GameData.actions().build("WizardHeroAbilityProjectile_spawn_tornado", INERT_BINDING))
@@ -1732,12 +1704,12 @@ class ActionRowsTest {
     assertThat(failures).as("rows that fail instead of being built or refused").isEmpty();
     assertThat(built + refusals.values().stream().mapToInt(Integer::intValue).sum())
         .isEqualTo(GameData.tables().actionNames().size());
-    // Pinned, so a change in what the battle builds shows here: of 946 rows, 896 are built; the
+    // Pinned, so a change in what the battle builds shows here: of 1030 rows, 998 are built; the
     // rest are refused for their class, a column the battle does not model, a spawn type other
     // than characters, buffs and area effects, or a spawned buff or area effect the battle does
     // not model.
-    assertThat(built).as("rows built").isEqualTo(896);
+    assertThat(built).as("rows built").isEqualTo(998);
     assertThat(refusals)
-        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 6, "column", 35, "spawn type", 9));
+        .containsExactlyInAnyOrderEntriesOf(Map.of("class", 5, "column", 18, "spawn type", 9));
   }
 }

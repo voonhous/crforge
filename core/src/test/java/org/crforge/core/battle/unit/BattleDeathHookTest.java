@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,18 +20,29 @@ import org.junit.jupiter.api.Test;
  * A dying entity's death hooks: which of its row's two hook actions it schedules on itself, with
  * what as their cause, when they run, and the deaths the battle refuses rather than guesses.
  *
- * <p>Tombstone_crazy_1 is the one shipped unit whose death hook builds: its death action spawns
- * SkeletonKing on it. Where a killed action is needed, the unit is given the same row as its killed
- * action too. The kill is dealt from an observer inside the tick, after its pre-pass and before any
- * pending pass, unless a test says otherwise.
+ * <p>The unit is the Tombstone's row given a death action that builds, IceGolemiteDeathExplosion,
+ * which spawns an area effect on it, Skeleton Warriors for its spawner and no death spawn. Where a
+ * killed action is needed, the unit is given the same row as its killed action too. The kill is
+ * dealt from an observer inside the tick, after its pre-pass and before any pending pass, unless a
+ * test says otherwise.
  */
 class BattleDeathHookTest {
 
-  private static final String DEATH = "Tombstone_crazy_1_OnDeathAction";
+  private static final String DEATH = "IceGolemiteDeathExplosion";
+
+  /** The Tombstone's row with the death action, a spawner of Skeleton Warriors, no death spawn. */
+  private static UnitData tombstone() {
+    return GameData.unit("Tombstone").toBuilder()
+        .onDeathAction(DEATH)
+        .spawnCharacter("SkeletonWarrior")
+        .deathSpawnCharacter(null)
+        .deathSpawnCount(0)
+        .build();
+  }
 
   /** The Tombstone's row with its death action as its killed action too. */
   private static UnitData tombstoneKilledToo() {
-    return GameData.unit("Tombstone_crazy_1").toBuilder().onKilledAction(DEATH).build();
+    return tombstone().toBuilder().onKilledAction(DEATH).build();
   }
 
   /** A battle with the towers standing still, a Tombstone for the bottom side and a far Knight. */
@@ -99,16 +109,18 @@ class BattleDeathHookTest {
 
   @Test
   @DisplayName(
-      "a unit killed by another schedules its death action, then its killed action, with the"
-          + " killer as their cause, and both run in the next pending pass")
+      "a unit killed by another schedules its death action from its death slot, itself the cause,"
+          + " then its killed action, the killer the cause; the kill lands at the damage drain and"
+          + " both run in the pending pass after it")
   void killedByAnother() {
     Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
     s.stepWith(world -> world.kill(s.tombstone, s.knight));
 
     assertThat(s.scheduled)
         .containsExactly(
-            "Tombstone by Knight side 1 [%s, %s] pending false".formatted(DEATH, DEATH));
-    assertThat(s.runs).containsExactly(DEATH + " 1", DEATH + " 1");
+            "Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH),
+            "Tombstone by Knight side 1 [%s] pending false".formatted(DEATH));
+    assertThat(s.runs).containsExactly(DEATH + " 3", DEATH + " 3");
   }
 
   @Test
@@ -119,12 +131,13 @@ class BattleDeathHookTest {
 
     assertThat(s.scheduled)
         .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
-    assertThat(s.runs).containsExactly(DEATH + " 1");
+    assertThat(s.runs).containsExactly(DEATH + " 3");
   }
 
   @Test
   @DisplayName(
-      "a unit killed inside a pending pass runs its death action at once, inside that pass")
+      "a kill action run inside a pending pass lands at the damage drain, and the death's hooks"
+          + " run in the pending pass after it")
   void killedInsideAPendingPass() {
     Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
     s.stepWith(
@@ -139,42 +152,42 @@ class BattleDeathHookTest {
 
     assertThat(s.scheduled)
         .containsExactly(
-            "Tombstone by Knight side 1 [%s, %s] pending true".formatted(DEATH, DEATH));
-    // The holder tells its listener of a run once the action's start returns, so both hooks, which
-    // ran inside the kill's start, are told of before the kill itself.
-    assertThat(s.runs).containsExactly(DEATH + " 1", DEATH + " 1", "kill 1");
+            "Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH),
+            "Tombstone by Knight side 1 [%s] pending false".formatted(DEATH));
+    assertThat(s.runs).containsExactly("kill 1", DEATH + " 3", DEATH + " 3");
   }
 
   @Test
-  @DisplayName("a death hook with no attacker is refused: its cause would carry a side alone")
-  void noAttackerIsRefused() {
-    Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 3500, 25000);
-    assertThatThrownBy(
-            () -> s.stepWith(world -> world.dealDamage(s.tombstone.getTargetView(), 1000, 0, 1)))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("no attacker");
+  @DisplayName(
+      "a unit killed with no attacker runs its death action from its slot and schedules no killed"
+          + " action, as the death has no killing side")
+  void noAttackerSchedulesNoKilledAction() {
+    Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
+    s.stepWith(world -> world.dealDamage(s.tombstone.getTargetView(), 1000, 0, 1));
+
+    assertThat(s.scheduled)
+        .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
   }
 
   @Test
-  @DisplayName("a death hook with no pending pass of the tick ahead of it is refused")
-  void noPendingPassAheadIsRefused() {
-    Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 3500, 25000);
-    assertThatThrownBy(() -> s.match.getWorld().kill(s.tombstone, s.knight))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("pending pass");
-  }
-
-  @Test
-  @DisplayName("a death's damage lands on an enemy within its radius, before the death hooks")
+  @DisplayName("a death's damage lands on an enemy within its radius")
   void deathDamageLands() {
-    // The Knight stands 2500 from the Tombstone, inside its 3000 death damage radius.
-    Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 14500, 20100);
+    // No configured row deals a death damage; the Tombstone is given 500 over 3000, and the Knight
+    // stands 2500 from it.
+    Setup s =
+        new Setup(
+            tombstone().toBuilder().deathDamage(500).deathDamageRadius(3000).build(), 14500, 20100);
     int before = s.knight.getHitPoints().getHitPoints();
     s.stepWith(world -> world.kill(s.tombstone, s.knight));
+    // The kill lands at the step's damage drain; the death's share, queued as the drain deals the
+    // kill, waits for the next step's.
+    assertThat(s.knight.getHitPoints().getHitPoints()).isEqualTo(before);
+    s.battle.step();
 
     assertThat(s.knight.getHitPoints().getHitPoints())
         .as("the Tombstone's 500 at its level 1")
         .isEqualTo(before - 500);
+    // Its death action alone: the row has no killed action.
     assertThat(s.scheduled).hasSize(1);
   }
 
@@ -204,7 +217,7 @@ class BattleDeathHookTest {
   @Test
   @DisplayName("a spawner's child that carries a shield is made with it full")
   void aShieldedChildStartsWithAFullShield() {
-    Setup s = new Setup(GameData.unit("Tombstone_crazy_1"), 3500, 25000);
+    Setup s = new Setup(tombstone(), 3500, 25000);
     CharacterEntity child = null;
     for (int tick = 1; tick <= 25 && child == null; tick++) {
       s.battle.step();

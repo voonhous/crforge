@@ -244,9 +244,9 @@ public final class TargetingVisit {
   /**
    * Whether the reference is still close enough to attack. A unit keeps a reference a little past
    * its range, by the keep extension, unless it is a building or carries the tag that drops the
-   * extension (a newer data version's IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, read from its tag
-   * word). A unit firing a projectile keeps a reference that has slipped a little further away
-   * while its current hit is still under way.
+   * extension (IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, read from its tag word). A unit firing a
+   * projectile keeps a reference that has slipped a little further away while its current hit is
+   * still under way.
    */
   private static boolean checkReferenceStillReachable(
       TargetingState t,

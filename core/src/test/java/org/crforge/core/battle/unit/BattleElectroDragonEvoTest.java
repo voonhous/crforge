@@ -42,13 +42,19 @@ class BattleElectroDragonEvoTest {
     Map<ChainProjectileAttack.Run, List<Integer>> runs = observe(battle, dragon, 200);
 
     assertThat(runs).as("the dragon attacked through its chain").hasSizeGreaterThanOrEqualTo(2);
+    assertThat(runs.values().iterator().next()).containsExactly(33, 34, 35, 36, 37);
     for (Map.Entry<ChainProjectileAttack.Run, List<Integer>> e : runs.entrySet()) {
       ChainProjectileAttack.Run run = e.getKey();
       assertThat(run.getHops()).as("one hop").isEqualTo(1);
       assertThat(run.remembered()).containsExactly(musketeer.getId());
       assertThat(run.isFinished()).as("ended by the empty search").isTrue();
-      // Listed on the hit's step, the hop on the next, the search and its end on the one after.
-      assertThat(e.getValue()).as("ticks the run was seen at").hasSize(3);
+      // Listed on the attack's step and the hop launched on the next. The hop's projectile, 2000 a
+      // step, starts 1250 ahead of the dragon and flies the 3249 left to the Musketeer on the two
+      // steps after, gone at the end of the second; the search waits for that
+      // (ChainFirstSearchTest)
+      // and runs, finding nobody and ending the run, on the step after: five steps, 33 to 37 for
+      // the first attack.
+      assertThat(e.getValue()).as("ticks the run was seen at").hasSize(5);
     }
   }
 

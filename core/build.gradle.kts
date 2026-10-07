@@ -11,8 +11,6 @@ dependencies {
     // Tests need access to CardRegistry to build decks
     testImplementation(project(":data"))
 
-    // Version16Tables skips a test whose game tables are not configured
-    testFixturesImplementation(libs.junit.jupiter)
     // Scenarios writes replay scenarios, which are JSON
     testFixturesImplementation(libs.jackson.databind)
 

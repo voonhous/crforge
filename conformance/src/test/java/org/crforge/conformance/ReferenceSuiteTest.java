@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 import org.crforge.conformance.ReferenceSuite.CaseResult;
 import org.crforge.conformance.ReferenceSuite.References;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioShape;
@@ -155,8 +154,8 @@ class ReferenceSuiteTest {
 
   @Test
   void aCorpusOfGeneratedCasesNamesTheirShapeAndItsCasesAreReadAsSuch() throws IOException {
-    GameTables tables = Version16Tables.load();
-    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnightOfVersion16());
+    GameTables tables = GameTables.loadConfigured();
+    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnight());
     ReplaySmokeRun.InProcessRun recorded =
         ReplaySmokeRun.runInProcess(SmokeSchema.V1, 260, scenario, tables, ScenarioShape.GENERATED);
     writeReference("knight", scenario, recorded.trace());

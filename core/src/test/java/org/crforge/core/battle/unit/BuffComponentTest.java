@@ -2,12 +2,16 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** What the listed buffs make of an entity's speeds, and the damage over time at a level. */
 class BuffComponentTest {
@@ -56,12 +60,13 @@ class BuffComponentTest {
   }
 
   @Test
-  @DisplayName("Poison at level 11 deals 92 a second, and a crown tower 23 a hit")
+  @DisplayName("Poison at level 11 deals 92 a second, and a crown tower 21 a hit")
   void damageOverTime() {
     BuffData poison = GameData.records().buff("Poison");
     int level = PackedLevel.pack(LEVEL_11, poison.rarity());
     assertThat(BuffComponent.damagePerSecond(poison, level)).isEqualTo(92);
-    assertThat(BuffComponent.crownTowerDamage(poison, level)).isEqualTo(23);
+    // Its crown tower percent of -78: 22 percent of 92, rounded up.
+    assertThat(BuffComponent.crownTowerDamage(poison, level)).isEqualTo(21);
   }
 
   @Test
@@ -96,7 +101,12 @@ class BuffComponentTest {
 
   /** A Little Prince placed and stepped once, whose asks of a life condition go to the log. */
   private static CharacterEntity prince(List<String> asks) {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    return prince(asks, GameData.tables());
+  }
+
+  /** {@link #prince(List)} on the given tables. */
+  private static CharacterEntity prince(List<String> asks, GameTables tables) {
+    Standard1v1Battle match = new Standard1v1Battle(tables);
     match
         .getWorld()
         .addObserver(
@@ -119,7 +129,7 @@ class BuffComponentTest {
   void aLifeConditionIsAskedAfterTheStep() {
     List<String> asks = new ArrayList<>();
     BuffComponent buffs = prince(asks).getBuffs();
-    // attack_count is 0 without an attack, so the fastest speed-up's condition answers 0.
+    // LP_AttackCount is 0 without an attack, so the fastest speed-up's condition answers 0.
     buffs.apply(GameData.records().buff("LittlePrinceLvlMax"), 100, LEVEL_11, null, 0);
     buffs.visit();
     // Asked with the 50 ms the step left it.
@@ -146,15 +156,41 @@ class BuffComponentTest {
 
   @Test
   @DisplayName(
-      "attack_count is the attack time over the row's hit speed, with the targeting component on"
-          + " or off: at 7200 of 1200 the fastest speed-up's condition holds and the instance stays")
+      "a condition that holds keeps the instance: at an LP_AttackCount of 6 the fastest speed-up's"
+          + " condition holds, at 5 it does not")
   void aConditionThatHoldsKeepsTheInstance() {
     List<String> asks = new ArrayList<>();
     CharacterEntity prince = prince(asks);
+    int count = prince.world().variableKey("LP_AttackCount");
+    prince.setVariable(count, 6);
+    BuffComponent buffs = prince.getBuffs();
+    buffs.apply(GameData.records().buff("LittlePrinceLvlMax"), 1000, LEVEL_11, null, 0);
+    buffs.visit();
+    prince.setVariable(count, 5);
+    buffs.visit();
+    assertThat(asks).containsExactly("LittlePrinceLvlMax 950 1", "LittlePrinceLvlMax 900 0");
+    assertThat(buffs.items()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "attack_count is the attack time over the row's hit speed, with the targeting component on"
+          + " or off: at 7200 of 1200 a condition of attack_count >= 6 holds and the instance stays")
+  void theAttackCountFunction(@TempDir Path folder) throws IOException {
+    // No configured row asks attack_count; the fastest speed-up's condition is written with it.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "character_buffs",
+            rows ->
+                GameData.columns(rows, "LittlePrinceLvlMax")
+                    .put("AliveIfTrue", "attack_count >= 6"));
+    List<String> asks = new ArrayList<>();
+    CharacterEntity prince = prince(asks, tables);
     prince.getTargeting().setAttackTimerMs(7200);
     prince.setActive(CharacterEntity.TARGETING_SLOT, false);
     BuffComponent buffs = prince.getBuffs();
-    buffs.apply(GameData.records().buff("LittlePrinceLvlMax"), 1000, LEVEL_11, null, 0);
+    buffs.apply(prince.world().getRecords().buff("LittlePrinceLvlMax"), 1000, LEVEL_11, null, 0);
     buffs.visit();
     prince.getTargeting().setAttackTimerMs(7199);
     buffs.visit();

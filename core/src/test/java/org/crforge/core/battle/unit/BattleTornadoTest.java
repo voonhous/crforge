@@ -51,12 +51,17 @@ class BattleTornadoTest {
       return match.deploy(0, GameData.unit(row), LEVEL, side, x, y, row + "_" + units++);
     }
 
-    /** Casts the Tornado once every unit has deployed and steps until it is admitted. */
+    /**
+     * Casts the Tornado once every unit has deployed and steps until it is admitted, then once
+     * more: its row's HitSpeedOffset of 50 puts its first hit on the update after the one it is
+     * admitted in.
+     */
     AreaEffectEntity tornado() {
       match.placeAreaEffect(CAST_TICK, "Tornado", LEVEL, 0, 3500, 23500, "Tornado");
       for (int step = 0; step <= CAST_TICK && admitted.isEmpty(); step++) {
         match.getBattle().step();
       }
+      match.getBattle().step();
       return admitted.get(0);
     }
   }

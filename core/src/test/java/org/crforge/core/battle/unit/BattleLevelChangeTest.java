@@ -102,7 +102,7 @@ class BattleLevelChangeTest {
     assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(hitPoints);
   }
 
-  /** The configured tables with the Royal Chef's level-up written as a newer data version does. */
+  /** The configured tables with the Royal Chef's level-up an expression of the given text. */
   private static GameTables asExpression(Path folder, String expression) throws IOException {
     return GameData.altered(
         folder,
@@ -156,7 +156,7 @@ class BattleLevelChangeTest {
             "actions",
             rows ->
                 ((ObjectNode) rows.get(CHEF_LEVEL_UP).get("fields"))
-                    .put("RelativeLevelAdjustmentExpression", "1"));
+                    .put("RelativeLevelAdjustment", 1));
     Standard1v1Battle match = new Standard1v1Battle(both, 11, false);
     CharacterEntity knight = knight(match, 11, "Knight", 3500);
     assertThatThrownBy(

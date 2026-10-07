@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.match.LadderMatch;
@@ -42,7 +42,7 @@ class AngryBarbariansEvolutionTest {
       "an evolved play's second unit waits the deck card's stagger before it deploys, as the plain"
           + " play's does")
   void theEvolvedPlayStaggersAsTheDeckCard() {
-    Standard1v1Battle battle = new Standard1v1Battle(Version16Tables.load(), LEVEL, true);
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, true);
     int[] slots = new int[8];
     slots[0] = MatchSide.EVOLUTION_SLOT;
     LadderMatch match = battle.startLadderMatch(DECK, KNIGHTS, 0, 0, slots, new int[8]);

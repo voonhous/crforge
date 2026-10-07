@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +45,7 @@ class ReplayFolderTest {
   void everyReplayInTheFolderIsReadWithoutARefusal() throws IOException {
     String folder = System.getenv(VARIABLE);
     assumeTrue(folder != null && !folder.isEmpty(), "no folder of replays named by " + VARIABLE);
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     List<Path> replays;
     try (Stream<Path> files = Files.walk(Paths.get(folder), 2)) {
       replays =

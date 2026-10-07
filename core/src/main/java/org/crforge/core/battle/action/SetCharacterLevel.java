@@ -16,18 +16,18 @@ import org.crforge.core.fidelity.FidelityStatus;
  * becomes the absolute level, 1 when the row leaves it out. The entity then takes the new level as
  * its level change does. The action does not last and schedules nothing.
  *
- * <p>A newer data version writes the adjustment as an expression,
- * RelativeLevelAdjustmentExpression, evaluated when the action runs. That form acts only on a
- * character (a troop, a building or a tower), and moves the low byte, read as a signed number, by
- * the value, held between 0 and 99 in place of the wrap.
+ * <p>A row may write the adjustment as an expression, RelativeLevelAdjustmentExpression, evaluated
+ * when the action runs. That form acts only on a character (a troop, a building or a tower), and
+ * moves the low byte, read as a signed number, by the value, held between 0 and 99 in place of the
+ * wrap.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled and held by the level-up run: the cause as the entity changed, a dead cause"
             + " left alone, the relative adjustment on the low byte. Settled, not held by a run:"
-            + " the absolute level, which no shipped row uses. The expression form (a newer data"
-            + " version) is read from the newer build's perform: the cause, a character alone,"
+            + " the absolute level, which no shipped row uses. The expression form is read from the"
+            + " build's perform: the cause, a character alone,"
             + " the value evaluated at the run, the signed low byte moved and held to 0..99.")
 public final class SetCharacterLevel extends RowAction {
 
@@ -59,7 +59,7 @@ public final class SetCharacterLevel extends RowAction {
   }
 
   /**
-   * The newer data version's form, which writes the adjustment as an expression.
+   * The form that writes the adjustment as an expression.
    *
    * @param row the row's shared columns
    * @param relativeExpression the steps to add to the level, evaluated when the action runs

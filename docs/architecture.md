@@ -142,7 +142,7 @@ So a `crforge-data` checkout next to the `crforge` checkout needs no setting at 
 
 1. An explicit data version: the argument `--data-version <v>` (`./gradlew :desktop:run --args="--data-version 16.402.18"`), else the property `crforge.dataVersion`. It opens `<root>/<v>`, and needs a data root.
 2. A tables folder named outright, as before data roots: the property `crforge.gameTables`, else the variable `CRFORGE_GAME_TABLES`.
-3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`. That is the data version under work; the lock's `unitTestVersion=`, the tables the unit tests read, is not used here.
+3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`. That is the data version under work, whose tables the unit tests read too.
 
 The `run` task passes the Gradle properties `crforge.dataRoot`, `crforge.dataVersion` and `crforge.gameTables` (for example from `~/.gradle/gradle.properties`, or `-P<name>=<value>`), or the variables `CRFORGE_DATA_ROOT` and `CRFORGE_GAME_TABLES`, to the program as system properties. A `crforge.gameTables` set for the test tasks therefore also wins over the lock's version here; the data root still gives `V` its versions.
 
@@ -151,7 +151,7 @@ At startup the launcher prints the data root and the setting that named it, the 
 ```
 data root: /path/to/crforge-data (from the crforge-data folder beside the project)
 data root commit: e61b362a... (differs from the lock's 5a2fd481...; informational only)
-data versions: 14.593.1, 16.402.18 (V switches)
+data versions: 16.402.18, 16.402.19 (V switches)
 game tables: /path/to/crforge-data/16.402.18 (from version=16.402.18 of crforge-data.lock in the data root)
 data version: 16.402.18
 content sha: 8aa80152...
@@ -227,7 +227,7 @@ A replay file may carry a **capture block**, an optional top-level object writte
 "capture": {"client_version": "16.402.17", "content_version": "16.402.18", "content_sha": "8aa8015226b0062c7e16a793522de91e564ffdaf", "captured_at": "2026-10-06T03:47:38Z"}
 ```
 
-It names the game client version and the data the replay was recorded on: `client_version` and `content_sha` always, `content_version` when the tool knew the data version of that sha, and `captured_at` (UTC) when the replay was saved. The game data can change without a client update, so the client version alone does not name the data. The block is no battle input. The replay mapping (`org.crforge.core.battle.replay.ReplayScenario`, which the conformance runs use too) accepts it for every data version with exactly these four keys, each a string, and refuses any other key or shape in it like any field it has no mapping for. When the block's `content_sha` is not the content sha of the tables the replay is read against, or its `content_version` is not their data version, the replay is refused with one reason naming both: `a replay recorded on client 16.402.17, data version 16.402.18 (content sha 8aa80152...), read against the game tables of data version 14.593.1 (content sha 2be4aad4...)`.
+It names the game client version and the data the replay was recorded on: `client_version` and `content_sha` always, `content_version` when the tool knew the data version of that sha, and `captured_at` (UTC) when the replay was saved. The game data can change without a client update, so the client version alone does not name the data. The block is no battle input. The replay mapping (`org.crforge.core.battle.replay.ReplayScenario`, which the conformance runs use too) accepts it for every data version with exactly these four keys, each a string, and refuses any other key or shape in it like any field it has no mapping for. When the block's `content_sha` is not the content sha of the tables the replay is read against, or its `content_version` is not their data version, the replay is refused with one reason naming both: `a replay recorded on client 16.402.17, data version 16.402.18 (content sha 8aa80152...), read against the game tables of data version 16.402.19 (content sha 7e76080b...)`.
 
 The viewer picks the tables from the block, on `--replay` and on a dropped file:
 
@@ -304,11 +304,11 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 
 ### Workspace interaction checks
 
-Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/14.593.1` with a
+Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/<version>`, the lock's `version=`, with a
 working display/OpenGL context to exercise live deployment, keyboard/button availability,
 resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and
 writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from
-headless `check`; its synthetic replay fixture requires data version `14.593.1`.
+headless `check`; its synthetic replay fixture requires the lock's data version.
 
 Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to the screen.
 `BattleSession.cardUnavailableReason` owns selection/submission availability, including pending

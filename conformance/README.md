@@ -14,7 +14,7 @@ Nothing here simulates the game itself or produces a reference. The references a
 ## What does not belong here
 
 - **Reading replays.** The replay mapping and building a replay's battle are battle core features (`org.crforge.core.battle.replay`), used by this module and by the desktop replay viewer alike.
-- **Mechanic tests.** A test that builds a battle and asserts one behaviour belongs in `core/src/test`, beside the tests of the code it exercises. Shared test helpers (`Version16Tables`, `Scenarios`) are in `core/src/testFixtures`.
+- **Mechanic tests.** A test that builds a battle and asserts one behaviour belongs in `core/src/test`, beside the tests of the code it exercises. The shared test helper `Scenarios` is in `core/src/testFixtures`.
 - **Anything the battle core depends on.** Dependencies run one way: this module depends on `core`, never the reverse.
 - **Tolerances or special cases.** A comparison that forgives a difference hides it. Fix the battle core, or record the case's real outcome in the expectations file.
 
@@ -43,12 +43,14 @@ The expectations file records the outcome every case has today, mismatches inclu
   -Pcrforge.references=<data checkout>/references/<version>
 ```
 
-`./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of both versions the lock names (`version` and `unitTestVersion`), split into shards.
+`./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of the version the lock names (`version`), split into shards.
 
 ## Moving to a new data version
 
-1. Add the new version's references to the game data repository and move `crforge-data.lock` to that commit and version.
+crforge works on one data version at a time, the lock's `version`.
+
+1. Add the new version's tables and references to the game data repository and move `crforge-data.lock` to that commit and version. The unit tests read the lock's tables, so re-pin the values the new rows move, and let the battle core play the new version (`GameVersions`).
 2. If the new version's replays differ, list them in `CommandTypes` and `ReplayFormat` (in `core`); until then its replays are refused as unsupported, never read by another version's rules.
-3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json`, and review it with the change.
+3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json`, review it with the change, and remove the old version's file.
 
 See the reference battles paragraph of [docs/schema.md](../docs/schema.md) for the folder layout and the settings.

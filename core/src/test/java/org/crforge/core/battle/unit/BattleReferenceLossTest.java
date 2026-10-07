@@ -34,26 +34,6 @@ class BattleReferenceLossTest {
           "Wallbreaker_mini",
           "EliteArcher_Chess",
           "Bomber_Chess",
-          "BlowdartGoblin_crazy_2",
-          "Wizard_crazy_2",
-          "Princess_crazy_2",
-          "Princess_crazy_3",
-          "Hunter_crazy_2",
-          "Hunter_crazy_3",
-          "Xbow_crazy_2",
-          "AxeMan_crazy_1",
-          "AxeMan_crazy_2",
-          "AxeMan_crazy_3",
-          "BombTower_crazy_2",
-          "BombTower_crazy_3",
-          "RoyalGiant_crazy_1",
-          "RoyalGiant_crazy_3",
-          "Mortar_crazy_1",
-          "Mortar_crazy_2",
-          "Mortar_crazy_3",
-          "BabyDragon_crazy_2",
-          "RamRider_crazy",
-          "Musketeer_crazy_3",
           "GoblinDemolisher",
           "Hunter_EV1",
           "AxeMan_EV1",
@@ -61,19 +41,16 @@ class BattleReferenceLossTest {
           "Furnace_rework",
           "Furnace_EV1",
           "EliteArcherHero",
-          "Furnace_rework_crazy_1",
-          "Furnace_rework_crazy_3",
-          "GoblinDemolisher_crazy_1",
-          "GoblinDemolisher_crazy_2",
-          "GoblinDemolisher_crazy_3",
-          "Hunter_crazy_1",
           "Valkyrie_EV1",
           "Bomber_EV1",
           "Wallbreaker_EV1",
-          "Firecracker_EV1");
+          "Firecracker_EV1",
+          "BowlerHero",
+          "ValkyrieHero",
+          "Princess_EV1");
 
-  /** The character rows the records build: all 387 shipped. */
-  private static final int BUILT = 387;
+  /** The character rows the records build: all 246 shipped. */
+  private static final int BUILT = 246;
 
   /** Every character row the records build; a row they refuse is left out. */
   private static List<UnitData> characters() {

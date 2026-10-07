@@ -359,7 +359,7 @@ public final class EntityFlags {
 
   /**
    * The entity keeps its reference only within its plain range, without the extension a unit is
-   * otherwise allowed before it gives one up (a newer data version's tag; 0 in a table without it).
+   * otherwise allowed before it gives one up (0 in a table without the tag).
    */
   public long ignoreRangeExtensionToKeepTarget() {
     return ignoreRangeExtensionToKeepTarget;
@@ -367,8 +367,7 @@ public final class EntityFlags {
 
   /**
    * A hit that does not pierce immunity leaves the entity at 1 hit point at least, and a projectile
-   * attacker keeps it as a target whatever damage is on its way (a newer data version's tag; 0 in a
-   * table without it).
+   * attacker keeps it as a target whatever damage is on its way (0 in a table without the tag).
    */
   public long unkillable() {
     return unkillable;
