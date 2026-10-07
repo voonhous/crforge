@@ -53,8 +53,10 @@ public record BattleFrame(
    *
    * @param name the card row name
    * @param cost its cost in whole elixir
+   * @param level the level its side plays it at, counted from 1 across all rarities
    * @param unavailableReason why selection is disabled, or null if available
    * @param pending whether it has been played and waits for its play to run
    */
-  public record CardView(String name, int cost, boolean pending, String unavailableReason) {}
+  public record CardView(
+      String name, int cost, int level, boolean pending, String unavailableReason) {}
 }

@@ -73,6 +73,12 @@ public final class BattleSession {
   /** The card each play was given for, by the play's name. */
   private final Map<String, String> playedCards = new HashMap<>();
 
+  /**
+   * Each side's card levels by deck index, counted from 1 across all rarities, or null when every
+   * card is at {@link #LEVEL}, as in a Ladder battle the screen starts.
+   */
+  private final List<int[]> deckLevels;
+
   /** The plays given and not yet run, by name. */
   private final Map<String, Pending> pending = new HashMap<>();
 
@@ -89,8 +95,12 @@ public final class BattleSession {
   private record Pending(int side, int deckIndex, int cost) {}
 
   private BattleSession(
-      Standard1v1Battle battle, GoldenScenario.Case scenarioCase, CharacterEntity scenarioUnit) {
+      Standard1v1Battle battle,
+      GoldenScenario.Case scenarioCase,
+      CharacterEntity scenarioUnit,
+      List<int[]> deckLevels) {
     this.battle = battle;
+    this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
     this.scenarioCase = scenarioCase;
     this.scenarioUnit = scenarioUnit;
     // Attached before the first step, so they hear every tick of the battle.
@@ -112,7 +122,7 @@ public final class BattleSession {
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL);
     // Both players' words are 0, so every new session deals and plays the same way.
     battle.startLadderMatch(blue, red, 0, 0);
-    return new BattleSession(battle, null, null);
+    return new BattleSession(battle, null, null, null);
   }
 
   /** A Ladder battle between the visualizer's default decks, {@link BattleDecks}. */
@@ -133,7 +143,7 @@ public final class BattleSession {
     CharacterEntity placed =
         battle.deploy(
             0, unit, LEVEL, scenarioCase.side(), scenarioCase.deployX(), scenarioCase.deployY());
-    return new BattleSession(battle, scenarioCase, placed);
+    return new BattleSession(battle, scenarioCase, placed, null);
   }
 
   /**
@@ -157,12 +167,27 @@ public final class BattleSession {
    * @param playCards the card of each queued play, by the play's name
    */
   public static BattleSession of(Standard1v1Battle battle, Map<String, String> playCards) {
+    return of(battle, playCards, null);
+  }
+
+  /**
+   * A session over a battle built and set up elsewhere, as {@link #of(Standard1v1Battle, Map)},
+   * whose decks hold cards at their own levels, such as a replay's: the hands show each card's
+   * level, and a play given from the screen runs at it.
+   *
+   * @param battle the battle, not yet stepped
+   * @param playCards the card of each queued play, by the play's name
+   * @param deckLevels each side's card levels by deck index, counted from 1 across all rarities, in
+   *     the order of the decks the match was started with; null for every card at {@link #LEVEL}
+   */
+  public static BattleSession of(
+      Standard1v1Battle battle, Map<String, String> playCards, List<int[]> deckLevels) {
     if (battle.getBattle().getTick() != 0) {
       throw new IllegalArgumentException(
           "a session starts before the battle's first step, not on tick "
               + battle.getBattle().getTick());
     }
-    BattleSession session = new BattleSession(battle, null, null);
+    BattleSession session = new BattleSession(battle, null, null, deckLevels);
     session.playedCards.putAll(playCards);
     return session;
   }
@@ -227,6 +252,39 @@ public final class BattleSession {
     }
     List<Integer> queue = match.side(side).getHand().queue();
     return queue.isEmpty() ? null : match.side(side).deck().get(queue.get(0));
+  }
+
+  /**
+   * The level a side plays a deck card at.
+   *
+   * @param side 0 or 1
+   * @param deckIndex the card's index in the side's deck
+   * @return the level, counted from 1 across all rarities
+   */
+  public int cardLevel(int side, int deckIndex) {
+    return deckLevels == null ? LEVEL : deckLevels.get(side)[deckIndex];
+  }
+
+  /**
+   * The level of the card in a hand slot.
+   *
+   * @param side 0 or 1
+   * @param slot 0 to 3
+   * @return the level, or 0 for an empty slot or a session without hands
+   */
+  public int handCardLevel(int side, int slot) {
+    if (handCard(side, slot) == null) {
+      return 0;
+    }
+    return cardLevel(side, match().side(side).getHand().slots()[slot]);
+  }
+
+  /** The level of the card that refills the hand next, or 0 for none. */
+  public int nextCardLevel(int side) {
+    if (nextCard(side) == null) {
+      return 0;
+    }
+    return cardLevel(side, match().side(side).getHand().queue().get(0));
   }
 
   /** Whether a hand slot's card has been played and is waiting for its play to run. */
@@ -308,13 +366,14 @@ public final class BattleSession {
     }
     String name = (side == 0 ? "b" : "r") + (++playsGiven);
     int runTick = Math.max(tick(), 1) + Standard1v1Battle.PLAY_DELAY_TICKS;
+    int level = cardLevel(side, deckIndex);
     try {
       if (card.mirror()) {
-        battle.playMirror(runTick, card.name(), LEVEL, side, x, y, name);
+        battle.playMirror(runTick, card.name(), level, side, x, y, name);
       } else if (card.variant() != null) {
-        battle.playVariant(runTick, card.name(), LEVEL, side, x, y, name);
+        battle.playVariant(runTick, card.name(), level, side, x, y, name);
       } else {
-        battle.submit(deployCard(card), LEVEL, side, x, y, name);
+        battle.submit(deployCard(card), level, side, x, y, name);
       }
     } catch (RuntimeException e) {
       say(side, ": " + card.name() + " refused, " + e.getMessage());

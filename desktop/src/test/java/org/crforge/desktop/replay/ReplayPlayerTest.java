@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Path;
+import java.util.List;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.battle.BattleAdapter;
+import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.battle.EntityView;
 import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,6 +91,56 @@ class ReplayPlayerTest {
         .anyMatch(m -> m.endsWith("] blue plays ArcherQueen on tick 220 (cmd0)"));
     // The battle is the replay's either way: the view names it, it does not change it.
     assertThat(session.getBattle().getPlays()).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
+      "the frame shows the replay's own levels: each hand card's, each tower's, the unit's")
+  void theFrameShowsTheReplaysLevels() {
+    ObjectNode document = Replays.archerQueen();
+    // Side 0's cards past the Archer Queen, which is played, each at a level of its own.
+    ArrayNode deck = (ArrayNode) document.path("battle").path("deck0").path("sp");
+    for (int i = 1; i < deck.size(); i++) {
+      ((ObjectNode) deck.get(i)).put("l", i);
+    }
+    ReplayPlayer player = player(document);
+    ScenarioPlan plan = player.getReplay().plan();
+
+    BattleFrame frame = BattleAdapter.frame(player.getSession());
+
+    for (BattleFrame.SideView side : frame.sides()) {
+      List<String> names = plan.decks().get(side.side());
+      int[] levels = plan.deckLevels().get(side.side());
+      for (BattleFrame.CardView card : side.hand()) {
+        assertThat(card.level())
+            .as("side %d's %s", side.side(), card.name())
+            .isEqualTo(levels[names.indexOf(card.name())]);
+      }
+      assertThat(side.next().level()).isEqualTo(levels[names.indexOf(side.next().name())]);
+    }
+    // Side 0's hand holds cards at four levels, never all at the Ladder level.
+    assertThat(frame.sides().get(0).hand())
+        .extracting(BattleFrame.CardView::level)
+        .doesNotHaveDuplicates();
+    List<EntityView> towers =
+        frame.entities().stream().filter(e -> e.kind() == EntityView.Kind.TOWER).toList();
+    assertThat(towers).hasSize(6);
+    for (EntityView tower : towers) {
+      Standard1v1Battle.Towers own = plan.towers().get(tower.side());
+      assertThat(tower.level())
+          .as("side %d's %s", tower.side(), tower.name())
+          .isEqualTo(tower.king() ? own.kingLevel() : own.level());
+    }
+
+    while (player.getSession().getBattle().getPlays().isEmpty()) {
+      player.step();
+    }
+    EntityView queen =
+        BattleAdapter.frame(player.getSession()).entities().stream()
+            .filter(e -> e.name().equals("ArcherQueen"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(queen.level()).isEqualTo(plan.plays().get(0).level());
   }
 
   @Test

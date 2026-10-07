@@ -53,6 +53,8 @@ final class UnitInspector extends Label {
               + selected.side()
               + " / "
               + orientation.sideName(selected.side())
+              + "\nLevel "
+              + selected.level()
               + "\nHP "
               + selected.hitPoints()
               + " / "
