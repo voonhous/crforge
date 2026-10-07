@@ -260,7 +260,7 @@
   "random-battles-v2/random_battle_s0017": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0018": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0019": {"outcome": "diagnostic_match"},
-  "random-battles-v2/random_battle_s0020": {"outcome": "mismatch", "first_divergent_tick": 1847, "path": "$.entities.length"},
+  "random-battles-v2/random_battle_s0020": {"outcome": "diagnostic_match"},
   "smoke-c1/archer_s0": {"outcome": "diagnostic_match"},
   "smoke-c1/arrows_s0_tower": {"outcome": "diagnostic_match"},
   "smoke-c1/cycle_s0": {"outcome": "diagnostic_match"},

@@ -245,6 +245,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.targeting = new TargetingState();
     targeting.setOwner(view);
     targeting.setConfig(targetingConfig);
+    // A row that loads before its first hit is born with its whole load still to run: the
+    // countdown starts at LoadTime and only the targeting visits run it down, so a unit that has
+    // just deployed winds up the full load before it can fire.
+    if (targetingConfig.loadFirstHit()) {
+      targeting.setLoadTimerMs(targetingConfig.loadTime());
+    }
     // The selection asks the battle the validator's pending-damage questions about a candidate.
     this.selection =
         new SelectionChain(
