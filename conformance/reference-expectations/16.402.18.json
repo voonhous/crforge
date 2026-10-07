@@ -423,9 +423,9 @@
   "tv-replays-v3/tv_replay_000": {"outcome": "unsupported", "feature": "the Royal Chef's cooking with a princess tower destroyed, whose contribution is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_001": {"outcome": "mismatch", "first_divergent_tick": 2607, "path": "$.entities[4].x"},
   "tv-replays-v3/tv_replay_002": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_003": {"outcome": "mismatch", "first_divergent_tick": 264, "path": "$.entities[14].x"},
+  "tv-replays-v3/tv_replay_003": {"outcome": "mismatch", "first_divergent_tick": 292, "path": "$.entities[22].state"},
   "tv-replays-v3/tv_replay_004": {"outcome": "mismatch", "first_divergent_tick": 818, "path": "$.entities[11].state"},
-  "tv-replays-v3/tv_replay_005": {"outcome": "mismatch", "first_divergent_tick": 1390, "path": "$.entities[9].x"},
+  "tv-replays-v3/tv_replay_005": {"outcome": "mismatch", "first_divergent_tick": 3586, "path": "$.entities[9].hp"},
   "tv-replays-v3/tv_replay_006": {"outcome": "mismatch", "first_divergent_tick": 555, "path": "$.entities.length"},
   "tv-replays-v3/tv_replay_007": {"outcome": "mismatch", "first_divergent_tick": 2691, "path": "$.entities[1].x"},
   "tv-replays-v3/tv_replay_008": {"outcome": "unsupported", "feature": "skeleton_balloon_evo_pop_balloon is re-triggered with 2 balloons left as its owner is dead, which drops every container left; not modelled", "input": "the run"},
@@ -443,6 +443,6 @@
   "tv-replays-v3/tv_replay_020": {"outcome": "mismatch", "first_divergent_tick": 2977, "path": "$.entities[0].x"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "cmd32_2_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"}
+  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "cmd32_1_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"}
  }
 }
