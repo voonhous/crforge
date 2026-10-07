@@ -46,6 +46,15 @@ import lombok.Builder;
  * @param resurrectOwnTroops true when a death of the unit's own side counts a soul
  * @param spawnLimit the most characters the area effect makes, the base count and the souls
  *     together
+ * @param soulsFromDeaths true for an older data version, whose ability rows have no
+ *     ResurrectChargesExpression column: the unit counts a soul for each death its death notice
+ *     tells it of, and an ability with a base count spends them on its area effect. False for a
+ *     newer one, where the unit counts none and the charges expression sizes the area effect
+ * @param resurrectChargesExpression the expression, read in the unit's context as the ability
+ *     fires, whose value adds characters to the base count, at most SpawnLimit in all, and sizes
+ *     the area effect's lifetime; null for none, whose area effect keeps its row's lifetime
+ * @param spawnCountResetAction the action the ability schedules on the unit once that expression
+ *     sized its area effect, the unit its cause; null for none
  * @param unmodelledColumns the columns that make the ability do more than run its activation action
  *     and buff the unit itself, or keep a buff on a unit waiting to cast, which the battle does not
  *     model; a request for such an ability is refused
@@ -75,6 +84,9 @@ public record AbilityData(
     boolean resurrectEnemies,
     boolean resurrectOwnTroops,
     int spawnLimit,
+    boolean soulsFromDeaths,
+    String resurrectChargesExpression,
+    String spawnCountResetAction,
     List<String> unmodelledColumns) {
 
   public AbilityData {
