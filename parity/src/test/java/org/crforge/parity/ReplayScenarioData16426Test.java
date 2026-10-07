@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ class ReplayScenarioData16426Test {
   private static ObjectNode knightOn16426() {
     ObjectNode scenario = Scenarios.knightOfVersion16();
     ObjectNode capture = scenario.putObject(ReplayCapture.FIELD);
-    capture.put(ReplayCapture.CLIENT_VERSION, "16.402.17");
+    capture.put(ReplayCapture.CLIENT_VERSION, GameVersions.CLIENT_16_402_17);
     capture.put(ReplayCapture.CONTENT_VERSION, Version16Tables.VERSION_16_426_22);
     capture.put(ReplayCapture.CONTENT_SHA, CONTENT_SHA);
     capture.put(ReplayCapture.CAPTURED_AT, "2026-10-06T15:55:22Z");
@@ -39,7 +40,7 @@ class ReplayScenarioData16426Test {
 
   @Test
   void theTablesAreOfTheNewerData() {
-    assertThat(tables.version()).isEqualTo("16.426.22");
+    assertThat(tables.version()).isEqualTo(GameVersions.DATA_16_426_22);
     assertThat(tables.contentSha()).isEqualTo(CONTENT_SHA);
   }
 
@@ -69,7 +70,7 @@ class ReplayScenarioData16426Test {
 
   @Test
   void hasNoGeneratedCaseFieldsUntilItsRecordedBattlesEstablishThem() {
-    assertThat(ReplayFormat.of("16.426.22")).isPresent();
-    assertThat(ReplayFormat.generated("16.426.22")).isEmpty();
+    assertThat(ReplayFormat.of(GameVersions.DATA_16_426_22)).isPresent();
+    assertThat(ReplayFormat.generated(GameVersions.DATA_16_426_22)).isEmpty();
   }
 }

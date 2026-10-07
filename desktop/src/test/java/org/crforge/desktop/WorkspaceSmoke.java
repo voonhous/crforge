@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.StatusSmokeFixture;
 import org.crforge.desktop.battle.BattleAdapter;
@@ -48,7 +49,7 @@ public class WorkspaceSmoke extends CRForgeGame {
     config.setTitle("CRForge UI smoke check");
     config.setForegroundFPS(30);
     config.setInitialVisible(false);
-    if (!tables.version().equals("14.593.1"))
+    if (!tables.version().equals(GameVersions.DATA_14_593_1))
       throw new IllegalArgumentException("UI smoke fixtures require tables 14.593.1");
     new Lwjgl3Application(new WorkspaceSmoke(versions, versions.ladder()), config);
   }

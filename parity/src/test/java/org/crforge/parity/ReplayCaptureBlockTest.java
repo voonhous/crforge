@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class ReplayCaptureBlockTest {
   private static ObjectNode recordedOn(String contentVersion, String contentSha) {
     ObjectNode scenario = Scenarios.knight();
     ObjectNode capture = scenario.putObject("capture");
-    capture.put("client_version", "16.402.17");
+    capture.put("client_version", GameVersions.CLIENT_16_402_17);
     if (contentVersion != null) {
       capture.put("content_version", contentVersion);
     }
@@ -61,7 +62,8 @@ class ReplayCaptureBlockTest {
 
   @Test
   void refusesAReplayRecordedOnOtherDataNamingBoth() {
-    ObjectNode scenario = recordedOn("16.426.22", "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
+    ObjectNode scenario =
+        recordedOn(GameVersions.DATA_16_426_22, "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
@@ -117,7 +119,7 @@ class ReplayCaptureBlockTest {
                 "a capture block that names no content_sha", "capture.content_sha"));
 
     ObjectNode notAnObject = Scenarios.knight();
-    notAnObject.put("capture", "16.402.17");
+    notAnObject.put("capture", GameVersions.CLIENT_16_402_17);
     assertThat(new ReplayScenario(tables).survey(notAnObject))
         .containsExactly(
             new ReplayScenario.Refusal(
@@ -136,15 +138,16 @@ class ReplayCaptureBlockTest {
 
   @Test
   void readsTheBlockLenientlyForTheViewer() {
-    ObjectNode scenario = recordedOn("16.402.18", "8aa8015226b0062c7e16a793522de91e564ffdaf");
+    ObjectNode scenario =
+        recordedOn(GameVersions.DATA_16_402_18, "8aa8015226b0062c7e16a793522de91e564ffdaf");
 
     ReplayCapture capture = ReplayCapture.of(scenario).orElseThrow();
 
     assertThat(capture)
         .isEqualTo(
             new ReplayCapture(
-                "16.402.17",
-                "16.402.18",
+                GameVersions.CLIENT_16_402_17,
+                GameVersions.DATA_16_402_18,
                 "8aa8015226b0062c7e16a793522de91e564ffdaf",
                 "2026-10-06T03:47:38Z"));
     assertThat(capture.recordedOn())

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import org.crforge.core.battle.data.GameClients;
+import org.crforge.core.battle.data.GameVersions;
 
 /**
  * The replay fields that differ between data versions, and how {@link ReplayScenario} reads each in
@@ -70,7 +70,7 @@ public record ReplayFormat(
   /** The fields of version 14.593.1's replays, which every version's replays share. */
   public static final ReplayFormat V14_593_1 =
       new ReplayFormat(
-          "14.593.1",
+          GameVersions.DATA_14_593_1,
           Map.of(),
           false,
           Map.of(),
@@ -93,7 +93,7 @@ public record ReplayFormat(
    */
   public static final ReplayFormat V16_402_18 =
       new ReplayFormat(
-          "16.402.18",
+          GameVersions.DATA_16_402_18,
           ordered("srq", "[]", "srs", "[]"),
           true,
           ordered("cardlvlmin", "0", "rrb", "false", "seb", "false"),
@@ -158,13 +158,14 @@ public record ReplayFormat(
    * side added, so each king stands at level 1, as the 14.593.1 fields give it; without a king
    * level, the avatar's exp level does not change it.
    */
-  public static final ReplayFormat GENERATED_16_402_18 = V14_593_1.forDataVersion("16.402.18");
+  public static final ReplayFormat GENERATED_16_402_18 =
+      V14_593_1.forDataVersion(GameVersions.DATA_16_402_18);
 
   /**
    * The format of each data version whose replays' fields have been decided. The fields are the
    * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
-   * version that client runs ({@link GameClients#CLIENT_16_402_17}); its replays of 16.426.22 write
-   * the same fields.
+   * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.426.22
+   * write the same fields.
    */
   private static final Map<String, ReplayFormat> BY_VERSION = byVersion();
 
@@ -183,7 +184,7 @@ public record ReplayFormat(
   private static Map<String, ReplayFormat> byVersion() {
     Map<String, ReplayFormat> byVersion = new HashMap<>();
     byVersion.put(V14_593_1.dataVersion(), V14_593_1);
-    for (String version : GameClients.CLIENT_16_402_17) {
+    for (String version : GameVersions.CLIENT_16_402_17_DATA) {
       byVersion.put(version, V16_402_18.forDataVersion(version));
     }
     return Map.copyOf(byVersion);

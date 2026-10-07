@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -100,7 +101,7 @@ class BattleKamikazeKillDrainTest {
       "on data version 16.402.18 the Kamikaze kill lands at the damage drain, so the Valkyrie"
           + " still walks at the Fire Spirit on the tick of its hit")
   void theValkyrieStillWalksAtTheSpirit() throws IOException {
-    Standard1v1Battle match = beforeTheKill(relabelled(folder, "16.402.18"));
+    Standard1v1Battle match = beforeTheKill(relabelled(folder, GameVersions.DATA_16_402_18));
     CharacterEntity valkyrie = match.getPlays().get(1).units().get(0);
     assertThat(valkyrie.getView().getX()).as("one more step at the spirit").isEqualTo(3416);
     assertThat(valkyrie.getView().getY()).isEqualTo(18034);
@@ -112,7 +113,7 @@ class BattleKamikazeKillDrainTest {
       "on data version 14.593.1 the Kamikaze kill lands inside the hit, and the Valkyrie turns to"
           + " a tower in the same tick")
   void theValkyrieTurnsOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Standard1v1Battle match = beforeTheKill(GameData.tables());
     CharacterEntity valkyrie = match.getPlays().get(1).units().get(0);
     TargetView reference = valkyrie.getTargeting().getReference();

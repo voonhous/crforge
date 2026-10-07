@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -142,7 +143,7 @@ class BattleAreaEffectLifeTest {
       "on data version 16.402.18 an area effect whose countdown reaches 0 has one more update and"
           + " leaves once its countdown is below 0")
   void anAreaEffectStaysUntilItsCountdownIsBelowZero() throws IOException {
-    Map<String, Life> lives = scene(relabelled(folder, "16.402.18"));
+    Map<String, Life> lives = scene(relabelled(folder, GameVersions.DATA_16_402_18));
 
     Life death = lives.get(DEATH_AREA);
     assertThat(death.created).isEqualTo(DEATH);
@@ -160,7 +161,7 @@ class BattleAreaEffectLifeTest {
       "on data version 14.593.1 an area effect with hit switches leaves at the cleanup after the"
           + " update that brings its countdown to 0")
   void anAreaEffectLeavesAtZeroOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Map<String, Life> lives = scene(GameData.tables());
 
     Life death = lives.get(DEATH_AREA);

@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.desktop.battle.TableCopies;
 
 /**
@@ -30,7 +31,7 @@ final class Replays {
   static final String ARCHER_QUEEN_VERSION_16 = "/replays/archer_queen_version16.json";
 
   /** The data version of {@link #ARCHER_QUEEN_VERSION_16}. */
-  static final String VERSION_16 = "16.402.18";
+  static final String VERSION_16 = GameVersions.DATA_16_402_18;
 
   private static GameTables tables;
 
