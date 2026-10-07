@@ -241,6 +241,43 @@ class BattleAttackSequenceEntryTest {
         .containsOnly("Archer_EV1_ArrowDoubleDamage");
   }
 
+  @Test
+  @DisplayName(
+      "an entry without a projectile hits directly on a unit whose row fires, in an order of two or"
+          + " more")
+  void anEntryWithoutAProjectileHitsDirectly(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        archer(
+            folder,
+            entry -> {
+              entry.remove("Projectile");
+              entry.put("Damage", 100);
+            });
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, true);
+    CharacterEntity archer =
+        battle.deploy(0, unit(battle, "EliteArcherHero"), LEVEL, 0, 3500, 14000, "a");
+    CharacterEntity golem = battle.deploy(0, unit(battle, "Golem"), LEVEL, 1, 3500, 22000, "g");
+    List<Launch> launched = launches(battle, archer);
+    List<Hit> hit = hits(battle, List.of(golem));
+    int setOn = -1;
+    while (battle.getBattle().getTick() <= 300) {
+      int tick = battle.getBattle().getTick();
+      battle.getBattle().step();
+      if (setOn < 0 && launched.size() == 2 && launched.get(1).tick() == tick) {
+        archer.setAttackSequenceIndex(1, true);
+        setOn = tick;
+      }
+    }
+
+    assertThat(setOn).isPositive();
+    // The row fires, but the entry the index selects has no projectile: nothing more is launched.
+    assertThat(launched).hasSize(2);
+    // Each of its hits is a direct hit: once the two arrows in flight have landed, the Golem is
+    // still hit at the archer's pace.
+    int arrowsLanded = setOn + 40;
+    assertThat(hit.stream().filter(h -> h.tick() > arrowsLanded)).hasSizeGreaterThanOrEqualTo(3);
+  }
+
   /** The Electro Wizard facing two Knights abreast, both inside its range on its first hit. */
   private static List<CharacterEntity> knights(Standard1v1Battle battle) {
     List<CharacterEntity> out = new ArrayList<>();

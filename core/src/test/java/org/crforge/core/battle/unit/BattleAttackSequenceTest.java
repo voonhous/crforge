@@ -49,12 +49,40 @@ class BattleAttackSequenceTest {
             match.getWorld(), GameData.unit("Archer_EV1"), "Archer", 0, 3500, 10000, 11);
     ActionHolder holder = archer.actionHolder();
 
-    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 1, false), holder);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 1, false, false), holder);
     assertThat(archer.getTargeting().getAttackSequenceIndex()).isEqualTo(1);
-    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 2, false), holder);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 2, false, false), holder);
     assertThat(archer.getTargeting().getAttackSequenceIndex()).as("kept").isEqualTo(1);
-    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 0, false), holder);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 0, false, false), holder);
     assertThat(archer.getTargeting().getAttackSequenceIndex()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "an index action that resets the hit started clears the hit-in-progress flag after its store,"
+          + " stored or not, and leaves the flag of a hit without a reference")
+  void anIndexActionResetsTheHitStarted() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity archer =
+        new CharacterEntity(
+            match.getWorld(), GameData.unit("Archer_EV1"), "Archer", 0, 3500, 10000, 11);
+    ActionHolder holder = archer.actionHolder();
+
+    archer.getTargeting().setHitInProgress(true);
+    archer.getTargeting().setHitInProgressWithoutReference(true);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 1, false, false), holder);
+    assertThat(archer.getTargeting().isHitInProgress()).as("kept without the reset").isTrue();
+
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("reset"), 0, false, true), holder);
+    assertThat(archer.getTargeting().getAttackSequenceIndex()).isZero();
+    assertThat(archer.getTargeting().isHitInProgress()).isFalse();
+    assertThat(archer.getTargeting().isHitInProgressWithoutReference()).isTrue();
+
+    // An index past the order is dropped, and the flag is cleared all the same.
+    archer.getTargeting().setHitInProgress(true);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("reset"), 2, false, true), holder);
+    assertThat(archer.getTargeting().getAttackSequenceIndex()).isZero();
+    assertThat(archer.getTargeting().isHitInProgress()).isFalse();
   }
 
   @Test

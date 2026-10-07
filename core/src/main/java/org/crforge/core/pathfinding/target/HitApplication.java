@@ -24,12 +24,14 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>a unit with a stop time after its attack has its attack block timer set to it;
  *   <li>the hit itself: the direct hit for a unit without a projectile, and for a unit with one the
  *       launch of its projectiles, which a cancelled hit skips; a special hit fires the special
- *       projectile when the row has one. Before a direct hit, a unit that tracks a charge deals its
- *       charged damage when the charge is complete, and has the charge reset, complete or not,
- *       unless its row keeps charging after an attack. After a direct hit that was not cancelled,
- *       the buff the row applies on damage goes onto the target. An attack sequence entry with an
- *       action replaces both: the action is scheduled on the owner with the target as its cause,
- *       cancelled or not, and the buff on damage follows a hit that was not;
+ *       projectile when the row has one. In an attack sequence of two or more the entry's
+ *       projectile decides instead, with no fallback to the row's: an entry without one hits
+ *       directly. Before a direct hit, a unit that tracks a charge deals its charged damage when
+ *       the charge is complete, and has the charge reset, complete or not, unless its row keeps
+ *       charging after an attack. After a direct hit that was not cancelled, the buff the row
+ *       applies on damage goes onto the target. An attack sequence entry with an action replaces
+ *       both: the action is scheduled on the owner with the target as its cause, cancelled or not,
+ *       and the buff on damage follows a hit that was not;
  *   <li>a pending special load is cleared;
  *   <li>a hit not cancelled for distance schedules the action the row runs as it attacks on the
  *       owner, with the target as its cause; a hit with no target schedules nothing. It then
@@ -65,7 +67,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " held by electro_wizard_tower_defence and mini_sparkys_knight. An attack sequence"
             + " entry's action in place of the launch and the direct hit, with the target as its"
             + " cause and no end told to the listening actions, is held by"
-            + " three_musketeers_pekka and three_musketeers_air_building. The"
+            + " three_musketeers_pekka and three_musketeers_air_building. The direct hit of an"
+            + " entry without a projectile on a unit whose row fires, in an order of two or more,"
+            + " is held by evo_angrybarbarians, tv_replay_012 and tv_replay_013. The"
             + " dasher's exception to the long-distance cancel is carried and held by no run. The"
             + " attack counter, raised by a hit not cancelled for distance, is held by"
             + " electro_giant_struck and electro_giant_tower, whose reflect keys on it.")
@@ -143,7 +147,12 @@ public final class HitApplication {
       t.setAttackBlockTimerMs(cfg.stopTimeAfterAttack());
     }
     // A special hit fires the special projectile when there is one, any other hit the row's own.
-    boolean fires = cfg.hasProjectile() || (special && cfg.hasSpecialProjectile());
+    // In an attack sequence of two or more the entry's projectile replaces both, none included:
+    // an entry without one hits directly, even on a unit whose row fires.
+    boolean fires =
+        queries.entryDecidesProjectile()
+            ? queries.entryFires()
+            : cfg.hasProjectile() || (special && cfg.hasSpecialProjectile());
     // An attack sequence entry with an action runs it in place of the launch and the direct hit,
     // even for a hit cancelled for distance; the buff on damage follows one that landed, as the
     // entry has no projectile.

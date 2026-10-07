@@ -137,6 +137,21 @@ public interface HitQueries {
   }
 
   /**
+   * Whether the attack sequence's entry this hit reads decides between a launch and a direct hit:
+   * in an order of two or more the entry's projectile is the hit's, with no fallback to the row's
+   * or the special one, so an entry without one hits directly on a unit whose row fires. An owner
+   * without such a sequence answers false, and the row decides.
+   */
+  default boolean entryDecidesProjectile() {
+    return false;
+  }
+
+  /** Whether that entry has a projectile; read only when the entry decides. */
+  default boolean entryFires() {
+    return false;
+  }
+
+  /**
    * Whether the attack sequence's entry this hit reads runs an action in place of hitting: the hit
    * then neither launches nor deals a direct hit, and does not tell the owner's listening actions
    * that its attack ended. An owner without such an entry answers false.

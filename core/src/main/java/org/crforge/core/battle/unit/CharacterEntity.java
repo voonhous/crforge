@@ -1551,13 +1551,15 @@ public class CharacterEntity extends WorldEntity {
   /**
    * Refuses the parts of a character's attack that are not established: an attack sequence whose
    * mode moves the index by itself other than a continuous-damage attacker's and a static loop's
-   * (the Manual mode, whose index only actions move, is accepted), an entry's variable damage time
-   * outside a continuous-damage attacker, where no window is walked, and an entry without a
-   * projectile or an action on a unit that fires. An entry's action is established in place of a
-   * projectile, read from an order of two or more by an index only actions move, and in a sequence
-   * of one beside the row's own projectile; one with a projectile, in a continuous-damage
-   * attacker's or on a charging row is refused, and in a sequence of one also on a multi-target
-   * attacker or beside a buff on damage, which the hit would apply only without a projectile.
+   * (the Manual mode, whose index only actions move, is accepted), and an entry's variable damage
+   * time outside a continuous-damage attacker, where no window is walked. An entry without a
+   * projectile or an action on a unit that fires is not refused: in an order of two or more the
+   * entry's projectile decides the hit, so its hit is a direct hit. An entry's action is
+   * established in place of a projectile, read from an order of two or more by an index only
+   * actions move, and in a sequence of one beside the row's own projectile; one with a projectile,
+   * in a continuous-damage attacker's or on a charging row is refused, and in a sequence of one
+   * also on a multi-target attacker or beside a buff on damage, which the hit would apply only
+   * without a projectile.
    */
   private static void refuseAttack(UnitData data) {
     AttackSequence sequence = data.attackSequence();
@@ -1594,8 +1596,6 @@ public class CharacterEntity extends WorldEntity {
           refused =
               "an attack sequence entry's action with a projectile, in a continuous-damage"
                   + " attacker or on a charging row";
-        } else if (entry.projectile() == null && !acts && data.hasProjectile()) {
-          refused = "an attack sequence entry without a projectile on a unit that fires";
         }
       }
     }

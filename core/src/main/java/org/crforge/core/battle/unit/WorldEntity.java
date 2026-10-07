@@ -719,6 +719,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
 
       @Override
+      public boolean entryDecidesProjectile() {
+        return data.attackSequence().replacesAttack();
+      }
+
+      @Override
+      public boolean entryFires() {
+        return attackProjectile() != null;
+      }
+
+      @Override
       public boolean entryAction() {
         return attackAction() != null;
       }
@@ -2688,6 +2698,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (data.attackSequence().order().size() > index) {
       targeting.setAttackSequenceIndex(index);
     }
+  }
+
+  /**
+   * Clears the hit-in-progress flag of the entity's targeting component, as an index-setting action
+   * with ResetRealHitStarted does: only while the component is on, unless the action asks
+   * otherwise. The flag hit in progress without a reference is left as it is.
+   *
+   * @param evenIfCombatDisabled true to clear it with the targeting component off too
+   */
+  @Override
+  public void resetHitInProgress(boolean evenIfCombatDisabled) {
+    if (!evenIfCombatDisabled && !isActive(0)) {
+      return;
+    }
+    targeting.setHitInProgress(false);
   }
 
   /**

@@ -731,9 +731,10 @@ public class Standard1v1Battle {
       }
       EvolutionItem carried = item;
       pay = () -> match.play(side, carried);
-      // An evolved or hero play is placed and cast as its row in that form.
+      // An evolved or hero play is placed and cast as its row in that form, its units staggered
+      // as the deck's card staggers them.
       if (item.field() != 0) {
-        cast = world.getRecords().card(item.spell().name());
+        cast = world.getRecords().card(item.spell().name()).withStaggerOf(card);
       }
     }
     place(target, cast, level, side, x, y, name, pay, null, null, item);
