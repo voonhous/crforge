@@ -6,8 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.CellTests;
 import org.junit.jupiter.api.DisplayName;
@@ -74,6 +76,56 @@ class BattleDashTest {
     scene.stepUntil(GridEntityState.DASHING);
 
     assertThat(scene.dasher.untouchable()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a rolling Log passes under a Mega Knight in its jump, which has a jump height, and still"
+          + " hits a walking unit behind it")
+  void theLogPassesUnderAJumpingMegaKnight() {
+    Scene scene = new Scene("MegaKnight");
+    // A blue Knight behind the Mega Knight, which the Log reaches after it has passed the jump.
+    CharacterEntity walker =
+        scene.match.deploy(0, GameData.unit("Knight"), 11, 0, 3500, 8000, "Walker");
+    // Red's Log is cast so that its rolling body sweeps down the lane while the Mega Knight jumps
+    // at the red Knight: the Mega Knight leaves the ground at tick 60 and lands at tick 84, and the
+    // body meets it on the way, about 1000 apart along the length, at tick 66.
+    scene.match.play(40, GameData.card("Log"), 11, 1, 3500, 16000, "Log");
+    List<String> hits = new ArrayList<>();
+    List<Integer> dashingTicks = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileImpacted(
+                  int tick,
+                  ProjectileEntity projectile,
+                  WorldEntity target,
+                  int damage,
+                  DamageResult result) {
+                if (projectile.getData().name().equals("LogProjectileRolling")) {
+                  hits.add(
+                      (target == scene.dasher ? "dasher" : target == walker ? "walker" : "other")
+                          + " "
+                          + target.getView().getState());
+                }
+              }
+            });
+    for (int tick = 0; tick < 120; tick++) {
+      scene.match.getBattle().step();
+      if (scene.dasher.getView().getState() == GridEntityState.DASHING) {
+        dashingTicks.add(tick);
+      }
+    }
+
+    assertThat(dashingTicks).as("the Mega Knight jumped").isNotEmpty();
+    assertThat(scene.dasher.getData().jumpHeight()).isPositive();
+    // The body's hit spares a dashing character whose row has a jump height, the Log not reaching
+    // the air, and does not list it as hit; it lands out of the body's reach, so it is never hit.
+    assertThat(hits).noneMatch(hit -> hit.startsWith("dasher"));
+    assertThat(hits).anyMatch(hit -> hit.startsWith("walker"));
   }
 
   @Test
