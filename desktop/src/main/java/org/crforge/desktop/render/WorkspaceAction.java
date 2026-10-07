@@ -32,7 +32,10 @@ public enum WorkspaceAction {
   CARD_7,
   CARD_8,
   DEPLOY,
-  INSPECT;
+  INSPECT,
+  REPLAYS,
+  PREVIOUS_REPLAY,
+  NEXT_REPLAY;
 
   public static WorkspaceAction fromKey(int key) {
     return switch (key) {
@@ -63,6 +66,9 @@ public enum WorkspaceAction {
       case Input.Keys.NUM_6 -> CARD_6;
       case Input.Keys.NUM_7 -> CARD_7;
       case Input.Keys.NUM_8 -> CARD_8;
+      case Input.Keys.L -> REPLAYS;
+      case Input.Keys.LEFT_BRACKET -> PREVIOUS_REPLAY;
+      case Input.Keys.RIGHT_BRACKET -> NEXT_REPLAY;
       default -> null;
     };
   }

@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleAdapter;
@@ -22,6 +23,7 @@ import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 import org.crforge.desktop.render.WorkspaceAction;
+import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
 import org.crforge.desktop.replay.ReplayPlayer;
 
@@ -42,7 +44,13 @@ import org.crforge.desktop.replay.ReplayPlayer;
  *       top in red; F turns the arena, every overlay and the HUD by 180 degrees back and forth. The
  *       battle's sides are the replay's either way: only the drawing changes.
  *   <li>T: Hide or show the text annotations (status column, messages)
+ *   <li>L: Show or hide the list of a crawl's replays, when the replay is one of them
+ *   <li>[ and ]: Open the crawl's previous or next replay
  * </ul>
+ *
+ * <p>A replay from a crawl's output ({@link ReplayArchive}) comes with the list of all its replays
+ * above the arena: a click on one opens it in place of the replay open, on the data its record
+ * names, and a record that cannot be read says why under the list's title.
  */
 @Slf4j
 public class ReplayGameScreen implements Screen {
@@ -51,7 +59,13 @@ public class ReplayGameScreen implements Screen {
   private static final List<String> NOTES =
       List.of("SPACE pause, R restart, +/- speed", "clicks do not play in a replay");
 
-  private final ReplayPlayer player;
+  private ReplayPlayer player;
+  private final DataVersions versions;
+  private final Browser browser;
+
+  /** The index of the open replay among the crawl's records, or -1 for a replay file. */
+  private int selected = -1;
+
   private final BattleRenderer renderer;
   private final OrthographicCamera camera;
   private final BattleWorkspace workspace;
@@ -78,26 +92,119 @@ public class ReplayGameScreen implements Screen {
   private String loggedStop;
 
   /**
+   * A crawl's output the screen lists, and what opens one of its replays: on the data its record
+   * names, or null when the record cannot be read (the opener prints why).
+   *
+   * @param archive the crawl's output
+   * @param open what opens a record's replay
+   */
+  public record Browser(ReplayArchive archive, Function<ReplayArchive.Entry, ReplayFile> open) {}
+
+  /**
    * A screen playing a replay from tick 0.
    *
    * @param replay the replay, refused or playable
    * @param versions the loaded tables and their provenance
    */
   public ReplayGameScreen(ReplayFile replay, DataVersions versions) {
+    this(replay, versions, null);
+  }
+
+  /**
+   * A screen playing a replay from tick 0, listing the crawl's replays when it is one of them.
+   *
+   * @param replay the replay, refused or playable
+   * @param versions the loaded tables and their provenance
+   * @param browser the crawl's output the replay is from, or null for a replay file
+   */
+  public ReplayGameScreen(ReplayFile replay, DataVersions versions, Browser browser) {
     this.player = new ReplayPlayer(replay, versions.current());
+    this.versions = versions;
+    this.browser = browser;
     this.renderer = new BattleRenderer();
 
     this.camera = new OrthographicCamera();
     setupInput();
     workspace =
         new BattleWorkspace(camera, renderer, view, true, this::handleAction, (side, slot) -> {});
+    showData();
+    if (browser != null) {
+      ReplayArchive archive = browser.archive();
+      selected = indexOf(replay);
+      workspace.showArchive(
+          "REPLAYS  "
+              + archive.file().getFileName()
+              + "  ("
+              + archive.entries().size()
+              + " records, "
+              + archive.readable()
+              + " readable)",
+          ReplayArchive.columns(),
+          archive.rows(versions.current()),
+          selected,
+          this::open);
+      workspace.archiveStatus(openLine());
+    }
+  }
+
+  /** The data line of the tables loaded, with the open replay's. */
+  private void showData() {
     workspace.setData(
         versions.current().version(),
         versions.source(),
         versions.currentFolder().toAbsolutePath().normalize().toString(),
         versions.current().contentSha(),
         versions.developmentVersion(),
-        replay.dataLine());
+        player.getReplay().dataLine());
+  }
+
+  /** The index of a replay's record among the crawl's, or -1. */
+  private int indexOf(ReplayFile replay) {
+    List<ReplayArchive.Entry> entries = browser.archive().entries();
+    for (int i = 0; i < entries.size(); i++) {
+      if (entries.get(i).line() == replay.line()) return i;
+    }
+    return -1;
+  }
+
+  /** What the list's status line says of the replay open. */
+  private String openLine() {
+    ReplayFile replay = player.getReplay();
+    return "Open: line "
+        + replay.line()
+        + (replay.playable() ? ", playing" : ", refused")
+        + "    Click a row to open it, [ and ] for the previous and next, L hides the list";
+  }
+
+  /**
+   * Opens one of the crawl's replays in place of the replay open, on the data its record names. A
+   * record that cannot be read leaves the replay open and says why.
+   *
+   * @param index the record's index
+   */
+  private void open(int index) {
+    List<ReplayArchive.Entry> entries = browser.archive().entries();
+    if (index < 0 || index >= entries.size()) return;
+    ReplayArchive.Entry entry = entries.get(index);
+    ReplayFile replay = browser.open().apply(entry);
+    if (replay == null) {
+      workspace.selectArchiveRow(selected);
+      workspace.archiveStatus(
+          "Line "
+              + entry.line()
+              + " cannot be read: "
+              + (entry.problem() == null ? "see the log" : entry.problem()));
+      return;
+    }
+    player = new ReplayPlayer(replay, versions.current());
+    selected = index;
+    workspace.reset();
+    newAreaHits.clear();
+    loggedStop = null;
+    showData();
+    workspace.selectArchiveRow(index);
+    workspace.archiveStatus(openLine());
+    log.info("Opened {} on data version {}", replay.name(), versions.current().version());
   }
 
   private boolean handleAction(WorkspaceAction action) {
@@ -140,6 +247,15 @@ public class ReplayGameScreen implements Screen {
       case SIDEBAR -> {
         view.toggleAnnotations();
         log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
+      }
+      case REPLAYS -> workspace.toggleArchive();
+      case PREVIOUS_REPLAY -> {
+        if (browser == null) return false;
+        open(selected - 1);
+      }
+      case NEXT_REPLAY -> {
+        if (browser == null) return false;
+        open(selected + 1);
       }
       default -> {
         return false;
@@ -265,7 +381,10 @@ public class ReplayGameScreen implements Screen {
       lines.add(line);
     }
     lines.add("");
-    lines.add("Drop another replay file on the window to open it.");
+    lines.add(
+        browser == null
+            ? "Drop another replay file on the window to open it."
+            : "Pick another replay from the list [L], or drop another file on the window.");
     return lines;
   }
 
@@ -300,8 +419,10 @@ public class ReplayGameScreen implements Screen {
           P O D A H G N - Overlays, as on the debug screen
           F     - Flip the view (opens with side 1 at the bottom)
           T     - Hide/show the diagnostics sidebar
+          L     - Hide/show the list of a crawl's replays
+          [ ]   - Open the crawl's previous/next replay
           Click - Inspect a unit
-          Drop a replay .json on the window to open it
+          Drop a replay .json, or a crawl's .jsonl or .jsonl.gz, on the window to open it
         ===========================================""");
   }
 

@@ -175,7 +175,7 @@ public final class ReplayPlayer {
    */
   public List<String> statusLines(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
-    lines.add("replay: " + replay.path().getFileName());
+    lines.add("replay: " + replay.name());
     replay
         .capture()
         .ifPresent(

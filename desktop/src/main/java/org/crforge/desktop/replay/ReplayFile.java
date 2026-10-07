@@ -57,6 +57,10 @@ public final class ReplayFile {
   private static final int INPUT_SHOWN = 160;
 
   private final Path path;
+
+  /** The replay's line in a crawl's output ({@link ReplayArchive}), or 0 for a replay file. */
+  private final int line;
+
   private final String dataVersion;
   private final String contentSha;
   private final ReplayCapture capture;
@@ -84,12 +88,14 @@ public final class ReplayFile {
 
   private ReplayFile(
       Path path,
+      int line,
       GameTables tables,
       ReplayCapture capture,
       Header header,
       List<String> refusals,
       ScenarioPlan plan) {
     this.path = path;
+    this.line = line;
     this.dataVersion = tables.version();
     this.contentSha = tables.contentSha();
     this.capture = capture;
@@ -134,6 +140,23 @@ public final class ReplayFile {
    */
   public static ReplayFile parse(
       Path path, JsonNode document, GameTables tables, String tablesRefusal) {
+    return parse(path, 0, document, tables, tablesRefusal);
+  }
+
+  /**
+   * Reads a replay document from a line of a crawl's output ({@link ReplayArchive}), with the
+   * reason its tables are not the ones it names, if there is one.
+   *
+   * @param path the file it came from, for presentation
+   * @param line its line in the file, from 1; 0 when the file is the replay
+   * @param document the replay document
+   * @param tables the game tables it is read against
+   * @param tablesRefusal why the replay's own data could not be read on, listed as its first
+   *     reason; null when there is none
+   * @return the replay, refused or playable
+   */
+  public static ReplayFile parse(
+      Path path, int line, JsonNode document, GameTables tables, String tablesRefusal) {
     ReplayScenario mapping = new ReplayScenario(tables);
     Header header = header(document, mapping);
     List<String> refusals = new ArrayList<>();
@@ -164,12 +187,22 @@ public final class ReplayFile {
       }
     }
     return new ReplayFile(
-        path, tables, ReplayCapture.of(document).orElse(null), header, refusals, plan);
+        path, line, tables, ReplayCapture.of(document).orElse(null), header, refusals, plan);
   }
 
   /** Where the replay came from. */
   public Path path() {
     return path;
+  }
+
+  /** The replay's line in a crawl's output, from 1, or 0 when the file is the replay. */
+  public int line() {
+    return line;
+  }
+
+  /** The replay's file name, with its line in a crawl's output. */
+  public String name() {
+    return path.getFileName() + (line > 0 ? " line " + line : "");
   }
 
   /** The data version of the tables the replay was read against. */
@@ -265,7 +298,7 @@ public final class ReplayFile {
    */
   public List<String> describe(ViewOrientation view) {
     List<String> lines = new ArrayList<>();
-    lines.add("replay: " + path.toAbsolutePath().normalize());
+    lines.add("replay: " + path.toAbsolutePath().normalize() + (line > 0 ? ", line " + line : ""));
     lines.add("  recorded on: " + recordedOn());
     lines.add("  data version: " + dataVersionLine());
     lines.add("  game mode: " + header.gameMode() + ", location " + header.location());

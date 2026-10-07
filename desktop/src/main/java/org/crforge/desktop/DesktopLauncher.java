@@ -18,6 +18,7 @@ import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.RenderConstants;
+import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
 
 /**
@@ -39,6 +40,10 @@ import org.crforge.desktop.replay.ReplayFile;
  * of the tables among them, and opens the window on that list rather than stopping. A replay file
  * dropped on the debug visualizer's window opens the same way, except that the version is never
  * fixed for it.
+ *
+ * <p>A crawl's output ({@code .jsonl} or {@code .jsonl.gz}, see {@link ReplayArchive}) opens the
+ * same way, given to {@code --replay} or dropped: the viewer lists its replays and opens the first
+ * one that can be read, each on the data its record names ({@link #openEntry}).
  */
 public class DesktopLauncher {
 
@@ -66,6 +71,8 @@ public class DesktopLauncher {
     DataVersions versions = null;
     BattleSession first = null;
     ReplayFile replay = null;
+    ReplayArchive archive = null;
+    String fixedBy = null;
     if (aiPort <= 0) {
       DataSelection.Choice choice = DataSelection.choose(DataSelection.Settings.ofProcess(args));
       GameTables tables = loadTables(choice, System.out, System.err);
@@ -85,9 +92,16 @@ public class DesktopLauncher {
       if (replayFile.isPresent()) {
         // A replay lists the battle core's refusal of the tables among its reasons, so no first
         // Ladder battle is built for it.
-        replay =
-            openReplay(
-                replayFile.get(), versions, choice.explicitVersion(), System.out, System.err);
+        fixedBy = choice.explicitVersion();
+        if (ReplayArchive.isArchive(replayFile.get())) {
+          archive = openArchive(replayFile.get(), System.out, System.err);
+          replay =
+              archive == null
+                  ? null
+                  : openFirst(archive, versions, fixedBy, System.out, System.err);
+        } else {
+          replay = openReplay(replayFile.get(), versions, fixedBy, System.out, System.err);
+        }
         if (replay == null) {
           System.exit(NO_REPLAY);
           return;
@@ -123,9 +137,11 @@ public class DesktopLauncher {
     config.setForegroundFPS(60);
 
     CRForgeGame game =
-        aiPort > 0 ? new CRForgeGame(aiPort) : new CRForgeGame(versions, first, replay);
+        aiPort > 0
+            ? new CRForgeGame(aiPort)
+            : new CRForgeGame(versions, first, replay, archive, fixedBy);
     if (aiPort <= 0) {
-      // A replay file dropped on the window opens in the replay viewer.
+      // A replay file or a crawl's output dropped on the window opens in the replay viewer.
       config.setWindowListener(
           new Lwjgl3WindowAdapter() {
             @Override
@@ -271,6 +287,122 @@ public class DesktopLauncher {
           "Cannot read the replay at " + file.toAbsolutePath().normalize() + ": " + e.getMessage());
       return null;
     }
+    return openDocument(file, 0, document, versions, fixedBy, out, err);
+  }
+
+  /**
+   * Reads a crawl's output and prints how many of its records can be opened.
+   *
+   * @param file the file
+   * @param out where the description goes
+   * @param err where the failure goes
+   * @return its records, or null when the file cannot be read
+   */
+  static ReplayArchive openArchive(Path file, PrintStream out, PrintStream err) {
+    ReplayArchive archive;
+    try {
+      archive = ReplayArchive.read(file);
+    } catch (IOException | RuntimeException e) {
+      err.println(
+          "Cannot read the replays at "
+              + file.toAbsolutePath().normalize()
+              + ": "
+              + e.getMessage());
+      return null;
+    }
+    out.println(
+        "replays: "
+            + file.toAbsolutePath().normalize()
+            + ", "
+            + archive.entries().size()
+            + " records, "
+            + archive.readable()
+            + " readable");
+    return archive;
+  }
+
+  /**
+   * Opens the first record of a crawl's output that can be read, as {@link #openEntry} does.
+   *
+   * @return the replay, refused or playable, or null when no record can be read
+   */
+  static ReplayFile openFirst(
+      ReplayArchive archive,
+      DataVersions versions,
+      String fixedBy,
+      PrintStream out,
+      PrintStream err) {
+    for (ReplayArchive.Entry entry : archive.entries()) {
+      if (entry.problem() == null) {
+        return openEntry(archive, entry, versions, fixedBy, out, err);
+      }
+    }
+    err.println("No record of " + archive.file().toAbsolutePath().normalize() + " can be read");
+    return null;
+  }
+
+  /**
+   * Opens one replay of a crawl's output, as {@link #openReplay} opens a replay file: on the data
+   * its record names, with the capture block built from the record.
+   *
+   * @param archive the crawl's output
+   * @param entry the record
+   * @param versions the data versions, whose current tables may change
+   * @param fixedBy the rule that fixed the data version at launch, or null when it is not fixed
+   * @param out where the description goes
+   * @param err where the failure goes
+   * @return the replay, refused or playable, or null when the record cannot be read
+   */
+  static ReplayFile openEntry(
+      ReplayArchive archive,
+      ReplayArchive.Entry entry,
+      DataVersions versions,
+      String fixedBy,
+      PrintStream out,
+      PrintStream err) {
+    Path file = archive.file();
+    if (entry.problem() != null) {
+      err.println(
+          "Cannot read line "
+              + entry.line()
+              + " of "
+              + file.toAbsolutePath().normalize()
+              + ": "
+              + entry.problem());
+      return null;
+    }
+    JsonNode document;
+    try {
+      document = entry.document();
+    } catch (IOException | RuntimeException e) {
+      err.println(
+          "Cannot read line "
+              + entry.line()
+              + " of "
+              + file.toAbsolutePath().normalize()
+              + ": "
+              + e.getMessage());
+      return null;
+    }
+    return openDocument(file, entry.line(), document, versions, fixedBy, out, err);
+  }
+
+  /**
+   * Opens a replay document on the tables of the data it was recorded on, and prints its
+   * description (see {@link #openReplay}).
+   *
+   * @param file the file it came from
+   * @param line its line in a crawl's output, or 0 when the file is the replay
+   * @return the replay, refused or playable, or null when the mapping cannot read it at all
+   */
+  private static ReplayFile openDocument(
+      Path file,
+      int line,
+      JsonNode document,
+      DataVersions versions,
+      String fixedBy,
+      PrintStream out,
+      PrintStream err) {
     String tablesRefusal = null;
     Optional<ReplayCapture> capture = ReplayCapture.of(document);
     if (capture.isPresent()
@@ -302,14 +434,18 @@ public class DesktopLauncher {
     }
     ReplayFile replay;
     try {
-      replay = ReplayFile.parse(file, document, versions.current(), tablesRefusal);
+      replay = ReplayFile.parse(file, line, document, versions.current(), tablesRefusal);
     } catch (RuntimeException e) {
       err.println(
-          "Cannot read the replay at " + file.toAbsolutePath().normalize() + ": " + e.getMessage());
+          "Cannot read the replay at "
+              + file.toAbsolutePath().normalize()
+              + (line > 0 ? ", line " + line : "")
+              + ": "
+              + e.getMessage());
       return null;
     }
-    for (String line : replay.describe()) {
-      out.println(line);
+    for (String described : replay.describe()) {
+      out.println(described);
     }
     return replay;
   }

@@ -11,6 +11,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
@@ -22,11 +23,15 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.EntityView;
 
 /** Scene2D controls surrounding a separately projected arena; never steps or mutates a battle. */
 public final class BattleWorkspace implements Disposable {
+  /** The most height the list of a crawl's replays takes; a longer list scrolls. */
+  private static final float ARCHIVE_HEIGHT = 190;
+
   private final Stage stage = new Stage(new ScreenViewport());
   private final WorkspaceTheme theme = new WorkspaceTheme(stage);
   private final Skin skin = theme.skin;
@@ -76,6 +81,15 @@ public final class BattleWorkspace implements Disposable {
   private boolean revealFolder;
   private final TextButton folderButton;
   private List<String> metadata = List.of();
+  private final Table header = new Table();
+  private final Table archivePanel = new Table();
+  private final Label archiveTitle;
+  private final Label archiveStatus;
+  private final Label archiveColumns;
+  private final com.badlogic.gdx.scenes.scene2d.ui.List<String> archiveList;
+  private final ScrollPane archivePane;
+  private IntConsumer archivePick = index -> {};
+  private boolean archiveButton;
 
   private record Toggle(TextButton button, BooleanSupplier value) {}
 
@@ -104,7 +118,6 @@ public final class BattleWorkspace implements Disposable {
     root.setFillParent(true);
     root.pad(14);
     stage.addActor(root);
-    Table header = new Table();
     Label brand = new Label("CRFORGE  /  " + (replay ? "REPLAY" : "BATTLE LAB"), skin, "title");
     brand.setColor(ACCENT);
     header.add(brand).left().expandX();
@@ -169,6 +182,34 @@ public final class BattleWorkspace implements Disposable {
     dataPanel.add(dataActions).width(100).padLeft(10);
     dataPanel.setVisible(false);
     root.add(dataPanel).growX().height(0).row();
+
+    // A crawl's replays, listed once showArchive gives them; a click opens one.
+    archivePanel.background(skin.newDrawable("white", PANEL));
+    archivePanel.pad(10);
+    archivePanel.defaults().growX().left();
+    archiveTitle = new Label("", skin, "heading");
+    archiveTitle.setColor(ACCENT);
+    archivePanel.add(archiveTitle).padBottom(4).row();
+    archiveStatus = wrapped("");
+    archiveStatus.setColor(MUTED);
+    archivePanel.add(archiveStatus).padBottom(6).row();
+    archiveColumns = new Label("", skin, "mono");
+    archivePanel.add(archiveColumns).padBottom(2).row();
+    archiveList = new com.badlogic.gdx.scenes.scene2d.ui.List<>(skin, "mono");
+    archiveList.getSelection().setProgrammaticChangeEvents(false);
+    archiveList.addListener(
+        new ChangeListener() {
+          @Override
+          public void changed(ChangeEvent event, Actor actor) {
+            int index = archiveList.getSelectedIndex();
+            stage.setKeyboardFocus(null);
+            if (index >= 0) archivePick.accept(index);
+          }
+        });
+    archivePane = scroll(archiveList);
+    archivePanel.add(archivePane).height(ARCHIVE_HEIGHT);
+    archivePanel.setVisible(false);
+    root.add(archivePanel).growX().height(0).padTop(4).row();
 
     summary = label("");
     summary.setName("session-summary");
@@ -302,6 +343,57 @@ public final class BattleWorkspace implements Disposable {
     latestEvents.setText("Latest");
   }
 
+  /**
+   * Lists a crawl's replays above the arena, and opens the list. A click on a row hands its index
+   * to {@code pick}; the row stays marked only once {@link #selectArchiveRow} marks it.
+   *
+   * @param title the list's title
+   * @param columns the column titles, aligned with the rows
+   * @param rows one row a replay
+   * @param selected the row of the replay open, or -1
+   * @param pick what opens a row's replay
+   */
+  public void showArchive(
+      String title, String columns, List<String> rows, int selected, IntConsumer pick) {
+    archivePick = pick;
+    archiveTitle.setText(title);
+    archiveColumns.setText(columns);
+    archiveList.setItems(rows.toArray(String[]::new));
+    // A short list takes only its rows' height, a long one scrolls.
+    archivePanel
+        .getCell(archivePane)
+        .height(Math.min(ARCHIVE_HEIGHT, archiveList.getPrefHeight() + 2));
+    if (!archiveButton) {
+      archiveButton = true;
+      header.add(button("Replays [L]", this::toggleArchive)).height(32).padLeft(4);
+    }
+    archivePanel.setVisible(true);
+    selectArchiveRow(selected);
+    root.invalidateHierarchy();
+  }
+
+  /** Marks the row of the replay open, scrolled into view, without opening it again. */
+  public void selectArchiveRow(int index) {
+    archiveList.setSelectedIndex(index);
+    if (index < 0) return;
+    archivePane.layout();
+    float rowHeight = archiveList.getItemHeight();
+    archivePane.scrollTo(
+        0, archiveList.getHeight() - (index + 1) * rowHeight, archiveList.getWidth(), rowHeight);
+  }
+
+  /** The line under the list's title: what is open, or why a pick did not open. */
+  public void archiveStatus(String text) {
+    archiveStatus.setText(text);
+  }
+
+  /** Opens or closes the list of a crawl's replays, when there is one. */
+  public void toggleArchive() {
+    if (archiveList.getItems().isEmpty()) return;
+    archivePanel.setVisible(!archivePanel.isVisible());
+    root.invalidateHierarchy();
+  }
+
   private void toggleDataDetails() {
     dataPanel.setVisible(!dataPanel.isVisible());
     root.invalidateHierarchy();
@@ -384,6 +476,9 @@ public final class BattleWorkspace implements Disposable {
     sidebar.setVisible(view.isAnnotations());
     sidebarCell.width(view.isAnnotations() ? 294 : 0).padLeft(view.isAnnotations() ? 12 : 0);
     root.getCell(dataPanel).height(dataPanel.isVisible() ? dataPanel.getPrefHeight() : 0);
+    root.getCell(archivePanel)
+        .height(archivePanel.isVisible() ? archivePanel.getPrefHeight() : 0)
+        .padTop(archivePanel.isVisible() ? 4 : 0);
     root.validate();
     Vector2 origin = arena.localToStageCoordinates(new Vector2());
     bounds =
@@ -505,7 +600,12 @@ public final class BattleWorkspace implements Disposable {
       int selectedSlot,
       int endTick) {
     this.frame = frame;
-    refusalPane.setVisible(false);
+    if (refusalPane.isVisible()) {
+      // A replay opened after a refused one: what showRefused turned off comes back.
+      refusalPane.setVisible(false);
+      for (Toggle toggle : toggles) toggle.button().setDisabled(false);
+      if (replay) progress.getParent().setVisible(true);
+    }
     topHand.update(
         frame, view.getOrientation().sidesBottomFirst().get(1), selectedSide, selectedSlot);
     bottomHand.update(frame, view.getOrientation().bottomSide(), selectedSide, selectedSlot);
@@ -580,7 +680,10 @@ public final class BattleWorkspace implements Disposable {
     inspector.setText("No battle loaded.\n\nSee the replay refusal reasons beside this panel.");
     for (Toggle toggle : toggles) toggle.button().setDisabled(true);
     progress.getParent().setVisible(false);
-    notice.setText("Replay not played. Drop another replay JSON file to open it.");
+    notice.setText(
+        archiveList.getItems().isEmpty()
+            ? "Replay not played. Drop another replay JSON file to open it."
+            : "Replay not played. Pick another from the replays list [L], or drop another file.");
     lastEvents = String.join("\n", reasons);
     events.setText(lastEvents);
   }
