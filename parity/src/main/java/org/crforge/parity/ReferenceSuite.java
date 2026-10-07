@@ -162,8 +162,8 @@ public final class ReferenceSuite {
     List<Case> cases = new ArrayList<>();
     for (Path listing : listings) {
       JsonNode corpus = MAPPER.readTree(listing.toFile());
-      String corpusVersion = corpus.path("content_version").asText();
-      String corpusSha = corpus.path("content_sha").asText();
+      String corpusVersion = corpus.path(ContentFields.CONTENT_VERSION).asText();
+      String corpusSha = corpus.path(ContentFields.CONTENT_SHA).asText();
       if (version == null) {
         version = corpusVersion;
         contentSha = corpusSha;
@@ -396,7 +396,8 @@ public final class ReferenceSuite {
     Map<String, ObjectNode> sorted = new TreeMap<>();
     results.forEach(r -> sorted.put(r.key(), r.expectation()));
     StringBuilder text = new StringBuilder();
-    text.append("{\n \"content_version\": ").append(MAPPER.writeValueAsString(version));
+    text.append("{\n \"" + ContentFields.CONTENT_VERSION + "\": ")
+        .append(MAPPER.writeValueAsString(version));
     text.append(",\n \"cases\": {\n");
     int i = 0;
     for (Map.Entry<String, ObjectNode> entry : sorted.entrySet()) {
@@ -419,8 +420,8 @@ public final class ReferenceSuite {
   public static void writeScorecard(
       Path file, References references, String shard, List<CaseResult> results) throws IOException {
     ObjectNode card = JSON.objectNode();
-    card.put("content_version", references.version());
-    card.put("content_sha", references.contentSha());
+    card.put(ContentFields.CONTENT_VERSION, references.version());
+    card.put(ContentFields.CONTENT_SHA, references.contentSha());
     card.put("shard", shard);
     Map<String, Integer> counts = new TreeMap<>();
     results.forEach(r -> counts.merge(r.outcome(), 1, Integer::sum));

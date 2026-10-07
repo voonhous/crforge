@@ -122,8 +122,8 @@ class ReferenceSuiteTest {
         "changed", scenario, (String.join("\n", lines) + "\n").getBytes(StandardCharsets.UTF_8));
     ObjectNode corpus = MAPPER.createObjectNode();
     corpus.put("corpus", "knight");
-    corpus.put("content_version", tables.version());
-    corpus.put("content_sha", tables.contentSha());
+    corpus.put(ContentFields.CONTENT_VERSION, tables.version());
+    corpus.put(ContentFields.CONTENT_SHA, tables.contentSha());
     for (String name : List.of("same", "changed")) {
       corpus
           .withArray("cases")
@@ -161,8 +161,8 @@ class ReferenceSuiteTest {
     for (String name : List.of("generated", "replays")) {
       ObjectNode corpus = MAPPER.createObjectNode();
       corpus.put("corpus", name);
-      corpus.put("content_version", tables.version());
-      corpus.put("content_sha", tables.contentSha());
+      corpus.put(ContentFields.CONTENT_VERSION, tables.version());
+      corpus.put(ContentFields.CONTENT_SHA, tables.contentSha());
       if (name.equals("generated")) {
         corpus.put("scenario_shape", "generated");
       }

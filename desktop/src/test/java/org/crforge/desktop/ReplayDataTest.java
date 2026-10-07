@@ -18,6 +18,7 @@ import org.crforge.desktop.battle.TableCopies;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.replay.ReplayFile;
 import org.crforge.desktop.replay.ReplayPlayer;
+import org.crforge.parity.ReplayCapture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,8 +64,8 @@ class ReplayDataTest {
     ObjectNode document = fixture();
     ObjectNode capture = document.putObject("capture");
     capture.put("client_version", GameVersions.CLIENT_16_402_17);
-    capture.put("content_version", versions.current().version());
-    capture.put("content_sha", contentSha);
+    capture.put(ReplayCapture.CONTENT_VERSION, versions.current().version());
+    capture.put(ReplayCapture.CONTENT_SHA, contentSha);
     capture.put("captured_at", "2026-10-06T03:47:38Z");
     return write(document);
   }

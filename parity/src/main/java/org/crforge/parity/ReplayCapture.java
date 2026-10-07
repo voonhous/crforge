@@ -38,10 +38,10 @@ public record ReplayCapture(
   public static final String CLIENT_VERSION = "client_version";
 
   /** The block's field naming the data version. */
-  public static final String CONTENT_VERSION = "content_version";
+  public static final String CONTENT_VERSION = ContentFields.CONTENT_VERSION;
 
   /** The block's field naming the content sha. */
-  public static final String CONTENT_SHA = "content_sha";
+  public static final String CONTENT_SHA = ContentFields.CONTENT_SHA;
 
   /** The block's field naming the capture time. */
   public static final String CAPTURED_AT = "captured_at";

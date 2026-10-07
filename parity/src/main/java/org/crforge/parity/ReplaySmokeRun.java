@@ -237,13 +237,13 @@ public final class ReplaySmokeRun {
     GameTables tables = GameTables.load(tablesFolder);
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("tables", tablesFolder.toAbsolutePath().toString());
-    data.put("version", tables.version());
-    data.put("content_sha", tables.contentSha());
+    data.put(GameTables.VERSION_FIELD, tables.version());
+    data.put(GameTables.CONTENT_SHA_FIELD, tables.contentSha());
     data.put("files", fileDigests(tablesFolder));
     manifest.put("data", data);
     // The run is of the content the identity names, or it is of nothing.
-    if (!tables.version().equals(identity.path("content_version").asText())
-        || !tables.contentSha().equals(identity.path("content_sha").asText())) {
+    if (!tables.version().equals(identity.path(ContentFields.CONTENT_VERSION).asText())
+        || !tables.contentSha().equals(identity.path(ContentFields.CONTENT_SHA).asText())) {
       throw new IllegalStateException(
           "the game tables are of content "
               + tables.version()

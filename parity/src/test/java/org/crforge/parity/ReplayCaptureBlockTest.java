@@ -30,9 +30,9 @@ class ReplayCaptureBlockTest {
     ObjectNode capture = scenario.putObject("capture");
     capture.put("client_version", GameVersions.CLIENT_16_402_17);
     if (contentVersion != null) {
-      capture.put("content_version", contentVersion);
+      capture.put(ReplayCapture.CONTENT_VERSION, contentVersion);
     }
-    capture.put("content_sha", contentSha);
+    capture.put(ReplayCapture.CONTENT_SHA, contentSha);
     capture.put("captured_at", "2026-10-06T03:47:38Z");
     return scenario;
   }
@@ -112,7 +112,7 @@ class ReplayCaptureBlockTest {
                 "a capture block field that is not a string", "capture.captured_at=1775066287"));
 
     ObjectNode noSha = recordedOn(tables.version(), tables.contentSha());
-    ((ObjectNode) noSha.path("capture")).remove("content_sha");
+    ((ObjectNode) noSha.path("capture")).remove(ReplayCapture.CONTENT_SHA);
     assertThat(new ReplayScenario(tables).survey(noSha))
         .containsExactly(
             new ReplayScenario.Refusal(
@@ -154,7 +154,7 @@ class ReplayCaptureBlockTest {
         .isEqualTo(
             "client 16.402.17, data version 16.402.18 (content sha"
                 + " 8aa8015226b0062c7e16a793522de91e564ffdaf)");
-    ((ObjectNode) scenario.path("capture")).remove("content_version");
+    ((ObjectNode) scenario.path("capture")).remove(ReplayCapture.CONTENT_VERSION);
     assertThat(ReplayCapture.of(scenario).orElseThrow().recordedOn())
         .isEqualTo(
             "client 16.402.17, data version not named (content sha"
