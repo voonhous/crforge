@@ -21,7 +21,7 @@ class BattleExpressionEnvironmentTest {
   private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   @Test
-  @DisplayName("every one of the 50 names resolves, so every expression of the data compiles")
+  @DisplayName("every one of the 52 names resolves, so every expression of the data compiles")
   void everyNameResolves() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
@@ -397,6 +397,41 @@ class BattleExpressionEnvironmentTest {
         .isEqualTo(1);
     battle.step();
     assertThat(evaluate("has_crown_tower_in_range(2500)", knightSees)).as("removed").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "is_crown_tower answers 1 for a king and a princess tower and 0 for a unit; character_level"
+          + " is the context's level counted from 0")
+  void isCrownTowerAndCharacterLevel() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    Battle battle = match.getBattle();
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 10000);
+    battle.step();
+    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
+    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
+    BattleExpressionEnvironment knightSees =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+
+    // The data writes it bare and negated, with no parentheses.
+    assertThat(evaluate("is_crown_tower", new BattleExpressionEnvironment(king, match.getWorld())))
+        .isEqualTo(1);
+    assertThat(
+            evaluate("is_crown_tower", new BattleExpressionEnvironment(princess, match.getWorld())))
+        .isEqualTo(1);
+    assertThat(evaluate("is_crown_tower", knightSees)).isZero();
+    assertThat(evaluate("!is_crown_tower", knightSees)).isEqualTo(1);
+
+    // The steps above the rarity's first level plus the rarity's relative level: a Common card
+    // counts from 0, so its level counted from 1, less one.
+    int packed = knight.getPackedLevel();
+    assertThat(evaluate("character_level", knightSees))
+        .isEqualTo((byte) packed + ((packed >> 8) & 0xff));
+    knight.changeLevel(packed - 1);
+    assertThat(evaluate("character_level", knightSees))
+        .as("one step lower")
+        .isEqualTo((byte) packed + ((packed >> 8) & 0xff) - 1);
   }
 
   /** A Knight of side 0 that has taken a still unit of side 1 as its reference. */

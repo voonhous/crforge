@@ -11,13 +11,15 @@ class BattleFunctionsTest {
 
   @Test
   @DisplayName(
-      "50 functions with the ids 0 to 49, each once: the 47 of 14.593.1 and a newer version's three")
-  void fiftyIds() {
-    assertThat(BattleFunctions.ALL).hasSize(50);
+      "52 functions with the ids 0 to 51, each once: the 47 of 14.593.1 and a newer version's five")
+  void fiftyTwoIds() {
+    assertThat(BattleFunctions.ALL).hasSize(52);
     assertThat(BattleFunctions.byId(47).name()).isEqualTo("ability_charges_left");
     assertThat(BattleFunctions.byId(48).name()).isEqualTo("is_valid_position");
     assertThat(BattleFunctions.byId(49).name()).isEqualTo("is_dodging_damage");
-    for (int id = 0; id < 50; id++) {
+    assertThat(BattleFunctions.byId(50).name()).isEqualTo("is_crown_tower");
+    assertThat(BattleFunctions.byId(51).name()).isEqualTo("character_level");
+    for (int id = 0; id < 52; id++) {
       assertThat(BattleFunctions.byId(id).id()).isEqualTo(id);
     }
   }

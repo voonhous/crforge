@@ -124,8 +124,8 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Clone row kept from them, a rider's own refusal and the parent's removal leaving"
             + " the riders' instances. A buff applied to a rider other than through its parent is"
             + " refused. Refused by"
-            + " the row: projectiles, chains, morphs, an action other than a start or"
-            + " remove action that names its row, tags other than the one"
+            + " the row: projectiles, chains, morphs, an action other than a start, remove or"
+            + " stacked action that names its row, tags other than the one"
             + " that keeps enemies from pushing the carrier, switching team,"
             + " shields, hit point multipliers, and an action on a reduction. The"
             + " damage reduction, the largest at or above 0 and the smallest at or below 0 under"
@@ -335,6 +335,9 @@ public final class BuffComponent implements BattleComponent {
             || instance.getPackedLevel() != levelBefore) {
           world.buffRefreshed(entity, instance, before, source);
         }
+        // Every refresh then schedules the row's stacked action, whether it changed the instance
+        // or not, as a listing schedules the start action.
+        hook(instance, instance.getBuff().onStackedAction(), false);
         create = false;
       }
     }
@@ -427,12 +430,14 @@ public final class BuffComponent implements BattleComponent {
     // and whether a copy runs a buff's start action is not established.
     for (BuffInstance instance : original.items) {
       if (instance.getBuff().onStartAction() != null
-          || instance.getBuff().onRemoveAction() != null) {
+          || instance.getBuff().onRemoveAction() != null
+          || instance.getBuff().onStackedAction() != null) {
         throw new UnsupportedOperationException(
             original.entity.name()
                 + " is cloned carrying "
                 + instance.getBuff().name()
-                + ", which runs an action as it is listed or removed, not modelled");
+                + ", which runs an action as it is listed or removed, or as it is refreshed, not"
+                + " modelled");
       }
       if (instance.getBuff().overrideChargeRange() != 0) {
         throw new UnsupportedOperationException(
@@ -602,12 +607,13 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
-   * A buff's start action, as a new instance is listed, or its remove action, as one is removed:
-   * scheduled on the carrier's own holder with the carrier as its cause and the row's own delay,
-   * starting at once only inside that holder's own pending pass. A refresh lists nothing and a
-   * death removes nothing, so neither runs one.
+   * A buff's start action, as a new instance is listed, its remove action, as one is removed, or
+   * its stacked action, as one is refreshed: scheduled on the carrier's own holder with the carrier
+   * as its cause and the row's own delay, starting at once only inside that holder's own pending
+   * pass. A refresh runs neither the start nor the remove action, and a death removes nothing, so
+   * it runs none.
    *
-   * @param instance the instance listed or removed
+   * @param instance the instance listed, removed or refreshed
    * @param action the row, or null for none
    * @param start true for the start action
    */

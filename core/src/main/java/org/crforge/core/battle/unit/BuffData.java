@@ -79,6 +79,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     cause; a refresh schedules nothing; null for none
  * @param onRemoveAction the action every removal of an instance but a death's schedules on its
  *     carrier, the carrier its cause; null for none
+ * @param onStackedAction the action every refresh of a listed instance schedules on its carrier,
+ *     the carrier its cause, after the refresh, whether or not the refresh changed anything (a
+ *     newer data version); null for none
  * @param spawnObject the character an instance's spawner makes in front of its carrier, or null for
  *     none
  * @param spawnStartTimeMs the spawner's timer as an instance is listed, in milliseconds
@@ -141,6 +144,7 @@ public record BuffData(
     boolean removeOnAttack,
     String onStartAction,
     String onRemoveAction,
+    String onStackedAction,
     String spawnObject,
     int spawnStartTimeMs,
     int spawnIntervalMs,

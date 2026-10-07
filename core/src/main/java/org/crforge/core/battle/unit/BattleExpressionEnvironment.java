@@ -63,7 +63,12 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " a dash immunity or with that immunity still counting, 0 for any other object;"
             + " has_crown_tower_in_range on a character as the other side's princess towers still"
             + " in the battle, then its king, any within the argument of the tower's edge and the"
-            + " context's own, read alike in the newer build;"
+            + " context's own, read alike in the newer build; is_crown_tower (a newer data"
+            + " version) as the context's own crown-tower answer, its hits' one: the king and"
+            + " the princess towers, read from the newer build's function; character_level (a"
+            + " newer data version) as the context's level counted from 0: the signed steps"
+            + " above its rarity's first level plus the rarity's relative level, read from the"
+            + " newer build's function;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -114,6 +119,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int IS_DODGING_DAMAGE = BattleFunctions.id("is_dodging_damage");
   private static final int HAS_CROWN_TOWER_IN_RANGE =
       BattleFunctions.id("has_crown_tower_in_range");
+  private static final int IS_CROWN_TOWER = BattleFunctions.id("is_crown_tower");
+  private static final int CHARACTER_LEVEL = BattleFunctions.id("character_level");
+
+  /** Bits of a packed level that hold the steps above the rarity's first level. */
+  private static final int LEVEL_STEPS_MASK = 0xff;
 
   /** What ability_charges_left answers for an object without counted charges to read. */
   private static final int NO_CHARGES = -1;
@@ -399,6 +409,17 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == HAS_CROWN_TOWER_IN_RANGE) {
       return hasCrownTowerInRange(arguments[0]);
+    }
+    if (id == IS_CROWN_TOWER) {
+      // The context's own crown-tower answer, the one its hits are dealt by: the king tower and the
+      // princess towers (a row that is the summoner or a summoner tower), no other character.
+      return context.getTargetView().isCrownTowerTarget() ? 1 : 0;
+    }
+    if (id == CHARACTER_LEVEL) {
+      // The context's packed level as a level counted from 0: the steps above its rarity's first
+      // level, read as a signed byte, plus the rarity's relative level in the byte above.
+      int packed = context.packedLevel();
+      return (byte) packed + ((packed >> 8) & LEVEL_STEPS_MASK);
     }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.

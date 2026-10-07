@@ -2041,15 +2041,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Takes a new level, as a level-changing action gives it. Nothing happens when the level it
    * stands for is the one the entity has. Otherwise the level is re-based on the entity's rarity,
    * its damage follows from the next hit on, and its hit points take the change: the maximum and
-   * both team pools are the new level's, and on a rise the hit points keep their share of the old
-   * maximum, in hundred-thousandths and truncated, but are never lowered; on a fall they are kept
-   * as they stand, even above the new maximum. A projectile already in flight keeps the level it
-   * was launched at. Nothing else of the entity changes.
+   * both team pools are the new level's, and the hit points keep their share of the old maximum, in
+   * hundred-thousandths and truncated; on a rise they are never lowered, and on a fall they are
+   * lowered to their share but never below 1. A projectile already in flight keeps the level it was
+   * launched at. Nothing else of the entity changes.
+   *
+   * <p>A fall is reached only by a negative adjustment, which only a newer data version writes; the
+   * build of the first data version kept the hit points and the shield as they stood on a fall, a
+   * difference no row of that version can reach.
    *
    * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
-   * The shield's maximum follows the level too, and a shield that is up keeps its share on a rise
-   * as the hit points do; a broken one stays at 0. The growth percentage the share is taken at is
-   * the usual 100, as no unit that grows is modelled.
+   * The shield's maximum follows the level too, and a shield that is up, under an old maximum of at
+   * least 1, keeps its share as the hit points do, never lowered on a rise and never below 1 on a
+   * fall; a broken one stays at 0. The growth percentage the share is taken at is the usual 100, as
+   * no unit that grows is modelled.
    *
    * @param packed the new level, packed
    */
@@ -2085,21 +2090,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     hitPoints.setMaximum(maximum);
     hitPoints.setTeamPool(0, maximum);
     hitPoints.setTeamPool(1, maximum);
-    if (delta >= 1) {
-      // Both steps are 32-bit and truncate, as the game's own arithmetic does.
-      int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
-      int rescaled = maximum * share / 100_000;
-      hitPoints.setHitPoints(Math.max(hitPoints.getHitPoints(), rescaled));
-    }
-    // The shield's maximum follows the level; a shield that is up keeps its share on a rise, and a
-    // broken one stays broken.
+    // The share is kept either way: on a rise the hit points are never lowered, on a fall they are
+    // never taken below 1. Both steps are 32-bit and truncate, as the game's own arithmetic does.
+    int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
+    int rescaled = maximum * share / 100_000;
+    hitPoints.setHitPoints(Math.max(delta >= 1 ? hitPoints.getHitPoints() : 1, rescaled));
+    // The shield's maximum follows the level; a shield that is up keeps its share by the same rule,
+    // and a broken one stays broken.
     int oldShieldMaximum = hitPoints.getShieldMaximum();
     int shieldMaximum = shieldAt(data, packedLevel);
     hitPoints.setShieldMaximum(shieldMaximum);
-    if (delta >= 1 && hitPoints.getShield() >= 1 && oldShieldMaximum >= 1) {
-      int share = hitPoints.getShield() * 100_000 / oldShieldMaximum;
-      int rescaled = shieldMaximum * share / 100_000;
-      hitPoints.setShield(Math.max(hitPoints.getShield(), rescaled));
+    if (hitPoints.getShield() >= 1 && oldShieldMaximum >= 1) {
+      int shieldShare = hitPoints.getShield() * 100_000 / oldShieldMaximum;
+      int shieldRescaled = shieldMaximum * shieldShare / 100_000;
+      hitPoints.setShield(Math.max(delta >= 1 ? hitPoints.getShield() : 1, shieldRescaled));
     }
     refreshHitPoints();
   }
