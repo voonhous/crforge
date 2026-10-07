@@ -2,12 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -50,30 +46,6 @@ class BattlePushbackEndRouteTest {
 
   @TempDir Path folder;
 
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
-
   /** The towers at the first level, fighting; the Monk and the Giant played. */
   private static Standard1v1Battle scene(GameTables tables) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
@@ -100,7 +72,7 @@ class BattlePushbackEndRouteTest {
       "on data version 16.402.18 a pushback's end drops the Giant's route, and its first step"
           + " follows a fresh route from where the push left it")
   void theEndOfThePushbackDropsTheRoute() throws IOException {
-    assertTheRouteIsDropped(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
+    assertTheRouteIsDropped(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18)));
   }
 
   @Test
@@ -108,7 +80,7 @@ class BattlePushbackEndRouteTest {
       "on data version 16.426.22, which the same game client runs, a pushback's end drops the"
           + " Giant's route too")
   void theEndOfThePushbackDropsTheRouteOnTheNewerDataOfTheSameClient() throws IOException {
-    assertTheRouteIsDropped(scene(relabelled(folder, GameVersions.DATA_16_426_22)));
+    assertTheRouteIsDropped(scene(GameData.relabelled(folder, GameVersions.DATA_16_426_22)));
   }
 
   /** The Giant's route dropped as its flight ends, and its next step on a fresh route. */

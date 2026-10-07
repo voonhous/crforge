@@ -2,14 +2,10 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -51,30 +47,6 @@ class BattleProjectileHitDrainTest {
   private static final int TICKS = 200;
 
   @TempDir Path folder;
-
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
 
   /**
    * What the scene records: the tick the dash landed on and every arrow that reached the Bandit.
@@ -141,7 +113,7 @@ class BattleProjectileHitDrainTest {
       "on data version 16.402.18 an arrow one step after the Bandit's dash lands is dealt at the"
           + " damage drain, once the Bandit's visit has counted its immunity down to 0")
   void theArrowLandsAtTheDrain() throws IOException {
-    Record record = run(relabelled(folder, GameVersions.DATA_16_402_18));
+    Record record = run(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
     assertThat(record.arrows).hasSize(2);
     assertThat(record.arrows.get(0)).as("an arrow during the dash").endsWith(" false 100");
     assertThat(record.arrows.get(1)).isEqualTo((record.landing + 1) + " true 0");

@@ -2,14 +2,11 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
@@ -60,16 +57,7 @@ class BattleDeathActionSlotTest {
         folder,
         "characters",
         rows -> GameData.columns(rows, "Knight").put("OnDeathAction", DEATH_ACTION));
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(folder)) {
-      for (Path file : files.toList()) {
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(file.toFile(), document);
-        }
-      }
-    }
+    GameData.relabel(folder, version);
     return GameTables.load(folder);
   }
 
