@@ -35,6 +35,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  * state 6, has no hit points, at most the scaled minimum maximum or current hit points, or below
  * the minimum share of its maximum, is skipped. Shields count in both. There is no range. The tower
  * is one that is not attacking before one that is, then the nearer, the first of equals first.
+ *
+ * <p>The towers are the side's list of princess-slot towers, read every step. A destroyed tower
+ * leaves that list in the cleanup that takes it out of the battle: from the next step it adds
+ * nothing and is never chosen, the destroyed contribution counts for it, and with no tower left the
+ * run ends when the row says so.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -42,11 +47,11 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the start delay, the contribution per tower and its scaling, the"
             + " full bar's attempt, the target and the tower choices, the gate of an attacking"
             + " tower, the throw's countdown and its start toward the target, the bar's drop and"
-            + " the target that leaves. Held: a Giant cooked for while walking, a Giant chosen"
-            + " over a Musketeer and the second pancake that follows, and a damaged Giant. Not"
-            + " modelled: the bar's share that switches the towers' animation, which only shows"
-            + " something. Refused: a destroyed or removed tower, whose contribution is not"
-            + " established, and the row columns no shipped row sets.")
+            + " the target that leaves; a destroyed tower leaves the side's list at its removal."
+            + " Held: a Giant cooked for while walking, a Giant chosen over a Musketeer and the"
+            + " second pancake that follows, a damaged Giant, and the slower cooking after a"
+            + " tower falls. Not modelled: the bar's share that switches the towers' animation,"
+            + " which only shows something. Refused: the row columns no shipped row sets.")
 public final class ChefCooking extends RowAction {
 
   /** The step every countdown loses. */

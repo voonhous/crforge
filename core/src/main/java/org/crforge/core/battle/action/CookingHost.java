@@ -11,8 +11,8 @@ import org.crforge.core.battle.projectile.ProjectileData;
 public interface CookingHost {
 
   /**
-   * The king's side's princess-slot towers, in the order the holder lists them. A tower that is
-   * destroyed or gone is refused, since what it adds to the cooking is not established.
+   * The king's side's princess-slot towers, in the order the holder lists them. A destroyed tower
+   * is listed until the cleanup that removes it from the battle, and not after.
    */
   List<Integer> towers();
 
