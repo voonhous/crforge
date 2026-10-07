@@ -4942,6 +4942,11 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
+      public boolean firstSearchWaitsForHop() {
+        return world.chainFirstSearchWaitsForHop();
+      }
+
+      @Override
       public boolean targetingOn() {
         return isActive(TARGETING_SLOT);
       }
