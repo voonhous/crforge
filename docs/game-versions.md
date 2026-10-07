@@ -37,26 +37,40 @@ The game updates clients in two ways:
 
 So at any time the game accepts a range of client versions, from a minimum to the newest. Players on different versions of that range meet in the same battle, and a battle has to play out the same for both of them, so the versions of one range share the battle rules. A change to the rules comes with a required update, which raises the minimum and starts a new range. This is inferred from how the game handles updates, not from comparing the clients' code.
 
-What follows for the simulator:
+It follows for the data too. The game only serves a data version to clients that can play it, so every data version served while a range is live runs on that range's rules: the data versions compatible with a client are the ones served to any client of its range, from the range's start until a required update ends it.
 
-- The battle rules are those of the client range, and the numbers are those of the data (the content sha). One studied client binary of a range stands for every version in it.
-- A required update is where new rules can appear, and where a client binary of the new range has to be studied.
-- `GameVersions.CLIENT_16_402_17` and `CLIENT_16_402_17_DATA` are named after the binary studied; they stand for the range below.
+## Reference client: 16.402.17
 
-### Clients 16.402.12 to current
+The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_402_17`). What it is compatible with:
+
+### Client range: 16.402.12 to current
 
 | Client version | Seen as | First seen |
 | --- | --- | --- |
 | 16.402.12 | a studied client binary | 2026-09-25 |
 | 16.402.14 | an installed client on a test phone, offered the optional update on 2026-10-07 | 2026-10-07 |
-| 16.402.17 | a studied client binary; still the App Store's version in the US on 2026-10-07 | 2026-10-04 |
+| 16.402.17 | the reference client | 2026-10-04 |
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
-On 2026-10-07 a 16.402.14 client was offered the newer version as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays.
+On 2026-10-07 a 16.402.14 client was offered the newer version as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays. The App Store in the US still showed 16.402.17 that day. No required update has been seen in this range, so it is still open.
+
+### Compatible data versions
+
+| Data version | Content sha | Compatible | Why | Game tables |
+| --- | --- | --- | --- | --- |
+| 16.402.2 | f26e4f9bf73e48ad6a92648279959030bfa2fd6a | not applicable | shipped with 16.402.12 and replaced by the current data at the first login; no battle on it was seen | no |
+| 16.402.15 | 67d4a2de5d141b69d86536850082a9ba5b937459 | yes | served to 16.402.12, in the range | no |
+| 16.402.18 | 8aa8015226b0062c7e16a793522de91e564ffdaf | yes | served to 16.402.17 | yes |
+| 16.402.19 | 7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec | yes | served to 16.402.14 and 16.402.17 | yes |
+| later | | yes, until a required update ends the range | | |
+| 14.593.x | | no | an earlier client range | 14.593.1 only, for the unit tests |
+
+`GameVersions.CLIENT_16_402_17_DATA` lists the compatible data versions the simulator has game tables for (16.402.18 and 16.402.19). 16.402.15 is compatible but has no game tables yet.
 
 ## Keeping the table
 
 - Add a row the first time a client version or a data version is seen, before any game tables or reference battles of it are made.
 - Write "not known" for a value that was not recorded, never a guess.
 - Take the data version from the client's copy of the fingerprint, never from the asset CDN's; put the CDN's label in its own column.
-- Add a client version to its range's table when it is first seen, and record a required update as the start of a new range, with its own table.
+- Add a client version to the reference client's range when it is first seen, and a data version to its compatible data versions when it is first served.
+- A required update closes the reference client's range: record it, and start a new reference client section for the new range when the simulator moves to it.
