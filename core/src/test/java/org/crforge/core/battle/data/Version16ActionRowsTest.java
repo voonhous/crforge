@@ -6,6 +6,7 @@ import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.action.AliveTimer;
+import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.junit.jupiter.api.DisplayName;
@@ -60,5 +61,18 @@ class Version16ActionRowsTest {
     ReadyChampionAbility died = (ReadyChampionAbility) mark.columns().onTargetDied();
     assertThat(died.name()).isEqualTo("MegaMinion_hero_reset_ability");
     assertThat(died.isForceCooldown()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "the hero Elite Archer's triple shot is an ActionCreateParallelProjectiles in 16.402.18: it"
+          + " is built with its projectile row, its count and its spread")
+  void theTripleShotIsBuiltUnderItsNewClass() {
+    CreateParallelProjectiles shot =
+        (CreateParallelProjectiles)
+            rows().build("EliteArcherHero_Triple_Shot_Action", INERT_BINDING);
+    assertThat(shot.getProjectile()).isEqualTo("EliteArcherHero_Ability_Triple_Shot_Projectile");
+    assertThat(shot.getCount()).isEqualTo(2);
+    assertThat(shot.getDistance()).isEqualTo(1500);
   }
 }
