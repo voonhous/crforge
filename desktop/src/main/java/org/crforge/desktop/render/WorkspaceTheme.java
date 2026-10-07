@@ -76,6 +76,11 @@ final class WorkspaceTheme implements Disposable {
     select.listStyle = list;
     select.scrollStyle = scroll;
     skin.add("default", select);
+    // A list of aligned columns, such as a crawl's replays, in the monospaced font.
+    com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle mono =
+        new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle(list);
+    mono.font = skin.getFont("mono-font");
+    skin.add("mono", mono);
     ProgressBar.ProgressBarStyle bar = new ProgressBar.ProgressBarStyle();
     bar.background = skin.newDrawable("white", PANEL);
     bar.background.setMinHeight(5);
