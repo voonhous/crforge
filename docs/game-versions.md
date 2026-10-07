@@ -48,10 +48,11 @@ What follows for the simulator:
 | Patch | Seen as | First seen |
 | --- | --- | --- |
 | 16.402.12 | a studied client binary | 2026-09-25 |
+| 16.402.14 | an installed client on a test phone, offered the optional update on 2026-10-07 | 2026-10-07 |
 | 16.402.17 | a studied client binary; still the App Store's version in the US on 2026-10-07 | 2026-10-04 |
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
-On 2026-10-07 a 16.402.17 client was offered the newer patch as an optional update; declining it, the client kept logging in, received data 16.402.19 and played battles and TV replays. No required update has been seen in this line.
+On 2026-10-07 a 16.402.14 client was offered the newer patch as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays. No required update has been seen in this line.
 
 ## Keeping the table
 
