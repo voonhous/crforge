@@ -40,6 +40,7 @@ import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.RunOnResolvedObjects;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -4344,9 +4345,23 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The ready action on the character: with ForceCooldown, the champion slot of its side's king
+   * that follows it, a clone followed by none, restarts its cooldown at the full cooldown; nothing
+   * without such a slot.
+   */
+  @Override
+  public void readyChampionAbility(ReadyChampionAbility action) {
+    ChampionController slot = followingSlot();
+    if (slot != null && action.isForceCooldown()) {
+      slot.forceCooldown();
+    }
+  }
+
+  /**
    * What a mark's run, or its hand-over's, on the character asks of the battle: the objects its
    * resolver's filter lets through, the character's position, the cooldown of the champion slot
-   * that follows the character, and its state.
+   * that follows the character, its state, whether its ability is pending and the steps left before
+   * its ability's effect fires.
    */
   @Override
   public SetIndicatorOnTarget.Host markHost(BattleAction action) {
@@ -4379,6 +4394,16 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public int state() {
         return getView().getState();
+      }
+
+      @Override
+      public boolean abilityPending() {
+        return CharacterEntity.this.abilityPending();
+      }
+
+      @Override
+      public int abilityWarningCountdown() {
+        return CharacterEntity.this.abilityWarningCountdown();
       }
     };
   }

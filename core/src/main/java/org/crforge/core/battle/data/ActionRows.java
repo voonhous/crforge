@@ -72,6 +72,7 @@ import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.OverrideProjectileSpeed;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RollingProjectile;
@@ -361,6 +362,12 @@ public final class ActionRows {
                   "Persistent",
                   "ApplyImmediate",
                   "EnableChampionHighlight")),
+          // The ready action: its switch that forces the cooldown, and the two switches that ready
+          // the ability and give a charge back, refused when set on. The flag it stores on the
+          // character travels with the character's state and is read by nothing.
+          Map.entry(
+              "ActionReadyChampionAbility",
+              Set.of("ReadyAbility", "ForceCooldown", "RecoverCharge", "AbilityCanResetAfter")),
           // The tether's columns; the tags it sets on both ends are read by no battle code, and
           // the effects only show something.
           Map.entry(
@@ -672,8 +679,13 @@ public final class ActionRows {
                   "StopAeoIfParentHasCombatDisabled",
                   "StayAliveAfterParentDiesDuration")),
           Map.entry("ActionFilterByEnemy", Set.of("IsEnemyAction", "IsSameTeamAction")),
+          // The alive timer, by the class name of either data version: 14.593.1's ends in Data,
+          // 16.402.18's does not; the class is the same.
           Map.entry(
               "ActionAeoRunActionAtAliveTimerData",
+              Set.of("AliveTimeList", "Actions", "AllowRepeatAction")),
+          Map.entry(
+              "ActionAeoRunActionAtAliveTimer",
               Set.of("AliveTimeList", "Actions", "AllowRepeatAction")),
           // The effects it lists, and which one its count picks, reach its client view alone.
           Map.entry(
@@ -1449,6 +1461,18 @@ public final class ActionRows {
                   bool(f, "ResetCharges"),
                   bool(f, "Persistent", true));
             }
+            case "ActionReadyChampionAbility" -> {
+              // ReadyAbility is on unless the row turns it off.
+              if (bool(f, "ReadyAbility", true)) {
+                throw new UnsupportedOperationException(
+                    name + " sets ReadyAbility, which is not modelled");
+              }
+              if (bool(f, "RecoverCharge")) {
+                throw new UnsupportedOperationException(
+                    name + " sets RecoverCharge, which is not modelled");
+              }
+              yield new ReadyChampionAbility(shared, bool(f, "ForceCooldown"));
+            }
             case "ActionRunActionIfUnitGroupContains" ->
                 new RunIfUnitGroupContains(
                     shared,
@@ -1586,7 +1610,8 @@ public final class ActionRows {
               yield new FilterByEnemy(
                   shared, action(f.get("IsSameTeamAction")), action(f.get("IsEnemyAction")));
             }
-            case "ActionAeoRunActionAtAliveTimerData" -> aliveTimer(name, shared, f);
+            case "ActionAeoRunActionAtAliveTimerData", "ActionAeoRunActionAtAliveTimer" ->
+                aliveTimer(name, shared, f);
             case "ActionChangeGameObjectData" -> {
               // A projectile row's swap: the new row must read as a projectile the battle models,
               // and nothing else may be set.
@@ -3332,11 +3357,9 @@ public final class ActionRows {
     }
 
     /**
-     * A mark's columns: its resolver's filter and strategies, the names of its two actions, its two
-     * tag masks, its pause and its search delay. Refused: a row without a resolver, a resolver
-     * whose shape is not a Global one or that has no filter, and a row that waits for its next
-     * action. The pick's action is built; the died action is not, as its leave notice is refused as
-     * it is sent.
+     * A mark's columns: its resolver's filter and strategies, its two actions, its two tag masks,
+     * its pause and its search delay. Refused: a row without a resolver, a resolver whose shape is
+     * not a Global one or that has no filter, and a row that waits for its next action.
      */
     private SetIndicatorOnTarget setIndicatorOnTarget(String name, ActionRow shared, JsonNode f) {
       refuseShared(name, f, "NextActionWait");
@@ -3380,7 +3403,7 @@ public final class ActionRows {
               .filter(records.filter(filter))
               .strategies(strategies)
               .onPickNewTarget(action(f.get("OnPickNewTargetAction")))
-              .onTargetDied(rowName(f.get("OnTargetDiedAction")))
+              .onTargetDied(action(f.get("OnTargetDiedAction")))
               .tagsWithoutTarget(tagMask(text(f, "GameTagsToSetWhileHasNotTarget", "")))
               .tagsWithTarget(tagMask(text(f, "GameTagsToSetWhileHasTarget", "")))
               .pauseIfInCooldown(bool(f, "PauseIfInCooldown"))
