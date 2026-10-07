@@ -3,6 +3,7 @@ package org.crforge.parity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.unit.Standard1v1Battle;

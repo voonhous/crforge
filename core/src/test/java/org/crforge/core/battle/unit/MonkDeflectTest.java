@@ -1,17 +1,13 @@
-package org.crforge.parity;
+package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.crforge.core.battle.unit.AreaEffectEntity;
-import org.crforge.core.battle.unit.CharacterEntity;
-import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.core.battle.unit.WorldEntity;
-import org.crforge.core.battle.unit.WorldObserver;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

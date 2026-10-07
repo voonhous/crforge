@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
