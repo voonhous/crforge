@@ -26,9 +26,12 @@ import org.crforge.core.pathfinding.move.MovementState;
         "Settled line for line: the start's tags and counter, each update's tags, the arc's"
             + " height in 32-bit arithmetic with its two divisions by 100, the landing's route"
             + " reset and the finish; held by mega_knight_ev1_uppercut. The landing action, with"
-            + " the cause passed on, held by ability_hero_giant_slap. Refused: a unit jumping,"
-            + " dashing, charging or following a removed building, a clone, a rider or carrier,"
-            + " and one with an ability.")
+            + " the cause passed on, held by ability_hero_giant_slap. A knock on a hero whose"
+            + " ability is idle held by random_battle16_s0019 and tv_replay_015; the ability"
+            + " postponed while the run is listed, a request in the air cast once it has left,"
+            + " held by a recorded witness outside the locked references. Refused: a unit"
+            + " jumping, dashing, charging or following a removed building, a clone, a rider or"
+            + " carrier, and one casting its ability.")
 final class KnockbackRun extends ActionInstance {
 
   /** Milliseconds one update takes off the counter. */

@@ -2375,15 +2375,24 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Knocks the character into the air. A clone, a rider, a carrier and a unit with an ability,
-   * whose postponing no run holds, are refused.
+   * Knocks the character into the air. A clone, a rider and a carrier are refused.
+   *
+   * <p>A unit with an ability is knocked as any other: the run postpones the ability while it is
+   * listed, which the ability gate alone reads, so a request in the air is left pending and cast
+   * once the run has left. A unit knocked while it casts its ability or holds its follow-up state
+   * is refused: the postponing does not reach a cast already begun, and no reference holds a cast
+   * going on through a knock.
    */
   @Override
   public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
     refuseRun(action.name());
-    if (getData().ability() != null) {
+    int state = getView().getState();
+    if (state == GridEntityState.CASTING || state == GridEntityState.ABILITY_FOLLOW_UP) {
       throw new UnsupportedOperationException(
-          action.name() + " knocks " + name() + ", whose ability it postpones, not modelled");
+          action.name()
+              + " knocks "
+              + name()
+              + " while it casts its ability, which no reference holds");
     }
     return new KnockbackRun(action, this, phase, instigator(instigator));
   }
