@@ -61,7 +61,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " evo_electrodragon_chain_vs_musketeer_giant, where a chain hops ten times between"
             + " a Musketeer, a Giant and a princess tower, the deprioritized search bringing it"
             + " back, and ends by the owner's next hit (whose end there changes nothing a"
-            + " reference shows: the search on the next step would find nobody). Not held by a"
+            + " reference shows: the search on the next step would find nobody). On 16.402.18 the"
+            + " run starts with the hop timer stopped, so the second hop waits for the first to"
+            + " land: held by evo_electrodragon_chain_vs_musketeer_giant and two random battles"
+            + " (a hop after a first hop that killed its target, and one after a first hop that"
+            + " flew two steps). Not held by a"
             + " reference: ChainDelays, MaxChainLength, MaxTime, a stun's end and a search"
             + " before any hop."
             + " Refused: a row without a projectile or a filter.")
@@ -175,6 +179,9 @@ public final class ChainProjectileAttack extends RowAction {
       this.x = host.ownerX();
       this.y = host.ownerY();
       this.z = host.ownerZ();
+      // A stopped timer makes the first search wait, as every later one does, until the first
+      // hop's projectile has gone; a timer at 0 runs it on the step after the first hop.
+      this.hopTimerMs = host.firstSearchWaitsForHop() ? -1 : 0;
     }
 
     /** The ids of every hop's projectile so far, in order. */

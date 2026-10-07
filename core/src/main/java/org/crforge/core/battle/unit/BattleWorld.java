@@ -289,6 +289,22 @@ public class BattleWorld implements HolderPasses {
   private boolean uppercutResetsAvoidance;
 
   /**
+   * The data versions whose game starts a chain projectile attack's run with its hop timer stopped,
+   * so the run's first next-target search waits until the first hop's projectile has gone, as every
+   * later one does, and the second hop is launched on the step the run finds it gone. The rule is
+   * the game build's, not a table value: the game of data version 16.402.18 builds the run with the
+   * timer at -1; the game of 14.593.1 builds it at 0, so its first search runs on the step after
+   * the first hop, while that hop's projectile still flies.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> CHAIN_FIRST_SEARCH_WAITS_FOR_HOP =
+      GameVersions.CLIENT_16_402_17_DATA;
+
+  /** True when the battle's data version's chain run waits for its first hop to land. */
+  private boolean chainFirstSearchWaitsForHop;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -682,6 +698,15 @@ public class BattleWorld implements HolderPasses {
     this.guardRunMakesArea = GUARD_RUN_MAKES_AREA.contains(tables.version());
     this.deathActionAtDeathSlot = DEATH_ACTION_AT_DEATH_SLOT.contains(tables.version());
     this.uppercutResetsAvoidance = UPPERCUT_RESETS_AVOIDANCE.contains(tables.version());
+    this.chainFirstSearchWaitsForHop = CHAIN_FIRST_SEARCH_WAITS_FOR_HOP.contains(tables.version());
+  }
+
+  /**
+   * Whether the battle's data version's chain projectile attack runs its first next-target search
+   * only once the first hop's projectile has gone (see {@link #CHAIN_FIRST_SEARCH_WAITS_FOR_HOP}).
+   */
+  boolean chainFirstSearchWaitsForHop() {
+    return chainFirstSearchWaitsForHop;
   }
 
   /**
