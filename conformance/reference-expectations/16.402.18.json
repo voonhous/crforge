@@ -297,7 +297,7 @@
   "random-battles-16-v1/random_battle16_s0036": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0037": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0038": {"outcome": "diagnostic_match"},
-  "random-battles-16-v1/random_battle16_s0039": {"outcome": "mismatch", "first_divergent_tick": 1183, "path": "$.entities.length"},
+  "random-battles-16-v1/random_battle16_s0039": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0040": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0041": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0042": {"outcome": "diagnostic_match"},

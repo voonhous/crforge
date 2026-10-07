@@ -255,9 +255,9 @@ public final class BattleRecords {
   /**
    * The columns that change where a unit's death spawn stands or what its children take, which the
    * battle does not model: refused only for a unit that spawns on its death. The inherited ignore
-   * list is not among them: the id lists it joins are written only by such a death spawn and by a
-   * rider let go under a parent that sets it, which is refused, so every list stays empty and the
-   * column changes nothing.
+   * list is not among them: a death spawn under it joins every projectile's id list that holds the
+   * dying unit (what its flying body hit, a carrier's riders with it); an area effect's list that
+   * holds it is refused as it happens.
    */
   private static final List<String> UNMODELLED_DEATH_SPAWN_COLUMNS = List.of("SpawnLimit");
 
