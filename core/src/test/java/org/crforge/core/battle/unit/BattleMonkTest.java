@@ -255,7 +255,9 @@ class BattleMonkTest {
   }
 
   @Test
-  @DisplayName("a shot with a deflection radius of its own, the Princess's, is refused")
+  @DisplayName(
+      "a shot with a deflection radius of its own, the Princess's, is refused when the Deflect"
+          + " touches it")
   void aDeflectionRadiusIsRefused() {
     Scene scene = new Scene();
     CharacterEntity princess =
@@ -271,6 +273,7 @@ class BattleMonkTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("flies by a deflecting area effect");
+        .hasMessageContaining("flies within")
+        .hasMessageContaining("whose deflection of it is not modelled");
   }
 }

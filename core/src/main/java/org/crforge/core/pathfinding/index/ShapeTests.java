@@ -38,8 +38,16 @@ public final class ShapeTests {
    * collision radius plus the query radius. This is the test the target selector's query uses.
    */
   public static boolean withinCircle(GridEntity entity, int x, int y, int radius) {
-    int reach = entity.getCollisionRadius() + radius;
-    return squaredDistanceToCentre(entity, x, y) < reach * reach;
+    return withinCircle(entity.getX(), entity.getY(), entity.getCollisionRadius(), x, y, radius);
+  }
+
+  /**
+   * {@link #withinCircle(GridEntity, int, int, int)} for an object given by its centre and radius,
+   * such as an area effect, which has no view.
+   */
+  public static boolean withinCircle(int ex, int ey, int er, int x, int y, int radius) {
+    int reach = er + radius;
+    return FixedMath.guardedSumOfSquares(x - ex, y - ey) < reach * reach;
   }
 
   /**
@@ -59,12 +67,20 @@ public final class ShapeTests {
    * unsigned.
    */
   public static boolean withinBox(GridEntity entity, int left, int top, int width, int height) {
-    int r = entity.getCollisionRadius();
-    int dx = clampedOffset(entity.getX(), left, width);
+    return withinBox(
+        entity.getX(), entity.getY(), entity.getCollisionRadius(), left, top, width, height);
+  }
+
+  /**
+   * {@link #withinBox(GridEntity, int, int, int, int)} for an object given by its centre and
+   * radius, such as an area effect, which has no view.
+   */
+  public static boolean withinBox(int ex, int ey, int r, int left, int top, int width, int height) {
+    int dx = clampedOffset(ex, left, width);
     if (dx > r || dx < -r) {
       return false;
     }
-    int dy = clampedOffset(entity.getY(), top, height);
+    int dy = clampedOffset(ey, top, height);
     if (dy > r || dy < -r) {
       return false;
     }
