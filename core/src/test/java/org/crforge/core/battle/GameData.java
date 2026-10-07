@@ -72,12 +72,7 @@ public final class GameData {
    */
   public static GameTables altered(Path folder, String table, Consumer<ObjectNode> edit)
       throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Files.copy(file, folder.resolve(file.getFileName()));
-      }
-    }
+    copyConfigured(folder);
     Path file = folder.resolve(table + ".json");
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
@@ -103,8 +98,52 @@ public final class GameData {
     mapper.writeValue(file.toFile(), document);
   }
 
+  /**
+   * The configured tables copied into a folder with every file labelled as another data version,
+   * for a test that holds a rule keyed by the data version on the configured rows.
+   *
+   * @param folder the folder to copy them into
+   * @param version the data version the copy is labelled with
+   * @return the relabelled tables
+   */
+  public static GameTables relabelled(Path folder, String version) throws IOException {
+    copyConfigured(folder);
+    relabel(folder, version);
+    return GameTables.load(folder);
+  }
+
+  /**
+   * Labels every table file of a folder the configured tables were already copied into as another
+   * data version; load the folder again to read the change.
+   *
+   * @param folder the folder
+   * @param version the data version the files are labelled with
+   */
+  public static void relabel(Path folder, String version) throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    try (Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.toList()) {
+        if (file.getFileName().toString().endsWith(".json")) {
+          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
+          document.put("version", version);
+          mapper.writeValue(file.toFile(), document);
+        }
+      }
+    }
+  }
+
   /** The columns of a row in the rows of a table, to alter. */
   public static ObjectNode columns(ObjectNode rows, String row) {
     return (ObjectNode) rows.get(row).get("columns");
+  }
+
+  /** Copies every file of the configured tables into a folder. */
+  private static void copyConfigured(Path folder) throws IOException {
+    Path source = GameTables.configuredDirectory().orElseThrow();
+    try (Stream<Path> files = Files.list(source)) {
+      for (Path file : files.toList()) {
+        Files.copy(file, folder.resolve(file.getFileName()));
+      }
+    }
   }
 }

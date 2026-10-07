@@ -2,13 +2,9 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
@@ -48,30 +44,6 @@ class BattleCircleKillDrainTest {
       List.of("Knight", "Archer", "Giant", "Minions", "Musketeer", "Fireball", "Arrows", "Zap");
 
   @TempDir Path folder;
-
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   */
-  private static GameTables relabelled(Path folder, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.toList()) {
-        Path copy = folder.resolve(file.getFileName());
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
-          mapper.writeValue(copy.toFile(), document);
-        } else {
-          Files.copy(file, copy);
-        }
-      }
-    }
-    return GameTables.load(folder);
-  }
 
   /** The towers at the first level, fighting, in a Ladder match; side 1's Knight played. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -131,7 +103,8 @@ class BattleCircleKillDrainTest {
       "on data version 16.402.18 the circle's kill lands at the damage drain, so the tower that"
           + " targets the Knight still attacks on the tick the circle kills it")
   void theTowerStillAttacksOnTheKillTick() throws IOException {
-    int[] states = towerStateAtTheKill(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
+    int[] states =
+        towerStateAtTheKill(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18)));
     assertThat(states[0]).as("on the kill's tick").isEqualTo(ATTACKING);
     assertThat(states[1]).as("on the next tick").isZero();
   }
