@@ -5258,18 +5258,22 @@ public class BattleWorld implements HolderPasses {
         continue;
       }
       if (queued instanceof ProjectileAreaHitDue share) {
-        dealProjectileDamage(
-            share.projectile(), share.victim(), share.damage(), share.hitId(), 0, 0);
+        DamageResult result =
+            dealProjectileDamage(
+                share.projectile(), share.victim(), share.damage(), share.hitId(), 0, 0);
+        drainProjectileBuff(share.projectile(), share.victim(), result);
         continue;
       }
       if (queued instanceof ProjectileHitDue hit) {
-        dealProjectileDamage(
-            hit.projectile(),
-            hit.target(),
-            hit.damage(),
-            hit.hitId(),
-            hit.directionX(),
-            hit.directionY());
+        DamageResult result =
+            dealProjectileDamage(
+                hit.projectile(),
+                hit.target(),
+                hit.damage(),
+                hit.hitId(),
+                hit.directionX(),
+                hit.directionY());
+        drainProjectileBuff(hit.projectile(), hit.target(), result);
         continue;
       }
       if (queued instanceof ActionDamageDue actionDamage) {
@@ -7803,6 +7807,50 @@ public class BattleWorld implements HolderPasses {
               attacker,
               attacker.side());
     }
+  }
+
+  /**
+   * Whether a projectile's target buff after its damage is applied at the damage drain rather than
+   * at its impact: on a data version whose game lands the projectile's hits there (see {@link
+   * #DIRECT_HIT_AT_DRAIN}).
+   */
+  public boolean projectileBuffAtDrain() {
+    return directHitAtDrain;
+  }
+
+  /**
+   * A queued projectile hit's target buff, as the drain deals the hit, on a data version that
+   * applies it there: right after the damage, the hit's death and its reflect, to the victim of
+   * that one hit, for a projectile whose row sets a target buff and does not apply it before the
+   * damage, when the damage entry let the hit through - a hit that kills included. It reaches the
+   * victims of an area impact one by one, as the drain deals their shares, so only what the area
+   * damaged takes it. Applied with the projectile as the source, at its level and for its side, for
+   * the row's buff time at that level; the drain asks nothing of the victim's dash immunity, which
+   * the damage entry has answered already.
+   *
+   * <p>Being applied after every post-hook of the tick, the buff is first read by the victim's
+   * combat gate on the next tick: a stun leaves the victim its targeting visit of that tick, under
+   * a hit speed scaled to nothing, and drops its reference at that tick's gate.
+   *
+   * @param projectile the projectile whose hit it is
+   * @param victim the entity the hit reached
+   * @param result what the hit's damage did
+   */
+  private void drainProjectileBuff(
+      ProjectileEntity projectile, WorldEntity victim, DamageResult result) {
+    ProjectileData data = projectile.getData();
+    if (!result.landed() || data.targetBuff() == null || data.applyBuffBeforeDamage()) {
+      return;
+    }
+    if (known.get(victim.getView()) != victim) {
+      return;
+    }
+    BuffData buff = buffData(data.targetBuff());
+    int time = data.buffTime(projectile.getPackedLevel());
+    for (WorldObserver observer : observers) {
+      observer.projectileBuff(tick, projectile, buff, time, List.of(victim));
+    }
+    victim.getBuffs().apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
   }
 
   /**

@@ -442,15 +442,18 @@ final class ProjectileFlight {
       world.onHitTarget(p, p.getTarget());
     }
     // The target buff goes before the damage when the row says so, else after it: after, a victim
-    // the damage killed has run its death already; before, it dies carrying the buff.
+    // the damage killed has run its death already; before, it dies carrying the buff. On a data
+    // version whose game lands the hit at the damage drain, the buff after the damage is not
+    // applied here: it goes to the drain with the hit, to each victim the drain lets it through to.
     boolean buffFirst = data.applyBuffBeforeDamage();
     boolean buffs = data.targetBuff() != null;
+    boolean buffAfterHere = buffs && !buffFirst && !world.projectileBuffAtDrain();
     if (data.radius() >= 1) {
       if (buffs && buffFirst) {
         world.projectileAreaBuff(p, px, py);
       }
       areaImpact(p, world, px, py, damage, towerDamage, hitId);
-      if (buffs && !buffFirst) {
+      if (buffAfterHere) {
         world.projectileAreaBuff(p, px, py);
       }
     } else {
@@ -460,7 +463,7 @@ final class ProjectileFlight {
           world.projectileTargetBuff(p, target);
         }
         singleImpact(p, world, target.getTargetView(), damage, towerDamage, hitId);
-        if (buffs && !buffFirst) {
+        if (buffAfterHere) {
           world.projectileTargetBuff(p, target);
         }
       }
