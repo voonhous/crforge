@@ -26,8 +26,6 @@ The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_40
 | 16.402.17 | the reference client | 2026-10-04 |
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
-On 2026-10-07 a 16.402.14 client was offered the newer version as an optional update; declining it, the client kept logging in, received data 16.402.19 and played TV replays. The App Store in the US still showed 16.402.17 that day. No required update has been seen in this range, so it is still open.
-
 Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_402_17_DATA` lists the ones the simulator has game tables for (16.402.18 and 16.402.19).
 
 ## Keeping this page
