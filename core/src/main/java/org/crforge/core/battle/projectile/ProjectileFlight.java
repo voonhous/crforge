@@ -96,9 +96,6 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " hit effects.")
 final class ProjectileFlight {
 
-  /** The least speed column a hook that follows its target scales its step by. */
-  private static final int MIN_ATTRACTED_SPEED = 30;
-
   private static final int PERCENT = 100;
 
   private ProjectileFlight() {
@@ -142,9 +139,11 @@ final class ProjectileFlight {
       return;
     }
     boolean drags = data.dragBackSpeed() >= 1;
-    if (drags && world.ownerLost(p)) {
-      // A hooking projectile whose owner has left, or can no longer act, ends here: no step, no
-      // release where it stands and no impact. The target it pulled stays where it is.
+    if (drags && (world.ownerLost(p) || world.hookTargetLost(p))) {
+      // A hooking projectile whose owner has left, or can no longer act, ends here, and so does
+      // one whose target is gone where the game asks: no step, no release where it stands and no
+      // impact. The target it pulled stays where it is; an owner waiting for the pull resumes.
+      world.hookEnded(p);
       p.release();
       return;
     }
@@ -172,7 +171,7 @@ final class ProjectileFlight {
           speed = 0;
           dragsOwner = true;
         } else if (target != null && data.dragBackAsAttractor()) {
-          speed = attracted(target, speed);
+          speed = attracted(target, speed, world.getHookPullSpeedFloor());
         }
       }
       if (target != null
@@ -213,10 +212,10 @@ final class ProjectileFlight {
 
   /**
    * The step of a hook that follows what it hooked: the step scaled by the target's own speed
-   * column, at least 30, as a percentage.
+   * column, at least the floor, as a percentage.
    */
-  private static int attracted(WorldEntity target, int step) {
-    return Math.max(target.getData().speed(), MIN_ATTRACTED_SPEED) * step / PERCENT;
+  private static int attracted(WorldEntity target, int step, int floor) {
+    return Math.max(target.getData().speed(), floor) * step / PERCENT;
   }
 
   /**
@@ -243,7 +242,10 @@ final class ProjectileFlight {
     }
     int step = data.dragBackSpeed();
     if (target != null && data.dragBackAsAttractor()) {
-      step = target.getTargetView().building() ? data.dragSelfSpeed() : attracted(target, step);
+      step =
+          target.getTargetView().building()
+              ? data.dragSelfSpeed()
+              : attracted(target, step, BattleWorld.MIN_HOOK_SPEED_FLOOR);
     }
     int nx = FixedMath.divOrZero(step * (p.getX() - ox), gap) + ox;
     int ny = FixedMath.divOrZero(step * (p.getY() - oy), gap) + oy;

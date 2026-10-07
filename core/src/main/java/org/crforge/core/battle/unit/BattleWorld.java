@@ -321,6 +321,37 @@ public class BattleWorld implements HolderPasses {
   private boolean abilityFireWithoutDash;
 
   /**
+   * The data versions whose game ends a hooking projectile whose target is gone: the projectile's
+   * visit ends it as it ends one that lost its owner, without a step, a release where it stands or
+   * an impact, once its target has left the battle (or was let go, as a deflection lets it go) or
+   * has no hit points left. The rule is the game build's, not a table value: the game of data
+   * version 16.402.18 asks the target as well as the owner; the game of 14.593.1 asks only the
+   * owner, so a hook whose target left flies on to where the target last stood and lands there on
+   * nothing.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> HOOK_ENDS_WITHOUT_TARGET = GameVersions.CLIENT_16_402_17_DATA;
+
+  /** True when the battle's data version ends a hooking projectile whose target is gone. */
+  private boolean hookEndsWithoutTarget;
+
+  /**
+   * The data versions whose game pulls a hooked target at no less than the hook's drag speed: the
+   * step scales the drag speed by the target's speed column as a percentage, floored at 60 (the
+   * speed of a medium-speed unit) in the game of data version 16.402.18 and at 30 in the game of
+   * 14.593.1, so a slow target such as a Bowler or a Giant comes back at a Knight's pace on the
+   * first and at three quarters of it on the second. The floor of the other drag, the hook that
+   * stands and moves its owner, stays 30 in both. The rule is the game build's, not a table value.
+   *
+   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
+   */
+  private static final Set<String> HOOK_PULL_FLOOR_60 = GameVersions.CLIENT_16_402_17_DATA;
+
+  /** The least speed column a hooked target's pull scales the drag speed by. */
+  @Getter private int hookPullSpeedFloor;
+
+  /**
    * The match-wide movement settings: the standard game's, with the rules of the data version the
    * battle's tables are loaded from.
    */
@@ -383,6 +414,12 @@ public class BattleWorld implements HolderPasses {
 
   /** The most victims a death's damage takes. */
   private static final int DEATH_DAMAGE_LIMIT = 1000;
+
+  /** The least speed column a hooked target's pull scales by where the floor is 60. */
+  private static final int HOOK_PULL_FLOOR = 60;
+
+  /** The least speed column a hook's drag scales by otherwise. */
+  public static final int MIN_HOOK_SPEED_FLOOR = 30;
 
   /** The most characters an area effect's buff reaches in one hit. */
   private static final int AREA_EFFECT_BUFF_LIMIT = 0x10000;
@@ -741,6 +778,9 @@ public class BattleWorld implements HolderPasses {
     this.uppercutResetsAvoidance = UPPERCUT_RESETS_AVOIDANCE.contains(tables.version());
     this.chainFirstSearchWaitsForHop = CHAIN_FIRST_SEARCH_WAITS_FOR_HOP.contains(tables.version());
     this.abilityFireWithoutDash = ABILITY_FIRE_WITHOUT_DASH.contains(tables.version());
+    this.hookEndsWithoutTarget = HOOK_ENDS_WITHOUT_TARGET.contains(tables.version());
+    this.hookPullSpeedFloor =
+        HOOK_PULL_FLOOR_60.contains(tables.version()) ? HOOK_PULL_FLOOR : MIN_HOOK_SPEED_FLOOR;
   }
 
   /**
@@ -1189,6 +1229,36 @@ public class BattleWorld implements HolderPasses {
     int dy = target.getView().getY() - struck.getView().getY();
     int reach = radius + target.getData().collisionRadius() + struck.getData().collisionRadius();
     return Integer.compareUnsigned(dx * dx + dy * dy, reach * reach) < 0;
+  }
+
+  /**
+   * Whether a hooking projectile has lost its target, on a battle whose game ends it then (see
+   * {@link #HOOK_ENDS_WITHOUT_TARGET}): the target has left the battle or was let go, or it has hit
+   * points and none are left, as a destroyed crown tower that stays in the battle has none.
+   *
+   * @param projectile the hooking projectile
+   */
+  public boolean hookTargetLost(ProjectileEntity projectile) {
+    if (!hookEndsWithoutTarget) {
+      return false;
+    }
+    WorldEntity target = projectile.getTarget();
+    return target == null || !target.getTargetView().alive();
+  }
+
+  /**
+   * The end of a hooking projectile that lost its owner or its target: an owner that waits for the
+   * pull (its components off while the hook brings the target back) is asked to resume at once, as
+   * its state's own end would ask it.
+   *
+   * @param projectile the hooking projectile
+   */
+  public void hookEnded(ProjectileEntity projectile) {
+    WorldEntity owner = projectile.getOwner();
+    if (owner instanceof CharacterEntity waiting
+        && owner.getView().getState() == GridEntityState.COMPONENTS_DISABLED) {
+      waiting.resume();
+    }
   }
 
   /**

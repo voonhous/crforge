@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.TargetLocks;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -26,8 +27,9 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * The Fisherman's special attack where the reference runs leave it: the ring it loads in, both
  * bounds counted from its reference's radius; the load slowed by a buff; the hook on a building,
- * which drags him at the self-drag speed; the pull of a slow troop at no less than 30 of its speed;
- * a hook whose owner leaves, or is stunned, or whose target leaves, during the pull; a troop let go
+ * which drags him at the self-drag speed; the pull of a slow troop at no less than 30 of its speed
+ * (60 on 16.402.18); a hook whose owner leaves, or is stunned, or whose target leaves, during the
+ * pull, and on 16.402.18 one whose target leaves or dies before or during the pull; a troop let go
  * on the river; and the hooks and specials the battle refuses.
  */
 class BattleFishermanTest {
@@ -323,6 +325,76 @@ class BattleFishermanTest {
     scene.step(1);
     assertThat(scene.fisherman.getView().getState())
         .isNotEqualTo(GridEntityState.COMPONENTS_DISABLED);
+  }
+
+  @Test
+  @DisplayName(
+      "on 16.402.18 a troop slower than 60 is pulled at 60 of the drag-back speed: a Bowler comes"
+          + " back at a Knight's pace")
+  void aSlowTroopOn16() {
+    Scene scene = new Scene(Version16Tables.load());
+    scene.still(0, 1, "Bowler", X, Y + IN_RING, "B");
+    ProjectileEntity hook = scene.stepToTheHook();
+    int before = hook.getY();
+    scene.step(1);
+    assertThat(before - hook.getY()).isEqualTo(850 * 60 / 100);
+  }
+
+  @Test
+  @DisplayName(
+      "on 16.402.18 a hook whose target leaves while it flies out ends on its next step, where it"
+          + " is, with no hook; on 14.593.1 it flies on to where the target stood")
+  void theTargetLeavesInFlight() {
+    Scene scene = new Scene(Version16Tables.load());
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    stepToTheFlight(scene);
+    ProjectileEntity hook = scene.hooks.get(0);
+    assertThat(hook.isHooked()).isFalse();
+    scene.match.getWorld().kill(knight, null);
+    // Removed at that tick's cleanup; the hook's next step ends it where it stands.
+    scene.step(1);
+    int x = hook.getX();
+    int y = hook.getY();
+    scene.step(1);
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(hook.isHooked()).isFalse();
+    assertThat(hook.getX()).isEqualTo(x);
+    assertThat(hook.getY()).isEqualTo(y);
+    assertThat(scene.states).isEmpty();
+
+    Scene old = new Scene();
+    CharacterEntity target = old.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    stepToTheFlight(old);
+    ProjectileEntity flying = old.hooks.get(0);
+    old.match.getWorld().kill(target, null);
+    old.step(2);
+    assertThat(flying.isReleased()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "on 16.402.18 a troop that dies during the pull ends the hook on its next step, where it"
+          + " stands, and the waiting Fisherman resumes in that step and walks again")
+  void theTargetDiesInThePullOn16() {
+    Scene scene = new Scene(Version16Tables.load());
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    ProjectileEntity hook = scene.stepToTheHook();
+    scene.step(2);
+    // The kill lands at the tick's damage drain, after the hook's step, and the Knight leaves at
+    // that tick's cleanup.
+    scene.match.getWorld().kill(knight, null);
+    scene.step(1);
+    assertThat(hook.isReleased()).isFalse();
+    int x = hook.getX();
+    int y = hook.getY();
+    scene.step(1);
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(hook.getX()).isEqualTo(x);
+    assertThat(hook.getY()).isEqualTo(y);
+    // Resumed in the hook's step, not at the cleanup that removes the hook, and asked to move: his
+    // movement, off while he waited, is on again.
+    assertThat(scene.fisherman.getView().getState()).isEqualTo(GridEntityState.MOVING);
+    assertThat(scene.fisherman.getView().isMovementActive()).isTrue();
   }
 
   @Test
