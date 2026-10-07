@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -7,14 +7,12 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
-import org.crforge.core.battle.unit.AreaEffectEntity;
-import org.crforge.core.battle.unit.CharacterEntity;
-import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -16,13 +16,13 @@ import org.crforge.core.battle.data.GameVersions;
  * ones, as in a checkout of the game data repository. A test that needs them is skipped without
  * them.
  */
-final class Version16Tables {
+public final class Version16Tables {
 
   /** The data version the tests read unless they name another. */
-  static final String VERSION = GameVersions.DATA_16_402_18;
+  public static final String VERSION = GameVersions.DATA_16_402_18;
 
   /** The data version client 16.402.17 runs since 2026-10-06. */
-  static final String VERSION_16_426_22 = GameVersions.DATA_16_426_22;
+  public static final String VERSION_16_426_22 = GameVersions.DATA_16_426_22;
 
   /** The tables of each version, each loaded once. */
   private static final Map<String, GameTables> TABLES = new HashMap<>();
@@ -36,7 +36,7 @@ final class Version16Tables {
    *
    * @return the tables of 16.402.18
    */
-  static GameTables load() {
+  public static GameTables load() {
     return load(VERSION);
   }
 
@@ -46,7 +46,7 @@ final class Version16Tables {
    * @param version the data version
    * @return its tables
    */
-  static synchronized GameTables load(String version) {
+  public static synchronized GameTables load(String version) {
     GameTables tables = TABLES.get(version);
     if (tables == null) {
       Optional<Path> folder = folder(version);

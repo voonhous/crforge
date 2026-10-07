@@ -9,6 +9,9 @@ dependencies {
 
     // The scenario, the observations and the manifest are JSON
     implementation(libs.jackson.databind)
+
+    // The game tables of a named data version
+    testImplementation(testFixtures(project(":core")))
 }
 
 application {

@@ -1,18 +1,15 @@
-package org.crforge.parity;
+package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.unit.CharacterEntity;
-import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.core.battle.unit.WorldEntity;
-import org.crforge.core.battle.unit.WorldObserver;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
