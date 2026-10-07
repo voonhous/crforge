@@ -334,6 +334,14 @@ public final class ChampionController extends ActionInstance {
     }
   }
 
+  /**
+   * Restarts the cooldown at the full cooldown, as the ready action's ForceCooldown asks; the
+   * charges and the state are left as they are, the state worked out again on the slot's next step.
+   */
+  void forceCooldown() {
+    cooldownMs = cooldownFullMs;
+  }
+
   /** Refills the charges to the champion's most, as an action asks: its row's value as it is. */
   void refillCharges() {
     charges = champion.ability().maxCharges();

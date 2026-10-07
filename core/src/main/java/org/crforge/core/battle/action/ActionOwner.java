@@ -474,6 +474,18 @@ public interface ActionOwner {
   }
 
   /**
+   * The ready action on the owner: with ForceCooldown, the champion slot of the owner's side that
+   * follows it restarts its cooldown at the full cooldown; nothing without such a slot. Only a
+   * character answers it.
+   *
+   * @param action the row
+   */
+  default void readyChampionAbility(ReadyChampionAbility action) {
+    throw new UnsupportedOperationException(
+        action.name() + " on an owner other than a character, not modelled");
+  }
+
+  /**
    * The button state override's first write, as the row is performed: the same as every later write
    * of its run for an owner that is its own player's, a character or a building. A projectile hands
    * the question to the object that launched it, and writes nothing unless that is a character or a
