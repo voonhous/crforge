@@ -29,13 +29,13 @@ class CommandTypesTest {
   }
 
   @Test
-  void dataVersion16_426_22OfTheSameClientPlaysWith153AndTapsAbilitiesWith189() {
-    // Client 16.402.17 ran 16.402.18 and then 16.426.22: the numbers are the client's.
-    CommandTypes types = CommandTypes.of(GameVersions.DATA_16_426_22).orElseThrow();
+  void dataVersion16_402_19OfTheSameClientPlaysWith153AndTapsAbilitiesWith189() {
+    // Client 16.402.17 ran 16.402.18 and then 16.402.19: the numbers are the client's.
+    CommandTypes types = CommandTypes.of(GameVersions.DATA_16_402_19).orElseThrow();
 
     assertThat(types.play()).isEqualTo(153);
     assertThat(types.ability()).isEqualTo(189);
-    assertThat(types.dataVersion()).isEqualTo(GameVersions.DATA_16_426_22);
+    assertThat(types.dataVersion()).isEqualTo(GameVersions.DATA_16_402_19);
     assertThat(types.describe(124)).isNull();
   }
 

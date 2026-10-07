@@ -63,12 +63,12 @@ class ReplayCaptureBlockTest {
   @Test
   void refusesAReplayRecordedOnOtherDataNamingBoth() {
     ObjectNode scenario =
-        recordedOn(GameVersions.DATA_16_426_22, "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
+        recordedOn(GameVersions.DATA_16_402_19, "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessageContaining(
-            "a replay recorded on client 16.402.17, data version 16.426.22 (content sha"
+            "a replay recorded on client 16.402.17, data version 16.402.19 (content sha"
                 + " 7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec), read against the game tables of"
                 + " data version "
                 + tables.version()

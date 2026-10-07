@@ -7,6 +7,6 @@
 # - unitTestVersion: the data version whose tables the unit tests read; they pin values of that
 #   version. CI also runs its reference battles, held to their own expectations file, as a
 #   regression set.
-commit=01cc7baeff0829062b77a36170e86ad5b6acb7a6
+commit=bc76d2721eabffea06326d5504cd1e4adf15d02c
 version=16.402.18
 unitTestVersion=14.593.1

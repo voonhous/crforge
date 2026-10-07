@@ -22,7 +22,7 @@ public final class Version16Tables {
   public static final String VERSION = GameVersions.DATA_16_402_18;
 
   /** The data version client 16.402.17 runs since 2026-10-06. */
-  public static final String VERSION_16_426_22 = GameVersions.DATA_16_426_22;
+  public static final String VERSION_16_402_19 = GameVersions.DATA_16_402_19;
 
   /** The tables of each version, each loaded once. */
   private static final Map<String, GameTables> TABLES = new HashMap<>();
