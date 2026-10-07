@@ -9,6 +9,7 @@ import java.util.function.IntFunction;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
@@ -193,7 +194,8 @@ public final class BattleAdapter {
 
   /**
    * The bar an action running on a character shows over it, or null for none: the Royal Chef's
-   * cooking on its king tower. The read makes no action holder for an entity that has none.
+   * cooking on its king tower, the Dagger Duchess's charges on her towers. The read makes no action
+   * holder for an entity that has none.
    */
   private static ActionMeter meter(WorldEntity entity) {
     ActionHolder holder = entity.madeActionHolder();
@@ -202,10 +204,29 @@ public final class BattleAdapter {
     }
     for (ActionInstance instance : holder.running()) {
       if (instance instanceof ChefCooking.Run cooking) {
-        return new ActionMeter(ActionMeter.Kind.COOKING, cooking.bar(), cooking.fullBar());
+        return new ActionMeter(ActionMeter.Kind.COOKING, cooking.bar(), cooking.fullBar(), 0);
+      }
+      if (instance instanceof BurstAttack.Run burst) {
+        return charges(burst);
       }
     }
     return null;
+  }
+
+  /**
+   * The Dagger Duchess's charges as a bar of one segment per charge, counted in milliseconds of
+   * recharge: each charge held fills one recharge time, and the recharge timer fills the next
+   * segments by its share of the recharge time, as many as one recharge adds.
+   */
+  private static ActionMeter charges(BurstAttack.Run burst) {
+    BurstAttack.Columns columns = burst.columns();
+    int rechargeTime = Math.max(1, columns.rechargeTimeMs());
+    int refill = Math.min(burst.rechargeMs(), rechargeTime) * columns.rechargeIncrement();
+    return new ActionMeter(
+        ActionMeter.Kind.CHARGES,
+        burst.charges() * rechargeTime + refill,
+        columns.maxChargeCount() * rechargeTime,
+        columns.maxChargeCount());
   }
 
   private static List<UnitStatus> statuses(WorldEntity entity) {

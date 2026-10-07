@@ -501,7 +501,8 @@ public class BattleRenderer {
 
   /**
    * A health bar over every character with hit points, a shield bar over it while it has one, and
-   * over those the bar of an action it runs, such as the Royal Chef's cooking.
+   * over those the bar of an action it runs, such as the Royal Chef's cooking or the Dagger
+   * Duchess's charges.
    */
   private void renderHealthBars(BattleFrame frame) {
     ShapeRenderer shapes = ctx.getShapeRenderer();
@@ -532,23 +533,29 @@ public class BattleRenderer {
       }
       ActionMeter meter = entity.meter();
       if (meter != null) {
-        bar(
-            shapes,
-            left,
-            barY + healthAndShieldHeight(entity) + METER_BAR_GAP,
-            width,
-            METER_BAR_HEIGHT,
-            meter.share(),
-            meterColor(meter.kind()));
+        meterBar(shapes, left, barY + healthAndShieldHeight(entity) + METER_BAR_GAP, width, meter);
       }
     }
     shapes.end();
+  }
+
+  /** An action's bar, with a divider between each two of its segments when it has them. */
+  private static void meterBar(
+      ShapeRenderer shapes, float left, float y, float width, ActionMeter meter) {
+    bar(shapes, left, y, width, METER_BAR_HEIGHT, meter.share(), meterColor(meter.kind()));
+    float b = HEALTH_BAR_BORDER;
+    float inner = width - b * 2;
+    shapes.setColor(COLOR_CARD_BORDER);
+    for (int i = 1; i < meter.segments(); i++) {
+      shapes.rect(left + b + inner * i / meter.segments(), y + b, 1, METER_BAR_HEIGHT - b * 2);
+    }
   }
 
   /** The fill of an action's bar. */
   private static Color meterColor(ActionMeter.Kind kind) {
     return switch (kind) {
       case COOKING -> COLOR_COOKING;
+      case CHARGES -> COLOR_CHARGES;
     };
   }
 

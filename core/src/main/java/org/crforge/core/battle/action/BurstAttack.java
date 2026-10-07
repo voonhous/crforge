@@ -153,6 +153,19 @@ public final class BurstAttack extends RowAction {
       return depleted;
     }
 
+    /**
+     * How long the run has recharged since the charges last rose, in milliseconds as its owner's
+     * buffs scale them; 0 while it attacks or holds every charge.
+     */
+    public int rechargeMs() {
+      return rechargeMs;
+    }
+
+    /** The row's own columns: the maximum charges, the recharge time and its increment. */
+    public Columns columns() {
+      return columns;
+    }
+
     @Override
     protected void update(ActionHolder holder) {
       boolean active = host.targetingActive();

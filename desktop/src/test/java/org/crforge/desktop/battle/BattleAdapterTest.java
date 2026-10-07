@@ -216,6 +216,51 @@ class BattleAdapterTest {
         .allSatisfy(t -> assertThat(t.meter()).isNull());
   }
 
+  @Test
+  @DisplayName(
+      "a Dagger Duchess tower shows its charges: full at the start, drained by its attacks on a"
+          + " Giant, then charged again while it does not attack")
+  void theChargeBar() {
+    int level = Standard1v1Battle.DEFAULT_LEVEL;
+    Standard1v1Battle battle =
+        new Standard1v1Battle(
+            Tables.get(),
+            List.of(
+                new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, level, level),
+                new Standard1v1Battle.Towers("King_KnifeTowers", level, level)),
+            true);
+    // A Giant of side 0 that walks up the left lane to the left Duchess tower.
+    battle.play(1, battle.getWorld().getRecords().card("Giant"), level, 0, 3500, 14000, "g");
+    BattleSession session = BattleSession.of(battle);
+    assertThat(session.step()).isTrue();
+
+    EntityView duchess = princess(BattleAdapter.frame(session), 1);
+    ActionMeter full = duchess.meter();
+    assertThat(full).isNotNull();
+    assertThat(full.kind()).isEqualTo(ActionMeter.Kind.CHARGES);
+    assertThat(full.segments()).isEqualTo(8);
+    assertThat(full.share()).isEqualTo(1f);
+    assertThat(king(towers(BattleAdapter.frame(session)), 1).meter()).as("its king").isNull();
+    assertThat(princess(BattleAdapter.frame(session), 0).meter()).as("a plain tower").isNull();
+
+    int lowest = full.value();
+    boolean drained = false;
+    boolean recharged = false;
+    for (int i = 0; i < 1500 && !recharged; i++) {
+      assertThat(session.step()).isTrue();
+      ActionMeter meter = princess(BattleAdapter.frame(session), 1).meter();
+      if (meter.value() < lowest) {
+        lowest = meter.value();
+        drained = true;
+      } else if (drained && meter.value() > lowest) {
+        recharged = true;
+      }
+    }
+    assertThat(drained).as("the charges drained").isTrue();
+    assertThat(lowest).isLessThan(full.maximum());
+    assertThat(recharged).as("the charges rose again after %d", lowest).isTrue();
+  }
+
   /** A session whose side 1 has the Royal Chef's towers, every tower passive. */
   private static BattleSession chefTowers() {
     int level = Standard1v1Battle.DEFAULT_LEVEL;
