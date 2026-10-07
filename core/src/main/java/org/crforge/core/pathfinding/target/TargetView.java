@@ -21,8 +21,8 @@ public class TargetView {
   /** The entity this view describes. */
   private final GridEntity entity;
 
-  /** The entity's targeting columns. */
-  private final TargetingConfig config;
+  /** The entity's targeting columns: its row's, a new row's once the entity takes one. */
+  private TargetingConfig config;
 
   /** Current hit points, read only when the attacker prefers the weakest candidate. */
   private int hitPoints;

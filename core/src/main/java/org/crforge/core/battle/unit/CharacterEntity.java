@@ -1202,9 +1202,11 @@ public class CharacterEntity extends WorldEntity {
    * from the new row at the unchanged level and the hit points are kept; the reference is cleared
    * as it stands, with no timer reset and no route; and the collision radius, mass, speed and
    * targeting columns are the new row's from here on, so the next movement visit already moves at
-   * the new speed. Last, a target it had is kept unless the row resets it or the validator refuses
-   * it, and is then stored again through the setter, which prepares its route; a target given up
-   * leaves the attack timing as it was. The new row's starting action does not run.
+   * the new speed. Those that target the unit read the new row too: a lethal damage on its way no
+   * longer drops it for an attacker once its row has a lifetime, as the Goblin Demolisher's
+   * kamikaze form has. Last, a target it had is kept unless the row resets it or the validator
+   * refuses it, and is then stored again through the setter, which prepares its route; a target
+   * given up leaves the attack timing as it was. The new row's starting action does not run.
    *
    * <p>A walking unit may take a building row without a speed that drains over a lifetime, as the
    * Moving Cannon breaks down: its movement component is freed, it counts as a building, and its
@@ -1288,7 +1290,10 @@ public class CharacterEntity extends WorldEntity {
     // The targeting component hears of the swap first: its reference is cleared as it stands.
     targeting.setReference(null);
     targeting.setKeptByPendingDamageCheck(false);
-    targeting.setConfig(targetingConfig(next));
+    TargetingConfig swapped = targetingConfig(next);
+    targeting.setConfig(swapped);
+    // What the unit's attackers read of it, its lifetime among them, is the new row's from here on.
+    getTargetView().setConfig(swapped);
     getView().setCollisionRadius(next.collisionRadius());
     getView().setMass(next.mass());
     // The occlusion query reads the row the unit has now.

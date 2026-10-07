@@ -3,10 +3,14 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -15,8 +19,8 @@ import org.junit.jupiter.api.Test;
 /**
  * A character taking another row, in the cases golemite_convert does not reach: hit points kept
  * above a smaller maximum, a target given up by the row and the attack timing it leaves, a target
- * kept on the new row's columns, the swaps that are refused, and the hit-point functions the swap's
- * rows read.
+ * kept on the new row's columns, the new row as the unit's attackers read it, the swaps that are
+ * refused, and the hit-point functions the swap's rows read.
  */
 class BattleChangeDataTest {
 
@@ -112,6 +116,77 @@ class BattleChangeDataTest {
     demolisher.changeData("GoblinDemolisher", false);
     assertThat(demolisher.getHitPoints().getDecayStep()).isZero();
     assertThat(demolisher.getHitPoints().getHitPoints()).isEqualTo(drained);
+  }
+
+  @Test
+  @DisplayName(
+      "a tower reads the row its target has now: through a lethal damage on its way it keeps a"
+          + " unit that took a row with a lifetime as a target it may take, so when the unit"
+          + " leaves its attack runs on for the attack finish time; on the old row it keeps the"
+          + " unit only for the hit it started and stops as the unit leaves")
+  void attackersReadTheNewRow() {
+    assertThat(towerStatesAfterTheDemolisherLeaves(true))
+        .as("kept on the kamikaze form's lifetime: the target-lost countdown runs")
+        .containsExactly(
+            GridEntityState.ATTACKING,
+            GridEntityState.ATTACKING,
+            GridEntityState.ATTACKING,
+            GridEntityState.ATTACKING,
+            GridEntityState.ATTACKING,
+            GridEntityState.STANDING);
+    assertThat(towerStatesAfterTheDemolisherLeaves(false))
+        .as("kept for the damage on its way only: no countdown")
+        .containsOnly(GridEntityState.STANDING);
+  }
+
+  /**
+   * A bottom-side princess tower that has hit a top-side Goblin Demolisher, the demolisher swapped
+   * to its kamikaze form or not, then a lethal damage put on its way to the demolisher for a step,
+   * and the demolisher killed: the tower's state on each of the six steps from the one the
+   * demolisher leaves in.
+   */
+  private static List<Integer> towerStatesAfterTheDemolisherLeaves(boolean swap) {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    Battle battle = match.getBattle();
+    CharacterEntity demolisher =
+        match.deploy(0, GameData.unit("GoblinDemolisher"), 11, 1, 3500, 15500, "Demolisher");
+    TowerEntity tower = null;
+    for (int tick = 0; tick < 400 && tower == null; tick++) {
+      battle.step();
+      // A deploying unit is out of reach of damage, which the rule asks first.
+      if (demolisher.getView().getState() == GridEntityState.DEPLOYING) {
+        continue;
+      }
+      for (BattleEntity entity : battle.getHolder().entities()) {
+        if (entity instanceof TowerEntity candidate
+            && candidate.side() == 0
+            && candidate.getTargeting().getReference() == demolisher.getTargetView()) {
+          tower = candidate;
+        }
+      }
+    }
+    assertThat(tower).as("a tower attacks the demolisher").isNotNull();
+    assertThat(tower.getTargeting().isHitStarted()).as("it has hit").isTrue();
+    if (swap) {
+      demolisher.changeData("GoblinDemolisher_kamikaze_form", false);
+    }
+    demolisher.addPendingDamage(demolisher.getHitPoints().getHitPoints() + 100, 200);
+    battle.step();
+    assertThat(tower.getTargeting().getReference())
+        .as("the tower keeps the demolisher either way")
+        .isSameAs(demolisher.getTargetView());
+    assertThat(tower.getTargeting().isKeptByPendingDamageCheck())
+        .as("kept for the hit it started only on the old row")
+        .isEqualTo(!swap);
+
+    demolisher.getHitPoints().setHitPoints(0);
+    List<Integer> states = new ArrayList<>();
+    for (int step = 0; step < 6; step++) {
+      battle.step();
+      assertThat(battle.getHolder().entities()).doesNotContain(demolisher);
+      states.add(tower.getView().getState());
+    }
+    return states;
   }
 
   @Test
