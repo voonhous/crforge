@@ -1154,8 +1154,8 @@ public interface WorldObserver {
   default void ghostSummonSpawned(int tick, AreaEffectEntity area, CharacterEntity summon) {}
 
   /**
-   * A buff's start action, as an instance was listed, or its remove action, as one was removed, is
-   * about to be scheduled on its carrier.
+   * A buff's start action, as an instance was listed, its remove action, as one was removed, or its
+   * stacked action, as one was refreshed, is about to be scheduled on its carrier.
    *
    * @param start true for the start action
    */

@@ -56,19 +56,29 @@ class BattleLevelChangeTest {
   }
 
   @Test
-  @DisplayName("a fall keeps the hit points as they stand, above the new maximum")
-  void aFallKeepsTheHitPoints() {
+  @DisplayName("a fall takes the hit points down to their share of the new maximum, never below 1")
+  void aFallLowersTheHitPointsToTheirShare() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11, false);
     CharacterEntity knight = knight(match, 11, "Knight", 3500);
     CharacterEntity ten = knight(match, 10, "Ten", 14500);
+    CharacterEntity low = knight(match, 11, "Low", 9000);
     match.getBattle().step();
+    int tenMaximum = ten.getHitPoints().getMaximum();
 
     knight.actionHolder().start(relative(-1), knight.actionHolder());
 
     assertThat(knight.level()).isEqualTo(10);
     assertThat(knight.getDamage()).isEqualTo(ten.getDamage());
-    assertThat(knight.getHitPoints().getMaximum()).isEqualTo(ten.getHitPoints().getMaximum());
-    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(1766);
+    assertThat(knight.getHitPoints().getMaximum()).isEqualTo(tenMaximum);
+    assertThat(knight.getHitPoints().getHitPoints())
+        .as("full hit points stay full: 1766 of 1766 is the whole new maximum")
+        .isEqualTo(tenMaximum);
+
+    // 1 of 1766 is 56 hundred-thousandths, which is 0 of the new maximum: held at 1.
+    low.getHitPoints().setHitPoints(1);
+    low.actionHolder().start(relative(-1), low.actionHolder());
+    assertThat(low.level()).isEqualTo(10);
+    assertThat(low.getHitPoints().getHitPoints()).isEqualTo(1);
   }
 
   @Test

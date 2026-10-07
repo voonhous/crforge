@@ -341,10 +341,12 @@ public final class BattleRecords {
           "NO_MOVE_ALLOW_ATTRACT");
 
   /**
-   * The actions a buff schedules on its carrier as an instance is listed and removed: read when
-   * they name an action row, listed as not modelled when written inline.
+   * The actions a buff schedules on its carrier as an instance is listed, removed and refreshed
+   * (the last a newer data version's): read when they name an action row, listed as not modelled
+   * when written inline.
    */
-  private static final Set<String> BUFF_HOOK_COLUMNS = Set.of("OnStartAction", "OnRemoveAction");
+  private static final Set<String> BUFF_HOOK_COLUMNS =
+      Set.of("OnStartAction", "OnRemoveAction", "OnStackedAction");
 
   /**
    * The columns of a unit's row that only show something: its art, texts, effects, shadows,
@@ -2252,6 +2254,7 @@ public final class BattleRecords {
         .removeOnAttack(row.bool("RemoveOnAttack"))
         .onStartAction(hookAction(row, "OnStartAction"))
         .onRemoveAction(hookAction(row, "OnRemoveAction"))
+        .onStackedAction(hookAction(row, "OnStackedAction"))
         .spawnObject(sets(row, "SpawnObject") ? row.string("SpawnObject") : null)
         .spawnStartTimeMs(row.intValue("SpawnStartTime"))
         .spawnIntervalMs(row.intValue("SpawnInterval"))
