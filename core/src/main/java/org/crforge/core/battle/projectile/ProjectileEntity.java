@@ -14,13 +14,13 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.CaptureCharacter;
+import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RollingProjectile;
-import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -978,7 +978,7 @@ public class ProjectileEntity extends BattleEntity
 
   /** Shoots the action's projectiles across the line from this projectile to its aim. */
   @Override
-  public void shootProjectilesAcross(ShootProjectilesInCharacterDirection action) {
+  public void shootProjectilesAcross(CreateParallelProjectiles action) {
     world.shootProjectilesAcross(this, action);
   }
 

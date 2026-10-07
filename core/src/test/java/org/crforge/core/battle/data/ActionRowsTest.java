@@ -27,6 +27,7 @@ import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChangeGameObjectData;
 import org.crforge.core.battle.action.Clone;
+import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DoPushbackFromInstigator;
@@ -48,7 +49,6 @@ import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
-import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -329,8 +329,8 @@ class ActionRowsTest {
   void theTripleShotReadsItsRowCountAndSpread(@TempDir Path folder) throws IOException {
     String row = "EliteArcherHero_Triple_Shot_Action";
     BattleAction action = GameData.actions().build(row, INERT_BINDING);
-    assertThat(action).isInstanceOf(ShootProjectilesInCharacterDirection.class);
-    ShootProjectilesInCharacterDirection shot = (ShootProjectilesInCharacterDirection) action;
+    assertThat(action).isInstanceOf(CreateParallelProjectiles.class);
+    CreateParallelProjectiles shot = (CreateParallelProjectiles) action;
     assertThat(shot.getProjectile()).isEqualTo("EliteArcherHero_Ability_Triple_Shot_Projectile");
     assertThat(shot.getCount()).isEqualTo(2);
     assertThat(shot.getDistance()).isEqualTo(1500);

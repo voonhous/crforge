@@ -40,6 +40,7 @@ import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.ContextToVariable;
 import org.crforge.core.battle.action.Counter;
+import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DashingAttackChain;
@@ -96,7 +97,6 @@ import org.crforge.core.battle.action.SetInstantHit;
 import org.crforge.core.battle.action.SetShield;
 import org.crforge.core.battle.action.SetVariable;
 import org.crforge.core.battle.action.ShapeSelector;
-import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SoulDrain;
 import org.crforge.core.battle.action.SpawnBuff;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -1154,6 +1154,11 @@ public final class ActionRows {
                   "ProjectileCount",
                   "ProjectileDistance",
                   "CustomForwardOffset")),
+          // The same row of projectiles in data version 16.402.18, which has no forward offset and
+          // no character line. ShooterData is again read by no part of the perform.
+          Map.entry(
+              "ActionCreateParallelProjectiles",
+              Set.of("ProjectileType", "ProjectileCount", "ProjectileDistance")),
           Map.entry("ActionSpawn", spawnColumns()),
           Map.entry("ActionSpawnToLocation", spawnColumns()),
           // The evolved Cannon's barrage: its bombs' areas and points. The relative offsets are
@@ -1733,9 +1738,10 @@ public final class ActionRows {
             case "ActionSetCharacterLevel" -> setCharacterLevel(name, shared, f);
             case "ActionMirroredExtraSpell" ->
                 new MirroredExtraSpell(shared, text(f, "Projectile", ""));
-            case "ActionShootProjectilesInCharacterDirection" -> {
+            case "ActionShootProjectilesInCharacterDirection",
+                "ActionCreateParallelProjectiles" -> {
               String projectile = text(f, "ProjectileType", "");
-              yield new ShootProjectilesInCharacterDirection(
+              yield new CreateParallelProjectiles(
                   shared,
                   projectile.isEmpty() ? null : projectile,
                   integer(f, "ProjectileCount"),

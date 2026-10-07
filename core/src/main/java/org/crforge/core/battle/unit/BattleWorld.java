@@ -30,12 +30,12 @@ import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.ConeShape;
+import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.ShapeSelector;
-import org.crforge.core.battle.action.ShootProjectilesInCharacterDirection;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
@@ -3654,8 +3654,7 @@ public class BattleWorld implements HolderPasses {
    * @param source the projectile that shoots them
    * @param action the action, which names the row, the count and the spread
    */
-  public void shootProjectilesAcross(
-      ProjectileEntity source, ShootProjectilesInCharacterDirection action) {
+  public void shootProjectilesAcross(ProjectileEntity source, CreateParallelProjectiles action) {
     ProjectileData data = records.projectile(action.getProjectile());
     if (!data.unmodelledColumns().isEmpty()) {
       throw new UnsupportedOperationException(
