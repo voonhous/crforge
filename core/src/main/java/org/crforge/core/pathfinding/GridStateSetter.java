@@ -54,11 +54,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p>Entering the casting state, for a unit given its casting, raises the casting flag and seeds
  * the ability's two countdowns in whole ticks, and empties the route; a cast whose countdowns are
  * both 0 then runs the ability's effect at once and, still casting with no cast time left, goes
- * back to the state it came from, that change running its own exit, entry and combat gate in place
- * of the casting change's gate. Entering the ability's follow-up state seeds the cast's countdown
- * with the follow-up's duration in whole ticks. Leaving it before the effect fired leaves the
- * ability pending again, and a unit with a movement component has its charge reset. A change into
- * or out of the casting state ends with the unit's combat gate.
+ * back to the state it came from. Back to walking that is a bare store of the state, with no exit,
+ * no entry and no combat gate, so the route stays empty until the next movement visit prepares one;
+ * back to any other state it is a change of its own, running its own exit, entry and combat gate in
+ * place of the casting change's gate. Entering the ability's follow-up state seeds the cast's
+ * countdown with the follow-up's duration in whole ticks. Leaving it before the effect fired leaves
+ * the ability pending again, and a unit with a movement component has its charge reset. A change
+ * into or out of the casting state ends with the unit's combat gate.
  *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state, chains a further dash on
@@ -92,7 +94,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " columns are refused, the following-state rewrites and the two notifications every"
             + " change ends with. A cast with no countdowns at all fires in the casting state's"
             + " entry and goes back to the state it came from, held by ability_hero_giant_slap;"
-            + " refused for a casting given no effect to run there.")
+            + " back to walking by a bare store of the state, held by random_battle16_s0012,"
+            + " whose Ice Golemite hero casts as it walks past its princess tower and is routed"
+            + " on its next movement visit; refused for a casting given no effect to run there.")
 public final class GridStateSetter implements StateSetter {
 
   /** Milliseconds per tick, which the casting countdowns are counted in. */
@@ -492,8 +496,16 @@ public final class GridStateSetter implements StateSetter {
    * The end of the casting state's entry, after the route is emptied: a cast whose two countdowns
    * are both 0 runs the ability's effect at once, as the state visit would on the step its trigger
    * delay ran out; then, when the unit is still casting with no cast time left (the effect did not
-   * send it into the follow-up state), it goes back to the state it came from. That change runs its
-   * own exit, entry and combat gate.
+   * send it into the follow-up state), it goes back to the state it came from.
+   *
+   * <p>A unit that came from walking is walking again by a store of the state alone: the casting
+   * state is not left (its charge is kept), the walking state is not entered (no route is prepared
+   * here, during the command that asked for the cast, over an overlay the tick has not built yet)
+   * and no combat gate runs. Its next movement visit finds the route empty and prepares one from
+   * where it stands, over that tick's overlay. A unit that came from any other state goes back
+   * through a change of its own, which runs its own exit, entry and combat gate. (The game of data
+   * version 14.593.1 changes back in full from walking too; none of its reference battles tells the
+   * two apart.)
    *
    * @param oldState the state the unit was in before it entered the casting state
    * @return true when the unit went back, so the change into the casting state ends without its own
@@ -507,6 +519,13 @@ public final class GridStateSetter implements StateSetter {
     casting.effect().run();
     if (timers.getAbilityCountdown() > 0 || owner.getState() != GridEntityState.CASTING) {
       return false;
+    }
+    if (oldState == GridEntityState.MOVING) {
+      // The state is stored and the change ends there: the casting state is not left, the walking
+      // state not entered, and no combat gate runs. The route the entry emptied stays empty until
+      // the unit's next movement visit prepares one.
+      owner.setState(GridEntityState.MOVING);
+      return true;
     }
     setState(owner, oldState);
     return true;
