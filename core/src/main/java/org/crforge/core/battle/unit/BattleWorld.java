@@ -323,6 +323,31 @@ public class BattleWorld implements HolderPasses {
   private final List<ProjectileEntity> projectiles = new ArrayList<>();
 
   /**
+   * This tick's deflecting area effects as the spatial index holds them, in its insertion order:
+   * each with the buckets its square covered where it stood at the head of the tick. See {@link
+   * IndexedDeflector}.
+   */
+  private final List<IndexedDeflector> indexedDeflectors = new ArrayList<>();
+
+  /**
+   * A deflecting area effect in the spatial index. The game's index holds every listed object whose
+   * radius is at least 1, and an area effect answers its radius only when it deflects projectiles
+   * (or has a collision behaviour, which no row carried here has), so a living Deflect is indexed
+   * by its radius like a unit by its collision radius: in every bucket its square covers, without
+   * the moving margin, as an area effect has no components. Java's index holds the arena entities'
+   * views only; the area effect's buckets are kept here instead, and a query that would visit them
+   * tests it on its live position and radius as the index would.
+   *
+   * @param deflector the area effect
+   * @param xLow its first bucket along the width
+   * @param xHigh its last bucket along the width
+   * @param yLow its first bucket along the length
+   * @param yHigh its last bucket along the length
+   */
+  private record IndexedDeflector(
+      AreaEffectEntity deflector, int xLow, int xHigh, int yLow, int yHigh) {}
+
+  /**
    * Every arena entity admitted so far and not yet gone, keyed by its view. An entity joins at its
    * first pre-pass and leaves at the cleanup that removes it.
    */
@@ -2238,6 +2263,7 @@ public class BattleWorld implements HolderPasses {
       entity.registerCandidates(present);
     }
     index.rebuild(views);
+    indexDeflectors(snapshot);
     FootprintOverlay.buildOverlay(grid, views);
     grid.setChangeFlags(grid.getChanged().clone());
     // The target locks' step, before the entities' pre-hooks: a lock whose target or holder is no
@@ -3936,9 +3962,16 @@ public class BattleWorld implements HolderPasses {
   /**
    * The pass a projectile flying to a point runs over what its body covers: the spatial index's box
    * of its body radius, widened by the extra, by its body's half height - or its circle without one
-   * - buildings tested as squares; one fresh hit id for the whole pass; and the travelling hit on
-   * each entity found, in the index's order, until a hit finishes a projectile that stops at
-   * collisions.
+   * - buildings tested as squares. Unless the projectile never deflects, or is measured only at its
+   * target's point and has not been deflected yet, the deflecting area effects the index lists come
+   * first: one of the other team would turn it around, and then nothing is hit. Otherwise one fresh
+   * hit id for the whole pass, and the travelling hit on each entity found, in the index's order,
+   * until a hit finishes a projectile that stops at collisions; an area effect the index lists
+   * takes no hit, having no hit points.
+   *
+   * <p>Refused rather than guessed: a deflection here, which would relaunch a projectile that flies
+   * to a point at its source, and a pass without a body beside a deflecting area effect, which
+   * would run the deflection pass instead.
    *
    * @param projectile the projectile
    * @param x where the pass is centred, along the width
@@ -3947,26 +3980,42 @@ public class BattleWorld implements HolderPasses {
    */
   public void cellPass(ProjectileEntity projectile, int x, int y, int extra) {
     ProjectileData data = projectile.getData();
-    if (!deflectors().isEmpty()) {
-      throw new UnsupportedOperationException(
-          projectile.name()
-              + " passes cells beside a deflecting area effect, which is not modelled");
-    }
     if (data.projectileRadius() < 1) {
-      // Without a body the deflection pass runs, which finds nothing without deflecting areas.
+      // Without a body the deflection pass runs at the pass's point and height, which finds nothing
+      // without deflecting areas. Only a projectile that flies to a point, which has a body, is
+      // handed here.
+      if (!deflectors().isEmpty()) {
+        throw new UnsupportedOperationException(
+            projectile.name()
+                + " passes cells without a body beside a deflecting area effect, not modelled");
+      }
       return;
     }
+    int radius = data.projectileRadius() + extra;
+    int halfHeight = data.projectileRadiusY();
     List<GridEntity> found =
-        index.query(
-            new SpatialQuery(
-                x,
-                y,
-                data.projectileRadius() + extra,
-                data.projectileRadiusY(),
-                false,
-                true,
-                0,
-                -1));
+        index.query(new SpatialQuery(x, y, radius, halfHeight, false, true, 0, -1));
+    boolean deflectable =
+        (data.deflectBehaviour() & ProjectileData.NO_DEFLECT) == 0
+            && ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) == 0
+                || projectile.getDeflections() != 0);
+    if (deflectable) {
+      for (AreaEffectEntity deflector : listedDeflectors(x, y, radius, halfHeight)) {
+        // The deflect handler answers no for a projectile that has arrived or is on the area
+        // effect's own team, and does nothing else then.
+        if (!projectile.isReleased() && (deflector.side() & 1) != (projectile.side() & 1)) {
+          throw new UnsupportedOperationException(
+              projectile.name()
+                  + " ("
+                  + data.name()
+                  + ") passes cells within "
+                  + deflector.name()
+                  + " ("
+                  + deflector.getData().name()
+                  + "), which would deflect it, not modelled");
+        }
+      }
+    }
     int hitId = nextHitId();
     for (GridEntity view : found) {
       WorldEntity entity = known.get(view);
@@ -3975,6 +4024,71 @@ public class BattleWorld implements HolderPasses {
       }
     }
     index.release(found);
+  }
+
+  /**
+   * Puts this tick's deflecting area effects into the index's buckets, in the snapshot's order, as
+   * the index rebuild inserts every listed object whose radius is at least 1: the buckets of its
+   * square where it stands at the head of the tick. See {@link IndexedDeflector}.
+   */
+  private void indexDeflectors(List<BattleEntity> snapshot) {
+    indexedDeflectors.clear();
+    for (BattleEntity entity : snapshot) {
+      if (entity instanceof AreaEffectEntity areaEffect
+          && areaEffect.getData().deflectsProjectiles()) {
+        int radius = areaEffect.deflectRadius();
+        if (radius < 1) {
+          continue;
+        }
+        int ax = areaEffect.getX();
+        int ay = areaEffect.getY();
+        indexedDeflectors.add(
+            new IndexedDeflector(
+                areaEffect,
+                (ax - radius) >> SpatialIndex.BUCKET_SHIFT,
+                (ax + radius) >> SpatialIndex.BUCKET_SHIFT,
+                (ay - radius) >> SpatialIndex.BUCKET_SHIFT,
+                (ay + radius) >> SpatialIndex.BUCKET_SHIFT));
+      }
+    }
+  }
+
+  /**
+   * The deflecting area effects a building-aware index query lists, in the index's insertion order:
+   * one in a bucket the query visits whose circle, at its live position and radius, meets the
+   * query's box - with a half height - or its circle. An area effect is no building.
+   */
+  private List<AreaEffectEntity> listedDeflectors(int x, int y, int radius, int halfHeight) {
+    List<AreaEffectEntity> out = new ArrayList<>();
+    int xLow = (x - radius) >> SpatialIndex.BUCKET_SHIFT;
+    int xHigh = (x + radius) >> SpatialIndex.BUCKET_SHIFT;
+    int yLow = (y - radius) >> SpatialIndex.BUCKET_SHIFT;
+    int yHigh = (y + radius) >> SpatialIndex.BUCKET_SHIFT;
+    if (xLow > xHigh || yLow > yHigh) {
+      return out;
+    }
+    for (IndexedDeflector indexed : indexedDeflectors) {
+      int fromX = Math.max(Math.max(xLow, indexed.xLow()), 0);
+      int toX = Math.min(Math.min(xHigh, indexed.xHigh()), index.getWidth() - 1);
+      int fromY = Math.max(Math.max(yLow, indexed.yLow()), 0);
+      int toY = Math.min(Math.min(yHigh, indexed.yHigh()), index.getHigh() - 1);
+      if (fromX > toX || fromY > toY) {
+        continue;
+      }
+      AreaEffectEntity deflector = indexed.deflector();
+      int ex = deflector.getX();
+      int ey = deflector.getY();
+      int er = deflector.deflectRadius();
+      boolean inside =
+          halfHeight != 0
+              ? ShapeTests.withinBox(
+                  ex, ey, er, x - radius, y - halfHeight, 2 * radius, 2 * halfHeight)
+              : ShapeTests.withinCircle(ex, ey, er, x, y, radius);
+      if (inside) {
+        out.add(deflector);
+      }
+    }
+    return out;
   }
 
   /**
@@ -4021,16 +4135,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The deflection pass of a flying projectile, at a point and height: after each move, at its new
-   * position, and at its arrival, at its aim. Every area effect of the live list, in its order,
-   * that deflects projectiles and whose life has not run out measures the projectile, as a point,
-   * against its deflection radius in three dimensions, standing on the ground; the first that
-   * touches it and deflects it ends the pass. A projectile that no deflection turns around passes
-   * untouched.
+   * position, and at its arrival, at its aim. A projectile that never deflects passes untouched.
+   * Every other is measured as a point, standing on the ground, in three dimensions, against every
+   * area effect of the live list, in its order, that deflects projectiles and whose life has not
+   * run out: within the area effect's deflection radius widened by the projectile's own deflect
+   * radius, or its body radius without one. The first that touches it and deflects it ends the
+   * pass; one that touches it but answers no - it has arrived, or is on the area effect's team -
+   * lets the pass go on. A projectile that no deflection turns around passes untouched.
    *
-   * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile with a
-   * deflection behaviour or radius of its own, an action on its deflector or a body; one that hops,
-   * flies to a point, homes for a time, waits a random delay, sweeps, hooks or stops at collisions;
-   * one that spawns a projectile, belongs to a chain or a volley's group.
+   * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
+   * on the ground plane, by a box, or only at its target's point (whose arrival is measured at a
+   * stored point, not at the aim); and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
    * @param x the point along the width
@@ -4047,18 +4162,30 @@ public class BattleWorld implements HolderPasses {
     if ((data.deflectBehaviour() & ProjectileData.NO_DEFLECT) != 0) {
       return false;
     }
-    refuseDeflection(projectile);
+    // The shape's radii: the projectile's deflect radius, or its body's without one.
+    int rx = data.deflectRadius() >= 1 ? data.deflectRadius() : data.projectileRadius();
+    int ry = data.deflectRadius() >= 1 ? 0 : data.projectileRadiusY();
+    if ((data.deflectBehaviour()
+                & (ProjectileData.IGNORE_HEIGHT | ProjectileData.CHECK_ONLY_TARGET_POSITION))
+            != 0
+        || ry > 0) {
+      throw new UnsupportedOperationException(
+          projectile.name()
+              + " ("
+              + data.name()
+              + ") flies by a deflecting area effect, whose deflection of it is not modelled");
+    }
     for (AreaEffectEntity deflector : deflectors) {
       if (deflector.getCountdown() < 1) {
         continue;
       }
-      int radius = deflector.deflectRadius();
+      int reach = deflector.deflectRadius() + rx;
       int squared =
           FixedMath.guardedSumOfSquares(
               FixedMath.s32((long) x - deflector.getX()),
               FixedMath.s32((long) y - deflector.getY()),
               z);
-      if (squared < radius * radius && deflect(deflector, projectile)) {
+      if (squared < reach * reach && deflect(deflector, projectile)) {
         return true;
       }
     }
@@ -4077,8 +4204,15 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /** Refuses a projectile whose deflection is not modelled; see {@link #deflectPass}. */
-  private static void refuseDeflection(ProjectileEntity projectile) {
+  /**
+   * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
+   * one with a deflection behaviour, a deflect radius or an action on its deflector, a body; one
+   * that hops, flies to a point, homes for a time, waits a random delay, sweeps, hooks or stops at
+   * collisions; one that spawns a projectile, belongs to a chain or a volley's group. A spell such
+   * as the Fireball, whose deflection behaviour sends it at the enemy nearest the area effect
+   * without a target, is among them.
+   */
+  private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
     if (data.deflectBehaviour() != 0
         || data.deflectRadius() != 0
@@ -4099,7 +4233,11 @@ public class BattleWorld implements HolderPasses {
           projectile.name()
               + " ("
               + data.name()
-              + ") flies by a deflecting area effect, whose deflection of it is not modelled");
+              + ") flies within "
+              + deflector.name()
+              + " ("
+              + deflector.getData().name()
+              + "), whose deflection of it is not modelled");
     }
   }
 
@@ -4110,10 +4248,11 @@ public class BattleWorld implements HolderPasses {
    * hit id, through the hit-points entry, when it has hit points and the shared validator lets the
    * projectile reach it; then the projectile is sent back at its root owner, for the parent's side.
    *
-   * <p>Refused rather than guessed: an area effect that follows nothing, a projectile without a
-   * root owner - whose deflection finishes it - or one a king tower fired, which searches for the
-   * nearest enemy instead when it has no target, one carrying copies that change its damage, and a
-   * deflection past the most a projectile takes, which finishes it.
+   * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
+   * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
+   * a king tower fired, which searches for the nearest enemy instead when it has no target, one
+   * carrying copies that change its damage, and a deflection past the most a projectile takes,
+   * which finishes it.
    *
    * @return true when the projectile was deflected
    */
@@ -4121,6 +4260,7 @@ public class BattleWorld implements HolderPasses {
     if (projectile.isReleased() || (deflector.side() & 1) == (projectile.side() & 1)) {
       return false;
     }
+    refuseDeflection(deflector, projectile);
     if (!(deflector.getFollow() instanceof WorldEntity parent)) {
       throw new UnsupportedOperationException(
           deflector.name() + " deflects without an object it follows, which is not modelled");
@@ -8267,5 +8407,6 @@ public class BattleWorld implements HolderPasses {
     }
     grid.swap();
     index.clear();
+    indexedDeflectors.clear();
   }
 }
