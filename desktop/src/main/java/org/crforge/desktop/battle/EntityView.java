@@ -12,6 +12,9 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param side the battle's side, 0 or 1; the screen's {@code ViewOrientation} decides which is
  *     drawn blue at the bottom
  * @param name the row name: the unit, building, tower, projectile or area effect row
+ * @param level the level it stands at, counted from 1 across all rarities as the match counts a
+ *     card's level: a character's own level, which a level change moves, a projectile's or an area
+ *     effect's the level it was made at
  * @param x position along the arena's width
  * @param y position along the arena's length
  * @param radius the body's radius: a character's collision radius, an area effect's radius, a
@@ -47,6 +50,7 @@ public record EntityView(
     Kind kind,
     int side,
     String name,
+    int level,
     int x,
     int y,
     int radius,

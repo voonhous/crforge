@@ -23,6 +23,7 @@ import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.target.TargetView;
 
 /**
@@ -156,6 +157,7 @@ public final class BattleAdapter {
         kind,
         entity.side(),
         data.name(),
+        entity.level(),
         view.getX(),
         view.getY(),
         view.getCollisionRadius(),
@@ -224,6 +226,7 @@ public final class BattleAdapter {
         EntityView.Kind.PROJECTILE,
         projectile.getSide(),
         projectile.getData().name(),
+        projectile.level(),
         projectile.getX(),
         projectile.getY(),
         projectile.getData().radius(),
@@ -263,6 +266,7 @@ public final class BattleAdapter {
         EntityView.Kind.AREA_EFFECT,
         area.side(),
         area.getData().name(),
+        PackedLevel.level(area.getPackedLevel()),
         area.getX(),
         area.getY(),
         area.getData().radius(),
@@ -303,6 +307,7 @@ public final class BattleAdapter {
             new BattleFrame.CardView(
                 card.name(),
                 card.cost(),
+                session.handCardLevel(side, slot),
                 session.isPending(side, slot),
                 session.cardUnavailableReason(side, slot)));
       }
@@ -316,6 +321,7 @@ public final class BattleAdapter {
         Collections.unmodifiableList(hand),
         next == null
             ? null
-            : new BattleFrame.CardView(next.name(), next.cost(), false, "not in hand"));
+            : new BattleFrame.CardView(
+                next.name(), next.cost(), session.nextCardLevel(side), false, "not in hand"));
   }
 }

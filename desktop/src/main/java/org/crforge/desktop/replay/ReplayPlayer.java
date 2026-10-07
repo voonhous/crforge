@@ -89,7 +89,7 @@ public final class ReplayPlayer {
     ScenarioPlan plan = replay.plan();
     Map<String, String> cards = new HashMap<>();
     plan.plays().forEach(play -> cards.put(name(play.index()), play.card()));
-    session = BattleSession.of(ReplayBattle.build(tables, plan), cards);
+    session = BattleSession.of(ReplayBattle.build(tables, plan), cards, plan.deckLevels());
   }
 
   public void togglePause() {

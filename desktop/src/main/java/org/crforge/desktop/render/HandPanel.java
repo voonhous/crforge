@@ -123,7 +123,11 @@ final class HandPanel {
       button.setChecked(selectedSide == side && selectedSlot == slot);
       button.setText(card == null ? "-" : displayName(card.name()));
       costs[slot].setText(
-          card == null ? "" : compact && card.pending() ? "Queued" : card.cost() + " elixir");
+          card == null
+              ? ""
+              : compact && card.pending()
+                  ? "Queued"
+                  : card.cost() + " elixir  " + BattleRenderer.levelText(card.level()));
       shortcuts[slot].setText(replay ? "" : "[" + (side * 4 + slot + 1) + "]");
       cardStates[slot].setText(
           card == null
@@ -139,6 +143,9 @@ final class HandPanel {
     next.setText(
         player == null || player.next() == null
             ? ""
-            : "Next: " + displayName(player.next().name()));
+            : "Next: "
+                + displayName(player.next().name())
+                + " "
+                + BattleRenderer.levelText(player.next().level()));
   }
 }

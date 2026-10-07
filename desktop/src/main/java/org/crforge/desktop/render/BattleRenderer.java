@@ -23,7 +23,6 @@ import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.util.GameUnits;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleFrame;
-import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.EntityView;
 import org.crforge.desktop.battle.UnitStatus;
 
@@ -587,10 +586,13 @@ public class BattleRenderer {
     return drawLabels || entity.id() == inspectedEntity;
   }
 
+  /** A character's row name and level, with its deploy or hiding state when it has one. */
   private String characterLabel(EntityView entity) {
     String label =
         displayNames.computeIfAbsent(
-            entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "));
+                entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "))
+            + " "
+            + levelText(entity.level());
     if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
       return label + " [WAIT]";
     } else if (entity.deploying()) {
@@ -599,6 +601,11 @@ public class BattleRenderer {
       return label + " [HIDDEN]";
     }
     return label;
+  }
+
+  /** A level as the labels and the hand cards show it. */
+  static String levelText(int level) {
+    return "Lv" + level;
   }
 
   private static String hpText(EntityView entity) {
@@ -714,7 +721,10 @@ public class BattleRenderer {
     font.setColor(Color.WHITE);
   }
 
-  /** Each character's row name above its bars, and an area effect's name and life left. */
+  /**
+   * Each character's row name and level above its bars, and an area effect's name, level and life
+   * left.
+   */
   private void renderLabels(BattleFrame frame) {
     ctx.getSpriteBatch().begin();
     for (EntityView entity : frame.entities()) {
@@ -732,6 +742,8 @@ public class BattleRenderer {
       } else if (entity.kind() == EntityView.Kind.AREA_EFFECT) {
         label =
             entity.name()
+                + " "
+                + levelText(entity.level())
                 + " "
                 + String.format(Locale.ROOT, "%.1fs", Math.max(entity.lifeMs(), 0) / 1000f);
         y = py(entity.y()) - unitsToPixels(entity.radius()) - 2;
@@ -981,7 +993,7 @@ public class BattleRenderer {
     ctx.getEntityNameFont()
         .draw(ctx.getSpriteBatch(), name, x + (w - ctx.getGlyphLayout().width) / 2, y + h / 2);
     ctx.getEntityNameFont().setColor(Color.LIGHT_GRAY);
-    String level = card.pending() ? "played" : "Lv" + BattleSession.LEVEL;
+    String level = card.pending() ? "played" : levelText(card.level());
     ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), level, x + 3, y + 12);
     ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
