@@ -124,7 +124,7 @@ public final class ChefCooking extends RowAction {
   }
 
   /** One run: its start delay, its bar, and the throw it waits on. */
-  private final class Run extends ActionInstance {
+  public final class Run extends ActionInstance {
 
     private final CookingHost host;
     private final int full = columns.contributionNeeded() * BAR_SCALE;
@@ -137,6 +137,19 @@ public final class ChefCooking extends RowAction {
     private Run(BattleAction action, CookingHost host) {
       super(action);
       this.host = host;
+    }
+
+    /**
+     * What the bar holds: 0 through the start delay, at or past {@link #fullBar()} from the step it
+     * is full until a throw goes, and what ran past a full bar after it.
+     */
+    public int bar() {
+      return bar;
+    }
+
+    /** What a full bar holds: the row's needed contribution times 20. */
+    public int fullBar() {
+      return full;
     }
 
     @Override

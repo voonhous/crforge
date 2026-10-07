@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -181,6 +182,54 @@ class BattleAdapterTest {
         .filteredOn(e -> e.kind() == EntityView.Kind.TROOP)
         .hasSizeGreaterThan(1);
     assertThat(frame.tick()).isEqualTo(200);
+  }
+
+  @Test
+  @DisplayName(
+      "a Royal Chef's king tower shows its cooking bar: empty through the start delay, then"
+          + " filling; a plain king shows none")
+  void theCookingBar() {
+    BattleSession session = chefTowers();
+    EntityView chef = king(towers(BattleAdapter.frame(session)), 1);
+    assertThat(chef.meter()).isNull();
+    assertThat(king(towers(BattleAdapter.frame(session)), 0).meter()).isNull();
+
+    // The run starts with the battle's first step and waits its start delay of 140 steps.
+    assertThat(session.step()).isTrue();
+    ActionMeter started = king(towers(BattleAdapter.frame(session)), 1).meter();
+    assertThat(started).isNotNull();
+    assertThat(started.kind()).isEqualTo(ActionMeter.Kind.COOKING);
+    assertThat(started.value()).isZero();
+    assertThat(started.maximum()).isPositive();
+    assertThat(started.share()).isZero();
+
+    for (int i = 0; i < 200; i++) {
+      assertThat(session.step()).isTrue();
+    }
+    BattleFrame frame = BattleAdapter.frame(session);
+    ActionMeter cooking = king(towers(frame), 1).meter();
+    assertThat(cooking.value()).isPositive().isLessThan(cooking.maximum());
+    assertThat(cooking.share()).isGreaterThan(0f).isLessThan(1f);
+    assertThat(king(towers(frame), 0).meter()).as("a plain king tower").isNull();
+    assertThat(towers(frame).stream().filter(t -> !t.king()))
+        .as("the princess-slot towers")
+        .allSatisfy(t -> assertThat(t.meter()).isNull());
+  }
+
+  /** A session whose side 1 has the Royal Chef's towers, every tower passive. */
+  private static BattleSession chefTowers() {
+    int level = Standard1v1Battle.DEFAULT_LEVEL;
+    return BattleSession.of(
+        new Standard1v1Battle(
+            Tables.get(),
+            List.of(
+                new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, level, level),
+                new Standard1v1Battle.Towers("King_ChefTowers", level, level)),
+            false));
+  }
+
+  private static List<EntityView> towers(BattleFrame frame) {
+    return frame.entities().stream().filter(e -> e.kind() == EntityView.Kind.TOWER).toList();
   }
 
   /** A Ladder battle in which both decks are eight copies of one card, always in slot 0. */

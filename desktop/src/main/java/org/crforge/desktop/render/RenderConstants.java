@@ -137,6 +137,9 @@ public final class RenderConstants {
   /** Golden color for shield bar segments. */
   public static final Color COLOR_SHIELD = new Color(1f, 0.85f, 0.2f, 1f);
 
+  /** Pancake orange for the Royal Chef's cooking bar. */
+  public static final Color COLOR_COOKING = new Color(0.95f, 0.55f, 0.15f, 1f);
+
   /** Semi-transparent landing zone indicators for position-targeted AOE projectiles. */
   public static final Color COLOR_BLUE_LANDING_ZONE = new Color(0.3f, 0.5f, 1f, 0.2f);
 
