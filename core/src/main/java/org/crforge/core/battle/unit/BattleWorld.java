@@ -3619,7 +3619,7 @@ public class BattleWorld implements HolderPasses {
    */
   void parentLeft(CharacterEntity rider, CharacterEntity parent) {
     if (parent.getData().deathInheritIgnoreList()) {
-      // Every entity accepted then would list the rider's id, the one write that fills an id list.
+      // Every entity accepted then would list the rider's id, which no run holds.
       throw new UnsupportedOperationException(
           parent.name() + " lets its riders go under an inherited ignore list, which is not held");
     }
@@ -4496,10 +4496,11 @@ public class BattleWorld implements HolderPasses {
    * being listed. An entity with hit points takes the projectile's damage at its level, or its
    * crown-tower share, as the listening runs of a projectile with an action holder change it - the
    * evolved Executioner's controller in place of it - from the direction of the pass's centre, and
-   * is listed as hit; then a character whose movement is still on is pushed the row's pushback away
-   * from the projectile, the row's push-all lifting the gates. A projectile that stops at
-   * collisions is finished by a hit that landed on an entity with hit points left, and the pass
-   * ends; held by the Hunter's pellets.
+   * is listed as hit, a carrier whose row attaches its riders with the ids of its riders (held by
+   * the Bowler's over a Goblin Giant, whose riders' Spear Goblins it then passes over); then a
+   * character whose movement is still on is pushed the row's pushback away from the projectile, the
+   * row's push-all lifting the gates. A projectile that stops at collisions is finished by a hit
+   * that landed on an entity with hit points left, and the pass ends; held by the Hunter's pellets.
    *
    * @return true when the hit finished the projectile
    */
@@ -4549,6 +4550,13 @@ public class BattleWorld implements HolderPasses {
     }
     boolean standing = entity.getHitPoints().getHitPoints() >= 1;
     projectile.getHitIds().add(id);
+    // A carrier whose row attaches its riders has their ids listed with its own, so they are never
+    // hit apart; a rider's death spawn that inherits the ignore list joins this list in its turn.
+    if (entity instanceof CharacterEntity carrier && carrier.getData().spawnAttach()) {
+      for (CharacterEntity rider : carrier.riders()) {
+        projectile.getHitIds().add(rider.getId());
+      }
+    }
     boolean landed;
     if (directHitAtDrain) {
       // Queued for the drain, where the entity takes it and may die, after every movement visit
@@ -5293,11 +5301,53 @@ public class BattleWorld implements HolderPasses {
       int madeX = spawned.getView().getX();
       int madeY = spawned.getView().getY();
       holder.addRegistered(spawned);
+      // A character whose row sets the inherited ignore list hands its place in every id list to
+      // each child: whatever has listed it, as a body that hit it or its carrier, lists the child.
+      if (data.deathInheritIgnoreList() && dying instanceof CharacterEntity) {
+        inheritIdLists(dying, spawned);
+      }
       if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         spawned.startSpawnImmunity();
       }
       for (WorldObserver observer : observers) {
         observer.characterSpawned(tick, dying, spawned, madeX, madeY);
+      }
+    }
+  }
+
+  /**
+   * A child taking a dying object's place in the id lists: every other object of the live list
+   * whose id list holds the dying object's id lists the child's too. The objects that keep such a
+   * list are a projectile, the ids its flying body has hit (with the riders of a carrier it hit)
+   * and its chained hops' targets, and an area effect, the ids its projectiles were dropped onto;
+   * the list of any other object is written only by such hand-overs - this one, a rider let go
+   * under its parent's inherited list, a morph - so it never holds an id. Refused rather than
+   * guessed: an area effect's list holding the dying object, which no run holds (the only rows that
+   * hand their place over are riders, which no area effect chooses).
+   *
+   * @param dying the dying object
+   * @param child the child made in its place
+   */
+  private void inheritIdLists(WorldEntity dying, WorldEntity child) {
+    int held = dying.getId();
+    int added = child.getId();
+    for (BattleEntity entity : holder.entities()) {
+      if (entity == child) {
+        continue;
+      }
+      if (entity instanceof ProjectileEntity projectile) {
+        if (projectile.getHitIds().contains(held)) {
+          projectile.getHitIds().add(added);
+        }
+      } else if (entity instanceof AreaEffectEntity areaEffect
+          && areaEffect.struckListHolds(held)) {
+        throw new UnsupportedOperationException(
+            child.name()
+                + " would join the id list of "
+                + areaEffect.name()
+                + " in place of "
+                + dying.name()
+                + ", which is not modelled");
       }
     }
   }
