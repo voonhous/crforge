@@ -4329,13 +4329,16 @@ public class BattleWorld implements HolderPasses {
    * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the Log's
    * and the Barbarian Barrel's hits: the damage at the level, the id list, and no push from a hit
    * that kills; held by no run: the own side spared, the crown-tower share, the untouchable
-   * listing, the air and jump checks, and the push itself. In order: none on its own side when it
-   * hits enemies only, none on an entity it has hit already; an untouchable character is listed as
-   * hit and spared; a character on a layer the projectile does not reach, or in the air, is spared.
-   * An entity with hit points takes the projectile's damage at its level, or its crown-tower share,
-   * as the listening runs of a projectile with an action holder change it - the evolved
-   * Executioner's controller in place of it - from the direction of the pass's centre, and is
-   * listed as hit; then a character whose movement is still on is pushed the row's pushback away
+   * listing, the air and jump checks, and the push itself. Held by the Log's and the Bowler's over
+   * a jumping Mega Knight: a dash under a row with a jump height spared, and the Log's hit once the
+   * Mega Knight has landed under it. In order: none on its own side when it hits enemies only, none
+   * on an entity it has hit already; an untouchable character is listed as hit and spared; a
+   * character on a layer the projectile does not reach, in the air, or, for a projectile that does
+   * not reach the air, in a jump or in a dash under a row with a jump height, is spared without
+   * being listed. An entity with hit points takes the projectile's damage at its level, or its
+   * crown-tower share, as the listening runs of a projectile with an action holder change it - the
+   * evolved Executioner's controller in place of it - from the direction of the pass's centre, and
+   * is listed as hit; then a character whose movement is still on is pushed the row's pushback away
    * from the projectile, the row's push-all lifting the gates. A projectile that stops at
    * collisions is finished by a hit that landed on an entity with hit points left, and the pass
    * ends; held by the Hunter's pellets.
@@ -4364,6 +4367,13 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     if (!data.aoeToAir() && view.getState() == GridEntityState.JUMPING) {
+      return false;
+    }
+    // A dasher whose row has a jump height is off the ground while it dashes, as the Mega Knight
+    // is in its jump: spared, and not listed, so the body can still hit it once it has landed.
+    if (!data.aoeToAir()
+        && view.getState() == GridEntityState.DASHING
+        && entity.getData().jumpHeight() >= 1) {
       return false;
     }
     if (entity.getHitPoints() == null) {
