@@ -140,6 +140,9 @@ public final class RenderConstants {
   /** Pancake orange for the Royal Chef's cooking bar. */
   public static final Color COLOR_COOKING = new Color(0.95f, 0.55f, 0.15f, 1f);
 
+  /** Steel blue for the Dagger Duchess's charge bar. */
+  public static final Color COLOR_CHARGES = new Color(0.55f, 0.75f, 0.95f, 1f);
+
   /** Semi-transparent landing zone indicators for position-targeted AOE projectiles. */
   public static final Color COLOR_BLUE_LANDING_ZONE = new Color(0.3f, 0.5f, 1f, 0.2f);
 

@@ -44,7 +44,7 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param speed the distance a character's movement visit asked for in the last tick
  * @param grid a character's grid state, for the route overlay; null otherwise
  * @param meter the bar an action running on a character shows over it, such as the Royal Chef's
- *     cooking; null for none
+ *     cooking or the Dagger Duchess's charges; null for none
  * @param statuses active buff snapshots and persistent clone identity; empty for non-characters
  */
 public record EntityView(
