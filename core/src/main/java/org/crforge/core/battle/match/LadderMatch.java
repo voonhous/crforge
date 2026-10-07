@@ -445,7 +445,9 @@ public final class LadderMatch implements BattleMode {
       if (!(entity instanceof CharacterEntity character) || character.getHitPoints() == null) {
         throw new UnsupportedOperationException(
             "the tiebreaker's clearing of "
-                + entity
+                + entity.getClass().getSimpleName()
+                + " "
+                + entity.getId()
                 + ", which the holder removes at once, is not modelled");
       }
       world.clearingKill(character);

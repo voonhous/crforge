@@ -439,7 +439,8 @@ public final class ActionRows {
           Map.entry("ActionHeal", Set.of("Value", "MaxOverHealPercent")),
           Map.entry("ActionKill", Set.of("OnKillAction")),
           Map.entry(
-              "ActionSetAttackSequenceIndex", Set.of("AttackIndex", "SetEvenIfCombatDisabled")),
+              "ActionSetAttackSequenceIndex",
+              Set.of("AttackIndex", "SetEvenIfCombatDisabled", "ResetRealHitStarted")),
           Map.entry(
               "ActionChangeGameObjectData",
               Set.of("NewCharacterData", "ResetTarget", "NewProjectileData")),
@@ -1596,7 +1597,10 @@ public final class ActionRows {
             case "ActionKill" -> new Kill(shared, action(f.get("OnKillAction")));
             case "ActionSetAttackSequenceIndex" ->
                 new SetAttackSequenceIndex(
-                    shared, integer(f, "AttackIndex"), bool(f, "SetEvenIfCombatDisabled"));
+                    shared,
+                    integer(f, "AttackIndex"),
+                    bool(f, "SetEvenIfCombatDisabled"),
+                    bool(f, "ResetRealHitStarted"));
             case "ActionTaunt" -> taunt(name, shared, f);
             case "ActionLumberjackGhostWaitUntilLooseBuff" -> lumberjackGhostWait(shared, f);
             case "ActionLaserBall" -> laserBall(name, shared, f);

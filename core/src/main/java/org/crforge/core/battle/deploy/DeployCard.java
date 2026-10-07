@@ -168,6 +168,49 @@ public record DeployCard(
   }
 
   /**
+   * The card as a play of another form of a deck card places it: this card's units, formation and
+   * list, with the deck card's stagger between the units of its two groups. The construction reads
+   * the two staggers from the card in the deck and everything else from the form played; the two
+   * differ only for the evolved Angry Barbarians, whose row sets no stagger of its own.
+   *
+   * @param deck the card in the deck the play was made from
+   */
+  public DeployCard withStaggerOf(DeployCard deck) {
+    return new DeployCard(
+        name,
+        unit,
+        count,
+        secondary,
+        secondaryCount,
+        summonRadius,
+        summonWidth,
+        deck.summonDeployDelayMs(),
+        deck.summonDeployDelaySecondMs(),
+        canDeployOnEnemySide,
+        canPlaceOnBuildings,
+        canPlaceOnWater,
+        fullLaneDeploy,
+        touchdownLimitedDeploy,
+        deployWTileMargin,
+        deployStartY,
+        deployEndY,
+        projectile,
+        areaEffect,
+        searchUnit,
+        spellAsDeploy,
+        radius,
+        multipleProjectiles,
+        projectileWaves,
+        projectileWaveIntervalMs,
+        projectileIntervalMs,
+        listed,
+        listOffsetsXMirrored,
+        group,
+        onExecuteAction,
+        namesCharacter);
+  }
+
+  /**
    * One character of a card's list, with its offset from the placed point as the row lists it; the
    * placement turns it by the playing side and the half of the arena, and the wait its card's delay
    * list gives it before it deploys.

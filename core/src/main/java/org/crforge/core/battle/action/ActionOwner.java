@@ -74,6 +74,16 @@ public interface ActionOwner {
   }
 
   /**
+   * Clears the hit-in-progress flag of the owner's targeting component, as an index-setting action
+   * whose row sets ResetRealHitStarted does after its store, whether or not the index was stored.
+   *
+   * @param evenIfCombatDisabled true to clear it with the targeting component off too
+   */
+  default void resetHitInProgress(boolean evenIfCombatDisabled) {
+    throw new UnsupportedOperationException("this owner has no attack sequence");
+  }
+
+  /**
    * Raises the owner's instant-hit byte, as an instant-hit action does: its next attack visit lands
    * a whole hit at once.
    */

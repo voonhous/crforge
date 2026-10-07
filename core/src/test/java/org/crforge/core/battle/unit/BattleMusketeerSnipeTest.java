@@ -38,7 +38,7 @@ class BattleMusketeerSnipeTest {
     assertThat(AttackRange.attackRange(musketeer.getTargeting()))
         .as("the normal entry keeps the row's Range")
         .isEqualTo(row.range() + radius);
-    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 1, true), holder);
+    holder.start(new SetAttackSequenceIndex(ActionRow.named("set"), 1, true, false), holder);
     assertThat(AttackRange.attackRange(musketeer.getTargeting()))
         .as("the snipe entry's own range, the radius still added")
         .isEqualTo(30000 + radius);
