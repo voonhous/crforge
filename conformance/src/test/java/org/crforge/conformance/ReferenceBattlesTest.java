@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import org.crforge.conformance.ReferenceSuite.CaseResult;
+import org.crforge.conformance.ReferenceSuite.References;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.parity.ReferenceSuite.CaseResult;
-import org.crforge.parity.ReferenceSuite.References;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -24,9 +24,9 @@ import org.junit.jupiter.api.Test;
  * Every recorded reference battle of the configured references folder, run on the simulator and
  * held to the expected outcome in {@code reference-expectations/<version>.json}.
  *
- * <p>Run with {@code ./gradlew :parity:referenceTest} and the references folder named by {@code
- * -Pcrforge.references=<dir>} or {@code CRFORGE_REFERENCES} (skipped when neither is set). The game
- * tables must be configured too. {@code CRFORGE_REFERENCES_SHARD} and {@code
+ * <p>Run with {@code ./gradlew :conformance:referenceTest} and the references folder named by
+ * {@code -Pcrforge.references=<dir>} or {@code CRFORGE_REFERENCES} (skipped when neither is set).
+ * The game tables must be configured too. {@code CRFORGE_REFERENCES_SHARD} and {@code
  * CRFORGE_REFERENCES_SHARDS} (or the matching properties) run one shard of the cases. Each run
  * writes a scorecard of every case's outcome under {@code build/reference-scorecard}.
  */
@@ -86,7 +86,7 @@ class ReferenceBattlesTest {
                 System.getProperty("crforge.references.expectations", "reference-expectations")),
             references.version());
     String update =
-        "If the change is intended, run ./gradlew :parity:updateReferenceExpectations"
+        "If the change is intended, run ./gradlew :conformance:updateReferenceExpectations"
             + " and commit "
             + expectations.getFileName()
             + " with it.";

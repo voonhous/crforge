@@ -24,8 +24,8 @@ import org.crforge.desktop.render.ViewOrientation;
  * <p>Each play and ability command that runs is noted in the session's messages (its side, named by
  * the screen's colours as the messages are read, its card or unit, and the tick it ran on), and
  * each play's item is checked against the item the battle built for it ({@link
- * ReplayBattle#checkItems}), as a parity run checks it: a play that ran with another item halts the
- * session with the reason, since the battle has left the replay.
+ * ReplayBattle#checkItems}), as a conformance run checks it: a play that ran with another item
+ * halts the session with the reason, since the battle has left the replay.
  *
  * <p>The replay stops at its end tick, or when the battle ends by its own rule, whichever is first;
  * a replay that gives no end tick plays until the battle ends. A refused replay has no session.

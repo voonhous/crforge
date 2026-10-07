@@ -73,7 +73,7 @@ jobs:
         run: ./gradlew test
 
   # Every recorded reference battle at the locked data commit, each case held to
-  # parity/reference-expectations/<version>.json, for two data versions of the lock: version, the
+  # conformance/reference-expectations/<version>.json, for two data versions of the lock: version, the
   # one under work, and unitTestVersion, kept as a regression set. The cases of each are split
   # across the shards of the matrix.
   reference:
@@ -126,12 +126,12 @@ jobs:
           gradle-version: wrapper
 
       - name: Run the reference battles
-        run: ./gradlew :parity:referenceTest
+        run: ./gradlew :conformance:referenceTest
 
       - name: Upload the scorecard
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: reference-scorecard-${{ steps.lock.outputs.version }}-${{ matrix.shard }}
-          path: parity/build/reference-scorecard/
+          path: conformance/build/reference-scorecard/
           if-no-files-found: warn

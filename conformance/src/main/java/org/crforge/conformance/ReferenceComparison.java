@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.conformance;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;

@@ -15,7 +15,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("org.crforge.parity.ReplaySmokeRun")
+    mainClass.set("org.crforge.conformance.ReplaySmokeRun")
 }
 
 // The recorded reference battles live outside the repository, in the game data repository at the
@@ -73,7 +73,7 @@ tasks.register<JavaExec>("updateReferenceExpectations") {
             "from the outcomes, for review in the change that moves them."
     group = "verification"
     classpath = sourceSets.main.get().runtimeClasspath
-    mainClass.set("org.crforge.parity.ReferenceSuite")
+    mainClass.set("org.crforge.conformance.ReferenceSuite")
     maxHeapSize = "3g"
     mapOf(
         "crforge.gameTables" to setting("crforge.gameTables", "CRFORGE_GAME_TABLES"),

@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.conformance;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
