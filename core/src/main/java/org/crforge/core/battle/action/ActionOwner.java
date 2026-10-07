@@ -322,6 +322,16 @@ public interface ActionOwner {
   }
 
   /**
+   * Schedules a row on the entity that launched the owner, built for it, with the owner as its
+   * cause, its own delay, not at once and with no context. Only a projectile has a shooter; any
+   * other owner schedules nothing.
+   *
+   * @param action the row that hands the action back
+   * @param actionToExecute the name of the row scheduled on the shooter
+   */
+  default void runOnShooter(BattleAction action, String actionToExecute) {}
+
+  /**
    * Builds the run of a flying warp a hand-over launches on the owner, as the hand-over's update
    * does: the warp's row built for the owner, its run handed the target and the target's last
    * position, and started. The caller lists it. Only a character flies a warp.

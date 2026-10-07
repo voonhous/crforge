@@ -77,6 +77,7 @@ import org.crforge.core.battle.action.ResetTarget;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.RunActionAtHealth;
 import org.crforge.core.battle.action.RunActionOnInstigatorDeath;
+import org.crforge.core.battle.action.RunActionOnShooter;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
 import org.crforge.core.battle.action.RunIfGameObjectExists;
 import org.crforge.core.battle.action.RunIfInstigatorMatches;
@@ -298,6 +299,8 @@ public final class ActionRows {
               Set.of("SubActions", "Condition", "PerActionConditions", "PassOptionalActionDelay")),
           Map.entry("ActionFilter", Set.of("Condition", "OnTrueAction", "OnFalseAction")),
           Map.entry("ActionRunOnInstigator", Set.of("ActionToExecute")),
+          // The hand-back from a projectile to the entity that launched it.
+          Map.entry("ActionRunActionOnShooter", Set.of("ActionToExecute")),
           // The hand-over to what rides the owner.
           Map.entry("ActionRunOnAttached", Set.of("ActionToRun")),
           // The run on what a target resolver finds. The custom position expressions and the
@@ -1378,6 +1381,8 @@ public final class ActionRows {
                     action(f.get("OnFalseAction")));
             case "ActionRunOnInstigator" ->
                 new RunOnInstigator(shared, action(f.get("ActionToExecute")));
+            case "ActionRunActionOnShooter" ->
+                new RunActionOnShooter(shared, rowName(f.get("ActionToExecute")));
             case "ActionWaitToActivate" ->
                 new WaitToActivate(
                     shared, expression(f.get("Condition")), action(f.get("OnActivateAction")));

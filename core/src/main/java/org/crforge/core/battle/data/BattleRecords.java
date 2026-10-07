@@ -2469,7 +2469,7 @@ public final class BattleRecords {
             .pingpongVisualTimeMs(row.intValue("PingpongVisualTime"))
             .randomDelayMs(row.intValue("RandomDelay"))
             .onHitTargetAction(inlineActionName(row, "OnHitTargetAction"))
-            .onTargetReachedAction(actionName(row, "OnTargetReachedAction"))
+            .onTargetReachedAction(inlineActionName(row, "OnTargetReachedAction"))
             .spawnAreaEffectObject(
                 set(row, "SpawnAreaEffectObject") ? row.string("SpawnAreaEffectObject") : null)
             .ignoreReflectedAttack(row.bool("IgnoreReflectedAttack"))
