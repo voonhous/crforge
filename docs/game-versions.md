@@ -58,7 +58,6 @@ On 2026-10-07 a 16.402.14 client was offered the newer version as an optional up
 
 | Data version | Content sha | Compatible | Why | Game tables |
 | --- | --- | --- | --- | --- |
-| 16.402.2 | `f26e4f9bf73e48ad6a92648279959030bfa2fd6a` | not applicable | shipped with 16.402.12 and replaced by the current data at the first login; no battle on it was seen | no |
 | 16.402.15 | `67d4a2de5d141b69d86536850082a9ba5b937459` | yes | served to 16.402.12, in the range | no |
 | 16.402.18 | `8aa8015226b0062c7e16a793522de91e564ffdaf` | yes | served to 16.402.17 | yes |
 | 16.402.19 | `7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec` | yes | served to 16.402.14 and 16.402.17 | yes |
