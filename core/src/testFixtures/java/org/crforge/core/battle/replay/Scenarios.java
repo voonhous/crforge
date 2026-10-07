@@ -1,16 +1,16 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /** A replay scenario of the shape the adapter reads, built for the tests. */
-final class Scenarios {
+public final class Scenarios {
 
   private static final JsonNodeFactory JSON = JsonNodeFactory.instance;
 
   /** The deck both sides play: six troop cards and two spells, by data id. */
-  static final int[] DECK = {
+  public static final int[] DECK = {
     26000000, 26000001, 26000002, 26000003, 26000005, 26000014, 28000000, 28000001
   };
 
@@ -22,7 +22,7 @@ final class Scenarios {
    * Two players of one deck at level index 0 with the princess towers, and one play: side 0's
    * Knight, given on tick 200 and run on tick 220.
    */
-  static ObjectNode knight() {
+  public static ObjectNode knight() {
     ObjectNode scenario = JSON.objectNode();
     scenario.put("rndSeed", 1131);
     scenario.put("time", 1775066287);
@@ -85,7 +85,7 @@ final class Scenarios {
    * event of each type; the Knight's item with its cosmetic field (bits 17..18) 2; and side 1's
    * avatar without the high word of its account id, which its commands give as 0.
    */
-  static ObjectNode knightOfVersion16() {
+  public static ObjectNode knightOfVersion16() {
     ObjectNode scenario = knight();
     scenario.put("endTick", 3681);
     scenario.putArray("srq");
@@ -157,7 +157,7 @@ final class Scenarios {
    * 14.593.1 replay shape with the play's command type 153. It has no request lists, no header
    * switches of that version and no king levels in its player data, and keeps 14.593.1's arena.
    */
-  static ObjectNode generatedKnightOfVersion16() {
+  public static ObjectNode generatedKnightOfVersion16() {
     ObjectNode scenario = knight();
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 153);
     return scenario;
@@ -180,7 +180,7 @@ final class Scenarios {
    * slot flags (bit 19) and the count plus 1 (bits 7..9), 1, 2 and 3, and the third, whose count
    * has reached its evolved row's DarkElixirCost of 2, the evolution field 1.
    */
-  static ObjectNode knightEvolvedThirdPlay() {
+  public static ObjectNode knightEvolvedThirdPlay() {
     ObjectNode scenario = knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(0)).put("el", 1);
     ArrayNode commands = scenario.putArray("cmd");
@@ -204,7 +204,7 @@ final class Scenarios {
    * 330 and run on tick 350 names her by her game object id, 5000006, the first unit made after the
    * six towers. She shoots the left princess tower from tick 317.
    */
-  static ObjectNode archerQueenAbility() {
+  public static ObjectNode archerQueenAbility() {
     ObjectNode scenario = knight();
     for (int side = 0; side < 2; side++) {
       ((ObjectNode) scenario.path("battle").path("deck" + side).path("sp").get(0))
@@ -219,13 +219,13 @@ final class Scenarios {
   }
 
   /** The Mirror's card, by data id. */
-  static final int MIRROR = 28000006;
+  public static final int MIRROR = 28000006;
 
   /** The Knight's card, by data id. */
-  static final int KNIGHT = 26000000;
+  public static final int KNIGHT = 26000000;
 
   /** The Archer's card, by data id. */
-  static final int ARCHER = 26000001;
+  public static final int ARCHER = 26000001;
 
   /**
    * The {@link #knight()} battle with side 0 on a deck that holds the Mirror at deck index 5: it
@@ -237,7 +237,7 @@ final class Scenarios {
    * 1 (6), its level field plus 1 (an Epic at level index 0 is level field 5, so 6) and its cost
    * plus the Knight's (1 + 3).
    */
-  static ObjectNode knightThenMirror() {
+  public static ObjectNode knightThenMirror() {
     ObjectNode scenario = knight();
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     int[][] decks = {
@@ -261,22 +261,22 @@ final class Scenarios {
   }
 
   /** The Merge Maiden's card, a variant card, by data id. */
-  static final int MERGE_MAIDEN = 28000025;
+  public static final int MERGE_MAIDEN = 28000025;
 
   /** The mounted maiden's own card row, MergeMaiden_Mounted, by data id. */
-  static final int MOUNTED_MAIDEN_CARD = 26000105;
+  public static final int MOUNTED_MAIDEN_CARD = 26000105;
 
   /** The Giant's card, by data id. */
-  static final int GIANT = 26000003;
+  public static final int GIANT = 26000003;
 
   /**
    * The mounted Merge Maiden's item: the option field 1 (option 0, MergeMaiden_Mounted), a
    * Legendary at level index 0 (level field 8), the deck index field 1 and the option's cost, 6.
    */
-  static final int MOUNTED_MAIDEN_ITEM = 0x60402010;
+  public static final int MOUNTED_MAIDEN_ITEM = 0x60402010;
 
   /** The Merge Maiden's item on foot: the option field 2 (MergeMaiden_Normal) for its cost, 3. */
-  static final int MAIDEN_ON_FOOT_ITEM = 0x30402020;
+  public static final int MAIDEN_ON_FOOT_ITEM = 0x30402020;
 
   /**
    * The {@link #knight()} battle with side 0 on a deck that holds the Merge Maiden at deck index 0
@@ -285,7 +285,7 @@ final class Scenarios {
    * option from the king's elixir, about 9.9 then, and takes the mounted maiden, whose trigger is
    * 6.
    */
-  static ObjectNode mergeMaidenMounted() {
+  public static ObjectNode mergeMaidenMounted() {
     ObjectNode scenario = mergeMaidenDecks();
     ArrayNode commands = scenario.putArray("cmd");
     addPlay(commands, 240, MERGE_MAIDEN, MOUNTED_MAIDEN_ITEM, 14500, 9500);
@@ -297,7 +297,7 @@ final class Scenarios {
    * elixir, and the Merge Maiden on tick 270: its option is picked from about 5.3 elixir, below the
    * mounted maiden's trigger, so it is played as the maiden on foot, for 3.
    */
-  static ObjectNode mergeMaidenOnFoot() {
+  public static ObjectNode mergeMaidenOnFoot() {
     ObjectNode scenario = mergeMaidenDecks();
     ArrayNode commands = scenario.putArray("cmd");
     addPlay(commands, 230, GIANT, 0x50c00800, 14500, 8500);
@@ -322,7 +322,7 @@ final class Scenarios {
    * maiden's row, MergeMaiden_Mounted, as the card it repeats. Side 1 plays the Minions on 500 and
    * the Knight on 540.
    */
-  static ObjectNode mergeMaidenThenMirror() {
+  public static ObjectNode mergeMaidenThenMirror() {
     ObjectNode scenario = knight();
     putDecks(
         scenario,
@@ -353,13 +353,13 @@ final class Scenarios {
   }
 
   /** The Archer Queen's card, by data id. */
-  static final int ARCHER_QUEEN = 26000072;
+  public static final int ARCHER_QUEEN = 26000072;
 
   /**
    * Adds an ability command of the side whose account's low word is given, given 20 ticks before
    * the tick it runs on, naming a unit by its game object id.
    */
-  static void addAbility(ArrayNode commands, int runTick, int accountLo, int objectId) {
+  public static void addAbility(ArrayNode commands, int runTick, int accountLo, int objectId) {
     ObjectNode command = commands.addObject();
     command.put("ct", 178);
     ObjectNode body = command.putObject("c");
@@ -375,7 +375,7 @@ final class Scenarios {
    * level index 0) and one play of side 1's own: its Giant, run on tick 450 in its back left
    * corner, at (3500, 29000), where it stands as the king's cooking fills.
    */
-  static ObjectNode knightAgainstTheRoyalChef() {
+  public static ObjectNode knightAgainstTheRoyalChef() {
     ObjectNode scenario = knight();
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000004);
     addPlay((ArrayNode) scenario.path("cmd"), 1, 450, 26000003, 0x51000800, 3500, 29000);
@@ -387,7 +387,7 @@ final class Scenarios {
    * and side 0's Giant in place of its Knight: the Giant takes deck index 0 and the Knight index 3,
    * so the Giant is in the opening hand, and it is played where the Knight was, on tick 220.
    */
-  static ObjectNode giantVsDuchessTower() {
+  public static ObjectNode giantVsDuchessTower() {
     ObjectNode scenario = knight();
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     ((ObjectNode) battle.path("deck1").path("sc").get(0)).put("d", 159000002);

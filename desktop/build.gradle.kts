@@ -7,9 +7,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":data"))
     implementation(project(":gym-bridge"))
-    // The replay viewer reads a replay through the parity module's mapping and builds its battle
-    // the way the parity runs do.
-    implementation(project(":parity"))
 
     // ZMQ + JSON (needed directly since gym-bridge uses implementation scope)
     implementation(libs.jeromq)

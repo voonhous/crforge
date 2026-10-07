@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -38,6 +38,9 @@ class ReplayFolderTest {
   /** The package of the battle core, whose refusals of the tables are its own. */
   private static final String BATTLE_CORE = "org.crforge.core.battle.";
 
+  /** The replay mapping's package, inside the battle core's but not its own refusals. */
+  private static final String REPLAY = ReplayBattle.class.getPackageName() + ".";
+
   @Test
   void everyReplayInTheFolderIsReadWithoutARefusal() throws IOException {
     String folder = System.getenv(VARIABLE);
@@ -66,12 +69,12 @@ class ReplayFolderTest {
       if (refusals.isEmpty()) {
         ScenarioPlan plan = new ReplayScenario(tables).translate(document);
         try {
-          ReplaySmokeRun.build(tables, plan);
+          ReplayBattle.build(tables, plan);
         } catch (UnsupportedOperationException e) {
           System.out.println("  the battle core refuses its battle: " + e.getMessage());
           // The refusal is the battle core's: thrown from its own classes.
           String thrower = e.getStackTrace()[0].getClassName();
-          if (!thrower.startsWith(BATTLE_CORE)) {
+          if (!thrower.startsWith(BATTLE_CORE) || thrower.startsWith(REPLAY)) {
             refused.add(name + ": a refusal thrown by " + thrower + ": " + e.getMessage());
           }
         }

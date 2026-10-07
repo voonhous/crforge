@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

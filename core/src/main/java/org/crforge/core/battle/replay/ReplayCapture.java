@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;

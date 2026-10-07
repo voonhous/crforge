@@ -12,14 +12,14 @@ import java.util.Map;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.CommandTypes;
+import org.crforge.core.battle.replay.ReplayBattle;
+import org.crforge.core.battle.replay.ReplayCapture;
+import org.crforge.core.battle.replay.ReplayScenario;
+import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
-import org.crforge.parity.CommandTypes;
-import org.crforge.parity.ReplayCapture;
-import org.crforge.parity.ReplayScenario;
-import org.crforge.parity.ReplaySmokeRun;
-import org.crforge.parity.ScenarioPlan;
 
 /**
  * A replay file read for the viewer: its battle header, what the replay mapping ({@link
@@ -146,7 +146,7 @@ public final class ReplayFile {
       plan = new ReplayScenario(tables).translate(document);
       // The battle is built once here, so a refusal to set it up is listed before any window.
       try {
-        ReplaySmokeRun.build(tables, plan);
+        ReplayBattle.build(tables, plan);
       } catch (RuntimeException e) {
         refusals.add("the battle core refuses to set up the replay's battle: " + reason(e));
         plan = null;

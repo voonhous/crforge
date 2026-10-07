@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.core.battle.replay;
 
 /**
  * A scenario input the production simulator has no mapping for: the run is reported unsupported,

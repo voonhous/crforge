@@ -30,6 +30,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ScenarioShape;
 
 /**
  * Runs the recorded reference battles of one content version and holds each case's outcome to the
