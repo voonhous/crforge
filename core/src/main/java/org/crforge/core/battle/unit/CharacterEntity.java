@@ -3590,8 +3590,12 @@ public class CharacterEntity extends WorldEntity {
     }
     if (ability.areaEffectObject() != null) {
       AreaEffectEntity areaEffect = world.abilityAreaEffect(this, ability.areaEffectObject());
-      if (ability.resurrectBaseCount() >= 1) {
-        spendSouls(ability, areaEffect);
+      if (ability.soulsFromDeaths()) {
+        if (ability.resurrectBaseCount() >= 1) {
+          spendSouls(ability, areaEffect);
+        }
+      } else if (ability.resurrectChargesExpression() != null) {
+        spendCharges(ability, areaEffect);
       }
     }
     if (ability.abilityStateDurationMs() >= 1) {
@@ -3615,18 +3619,44 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The charges a newer data version's ability spends on the area effect it created: its charges
+   * expression, read in the unit's context (the Skeleton King's SkeletonKing_ResurrectCharges, the
+   * souls its drains have brought in), adds to ResurrectBaseCount, at most SpawnLimit in all, and
+   * the area effect's lifetime is one SpawnInterval for each character after the first and its
+   * SpawnInitialDelay. Then the ability's reset action is scheduled on the unit, the unit its
+   * cause, as its activation action is: the Skeleton King's writes the variable back to 0.
+   */
+  private void spendCharges(AbilityData ability, AreaEffectEntity areaEffect) {
+    int charges = world.binding(this).expression(ability.resurrectChargesExpression()).getAsInt();
+    int count = Math.min(ability.resurrectBaseCount() + charges, ability.spawnLimit());
+    AreaEffectData row = areaEffect.getData();
+    int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
+    areaEffect.overrideLifetime(lifetime);
+    world.soulsSpent(this, areaEffect, charges, count, lifetime);
+    if (ability.spawnCountResetAction() != null) {
+      BattleAction reset =
+          world.getActions().build(ability.spawnCountResetAction(), world.binding(this));
+      actionHolder().schedule(reset, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
+  }
+
+  /**
    * The soul count, as the death notice tells the unit of a death. It counts one for a unit whose
    * ability collects souls - ResurrectBaseCount set - that is not a clone and is the copy a
    * champion controller of its side follows, for the death of a unit of its own side under
    * ResurrectOwnTroops or of the other side under ResurrectEnemies, that does not ignore
    * resurrection and is not a building, while the base count and its souls stay below SpawnLimit.
-   * Its own death counts too, as it dies.
+   * Its own death counts too, as it dies. Only an older data version counts (soulsFromDeaths).
    *
    * @param dying the object dying
    */
   void countSoul(WorldEntity dying) {
     AbilityData ability = getData().ability();
-    if (ability == null || ability.resurrectBaseCount() <= 0 || clone) {
+    // A newer data version counts no death on the unit: its souls are drained by actions.
+    if (ability == null
+        || !ability.soulsFromDeaths()
+        || ability.resurrectBaseCount() <= 0
+        || clone) {
       return;
     }
     if (!world.followedByController(this)) {

@@ -1880,22 +1880,22 @@ public final class BattleRecords {
    * buff that attracts), its damage, its hit action, its buff and its projectile, and what the pass
    * does beyond passing by an object it has reached for a row that hits each once, its target
    * limit, its biggest targets first, its hit action on itself and its end on its first hit: a
-   * launch from the area effect's source (a start height below 0) and a spawner, neither of which
-   * the filter form's hit pass is held for. Its push is held for with its gates in place or lifted
-   * (PushbackAll), the separation taken off (RelativePushback) and the longer push kept
-   * (ContinuousPushback). A damage type that names a column the pass is not held for is refused by
-   * its Damage column.
+   * launch from the area effect's source (a start height below 0), which the filter form's hit pass
+   * is not held for. Its push is held for with its gates in place or lifted (PushbackAll), the
+   * separation taken off (RelativePushback) and the longer push kept (ContinuousPushback). A damage
+   * type that names a column the pass is not held for is refused by its Damage column.
    *
    * <p>A deflection (DeflectProjectilesEnabled, the Monk's Deflect) is not the hit pass's: the
    * deflection pass of a flying projectile reads only that switch, the area effect's radius and its
    * team, never its filter or hit switches, so a filter form row deflects as a row with switches.
+   *
+   * <p>Nor is the spawner (SpawnCharacter, the Skeleton King's graveyard): the update runs it after
+   * its counters and before its hit pass, for a row of either form, reading only the spawn columns,
+   * its lifetime and its radius, so a filter form row makes its characters as a row with switches.
    */
   private void filterForm(AreaEffectData data, List<String> unmodelled) {
     if (data.projectile() != null && data.projectileStartHeight() < 0) {
       unmodelled.add("ProjectileStartHeight");
-    }
-    if (data.spawnCharacter() != null && !unmodelled.contains("SpawnCharacter")) {
-      unmodelled.add("SpawnCharacter");
     }
   }
 
@@ -2358,6 +2358,14 @@ public final class BattleRecords {
         .resurrectEnemies(ability.bool("ResurrectEnemies"))
         .resurrectOwnTroops(ability.bool("ResurrectOwnTroops"))
         .spawnLimit(ability.intValue("SpawnLimit"))
+        // A newer data version sizes the area effect by an expression, its souls drained by
+        // actions into a variable, and counts no death on the unit.
+        .soulsFromDeaths(!ability.has("ResurrectChargesExpression"))
+        .resurrectChargesExpression(
+            set(ability, "ResurrectChargesExpression")
+                ? ability.string("ResurrectChargesExpression")
+                : null)
+        .spawnCountResetAction(inlineActionName(ability, "SpawnCountResetAction"))
         .unmodelledColumns(unmodelledAbilityColumns(ability))
         .build();
   }
