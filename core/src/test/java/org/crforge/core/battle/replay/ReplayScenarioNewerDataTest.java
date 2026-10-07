@@ -11,29 +11,29 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Replays of data version 16.426.22, which game client 16.402.17 runs since 2026-10-06 after
+ * Replays of data version 16.402.19, which game client 16.402.17 runs since 2026-10-06 after
  * 16.402.18. The replay fields and command types are the client's, so a replay of the newer data is
  * read as one of 16.402.18, against the newer data's own tables. Skipped without tables of
- * 16.426.22 ({@link Version16Tables}).
+ * 16.402.19 ({@link Version16Tables}).
  */
-class ReplayScenarioData16426Test {
+class ReplayScenarioNewerDataTest {
 
-  /** The content sha of data version 16.426.22. */
+  /** The content sha of data version 16.402.19. */
   private static final String CONTENT_SHA = "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec";
 
   private static GameTables tables;
 
   @BeforeAll
   static void loadTables() {
-    tables = Version16Tables.load(Version16Tables.VERSION_16_426_22);
+    tables = Version16Tables.load(Version16Tables.VERSION_16_402_19);
   }
 
-  /** The 16.402.18 knight replay, as the capture tool saves it from a session on 16.426.22. */
-  private static ObjectNode knightOn16426() {
+  /** The 16.402.18 knight replay, as the capture tool saves it from a session on 16.402.19. */
+  private static ObjectNode knightOnTheNewerData() {
     ObjectNode scenario = Scenarios.knightOfVersion16();
     ObjectNode capture = scenario.putObject(ReplayCapture.FIELD);
     capture.put(ReplayCapture.CLIENT_VERSION, GameVersions.CLIENT_16_402_17);
-    capture.put(ReplayCapture.CONTENT_VERSION, Version16Tables.VERSION_16_426_22);
+    capture.put(ReplayCapture.CONTENT_VERSION, Version16Tables.VERSION_16_402_19);
     capture.put(ReplayCapture.CONTENT_SHA, CONTENT_SHA);
     capture.put(ReplayCapture.CAPTURED_AT, "2026-10-06T15:55:22Z");
     return scenario;
@@ -41,7 +41,7 @@ class ReplayScenarioData16426Test {
 
   @Test
   void theTablesAreOfTheNewerData() {
-    assertThat(tables.version()).isEqualTo(GameVersions.DATA_16_426_22);
+    assertThat(tables.version()).isEqualTo(GameVersions.DATA_16_402_19);
     assertThat(tables.contentSha()).isEqualTo(CONTENT_SHA);
   }
 
@@ -49,13 +49,13 @@ class ReplayScenarioData16426Test {
   void readsEveryFieldOfAReplayOfTheNewerData() {
     // Its events, request lists, profiles and player data are carried as in a 16.402.18 replay,
     // not refused by the 14.593.1 fields.
-    assertThat(new ReplayScenario(tables).survey(knightOn16426())).isEmpty();
+    assertThat(new ReplayScenario(tables).survey(knightOnTheNewerData())).isEmpty();
   }
 
   @Test
   void translatesThePlayAndTheKingLevelsAsOnTheOlderData() {
     ReplayScenario mapping = new ReplayScenario(tables);
-    ScenarioPlan plan = mapping.translate(knightOn16426());
+    ScenarioPlan plan = mapping.translate(knightOnTheNewerData());
 
     assertThat(plan.towers())
         .containsExactly(
@@ -71,7 +71,7 @@ class ReplayScenarioData16426Test {
 
   @Test
   void hasNoGeneratedCaseFieldsUntilItsRecordedBattlesEstablishThem() {
-    assertThat(ReplayFormat.of(GameVersions.DATA_16_426_22)).isPresent();
-    assertThat(ReplayFormat.generated(GameVersions.DATA_16_426_22)).isEmpty();
+    assertThat(ReplayFormat.of(GameVersions.DATA_16_402_19)).isPresent();
+    assertThat(ReplayFormat.generated(GameVersions.DATA_16_402_19)).isEmpty();
   }
 }

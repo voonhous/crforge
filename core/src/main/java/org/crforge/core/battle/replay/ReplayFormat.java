@@ -164,7 +164,7 @@ public record ReplayFormat(
   /**
    * The format of each data version whose replays' fields have been decided. The fields are the
    * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
-   * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.426.22
+   * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.402.19
    * write the same fields.
    */
   private static final Map<String, ReplayFormat> BY_VERSION = byVersion();

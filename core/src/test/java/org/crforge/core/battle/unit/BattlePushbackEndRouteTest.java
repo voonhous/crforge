@@ -22,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
  * and the Monk's third hit pushes the Giant sideways, the flight starting on tick 417. The flight's
  * budget runs out on tick 428 (the Giant stands) and its last visit on tick 429 steps it 25 units
  * back; tick 430 is its first walking step. The same battle runs on the configured tables and on
- * those tables relabelled as data version 16.402.18 or 16.426.22, which differ only in the
+ * those tables relabelled as data version 16.402.18 or 16.402.19, which differ only in the
  * version's rule. Both are data versions of game client 16.402.17, whose rule it is.
  */
 class BattlePushbackEndRouteTest {
@@ -77,10 +77,10 @@ class BattlePushbackEndRouteTest {
 
   @Test
   @DisplayName(
-      "on data version 16.426.22, which the same game client runs, a pushback's end drops the"
+      "on data version 16.402.19, which the same game client runs, a pushback's end drops the"
           + " Giant's route too")
   void theEndOfThePushbackDropsTheRouteOnTheNewerDataOfTheSameClient() throws IOException {
-    assertTheRouteIsDropped(scene(GameData.relabelled(folder, GameVersions.DATA_16_426_22)));
+    assertTheRouteIsDropped(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_19)));
   }
 
   /** The Giant's route dropped as its flight ends, and its next step on a fresh route. */
