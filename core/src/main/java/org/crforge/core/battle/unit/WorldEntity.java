@@ -58,6 +58,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.index.SpatialIndex;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.DefaultSelectionQueries;
 import org.crforge.core.pathfinding.target.DefaultTargetSelection;
 import org.crforge.core.pathfinding.target.HitApplication;
@@ -1489,9 +1490,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         world.tagWordChanged(this, word);
       }
     }
-    if (layered) {
-      foldLayer();
-    }
+    foldLayer();
     if (captureWatched) {
       long word = view.getFlags() & world.captureTags();
       boolean hidden = (view.getFlags() & view.getFlagBits().hidden()) != 0;
@@ -1580,11 +1579,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * The pre-hook's fold for an entity an air-to-ground run or a knock has held: for one with a
-   * movement component the pushed changes become its height offset - their sum, clamped so the live
-   * height stays between the lowest and the highest of its base height and the pushes' floors, and
-   * 0 with none pushed - and its layer is read again from its tag word and its live height. Its
-   * push height is its live height.
+   * The pre-hook's fold of the height changes into the height offset, for every entity with a
+   * movement component, switched on or not: the changes pushed since the last pre-hook, an
+   * air-to-ground run's or a knock's, and the heights a river jump's visits sampled into its
+   * movement component. The offset becomes their sum, clamped so the live height stays between the
+   * lowest and the highest of its base height and the changes' floors, and 0 with none. So a unit
+   * that jumps the river stands at its last sample's height through the step it lands in and is
+   * down from the next pre-hook, and the contact passes compare that height.
+   *
+   * <p>An entity an air-to-ground run or a knock has held also has its layer read again from its
+   * tag word and its live height, and its push height made its live height. For any other the push
+   * height only takes the offset's change, so a height its own movement writes (a dash's profile)
+   * is left as the push height already had it.
    */
   private void foldLayer() {
     GridEntity view = getView();
@@ -1601,11 +1607,42 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
           low = push[1];
         }
       }
-      view.setHeightOffset(Math.max(Math.min(total, high - base), low - base));
+      MovementState movement = heightSamples();
+      if (movement != null) {
+        List<Integer> heights = movement.getJumpHeights();
+        List<Integer> floors = movement.getJumpAbsoluteHeights();
+        int count = Math.min(heights.size(), floors.size());
+        for (int i = 0; i < count; i++) {
+          total += heights.get(i);
+          int floor = floors.get(i);
+          if (floor > high) {
+            high = floor;
+          } else if (floor < low) {
+            low = floor;
+          }
+        }
+        heights.clear();
+        floors.clear();
+      }
+      int offset = Math.max(Math.min(total, high - base), low - base);
+      if (!layered) {
+        view.setZTotal(view.getZTotal() + offset - view.getHeightOffset());
+      }
+      view.setHeightOffset(offset);
     }
     heightPushes.clear();
-    view.setZTotal(view.getZ() + view.getHeightOffset());
-    view.setAir(layerAir());
+    if (layered) {
+      view.setZTotal(view.getZ() + view.getHeightOffset());
+      view.setAir(layerAir());
+    }
+  }
+
+  /**
+   * The movement component whose jump samples the pre-hook folds into the height offset, or null
+   * for an entity whose class keeps none.
+   */
+  MovementState heightSamples() {
+    return null;
   }
 
   /**

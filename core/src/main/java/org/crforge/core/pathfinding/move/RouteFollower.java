@@ -307,7 +307,10 @@ public final class RouteFollower {
    * One visit while the entity follows a jump arc: one displacement at the jump speed toward the
    * landing node, then, when fewer than two steps of it remain, the moving state is asked for,
    * whose entry prepares a route from where the entity stands. Otherwise the arc's height at this
-   * point is kept in the component's two sample lists; the entity's own height is not written.
+   * point is kept in the component's two sample lists; the entity's own height is not written. The
+   * entity's next pre-hook folds the samples into its height offset, the live height the contact
+   * passes compare, so the visit that lands, which takes no sample, leaves the entity at its last
+   * sample's height until the pre-hook after it.
    */
   private static void jumpVisit(
       MovementState component,

@@ -2332,6 +2332,12 @@ public class CharacterEntity extends WorldEntity {
     targetQueue.add(new int[] {target.getId(), priority});
   }
 
+  /** A character's jump samples are its movement component's, while it has one. */
+  @Override
+  MovementState heightSamples() {
+    return unit != null && hasMovementComponent() ? unit.movement() : null;
+  }
+
   /**
    * The pre-hook, with the targeting queue's flush at its tail while the targeting component is on:
    * the last entry with a priority of 1 or more whose object is still listed becomes the reference,
