@@ -42,7 +42,9 @@ import org.crforge.core.pathfinding.index.SegmentTests;
  * death area at its point, for the area effect's side and at its level, the area effect its parent
  * and following nothing, and holds it as the connected object, so a later tether runs to it. When
  * the area effect itself leaves, before any notice of it, a death area it still holds ends: its
- * countdown goes to 0, so it leaves in the next round of the same cleanup.
+ * countdown goes to 0 on every data version. Where an area effect is removed once its countdown is
+ * below 1 it leaves in the next round of the same cleanup; where its life ends only below 0
+ * (16.402.18) it has one more update and leaves in the cleanup of the next step.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -263,7 +265,8 @@ final class GoblinsteinRun extends ActionInstance {
   @Override
   protected void ownerLeaving(ActionHolder holder) {
     if (deathAreaMade && connected instanceof AreaEffectEntity deathArea) {
-      deathArea.end();
+      // The countdown goes to 0, not to the end's -1, on every data version.
+      deathArea.zeroCountdown();
       connected = null;
       world.goblinsteinDeathAreaEnded(owner, deathArea);
     }

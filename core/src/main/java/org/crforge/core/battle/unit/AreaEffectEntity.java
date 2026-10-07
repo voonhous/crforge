@@ -406,6 +406,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * Sets its countdown to 0 on every data version, as Goblinstein's ability does to the death area
+   * it holds when its own area effect leaves. Where its life ends below 0 it is then not removable:
+   * it has one more update, which takes the countdown below 0, and leaves in the cleanup after it;
+   * elsewhere the same cleanup removes it.
+   */
+  void zeroCountdown() {
+    countdown = 0;
+  }
+
+  /**
    * Whether its life ends only once its countdown is below 0: always for the filter form, which
    * only the newer data writes, and for every row on a data version whose game tests each area
    * effect so (see {@link BattleWorld#areaLifeEndsBelowZero()}).
