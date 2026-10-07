@@ -158,6 +158,12 @@ public class ProjectileEntity extends BattleEntity
   @Getter private boolean grouped;
 
   /**
+   * The group of the volley the projectile was launched in, shared by every projectile of that
+   * volley, for a launcher whose row links them into one; null for none.
+   */
+  @Getter private ProjectileGroup group;
+
+  /**
    * The entity that launched the projectile, or null once it has left the battle, or for one
    * another projectile's impact spawned.
    */
@@ -1377,6 +1383,15 @@ public class ProjectileEntity extends BattleEntity
       }
     }
     return out;
+  }
+
+  /**
+   * Puts the projectile in its volley's group, before it is handed to the holder.
+   *
+   * @param group the group the volley's projectiles share
+   */
+  public void joinGroup(ProjectileGroup group) {
+    this.group = group;
   }
 
   /** Whether the projectile has an action holder, whose runs listen to its hits. */

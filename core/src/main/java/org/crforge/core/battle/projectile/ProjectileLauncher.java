@@ -119,6 +119,9 @@ public final class ProjectileLauncher {
     int quarter = spread >> 2;
     int angleBase = sequenceIndex == -1 ? 0 : sequenceIndex * 90 - 45;
     int half = count >>> 1;
+    // A row that links its volley's projectiles into one group: the first projectile makes it and
+    // every further one joins it, before each is handed to the holder.
+    ProjectileGroup group = unit.groupProjectiles() ? new ProjectileGroup() : null;
     for (int k = 0; k < count; k++) {
       ProjectileData data = override != null ? override : first != null && k == 0 ? first : regular;
       int[] offset = {0, 0};
@@ -142,6 +145,9 @@ public final class ProjectileLauncher {
       int hx = t.getLastReferenceX() + offset[0];
       int hy = t.getLastReferenceY() + offset[1];
       launchOne(projectile, launcher, unit, targetEntity, hx, hy, angleBase, fan + half);
+      if (group != null) {
+        projectile.joinGroup(group);
+      }
       world.launch(projectile);
       launcher.launched(hx, hy);
     }
