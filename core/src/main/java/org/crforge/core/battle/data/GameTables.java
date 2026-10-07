@@ -40,6 +40,12 @@ public final class GameTables {
   /** The environment variable naming the folder, when the property is not set. */
   public static final String ENVIRONMENT = "CRFORGE_GAME_TABLES";
 
+  /** The header field of every table file that names its data version. */
+  public static final String VERSION_FIELD = "version";
+
+  /** The header field of every table file that names its data's content sha. */
+  public static final String CONTENT_SHA_FIELD = "content_sha";
+
   /** The file the action graph is in. */
   private static final String ACTIONS = "actions.json";
 
@@ -108,10 +114,10 @@ public final class GameTables {
     String contentSha = null;
     for (Path file : files(folder)) {
       JsonNode document = read(file);
-      String fileVersion = document.path("version").asText();
+      String fileVersion = document.path(VERSION_FIELD).asText();
       if (version == null) {
         version = fileVersion;
-        contentSha = document.path("content_sha").asText();
+        contentSha = document.path(CONTENT_SHA_FIELD).asText();
       }
       String expected = version;
       checkState(
@@ -166,8 +172,8 @@ public final class GameTables {
     return new GameTable(
         document.path("table").asText(),
         document.path("id").asText(),
-        document.path("version").asText(),
-        document.path("content_sha").asText(),
+        document.path(VERSION_FIELD).asText(),
+        document.path(CONTENT_SHA_FIELD).asText(),
         rows);
   }
 

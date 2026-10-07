@@ -46,8 +46,8 @@ class ReplaySmokeRunTest {
     ObjectNode fields = MAPPER.createObjectNode();
     fields.put("schema", schema);
     fields.put("observation_scope", scope);
-    fields.put("content_version", tables.version());
-    fields.put("content_sha", tables.contentSha());
+    fields.put(ContentFields.CONTENT_VERSION, tables.version());
+    fields.put(ContentFields.CONTENT_SHA, tables.contentSha());
     MAPPER.writeValue(file.toFile(), fields);
     return file;
   }
@@ -755,7 +755,7 @@ class ReplaySmokeRunTest {
   @Test
   void tablesOfAnotherContentAreAnInvalidRun() throws IOException {
     ObjectNode fields = (ObjectNode) MAPPER.readTree(identity.toFile());
-    fields.put("content_sha", "0000000000000000000000000000000000000000");
+    fields.put(ContentFields.CONTENT_SHA, "0000000000000000000000000000000000000000");
     Path other = folder.resolve("other-identity.json");
     MAPPER.writeValue(other.toFile(), fields);
     Path out = folder.resolve("run");

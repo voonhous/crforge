@@ -125,7 +125,7 @@ public final class GameData {
       for (Path file : files.toList()) {
         if (file.getFileName().toString().endsWith(".json")) {
           ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put("version", version);
+          document.put(GameTables.VERSION_FIELD, version);
           mapper.writeValue(file.toFile(), document);
         }
       }

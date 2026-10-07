@@ -68,9 +68,6 @@ public final class DataSelection {
   /** Where a data root found beside the project folder is said to come from. */
   public static final String SIBLING_SOURCE = "the crforge-data folder beside the project";
 
-  /** The header field of a table file that names its data's content sha. */
-  static final String CONTENT_SHA = "content_sha";
-
   private static final JsonFactory JSON = new JsonFactory();
 
   /** The data root's folder of reference battles, which is not a data version. */
@@ -308,7 +305,7 @@ public final class DataSelection {
       while (parser.nextToken() == JsonToken.FIELD_NAME) {
         String name = parser.currentName();
         JsonToken value = parser.nextToken();
-        if (name.equals(CONTENT_SHA) && value == JsonToken.VALUE_STRING) {
+        if (name.equals(GameTables.CONTENT_SHA_FIELD) && value == JsonToken.VALUE_STRING) {
           return Optional.of(parser.getText());
         }
         parser.skipChildren();
