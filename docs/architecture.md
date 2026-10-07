@@ -75,6 +75,7 @@ graph LR
 | [Level Scaling](level_scaling.md) | Rarity multiplier tables, tower stat scaling formulas |
 | [Secret Stats](secret_stats.md) | Undocumented unit stats measured from in-game observation |
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
+| [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
 | [Card Tracker](card_tracker.md) | Implementation status for all 121 cards |
 | [Measuring Missing Fields](reverse_engineering.md) | Guide for measuring unit stats from in-game observation |
 | [Python Gymnasium Bridge](../python/README.md) | ZMQ transport, observation/action spaces, reward structure, opponent policies |
