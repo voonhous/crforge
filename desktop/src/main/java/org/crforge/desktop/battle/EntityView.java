@@ -43,6 +43,8 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param aimY a projectile's aim along the length, 0 otherwise
  * @param speed the distance a character's movement visit asked for in the last tick
  * @param grid a character's grid state, for the route overlay; null otherwise
+ * @param meter the bar an action running on a character shows over it, such as the Royal Chef's
+ *     cooking; null for none
  * @param statuses active buff snapshots and persistent clone identity; empty for non-characters
  */
 public record EntityView(
@@ -77,6 +79,7 @@ public record EntityView(
     int aimY,
     int speed,
     GridUnitState grid,
+    ActionMeter meter,
     List<UnitStatus> statuses) {
 
   public EntityView {

@@ -1869,7 +1869,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /** The entity's action holder if one was made already, else null; this makes none. */
-  ActionHolder madeActionHolder() {
+  public ActionHolder madeActionHolder() {
     return actionHolder;
   }
 

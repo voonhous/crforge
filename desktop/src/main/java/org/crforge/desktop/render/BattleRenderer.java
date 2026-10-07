@@ -21,6 +21,7 @@ import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.util.GameUnits;
+import org.crforge.desktop.battle.ActionMeter;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.EntityView;
@@ -57,6 +58,11 @@ public class BattleRenderer {
 
   private static final float NAME_BAR_GAP = 3f;
   private static final float SHIELD_BAR_GAP = 1f;
+
+  /** An action's bar, thinner than the health bar so the two read apart. */
+  private static final float METER_BAR_HEIGHT = 7f;
+
+  private static final float METER_BAR_GAP = 1f;
 
   private final RenderContext ctx;
   private final float numberedHealthBarHeight;
@@ -493,7 +499,10 @@ public class BattleRenderer {
     shapes.end();
   }
 
-  /** A health bar over every character with hit points, a shield bar over it while it has one. */
+  /**
+   * A health bar over every character with hit points, a shield bar over it while it has one, and
+   * over those the bar of an action it runs, such as the Royal Chef's cooking.
+   */
   private void renderHealthBars(BattleFrame frame) {
     ShapeRenderer shapes = ctx.getShapeRenderer();
     shapes.begin(ShapeType.Filled);
@@ -521,8 +530,26 @@ public class BattleRenderer {
             shieldShare,
             COLOR_SHIELD);
       }
+      ActionMeter meter = entity.meter();
+      if (meter != null) {
+        bar(
+            shapes,
+            left,
+            barY + healthAndShieldHeight(entity) + METER_BAR_GAP,
+            width,
+            METER_BAR_HEIGHT,
+            meter.share(),
+            meterColor(meter.kind()));
+      }
     }
     shapes.end();
+  }
+
+  /** The fill of an action's bar. */
+  private static Color meterColor(ActionMeter.Kind kind) {
+    return switch (kind) {
+      case COOKING -> COLOR_COOKING;
+    };
   }
 
   private static void bar(
@@ -560,12 +587,18 @@ public class BattleRenderer {
     return healthBarHeight() + (entity.maxShield() > 0 ? SHIELD_BAR_GAP + HEALTH_BAR_HEIGHT : 0);
   }
 
+  /** The height of all of a character's bars: health, shield and an action's bar. */
+  private float barsHeight(EntityView entity) {
+    return healthAndShieldHeight(entity)
+        + (entity.meter() != null ? METER_BAR_GAP + METER_BAR_HEIGHT : 0);
+  }
+
   /**
    * Keep annotations inside the arena. Towers reserve the same clearance at either end, so
    * corresponding red and blue towers keep matching gaps even when the upper label is constrained.
    */
   private float healthBarY(EntityView entity) {
-    float height = healthAndShieldHeight(entity);
+    float height = barsHeight(entity);
     if (showLabel(entity)) {
       height += ctx.getEntityNameFont().getCapHeight() + NAME_BAR_GAP;
     }
@@ -734,11 +767,7 @@ public class BattleRenderer {
       if (entity.isCharacter()) {
         label = characterLabel(entity);
         float barY = healthBarY(entity);
-        y =
-            barY
-                + healthAndShieldHeight(entity)
-                + ctx.getEntityNameFont().getCapHeight()
-                + NAME_BAR_GAP;
+        y = barY + barsHeight(entity) + ctx.getEntityNameFont().getCapHeight() + NAME_BAR_GAP;
       } else if (entity.kind() == EntityView.Kind.AREA_EFFECT) {
         label =
             entity.name()

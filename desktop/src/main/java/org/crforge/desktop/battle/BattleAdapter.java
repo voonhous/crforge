@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntFunction;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.ChefCooking;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -184,7 +187,25 @@ public final class BattleAdapter {
         0,
         character == null ? 0 : character.getSpeedBudget(),
         character == null ? null : character.getUnit(),
+        meter(entity),
         statuses(entity));
+  }
+
+  /**
+   * The bar an action running on a character shows over it, or null for none: the Royal Chef's
+   * cooking on its king tower. The read makes no action holder for an entity that has none.
+   */
+  private static ActionMeter meter(WorldEntity entity) {
+    ActionHolder holder = entity.madeActionHolder();
+    if (holder == null) {
+      return null;
+    }
+    for (ActionInstance instance : holder.running()) {
+      if (instance instanceof ChefCooking.Run cooking) {
+        return new ActionMeter(ActionMeter.Kind.COOKING, cooking.bar(), cooking.fullBar());
+      }
+    }
+    return null;
   }
 
   private static List<UnitStatus> statuses(WorldEntity entity) {
@@ -253,6 +274,7 @@ public final class BattleAdapter {
         projectile.getAimY(),
         0,
         null,
+        null,
         List.of());
   }
 
@@ -292,6 +314,7 @@ public final class BattleAdapter {
         0,
         0,
         0,
+        null,
         null,
         List.of());
   }
