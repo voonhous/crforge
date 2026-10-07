@@ -567,7 +567,16 @@ public final class GridStateSetter implements StateSetter {
         resetRoute();
         return castAtOnce(oldState);
       }
-      case GridEntityState.MOVING -> prepareRoute();
+      case GridEntityState.MOVING -> {
+        // The entry to moving switches the movement component on. Only the held state has it off
+        // here in a battle: a Fisherman whose hook ended while he waited for the pull walks again.
+        // Elsewhere it is on already, and the scenes that hold a unit still by switching it off
+        // keep it off.
+        if (oldState == GridEntityState.COMPONENTS_DISABLED) {
+          following.movementOn();
+        }
+        prepareRoute();
+      }
       case GridEntityState.DASHING -> enterDash();
       // The ability's follow-up state counts its duration down on the cast's countdown, in whole
       // ticks; the state visit takes it from there.
