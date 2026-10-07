@@ -255,4 +255,13 @@ class NewTableFormsTest {
     assertThat(records.areaEffect("Lightning").unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("RoyalDeliveryArea").unmodelledColumns()).isEmpty();
   }
+
+  @Test
+  @DisplayName(
+      "a projectile's action on reaching its target, written inline, is the actions table's row"
+          + " named after the projectile and the column, as its other action columns are")
+  void anInlineReachedAction() {
+    assertThat(records.projectile("AngryBarbarian_EV1_RangedProjectile").onTargetReachedAction())
+        .isEqualTo("AngryBarbarian_EV1_RangedProjectile_OnTargetReachedAction");
+  }
 }

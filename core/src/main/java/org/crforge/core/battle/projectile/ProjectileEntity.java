@@ -944,6 +944,20 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Schedules a row on the entity that launched the projectile, built for it, with the projectile
+   * as its cause, as a run on the shooter does; nothing once the launcher has left the battle or
+   * for a projectile no entity launched.
+   */
+  @Override
+  public void runOnShooter(BattleAction action, String actionToExecute) {
+    if (owner == null) {
+      return;
+    }
+    BattleAction built = world.getActions().build(actionToExecute, world.binding(owner));
+    owner.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, actionHolder());
+  }
+
+  /**
    * Creates the area effect an action's spawn row names at the projectile's point, moved by the
    * row's offsets, as the hero Wizard's air projectile does from its action on reaching its target.
    */
