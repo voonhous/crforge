@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -126,7 +127,7 @@ class BattleDeathActionSlotTest {
       "on data version 16.402.18 the death action is scheduled from the death slot with the dying"
           + " unit as its cause, and its area effect is for the dying unit's side")
   void theDeathActionIsTheDyingUnits() throws IOException {
-    Outcome outcome = killTheKnight(tables("16.402.18"));
+    Outcome outcome = killTheKnight(tables(GameVersions.DATA_16_402_18));
     assertThat(outcome.scheduled())
         .containsExactly("dying by dying side 0 [%s]".formatted(DEATH_ACTION));
     assertThat(outcome.areaSides()).containsExactly(0);
@@ -137,7 +138,7 @@ class BattleDeathActionSlotTest {
       "on data version 14.593.1 the death action is scheduled by the death handler with the"
           + " killer as its cause, and its area effect is for the killer's side")
   void theDeathActionIsTheKillersOnTheOlderVersion() throws IOException {
-    Outcome outcome = killTheKnight(tables("14.593.1"));
+    Outcome outcome = killTheKnight(tables(GameVersions.DATA_14_593_1));
     assertThat(outcome.scheduled())
         .containsExactly("dying by killer side 1 [%s]".formatted(DEATH_ACTION));
     assertThat(outcome.areaSides()).containsExactly(1);

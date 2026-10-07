@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -130,7 +131,7 @@ class BattleCircleKillDrainTest {
       "on data version 16.402.18 the circle's kill lands at the damage drain, so the tower that"
           + " targets the Knight still attacks on the tick the circle kills it")
   void theTowerStillAttacksOnTheKillTick() throws IOException {
-    int[] states = towerStateAtTheKill(scene(relabelled(folder, "16.402.18")));
+    int[] states = towerStateAtTheKill(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
     assertThat(states[0]).as("on the kill's tick").isEqualTo(ATTACKING);
     assertThat(states[1]).as("on the next tick").isZero();
   }
@@ -140,7 +141,7 @@ class BattleCircleKillDrainTest {
       "on data version 14.593.1 the circle kills the Knight in the match update, and the tower"
           + " finds its target gone in the same tick")
   void theTowerStopsOnTheKillTickOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     int[] states = towerStateAtTheKill(scene(GameData.tables()));
     assertThat(states[0]).as("on the kill's tick").isZero();
     assertThat(states[1]).isZero();

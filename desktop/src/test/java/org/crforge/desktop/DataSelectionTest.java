@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -31,8 +32,8 @@ class DataSelectionTest {
             + LOCK_COMMIT
             + "\nversion=14.593.1\n");
     Path root = Files.createDirectories(workspace.resolve(DataSelection.SIBLING_FOLDER));
-    tables(root, "14.593.1");
-    tables(root, "16.402.18");
+    tables(root, GameVersions.DATA_14_593_1);
+    tables(root, GameVersions.DATA_16_402_18);
     return project;
   }
 
@@ -77,7 +78,7 @@ class DataSelectionTest {
     Path project = project();
 
     assertThat(DataSelection.readLock(project))
-        .contains(new DataSelection.Lock(LOCK_COMMIT, "14.593.1"));
+        .contains(new DataSelection.Lock(LOCK_COMMIT, GameVersions.DATA_14_593_1));
     assertThat(DataSelection.readLock(workspace)).isEmpty();
     assertThat(DataSelection.readLock(null)).isEmpty();
   }
@@ -86,17 +87,18 @@ class DataSelectionTest {
   @DisplayName("the versions are the root's folders that hold tables, in version order")
   void listsTheVersions() throws IOException {
     Path root = Files.createDirectories(workspace.resolve("root"));
-    tables(root, "16.402.18");
+    tables(root, GameVersions.DATA_16_402_18);
     tables(root, "9.1.0");
-    tables(root, "14.593.1");
-    tables(root.resolve("references"), "14.593.1");
+    tables(root, GameVersions.DATA_14_593_1);
+    tables(root.resolve("references"), GameVersions.DATA_14_593_1);
     Files.createDirectories(root.resolve("references").resolve("x"));
     Files.createDirectories(root.resolve("empty"));
     Files.createDirectories(root.resolve(".git"));
     Files.writeString(root.resolve(".git").resolve("x.json"), "{}");
     Files.writeString(root.resolve("README.md"), "readme");
 
-    assertThat(DataSelection.versions(root)).containsExactly("9.1.0", "14.593.1", "16.402.18");
+    assertThat(DataSelection.versions(root))
+        .containsExactly("9.1.0", GameVersions.DATA_14_593_1, GameVersions.DATA_16_402_18);
     assertThat(DataSelection.versions(workspace.resolve("missing"))).isEmpty();
   }
 
@@ -143,15 +145,17 @@ class DataSelectionTest {
     Path root = workspace.resolve(DataSelection.SIBLING_FOLDER);
 
     DataSelection.Choice byArgument =
-        DataSelection.choose(settings("16.402.18", "14.593.1", "/tables/x", project));
+        DataSelection.choose(
+            settings(
+                GameVersions.DATA_16_402_18, GameVersions.DATA_14_593_1, "/tables/x", project));
     assertThat(byArgument.problem()).isNull();
-    assertThat(byArgument.tables().folder()).isEqualTo(root.resolve("16.402.18"));
+    assertThat(byArgument.tables().folder()).isEqualTo(root.resolve(GameVersions.DATA_16_402_18));
     assertThat(byArgument.tables().source()).isEqualTo("--data-version 16.402.18 in the data root");
     assertThat(byArgument.root().folder()).isEqualTo(root);
 
     DataSelection.Choice byProperty =
-        DataSelection.choose(settings(null, "16.402.18", "/tables/x", project));
-    assertThat(byProperty.tables().folder()).isEqualTo(root.resolve("16.402.18"));
+        DataSelection.choose(settings(null, GameVersions.DATA_16_402_18, "/tables/x", project));
+    assertThat(byProperty.tables().folder()).isEqualTo(root.resolve(GameVersions.DATA_16_402_18));
     assertThat(byProperty.tables().source())
         .isEqualTo("crforge.dataVersion=16.402.18 in the data root");
   }
@@ -185,10 +189,12 @@ class DataSelectionTest {
 
     assertThat(choice.problem()).isNull();
     assertThat(choice.tables().folder())
-        .isEqualTo(workspace.resolve(DataSelection.SIBLING_FOLDER).resolve("14.593.1"));
+        .isEqualTo(
+            workspace.resolve(DataSelection.SIBLING_FOLDER).resolve(GameVersions.DATA_14_593_1));
     assertThat(choice.tables().source())
         .isEqualTo("version=14.593.1 of crforge-data.lock in the data root");
-    assertThat(choice.lock()).isEqualTo(new DataSelection.Lock(LOCK_COMMIT, "14.593.1"));
+    assertThat(choice.lock())
+        .isEqualTo(new DataSelection.Lock(LOCK_COMMIT, GameVersions.DATA_14_593_1));
   }
 
   @Test
@@ -196,11 +202,12 @@ class DataSelectionTest {
   void anExplicitVersionNeedsARoot() throws IOException {
     Path project = Files.createDirectories(workspace.resolve("lonely"));
 
-    DataSelection.Choice choice = DataSelection.choose(settings("16.402.18", null, null, project));
+    DataSelection.Choice choice =
+        DataSelection.choose(settings(GameVersions.DATA_16_402_18, null, null, project));
 
     assertThat(choice.tables()).isNull();
     assertThat(choice.problem())
-        .contains("16.402.18")
+        .contains(GameVersions.DATA_16_402_18)
         .contains(DataSelection.DATA_ROOT_PROPERTY)
         .contains(DataSelection.DATA_ROOT_ENVIRONMENT);
   }
@@ -226,10 +233,12 @@ class DataSelectionTest {
   @Test
   @DisplayName("the argument is read in both spellings, and is absent without a value")
   void readsTheArgument() {
-    assertThat(DataSelection.versionArgument(new String[] {"--data-version", "16.402.18"}))
-        .isEqualTo("16.402.18");
+    assertThat(
+            DataSelection.versionArgument(
+                new String[] {"--data-version", GameVersions.DATA_16_402_18}))
+        .isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(DataSelection.versionArgument(new String[] {"--data-version=16.402.18"}))
-        .isEqualTo("16.402.18");
+        .isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(DataSelection.versionArgument(new String[] {"--data-version"})).isNull();
     assertThat(DataSelection.versionArgument(new String[] {"--ai-port", "9876"})).isNull();
   }

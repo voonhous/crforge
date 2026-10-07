@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,16 +55,16 @@ class DataVersionsTest {
             good,
             loaded,
             "crforge.gameTables",
-            "16.402.18");
+            GameVersions.DATA_16_402_18);
     assertThat(versions.select("missing").session()).isNull();
     assertThat(versions.select("2.0.0").session()).isNull();
     assertThat(versions.current()).isSameAs(loaded);
     assertThat(versions.source()).isEqualTo("crforge.gameTables");
-    assertThat(versions.developmentVersion()).isEqualTo("16.402.18");
+    assertThat(versions.developmentVersion()).isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(versions.select("3.0.0").session()).isNotNull();
     assertThat(versions.currentFolder()).isEqualTo(other);
     assertThat(versions.source()).isEqualTo("selected from the data root");
-    assertThat(versions.developmentVersion()).isEqualTo("16.402.18");
+    assertThat(versions.developmentVersion()).isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(versions.next().version()).isEqualTo("1.0.0");
   }
 

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -148,7 +149,7 @@ class BattleBuffOnDamageDrainTest {
       "on data version 16.402.18 the zap's ZapFreeze is applied at the damage drain: whole at the"
           + " end of its tick, held for ten ticks, the tower's attack resuming on the eleventh")
   void theStunIsAppliedAtTheDrain() throws IOException {
-    Record record = run(relabelled(folder, "16.402.18"));
+    Record record = run(relabelled(folder, GameVersions.DATA_16_402_18));
     assertThat(record.left.subList(0, 11))
         .containsExactly(500, 450, 400, 350, 300, 250, 200, 150, 100, 50, -1);
     assertThat(record.resumed).isEqualTo(record.zapTick + 11);
@@ -159,7 +160,7 @@ class BattleBuffOnDamageDrainTest {
       "on data version 14.593.1 the same ZapFreeze is applied inside the hit and counted down in"
           + " its own tick: held for nine ticks, the tower's attack resuming on the tenth")
   void theStunIsAppliedInTheHitOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Record record = run(GameData.tables());
     assertThat(record.left.subList(0, 10))
         .containsExactly(450, 400, 350, 300, 250, 200, 150, 100, 50, -1);

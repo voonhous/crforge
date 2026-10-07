@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -99,7 +100,7 @@ class BattlePushbackEndRouteTest {
       "on data version 16.402.18 a pushback's end drops the Giant's route, and its first step"
           + " follows a fresh route from where the push left it")
   void theEndOfThePushbackDropsTheRoute() throws IOException {
-    assertTheRouteIsDropped(scene(relabelled(folder, "16.402.18")));
+    assertTheRouteIsDropped(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
   }
 
   @Test
@@ -107,7 +108,7 @@ class BattlePushbackEndRouteTest {
       "on data version 16.426.22, which the same game client runs, a pushback's end drops the"
           + " Giant's route too")
   void theEndOfThePushbackDropsTheRouteOnTheNewerDataOfTheSameClient() throws IOException {
-    assertTheRouteIsDropped(scene(relabelled(folder, "16.426.22")));
+    assertTheRouteIsDropped(scene(relabelled(folder, GameVersions.DATA_16_426_22)));
   }
 
   /** The Giant's route dropped as its flight ends, and its next step on a fresh route. */
@@ -137,7 +138,7 @@ class BattlePushbackEndRouteTest {
       "on data version 14.593.1 the Giant keeps its route through a pushback's end and walks back"
           + " toward the waypoint it held")
   void theRouteIsKeptOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Standard1v1Battle match = scene(GameData.tables());
     stepTo(match, FLIGHT_END);
     MovementState movement = giant(match).getUnit().movement();

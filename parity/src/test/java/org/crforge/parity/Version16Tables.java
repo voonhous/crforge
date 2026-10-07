@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 
 /**
  * The game tables of a data version of game client 16.402.17 for the tests, 16.402.18 unless named:
@@ -18,10 +19,10 @@ import org.crforge.core.battle.data.GameTables;
 final class Version16Tables {
 
   /** The data version the tests read unless they name another. */
-  static final String VERSION = "16.402.18";
+  static final String VERSION = GameVersions.DATA_16_402_18;
 
   /** The data version client 16.402.17 runs since 2026-10-06. */
-  static final String VERSION_16_426_22 = "16.426.22";
+  static final String VERSION_16_426_22 = GameVersions.DATA_16_426_22;
 
   /** The tables of each version, each loaded once. */
   private static final Map<String, GameTables> TABLES = new HashMap<>();

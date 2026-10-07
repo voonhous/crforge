@@ -43,9 +43,9 @@ import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
 import org.crforge.core.battle.data.BattleRecords;
-import org.crforge.core.battle.data.GameClients;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.Formation;
@@ -176,7 +176,7 @@ public class BattleWorld implements HolderPasses {
    * the game build's, not a table value: the game of data version 16.402.18 drops it, the game of
    * 14.593.1 keeps it and walks back toward the waypoint it held before the push.
    */
-  private static final Set<String> PUSHBACK_END_DROPS_ROUTE = GameClients.CLIENT_16_402_17;
+  private static final Set<String> PUSHBACK_END_DROPS_ROUTE = GameVersions.CLIENT_16_402_17_DATA;
 
   /**
    * The data versions whose game lands a direct hit's damage at the holder's damage drain, after
@@ -222,7 +222,7 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
-  private static final Set<String> DIRECT_HIT_AT_DRAIN = GameClients.CLIENT_16_402_17;
+  private static final Set<String> DIRECT_HIT_AT_DRAIN = GameVersions.CLIENT_16_402_17_DATA;
 
   /** True when the battle's data version lands a direct hit's damage at the damage drain. */
   private boolean directHitAtDrain;
@@ -238,7 +238,7 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
-  private static final Set<String> AREA_LIFE_ENDS_BELOW_ZERO = GameClients.CLIENT_16_402_17;
+  private static final Set<String> AREA_LIFE_ENDS_BELOW_ZERO = GameVersions.CLIENT_16_402_17_DATA;
 
   /** True when the battle's data version keeps an area effect until its countdown is below 0. */
   private boolean areaLifeEndsBelowZero;
@@ -252,7 +252,7 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
-  private static final Set<String> GUARD_RUN_MAKES_AREA = GameClients.CLIENT_16_402_17;
+  private static final Set<String> GUARD_RUN_MAKES_AREA = GameVersions.CLIENT_16_402_17_DATA;
 
   /** True when the battle's data version's guard run makes its row's area effect. */
   private boolean guardRunMakesArea;
@@ -269,7 +269,7 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
-  private static final Set<String> DEATH_ACTION_AT_DEATH_SLOT = GameClients.CLIENT_16_402_17;
+  private static final Set<String> DEATH_ACTION_AT_DEATH_SLOT = GameVersions.CLIENT_16_402_17_DATA;
 
   /** True when the battle's data version schedules the death action from the death slot. */
   private boolean deathActionAtDeathSlot;
@@ -283,7 +283,7 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
    */
-  private static final Set<String> UPPERCUT_RESETS_AVOIDANCE = GameClients.CLIENT_16_402_17;
+  private static final Set<String> UPPERCUT_RESETS_AVOIDANCE = GameVersions.CLIENT_16_402_17_DATA;
 
   /** True when the battle's data version's uppercut clears its target's avoidance blend. */
   private boolean uppercutResetsAvoidance;

@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -102,7 +103,7 @@ class BattleAreaHitDrainTest {
       "on data version 16.402.18 an area hit lands at the damage drain, so the Giant it kills"
           + " still takes its walking step of that tick")
   void theGiantKilledByTheAreaStillWalksItsStep() throws IOException {
-    Standard1v1Battle match = scene(relabelled(folder, "16.402.18"));
+    Standard1v1Battle match = scene(relabelled(folder, GameVersions.DATA_16_402_18));
     stepTo(match, DEATH - 1);
     CharacterEntity giant = giant(match);
     assertThat(giant.getHitPoints().getHitPoints()).as("alive before the hit").isEqualTo(266);
@@ -120,7 +121,7 @@ class BattleAreaHitDrainTest {
       "on data version 14.593.1 the area hit kills the Giant inside the targeting visit, and it"
           + " does not move in that tick")
   void theGiantKilledByTheAreaStandsOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Standard1v1Battle match = scene(GameData.tables());
     stepTo(match, DEATH - 1);
     CharacterEntity giant = giant(match);

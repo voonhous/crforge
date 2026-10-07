@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.MovementState;
@@ -101,7 +102,7 @@ class BattleGuardChargeAreaTest {
       for (Path file : files.toList()) {
         if (file.getFileName().toString().endsWith(".json")) {
           ObjectNode table = (ObjectNode) mapper.readTree(file.toFile());
-          table.put("version", "16.402.18");
+          table.put("version", GameVersions.DATA_16_402_18);
           mapper.writeValue(file.toFile(), table);
         }
       }

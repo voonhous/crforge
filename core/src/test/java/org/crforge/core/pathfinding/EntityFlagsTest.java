@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,7 +25,7 @@ class EntityFlagsTest {
   @Test
   @DisplayName("on the configured tables of 14.593.1 every flag keeps the bit it had")
   void theConfiguredBitsAreUnchanged() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     EntityFlags bits = EntityFlags.of(GameData.tables());
     assertThat(bits.dashing()).isEqualTo(1L << 2);
     assertThat(bits.charging()).isEqualTo(1L << 3);

@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,7 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class AttackSequenceEntryFormsTest {
 
   /** The data version whose forms these are. */
-  private static final String VERSION = "16.402.18";
+  private static final String VERSION = GameVersions.DATA_16_402_18;
 
   private static GameTables tables;
 

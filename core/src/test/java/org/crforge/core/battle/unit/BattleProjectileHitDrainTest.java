@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
@@ -140,7 +141,7 @@ class BattleProjectileHitDrainTest {
       "on data version 16.402.18 an arrow one step after the Bandit's dash lands is dealt at the"
           + " damage drain, once the Bandit's visit has counted its immunity down to 0")
   void theArrowLandsAtTheDrain() throws IOException {
-    Record record = run(relabelled(folder, "16.402.18"));
+    Record record = run(relabelled(folder, GameVersions.DATA_16_402_18));
     assertThat(record.arrows).hasSize(2);
     assertThat(record.arrows.get(0)).as("an arrow during the dash").endsWith(" false 100");
     assertThat(record.arrows.get(1)).isEqualTo((record.landing + 1) + " true 0");
@@ -151,7 +152,7 @@ class BattleProjectileHitDrainTest {
       "on data version 14.593.1 the same arrow is refused inside the impact, the Bandit's 50 ms of"
           + " immunity still left")
   void theArrowIsRefusedOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     Record record = run(GameData.tables());
     assertThat(record.arrows).hasSize(2);
     assertThat(record.arrows.get(0)).as("an arrow during the dash").endsWith(" false 100");

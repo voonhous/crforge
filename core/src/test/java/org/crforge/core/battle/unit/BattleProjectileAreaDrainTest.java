@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -125,7 +126,8 @@ class BattleProjectileAreaDrainTest {
       "on data version 16.402.18 the Fireball's impact lands at the damage drain after the"
           + " Knight's hit, so the shield takes both and the Dark Prince keeps its hit points")
   void theImpactLandsAfterTheDirectHit() throws IOException {
-    CharacterEntity darkPrince = throughBothHits(scene(relabelled(folder, "16.402.18")));
+    CharacterEntity darkPrince =
+        throughBothHits(scene(relabelled(folder, GameVersions.DATA_16_402_18)));
     assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
     assertThat(darkPrince.getHitPoints().getHitPoints())
         .as("the Fireball's excess lost with the shield")
@@ -137,7 +139,7 @@ class BattleProjectileAreaDrainTest {
       "on data version 14.593.1 the Knight's hit lands in its targeting visit and the Fireball's"
           + " impact after it, in the same order")
   void theImpactLandsAfterTheDirectHitOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo("14.593.1");
+    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
     CharacterEntity darkPrince = throughBothHits(scene(GameData.tables()));
     assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
     assertThat(darkPrince.getHitPoints().getHitPoints()).isEqualTo(HIT_POINTS);

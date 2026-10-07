@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.data.GameVersions;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.TableCopies;
 import org.crforge.desktop.render.ViewOrientation;
@@ -61,7 +62,7 @@ class ReplayDataTest {
   private Path replay(String contentSha) throws IOException {
     ObjectNode document = fixture();
     ObjectNode capture = document.putObject("capture");
-    capture.put("client_version", "16.402.17");
+    capture.put("client_version", GameVersions.CLIENT_16_402_17);
     capture.put("content_version", versions.current().version());
     capture.put("content_sha", contentSha);
     capture.put("captured_at", "2026-10-06T03:47:38Z");

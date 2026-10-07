@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class NewTableFormsTest {
 
   /** The data version whose forms these are. */
-  private static final String VERSION = "16.402.18";
+  private static final String VERSION = GameVersions.DATA_16_402_18;
 
   private static GameTables tables;
   private static BattleRecords records;
