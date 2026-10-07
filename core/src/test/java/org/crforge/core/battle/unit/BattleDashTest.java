@@ -3,8 +3,13 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.grid.CellGrid;
+import org.crforge.core.pathfinding.grid.CellTests;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -93,6 +98,65 @@ class BattleDashTest {
     assertThat(held).isEqualTo(4);
     assertThat(scene.dasher.getView().getState()).isEqualTo(GridEntityState.MOVING);
     assertThat(scene.dasher.getView().getBlockCountdownMs()).isZero();
+  }
+
+  @Test
+  @DisplayName("a Bandit whose dash stops over the river is moved off the water before it walks on")
+  void theBanditLandingOnWaterIsMovedOffIt() {
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+    // In the middle of the arena, far from both bridges: a red Knight across the river, in the
+    // Bandit's dash range, so the dash goes straight over the water and stops in reach of it.
+    CharacterEntity bandit =
+        match.deploy(0, GameData.unit("Assassin"), 11, 0, 9000, 12500, "Bandit");
+    CharacterEntity knight = match.deploy(0, GameData.unit("Knight"), 11, 1, 9000, 18000, "Knight");
+    CellGrid grid = match.getWorld().getGrid();
+    List<int[]> landings = new ArrayList<>();
+    List<int[]> requests = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void dashLanded(
+                  int tick, CharacterEntity unit, WorldEntity hit, int damage, boolean area) {
+                if (unit == bandit) {
+                  landings.add(new int[] {tick, hit == knight ? 1 : 0});
+                }
+              }
+
+              @Override
+              public void movementStateRequested(int tick, CharacterEntity unit, int from, int to) {
+                if (unit == bandit
+                    && from == GridEntityState.DASHING
+                    && to == GridEntityState.MOVING) {
+                  GridEntity view = unit.getView();
+                  requests.add(new int[] {tick, view.getX(), view.getY()});
+                }
+              }
+            });
+
+    int landedOn = -1;
+    for (int tick = 0; tick < 200 && landedOn < 0; tick++) {
+      match.getBattle().step();
+      if (!landings.isEmpty()) {
+        landedOn = landings.get(0)[0];
+      }
+    }
+
+    assertThat(landedOn).as("the Bandit landed its dash").isNotNegative();
+    assertThat(landings.get(0)[1]).as("its landing hit the Knight").isEqualTo(1);
+    // The landing moves it off the water before it asks for the moving state, whose entry prepares
+    // its route from where it stands.
+    assertThat(requests).hasSize(1);
+    int[] request = requests.get(0);
+    assertThat(request[0]).isEqualTo(landedOn);
+    assertThat(CellTests.cellBlocked(grid, request[1], request[2])).isZero();
+    // The dash's own end writes the stop point back, moved off the water the same way.
+    GridEntity view = bandit.getView();
+    assertThat(view.getState()).isEqualTo(GridEntityState.MOVING);
+    assertThat(new int[] {view.getX(), view.getY()}).containsExactly(request[1], request[2]);
+    assertThat(view.getZ()).isZero();
   }
 
   @Test

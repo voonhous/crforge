@@ -282,7 +282,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " attack, and"
             + " a swap that builds or frees the movement component or reaches a lifetime, a"
             + " spawner, a building or a flying row (but one flying at the same height), a"
-            + " champion, another deploy time, a charge, a river jump (but one alike) or a dash; a dash's landing on a cell it may not stand on; a shot"
+            + " champion, another deploy time, a charge, a river jump (but one alike) or a dash; a shot"
             + " whose projectile sets a column its flight or impact does not model; and a buff a"
             + " character's targeting passes over, applied to anyone."
             + " Not modelled yet: the registration visit of a unit a card play creates, which"
@@ -2892,8 +2892,8 @@ public class CharacterEntity extends WorldEntity {
    * when the shared validator accepts it and it is within the attack range widened by 500, along
    * the character's facing, and then resets the attack and reloads the wind-up, so the next hit
    * comes a whole hit speed later; a character that stopped on a cell it may not stand on is moved
-   * off it. Then the moving state is asked for, or, for a row with a landing time, the landing hold
-   * starts.
+   * to the nearest cell off the water, at height 0. Then the moving state is asked for, or, for a
+   * row with a landing time, the landing hold starts.
    */
   private void landDash() {
     UnitData data = getData();
@@ -2928,11 +2928,18 @@ public class CharacterEntity extends WorldEntity {
         t.clearAttack();
         t.setLoadTimerMs(data.loadTimeMs());
       }
-      if ((CellTests.cellBlocked(world.getGrid(), view.getX(), view.getY()) & 1) != 0) {
-        throw new UnsupportedOperationException(
-            name()
-                + " landed its dash on a cell it may not stand on, whose move off it no run"
-                + " holds");
+      // Hit or not, a stop on a cell it may not stand on moves it to the nearest cell off the
+      // water, at height 0, before it asks for its next state: the moving state's entry prepares
+      // its route from where it stands. The dash's end then writes its stop point back, moved off
+      // water the same way, so of a stop beside the water or at the arena's edge it keeps no move.
+      CellGrid grid = world.getGrid();
+      if ((CellTests.cellBlocked(grid, view.getX(), view.getY()) & 1) != 0) {
+        int packed =
+            Relocation.relocate(
+                grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), -1, grid::water);
+        view.setX(Relocation.unpackX(packed));
+        view.setY(Relocation.unpackY(packed));
+        view.setZ(0);
       }
     }
     if (data.dashLandingTimeMs() < 1) {
