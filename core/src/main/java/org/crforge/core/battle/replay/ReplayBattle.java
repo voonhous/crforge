@@ -8,8 +8,8 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
  * The battle a translated replay scenario gives ({@link ScenarioPlan}), built on the battle core,
- * and the check of each play's item as the battle runs it. A parity run and the replay viewer build
- * and check a replay's battle the same way, through this class.
+ * and the check of each play's item as the battle runs it. A conformance run and the replay viewer
+ * build and check a replay's battle the same way, through this class.
  */
 public final class ReplayBattle {
 

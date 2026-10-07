@@ -1,4 +1,4 @@
-package org.crforge.parity;
+package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,13 +17,13 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
+import org.crforge.conformance.ReferenceSuite.CaseResult;
+import org.crforge.conformance.ReferenceSuite.References;
 import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
-import org.crforge.parity.ReferenceSuite.CaseResult;
-import org.crforge.parity.ReferenceSuite.References;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

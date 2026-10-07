@@ -74,16 +74,16 @@ env.close()
 
 ## Modules
 
-| Module       | Description                                                       |
-|--------------|-------------------------------------------------------------------|
-| `core`       | Headless simulation engine -- entities, systems, match logic      |
-| `data`       | Card/unit/projectile config loading from JSON into typed objects  |
-| `desktop`    | LibGDX debug visualizer for watching and interacting with matches |
-| `gym-bridge` | ZMQ server + Python Gymnasium environment for RL training         |
-| `parity`     | Runs a replay scenario on the battle core and writes its trace    |
+| Module        | Description                                                                                 |
+|---------------|---------------------------------------------------------------------------------------------|
+| `core`        | Headless simulation engine -- entities, systems, match logic                                |
+| `data`        | Card/unit/projectile config loading from JSON into typed objects                            |
+| `desktop`     | LibGDX debug visualizer for watching and interacting with matches                           |
+| `gym-bridge`  | ZMQ server + Python Gymnasium environment for RL training                                   |
+| `conformance` | Checks the battle core against recorded reference battles ([README](conformance/README.md)) |
 
 `core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
-both. `parity` depends on `core` only.
+both. `conformance` depends on `core` only.
 
 ## Docs
 
