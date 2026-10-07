@@ -606,10 +606,33 @@ public class BattleWorld implements HolderPasses {
           AreaHitDue,
           ProjectileAreaHitDue,
           ProjectileHitDue,
+          TravellingHitDue,
           ActionDamageDue,
           CircleKillDue,
           KamikazeKillDue,
           ActionKillDue {}
+
+  /**
+   * A travelling hit of a projectile flying to a point waiting for the drain, on a data version
+   * that lands it there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int,
+   * int, int, int)} deals it at once, from the direction of the pass's centre, with nothing after
+   * it.
+   *
+   * @param projectile the projectile whose body covered the entity
+   * @param target the entity it covered
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param hitId the id the pass carries
+   * @param directionX the entity's position less the pass's centre, along the width
+   * @param directionY the same along the length
+   */
+  private record TravellingHitDue(
+      ProjectileEntity projectile,
+      WorldEntity target,
+      int damage,
+      int hitId,
+      int directionX,
+      int directionY)
+      implements QueuedHit {}
 
   /**
    * A damage-taking action's hit waiting for the drain: its source, its target, the row's damage
@@ -733,6 +756,26 @@ public class BattleWorld implements HolderPasses {
   public int globalNumber(String name) {
     return globalNumbers.computeIfAbsent(name, records::globalNumber);
   }
+
+  /** The published globals' flags the battle has read, each on its first use. */
+  private final Map<String, Boolean> globalFlags = new HashMap<>();
+
+  /**
+   * A published global's flag, read from the records on its first use.
+   *
+   * @param name the global's name
+   */
+  boolean globalFlag(String name) {
+    return globalFlags.computeIfAbsent(name, records::globalBoolean);
+  }
+
+  /**
+   * The global that decides when a travelling hit queued for the drain dooms what it hit for the
+   * rest of its volley: set, by the damage queued for the entity against its hit points and shield;
+   * clear, by the one hit's damage against its hit points, which is refused. Only read on a data
+   * version that queues travelling hits (see {@link #DIRECT_HIT_AT_DRAIN}); set in 16.402.18.
+   */
+  private static final String PROJECTILE_DAMAGE_BUG = "V16_PROJECTILE_DAMAGE_BUG";
 
   /**
    * The largest damage reduction, in percent, a carrier's buffs may add up to either way: the
@@ -4396,6 +4439,51 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Whether the damage queued for the drain will kill an entity, as a travelling hit just queued
+   * asks it, with the global V16_PROJECTILE_DAMAGE_BUG set: the hits queued for the entity and not
+   * yet dealt, the one just queued among them, add up to at least its hit points and shield. The
+   * hits counted are those of the queueing damage entry, which adds each one's damage to the
+   * entity's queued total and the drain empties: travelling hits, direct hits and the shares of a
+   * character's or a projectile's area.
+   *
+   * <p>Refused rather than guessed: the global clear, where the one hit's damage alone is held
+   * against the entity's hit points, which no data version holds; and a projectile's hit on its one
+   * target or a damage-taking action's hit queued for the entity, whose share of the total is not
+   * established.
+   *
+   * @param entity the entity hit
+   */
+  private boolean queuedKill(WorldEntity entity) {
+    if (!globalFlag(PROJECTILE_DAMAGE_BUG)) {
+      throw new UnsupportedOperationException(
+          "a travelling hit is queued with "
+              + PROJECTILE_DAMAGE_BUG
+              + " clear, whose test of a kill is not modelled");
+    }
+    HitPoints hitPoints = entity.getHitPoints();
+    int queued = 0;
+    for (QueuedHit hit : queuedHits) {
+      if (hit instanceof TravellingHitDue travelling && travelling.target() == entity) {
+        queued += travelling.damage();
+      } else if (hit instanceof DirectHitDue direct
+          && known.get(direct.target().getEntity()) == entity) {
+        queued += direct.damage();
+      } else if (hit instanceof AreaHitDue area && area.victim() == entity) {
+        queued += area.damage();
+      } else if (hit instanceof ProjectileAreaHitDue share && share.victim() == entity) {
+        queued += share.damage();
+      } else if ((hit instanceof ProjectileHitDue single && single.target() == entity)
+          || (hit instanceof ActionDamageDue action && action.target() == entity)) {
+        throw new UnsupportedOperationException(
+            entity.name()
+                + " takes a travelling hit with a projectile's or an action's hit queued for it,"
+                + " whose share of its queued damage is not modelled");
+      }
+    }
+    return queued >= hitPoints.getHitPoints() + hitPoints.getShield();
+  }
+
+  /**
    * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the Log's
    * and the Barbarian Barrel's hits: the damage at the level, the id list, and no push from a hit
    * that kills; held by no run: the own side spared, the crown-tower share, the untouchable
@@ -4423,6 +4511,10 @@ public class BattleWorld implements HolderPasses {
     }
     int id = entity.getId();
     if (projectile.getHitIds().contains(id)) {
+      return false;
+    }
+    // An entity its volley's group has doomed is passed over, and not listed as hit.
+    if (projectile.getGroup() != null && projectile.getGroup().dooms(id)) {
       return false;
     }
     GridEntity view = entity.getView();
@@ -4457,15 +4549,31 @@ public class BattleWorld implements HolderPasses {
     }
     boolean standing = entity.getHitPoints().getHitPoints() >= 1;
     projectile.getHitIds().add(id);
-    DamageResult result =
-        dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y);
+    boolean landed;
+    if (directHitAtDrain) {
+      // Queued for the drain, where the entity takes it and may die, after every movement visit
+      // of the tick; then, should the entity's queued damage now kill it, it is doomed for the
+      // rest of the volley.
+      queuedHits.add(
+          new TravellingHitDue(
+              projectile, entity, damage, hitId, view.getX() - x, view.getY() - y));
+      if (projectile.getGroup() != null && queuedKill(entity)) {
+        projectile.getGroup().doom(id);
+      }
+      landed = true;
+    } else {
+      landed =
+          dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y)
+              .landed();
+    }
     if (data.pushback() >= 1 && entity instanceof CharacterEntity character) {
       character.pushedByTravellingHit(
           projectile.getX(), projectile.getY(), data.pushback(), data.pushbackAll());
     }
-    // A projectile that stops at collisions is finished by a hit that landed on an entity that had
-    // hit points left.
-    if (standing && result.landed() && data.checkCollisions()) {
+    // A projectile that stops at collisions is finished by a hit on an entity that had hit points
+    // left: one that landed, where the hit is dealt at once; any, where it waits for the drain,
+    // whose guards are not asked yet.
+    if (standing && landed && data.checkCollisions()) {
       projectile.finishOnCollision();
       return true;
     }
@@ -5344,6 +5452,16 @@ public class BattleWorld implements HolderPasses {
                 hit.directionX(),
                 hit.directionY());
         drainProjectileBuff(hit.projectile(), hit.target(), result);
+        continue;
+      }
+      if (queued instanceof TravellingHitDue hit) {
+        dealProjectileDamage(
+            hit.projectile(),
+            hit.target(),
+            hit.damage(),
+            hit.hitId(),
+            hit.directionX(),
+            hit.directionY());
         continue;
       }
       if (queued instanceof ActionDamageDue actionDamage) {
