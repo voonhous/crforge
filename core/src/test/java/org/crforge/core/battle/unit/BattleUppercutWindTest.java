@@ -11,14 +11,16 @@ import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
  * The evolved Mega Knight's uppercut, the knock it gives, and the evolved Baby Dragon's wind where
- * the reference runs do not take them: the ends of the uppercut, its refusals, the knock's arc and
- * refusal, the wind on the other side, its re-trigger and a new wind after one has ended, a choice
- * by team without a cause, and the actions run at an area effect's ages.
+ * the reference runs do not take them: the ends of the uppercut, its refusals, the knock's arc, its
+ * postponing of an ability and its refusal, the wind on the other side, its re-trigger and a new
+ * wind after one has ended, a choice by team without a cause, and the actions run at an area
+ * effect's ages.
  */
 class BattleUppercutWindTest {
 
@@ -280,19 +282,56 @@ class BattleUppercutWindTest {
   }
 
   @Test
-  @DisplayName("a knock on a unit with an ability, which it would postpone, is refused")
-  void aKnockOnAUnitWithAnAbilityIsRefused() {
+  @DisplayName(
+      "a knock postpones the ability of the unit it throws: a request in the air is left pending"
+          + " and cast on the visit after the knock's run has left")
+  void aKnockPostponesTheAbility() {
     Scene scene = new Scene();
-    CharacterEntity knight = scene.unit(0, "GoldenKnight", 3500, 10000, "gk");
-    scene.step(30);
+    // A Giant Buffer alone: its collector finds no friend, so only this request casts.
+    CharacterEntity buffer = scene.unit(0, "GiantBuffer", 3500, 9500, "gb");
+    scene.step(40);
+    assertThat(buffer.getView().getState()).isNotEqualTo(GridEntityState.DEPLOYING);
+
+    buffer.actionHolder().start(scene.row("MegaKnight_EV1_uppercut_send_flying", buffer), null);
+    scene.step(3);
+    assertThat(buffer.getView().getFlags() & BITS.abilityPostponed())
+        .as("postponed in the air")
+        .isNotZero();
+
+    buffer.requestAbility();
+    assertThat(buffer.abilityPending()).as("left pending").isTrue();
+    // The knock's 21 updates, three of them before the request, the last one landing the unit;
+    // the finished run stays listed, its tag with it, one step more, and the next visit casts.
+    int steps = 0;
+    while (buffer.getView().getState() != GridEntityState.CASTING) {
+      assertThat(buffer.getView().getFlags() & BITS.abilityPostponed())
+          .as("still postponed after %d steps", steps)
+          .isNotZero();
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("cast at last").isLessThan(40);
+    }
+    assertThat(steps).isEqualTo(20);
+    assertThat(buffer.getView().getFlags() & BITS.abilityPostponed()).isZero();
+    assertThat(buffer.abilityPending()).isFalse();
+  }
+
+  @Test
+  @DisplayName("a knock on a unit casting its ability is refused")
+  void aKnockOnACastingUnitIsRefused() {
+    Scene scene = new Scene();
+    CharacterEntity buffer = scene.unit(0, "GiantBuffer", 3500, 9500, "gb");
+    scene.step(40);
+    buffer.requestAbility();
+    assertThat(buffer.getView().getState()).isEqualTo(GridEntityState.CASTING);
 
     assertThatThrownBy(
             () ->
-                knight
+                buffer
                     .actionHolder()
-                    .start(scene.row("MegaKnight_EV1_uppercut_send_flying", knight), null))
+                    .start(scene.row("MegaKnight_EV1_uppercut_send_flying", buffer), null))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("whose ability it postpones");
+        .hasMessageContaining("while it casts its ability");
   }
 
   @Test
