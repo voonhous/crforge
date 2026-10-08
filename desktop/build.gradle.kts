@@ -5,15 +5,12 @@ plugins {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":data"))
-    implementation(project(":gym-bridge"))
 
     // The configured game tables, their shipped rows and the synthetic replay scenarios of the
     // core's test fixtures
     testImplementation(testFixtures(project(":core")))
 
-    // ZMQ + JSON (needed directly since gym-bridge uses implementation scope)
-    implementation(libs.jeromq)
+    // JSON (data selection and replay files)
     implementation(libs.jackson.databind)
 
     // LibGDX

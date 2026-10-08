@@ -12,12 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
-import org.crforge.core.arena.Arena;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
-import org.crforge.desktop.render.RenderConstants;
 import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
 
@@ -29,8 +27,7 @@ import org.crforge.desktop.replay.ReplayFile;
  * data root, else a {@code crforge.gameTables} folder, else the lock's version in the data root),
  * prints the data root, its commit and its versions, where the tables came from and by which rule,
  * their data version and their content hash, and stops with a message naming the settings when none
- * are configured, they cannot be read, or the battle core refuses a battle on them. The AI
- * visualizer ({@code --ai-port}) still runs the original engine and reads no tables.
+ * are configured, they cannot be read, or the battle core refuses a battle on them.
  *
  * <p>{@code --replay <file>} opens the replay viewer on a replay file instead of a Ladder battle:
  * the launcher reads the replay against the tables of the data it was recorded on ({@link
@@ -59,97 +56,65 @@ public class DesktopLauncher {
   static final String REPLAY_ARGUMENT = "--replay";
 
   public static void main(String[] args) {
-    // Parse --ai-port argument
-    int aiPort = -1;
-    for (int i = 0; i < args.length - 1; i++) {
-      if ("--ai-port".equals(args[i])) {
-        aiPort = Integer.parseInt(args[i + 1]);
-        break;
-      }
+    DataSelection.Choice choice = DataSelection.choose(DataSelection.Settings.ofProcess(args));
+    GameTables tables = loadTables(choice, System.out, System.err);
+    if (tables == null) {
+      System.exit(NO_TABLES);
+      return;
     }
-
-    DataVersions versions = null;
+    DataVersions versions = dataVersions(choice, tables);
     BattleSession first = null;
     ReplayFile replay = null;
     ReplayArchive archive = null;
     String fixedBy = null;
-    if (aiPort <= 0) {
-      DataSelection.Choice choice = DataSelection.choose(DataSelection.Settings.ofProcess(args));
-      GameTables tables = loadTables(choice, System.out, System.err);
-      if (tables == null) {
-        System.exit(NO_TABLES);
-        return;
+    Optional<Path> replayFile;
+    try {
+      replayFile = replayArgument(args);
+    } catch (IllegalArgumentException e) {
+      System.err.println(e.getMessage());
+      System.exit(NO_REPLAY);
+      return;
+    }
+    if (replayFile.isPresent()) {
+      // A replay lists the battle core's refusal of the tables among its reasons, so no first
+      // Ladder battle is built for it.
+      fixedBy = choice.explicitVersion();
+      if (ReplayArchive.isArchive(replayFile.get())) {
+        archive = openArchive(replayFile.get(), System.out, System.err);
+        replay =
+            archive == null ? null : openFirst(archive, versions, fixedBy, System.out, System.err);
+      } else {
+        replay = openReplay(replayFile.get(), versions, fixedBy, System.out, System.err);
       }
-      versions = dataVersions(choice, tables);
-      Optional<Path> replayFile;
-      try {
-        replayFile = replayArgument(args);
-      } catch (IllegalArgumentException e) {
-        System.err.println(e.getMessage());
+      if (replay == null) {
         System.exit(NO_REPLAY);
         return;
       }
-      if (replayFile.isPresent()) {
-        // A replay lists the battle core's refusal of the tables among its reasons, so no first
-        // Ladder battle is built for it.
-        fixedBy = choice.explicitVersion();
-        if (ReplayArchive.isArchive(replayFile.get())) {
-          archive = openArchive(replayFile.get(), System.out, System.err);
-          replay =
-              archive == null
-                  ? null
-                  : openFirst(archive, versions, fixedBy, System.out, System.err);
-        } else {
-          replay = openReplay(replayFile.get(), versions, fixedBy, System.out, System.err);
-        }
-        if (replay == null) {
-          System.exit(NO_REPLAY);
-          return;
-        }
-      } else {
-        first = firstSession(versions, System.err);
-        if (first == null) {
-          System.exit(NO_TABLES);
-          return;
-        }
+    } else {
+      first = firstSession(versions, System.err);
+      if (first == null) {
+        System.exit(NO_TABLES);
+        return;
       }
     }
 
     Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-
-    // Window size based on arena dimensions + UI Margins
-    int width = (int) (Arena.WIDTH * RenderConstants.TILE_PIXELS);
-    int height =
-        (int)
-            (Arena.HEIGHT * RenderConstants.TILE_PIXELS
-                + RenderConstants.TOP_UI_HEIGHT
-                + RenderConstants.BOTTOM_UI_HEIGHT);
-
-    String title =
-        aiPort > 0
-            ? "CRForge - AI Visualizer"
-            : replay != null ? "CRForge - Replay Viewer" : "CRForge - Debug Visualizer";
-    config.setTitle(title);
-    config.setWindowedMode(aiPort > 0 ? width : 1120, aiPort > 0 ? height : 1040);
-    config.setResizable(aiPort <= 0);
-    if (aiPort <= 0) config.setWindowSizeLimits(1000, 760, -1, -1);
+    config.setTitle(replay != null ? "CRForge - Replay Viewer" : "CRForge - Debug Visualizer");
+    config.setWindowedMode(1120, 1040);
+    config.setResizable(true);
+    config.setWindowSizeLimits(1000, 760, -1, -1);
     config.useVsync(true);
     config.setForegroundFPS(60);
 
-    CRForgeGame game =
-        aiPort > 0
-            ? new CRForgeGame(aiPort)
-            : new CRForgeGame(versions, first, replay, archive, fixedBy);
-    if (aiPort <= 0) {
-      // A replay file or a crawl's output dropped on the window opens in the replay viewer.
-      config.setWindowListener(
-          new Lwjgl3WindowAdapter() {
-            @Override
-            public void filesDropped(String[] files) {
-              game.filesDropped(files);
-            }
-          });
-    }
+    CRForgeGame game = new CRForgeGame(versions, first, replay, archive, fixedBy);
+    // A replay file or a crawl's output dropped on the window opens in the replay viewer.
+    config.setWindowListener(
+        new Lwjgl3WindowAdapter() {
+          @Override
+          public void filesDropped(String[] files) {
+            game.filesDropped(files);
+          }
+        });
     new Lwjgl3Application(game, config);
   }
 

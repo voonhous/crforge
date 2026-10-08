@@ -1,8 +1,6 @@
 # crforge -- Architecture Overview
 
-crforge is a deterministic tick-based Clash Royale simulator using Component-Entity-System (CES)
-architecture. Entities hold data, systems hold logic, and the engine ticks at 30 FPS for
-reproducible RL/AI training.
+crforge is a deterministic tick-based Clash Royale simulator using Component-Entity-System (CES) architecture. Entities hold data, systems hold logic, and the engine ticks 20 times a second (50 ms per tick) for reproducible RL/AI training.
 
 This page is an index into the detailed reference docs. Each sub-doc covers a focused area of the
 codebase.
@@ -78,7 +76,6 @@ graph LR
 | [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
 | [Card Tracker](card_tracker.md) | Implementation status for all 121 cards |
 | [Measuring Missing Fields](reverse_engineering.md) | Guide for measuring unit stats from in-game observation |
-| [Python Gymnasium Bridge](../python/README.md) | ZMQ transport, observation/action spaces, reward structure, opponent policies |
 
 ---
 
@@ -89,8 +86,7 @@ crforge/
   core/           Headless simulation (no GUI dependencies)
   data/           Card/unit config loading (JSON -> Card objects)
   desktop/        LibGDX visualization (ShapeRenderer debug view)
-  gym-bridge/     ZMQ server for Python Gymnasium integration
-  python/         Gymnasium environment and bridge client
+  conformance/    Checks the battle core against recorded reference battles
 ```
 
 ### Core Package Layout
@@ -121,7 +117,7 @@ org.crforge.core/
 
 ## Debug Visualizer
 
-`./gradlew :desktop:run` opens the debug screen on the battle core (`org.crforge.core.battle`): a Ladder 1v1 battle on the standard arena, towers and cards at level 11, that can be paused, run at 0.25x to 8x speed, and played by hand from either side's hand. The AI visualizer (`--args="--ai-port 9876"`) still runs the original engine.
+`./gradlew :desktop:run` opens the debug screen on the battle core (`org.crforge.core.battle`): a Ladder 1v1 battle on the standard arena, towers and cards at level 11, that can be paused, run at 0.25x to 8x speed, and played by hand from either side's hand.
 
 The battle workspace is resizable, with the arena fitted to its original proportions and using the full content height. A compact column beside it holds the top side's hand, recent events, and the bottom side's hand. Each hand uses a two-by-two card grid so names and shortcuts remain readable without taking height from the arena. Hands show segmented elixir meters, separate cost/shortcut labels, and shorter cards below 900 pixels of window height. Events can be scrolled and copied. The toolbar offers pause, one-tick stepping, restart and speed controls. Playback speed and the elixir multiplier are labeled separately. The right sidebar contains a unit inspector, overlay controls and session diagnostics. Cards have separate selected, unaffordable and queued states; queued plays reserve elixir when determining affordability.
 

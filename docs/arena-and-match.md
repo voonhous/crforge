@@ -43,8 +43,7 @@ per tile, so the arena spans 18,000 by 32,000 game units (see "Coordinate System
   usually fractional, so `Position.move()` integrates them through a 1/65536-unit fixed-point
   carry and reports the nearest whole unit. `Position.set()` discards the carry; `add()` and
   per-axis `clamp()` keep it.
-- External interfaces stay in tiles: the Python bridge (`StepAction`, observation DTOs, binary
-  observations) and the desktop visualizer convert at their boundaries.
+- External interfaces stay in tiles: the desktop visualizer converts at its boundary.
 
 ### Tower Positions
 

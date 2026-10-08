@@ -9,14 +9,12 @@ import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
-import org.crforge.desktop.screen.AIGameScreen;
 import org.crforge.desktop.screen.DebugGameScreen;
 import org.crforge.desktop.screen.ReplayGameScreen;
 
 /**
- * Main LibGDX application for CRForge. Launches into debug visualization mode by default, which
- * runs the battle core on the given game tables (switching between the data versions of a data
- * root), or AI visualizer mode when an AI port is specified, which runs the original engine. Given
+ * Main LibGDX application for CRForge. Launches into debug visualization mode, which runs the
+ * battle core on the given game tables (switching between the data versions of a data root). Given
  * a replay, it opens the replay viewer instead of the debug screen; a replay file dropped on the
  * window opens there too, read against the tables of the data it names, else the current ones. A
  * crawl's output ({@link ReplayArchive}) opens the viewer on its first readable replay, with a list
@@ -25,12 +23,10 @@ import org.crforge.desktop.screen.ReplayGameScreen;
 @Slf4j
 public class CRForgeGame extends Game {
 
-  private final int aiPort;
-
-  /** The data versions the debug visualizer's battles read, or null in AI visualizer mode. */
+  /** The data versions the debug visualizer's battles read. */
   private final DataVersions versions;
 
-  /** The debug visualizer's first battle, or null in AI visualizer mode and in a replay. */
+  /** The debug visualizer's first battle, or null in a replay. */
   private final BattleSession first;
 
   /** The replay the viewer opens on, or null for the debug screen. */
@@ -78,7 +74,6 @@ public class CRForgeGame extends Game {
       ReplayFile replay,
       ReplayArchive archive,
       String fixedBy) {
-    this.aiPort = -1;
     this.versions = versions;
     this.first = first;
     this.replay = replay;
@@ -86,21 +81,9 @@ public class CRForgeGame extends Game {
     this.fixedBy = fixedBy;
   }
 
-  /** Constructor for AI visualizer mode. */
-  public CRForgeGame(int aiPort) {
-    this.aiPort = aiPort;
-    this.versions = null;
-    this.first = null;
-    this.replay = null;
-    this.archive = null;
-    this.fixedBy = null;
-  }
-
   @Override
   public void create() {
-    if (aiPort > 0) {
-      setScreen(new AIGameScreen(aiPort));
-    } else if (replay != null) {
+    if (replay != null) {
       setScreen(new ReplayGameScreen(replay, versions, browser(archive, fixedBy)));
     } else {
       setScreen(new DebugGameScreen(versions, first));
