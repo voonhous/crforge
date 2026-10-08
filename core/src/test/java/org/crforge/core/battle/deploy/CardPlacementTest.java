@@ -23,25 +23,21 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Every card play of the placement references worked out before anything is created: the refusal
- * code, or the placed point, the column its units are clamped into, the lane of the point, and each
- * unit's formation offset, position, lane and start.
+ * Card plays worked out before anything is created: the refusal code, or the placed point, the
+ * column its units are clamped into, the lane of the point, and each unit's formation offset,
+ * position, lane and start.
+ *
+ * <p>The first test holds the two placement references no reference battle holds yet, a Barbarians
+ * play and a Skeleton Army play at the arena's edge, where the formation is clamped. They are model
+ * output, not recordings of the game; the other placement references were deleted once reference
+ * battles held their plays.
  */
 class CardPlacementTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(
-      strings = {
-        "barbarians_left",
-        "barbarians_edge",
-        "skeleton_army_edge",
-        "knight_side1",
-        "deploy_refused",
-        "three_musketeers_pekka",
-        "three_musketeers_air_building"
-      })
+  @ValueSource(strings = {"barbarians_edge", "skeleton_army_edge"})
   void everyPlayLandsWhereTheReferencePlacesIt(String name) throws IOException {
     JsonNode reference;
     try (InputStream stream =

@@ -33,6 +33,7 @@ import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -495,7 +496,7 @@ class BattleActionSpawnRunTest {
     }
     // A run with card plays plays each as a place-card command due on its tick.
     if (reference.has("commands")) {
-      BattlePlacementRunTest.playAll(match, reference);
+      playAll(match, reference);
     }
     // Every request for a unit's ability the run supplies, in place of its player's command: in the
     // unit's phase-2 pass of its tick, after the run pass.
@@ -6837,8 +6838,8 @@ class BattleActionSpawnRunTest {
     };
   }
 
-  // The helpers below came from the deleted kill, Musketeer and tower run tests: they read the
-  // golden runs' layout and collect the events those runs list.
+  // The helpers below came from the deleted kill, Musketeer, tower and placement run tests: they
+  // read the golden runs' layout, collect the events those runs list and play their cards.
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -7499,5 +7500,55 @@ class BattleActionSpawnRunTest {
 
   private static UnitData unitData(String cardName) {
     return GameData.unit(cardName);
+  }
+
+  /**
+   * Queues every card play of the reference on its tick; a Mirror is played as the Mirror, and a
+   * variant card as the variant.
+   */
+  static void playAll(Standard1v1Battle match, JsonNode reference) {
+    for (JsonNode command : reference.get("commands")) {
+      // An ability command names a unit a play made.
+      if (command.has("ability")) {
+        match.useAbility(
+            command.get("tick").asInt(),
+            command.get("side").asInt(),
+            command.get("ability").asText(),
+            command.get("name").asText());
+        continue;
+      }
+      String name = command.get("card").asText();
+      if (GameData.records().matchCard(name).variant() != null) {
+        match.playVariant(
+            command.get("tick").asInt(),
+            name,
+            reference.get("level").asInt(),
+            command.get("side").asInt(),
+            command.get("point").get(0).asInt(),
+            command.get("point").get(1).asInt(),
+            command.get("name").asText());
+        continue;
+      }
+      if (GameData.records().matchCard(name).mirror()) {
+        match.playMirror(
+            command.get("tick").asInt(),
+            name,
+            reference.get("level").asInt(),
+            command.get("side").asInt(),
+            command.get("point").get(0).asInt(),
+            command.get("point").get(1).asInt(),
+            command.get("name").asText());
+        continue;
+      }
+      DeployCard card = GameData.card(name);
+      match.play(
+          command.get("tick").asInt(),
+          card,
+          reference.get("level").asInt(),
+          command.get("side").asInt(),
+          command.get("point").get(0).asInt(),
+          command.get("point").get(1).asInt(),
+          command.get("name").asText());
+    }
   }
 }
