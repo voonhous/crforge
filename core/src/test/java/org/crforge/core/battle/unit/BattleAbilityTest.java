@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -71,12 +72,18 @@ class BattleAbilityTest {
     assertThat(buffer.getUnit().timers().isAbilityReady()).isFalse();
     int cast = tick[0];
 
-    // It casts for its 933 ms, eighteen visits counting the one it entered in.
+    // It casts for its row's CastTime, in whole visits counting the one it entered in (933 ms is
+    // eighteen visits).
+    int castTime =
+        Shipped.number(
+            Shipped.row(
+                "character_abilities", Shipped.text(Shipped.unitRow("GiantBuffer"), "Ability")),
+            "CastTime");
     while (buffer.getView().getState() == GridEntityState.CASTING) {
       match.getBattle().step();
       tick[0]++;
     }
-    assertThat(tick[0] - cast).isEqualTo(17);
+    assertThat(tick[0] - cast).isEqualTo(castTime / 50 - 1);
     // The battle numbers its first step 0, so the observer's ticks run one behind the steps: the
     // request came after the tenth step, and the effect fired on the visit the cast began.
     assertThat(log).containsExactly("9 requested pending", (cast - 1) + " fired");
@@ -88,14 +95,19 @@ class BattleAbilityTest {
   void aLockGoesWithItsFriend(@TempDir Path folder) throws IOException {
     // The shipped collector names a filter row the tables do not hold, and finds no friend (see
     // aCollectorWithAMissingFilterFindsNoFriend); here it names the filter row the tables hold for
-    // the Giant Buffer and the Royal Chef.
+    // the Giant Buffer and the Royal Chef. Its first look waits 1000 ms from the unit's start, and
+    // it searches 7000 around it, as the test writes them.
     GameTables tables =
         GameData.altered(
             folder,
             "actions",
-            rows ->
-                ((ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields"))
-                    .put("TargetFilter", "friendly_troops_for_chef_giant_buffer"));
+            rows -> {
+              ObjectNode collector =
+                  (ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields");
+              collector.put("TargetFilter", "friendly_troops_for_chef_giant_buffer");
+              collector.put("ActionDelay", 1000);
+              collector.put("DistanceToGetTargets", 7000);
+            });
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     CharacterEntity knight =

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.junit.jupiter.api.DisplayName;
@@ -24,24 +25,36 @@ class BattleWarpTest {
   /** The warp row the Boss Bandit's ability runs. */
   private static final String WARP = "BossBandit_ability_warp";
 
+  /**
+   * The warp's distance along the length, toward the unit's own side: the row's WarpY, negative
+   * toward the bottom for side 0 (-6000).
+   */
+  private static final int WARP_Y = Shipped.number(WARP, "WarpY");
+
   /** Long enough for a Musketeer to deploy and fire. */
   private static final int TICKS = 120;
 
+  /**
+   * Each case names the point the warp aims at; the unit is placed one warp away from it, so that
+   * the warp's distance aims it there (with 6000: from 12000, 14000, 22000, 4000 and 19500).
+   */
   @ParameterizedTest(name = "{0}")
   @CsvSource({
     // Back toward its own side, on either side.
-    "side 0, 0, 3500, 12000, 3500, 6000",
-    "side 1, 1, 6000, 14000, 6000, 20000",
+    "side 0, 0, 3500, 6000, 3500, 6000",
+    "side 1, 1, 6000, 20000, 6000, 20000",
     // The river cell and the three after it are water: the first dry row, on the far bank.
-    "water, 0, 6000, 22000, 6000, 17250",
+    "water, 0, 6000, 16000, 6000, 17250",
     // Clamped to the edge, a corner cell that is blocked: two rows in.
-    "edge, 0, 3500, 4000, 3500, 1250",
+    "edge, 0, 3500, -2000, 3500, 1250",
     // A tower's cells carry a lane, so they are not blocked: it lands inside the footprint.
-    "into a tower, 1, 3500, 19500, 3500, 25500"
+    "into a tower, 1, 3500, 25500, 3500, 25500"
   })
   @DisplayName("a warp lands where the game lands it")
   void theWarpLandsWhereTheGameDoes(
-      String name, int side, int x, int y, int landingX, int landingY) {
+      String name, int side, int x, int aimY, int landingX, int landingY) {
+    // Side 0 warps by WarpY along the length, side 1 the other way.
+    int y = side == 0 ? aimY - WARP_Y : aimY + WARP_Y;
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     CharacterEntity bandit =
         match.deploy(0, GameData.unit("BossBandit"), LEVEL, side, x, y, "BossBandit");

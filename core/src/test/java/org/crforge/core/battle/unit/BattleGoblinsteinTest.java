@@ -11,10 +11,14 @@ import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -45,14 +49,19 @@ class BattleGoblinsteinTest {
           + " group, and the play that finds it reached schedules the action and takes the cost"
           + " off: 0, 5, 10, then 2")
   void aCountBelowTheCostAddsThePlaysCost(@TempDir Path folder) throws IOException {
-    // The monster's listener given a cost of 8, which no shipped listener of a modelled card has.
-    GameTables tables =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("goblinstein_listen_to_new_deploy").get("fields"))
-                    .put("ElixirCost", 8));
+    // The monster's listener given a cost of 8, which no shipped listener of a modelled card has,
+    // and the card a cost of 5, as the test writes them.
+    GameData.altered(
+        folder,
+        "actions",
+        rows ->
+            ((ObjectNode) rows.get("goblinstein_listen_to_new_deploy").get("fields"))
+                .put("ElixirCost", 8));
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "Goblinstein").put("ManaCost", 5));
+    GameTables tables = GameTables.load(folder);
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables);
     List<String> heard = new ArrayList<>();
@@ -158,23 +167,36 @@ class BattleGoblinsteinTest {
     int ay = doctor.getView().getY();
     int bx = monster.getView().getX();
     int by = monster.getView().getY();
-    // Two Golems, which walk only for buildings: one on the segment's middle, one 4000 off it.
+    // Two Golems, which walk only for buildings: one on the segment's middle, one off it by the
+    // tether's width, its own radius and 1250 more (4000).
+    String ability = "goblinstein_ability_action";
+    int off =
+        Shipped.number(ability, "TetherWidth")
+            + Shipped.number(Shipped.unitRow("Golem"), "CollisionRadius")
+            + 1250;
     int tick = battle.getBattle().getTick();
     CharacterEntity near =
         battle.deploy(tick, GameData.unit("Golem"), LEVEL, 1, (ax + bx) / 2, (ay + by) / 2, "near");
     CharacterEntity far =
         battle.deploy(
-            tick, GameData.unit("Golem"), LEVEL, 1, (ax + bx) / 2 + 4000, (ay + by) / 2, "far");
+            tick, GameData.unit("Golem"), LEVEL, 1, (ax + bx) / 2 + off, (ay + by) / 2, "far");
     near.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     far.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     run(battle, 70);
     doctor.requestAbility();
     run(battle, 200);
 
-    // TetherDuration 3500 at a pass every 500 ms.
-    assertThat(passes).hasSize(7);
+    // A pass every TetherHitInterval from the tether's start for as long as its TetherDuration
+    // lasts, the end excluded: 7 for 3500 at 500 ms. Each hit is the TetherDamage at the doctor's
+    // level and rarity (37 is 94).
+    int duration = Shipped.number(ability, "TetherDuration");
+    int interval = Shipped.number(ability, "TetherHitInterval");
+    int count = (duration + interval - 1) / interval;
+    GameRow doctorRow = Shipped.unitRow("goblinstein_doctor");
+    int damage = atLevel(Shipped.number(ability, "TetherDamage"), doctorRow, LEVEL);
+    assertThat(passes).hasSize(count);
     assertThat(passes).allMatch(pass -> pass.endsWith(" [near]"));
-    assertThat(hits).hasSize(7).allMatch(hit -> hit.equals("near 94"));
+    assertThat(hits).hasSize(count).allMatch(hit -> hit.equals("near " + damage));
     assertThat(far.getHitPoints().getHitPoints()).isEqualTo(far.getHitPoints().getMaximum());
   }
 
@@ -250,13 +272,42 @@ class BattleGoblinsteinTest {
   @DisplayName("a Mirror of Goblinstein, whose doctor is its champion, is refused")
   void aMirrorOfGoblinsteinIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
-    battle.startLadderMatch(GOBLINSTEIN_MIRRORS, KNIGHTS, 0, 0);
+    LadderMatch match = battle.startLadderMatch(GOBLINSTEIN_MIRRORS, KNIGHTS, 0, 0);
     battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
-    battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, 21);
+    // Once the elixir covers the Mirror's item, Goblinstein's cost and the Mirror's own, held to
+    // the most elixir there can be; and no sooner than 22 ticks after the play it repeats.
+    int cost =
+        Math.min(
+            cost("Goblinstein") + cost("Mirror"),
+            Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue"));
+    int mirror = Math.max(21 + 22, coveredFrom(battle, match, cost));
+    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
 
-    assertThatThrownBy(() -> run(battle, 300))
+    assertThatThrownBy(() -> run(battle, mirror))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("m: a Mirror of the champion Goblinstein, which no reference holds");
+  }
+
+  /** A card's elixir cost, as its row writes it. */
+  private static int cost(String card) {
+    for (String table : List.of("spells_characters", "spells_other")) {
+      if (GameData.tables().table(table).has(card)) {
+        return Shipped.number(Shipped.row(table, card), "ManaCost");
+      }
+    }
+    throw new AssertionError("no card row " + card);
+  }
+
+  /**
+   * Steps a match until side 0's whole elixir covers a cost, and answers the next tick to run: a
+   * play queued for it finds the elixir, which only grows while the side plays nothing.
+   */
+  private static int coveredFrom(Standard1v1Battle battle, LadderMatch match, int cost) {
+    while (match.side(0).wholeElixir() < cost) {
+      battle.getBattle().step();
+    }
+    return battle.getBattle().getTick();
   }
 
   /** Steps the battle until it has run the given tick. */
@@ -264,5 +315,21 @@ class BattleGoblinsteinTest {
     while (battle.getBattle().getTick() <= lastTick) {
       battle.getBattle().step();
     }
+  }
+
+  /**
+   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
+   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
+   * base itself on the first level.
+   */
+  private static int atLevel(int base, GameRow row, int level) {
+    String rarity = Shipped.text(row, "Rarity");
+    RarityTable table =
+        RarityTable.PUBLISHED.stream()
+            .filter(candidate -> candidate.name().equals(rarity))
+            .findFirst()
+            .orElseThrow();
+    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
+    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

@@ -10,12 +10,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -101,7 +104,16 @@ class BattleThreeMusketeersTest {
     ground.still(1, "Knight", X, Y + 2000, "K");
     ground.step(80);
     assertThat(ground.launches).isEmpty();
-    assertThat(ground.typed).isNotEmpty().allMatch(hit -> hit.endsWith(" M K 314"));
+    // The bayonet's BaseDamage at the musketeer's level and rarity (123 is 314).
+    int bayonet =
+        atLevel(
+            Shipped.fields("ThreeMusketeer_Rework_Bayonet_Attack_Deal_Damage")
+                .path("Damage")
+                .path("BaseDamage")
+                .asInt(),
+            Shipped.unitRow(MUSKETEER),
+            LEVEL);
+    assertThat(ground.typed).isNotEmpty().allMatch(hit -> hit.endsWith(" M K " + bayonet));
 
     Scene air = new Scene(GameData.tables());
     air.still(1, "Minion", X, Y + 1500, "A");
@@ -227,5 +239,21 @@ class BattleThreeMusketeersTest {
 
   private static int evaluate(String text, BattleExpressionEnvironment environment) {
     return ExpressionEvaluator.evaluate(ExpressionCompiler.compile(text, environment), environment);
+  }
+
+  /**
+   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
+   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
+   * base itself on the first level.
+   */
+  private static int atLevel(int base, GameRow row, int level) {
+    String rarity = Shipped.text(row, "Rarity");
+    RarityTable table =
+        RarityTable.PUBLISHED.stream()
+            .filter(candidate -> candidate.name().equals(rarity))
+            .findFirst()
+            .orElseThrow();
+    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
+    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

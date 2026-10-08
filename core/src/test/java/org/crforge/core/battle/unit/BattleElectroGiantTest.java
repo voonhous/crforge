@@ -10,8 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,8 +38,17 @@ class BattleElectroGiantTest {
 
   private static final int Y = 11000;
 
-  /** The reflect's radius plus the Electro Giant's 750 and a Musketeer's 500. */
-  private static final int MUSKETEER_REACH = 3250;
+  /** The Electro Giant's row, whose reflect columns the expected values read. */
+  private static final GameRow GIANT = Shipped.unitRow("ElectroGiant");
+
+  /** The buff the reflect hands the attacker. */
+  private static final String BUFF = Shipped.text(GIANT, "ReflectedAttackBuff");
+
+  /** The reflect's radius plus the Electro Giant's radius and a Musketeer's (3250). */
+  private static final int MUSKETEER_REACH =
+      Shipped.number(GIANT, "ReflectedAttackRadius")
+          + Shipped.number(GIANT, "CollisionRadius")
+          + Shipped.number(Shipped.unitRow("Musketeer"), "CollisionRadius");
 
   /** A battle with the towers passive, one Electro Giant that never moves, and every reflect. */
   private static final class Scene {
@@ -108,9 +120,9 @@ class BattleElectroGiantTest {
 
     assertThat(scene.from("inside")).isNotEmpty();
     Reflection first = scene.from("inside").get(0);
-    assertThat(first.buff()).isEqualTo("ZapFreeze");
-    assertThat(first.buffTimeMs()).isEqualTo(500);
-    assertThat(first.damage()).isEqualTo(192);
+    assertThat(first.buff()).isEqualTo(BUFF);
+    assertThat(first.buffTimeMs()).isEqualTo(Shipped.number(GIANT, "ReflectedAttackBuffDuration"));
+    assertThat(first.damage()).isEqualTo(reflectedDamage());
     assertThat(first.attacker()).isInstanceOf(ProjectileEntity.class);
     assertThat(scene.from("edge")).isNotEmpty().allSatisfy(r -> assertThat(r.buff()).isNull());
   }
@@ -157,7 +169,7 @@ class BattleElectroGiantTest {
     assertThat(knights.stream().filter(r -> r.hitSpeed() < 1))
         .allSatisfy(r -> assertThat(r.buff()).isNull());
     assertThat(knights.stream().filter(r -> r.hitSpeed() >= 1))
-        .allSatisfy(r -> assertThat(r.damage()).isEqualTo(192));
+        .allSatisfy(r -> assertThat(r.damage()).isEqualTo(reflectedDamage()));
   }
 
   @Test
@@ -187,7 +199,7 @@ class BattleElectroGiantTest {
 
     List<Reflection> pellets = scene.from("hunter");
     assertThat(pellets.size()).isGreaterThan(1);
-    assertThat(pellets).allSatisfy(r -> assertThat(r.buff()).isEqualTo("ZapFreeze"));
+    assertThat(pellets).allSatisfy(r -> assertThat(r.buff()).isEqualTo(BUFF));
     assertThat(pellets.stream().filter(r -> r.damage() > 0)).hasSize(1);
   }
 
@@ -206,7 +218,7 @@ class BattleElectroGiantTest {
     }
 
     Reflection last = scene.from("cannon").get(0);
-    assertThat(last.damage()).isEqualTo(192);
+    assertThat(last.damage()).isEqualTo(reflectedDamage());
     assertThat(last.hitPointsBefore()).isLessThanOrEqualTo(before);
     assertThat(scene.giant.getHitPoints().getHitPoints()).isZero();
   }
@@ -221,8 +233,8 @@ class BattleElectroGiantTest {
     List<Reflection> hits = scene.from("valkyrie");
     assertThat(hits).isNotEmpty();
     assertThat(hits.get(0).attacker()).isSameAs(valkyrie);
-    assertThat(hits.get(0).buff()).isEqualTo("ZapFreeze");
-    assertThat(hits.get(0).damage()).isEqualTo(192);
+    assertThat(hits.get(0).buff()).isEqualTo(BUFF);
+    assertThat(hits.get(0).damage()).isEqualTo(reflectedDamage());
   }
 
   @Test
@@ -254,7 +266,7 @@ class BattleElectroGiantTest {
 
     assertThat(scene.from("friend")).hasSize(1);
     assertThat(scene.from("friend").get(0).buff()).isNull();
-    assertThat(friend.getBuffs().carries("ZapFreeze")).isFalse();
+    assertThat(friend.getBuffs().carries(BUFF)).isFalse();
   }
 
   @Test
@@ -288,10 +300,10 @@ class BattleElectroGiantTest {
       scene.step(1);
     }
     CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
-    assertThat(giant.getBuffs().carries("ZapFreeze")).isTrue();
+    assertThat(giant.getBuffs().carries(BUFF)).isTrue();
     assertThat(giant.riders())
         .hasSize(2)
-        .allSatisfy(rider -> assertThat(rider.getBuffs().carries("ZapFreeze")).isTrue());
+        .allSatisfy(rider -> assertThat(rider.getBuffs().carries(BUFF)).isTrue());
     List<Reflection> shots =
         scene.reflections.stream().filter(r -> r.attacker() instanceof ProjectileEntity).toList();
     assertThat(shots)
@@ -338,7 +350,7 @@ class BattleElectroGiantTest {
     assertThat(scene.giant.isRemovable()).isTrue();
     assertThat(scene.reflections).isEmpty();
     assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(knightHitPoints);
-    assertThat(knight.getBuffs().carries("ZapFreeze")).isFalse();
+    assertThat(knight.getBuffs().carries(BUFF)).isFalse();
   }
 
   @Test
@@ -371,5 +383,26 @@ class BattleElectroGiantTest {
             })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("reflects and takes a kill");
+  }
+
+  /** The reflect's damage at the Giant's level: the row's ReflectedAttackDamage (75 is 192). */
+  private static int reflectedDamage() {
+    return atLevel(Shipped.number(GIANT, "ReflectedAttackDamage"), GIANT, LEVEL);
+  }
+
+  /**
+   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
+   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
+   * base itself on the first level.
+   */
+  private static int atLevel(int base, GameRow row, int level) {
+    String rarity = Shipped.text(row, "Rarity");
+    RarityTable table =
+        RarityTable.PUBLISHED.stream()
+            .filter(candidate -> candidate.name().equals(rarity))
+            .findFirst()
+            .orElseThrow();
+    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
+    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

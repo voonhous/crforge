@@ -2,13 +2,19 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** What the battle makes of a row's charge, and what it refuses of it. */
 class BattleChargeTest {
@@ -52,6 +58,45 @@ class BattleChargeTest {
   }
 
   /**
+   * The configured tables with the evolved Battle Ram's charge and push, and the Knight it pushes,
+   * as the test writes them (the values of data version 16.402.18): the ram walks 60 and charges at
+   * 200 percent of it, its push waits 825 ms, is centred 800 ahead of it with a radius of 1000,
+   * pushes 2000 and deals 83 at the first level; the Knight has a radius of 500 and a mass of 6,
+   * deploys for 1000 ms and walks 60.
+   */
+  private static GameTables pushTables(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode push = (ObjectNode) rows.get("BattleRam_EV1_PushBack").get("fields");
+          push.put("ActionDelay", 825);
+          push.put("PushBackDamage", 83);
+          push.put("PushBackRadius", 1000);
+          push.put("PushBackStrength", 2000);
+          push.put("PushRadiusDirectionalOffset", 800);
+          push.put("OnPushEffectMinInterval", 1000);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          ObjectNode ram = GameData.columns(rows, "BattleRam_EV1");
+          ram.put("OnStartChargingAction", "BattleRam_EV1_PushBack");
+          ram.put("Rarity", "Common");
+          ram.put("Speed", 60);
+          ram.put("ChargeSpeedMultiplier", 200);
+          ram.put("ChargeRange", 300);
+          ObjectNode knight = GameData.columns(rows, "Knight");
+          knight.put("CollisionRadius", 500);
+          knight.put("Mass", 6);
+          knight.put("DeployTime", 1000);
+          knight.put("Speed", 60);
+        });
+    return GameTables.load(folder);
+  }
+
+  /**
    * Steps an evolved Battle Ram until its charge completes, then places an enemy Knight beside the
    * point the push pass will be centred on 16 steps later, the action's delay of 825 ms in whole
    * steps. Answers the tick the charge completed on; fills in the Knight, and its hit points and
@@ -59,6 +104,7 @@ class BattleChargeTest {
    */
   private static int chargeThenKnight(
       Standard1v1Battle match,
+      BattleRecords records,
       CharacterEntity ram,
       CharacterEntity[] knight,
       int[] hitPoints,
@@ -75,7 +121,7 @@ class BattleChargeTest {
     // a radius of 1000. The Knight, still deploying, stands 300 to the side of that centre.
     int y = ram.getView().getY() + 16 * 120 + 800;
     knight[0] =
-        match.deploy(completed + 1, GameData.unit("Knight"), 3, 1, ram.getView().getX() + 300, y);
+        match.deploy(completed + 1, records.unit("Knight"), 3, 1, ram.getView().getX() + 300, y);
     for (int i = 0; i < 30; i++) {
       match.getBattle().step();
       hitPoints[i] =
@@ -89,14 +135,16 @@ class BattleChargeTest {
   @DisplayName(
       "an evolved Battle Ram's completed charge runs its push 825 ms later: an enemy beside its"
           + " path is pushed to the side and hit once for the push damage")
-  void theEvolvedRamPushesAndHitsOnce() {
-    Standard1v1Battle match = passiveTowers();
+  void theEvolvedRamPushesAndHitsOnce(@TempDir Path folder) throws IOException {
+    GameTables tables = pushTables(folder);
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     // Level 3, as a Rare card at level index 0 plays it.
-    CharacterEntity ram = match.deploy(0, GameData.unit("BattleRam_EV1"), 3, 0, 14500, 9000);
+    CharacterEntity ram = match.deploy(0, records.unit("BattleRam_EV1"), 3, 0, 14500, 9000);
     CharacterEntity[] knight = new CharacterEntity[1];
     int[] hitPoints = new int[30];
     int[] widths = new int[30];
-    int completed = chargeThenKnight(match, ram, knight, hitPoints, widths);
+    int completed = chargeThenKnight(match, records, ram, knight, hitPoints, widths);
 
     int full = knight[0].getHitPoints().getMaximum();
     // Index i holds the hit points after the step of tick completed + 1 + i; the push pass first
@@ -105,8 +153,8 @@ class BattleChargeTest {
     for (int i = 0; i < first; i++) {
       assertThat(hitPoints[i]).as("after step %d", i).isEqualTo(full);
     }
-    // PushBackDamage 83 at level 3 of the character row's Common rarity, and only once, though
-    // the Knight stays inside the pass for several steps.
+    // PushBackDamage 83 at level 3 of the character row's Common rarity, 83 * 121 / 100, and only
+    // once, though the Knight stays inside the pass for several steps.
     for (int i = first; i < 30; i++) {
       assertThat(hitPoints[i]).as("after step %d", i).isEqualTo(full - 100);
     }

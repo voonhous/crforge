@@ -6,10 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.InertAction;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,25 @@ class BattleUppercutWindTest {
   private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /** The knock the uppercut gives. */
+  private static final String KNOCK = "MegaKnight_EV1_uppercut_send_flying";
+
+  /** The knock's duration (900). */
+  private static final int KNOCK_MS = Shipped.number(KNOCK, "Duration");
+
+  /** The knock's updates: one a step until its duration is used up, and the landing one (19). */
+  private static final int KNOCK_UPDATES = (KNOCK_MS + 49) / 50 + 1;
+
+  /** The evolved Baby Dragon's wind action. */
+  private static final String WIND = "baby_dragon_evo_wind_action";
+
+  /** How far ahead of its dragon the wind stands, toward the enemy side (1500). */
+  private static final int WIND_OFFSET = Shipped.number(WIND, "OffsetY");
+
+  /** The wind's area effect row. */
+  private static final GameRow WIND_AREA =
+      Shipped.row("area_effect_objects", Shipped.text(WIND, "Aeo"));
 
   /** A battle with the towers passive, and what the uppercut, the knock and the wind did. */
   private static final class Scene {
@@ -280,8 +301,8 @@ class BattleUppercutWindTest {
 
     buffer.requestAbility();
     assertThat(buffer.abilityPending()).as("left pending").isTrue();
-    // The knock's 19 updates (900 ms), three of them before the request, the last one landing the
-    // unit; the finished run stays listed, its tag with it, one step more, and the next visit
+    // The knock's updates (19 for 900 ms), three of them before the request, the last one landing
+    // the unit; the finished run stays listed, its tag with it, one step more, and the next visit
     // casts.
     int steps = 0;
     while (buffer.getView().getState() != GridEntityState.CASTING) {
@@ -292,7 +313,7 @@ class BattleUppercutWindTest {
       steps++;
       assertThat(steps).as("cast at last").isLessThan(40);
     }
-    assertThat(steps).isEqualTo(18);
+    assertThat(steps).isEqualTo(KNOCK_UPDATES - 3 + 2);
     assertThat(buffer.getView().getFlags() & BITS.abilityPostponed()).isZero();
     assertThat(buffer.abilityPending()).isFalse();
   }
@@ -329,9 +350,10 @@ class BattleUppercutWindTest {
 
     int x = dragon.getView().getX();
     int y = dragon.getView().getY();
-    assertThat(scene.log).contains("wind BabyDragon_EV1_wind_aeo_3000000 " + x + " " + (y - 1500));
+    assertThat(scene.log)
+        .contains("wind BabyDragon_EV1_wind_aeo_3000000 " + x + " " + (y - WIND_OFFSET));
     AreaEffectEntity wind = scene.areaEffects().get(0);
-    assertThat(List.of(wind.getX(), wind.getY())).containsExactly(x, y - 1500);
+    assertThat(List.of(wind.getX(), wind.getY())).containsExactly(x, y - WIND_OFFSET);
   }
 
   @Test
@@ -344,14 +366,16 @@ class BattleUppercutWindTest {
     scene.step(30);
     dragon.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     BattleAction row = scene.row("baby_dragon_evo_wind_action", dragon);
-    String point = dragon.getView().getX() + " " + (dragon.getView().getY() + 1500);
+    String point = dragon.getView().getX() + " " + (dragon.getView().getY() + WIND_OFFSET);
+    // The wind's life (6000).
+    int life = Shipped.number(WIND_AREA, "LifeDuration");
 
     dragon.actionHolder().start(row, null);
     scene.step(3);
     AreaEffectEntity first = scene.areaEffects().get(0);
-    assertThat(first.getCountdown()).isEqualTo(5850);
+    assertThat(first.getCountdown()).isEqualTo(life - 3 * 50);
     dragon.actionHolder().start(row, null);
-    assertThat(first.getCountdown()).isEqualTo(6000);
+    assertThat(first.getCountdown()).isEqualTo(life);
 
     first.cutLife(0);
     scene.step(2);
@@ -363,7 +387,7 @@ class BattleUppercutWindTest {
                 .filter(line -> !line.startsWith("tags") && !line.startsWith("listed")))
         .containsExactly(
             "wind " + name + " " + point,
-            "retrigger " + name + " 6000",
+            "retrigger " + name + " " + life,
             // Cut to 0, the wind has one more update, its countdown going below 0, whose alive
             // time of 6000 passes the start group's alive timer of 5950.
             "age baby_dragon_evo_wind_end_blow",
@@ -440,8 +464,14 @@ class BattleUppercutWindTest {
           + " from the first: it is pushed toward the left tower")
   void aTieKeepsTheFirstTower() {
     Scene scene = new Scene();
-    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 9000, 20800, "mk");
-    CharacterEntity knight = scene.unit(1, "Knight", 9000, 22000, "k");
+    // Halfway across between the top side's two princess towers (3500 and 14500: 9000).
+    List<TowerEntity> towers = scene.world().princessTowers(1);
+    assertThat(towers).hasSize(2);
+    TowerEntity left = towers.get(0);
+    assertThat(left.getView().getX()).isLessThan(towers.get(1).getView().getX());
+    int x = (left.getView().getX() + towers.get(1).getView().getX()) / 2;
+    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", x, 20800, "mk");
+    CharacterEntity knight = scene.unit(1, "Knight", x, 22000, "k");
     scene.step(22);
     mk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
@@ -469,9 +499,11 @@ class BattleUppercutWindTest {
     mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), knight.actionHolder());
     scene.step(1);
 
-    // PrincessTower_1_1 at (3500, 25500) and PrincessTower_1_2 at (14500, 25500) are equally far.
+    // PrincessTower_1_1 at (3500, 25500) and PrincessTower_1_2 at (14500, 25500) are equally far:
+    // the push point is taken from the first, (5500, y - 25500).
     assertThat(points).hasSize(1);
-    assertThat(List.of(points.get(0)[2], points.get(0)[3])).containsExactly(5500, y - 25500);
+    assertThat(List.of(points.get(0)[2], points.get(0)[3]))
+        .containsExactly(x - left.getView().getX(), y - left.getView().getY());
   }
 
   @Test
@@ -482,14 +514,15 @@ class BattleUppercutWindTest {
     Scene scene = new Scene();
     CharacterEntity knight = scene.unit(1, "Knight", 3500, 22000, "k");
     scene.step(30);
-    knight.actionHolder().start(scene.row("MegaKnight_EV1_uppercut_send_flying", knight), null);
+    knight.actionHolder().start(scene.row(KNOCK, knight), null);
 
     scene.step(2);
-    // The first update's rise: 190 hundredths of a share, the share 8000 over the nine steps of
-    // the half of the knock's 900 ms, 888.
-    assertThat(knight.getView().getHeightOffset()).isEqualTo(1687);
+    // The first update's rise: 190 hundredths of a share, the share the knock's height over the
+    // whole steps of the half of its duration (8000 over the nine steps of 450 ms, 888: 1687).
+    int share = Shipped.number(KNOCK, "Height") / (KNOCK_MS / 2 / 50);
+    assertThat(knight.getView().getHeightOffset()).isEqualTo(share * 190 / 100);
     assertThat(knight.getView().isAir()).isTrue();
-    scene.step(17);
+    scene.step(KNOCK_UPDATES - 2);
     assertThat(knight.getUnit().movement().getRoute().isEmpty())
         .as("the route at landing")
         .isTrue();
@@ -505,12 +538,20 @@ class BattleUppercutWindTest {
     scene.step(30);
     dragon.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     int x = dragon.getView().getX();
-    int y = dragon.getView().getY() + 1500;
-    // Each Knight's circle of 500 reaches 4400 and 4100 from the wind's point.
+    int y = dragon.getView().getY() + WIND_OFFSET;
+    // Half the shape's height along the length and half its width across (4500 and 4000); each
+    // Knight's circle reaches 100 inside the first and stops 100 short of the second (4400 and
+    // 4100 from the wind's point).
+    GameRow shape = Shipped.row("shapes", Shipped.text(WIND_AREA, "Shape"));
+    int knightRadius = Shipped.number(Shipped.unitRow("Knight"), "CollisionRadius");
+    int alongEdge = Shipped.number(shape, "Height") / 2;
+    int acrossEdge = Shipped.number(shape, "Width") / 2;
     CharacterEntity ahead =
-        scene.match.deploy(31, GameData.unit("Knight"), LEVEL, 0, x, y + 4900, "ahead");
+        scene.match.deploy(
+            31, GameData.unit("Knight"), LEVEL, 0, x, y + alongEdge + knightRadius - 100, "ahead");
     CharacterEntity aside =
-        scene.match.deploy(31, GameData.unit("Knight"), LEVEL, 0, x + 4600, y, "aside");
+        scene.match.deploy(
+            31, GameData.unit("Knight"), LEVEL, 0, x + acrossEdge + knightRadius + 100, y, "aside");
     scene.step(1);
     ahead.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     aside.setActive(CharacterEntity.MOVEMENT_SLOT, false);
