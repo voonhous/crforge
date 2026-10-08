@@ -51,8 +51,19 @@ class BalloonHeroAbilityTest {
   /** An earlier tick, for the trooper's long flight: the hero has only just deployed. */
   private static final int EARLY_CAST = 262;
 
-  /** What a launch of the trooper's projectile was: its tick, start, target and owner's point. */
-  private record Launch(int tick, int x, int y, WorldEntity target, int ownerX, int ownerY) {}
+  /**
+   * What a launch of the trooper's projectile was: its tick, start, target, owner's point and the
+   * target's point as it was launched.
+   */
+  private record Launch(
+      int tick,
+      int x,
+      int y,
+      WorldEntity target,
+      int ownerX,
+      int ownerY,
+      int targetX,
+      int targetY) {}
 
   /** A battle with the Balloon hero form in side 0's hand, recording every trooper launch. */
   private static Standard1v1Battle battle(GameTables tables, List<Launch> launches) {
@@ -81,7 +92,13 @@ class BalloonHeroAbilityTest {
                           projectile.getY(),
                           projectile.getTarget(),
                           owner.getView().getX(),
-                          owner.getView().getY()));
+                          owner.getView().getY(),
+                          projectile.getTarget() == null
+                              ? 0
+                              : projectile.getTarget().getView().getX(),
+                          projectile.getTarget() == null
+                              ? 0
+                              : projectile.getTarget().getView().getY()));
                 }
               }
             });
@@ -127,16 +144,12 @@ class BalloonHeroAbilityTest {
     assertThat(launches).hasSize(1);
     Launch launch = launches.get(0);
     assertThat(launch.target()).isSameAs(knight);
-    int[] toward = {
-      knight.getView().getX() - launch.ownerX(), knight.getView().getY() - launch.ownerY()
-    };
-    // The Knight walks on after the launch; its point at the launch is not kept, so the start's
-    // direction is checked by its length and side.
-    int length =
-        FixedMath.guardedDistance(launch.x() - launch.ownerX(), launch.y() - launch.ownerY());
-    int offset = Shipped.number(SPAWNER, "ProjectileStartOffset");
-    assertThat(length).isBetween(offset - 1, offset);
-    assertThat(Integer.signum(launch.y() - launch.ownerY())).isEqualTo(Integer.signum(toward[1]));
+    // The start is the hero's point moved toward the Knight's point at the launch, the line
+    // scaled to the offset with the game's integer normalization.
+    int[] toward = {launch.targetX() - launch.ownerX(), launch.targetY() - launch.ownerY()};
+    FixedMath.normalize(toward, Shipped.number(SPAWNER, "ProjectileStartOffset"));
+    assertThat(new int[] {launch.x(), launch.y()})
+        .containsExactly(launch.ownerX() + toward[0], launch.ownerY() + toward[1]);
     // The override starts at log(5) * 10000 / 80 and grows to log(7) * 10000 / 80 as the variable
     // passes 7; the flight lands before the variable passes 9.
     List<Integer> distinct = new ArrayList<>();
