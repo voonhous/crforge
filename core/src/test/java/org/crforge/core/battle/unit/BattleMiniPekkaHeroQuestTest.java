@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.CountingRun;
 import org.crforge.core.battle.match.LadderMatch;
@@ -18,9 +19,10 @@ import org.junit.jupiter.api.Test;
 /**
  * The hero Mini Pekka's ability level timer (its starting action,
  * MiniPekkaHero_run_timer_continuous) played with no ability use: the timer's run, started on the
- * hero's first step, counts down its 1000 ms start delay 50 a step, then adds 50 a step, or 8000 on
- * a step that finds the hero's tag from its last hit, and raises the level stack each time the
- * progress reaches 22000, three times at most, after which the run stays listed and counts nothing.
+ * hero's first step, counts down its start delay 50 a step, then adds 50 a step, or its upgrade
+ * amount on a step that finds the hero's tag from its last hit, and raises the level stack each
+ * time the progress reaches its interval, the overshoot carried, as many times as its resets, after
+ * which the run stays listed and counts nothing.
  */
 class BattleMiniPekkaHeroQuestTest {
 
@@ -37,16 +39,27 @@ class BattleMiniPekkaHeroQuestTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
-  /** Steps the 1000 ms start delay takes, 50 ms each. */
-  private static final int DELAY_STEPS = 1000 / 50;
+  /** Steps the start delay takes: 50 off it a step while 1 or more is left. */
+  private static final int DELAY_STEPS = (Shipped.number(TIMER, "StartTimerDelay") + 49) / 50;
 
-  /** Steps of 50 ms one 22000 ms interval takes with no upgrade. */
-  private static final int INTERVAL_STEPS = 22000 / 50;
+  /** The one interval the timer counts to. */
+  private static final int INTERVAL = Shipped.numbers(TIMER, "Intervals").get(0);
+
+  /** Steps of 50 ms one interval takes with no upgrade. */
+  private static final int INTERVAL_STEPS = (INTERVAL + 49) / 50;
+
+  /** What a step that finds the hero's tag adds instead of 50. */
+  private static final int UPGRADE =
+      Shipped.numbers(TIMER, "AmountToIncreaseOnUpgradeBarList").get(0);
+
+  /** How many intervals the timer counts out. */
+  private static final int RESETS = Shipped.number(TIMER, "MaxResets");
 
   @Test
   @DisplayName(
-      "the timer starts on the hero's first step, counts its start delay down for 20 steps, raises"
-          + " the level stack every 440 steps after it, three times, and then stays listed")
+      "the timer starts on the hero's first step, counts its start delay down, raises the level"
+          + " stack each time 50 a step reaches its interval, as many times as its resets, and then"
+          + " stays listed")
   void theTimerRaisesTheLevelThreeTimes() {
     Standard1v1Battle battle = playedBattle();
     CharacterEntity hero = playHero(battle);
@@ -58,7 +71,7 @@ class BattleMiniPekkaHeroQuestTest {
     List<Integer> raised = new ArrayList<>();
     int level = hero.variable(key);
     assertThat(level).isZero();
-    int end = first + DELAY_STEPS + 3 * INTERVAL_STEPS + 400;
+    int end = first + DELAY_STEPS + RESETS * INTERVAL_STEPS + 400;
     while (battle.getBattle().getTick() <= end) {
       int tick = battle.getBattle().getTick();
       battle.getBattle().step();
@@ -68,22 +81,25 @@ class BattleMiniPekkaHeroQuestTest {
       }
     }
 
-    // The k-th counting step is the (20 + k)-th step of the run; the 440th reaches 22000.
-    assertThat(raised)
-        .containsExactly(
-            first + DELAY_STEPS + INTERVAL_STEPS - 1,
-            first + DELAY_STEPS + 2 * INTERVAL_STEPS - 1,
-            first + DELAY_STEPS + 3 * INTERVAL_STEPS - 1);
-    assertThat(level).isEqualTo(3);
+    // The k-th counting step is the step after the delay's; the overshoot of each interval is
+    // carried, so the k-th raise comes on the counting step whose 50s first reach k intervals.
+    List<Integer> expected = new ArrayList<>();
+    for (int k = 1; k <= RESETS; k++) {
+      expected.add(first + DELAY_STEPS + steps(k * INTERVAL) - 1);
+    }
+    assertThat(raised).containsExactlyElementsOf(expected);
+    assertThat(level).isEqualTo(RESETS);
     ActionInstance run = timerRun(hero);
     assertThat(run).as("the run never ends by itself").isNotNull();
-    assertThat(((CountingRun) run).counter()).as("the last interval is kept").isEqualTo(22000);
+    assertThat(((CountingRun) run).counter())
+        .as("the last interval is kept")
+        .isEqualTo(50L * steps(RESETS * INTERVAL) - (long) (RESETS - 1) * INTERVAL);
   }
 
   @Test
   @DisplayName(
-      "a counting step that finds the hero's tag from the hit of the step before adds 8000 instead"
-          + " of 50, and counts out at most one interval")
+      "a counting step that finds the hero's tag from the hit of the step before adds the upgrade"
+          + " amount instead of 50, and counts out at most one interval")
   void aTaggedStepAddsTheUpgrade() {
     Standard1v1Battle battle = playedBattle();
     CharacterEntity hero = playHero(battle);
@@ -125,12 +141,12 @@ class BattleMiniPekkaHeroQuestTest {
     int value = 0;
     for (int tick = first; tick <= first + 700; tick++) {
       int step = tick - first;
-      if (step >= DELAY_STEPS && expectedRaised.size() < 3) {
-        value += tagged.contains(tick - 1) ? 8000 : 50;
-        if (value >= 22000) {
+      if (step >= DELAY_STEPS && expectedRaised.size() < RESETS) {
+        value += tagged.contains(tick - 1) ? UPGRADE : 50;
+        if (value >= INTERVAL) {
           expectedRaised.add(tick);
-          if (expectedRaised.size() < 3) {
-            value -= 22000;
+          if (expectedRaised.size() < RESETS) {
+            value -= INTERVAL;
           }
         }
       }
@@ -149,7 +165,7 @@ class BattleMiniPekkaHeroQuestTest {
   @Test
   @DisplayName(
       "under a buff on the hero's hit speed a counting step adds what the buffs make of 50, read"
-          + " afresh on each step: 50 before Rage, 65 under it")
+          + " afresh on each step: 50 before Rage, Rage's hit speed share of 50 under it")
   void aHitSpeedBuffScalesTheStep() {
     Standard1v1Battle battle = playedBattle();
     CharacterEntity hero = playHero(battle);
@@ -165,8 +181,15 @@ class BattleMiniPekkaHeroQuestTest {
     // The step that lists the buff and the one after it are left out: only the steps that read
     // the listed buff from start to end are asserted.
     progressSteps(battle, hero, 2);
-    assertThat(hero.getBuffs().hitSpeed(50)).isEqualTo(65);
-    assertThat(progressSteps(battle, hero, 10)).as("Rage makes 65 of 50").containsOnly(65);
+    int raged =
+        50 * Shipped.number(Shipped.row("character_buffs", "Rage"), "HitSpeedMultiplier") / 100;
+    assertThat(hero.getBuffs().hitSpeed(50)).isEqualTo(raged);
+    assertThat(progressSteps(battle, hero, 10)).as("Rage's share of 50").containsOnly(raged);
+  }
+
+  /** The counting steps of 50 it takes to reach an amount. */
+  private static int steps(int amount) {
+    return (amount + 49) / 50;
   }
 
   /** The timer's progress gained on each of the next steps. */

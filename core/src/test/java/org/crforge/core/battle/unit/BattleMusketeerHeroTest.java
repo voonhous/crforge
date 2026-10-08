@@ -8,7 +8,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -33,6 +35,14 @@ class BattleMusketeerHeroTest {
 
   private static final String TURRET = "MusketeerTurret";
 
+  /** The hero's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(Shipped.unitRow(HERO), "Ability"));
+
+  /** The spawn of the dummy building, the ability's activation group's one sub-action. */
+  private static final String SPAWN_DUMMY =
+      Shipped.actionNames(Shipped.text(ABILITY, "OnActivationAction"), "SubActions").get(0);
+
   /** The Musketeer first, in the hero slot, and seven other cards. */
   private static final List<String> DECK =
       List.of(
@@ -42,7 +52,8 @@ class BattleMusketeerHeroTest {
 
   @Test
   @DisplayName(
-      "the ability places the dummy building 2500 ahead of the hero; the turret's placement there"
+      "the ability places the dummy building its spawn's half tiles ahead of the hero; the"
+          + " turret's placement there"
           + " passes the dummy by and keeps its point, while the dummy blocks a building another"
           + " object places on it")
   void theDummyDoesNotBlockItsOwnTurret() {
@@ -55,9 +66,11 @@ class BattleMusketeerHeroTest {
     }
     CharacterEntity dummy = named(battle, DUMMY).get(0);
     assertThat(dummy.getTargetView().building()).isTrue();
-    // The spawn row's RelativeY of 5 half tiles moves the bottom side's point up the arena.
-    assertThat(dummy.getView().getX()).isEqualTo(hero.getView().getX());
-    assertThat(dummy.getView().getY()).isEqualTo(hero.getView().getY() + 2500);
+    // The spawn row's RelativeY in half tiles moves the bottom side's point up the arena.
+    assertThat(dummy.getView().getX())
+        .isEqualTo(hero.getView().getX() + 500 * Shipped.number(SPAWN_DUMMY, "RelativeX"));
+    assertThat(dummy.getView().getY())
+        .isEqualTo(hero.getView().getY() + 500 * Shipped.number(SPAWN_DUMMY, "RelativeY"));
 
     UnitData turret = GameData.records().unit(TURRET);
     int x = dummy.getView().getX();
@@ -174,8 +187,9 @@ class BattleMusketeerHeroTest {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
       step(battle);
     }
-    // The hero deploys for a second; the ability costs 3.
-    for (int i = 0; i < 40 || match.side(0).wholeElixir() < 3; i++) {
+    // The hero deploys for a second; then side 0 waits for the ability's cost.
+    int abilityCost = Shipped.number(ABILITY, "ManaCost");
+    for (int i = 0; i < 40 || match.side(0).wholeElixir() < abilityCost; i++) {
       step(battle);
     }
     CharacterEntity hero = named(battle, HERO).get(0);

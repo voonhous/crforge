@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -13,11 +14,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Monk's Deflect of data version 16.402.18: its ability's activation group spawns the area
- * effect Deflect, a row of the filter form (it names the filter aeo_enemy_no_buildings in place of
- * hit switches) that sets DeflectProjectilesEnabled. The deflection pass of a flying projectile
- * reads only that switch, the area effect's radius and its team, never its filter, so an enemy shot
- * within its radius is turned around at its shooter as for any deflecting area effect.
+ * The Monk's Deflect: its ability's activation group spawns the area effect Deflect, a row of the
+ * filter form (it names the filter aeo_enemy_no_buildings in place of hit switches) that sets
+ * DeflectProjectilesEnabled. The deflection pass of a flying projectile reads only that switch, the
+ * area effect's radius and its team, never its filter, so an enemy shot within its radius is turned
+ * around at its shooter as for any deflecting area effect.
  */
 class MonkDeflectTest {
 
@@ -72,7 +73,12 @@ class MonkDeflectTest {
     }
 
     ProjectileEntity shot = deflected.get(0);
-    assertThat(deflectors.get(0)).isEqualTo("Deflect");
+    // The area effect the ability's activation group spawns first.
+    String ability = Shipped.text(Shipped.unitRow("Monk"), "Ability");
+    String activation =
+        Shipped.text(Shipped.row("character_abilities", ability), "OnActivationAction");
+    assertThat(deflectors.get(0))
+        .isEqualTo(Shipped.text(Shipped.actionNames(activation, "SubActions").get(0), "SpawnData"));
     assertThat(shot.side()).as("the shot flies for the Monk's side").isEqualTo(monk.side());
     assertThat(shot.getOwner()).isSameAs(monk);
     assertThat(shot.getTarget()).isSameAs(musketeer);

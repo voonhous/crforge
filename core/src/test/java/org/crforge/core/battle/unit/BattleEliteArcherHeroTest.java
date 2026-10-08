@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -31,8 +32,9 @@ class BattleEliteArcherHeroTest {
 
   private static final String DECOY = "EliteArcherHero_Dummy";
 
-  /** How far the ability's warp carries the hero back toward its own side. */
-  private static final int WARP_LENGTH = 5000;
+  /** How far the ability's warp carries the hero back toward its own side, its WarpY. */
+  private static final int WARP_LENGTH =
+      Math.abs(Shipped.number("EliteArcherHero_Ability_Warp", "WarpY"));
 
   /** How far the hero is pushed off the decoy that spawns on its point, on the next tick. */
   private static final int DECOY_PUSH = 150;
@@ -42,6 +44,10 @@ class BattleEliteArcherHeroTest {
 
   /** The row of the ability shot's two side shots. */
   private static final String SIDE = "EliteArcherHero_Ability_Triple_Shot_Projectile";
+
+  /** The ability shot's starting action, which makes the side shots. */
+  private static final String PARALLEL =
+      Shipped.text(Shipped.row("projectiles", MIDDLE), "OnStartingAction");
 
   /** Long enough for the hero to walk back and fire its ability shot. */
   private static final int SHOT_TICKS = 300;
@@ -125,8 +131,8 @@ class BattleEliteArcherHeroTest {
     }
     assertThat(hero.getHitPoints().getHitPoints()).as("it landed on nothing").isEqualTo(hitPoints);
     // The ability shot, fired once the hero has walked back, starts its side shots as it sets
-    // off: one tick after it, before its first step, two shots of the side row, each 750 to one
-    // side of where it stands, across its line.
+    // off: one tick after it, before its first step, two shots of the side row, each half the
+    // starting action's distance to one side of where it stands, across its line.
     limit = battle.getBattle().getTick() + SHOT_TICKS;
     while (shots(battle, MIDDLE).isEmpty()) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
@@ -139,7 +145,7 @@ class BattleEliteArcherHeroTest {
     int[] line = {middle.getAimX() - startX, middle.getAimY() - startY};
     step(battle);
     List<ProjectileEntity> sides = shots(battle, SIDE);
-    assertThat(sides).hasSize(2);
+    assertThat(sides).hasSize(Shipped.number(PARALLEL, "ProjectileCount"));
     ProjectileEntity first = sides.get(0);
     ProjectileEntity second = sides.get(1);
     assertThat(first.getId()).isLessThan(second.getId());
@@ -151,13 +157,17 @@ class BattleEliteArcherHeroTest {
     assertThat(Math.abs(acrossX * line[0] + acrossY * line[1]))
         .isLessThan(Math.abs(line[0]) + Math.abs(line[1]));
     assertThat(acrossX * line[1] - acrossY * line[0]).isPositive();
-    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(749L, 751L);
+    // Half the starting action's distance to each side, rounded on the way.
+    long half = Shipped.number(PARALLEL, "ProjectileDistance") / 2;
+    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(half - 1, half + 1);
     for (ProjectileEntity side : sides) {
       assertThat(side.side()).isEqualTo(middle.side());
       assertThat(side.level()).isEqualTo(middle.level());
       assertThat(side.getTarget()).isNull();
       assertThat(side.getRoot()).as("the ability shot's root").isSameAs(hero);
-      assertThat(side.getZ()).as("its constant height").isEqualTo(2000);
+      assertThat(side.getZ())
+          .as("its constant height")
+          .isEqualTo(Shipped.number(Shipped.row("projectiles", SIDE), "ConstantHeight"));
     }
   }
 

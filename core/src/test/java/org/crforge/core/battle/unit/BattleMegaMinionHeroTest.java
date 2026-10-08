@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Arrays;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.expression.ExpressionCompiler;
@@ -91,9 +92,14 @@ class BattleMegaMinionHeroTest {
   @Test
   @DisplayName(
       "the mark picks the lowest maximum hit points, and of those the one furthest from the hero:"
-          + " of a Knight and two Archers, the Archer further away")
+          + " of a Knight and the Archers, the Archer furthest away")
   void theLowestMaximumThenTheFurthestIsMarked() {
-    Standard1v1Battle battle = heroPlayed();
+    // Both plays on one tick as the hero appears: the other side holds the elixir for both before
+    // the hero is played, so all have deployed by the time the mark starts.
+    int both =
+        GameData.records().matchCard("Knight").cost()
+            + GameData.records().matchCard("Archer").cost();
+    Standard1v1Battle battle = heroPlayed(both);
     CharacterEntity hero = named(battle, HERO).get(0);
     int tick = battle.getBattle().getTick();
     battle.play(tick, GameData.card("Knight"), LEVEL, 1, 3500, 25500, "k");
@@ -104,14 +110,20 @@ class BattleMegaMinionHeroTest {
       step(battle);
     }
     List<CharacterEntity> archers = named(battle, "Archer");
-    assertThat(archers).hasSize(2);
+    assertThat(archers)
+        .hasSize(Shipped.number(Shipped.row("spells_characters", "Archer"), "SummonNumber"));
     assertThat(named(battle, "Knight")).hasSize(1);
-    CharacterEntity further =
-        distanceSquared(hero, archers.get(0)) >= distanceSquared(hero, archers.get(1))
-            ? archers.get(0)
-            : archers.get(1);
-    assertThat(distanceSquared(hero, archers.get(0)))
-        .isNotEqualTo(distanceSquared(hero, archers.get(1)));
+    CharacterEntity further = archers.get(0);
+    for (CharacterEntity archer : archers) {
+      if (distanceSquared(hero, archer) > distanceSquared(hero, further)) {
+        further = archer;
+      }
+    }
+    for (CharacterEntity archer : archers) {
+      if (archer != further) {
+        assertThat(distanceSquared(hero, archer)).isLessThan(distanceSquared(hero, further));
+      }
+    }
     assertThat(mark(hero).target().id()).isEqualTo(further.getId());
   }
 
@@ -154,8 +166,13 @@ class BattleMegaMinionHeroTest {
         battle.deploy(battle.getBattle().getTick(), GameData.unit("Knight"), LEVEL, 1, 3500, 25000);
     step(battle);
 
-    assertThat(battle.getWorld().kingTower(0).championSlot(1).getCharges()).isEqualTo(1);
-    assertThat(chargesLeft(battle, hero)).isEqualTo(1);
+    // The slot has the charges of the hero's ability row, none spent.
+    int charges =
+        Shipped.number(
+            Shipped.row("character_abilities", Shipped.text(Shipped.unitRow(HERO), "Ability")),
+            "MaxCharges");
+    assertThat(battle.getWorld().kingTower(0).championSlot(1).getCharges()).isEqualTo(charges);
+    assertThat(chargesLeft(battle, hero)).isEqualTo(charges);
     assertThat(chargesLeft(battle, knight)).isEqualTo(-1);
     assertThat(chargesLeft(battle, battle.getWorld().kingTower(0))).isEqualTo(-1);
   }
@@ -170,6 +187,14 @@ class BattleMegaMinionHeroTest {
 
   /** A battle with the hero Mega Minion played at (3500, 14000), one step after it appears. */
   private static Standard1v1Battle heroPlayed() {
+    return heroPlayed(0);
+  }
+
+  /**
+   * A battle with the hero Mega Minion played at (3500, 14000), one step after it appears, played
+   * once the other side holds the given elixir as well.
+   */
+  private static Standard1v1Battle heroPlayed(int otherElixir) {
     Standard1v1Battle battle = null;
     LadderMatch match = null;
     for (int word = 0; match == null || !inHand(match, "MegaMinion"); word++) {
@@ -177,7 +202,7 @@ class BattleMegaMinionHeroTest {
       match = battle.startLadderMatch(DECK, OTHER, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("MegaMinion").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (match.side(0).wholeElixir() < cost || match.side(1).wholeElixir() < otherElixir) {
       step(battle);
     }
     battle.play(

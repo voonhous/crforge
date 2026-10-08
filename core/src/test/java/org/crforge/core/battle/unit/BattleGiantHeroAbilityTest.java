@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -34,11 +35,24 @@ class BattleGiantHeroAbilityTest {
   /** The tick the ability command runs on. */
   private static final int CAST = 320;
 
+  /** The selector the ability's activation group starts. */
+  private static final String SELECTOR = "GiantHero_Target_Selector";
+
+  /** The push the selector runs on the enemy it picks. */
+  private static final String PUSH = Shipped.actionNames(SELECTOR, "Actions").get(0);
+
+  /** The knock up the push's success group starts first. */
+  private static final String KNOCKBACK =
+      Shipped.actionNames(Shipped.actionName(PUSH, "SuccessAction"), "SubActions").get(0);
+
+  /** The step the selector picks the Knight on, the one after the cast. */
+  private static final int PICK = 2;
+
   @Test
   @DisplayName(
       "the slap casts in the casting state's entry and the Giant walks on; it stops for the slap,"
-          + " the Knight it picked is pushed 400 ms later along the width, knocked up and stunned,"
-          + " and lands on the Giant's area effect, which hurts it")
+          + " the Knight it picked is pushed its push's delay later along the width, knocked up and"
+          + " stunned, and lands on the Giant's area effect, which hurts it")
   void theSlapThrowsTheKnight() {
     Standard1v1Battle battle = null;
     LadderMatch match = null;
@@ -55,12 +69,23 @@ class BattleGiantHeroAbilityTest {
     stepTo(battle, CAST);
     int elixir = match.side(0).getElixir();
     int knightX = knight.getView().getX();
-    int knightY = knight.getView().getY();
     assertThat(giant.getView().getX()).isLessThan(9000);
     assertThat(knightX).isGreaterThan(giant.getView().getX());
 
+    // The slap holds the Giant for its stop's duration, the push comes its delay after the pick,
+    // and the Knight lands the knock up's duration after the push.
+    int stop =
+        Shipped.number(
+            Shipped.actionNames(
+                    Shipped.actionName(SELECTOR, "ActionOnSelfWhenTriggeredLeft"), "SubActions")
+                .get(1),
+            "ActionDuration");
+    int lastStanding = PICK + Shipped.ticks(stop) + 1;
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    // The knock up lands on the update that finds its duration out, counted down 50 ms an update.
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
     // Follow both over the slap, one step at a time.
-    int span = 42;
+    int span = land + 2;
     int[] giantState = new int[span];
     int[] giantX = new int[span];
     int[] giantY = new int[span];
@@ -93,27 +118,38 @@ class BattleGiantHeroAbilityTest {
       }
     }
     assertThat(giantState[1]).isEqualTo(GridEntityState.MOVING);
-    // The selector picks the Knight: the Giant stands, unmoved, for the slap's 800 ms.
-    for (int k = 2; k <= 19; k++) {
+    // The selector picks the Knight: the Giant stands, unmoved, for the slap's stop.
+    for (int k = PICK; k <= lastStanding; k++) {
       assertThat(giantState[k]).as("step %d", k).isEqualTo(GridEntityState.STANDING);
-      assertThat(giantX[k]).isEqualTo(giantX[2]);
-      assertThat(giantY[k]).isEqualTo(giantY[2]);
+      assertThat(giantX[k]).isEqualTo(giantX[PICK]);
+      assertThat(giantY[k]).isEqualTo(giantY[PICK]);
     }
-    assertThat(giantState[20]).isEqualTo(GridEntityState.MOVING);
-    // The push comes 400 ms after the pick and moves the Knight along the width only, 250 a step.
-    assertThat(knightXs[9]).isEqualTo(knightX);
-    for (int k = 10; k <= 20; k++) {
-      assertThat(knightXs[k]).as("step %d", k).isEqualTo(knightX + 250 * (k - 9));
-      assertThat(knightYs[k]).isEqualTo(knightY);
+    assertThat(giantState[lastStanding + 1]).isEqualTo(GridEntityState.MOVING);
+    // The Knight, fighting the Giant, stands from the pick on; the push comes its delay after the
+    // pick and moves it along the width only, 250 a step, from where it stands.
+    int pushedFrom = knightXs[PICK];
+    for (int k = PICK; k < push; k++) {
+      assertThat(knightXs[k]).as("step %d", k).isEqualTo(pushedFrom);
+      assertThat(knightYs[k]).isEqualTo(knightYs[PICK]);
     }
-    // It lands 1500 ms after the push on the Giant's area effect, which hurts it on the next step.
-    assertThat(effects[39]).isZero();
-    assertThat(effects[40]).isEqualTo(1);
-    assertThat(effectName).isEqualTo("GiantHero_LandingAEO");
+    for (int k = push; k <= push + 10; k++) {
+      assertThat(knightXs[k]).as("step %d", k).isEqualTo(pushedFrom + 250 * (k - push + 1));
+      assertThat(knightYs[k]).isEqualTo(knightYs[PICK]);
+    }
+    // It lands the knock up's duration after the push on the Giant's area effect, which hurts it
+    // on the next step.
+    String landing =
+        Shipped.text(
+            Shipped.actionNames(Shipped.actionName(KNOCKBACK, "ActionOnLanding"), "SubActions")
+                .get(0),
+            "SpawnData");
+    assertThat(effects[land - 1]).isZero();
+    assertThat(effects[land]).isEqualTo(1);
+    assertThat(effectName).isEqualTo(landing);
     assertThat(effectSide).isZero();
-    assertThat(knightHp[40]).isEqualTo(knightHp[39]);
-    assertThat(knightHp[41]).isLessThan(knightHp[40]);
-    assertThat(knightXs[41]).isEqualTo(knightX + 250 * 32);
+    assertThat(knightHp[land]).isEqualTo(knightHp[land - 1]);
+    assertThat(knightHp[land + 1]).isLessThan(knightHp[land]);
+    assertThat(knightXs[land + 1]).isEqualTo(pushedFrom + 250 * (land + 2 - push));
   }
 
   /** Slot flags with the first card in the hero slot. */

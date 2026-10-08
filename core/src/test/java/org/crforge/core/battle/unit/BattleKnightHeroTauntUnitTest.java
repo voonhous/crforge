@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -22,7 +23,22 @@ class BattleKnightHeroTauntUnitTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  private static final String BUFF = "Knight_hero_IsTauntedBuff";
+  /** The ability's spawn of the taunting area effect. */
+  private static final String SPAWN = "Knight_hero_CreateTauntAEO";
+
+  /** The taunt the area effect's hit group runs. */
+  private static final String TAUNT =
+      Shipped.actionNames(
+              Shipped.text(
+                  Shipped.row("area_effect_objects", Shipped.text(SPAWN, "SpawnData")),
+                  "OnHitAction"),
+              "SubActions")
+          .get(0);
+
+  private static final String BUFF = Shipped.text(TAUNT, "ValidTargetBuff");
+
+  /** How long a troop is taunted, in ms. */
+  private static final int DURATION = Shipped.number(TAUNT, "ValidDuration");
 
   /** A battle with the hero Knight and an enemy Knight walking at it, and every taunt line. */
   private static final class Scene {
@@ -70,8 +86,7 @@ class BattleKnightHeroTauntUnitTest {
 
     /** Runs the ability's spawn of the taunting area effect, the Knight its cause. */
     void taunt() {
-      BattleAction spawn =
-          GameData.actions().build("Knight_hero_CreateTauntAEO", match.getWorld().binding(knight));
+      BattleAction spawn = GameData.actions().build(SPAWN, match.getWorld().binding(knight));
       knight.actionHolder().start(spawn, knight.actionHolder());
     }
 
@@ -98,9 +113,9 @@ class BattleKnightHeroTauntUnitTest {
     assertThat(scene.taunts)
         .containsExactly(
             "enemy performed onto knight",
-            "enemy 4000 [set_target knight 0 0 1, raise LOCK_TARGET, remaining 4000, apply_buff "
-                + BUFF
-                + " 4000 level %d source knight side 0]".formatted(scene.knight.getPackedLevel()));
+            "enemy %d [set_target knight 0 0 1, raise LOCK_TARGET, remaining %d, apply_buff %s %d"
+                    .formatted(DURATION, DURATION, BUFF, DURATION)
+                + " level %d source knight side 0]".formatted(scene.knight.getPackedLevel()));
     assertThat(reference(scene.enemy)).isEqualTo("knight");
     assertThat(scene.enemy.getBuffs().carries(BUFF)).isTrue();
     scene.taunts.clear();
@@ -115,7 +130,9 @@ class BattleKnightHeroTauntUnitTest {
     Scene scene = armed();
     scene.step(2);
     assertThat(scene.taunts)
-        .containsExactly("enemy 3950 [raise LOCK_TARGET]", "enemy 3900 [raise LOCK_TARGET]");
+        .containsExactly(
+            "enemy " + (DURATION - 50) + " [raise LOCK_TARGET]",
+            "enemy " + (DURATION - 100) + " [raise LOCK_TARGET]");
     assertThat(reference(scene.enemy)).isEqualTo("knight");
     assertThat(scene.flushes).isEmpty();
   }
@@ -132,15 +149,16 @@ class BattleKnightHeroTauntUnitTest {
     scene.step(1);
     assertThat(scene.taunts)
         .containsExactly(
-            "enemy 3900 [mark knight 1, set_target knight 0 0 1, raise LOCK_TARGET, remaining"
-                + " 3900, raise LOCK_TARGET]");
+            "enemy %d [mark knight 1, set_target knight 0 0 1, raise LOCK_TARGET, remaining %d,"
+                    .formatted(DURATION - 100, DURATION - 100)
+                + " raise LOCK_TARGET]");
     assertThat(reference(scene.enemy)).isEqualTo("knight");
-    assertThat(scene.enemy.getTargeting().getRetargetCooldownMs()).isEqualTo(3900);
+    assertThat(scene.enemy.getTargeting().getRetargetCooldownMs()).isEqualTo(DURATION - 100);
 
     scene.taunts.clear();
     scene.step(1);
     assertThat(scene.flushes).containsExactly("enemy knight");
-    assertThat(scene.taunts).containsExactly("enemy 3850 [raise LOCK_TARGET]");
+    assertThat(scene.taunts).containsExactly("enemy " + (DURATION - 150) + " [raise LOCK_TARGET]");
     assertThat(reference(scene.enemy)).isEqualTo("knight");
   }
 
@@ -155,7 +173,7 @@ class BattleKnightHeroTauntUnitTest {
     scene.enemy.tauntDrop(false);
     scene.taunts.clear();
     scene.step(1);
-    assertThat(scene.taunts).containsExactly("enemy 3900 []");
+    assertThat(scene.taunts).containsExactly("enemy " + (DURATION - 100) + " []");
     assertThat(reference(scene.enemy)).isNull();
   }
 }

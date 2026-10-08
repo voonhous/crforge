@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -53,13 +54,38 @@ class BattleWizardHeroTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
+  /**
+   * The values this test's numbers follow from, written into a copy of the hero's rows by {@link
+   * #pinned}: the run's flying height, transition and whole duration; the ability's trigger delay,
+   * cast time, cost and charges; how far beyond the flying shot's point its area effects spawn; and
+   * the hero's range, the reach its activation's instant hit tests.
+   */
+  private static final int HEIGHT = 3500;
+
+  private static final int TRANSITION = 200;
+
+  private static final int TOTAL = 3500;
+
+  private static final int TRIGGER_DELAY = 200;
+
+  private static final int CAST_TIME = 950;
+
+  private static final int ABILITY_COST = 1;
+
+  private static final int CHARGES = 1;
+
+  private static final int BEYOND = 1000;
+
+  /** The reach the instant hit's gate tests, which the hero's range is set to. */
+  private static final int GATE = 5500;
+
   @Test
   @DisplayName(
       "used while the hero attacks a tower in range, the activation's instant hit raises the"
           + " hero's instant-hit byte in the step its run starts, and the byte is kept through the"
           + " climb")
-  void theInstantHitIsSet() {
-    Scene scene = new Scene(GameData.tables());
+  void theInstantHitIsSet(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsedAttacking();
     int cast = scene.stepUntilCasting(hero);
     scene.steps(2);
@@ -78,8 +104,8 @@ class BattleWizardHeroTest {
   @DisplayName(
       "used while the hero's target is out of 5500, the instant hit's gate is false and the byte"
           + " is not raised")
-  void theInstantHitIsGated() {
-    Scene scene = new Scene(GameData.tables());
+  void theInstantHitIsGated(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsed();
     scene.stepUntilCasting(hero);
     scene.steps(3);
@@ -89,7 +115,7 @@ class BattleWizardHeroTest {
     long dx = target.getEntity().getX() - hero.getView().getX();
     long dy = target.getEntity().getY() - hero.getView().getY();
     long reach =
-        target.getEntity().getCollisionRadius() + 5500L + hero.getView().getCollisionRadius();
+        target.getEntity().getCollisionRadius() + (long) GATE + hero.getView().getCollisionRadius();
     assertThat(dx * dx + dy * dy).isGreaterThan(reach * reach);
     assertThat(hero.getTargeting().isInstantHit()).isFalse();
   }
@@ -98,8 +124,8 @@ class BattleWizardHeroTest {
   @DisplayName(
       "held at the height on its flying row, the hero's first attack visit after the instant hit"
           + " rounds its attack time up to a whole hit, which lands at once, and clears the byte")
-  void theInstantHitLandsOnTheFirstAttackVisit() {
-    Scene scene = new Scene(GameData.tables());
+  void theInstantHitLandsOnTheFirstAttackVisit(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsedAttacking();
     int cast = scene.stepUntilCasting(hero);
     scene.steps(3);
@@ -127,8 +153,8 @@ class BattleWizardHeroTest {
       "the hero climbs to 3500 in five steps from 200 ms after its cast starts, in the air from"
           + " the pre-hook after the first, and the action at the height runs on the turn's step,"
           + " where it swaps the hero onto its flying row")
-  void theHeroClimbs() {
-    Scene scene = new Scene(GameData.tables());
+  void theHeroClimbs(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsed();
     // The tick count after the step whose state is the cast's first.
     int cast = scene.stepUntilCasting(hero);
@@ -174,8 +200,8 @@ class BattleWizardHeroTest {
       "the swap onto the flying row has the champion slot work its state out at once: the hero is"
           + " no live copy of the row it follows any more, the slot finds none, and the state is"
           + " the override the action at the height wrote")
-  void theSwapLeavesTheChampionSlot() {
-    Scene scene = new Scene(GameData.tables());
+  void theSwapLeavesTheChampionSlot(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsed();
     int turn = scene.stepUntilCasting(hero) + 7;
     ChampionController slot = scene.slotFollowing(HERO);
@@ -209,8 +235,8 @@ class BattleWizardHeroTest {
           + " which spawns the tornado and the damage area 1000 beyond its point, in the last"
           + " pending pass of the impact's tick; the damage area hits the tower on the next tick,"
           + " and the shot's buff keeps the tower's own side from pushing it")
-  void theAirShotSpawnsItsAreaEffects() {
-    Scene scene = new Scene(GameData.tables());
+  void theAirShotSpawnsItsAreaEffects(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     List<String> spawns = new ArrayList<>();
     scene
         .world()
@@ -298,8 +324,8 @@ class BattleWizardHeroTest {
       "the hold's last step schedules the action at the start of the descent, which swaps the hero"
           + " back onto its ground row in that step; the hero comes down in four steps, in the air"
           + " while the counter is above 149, and the run then ends with its override cleared")
-  void theHeroComesBackDown() {
-    Scene scene = new Scene(GameData.tables());
+  void theHeroComesBackDown(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsed();
     int turn = scene.stepUntilCasting(hero) + 7;
     ChampionController slot = scene.slotFollowing(HERO);
@@ -341,27 +367,72 @@ class BattleWizardHeroTest {
     assertThat(slot.champions()).as("followed again on the ground row").containsExactly(hero);
   }
 
-  /** A copy of the data whose action at the height leaves out the swap to the flying row. */
-  private static GameTables withoutSwap(Path folder) throws IOException {
-    return GameData.altered(
+  /**
+   * A copy of the configured tables with the values this test's numbers follow from written into
+   * the hero's two rows, its ability row, its ground-to-air run and its flying shot's area effect
+   * spawns.
+   */
+  private static GameTables pinned(Path folder) throws IOException {
+    GameData.altered(
         folder,
         "actions",
         rows -> {
-          ObjectNode reached =
-              (ObjectNode) rows.get("WizardHero_on_max_height_reached").get("fields");
+          ObjectNode lift = fields(rows, "WizardHero_ground_to_air");
+          lift.put("FlyingHeight", HEIGHT);
+          lift.put("TransitionDuration", TRANSITION);
+          lift.put("TotalDuration", TOTAL);
+          fields(rows, "WizardHeroAbilityProjectile_spawn_tornado").put("OffsetY", BEYOND);
+          fields(rows, "WizardHeroAbilityProjectile_spawn_damage_aeo").put("OffsetY", BEYOND);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, HERO).put("Range", GATE);
+          GameData.columns(rows, "WizardHero_air").put("Range", GATE);
+        });
+    GameData.alterLoaded(
+        folder,
+        "character_abilities",
+        rows -> {
+          ObjectNode ability = GameData.columns(rows, "WizardHeroAbility");
+          ability.put("TriggerDelay", TRIGGER_DELAY);
+          ability.put("CastTime", CAST_TIME);
+          ability.put("ManaCost", ABILITY_COST);
+          ability.put("MaxCharges", CHARGES);
+        });
+    return GameTables.load(folder);
+  }
+
+  /** The fields of an action row, to alter. */
+  private static ObjectNode fields(ObjectNode rows, String action) {
+    return (ObjectNode) rows.get(action).get("fields");
+  }
+
+  /** The pinned copy whose action at the height leaves out the swap to the flying row. */
+  private static GameTables withoutSwap(Path folder) throws IOException {
+    pinned(folder);
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode reached = fields(rows, "WizardHero_on_max_height_reached");
           ((ArrayNode) reached.get("SubActions")).remove(1);
           ((ArrayNode) reached.get("SubActionsDelay")).remove(1);
         });
+    return GameTables.load(folder);
   }
 
   /** A battle with every start and step of a ground-to-air run recorded. */
   private static final class Scene {
     final Standard1v1Battle battle;
     final LadderMatch match;
+    final BattleRecords records;
     final List<String> runs = new ArrayList<>();
 
     /** A ladder match on the given data whose first hand holds the hero card. */
     Scene(GameTables tables) {
+      records = new BattleRecords(tables);
       Standard1v1Battle candidate = null;
       LadderMatch started = null;
       for (int word = 0; started == null || !inHand(started, "Wizard"); word++) {
@@ -407,17 +478,17 @@ class BattleWizardHeroTest {
      * second after it deploys, once side 0 holds the ability's cost.
      */
     CharacterEntity abilityUsed() {
-      int cost = GameData.records().matchCard("Wizard").cost();
+      int cost = records.matchCard("Wizard").cost();
       while (match.side(0).wholeElixir() < cost) {
         steps(1);
       }
-      battle.play(tick(), GameData.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
+      battle.play(tick(), records.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
       int limit = tick() + 200;
       while (heroes().isEmpty()) {
         assertThat(tick()).isLessThan(limit);
         steps(1);
       }
-      for (int i = 0; i < 40 || match.side(0).wholeElixir() < 1; i++) {
+      for (int i = 0; i < 40 || match.side(0).wholeElixir() < ABILITY_COST; i++) {
         steps(1);
       }
       CharacterEntity hero = heroes().get(0);
@@ -430,15 +501,15 @@ class BattleWizardHeroTest {
      * attacks, as the reference battle does while the hero attacks a princess tower.
      */
     CharacterEntity abilityUsedAttacking() {
-      int cost = GameData.records().matchCard("Wizard").cost();
+      int cost = records.matchCard("Wizard").cost();
       while (match.side(0).wholeElixir() < cost) {
         steps(1);
       }
-      battle.play(tick(), GameData.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
+      battle.play(tick(), records.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
       int limit = tick() + 600;
       while (heroes().isEmpty()
           || heroes().get(0).getView().getState() != GridEntityState.ATTACKING
-          || match.side(0).wholeElixir() < 1) {
+          || match.side(0).wholeElixir() < ABILITY_COST) {
         assertThat(tick()).isLessThan(limit);
         steps(1);
       }

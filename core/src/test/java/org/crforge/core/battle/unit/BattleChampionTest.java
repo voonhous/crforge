@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.junit.jupiter.api.DisplayName;
@@ -54,26 +56,34 @@ class BattleChampionTest {
     playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q");
     CharacterEntity first = battle.getPlays().get(0).units().get(0);
     assertThat(first.getDeployIndex()).isZero();
-    int used = afterDeployWithElixir(battle, match);
+    // Kept where she stands, so she takes no tower and the match runs on through the cycle.
+    first.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    int used = afterDeployWithElixir(battle, match, "ArcherQueen");
     battle.useAbility(used, 0, "q_0", "a1");
     run(battle, used);
     assertThat(lastUse(battle).outcome().code()).isEqualTo(AbilityCommand.OK);
-    // Her ability has one charge and no cooldown: the use spends it.
-    assertThat(slot.getCharges()).isZero();
+    // Her ability has no cooldown: the use spends a charge of its row's.
+    assertThat(slot.getCharges()).isEqualTo(maxCharges("ArcherQueen") - 1);
 
-    // Four plays of Skeletons cycle her back into the hand.
+    // Four plays of Skeletons cycle her back into the hand; each kept where it stands, so no
+    // tower falls and the match runs on.
     for (int i = 0; i < 4; i++) {
       playWhenReady(battle, match, "Skeletons", 14500, 4000, "s" + i);
+      battle
+          .getPlays()
+          .get(battle.getPlays().size() - 1)
+          .units()
+          .forEach(skeleton -> skeleton.setActive(CharacterEntity.MOVEMENT_SLOT, false));
     }
     assertThat(inHand(match, "ArcherQueen")).isTrue();
     playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q2");
     CharacterEntity second = battle.getPlays().get(battle.getPlays().size() - 1).units().get(0);
     assertThat(second.getDeployIndex()).isEqualTo(5);
     assertThat(slot.getDeployIndex()).isEqualTo(second.getDeployIndex());
-    assertThat(slot.getCharges()).isEqualTo(1);
+    assertThat(slot.getCharges()).isEqualTo(maxCharges("ArcherQueen"));
     assertThat(battle.getWorld().getHolder().entities()).contains(first);
 
-    int now = afterDeployWithElixir(battle, match);
+    int now = afterDeployWithElixir(battle, match, "ArcherQueen");
     battle.useAbility(now, 0, "q_0", "old");
     battle.useAbility(now + 1, 0, "q2_0", "new");
     run(battle, now + 1);
@@ -97,7 +107,7 @@ class BattleChampionTest {
     playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q");
     CharacterEntity queen = battle.getPlays().get(0).units().get(0);
 
-    int now = afterDeployWithElixir(battle, match);
+    int now = afterDeployWithElixir(battle, match, "ArcherQueen");
     battle.useAbility(now, 0, queen.getId() + 1000, "unknown");
     battle.useAbility(now + 1, 0, queen.getId(), "queen");
     run(battle, now + 1);
@@ -179,13 +189,13 @@ class BattleChampionTest {
     playWhenReady(battle, match, "ArcherQueen", 3500, 4000, "q");
     CharacterEntity queen = battle.getPlays().get(0).units().get(0);
     assertThat(second.getDeployIndex()).isEqualTo(queen.getDeployIndex());
-    int used = afterDeployWithElixir(battle, match);
+    int used = afterDeployWithElixir(battle, match, "ArcherQueen");
     battle.useAbility(used, 0, "q_0", "a");
     run(battle, used);
     assertThat(lastUse(battle).outcome().code()).isEqualTo(AbilityCommand.OK);
     assertThat(lastUse(battle).outcome().requested()).containsExactly(queen);
-    // Her one charge spent; the Golden Knight's slot, never played, keeps its own.
-    assertThat(second.getCharges()).isZero();
+    // A charge of hers spent; the Golden Knight's slot, never played, keeps its own.
+    assertThat(second.getCharges()).isEqualTo(maxCharges("ArcherQueen") - 1);
     assertThat(first.getCharges()).isNotZero();
   }
 
@@ -243,15 +253,30 @@ class BattleChampionTest {
   }
 
   /**
-   * Steps past the last play's deploy until side 0 holds an elixir for the ability, and answers the
-   * next tick.
+   * Steps past the last play's deploy, the champion row's DeployTime and a tick, until side 0 holds
+   * the elixir its ability row costs, and answers the next tick.
    */
-  private static int afterDeployWithElixir(Standard1v1Battle battle, LadderMatch match) {
-    int deployed = battle.getBattle().getTick() + 21;
-    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < 1) {
+  private static int afterDeployWithElixir(
+      Standard1v1Battle battle, LadderMatch match, String champion) {
+    int deployed =
+        battle.getBattle().getTick()
+            + Shipped.number(Shipped.unitRow(champion), "DeployTime") / 50
+            + 1;
+    int cost = Shipped.number(ability(champion), "ManaCost");
+    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < cost) {
       battle.getBattle().step();
     }
     return battle.getBattle().getTick();
+  }
+
+  /** The ability row a champion's row names. */
+  private static GameRow ability(String champion) {
+    return Shipped.row("character_abilities", Shipped.text(Shipped.unitRow(champion), "Ability"));
+  }
+
+  /** The charges a champion's ability row gives it. */
+  private static int maxCharges(String champion) {
+    return Shipped.number(ability(champion), "MaxCharges");
   }
 
   private static Standard1v1Battle.AbilityUse lastUse(Standard1v1Battle battle) {

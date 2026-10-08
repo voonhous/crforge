@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -35,8 +37,22 @@ class BattleGoblinHeroTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
-  /** Steps a banner stands: its timer's 5000 ms, then the 1500 ms its kill waits. */
-  private static final int BANNER_STEPS = (5000 + 1500) / 50;
+  /**
+   * Steps a banner stands: its timer's interval, then the wait its about-to-disappear group's kill
+   * waits, each in whole steps.
+   */
+  private static final int BANNER_STEPS =
+      Shipped.ticks(Shipped.numbers("GoblinHero_Flag_Building_Timer", "Intervals").get(0))
+          + Shipped.ticks(
+              Shipped.numbers("GoblinHero_Flag_About_To_Disappears_Group", "SubActionsDelay")
+                  .get(2));
+
+  /** The banner's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(Shipped.unitRow(BANNER), "Ability"));
+
+  /** The hero form's row of the Goblins card. */
+  private static final GameRow HERO_FORM = Shipped.row("spells_hero_form", "Goblins_hero");
 
   @Test
   @DisplayName(
@@ -74,9 +90,12 @@ class BattleGoblinHeroTest {
     step(battle);
     assertThat(battle.getPlays().get(0).units())
         .extracting(unit -> unit.getData().name())
-        .containsExactly("GoblinHero", "GoblinHero", "GoblinHero", "GoblinHero");
+        .containsExactlyElementsOf(
+            Collections.nCopies(
+                Shipped.number(HERO_FORM, "SummonNumber"),
+                Shipped.text(HERO_FORM, "SummonCharacter")));
     assertThat(slot.getState()).isEqualTo(ChampionController.NO_YET_AVAILABLE);
-    assertThat(slot.getCharges()).isEqualTo(1);
+    assertThat(slot.getCharges()).isEqualTo(Shipped.number(ABILITY, "MaxCharges"));
 
     // Follow the goblins to their last fall: the banner stands where the last one stood.
     int limit = battle.getBattle().getTick() + 1000;
@@ -123,9 +142,9 @@ class BattleGoblinHeroTest {
   @Test
   @DisplayName(
       "a command naming the banner by its game object id pays the ability's elixir and the banner"
-          + " casts as a troop does: 500 ms in the casting state, then the second wave, two goblins"
-          + " 200 ms apart on either side of it and behind it, and the banner goes 250 ms after the"
-          + " last")
+          + " casts as a troop does: its trigger delay in the casting state, then the second wave,"
+          + " two goblins its group's delay apart on either side of it and behind it, and the banner"
+          + " goes at its group's kill")
   void theBannersAbilitySendsTheSecondWave() {
     LadderMatch[] match = new LadderMatch[1];
     Standard1v1Battle battle = plantBanner(match);
@@ -134,8 +153,16 @@ class BattleGoblinHeroTest {
     int y = banner.getView().getY();
     battle.useAbility(battle.getBattle().getTick(), 0, banner.getId(), "wave");
 
+    // The activation group's delays from the step the ability's trigger delay runs out: its two
+    // spawns of the second wave, then its kill of the banner.
+    int fire = Shipped.ticks(Shipped.number(ABILITY, "TriggerDelay"));
+    List<Integer> delays =
+        Shipped.numbers(Shipped.text(ABILITY, "OnActivationAction"), "SubActionsDelay");
+    int firstSpawn = fire + Shipped.ticks(delays.get(1));
+    int secondSpawn = fire + Shipped.ticks(delays.get(2));
+    int kill = fire + Shipped.ticks(delays.get(3));
     // Follow the banner and the second wave one step at a time.
-    int span = 24;
+    int span = kill + 5;
     int[] state = new int[span];
     boolean[] standing = new boolean[span];
     int[] wave = new int[span];
@@ -147,37 +174,39 @@ class BattleGoblinHeroTest {
       dummies = named(battle, DUMMY);
       wave[k] = dummies.size();
       if (k == 1) {
-        // The command passes and pays the ability's one elixir; the banner is the one requested.
+        // The command passes and pays the ability's elixir; the banner is the one requested.
         assertThat(battle.getAbilityUses()).hasSize(1);
         AbilityCommand.Outcome outcome = battle.getAbilityUses().get(0).outcome();
         assertThat(outcome.code()).isZero();
-        assertThat(outcome.elixirBefore() - outcome.elixirAfter()).isEqualTo(KingElixir.SCALE);
+        assertThat(outcome.elixirBefore() - outcome.elixirAfter())
+            .isEqualTo(Shipped.number(ABILITY, "ManaCost") * KingElixir.SCALE);
         assertThat(outcome.requested()).containsExactly(banner);
       }
-      if (k == 10 || k == 14) {
+      if (k == firstSpawn || k == secondSpawn) {
         // The two goblins of the wave stand where their expressions put them: beside the banner
         // toward the middle, then away from it, each half a tile behind it.
         CharacterEntity last = dummies.get(dummies.size() - 1);
         int toMiddle = x > 9000 ? -1000 : 1000;
-        assertThat(last.getView().getX()).isEqualTo(k == 10 ? x + toMiddle : x - toMiddle);
+        assertThat(last.getView().getX()).isEqualTo(k == firstSpawn ? x + toMiddle : x - toMiddle);
         assertThat(last.getView().getY()).isEqualTo(y - 500);
         assertThat(last.side()).isZero();
       }
     }
-    // CastTime 500 ms: the casting state over the first nine steps, as the ability's TriggerDelay
-    // of 500 ms runs out and fires its activation group.
-    for (int k = 1; k <= 9; k++) {
+    // The casting state until the ability's cast time runs out, as its trigger delay runs out and
+    // fires its activation group.
+    int cast = Shipped.ticks(Shipped.number(ABILITY, "CastTime"));
+    for (int k = 1; k < cast; k++) {
       assertThat(state[k]).as("step %d", k).isEqualTo(GridEntityState.CASTING);
     }
-    assertThat(state[10]).isNotEqualTo(GridEntityState.CASTING);
-    // The group's spawns at 0 and 200 ms, then its kill at 450 ms takes the banner.
-    assertThat(wave[9]).isZero();
-    assertThat(wave[10]).isEqualTo(1);
-    assertThat(wave[13]).isEqualTo(1);
-    assertThat(wave[14]).isEqualTo(2);
-    assertThat(standing[18]).isTrue();
-    assertThat(standing[19]).isFalse();
-    assertThat(wave[23]).isEqualTo(2);
+    assertThat(state[cast]).isNotEqualTo(GridEntityState.CASTING);
+    // The group's two spawns, then its kill takes the banner.
+    assertThat(wave[firstSpawn - 1]).isZero();
+    assertThat(wave[firstSpawn]).isEqualTo(1);
+    assertThat(wave[secondSpawn - 1]).isEqualTo(1);
+    assertThat(wave[secondSpawn]).isEqualTo(2);
+    assertThat(standing[kill - 1]).isTrue();
+    assertThat(standing[kill]).isFalse();
+    assertThat(wave[span - 1]).isEqualTo(2);
   }
 
   /**
