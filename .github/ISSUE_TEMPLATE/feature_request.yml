@@ -27,8 +27,8 @@ body:
       description: Which module would this affect?
       options:
         - core
-        - data
         - desktop
+        - conformance
     validations:
       required: false
 

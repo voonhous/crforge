@@ -37,7 +37,7 @@ CI will reject PRs that don't pass `spotlessCheck`.
 
 ## Project Structure
 
-See the [architecture docs](docs/) for module layout and design decisions.
+See [docs/architecture.md](docs/architecture.md) for the module layout, the package layout and the index of the docs.
 
 ## Questions?
 

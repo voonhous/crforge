@@ -1,60 +1,8 @@
 # crforge -- Architecture Overview
 
-crforge is a deterministic tick-based Clash Royale simulator using Component-Entity-System (CES) architecture. Entities hold data, systems hold logic, and the engine ticks 20 times a second (50 ms per tick) for reproducible RL/AI training.
+crforge is a deterministic Clash Royale battle simulator. Its engine, the battle core (`org.crforge.core.battle`), plays a battle in steps of 50 ms of game time, 20 steps a second, on the game's own tables of one data version, and the `conformance` module holds it tick by tick to battles recorded in the game. The same inputs on the same tables give the same battle, step for step.
 
-This page is an index into the detailed reference docs. Each sub-doc covers a focused area of the
-codebase.
-
----
-
-## System Dependencies
-
-No circular dependencies between systems. Cross-system callbacks use functional interfaces wired at
-construction time.
-
-```mermaid
-graph LR
-    GE[GameEngine] --> CS[CombatSystem]
-    GE --> PS[ProjectileSystem]
-    GE --> SS[SpawnerSystem]
-    GE --> DS[DeploymentSystem]
-    GE --> PH[PhysicsSystem]
-    GE --> AB[AbilitySystem]
-    GE --> AE[AreaEffectSystem]
-    GE --> AU[AttachedUnitSystem]
-    GE --> SE[StatusEffectSystem]
-    GE --> TS[TargetingSystem]
-    GE --> TR[TransformationSystem]
-    GE --> EC[ElixirCollectionSystem]
-    GE --> ET[EntityTimerSystem]
-
-    CS --> GS[GameState]
-    CS --> AOE[AoeDamageService]
-    CS --> PS
-
-    PS --> GS
-    PS --> AOE
-
-    SS --> GS
-    SS --> AOE
-    SS --> MA[Match]
-
-    DS --> EF[EntityFactory]
-    EF --> GS
-    EF --> AOE
-
-    PH --> AR[Arena]
-    PH --> GS
-
-    AB --> GS
-    AE --> GS
-    AU --> GS
-    SE -.-> |"passed per call"| GS
-
-    GS -.-> |"DeathHandler\n(functional interface)"| SS
-
-    TS --- ST((stateless))
-```
+This page is the index of the docs, the module and package layout, and the debug visualizer's reference.
 
 ---
 
@@ -62,20 +10,13 @@ graph LR
 
 | Document | Description |
 |----------|-------------|
-| [Simulation Engine & Entities](simulation.md) | Tick loop, system execution order, entity lifecycle flowchart, entity types (Troop, Building, Tower, Projectile, AreaEffect) |
-| [Arena, Match & Economy](arena-and-match.md) | Arena layout, tile types, placement validation, match timing, win conditions, elixir regen, deck/hand |
-| [Targeting, Combat & Abilities](combat.md) | Two-phase target locking, attack pipeline, melee/ranged, damage calc, 10 ability types (charge, dash, hook, reflect, etc.) |
-| [Physics & Status Effects](physics-and-effects.md) | Movement pipeline, lane pathfinding, river jump, knockback, collisions, multiplier-based buff stacking |
-| [The Battle Core](battle-core.md) | The second engine that only takes in established behaviour: the 50 ms step, the entity tick order, what is covered, the planned slices and the assumptions carried so far |
-| [Troop Pathfinding](pathfinding.md) | The waypoint and grid movement modes, the grid tick order, cell costs and routes, assumptions and what is still unvalidated |
-| [Deployment, Spawning & Transformation](spawning.md) | Deployment pipeline, live/death spawning, bomb entities, HP-threshold transformation |
-| [Card Data Schema](schema.md) | JSON schema for cards/units/projectiles/buffs, loading pipeline, reference resolution |
-| [Level Scaling](level_scaling.md) | Rarity multiplier tables, tower stat scaling formulas |
-| [Secret Stats](secret_stats.md) | Undocumented unit stats measured from in-game observation |
-| [Game Versions](game-versions.md) | Which data versions each game client version has run |
+| [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, the tests and the game data, what is covered, the roadmap and the assumptions carried |
+| [Troop Pathfinding](pathfinding.md) | The movement, targeting and state rules the battle core runs: the routing grid, cell costs, the route search, endpoints and lanes, assumptions and what is still unvalidated |
+| [Game Tables and Reference Battles](game-tables.md) | The game tables the battle core reads, how they are named, the recorded reference battles and the records built from the rows |
+| [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, moving to a new data version |
 | [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
-| [Card Tracker](card_tracker.md) | Implementation status for all 121 cards |
-| [Measuring Missing Fields](reverse_engineering.md) | Guide for measuring unit stats from in-game observation |
+| [Game Versions](game-versions.md) | Which data versions each game client version has run |
+| [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 
 ---
 
@@ -83,35 +24,105 @@ graph LR
 
 ```
 crforge/
-  core/           Headless simulation (no GUI dependencies)
-  data/           Card/unit config loading (JSON -> Card objects)
-  desktop/        LibGDX visualization (ShapeRenderer debug view)
+  core/           The battle core: headless, no GUI dependencies
+  desktop/        LibGDX debug visualizer and replay viewer, on the battle core
   conformance/    Checks the battle core against recorded reference battles
+```
+
+`desktop` and `conformance` depend on `core` only, and nothing depends on them. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
+
+```mermaid
+flowchart TB
+  subgraph EXT["Game data repository (commit pinned by crforge-data.lock)"]
+    TAB["Game tables<br/>VERSION/"]
+    REF["Reference battles<br/>references/VERSION/<br/>scenario + trace per case"]
+  end
+  GAME["The game<br/>records each scenario once per data version"] --> REF
+
+  subgraph CORE[":core"]
+    subgraph BC["Battle core (org.crforge.core.battle)"]
+      DATA["data<br/>GameTables, BattleRecords, ActionRows"]
+      UNIT["unit<br/>BattleWorld, CharacterEntity,<br/>buffs, areas, ability runs"]
+      MISC["projectile, spawn, action,<br/>filter, expression"]
+      MATCH["match + deploy<br/>LadderMatch, Hand, Timeline,<br/>CardPlacement"]
+      BATTLE["Battle, EntityHolder<br/>one 50 ms step"]
+      REPLAY["replay<br/>ReplayScenario, ReplayBattle, ReplayFormat"]
+    end
+    PF["org.crforge.core.pathfinding<br/>routing grid, movement, targeting,<br/>hit points and damage"]
+    FID["fidelity<br/>Fidelity, FidelityLedger"]
+    FIX["testFixtures<br/>Shipped, GameData, Scenarios"]
+  end
+
+  subgraph CONF[":conformance"]
+    SUITE["ReferenceSuite<br/>referenceTest, CI shards"]
+    SMOKE["ReplaySmokeRun + SmokeObserver<br/>battle core trace"]
+    CMP["ReferenceComparison<br/>tick by tick, no tolerance"]
+    EXP["reference-expectations/<br/>VERSION.json"]
+  end
+
+  subgraph DESK[":desktop (LibGDX)"]
+    VIS["Battle visualizer<br/>desktop.battle, desktop.render"]
+    RPV["Replay viewer<br/>desktop.replay"]
+  end
+
+  TAB --> DATA
+  DATA --> UNIT
+  DATA --> MATCH
+  UNIT --> BATTLE
+  MISC --> BATTLE
+  MATCH --> BATTLE
+  REPLAY --> MATCH
+  UNIT --> PF
+  FID -. "status notes" .-> BC
+  FID -. "status notes" .-> PF
+
+  REF --> SUITE
+  TAB --> SMOKE
+  SUITE --> SMOKE
+  SMOKE --> REPLAY
+  SMOKE --> CMP
+  REF --> CMP
+  CMP -- "outcome per case" --> SUITE
+  SUITE -- "held to" --> EXP
+
+  TAB --> VIS
+  VIS --> BATTLE
+  RPV --> REPLAY
+
+  FIX -. "unit tests" .-> BC
+
+  classDef data fill:#e3f0ff,stroke:#5b8def
+  class TAB,REF,EXP data
 ```
 
 ### Core Package Layout
 
 ```
 org.crforge.core/
-  ability/     AbilitySystem, AbilityComponent, AbilityType, 10 AbilityData records, 10 handlers
-  arena/       Arena, Tile, TileType
-  card/        Card, CardType, TroopStats, ProjectileStats, LevelScaling, Rarity, ...
-  combat/      TargetingSystem, CombatSystem, AoeDamageService, ProjectileSystem, ProjectileFactory, ...
-  component/   Health, Position, Combat, Movement, SpawnerComponent, ModifierSource, ...
-  effect/      StatusEffectType, StatusEffectSystem, AppliedEffect, BuffDefinition, BuffRegistry
-  engine/      GameEngine, GameState, DeploymentSystem, EntityTimerSystem, ElixirCollectionSystem, TransformationSystem
-  entity/
-    base/        Entity, AbstractEntity, EntityType, MovementType, TargetType
-    unit/        Troop
-    structure/   Building, Tower
-    projectile/  Projectile
-    effect/      AreaEffect, AreaEffectSystem
-    SpawnerSystem, SpawnFactory, DeathHandler, AttachedUnitSystem
-  match/       Match, Standard1v1Match, GameMode
-  physics/     PhysicsSystem, BasePathfinder, Pathfinder
-  player/      Player, Team, Deck, Hand, Elixir, LevelConfig
-  util/        Vector2, FormationLayout
+  battle/        The battle core: Battle, BattleCommand, EntityHolder, HolderPasses, BattleRandom, TargetLocks
+    action/        The action runtime and the action classes the game's action rows name
+    data/          GameTables, GameRow, GameVersions, BattleRecords, ActionRows: the game's rows read once
+    deploy/        CardPlacement: the map check, the placement search, the formation, the initial delay
+    expression/    ExpressionCompiler, ExpressionEvaluator: the data's expression columns
+    filter/        The game object filters
+    match/         LadderMatch, MatchSide, Hand, Timeline, DeckShuffle: the mode, elixir and hands
+    projectile/    ProjectileEntity, ProjectileLauncher, ProjectileFlight
+    replay/        ReplayScenario, ReplayBattle, CommandTypes, ReplayFormat: replays as battles
+    spawn/         Character, area effect and projectile spawns
+    unit/          BattleWorld, CharacterEntity, TowerEntity, AreaEffectEntity, buffs, abilities, Standard1v1Battle
+  pathfinding/   The movement, targeting and state rules the battle core runs
+    combat/        HitPoints, DamageApplication, AreaDamage, LevelScaling, RarityTable
+    grid/          TileMap, CellGrid, CellCosts, RouteSearch, FootprintOverlay, ReferenceEndpoint, Relocation
+    index/         SpatialIndex and the shape tests
+    math/          FixedMath, TrigTables
+    move/          MovementVisit, MovementChain, PushPass, AvoidanceHandler, Displacement, SpeedConfig
+    state/         EntityStateVisit, StateSetter, HideHandler
+    target/        TargetingVisit, DefaultTargetSelection, HitApplication, DirectHit, AttackRange
+  fidelity/      Fidelity, FidelityStatus, FidelityLedger (./gradlew :core:fidelityReport)
+  util/          GameUnits, ValidationUtils
 ```
+
+`battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base; see the dependency rule in [The Battle Core](battle-core.md#package-layout). The step and the entity tick are described in [One step](battle-core.md#one-step), with a diagram of the battle core's inside.
 
 ---
 
@@ -276,30 +287,15 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 
 `A` draws a fading circle for every area hit: a unit's splash and a death's area, each hit of an area effect, and the arrival of a projectile with an area. `D` floats the hit points and shield each character lost since the last frame.
 
+### Workspace interaction checks
+
+Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/<version>`, the lock's `version=`, with a working display/OpenGL context to exercise live deployment, keyboard/button availability, resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from headless `check`; its synthetic replay fixture requires the lock's data version.
+
+Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to the screen. `BattleSession.cardUnavailableReason` owns selection/submission availability, including pending costs; `BattleAdapter` exposes it to the hand view. `WorkspaceTheme`, `HandPanel`, and `UnitInspector` own presentation, while `BattleWorkspace` coordinates layout and arena projection.
+
 ---
 
 ## Known Gaps
 
-- **Champions** (Archer Queen, Golden Knight, Skeleton King, Monk, Little Prince, Mighty Miner,
-  Goblinstein, Boss Bandit) -- Basic stats loaded but require champion ability cycling system
-  (tap-to-activate abilities with cooldowns). `[PARTIAL]`
-
-### Game Modes Not Implemented
-
-- 2v2 (`MATCH_2V2`)
-- Double Elixir (`DOUBLE_ELIXIR`)
-- Triple Elixir (`TRIPLE_ELIXIR`)
-- Sudden Death (`SUDDEN_DEATH`)
-
-### Workspace interaction checks
-
-Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/<version>`, the lock's `version=`, with a
-working display/OpenGL context to exercise live deployment, keyboard/button availability,
-resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and
-writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from
-headless `check`; its synthetic replay fixture requires the lock's data version.
-
-Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to the screen.
-`BattleSession.cardUnavailableReason` owns selection/submission availability, including pending
-costs; `BattleAdapter` exposes it to the hand view. `WorkspaceTheme`, `HandPanel`, and
-`UnitInspector` own presentation, while `BattleWorkspace` coordinates layout and arena projection.
+- **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`). 2v2, the other game modes and event maps are not modelled.
+- **What is not modelled yet is refused, never guessed.** A row, column, action class or replay field the battle core does not model refuses the battle, with the reason. What is covered, what is still partial and the assumptions carried are listed in [The Battle Core](battle-core.md); `./gradlew :core:fidelityReport` reports each class's fidelity status and note.

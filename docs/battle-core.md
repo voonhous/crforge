@@ -1,16 +1,16 @@
 # The battle core
 
-The battle core is a second simulation engine, growing beside the original `GameEngine`. It exists because the two are built on different footings. The original engine was written from observation and a reference port, and the fidelity ledger lists nearly all of it as a guess. The battle core only takes in behaviour that is established, and every class in it says which parts are settled and which are not.
+The battle core (`org.crforge.core.battle`) is crforge's engine. It only takes in behaviour that is established, and every class in it says which parts are settled and which are not: run `./gradlew :core:fidelityReport` to see how far that has come. It reads the game's own tables of one data version and is held tick by tick to battles recorded in the game (see [Game Tables and Reference Battles](game-tables.md)). The debug visualizer runs on it (see [Debug Visualizer](architecture.md#debug-visualizer)); a reinforcement learning environment will be built on it separately.
 
-The original engine stays as it is; the debug visualizer runs on the battle core (see [Debug Visualizer](architecture.md#debug-visualizer)). The battle core takes over a milestone at a time; when it covers a whole match, the visualizer switches to it and the original engine is retired. The Python Gymnasium environment and its bridge were removed; a new one will be built on the battle core separately. Run `./gradlew :core:fidelityReport` to see how far that has come.
+crforge began with an engine written from observation and a reference port, which the fidelity ledger listed almost entirely as a guess. The battle core was grown beside it a milestone at a time and replaced it; that engine and its card data are gone.
 
-## Why a second engine and not a refit
+## Three footings
 
-Three properties of the established behaviour cut across the whole of the original engine, so they cannot be reached by fixing one system at a time.
+Three properties of the established behaviour cut across the whole engine, and the battle core is built on them:
 
-- **Time is integer milliseconds.** Every duration is whole milliseconds stepped by exactly 50, so a duration of `ms` lasts `ceil(ms / 50)` steps. The original engine keeps every timer as float seconds and steps it by a float that is not quite 0.05, which makes most attack periods between 1.2 s and 4.0 s one tick long, along with several deploy times, buff durations and spawner pauses.
-- **A tick is passes over the whole entity list, not a chain of systems.** Every entity's targeting runs before any entity's movement, which runs before any entity's state visit, over a snapshot of the entity list taken at the head of the tick and ordered by id. The original engine runs one system per concern, each with its own loop and its own order.
-- **Commands run before the entity tick.** A card play runs twenty ticks after a player makes it, at the head of its step, and the entity tick of that same step admits and visits what it creates. The original engine queues a spawn and flushes it at the head of the following tick.
+- **Time is integer milliseconds.** Every duration is whole milliseconds stepped by exactly 50, so a duration of `ms` lasts `ceil(ms / 50)` steps.
+- **A tick is passes over the whole entity list, not a chain of systems.** Every entity's targeting runs before any entity's movement, which runs before any entity's state visit, over a snapshot of the entity list taken at the head of the tick and ordered by id.
+- **Commands run before the entity tick.** A card play runs twenty ticks after a player makes it, at the head of its step, and the entity tick of that same step admits and visits what it creates.
 
 ## Package layout
 
@@ -170,15 +170,123 @@ million plus a per-kind counter taken the moment it is handed to the holder, so 
 launched in the middle of a battle is still ahead of every character in the holder's id-sorted
 list. Every troop and every building is a character.
 
-The movement, targeting and state rules themselves live in `org.crforge.core.pathfinding` and are shared with the original engine's grid mode; see [Troop Pathfinding](pathfinding.md). The battle core runs them directly. The original engine reaches them through `GridPathfindingSystem`, which has to split one tick into two calls around its own combat step and copy the result back into its own components.
+The movement, targeting and state rules themselves live in `org.crforge.core.pathfinding`; see [Troop Pathfinding](pathfinding.md). The battle core runs them directly, inside its entity tick.
 
 Level scaling, the hit-points object and the damage chain live beside those rules in `org.crforge.core.pathfinding.combat`: `RarityTable` (the published rows), `PackedLevel` (a level as an entity carries it), `ScalingGlobals` and `LevelScaling` (a stat at a level, under the card rule and the tower rule), `HitPoints` (what damage lowers, with the alive and removal tests), `DamageApplication` (one damage event reaching an object: the guards, the amount the two sides' buffs make of it, the dedupe list, the shield and the subtraction) and `AreaDamage` (damage landing on a circle: which entities it collects, in id order through the shared validator, and what each takes). Every arena entity is created at a level and scales its hit points and damage once, at creation.
 
 The attacker's half of a hit stays with the targeting rules: `HitApplication` is the hit the targeting visit fires - the component writes, the long-distance cancel and the damage of one hit at the owner's level - and `DirectHit` is how a hit without a projectile reaches its target, with the plain damage and the crown-tower damage and the direction it came from. A unit with a projectile row launches instead, through the battle's `ProjectileLauncher`: the projectile is created in the attack tick, has its id at once, enters the holder's live list at that tick's closing cleanup and flies from the next tick on.
 
-**The dependency rule.** `org.crforge.core.battle` and `org.crforge.core.pathfinding` may import each other, `org.crforge.core.fidelity` and `org.crforge.core.util`, and nothing else from this code base. The original engine may depend on them; they may not depend on it. `BattlePackageDependencyTest` enforces this, with `GridPathfindingSystem` as the one permitted exception because it is the original engine's adapter. Without the rule a single import would let guessed behaviour into a class that claims to be settled.
+**The dependency rule.** `org.crforge.core.battle` and `org.crforge.core.pathfinding` may import each other, `org.crforge.core.fidelity` and `org.crforge.core.util`, and nothing else from this code base, and the core module's main code holds no other package. `BattlePackageDependencyTest` enforces both. Without the rule a single import would let guessed behaviour into a class that claims to be settled, and a second engine growing beside the battle core would again hold inferred behaviour next to the settled rules.
 
 ## One step
+
+The diagram shows the battle core's inside: the game tables read once, the commands that drive a battle, one step and its entity tick, and what is read out of it. The numbered lists below give the full order.
+
+```mermaid
+flowchart TB
+  TAB[("Game tables<br/>one data version")]
+
+  subgraph INPUT["Who drives a battle"]
+    RP["replay<br/>ReplayScenario, ScenarioPlan, ReplayBattle:<br/>a recorded battle as tick-stamped plays"]
+    VIS["desktop visualizer<br/>a click on the arena,<br/>Standard1v1Battle.submit"]
+  end
+
+  subgraph DATA["data + expression: read once at load"]
+    GT["GameTables / GameRow<br/>the game's own rows by name"]
+    REC["BattleRecords<br/>units, projectiles, troop cards"]
+    AR["ActionRows + ActionBinding<br/>the action tree per entity"]
+    EXPR["ExpressionCompiler / ExpressionEvaluator<br/>expression columns as a stack machine"]
+    GV["GameVersions<br/>the data versions BattleWorld accepts"]
+  end
+
+  subgraph MATCH["match + deploy: the mode"]
+    LM["LadderMatch (the BattleMode)<br/>setup, a play's gates and elixir spend,<br/>kings, crowns, match over"]
+    TL["Timeline<br/>sections, elixir rate, next-card cooldown"]
+    MS["MatchSide + Hand + DeckShuffle<br/>elixir, deck, four slots and the queue"]
+    CP["CardPlacement<br/>map check, placement search,<br/>formation, initial delay"]
+  end
+
+  subgraph STEP["Battle.step(): 50 ms"]
+    S1["1. match over? nothing happens"]
+    S2["2. clock +50 ms"]
+    S3["3. due commands (BattleCommand),<br/>in queue order"]
+    S4["4. mode update: LadderMatch lets<br/>the entity tick run or only cleans up"]
+    S5["5. tick counter +1"]
+    S1 --> S2 --> S3 --> S4 --> S5
+  end
+
+  subgraph HOLDER["EntityHolder.tick(): the entity tick, ascending id"]
+    H1["cleanup + fold in new entities, snapshot"]
+    H2["pre-pass (BattleWorld as HolderPasses):<br/>spatial index, building overlay,<br/>TargetLocks releases"]
+    H3["pre-hooks, then actions phase 1"]
+    H4["slot 0 targeting pass,<br/>slot 1 movement pass"]
+    H5["running actions, then actions phase 2"]
+    H6["post-hooks: projectile flight,<br/>character state visit"]
+    H7["after-post-hooks: queued typed hits land;<br/>then actions phase 3"]
+    H8["post-pass: TargetLocks granted, overlay rotated,<br/>index cleared; cleanup; action countdown"]
+    H1 --> H2 --> H3 --> H4 --> H5 --> H6 --> H7 --> H8
+  end
+
+  subgraph WORLD["unit: BattleWorld"]
+    BW["BattleWorld<br/>routing grid, overlay, spatial index;<br/>where damage lands"]
+    ENT["Entities, id bands per kind:<br/>AreaEffectEntity, ProjectileEntity,<br/>CharacterEntity, TowerEntity"]
+    AH["action: ActionHolder per entity<br/>Group, Select, Filter, Interval, DealDamage, ...<br/>spawn: characters, areas, projectiles"]
+    BUFF["buffs, abilities, champion control"]
+    RND["BattleRandom<br/>one shared xorshift state"]
+  end
+
+  subgraph PF["org.crforge.core.pathfinding: the rules the battle core runs"]
+    TGT["target: TargetingVisit,<br/>HitApplication, DirectHit"]
+    MOV["move + grid: MovementVisit,<br/>routing, push pass"]
+    STV["state: EntityStateVisit"]
+    CMB["combat: HitPoints, DamageApplication,<br/>LevelScaling, RarityTable"]
+  end
+
+  WOBS["WorldObserver<br/>events: hits, areas, launches,<br/>impacts, removals, ..."]
+  SMO["SmokeObserver (conformance)<br/>one observation after each step"]
+  ADP["desktop view<br/>BattleAdapter reads the entities between steps;<br/>AreaHitLog listens to the events"]
+
+  TAB --> GT
+  GT --> REC
+  GT --> AR
+  AR --> EXPR
+  GT --> GV
+  REC --> BW
+  AR --> AH
+
+  RP -- "a command per play" --> S3
+  VIS -- "a command per play" --> S3
+  S3 --> LM
+  LM --> CP
+  LM --> MS
+  LM --> TL
+  CP -- "units handed to the holder" --> H1
+  S4 --> H1
+
+  H2 --> BW
+  H4 --> TGT
+  H4 --> MOV
+  H6 --> STV
+  TGT --> CMB
+  CMB --> BW
+  H3 --> AH
+  H5 --> AH
+  H7 --> AH
+  AH --> BUFF
+  AH --> ENT
+  BW --- ENT
+  ENT --> RND
+
+  BW --> WOBS
+  WOBS --> ADP
+  ENT --> SMO
+  ENT --> ADP
+
+  classDef ext fill:#e3f0ff,stroke:#5b8def
+  classDef step fill:#fff7e0,stroke:#d4a017
+  class TAB,SMO,ADP ext
+  class S1,S2,S3,S4,S5,H1,H2,H3,H4,H5,H6,H7,H8 step
+```
 
 `Battle.step()` is 50 ms of game time:
 
@@ -233,7 +341,6 @@ The princess towers fight back. Every tower carries the same targeting component
 A troop card is played through a command. A player's play is stamped with the battle's tick counter and runs twenty ticks later, at the head of that step: its placement is worked out against every character, live or still queued, and its units are created at their formation places in creation order and handed to the holder, whose opening cleanup admits them, so they are visited in that same step. The first unit deploys at once; every further one waits its turn in the waiting state, visited by neither component, for the card's stagger times its index, and then deploys for its own deploy time. The placement reads the card's first unit's radius, angle shift and deploy time for every index, and hands the formation the second count as the row sets it; no card's units differ in them. A deploying unit is visited by the movement pass with no speed, so only a push moves it. Every entity takes part in contact, the towers included: a tower is a static neighbour of the push pass and an obstacle of the avoidance handler, and with a mass of 0 its share of a push is a single unit, so a unit deployed against its king is pushed off it one unit a tick. The reference battles hold card plays as the game makes them, refused plays and plays of either side among them, with every unit's position, state and hit points observed on every tick. With several units at once, the standard game shows this: a skeleton pushed off the bridge walks on the water beside it, a crowd presses some of its own inside the tower's collision circle, and a unit whose route the follower empties holds no route until its next visit. A static entity, a tower, makes the push pass ask whether a second one stands in line with the unit; a yes copies a push along one axis onto the other, and with the towers alone the answer is always no. An entity killed during a tick is still visited by the rest of it: nothing on the attack path asks about the attacker, so two units whose hits fall due on the same tick can kill each other - the first one visited kills the other, whose hit, due on the same tick, still lands. A character's death switches only its movement component off, so it takes no movement visit for the rest of the tick. A typed hit, which an action deals, is not dealt where it is dealt: the battle queues it and deals every queued hit once per tick, after every post-hook and before the last pending pass, in the order they were queued, each through its damage type's pipeline and with a damage id of its own. The pipeline's first stage scales the hit's amount, a first-level value, by its source's own rarity row and level, as a card's damage is scaled; a source that has left the battle still answers the level it had, now on the Common row. An action can spawn characters. The battle's spawner creates each child for its source's side, kept 250 inside the arena, walking at once or deploying when its row asks, and registers it inside the pass that ran the action: it takes its id and one visit of each active component at once, over the tick's index, so a unit already standing there pushes it, and it joins the live list at the tick's closing cleanup and is first visited on the next tick. A spawned child cannot be targeted until its sixth state visit, so a tower locks on it six ticks late. The pending passes run over every entity together, and an action with no delay scheduled onto any entity inside one of them starts at once. A unit whose row pushes it back asks for that pushback after each projectile it launches, away from the projectile's aim, and the pushback visit flies it over the next movement visits: the Sparky, recoiling from an enemy Knight, is pushed onto the river and moved off it to the nearest land before that visit's step. Nothing moves a unit off the river otherwise: a formation played into the pocket of a fallen princess tower creates two Barbarians on the water, and they walk off it.
 
 - Two Knight walks have reference battles recorded for them: a Knight deployed inside the left lane near the middle, which holds the lane rule's first ten ticks (`golden-gaps-v1/walk_knight_left_inner`), and one deployed behind its right princess tower, steered around it (`golden-gaps-v1/walk_knight_right_rear`). `FirstHitAfterLockTest` runs the targeting pass on a unit it writes standing inside a princess tower's reach and holds the first hit nine ticks after the lock.
-- `BattleMultiUnitParityTest` runs multi-unit scenes through both engines and requires identical positions and states on every tick, which a single-unit trajectory cannot do, because with one unit a per-entity order and a per-pass order cannot be told apart.
 - `BattleProjectileFlightTest` holds a shooter's projectiles on rows it writes, a Musketeer standing in range of a princess tower: every launch with its id, row, owner, target, start and aim, every position after every flight step, worked out from the written launch radius, speed and gravity with the flight's integer arithmetic, every impact with its damage and the tower's remaining hit points, the projectile's place ahead of every character in the holder while it flies and its removal in the tick it arrives, and a shot whose target is destroyed mid-flight flying on to where the tower stood and landing on nothing.
 - `BattleTowerTargetingTest` holds the towers' own targeting: a king tower visited on its first two ticks and then switched off; on rows it writes, the king switched off from the condition until its activating run has run out, its activation's every step, and its first visit, four ticks after the run's length, locking on the Knight that destroyed the princess tower; a tower's elapsed time stepped from its first tick; and a passive tower that never selects.
 - `AreaDamageTest` holds the area damage's rules one at a time, a chain's circle and id list among them: the owner's side spared unless asked, a unit's own radius and a building's square in the circle test, the crown-tower damage, one tower-slot entity per area, the limit, the split rounded up and the air gate.
@@ -311,19 +418,19 @@ Each milestone lands test first, against a reference it can be held to, and is d
 
 | Milestone | Content | Held to |
 | --- | --- | --- |
-| M1 (done) | The step, the entity tick, characters walking and locking on | five Knight trajectories, a 48-trajectory sweep over sixteen units and both sides, multi-unit parity with the grid mode |
+| M1 (done) | The step, the entity tick, characters walking and locking on | five Knight trajectories and a 48-trajectory sweep over sixteen units and both sides, since replaced by the recorded reference battles |
 | M2 (done) | Hits: the attack timer and its load, level scaling, hit application, the direct hit, the damage entry with its guards and the shield, hit points, death and removal, a destroyed tower leaving the holder and the target lists, the run exported in the reference layout | a Knight destroying a princess tower and then the king tower: the tick and remaining hit points of every hit, and every position of the 1258-tick run |
 | M3 (done) | Ids per kind and the projectile as an entity of the holder, from launch to impact, with its removal notice; the targeting component on the towers, so the princess towers shoot; the area impact of a projectile with a radius; king tower activation through a small action holder; the area damage of a unit that splashes with a direct hit; the damage a homing shot puts on its target as pending, by which an attacker keeps a target its shot will kill and re-selects on the tick after | done: a Musketeer shooting a passive princess tower down, every launch, projectile position and impact; a princess tower shooting down a walking Knight, a Musketeer and a Wizard, the lock and every launch, impact and record with the unit's own hit points, the Wizard's fireballs through the area damage; the king tower waking when a princess tower falls, its activation's every step; a Valkyrie's areas around herself, with two victims, and sparing her own tower; every tower's re-lock after its arrow's kill across the battle references, and a shield keeping a tower's target in pending_shield_guards |
-| M4 (done) | one command pass before the entity tick; the placement of a troop card worked out: the map check, the deploy mask, the search, the column, the formation and each unit's start; the card play as a command that creates the units, the stagger they wait through, and the towers taking part in contact; the grid anomalies of the original engine settled under the battle, three as the standard game's behaviour and one as the original engine's deployment defect; the tick a unit dies on, visited to its end with its movement switched off; a unit's own recoil after each launch and its relocation off the river; the king tower never removed | a Barbarians card on the left lane, in the corner and into the pocket a fallen tower opens, a Skeleton Army in the corner, at the bridge and near the corner, a Knight of the top side, two Knights that kill each other, a Sparky pushed onto the river and a refused play, every unit and projectile on every tick |
+| M4 (done) | one command pass before the entity tick; the placement of a troop card worked out: the map check, the deploy mask, the search, the column, the formation and each unit's start; the card play as a command that creates the units, the stagger they wait through, and the towers taking part in contact; the anomalies the earlier engine's grid movement showed with several units at once settled under the battle, three as the standard game's behaviour and one as that engine's own deployment defect; the tick a unit dies on, visited to its end with its movement switched off; a unit's own recoil after each launch and its relocation off the river; the king tower never removed | a Barbarians card on the left lane, in the corner and into the pocket a fallen tower opens, a Skeleton Army in the corner, at the bridge and near the corner, a Knight of the top side, two Knights that kill each other, a Sparky pushed onto the river and a refused play, every unit and projectile on every tick |
 | M5 (in progress) | Done: the expression compiler and evaluator with the battle's function names and random source, the king's condition evaluated as the data writes it; the action runtime behind `EntityActions` - delays in milliseconds queued as ticks, the three phases, the pause, start and stop gates, the singleton re-trigger, the next action after the run or alongside, the row's tags on its run; the composites - group, select, filter, run on the instigator, wait, duration, interval and flip flop - with the cause an entry carries; the first leaves, those that act on their own owner and are settled end to end - setting a variable, which the battle's expressions read by name, setting a shield, running actions at health thresholds, healing, killing and dealing typed damage, which the battle queues and deals after the post-hooks; changing the level of the entity that caused the action, its damage following from the next hit and its hit points keeping their share on a rise; checking whether objects exist, through a game object filter read from its row; swapping a character's row, with `hp` and `max_hp` in the rows around it; the game object filter, game tags read by name in expressions, and the entity's one tag word recomputed at its pre-hook; the level scaling of a typed hit; the perform of a character spawn row, where the spawner places its children, and the spawn in the battle - the children's creation, their registration inside the action's pass, their first-tick immunity and their first visit on the next tick - with the pending passes' one flag for every entity; a queued action dropped when the entity that caused it leaves the battle; a directly placed character's starting action built from its row, a spawn row's position expressions read on its owner as the spawn runs, an area effect's own actions' expressions read on the area effect, its point and its side, and an action row's base, which the derived tables have already resolved, carried unread, and the children linked into their source's group; the expression functions of the team, the map size and a data row's id; the death slot inside the killing hit, the death damage with its pushback and the death spawn on its ring or on the dying entity's point, its children flying back to the ring when the row pushes them, and a bomb's death slot as its deploy ends; the attack sequence loaded from its rows, its entry at the index launching in place of the row's projectile, the starting-attack row and the index-setting action; `rand` drawing from the battle's one random source where its expression is evaluated, and the select choosing, and drawing, as it is scheduled, with its else part and its part queued with no delay; a death's hooks, the death action and the killed action scheduled on the dying entity with what killed it as the cause, running in the next pending pass of the tick, a building that stands while it deploys, and a spawned champion handed over to its side; a killer's killed-done action scheduled on itself with what it killed as the cause, and a check of an action's cause. Next: the rest of the leaf actions by how often the card data uses them; game tags and object filters; loaders for the data they need | done: every recorded case of the compiler and the evaluator, 42 recorded sequences of draws, the level-1 king run with its condition compiled, the recorded cases of the action runtime, the composites, the first leaves, the game object filter, the typed hit's level scaling, the spawn perform, the spawner's placement and the in-front test, and twenty spawn runs tick for tick; next: per-action fixtures, then whole cards whose behaviour is only expressed as actions |
 | M6 (started) | Buffs and status effects (done: the combat gate at the state visit's tail; the buff component, applied by an area effect's hits and a projectile's circle and refreshed by row or by source, its speed, hit speed and spawn speed scales, a stun through the gate, and damage over time, its hits on its own count or on the clock of the area effect that applied it, the pull of an attracting buff with its area effect as the parent, and a buff's life condition), area-effect entities (the entity, its creation by a death and by a direct placement, its update and hits: done), spells (started: a spell card's play and cast, as one projectile from the king tower, a troop card's projectile cast before its units (the Mega Knight's appearance), Arrows' waves of chained projectiles, a thrown projectile that spawns a rolling one, or one area effect at the point, whose starting action may make the card's unit (the Electro and Ice Wizards) and which may launch a projectile on its hits (Lightning, Royal Delivery); the impact's pushback, its spawned characters, projectile and area effect (the Heal Spirit's), and a flying body's hits along its way; the Clone's hit action and its clones, and the buff test of a clone; an area effect an action spawns, which may follow its maker, and its hit action of buff spawns, the Goblin Curse's, or a taunt, the Goblin Demolisher's; Dark Magic's starting action written inline, and its laser ball; Vines' selector and its hold on the ground; the Goblin Machine's target indicator attack) | per-card fixtures; waits until the behaviour is established |
 | M7 (started) | The rest of the character; done: death spawns that fly back, bombs, buildings once deployed - their attacks, their minimum range, their lifetime's decay and their live spawner - air units, shields, a walking unit's own spawner, attached riders and the buffs their parent hands them, the charge, the river jump, the dash, the Golden Knight's chained dash, the Ram Rider and its rider's bola, the Giant Buffer's collection of friends, its ability's cast and its enchanted hits, the Miner's tunnel and the Goblin Drill's morph, the Electro Wizard's hits on two targets and the buff a hit applies on damage, the continuous-damage ramp of the Inferno Tower, the Inferno Dragon and the Mighty Miner, the Mighty Miner's lane switch and its bomb, the Monk's Deflect, the Skeleton King's souls and its graveyard, and hovering units: the Ghost's invisibility while it does not attack and the Battle Healer's heals, and the Suspicious Bush's; the Tesla's hiding; the Electro Giant's reflect; the Fisherman's special and its hook; the Three Musketeers' list and their bayonet; the Phoenix's death projectile and its egg; the Skeleton Barrel's direct flight, its drain and its container's ring; the Goblin Hut's life state; the Goblin Cage's shake; the Berserker's index toggle; the Little Prince's ramp; the Boss Bandit's kill checks; Goblinstein's group chain, its ability run, its tether, its death area and the monster's card-play listener; the champion's ability: the player's command, the kings' champion slots, the Archer Queen's self-buff, the Little Prince's guard and the Boss Bandit's warp; then a sweep of the card library | per-card fixtures |
 | M8 (done) | The mode: the match clock, elixir and hands - the timeline advanced to the battle tick before the entity tick, each king's refill and regeneration at the head of its post-hook, the opening hand shuffled with one draw of the battle's source, a play's gates, its spend and its cycle - the end: the crowns, the match decided at a king's fall, the end handler, the end timer, the fallen king's circle, nothing fighting after the end, and the stop - and the tiebreaker: its clearing, its idle window, the drain and its end by a fallen tower or equal towers - and the elixir units pay the kings: a collector's payout and a death's for the killing side - and building cards played from the hand - and the Mirror: its item built from the king's copy of the last card, gated on its cost, the card placed or cast one level up, the Mirror cycled and the last card kept - and the Merge Maiden: its option picked from the elixir as the play is given, gated on the option's cost, the option placed as a troop card and the Merge Maiden cycled - and evolutions and hero forms: each deck card's slot flags, the count per deck index an evolution slot's plays move, the evolved and the hero item, their row placed at its cost, the hero form in the champion deck pass, and the Mirror of an evolved play; refused: a projectile or an area effect the clearing reaches, a generation limit, a Mirror outside a match, with another play of its side pending, of a champion or of a Merge Maiden, and a Merge Maiden outside a match, before tick 21 or with another play of its side pending | match_elixir_150s, match_knights_king, match_overtime_tiebreak, match_overtime_draw, match_elixir_sources, match_building_cards, mirror_knight, mirror_fireball, merge_maiden_mounted, merge_maiden_normal, evolution_knight and evolution_hero_mirror |
-| M9 | Switch the visualizer over, benchmark throughput against the original engine, retire it, merge to `main` | the visualizer on `Battle` and the tests that compare the two engines |
+| M9 (in progress) | Done: the visualizer switched over to `Battle`, the earlier engine and its card data retired. Left: merge to `main` | the visualizer on `Battle`; the build with the battle core as the only engine |
 
 M5's interpreter, composites and evaluator do not depend on M2 to M4 and can proceed beside them. Hovering units joined in M7 with the Ghost and the Battle Healer.
 
-**Ready for `main`** means: the original engine is gone or no longer the default, the visualizer runs on `Battle`, throughput is at least the original engine's, no class in the battle package is a guess, and the fidelity report says what is still partial and why.
+**Ready for `main`** means: the visualizer runs on `Battle`, no class in the battle package is a guess, and the fidelity report says what is still partial and why.
 
 ## Known assumptions carried today
 

@@ -90,4 +90,4 @@ crforge works on one data version at a time, the lock's `version`.
 2. If the new version's replays differ, list them in `CommandTypes` and `ReplayFormat` (in `core`); until then its replays are refused as unsupported, never read by another version's rules.
 3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json`, review it with the change, and remove the old version's file.
 
-See the reference battles paragraph of [docs/schema.md](../docs/schema.md) for the folder layout and the settings.
+See [Game tables and reference battles](../docs/game-tables.md) for the folder layout and the settings.
