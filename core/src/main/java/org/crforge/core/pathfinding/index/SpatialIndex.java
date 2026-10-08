@@ -35,9 +35,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Bucket layout, insertion margin, bucket visiting order, the seen mark, the type mask,"
             + " the team rule and both kings-last orderings agree with the reference line for"
-            + " line; the walks of the reference battles and the six Knight walks"
-            + " GridGoldenTrajectoryTest replays hold the circle query, the multi-unit parity"
-            + " scenes hold it with several movers. The box query of a shaped area effect, a"
+            + " line; the walks of the reference battles hold the circle query, with several"
+            + " movers at once in the random battles. The box query of a shaped area effect, a"
             + " building by its square and anything else by its circle after the filter, is held"
             + " by the reference battle evo_babydragon_vs_musketeer and SpatialIndexTest.")
 public final class SpatialIndex {

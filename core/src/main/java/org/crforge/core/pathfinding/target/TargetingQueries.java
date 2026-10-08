@@ -14,8 +14,8 @@ import org.crforge.core.pathfinding.state.StateSetter;
  * unit's movement component gives the visit the unit's own setter.
  *
  * <p>The two supplied time answers are the ones a lone unit walking to a tower gets, as in the
- * Knight walks GridGoldenTrajectoryTest replays: a unit without status effects steps every timer by
- * the unscaled amount, and the battle never holds the attack timers.
+ * Knight walks of the reference battles, smoke-c1/knight among them: a unit without status effects
+ * steps every timer by the unscaled amount, and the battle never holds the attack timers.
  */
 public interface TargetingQueries {
 

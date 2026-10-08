@@ -21,8 +21,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Agrees with the reference line for line; held by its own tests and by the facing of the"
-            + " first step of each of the six Knight walks GridGoldenTrajectoryTest replays.")
+        "Agrees with the reference line for line; held by its own tests and, through the positions"
+            + " they record, by the first step of each Knight walk of the reference battles"
+            + " (smoke-c1/knight, knight_centre_s0 and knight_behind_king_s0,"
+            + " golden-gaps-v1/walk_knight_left_inner and walk_knight_right_rear).")
 public final class DirectionInitializer {
 
   private DirectionInitializer() {

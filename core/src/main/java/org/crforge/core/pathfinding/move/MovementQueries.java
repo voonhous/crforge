@@ -12,8 +12,8 @@ import org.crforge.core.pathfinding.grid.Route;
  * answers depend on a position the pass has already changed during the same visit.
  *
  * <p>The methods without a body are the ones a real match must answer. The methods with a body are
- * the answers a lone ground unit walking to a tower gets, as in the Knight walks
- * GridGoldenTrajectoryTest replays; each one names the branch it holds open or shut, so an
+ * the answers a lone ground unit walking to a tower gets, as in the Knight walks of the reference
+ * battles, smoke-c1/knight among them; each one names the branch it holds open or shut, so an
  * integrator can see exactly what changes by overriding it.
  *
  * <p>Boolean-looking answers are returned as {@code int} wherever the movement code tests a single

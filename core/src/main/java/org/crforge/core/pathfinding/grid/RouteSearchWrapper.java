@@ -22,9 +22,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Start validation and the goal adjustment window agree with the reference line for line,"
-            + " and every search of the reference battles and of the six Knight walks"
-            + " GridGoldenTrajectoryTest replays goes through it. The window's clipped edges and"
-            + " an off-map goal are held by its own tests only.")
+            + " and every search of the reference battles goes through it. The window's clipped"
+            + " edges and an off-map goal are held by its own tests only.")
 public final class RouteSearchWrapper {
 
   private RouteSearchWrapper() {
