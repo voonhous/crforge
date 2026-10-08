@@ -5,5 +5,5 @@
 # - version: the data version under work. The unit tests read its tables and pin its values, CI
 #   runs its reference battles, each case held to conformance/reference-expectations/<version>.json,
 #   and the debug visualizer opens it by default.
-commit=bc76d2721eabffea06326d5504cd1e4adf15d02c
+commit=252801b47112a374414e574a6a0089cc24bebc49
 version=16.402.18
