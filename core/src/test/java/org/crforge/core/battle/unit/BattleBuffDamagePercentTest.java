@@ -20,6 +20,9 @@ class BattleBuffDamagePercentTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The x of the arena's middle, where the king towers stand: the left lane is below it. */
+  private static final int ARENA_MIDDLE_X = 9000;
+
   /**
    * A buff row that sets only the two columns given. Of the configured buffs only TripleDamage sets
    * 200 or 300, and its first attack removes it.
@@ -50,7 +53,8 @@ class BattleBuffDamagePercentTest {
           battle.getWorld().getHolder().entities().stream()
               .filter(TowerEntity.class::isInstance)
               .map(TowerEntity.class::cast)
-              .filter(t -> t.side() == 1 && t.getView().getX() == 3500)
+              // The top side's princess tower in the left lane, wherever the tables place it.
+              .filter(t -> t.side() == 1 && t.getView().getX() < ARENA_MIDDLE_X)
               .findFirst()
               .orElseThrow();
     } else {

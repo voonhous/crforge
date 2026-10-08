@@ -3,22 +3,61 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.BattleFunctions;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** The battle as an expression sees it from a king tower. */
 class BattleExpressionEnvironmentTest {
 
   /** Which bit of a tag word each flag is, as the configured tables number the game tags. */
   private static final EntityFlags BITS = EntityFlags.of(GameData.tables());
+
+  @TempDir static Path tablesFolder;
+
+  /**
+   * The configured tables with the columns the radius and hit-point tests read written: the
+   * Knight's collision radius of 500 and the Golem's of 750, and the hit points and rarity of the
+   * rows target_max_hp reads.
+   */
+  private static GameTables written;
+
+  @BeforeAll
+  static void writeTheRows() throws IOException {
+    written =
+        GameData.altered(
+            tablesFolder,
+            "characters",
+            rows -> {
+              GameData.columns(rows, "Knight")
+                  .put("CollisionRadius", 500)
+                  .put("Hitpoints", 690)
+                  .put("Rarity", "Common");
+              GameData.columns(rows, "Golem").put("CollisionRadius", 750);
+              hitPoints(rows, "MiniPekka", 543, "Common");
+              hitPoints(rows, "Golem", 2000, "Common");
+              hitPoints(rows, "Skeleton", 32, "Common");
+              hitPoints(rows, "SuperMiniPekka", 1300, "Legendary");
+              hitPoints(rows, "MegaMonk", 3800, "Champion");
+            });
+  }
+
+  private static void hitPoints(ObjectNode rows, String row, int hitPoints, String rarity) {
+    GameData.columns(rows, row).put("Hitpoints", hitPoints).put("Rarity", rarity);
+  }
 
   @Test
   @DisplayName("every one of the 52 names resolves, so every expression of the data compiles")
@@ -252,11 +291,23 @@ class BattleExpressionEnvironmentTest {
   @Test
   @DisplayName("get_radius answers the context's row's collision radius")
   void getRadiusIsTheCollisionRadius() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    Standard1v1Battle match = new Standard1v1Battle(written);
     CharacterEntity knight =
-        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit("Knight"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            3500,
+            10000);
     CharacterEntity golem =
-        match.deploy(0, GameData.unit("Golem"), Standard1v1Battle.DEFAULT_LEVEL, 0, 5500, 10000);
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit("Golem"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            5500,
+            10000);
 
     assertThat(evaluate("get_radius()", new BattleExpressionEnvironment(knight, match.getWorld())))
         .isEqualTo(500);
@@ -333,7 +384,7 @@ class BattleExpressionEnvironmentTest {
           + " edge and the context's own, a destroyed tower until the cleanup that removes it,"
           + " and never for the context's own side's towers")
   void hasCrownTowerInRangeReadsTheEnemyTowers() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    Standard1v1Battle match = new Standard1v1Battle(written);
     Battle battle = match.getBattle();
     TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
     TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
@@ -348,7 +399,7 @@ class BattleExpressionEnvironmentTest {
     CharacterEntity knight =
         match.deploy(
             0,
-            GameData.unit("Knight"),
+            match.getWorld().getRecords().unit("Knight"),
             Standard1v1Battle.DEFAULT_LEVEL,
             0,
             princessX,
@@ -357,7 +408,7 @@ class BattleExpressionEnvironmentTest {
     CharacterEntity ownKnight =
         match.deploy(
             0,
-            GameData.unit("Knight"),
+            match.getWorld().getRecords().unit("Knight"),
             Standard1v1Battle.DEFAULT_LEVEL,
             1,
             princessX + 1500,
@@ -366,7 +417,7 @@ class BattleExpressionEnvironmentTest {
     CharacterEntity byTheKing =
         match.deploy(
             0,
-            GameData.unit("Knight"),
+            match.getWorld().getRecords().unit("Knight"),
             Standard1v1Battle.DEFAULT_LEVEL,
             0,
             king.getView().getX(),
@@ -437,7 +488,13 @@ class BattleExpressionEnvironmentTest {
   /** A Knight of side 0 that has taken a still unit of side 1 as its reference. */
   private static CharacterEntity referencing(Standard1v1Battle match, String row) {
     CharacterEntity knight =
-        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 10000);
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit("Knight"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            9000,
+            10000);
     CharacterEntity target =
         match.deploy(
             0,
@@ -461,14 +518,15 @@ class BattleExpressionEnvironmentTest {
           + " rarity, whatever level it was played at; with no argument the reference's maximum")
   void targetMaxHpAtALevel() {
     String[] rows = {"Knight", "MiniPekka", "Golem", "Skeleton", "SuperMiniPekka", "MegaMonk"};
+    // The written hit points at level 11, each re-based on its rarity.
     int[] expected = {1766, 1390, 5120, 81, 1573, 3800};
     for (int i = 0; i < rows.length; i++) {
-      Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, false);
+      Standard1v1Battle match = new Standard1v1Battle(written, 1, false);
       BattleExpressionEnvironment environment =
           new BattleExpressionEnvironment(referencing(match, rows[i]), match.getWorld());
       assertThat(evaluate("target_max_hp(10)", environment)).as(rows[i]).isEqualTo(expected[i]);
     }
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, false);
+    Standard1v1Battle match = new Standard1v1Battle(written, 1, false);
     CharacterEntity knight = referencing(match, "Knight");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(knight, match.getWorld());

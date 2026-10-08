@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionRow;
@@ -222,7 +223,13 @@ class BattleShieldLostTest {
                         i.getBuff().name(), i.getSource().name(), i.getSide(), i.getPackedLevel()))
         .containsExactly("RecruitsCharge_EV1 r 0 %d".formatted(recruit.getPackedLevel()));
     assertThat(resets).containsExactly("r RecruitsCharge_EV1 -1 0");
-    assertThat(recruit.getBuffs().overrideChargeRange()).isEqualTo(250);
+    int chargeRange =
+        Shipped.number(Shipped.row("character_buffs", "RecruitsCharge_EV1"), "OverrideChargeRange");
+    // A guard: the buff gives a charge range at all, so the check below is not 0 against 0.
+    assertThat(chargeRange).isPositive();
+    assertThat(recruit.getBuffs().overrideChargeRange())
+        .as("the buff row's charge range")
+        .isEqualTo(chargeRange);
     recruit.getUnit().movement().setChargeProgress(4000);
     recruit.resetCharge();
     assertThat(recruit.getUnit().movement().getChargeProgress()).isZero();

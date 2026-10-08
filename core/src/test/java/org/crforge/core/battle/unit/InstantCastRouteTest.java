@@ -2,6 +2,9 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
@@ -9,6 +12,7 @@ import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.Route;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A cast that fires and ends in the casting state's own entry, the Ice Golemite hero form's ability
@@ -22,12 +26,58 @@ class InstantCastRouteTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /**
+   * The configured tables with the columns of the walk written: the hero's walk and wait (45, 470
+   * ms walking, 80 ms waiting), its radius, mass, deploy, sight and range; the towers' radii and
+   * footprints, and their places.
+   */
+  private static GameTables written(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "IceGolemiteHero")
+                .put("Speed", 45)
+                .put("StopMovementAfterMS", 470)
+                .put("WaitMS", 80)
+                .put("CollisionRadius", 700)
+                .put("Mass", 6)
+                .put("DeployTime", 1000)
+                .put("SightRange", 7000)
+                .put("SightClip", 2000)
+                .put("SightClipSide", 2000)
+                .put("Range", 750));
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+    return GameTables.load(folder);
+  }
+
   @Test
   @DisplayName(
       "a walking Ice Golemite hero that casts holds no route until its next movement visit, which"
           + " routes it around its princess tower's footprint")
-  void theRouteWaitsForTheMovementVisit() {
-    GameTables tables = GameData.tables();
+  void theRouteWaitsForTheMovementVisit(@TempDir Path folder) throws IOException {
+    GameTables tables = written(folder);
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity hero =

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -67,12 +68,32 @@ class BattleWaitingRidersTest {
     return out;
   }
 
+  /**
+   * The configured tables with the Giant's deploy of 1000 ms and its two riders written, and its
+   * card altered as given after its count of one.
+   */
+  private static GameTables written(Path folder, Consumer<ObjectNode> card) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "GoblinGiant")
+                .put("DeployTime", 1000)
+                .put("SpawnCharacter", "SpearGoblinGiant")
+                .put("SpawnNumber", 2));
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> card.accept(GameData.columns(rows, "GoblinGiant").put("SummonNumber", 1)));
+    return GameTables.load(folder);
+  }
+
   @Test
   @DisplayName("A Goblin Giant played at once makes its riders before it is handed to the holder")
-  void ridersOfAPlayWithoutWait() {
+  void ridersOfAPlayWithoutWait(@TempDir Path folder) throws IOException {
     // The riders are registered at once, ahead of the Giant, which has no id yet, on the play's
     // tick, which the world's notices count as 0.
-    assertThat(riders(GameData.tables()))
+    assertThat(riders(written(folder, card -> {})))
         .containsExactly(
             "0 rider 5000006 parent 0 in 4, rider in 4 for 1000",
             "0 rider 5000007 parent 0 in 4, rider in 4 for 1000");
@@ -82,11 +103,9 @@ class BattleWaitingRidersTest {
   @DisplayName("A Goblin Giant that waits its turn makes its riders as its wait ends, after it")
   void ridersOfAWaitingPlay(@TempDir Path folder) throws IOException {
     GameTables tables =
-        GameData.altered(
+        written(
             folder,
-            "spells_characters",
-            rows -> {
-              ObjectNode card = GameData.columns(rows, "GoblinGiant");
+            card -> {
               card.put("SummonCharacter", "");
               card.putNull("SummonNumber");
               card.putArray("SummonCharactersList").add("GoblinGiant");

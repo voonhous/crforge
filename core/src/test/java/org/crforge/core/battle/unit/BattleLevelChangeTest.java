@@ -24,17 +24,32 @@ class BattleLevelChangeTest {
 
   /** A Knight of the given level, placed on tick 0 for the bottom side. */
   private static CharacterEntity knight(Standard1v1Battle match, int level, String name, int x) {
-    return match.deploy(0, GameData.unit("Knight"), level, 0, x, 10000, name);
+    return match.deploy(0, match.getWorld().getRecords().unit("Knight"), level, 0, x, 10000, name);
   }
 
   private static SetCharacterLevel relative(int steps) {
     return new SetCharacterLevel(ActionRow.named("level"), steps, 1);
   }
 
+  /**
+   * The configured tables with the Knight's hit points (690) and damage (79) written, a Common row:
+   * at level 11 they are 1766 and 202, at level 12 1938 and 221.
+   */
+  private static GameTables knightWritten(Path folder) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("Hitpoints", 690)
+                .put("Damage", 79)
+                .put("Rarity", "Common"));
+  }
+
   @Test
   @DisplayName("a rise changes the cause, whose hit points keep their share and whose hits follow")
-  void aRiseChangesTheCause() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11, false);
+  void aRiseChangesTheCause(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(knightWritten(folder), 11, false);
     CharacterEntity owner = knight(match, 11, "Owner", 3500);
     CharacterEntity cause = knight(match, 11, "Cause", 14500);
     CharacterEntity twelve = knight(match, 12, "Twelve", 9000);

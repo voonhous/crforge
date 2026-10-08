@@ -39,13 +39,25 @@ class BattleBuffDeathSpawnStartTest {
   /** The tick by which every Skeleton has died. */
   private static final int LAST_TICK = 200;
 
+  /** The Skeletons the card makes, written into its row. */
+  private static final int SKELETONS = 3;
+
+  /** A Skeleton's hit points at the first level, written into its row. */
+  private static final int SKELETON_HIT_POINTS = 32;
+
+  /** The curse's damage a second, one hit a second, written into its damage buff's row. */
+  private static final int CURSE_DAMAGE_PER_SECOND = 14;
+
   /** The buff the goblin's starting action puts on it. */
   private static final String BUFF = "Test_Cursed_Goblin_Start_Buff";
 
   /** The goblin's starting action. */
   private static final String START = "Test_Cursed_Goblin_Start";
 
-  /** The configured tables with the curse goblin given a starting action that buffs it. */
+  /**
+   * The configured tables with the curse goblin given a starting action that buffs it, and the
+   * Skeletons' count and hit points, the curse's damage and its one goblin a death written.
+   */
   private static GameTables withGoblinStart(Path folder) throws IOException {
     GameData.altered(
         folder,
@@ -74,7 +86,23 @@ class BattleBuffDeathSpawnStartTest {
     GameData.alterLoaded(
         folder,
         "characters",
-        rows -> GameData.columns(rows, "GoblinCurseGoblin").put("OnStartingAction", START));
+        rows -> {
+          GameData.columns(rows, "GoblinCurseGoblin").put("OnStartingAction", START);
+          GameData.columns(rows, "Skeleton").put("Hitpoints", SKELETON_HIT_POINTS);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "Skeletons").put("SummonNumber", SKELETONS));
+    GameData.alterLoaded(
+        folder,
+        "character_buffs",
+        rows -> {
+          GameData.columns(rows, "GoblinCurseDamage")
+              .put("DamagePerSecond", CURSE_DAMAGE_PER_SECOND)
+              .put("HitFrequency", 1000);
+          GameData.columns(rows, "GoblinCurse").put("DeathSpawnCount", 1);
+        });
     return GameTables.load(folder);
   }
 
@@ -114,7 +142,7 @@ class BattleBuffDeathSpawnStartTest {
       }
     }
 
-    assertThat(made).as("each Skeleton died cursed and left a goblin").hasSize(3);
+    assertThat(made).as("each Skeleton died cursed and left a goblin").hasSize(SKELETONS);
     for (Map.Entry<CharacterEntity, List<String>> entry : seen.entrySet()) {
       assertThat(entry.getValue())
           .as("%s after the tick it is made in, then after the next", entry.getKey().name())

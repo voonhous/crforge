@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,13 +81,26 @@ class BattleSkeletonBarrelTest {
       "the top side's container in the right lane turns its ring over along the length only, and"
           + " its i-th child is taken as (80i)^2 nearer")
   void theRingTurnsByLaneAndTeam(@TempDir Path folder) throws IOException {
-    // Without its push the children are made on their ring points, which shows them.
-    GameTables unpushed =
-        GameData.altered(
-            folder,
-            "buildings",
-            rows ->
-                GameData.columns(rows, "SkeletonContainerNew").put("DeathSpawnPushback", false));
+    // Without its push the children are made on their ring points, which shows them. The
+    // container's deploy of 600 ms, and its death spawn of seven Skeletons on a ring of 1480, are
+    // written.
+    GameData.altered(
+        folder,
+        "buildings",
+        rows ->
+            GameData.columns(rows, "SkeletonContainerNew")
+                .put("DeathSpawnPushback", false)
+                .put("DeployTime", 600)
+                .put("OnDeathAction", "SkeletonBalloonDeathSpawn"));
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows ->
+            ((ObjectNode) rows.get("SkeletonBalloonDeathSpawn").get("fields"))
+                .put("Count", 7)
+                .put("SpawnRadius", 1480)
+                .put("SpawnData", "Skeleton"));
+    GameTables unpushed = GameTables.load(folder);
     Scene scene = new Scene(unpushed);
     scene.match.deploy(
         0, scene.match.getWorld().getRecords().unit("SkeletonContainerNew"), LEVEL, 1, 14500, 8270);

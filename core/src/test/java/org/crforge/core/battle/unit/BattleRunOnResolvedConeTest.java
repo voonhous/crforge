@@ -40,6 +40,12 @@ class BattleRunOnResolvedConeTest {
 
   private static final String SHAPE = "Test_cone";
 
+  /** The cone's radius. */
+  private static final int CONE_RADIUS = 2500;
+
+  /** The Knight's collision radius, written into its row. */
+  private static final int KNIGHT_RADIUS = 500;
+
   /** An action row of a class, its fields to fill. */
   private static ObjectNode action(ObjectNode rows, String name, String type) {
     ObjectNode row = rows.putObject(name);
@@ -108,7 +114,7 @@ class BattleRunOnResolvedConeTest {
           columns.put("ClassType", "Cone");
           columns.put("Angle", 83);
           columns.put("AngleOffset", 180);
-          columns.put("Radius", 2500);
+          columns.put("Radius", CONE_RADIUS);
           columns.put("UseGameObjectDirection", true);
         });
     alter(
@@ -123,10 +129,26 @@ class BattleRunOnResolvedConeTest {
           columns.put("Shape", SHAPE);
           columns.putArray("StrategyList").add("RESOLVER_STRATEGY_CLOSEST_TARGET");
         });
+    // The Knight's radius, which the circle query and the cone's edge add, and both units' deploy
+    // time, which keeps them still through the scene.
     alter(
         folder,
         "characters",
-        characters -> GameData.columns(characters, "MiniPekka").put("OnStartingAction", START));
+        characters -> {
+          GameData.columns(characters, "MiniPekka")
+              .put("OnStartingAction", START)
+              .put("DeployTime", 1000);
+          GameData.columns(characters, "Knight")
+              .put("CollisionRadius", KNIGHT_RADIUS)
+              .put("DeployTime", 1000);
+        });
+    alter(
+        folder,
+        "spells_characters",
+        cards -> {
+          GameData.columns(cards, "MiniPekka").put("SummonNumber", 1);
+          GameData.columns(cards, "Knight").put("SummonNumber", 1);
+        });
     GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
@@ -225,11 +247,13 @@ class BattleRunOnResolvedConeTest {
   @DisplayName("past the radius plus the collision radius a Knight behind is not found")
   void beyondTheRadiusNothingIsFound(@TempDir Path folder) throws IOException {
     Standard1v1Battle battle = new Standard1v1Battle(coneSearch(folder), LEVEL, false);
+    // Behind it at exactly the radius plus the collision radius: not strictly within.
+    int behind = 12000 - CONE_RADIUS - KNIGHT_RADIUS;
     play(battle, "MiniPekka", 0, 3500, 12000);
-    play(battle, "Knight", 0, 3500, 9000);
+    play(battle, "Knight", 0, 3500, behind);
     stepTo(battle, 15);
 
     assertThat(variable(battle, at(battle, "MiniPekka", 0, 3500, 12000))).isEqualTo(5);
-    assertThat(variable(battle, at(battle, "Knight", 0, 3500, 9000))).isZero();
+    assertThat(variable(battle, at(battle, "Knight", 0, 3500, behind))).isZero();
   }
 }

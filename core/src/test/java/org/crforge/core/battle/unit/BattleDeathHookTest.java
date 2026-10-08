@@ -2,6 +2,9 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -12,9 +15,12 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Kill;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A dying entity's death hooks: which of its row's two hook actions it schedules on itself, with
@@ -29,6 +35,37 @@ import org.junit.jupiter.api.Test;
 class BattleDeathHookTest {
 
   private static final String DEATH = "IceGolemiteDeathExplosion";
+
+  /** The Knight's collision radius, written into its row. */
+  private static final int KNIGHT_RADIUS = 500;
+
+  /** The radius of the area the death action spawns, written into its row. */
+  private static final int DEATH_AREA_RADIUS = 2000;
+
+  @TempDir static Path tablesFolder;
+
+  /**
+   * The configured tables with the Knight's radius and the death action's area written: a circle of
+   * 2000 dealing 33, which a Knight 2500 away is not within.
+   */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheRows() throws IOException {
+    GameData.altered(
+        tablesFolder,
+        "characters",
+        rows -> GameData.columns(rows, "Knight").put("CollisionRadius", KNIGHT_RADIUS));
+    GameData.alterLoaded(
+        tablesFolder,
+        "area_effect_objects",
+        rows -> {
+          ObjectNode area = GameData.columns(rows, "IceGolemiteDeathArea");
+          area.put("Radius", DEATH_AREA_RADIUS);
+          area.putObject("Damage").put("BaseDamage", 33);
+        });
+    tables = GameTables.load(tablesFolder);
+  }
 
   /** The Tombstone's row with the death action, a spawner of Skeleton Warriors, no death spawn. */
   private static UnitData tombstone() {
@@ -48,7 +85,7 @@ class BattleDeathHookTest {
   /** A battle with the towers standing still, a Tombstone for the bottom side and a far Knight. */
   private static final class Setup {
     final Standard1v1Battle match =
-        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+        new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     final Battle battle = match.getBattle();
     final CharacterEntity tombstone;
     final CharacterEntity knight;
@@ -57,7 +94,9 @@ class BattleDeathHookTest {
 
     Setup(UnitData tombstoneData, int knightX, int knightY) {
       tombstone = match.deploy(0, tombstoneData, 1, 0, 14500, 17600, "Tombstone");
-      knight = match.deploy(0, GameData.unit("Knight"), 11, 1, knightX, knightY, "Knight");
+      knight =
+          match.deploy(
+              0, match.getWorld().getRecords().unit("Knight"), 11, 1, knightX, knightY, "Knight");
       match
           .getWorld()
           .addObserver(
@@ -173,10 +212,14 @@ class BattleDeathHookTest {
   @DisplayName("a death's damage lands on an enemy within its radius")
   void deathDamageLands() {
     // No configured row deals a death damage; the Tombstone is given 500 over 3000, and the Knight
-    // stands 2500 from it.
+    // stands 2500 from it: within the death damage's radius, and at the edge of the death area's
+    // radius plus its own, which the area does not reach.
+    int distance = DEATH_AREA_RADIUS + KNIGHT_RADIUS;
     Setup s =
         new Setup(
-            tombstone().toBuilder().deathDamage(500).deathDamageRadius(3000).build(), 14500, 20100);
+            tombstone().toBuilder().deathDamage(500).deathDamageRadius(3000).build(),
+            14500,
+            17600 + distance);
     int before = s.knight.getHitPoints().getHitPoints();
     s.stepWith(world -> world.kill(s.tombstone, s.knight));
     // The kill lands at the step's damage drain; the death's share, queued as the drain deals the
@@ -194,10 +237,22 @@ class BattleDeathHookTest {
   @Test
   @DisplayName("a death spawn's ring turns by the row's angle shift and the dying unit's facing")
   void aDeathSpawnRingTurnsByTheFacing() {
-    // The Battle Ram, facing up the arena (heading 90), spawns two Barbarians at 600 with an
-    // angle shift of 180: the ring angles 180 and 0 turn by 270, to 90 and 270, so one stands in
-    // front of it and one behind.
-    Setup s = new Setup(GameData.unit("BattleRam"), 3500, 25000);
+    // The Battle Ram's row, set to spawn two Barbarians at 600 with an angle shift of 180, facing
+    // up the arena (heading 90): the ring angles 180 and 0 turn by 270, to 90 and 270, so one
+    // stands in front of it and one behind.
+    Setup s =
+        new Setup(
+            GameData.unit("BattleRam").toBuilder()
+                .deathSpawnCharacter("Barbarian")
+                .deathSpawnCount(2)
+                .deathSpawnCharacter2(null)
+                .deathSpawnCount2(0)
+                .deathSpawnRadius(600)
+                .deathSpawnMinRadius(0)
+                .spawnAngleShift(180)
+                .build(),
+            3500,
+            25000);
     List<int[]> made = new ArrayList<>();
     s.match
         .getWorld()

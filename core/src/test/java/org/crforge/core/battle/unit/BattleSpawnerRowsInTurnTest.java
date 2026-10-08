@@ -34,9 +34,12 @@ class BattleSpawnerRowsInTurnTest {
   /** One firing of the Witch's spawner: the row it made and how many. */
   private record Firing(String row, int count) {}
 
+  /** The children of each of the Witch's waves, written into her row. */
+  private static final int WAVE = 4;
+
   /**
-   * The Witch's row with a pause of 1000 ms between its waves, and altered as asked, in a copy of
-   * the configured tables.
+   * The Witch's row with waves of four Skeletons, the first 1000 ms after a deploy of 1000 ms and a
+   * pause of 1000 ms between them, and altered as asked, in a copy of the configured tables.
    */
   private static GameTables witch(Path folder, Consumer<ObjectNode> edit) throws IOException {
     return GameData.altered(
@@ -44,7 +47,12 @@ class BattleSpawnerRowsInTurnTest {
         "characters",
         rows -> {
           ObjectNode columns = GameData.columns(rows, "Witch");
-          columns.put("SpawnPauseTime", 1000);
+          columns
+              .put("SpawnCharacter", "Skeleton")
+              .put("SpawnNumber", WAVE)
+              .put("DeployTime", 1000)
+              .put("SpawnStartTime", 1000)
+              .put("SpawnPauseTime", 1000);
           edit.accept(columns);
         });
   }
@@ -94,10 +102,10 @@ class BattleSpawnerRowsInTurnTest {
 
     assertThat(firings)
         .startsWith(
-            new Firing("Skeleton", 4),
-            new Firing("Bat", 4),
-            new Firing("Skeleton", 4),
-            new Firing("Bat", 4));
+            new Firing("Skeleton", WAVE),
+            new Firing("Bat", WAVE),
+            new Firing("Skeleton", WAVE),
+            new Firing("Bat", WAVE));
     assertThat(children)
         .startsWith(
             "Skeleton", "Skeleton", "Skeleton", "Skeleton", "Bat", "Bat", "Bat", "Bat", "Skeleton");
@@ -116,10 +124,10 @@ class BattleSpawnerRowsInTurnTest {
 
     assertThat(firings)
         .startsWith(
-            new Firing("Skeleton", 4),
-            new Firing("Bat", 4),
-            new Firing("Goblin", 4),
-            new Firing("Skeleton", 4));
+            new Firing("Skeleton", WAVE),
+            new Firing("Bat", WAVE),
+            new Firing("Goblin", WAVE),
+            new Firing("Skeleton", WAVE));
   }
 
   @Test

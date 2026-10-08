@@ -50,10 +50,16 @@ class BattleCharacterRingSpawnTest {
   /** The buff a soul that reaches the evolved Witch applies to her. */
   private static final String HEAL_BUFF = "Witch_EV1_Heal_Buff";
 
-  /** Witch_Soul_Drain's ConstantFlightDuration 1000 ms, in ticks. */
-  private static final int FLIGHT_TICKS = 20;
+  /** Witch_Soul_Drain's ConstantFlightDuration, written into its row. */
+  private static final int FLIGHT_MS = 1000;
 
-  /** The configured tables with the ring row added to the actions. */
+  /** {@link #FLIGHT_MS} in ticks. */
+  private static final int FLIGHT_TICKS = FLIGHT_MS / 50;
+
+  /**
+   * The configured tables with the ring row added to the actions, and the soul's flight and its
+   * heal buff's time written.
+   */
   private static GameTables withRing(Path folder) throws IOException {
     return GameData.altered(
         folder,
@@ -71,6 +77,11 @@ class BattleCharacterRingSpawnTest {
               .put("SpawnType", "CharacterType")
               .put("UseDeploy", false);
           rows.set(RING, row);
+          ((ObjectNode) rows.get("Witch_Soul_Drain").get("fields"))
+              .put("ConstantFlightDuration", FLIGHT_MS);
+          // Each soul's heal buff lasts one step.
+          ((ObjectNode) rows.get("Witch_EV1_Apply_Heal_Buff_Action").get("fields"))
+              .put("SpawnTime", 50);
         });
   }
 

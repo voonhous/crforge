@@ -25,16 +25,30 @@ class BattleStartingBuffTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** The configured tables with the Skeleton's row setting a StartingBuff for a time. */
+  /** The skeletons the Witch's row makes a wave of, written into it. */
+  private static final int WAVE = 4;
+
+  /**
+   * The configured tables with the Skeleton's row setting a StartingBuff for a time, and the
+   * Witch's spawner written: waves of four Skeletons, the first 1000 ms after a deploy of 1000 ms,
+   * then one every 7000 ms, so two waves in the first 200 ticks.
+   */
   private static GameTables skeletonStartingWith(Path folder, String buff, int timeMs)
       throws IOException {
     return GameData.altered(
         folder,
         "characters",
-        rows ->
-            GameData.columns(rows, "Skeleton")
-                .put("StartingBuff", buff)
-                .put("StartingBuffTime", timeMs));
+        rows -> {
+          GameData.columns(rows, "Skeleton")
+              .put("StartingBuff", buff)
+              .put("StartingBuffTime", timeMs);
+          GameData.columns(rows, "Witch")
+              .put("SpawnCharacter", "Skeleton")
+              .put("SpawnNumber", WAVE)
+              .put("DeployTime", 1000)
+              .put("SpawnStartTime", 1000)
+              .put("SpawnPauseTime", 7000);
+        });
   }
 
   /** The skeletons a Witch for the bottom side makes, as each is made. */
@@ -94,12 +108,12 @@ class BattleStartingBuffTest {
       }
     }
 
-    assertThat(skeletons).as("the Witch makes her skeletons, four at a time").hasSize(8);
+    assertThat(skeletons).as("the Witch makes her skeletons, four at a time").hasSize(2 * WAVE);
     assertThat(atCreation)
         .as(
             "each skeleton lists its StartingBuff, alone, as it is made; its registration visit has"
                 + " counted the first 50 ms by the time the spawn is told")
-        .hasSize(8)
+        .hasSize(2 * WAVE)
         .containsOnly("Rage 1950/2000 from itself side 0 parent null");
     assertThat(carried).as("the first skeleton carries it, and then no longer").isNotEmpty();
     assertThat(carried.get(carried.size() - 1) - carried.get(0) + 1)
