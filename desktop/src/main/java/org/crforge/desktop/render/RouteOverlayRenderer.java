@@ -9,21 +9,12 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
-import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.engine.GameEngine;
-import org.crforge.core.entity.base.Entity;
-import org.crforge.core.entity.unit.Troop;
-import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.pathfinding.move.SpeedBudget;
-import org.crforge.core.pathfinding.move.SpeedGlobals;
-import org.crforge.core.pathfinding.move.SpeedInputs;
 import org.crforge.core.pathfinding.target.TargetView;
-import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
  * Draws what a ground troop driven by the routing grid is currently doing: the cells still left on
@@ -34,9 +25,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * polyline is therefore drawn from the troop to the last node and then backwards through the list,
  * ending at the goal. Each node is marked at its cell centre.
  *
- * <p>Troops that are not driven by the routing grid - air units, jumping, tunnelling and attached
- * ones, and everything in a match under the waypoint rules - carry no grid state and are skipped.
- * On the battle core every character carries its grid state, and the screen hands each one over.
+ * <p>Every character of the battle carries its grid state, and the screen hands each troop over.
  */
 public class RouteOverlayRenderer {
 
@@ -66,32 +55,6 @@ public class RouteOverlayRenderer {
    */
   public record Routed(int x, int y, float radius, GridUnitState unit, int speed) {}
 
-  /** Draws the route, the reference marker and the label of every grid-driven troop. */
-  public void render(GameEngine engine) {
-    List<Routed> units = new ArrayList<>();
-    for (Entity entity : engine.getGameState().getAliveEntities()) {
-      GridUnitState unit = gridState(entity);
-      if (unit != null) {
-        units.add(
-            new Routed(
-                entity.getPosition().getX(),
-                entity.getPosition().getY(),
-                entity.getVisualRadius(),
-                unit,
-                speedBudget(unit)));
-      }
-    }
-    render(units, ViewOrientation.STANDARD);
-  }
-
-  /**
-   * Draws the route, the reference marker and the label of each unit given, whichever engine moves
-   * it: the original engine's grid rules or the battle core.
-   */
-  public void render(List<Routed> units) {
-    render(units, ViewOrientation.STANDARD);
-  }
-
   /** Draws each unit's route, reference marker and label the way up the view has the arena. */
   public void render(List<Routed> units, ViewOrientation view) {
     Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -109,14 +72,6 @@ public class RouteOverlayRenderer {
     }
     ctx.getEntityNameFont().setColor(Color.WHITE);
     ctx.getSpriteBatch().end();
-  }
-
-  /** The grid state of an alive ground troop, or null when the entity is not driven by the grid. */
-  private static GridUnitState gridState(Entity entity) {
-    if (!(entity instanceof Troop troop) || !troop.isAlive()) {
-      return null;
-    }
-    return troop.getGridUnitState();
   }
 
   /** The polyline from the troop through every remaining route cell, ending at the goal. */
@@ -182,32 +137,6 @@ public class RouteOverlayRenderer {
   /** Centre of a cell along one axis, in game units. */
   private static int cellCentre(int cellIndex) {
     return cellIndex * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
-  }
-
-  /**
-   * How far the troop may move this tick, in game units.
-   *
-   * <p>The inputs are gathered the same way the movement pass gathers them, so the label shows the
-   * budget the pass is about to spend rather than an approximation of it. Status effects do not
-   * feed the grid speed budget yet, so the modifier list is empty here as it is there.
-   */
-  private static int speedBudget(GridUnitState unit) {
-    GridEntity gridEntity = unit.entity();
-    TargetingState targeting = unit.targeting();
-    SpeedInputs inputs =
-        new SpeedInputs(
-            gridEntity.getFlags(),
-            gridEntity.getFlagBits(),
-            gridEntity.getState(),
-            true,
-            targeting.getDashWindupMs(),
-            targeting.getAttackBlockTimerMs(),
-            targeting.isSpecialLoadPending() ? 1 : 0,
-            gridEntity.getBlockCountdownMs(),
-            new int[0],
-            true,
-            unit.movement().getChargeProgress());
-    return SpeedBudget.speedBudget(inputs, unit.speedConfig(), SpeedGlobals.standard());
   }
 
   /** The name of an entity state, for the label and the visualizer's other state readouts. */

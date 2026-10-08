@@ -183,7 +183,6 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `D`           | Toggle floating damage numbers                                                |
 | `A`           | Toggle area damage indicators                                                 |
 | `H`           | Toggle HP numbers                                                             |
-| `M`           | Not offered: the battle core has one set of movement rules (logs a note)      |
 | `G`           | Toggle the routing cell cost overlay                                          |
 | `N`           | Toggle the route, reference and state overlay                                 |
 | `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |

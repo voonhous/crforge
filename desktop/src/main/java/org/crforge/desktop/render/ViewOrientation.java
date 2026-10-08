@@ -5,7 +5,6 @@ import static org.crforge.desktop.render.RenderConstants.unitsToPixels;
 
 import java.util.List;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 
 /**
@@ -65,11 +64,6 @@ public record ViewOrientation(boolean flipped, int widthUnits, int heightUnits) 
   /** Whether a side is drawn in blue: the side at the bottom. */
   public boolean blue(int side) {
     return side == bottomSide();
-  }
-
-  /** The team whose colours a side is drawn in. */
-  public Team team(int side) {
-    return blue(side) ? Team.BLUE : Team.RED;
   }
 
   /** The name the screen gives a side: "blue" for the side at the bottom, else "red". */

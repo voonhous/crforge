@@ -9,7 +9,7 @@ The simulator has two sets of movement and target-acquisition rules. Hand-author
 - `WAYPOINTS` is the default. A per-tick steering angle is taken from the bridge and river geometry, a fractional speed is integrated through the position's sub-unit carry, `PhysicsSystem` separates colliding circles and clamps to the arena bounds. Every troop is handled this way.
 - `GRID` runs ground troops through `org.crforge.core.pathfinding.GridPathfindingSystem`: a route over the arena's routing grid with a building footprint overlay, an integer per-tick movement budget, and target selection through the spatial index and the tower default selection.
 
-A mode is a match-level decision, fixed when the match is created. `new Standard1v1Match(towerLevel, PathfindingMode.GRID)` selects the grid mode; the two older constructors keep `WAYPOINTS`. In the debug visualizer the `M` key flips the mode and the change takes effect on the next reset.
+A mode is a match-level decision, fixed when the match is created. `new Standard1v1Match(towerLevel, PathfindingMode.GRID)` selects the grid mode; the two older constructors keep `WAYPOINTS`.
 
 The grid system owns a troop only when `GridPathfindingSystem.manages(troop)` is true: a ground movement type, not jump-enabled, not hovering, not currently jumping, not tunnelling and not attached to a parent. Everything else in the same match keeps the waypoint rules, `TargetingSystem` and `PhysicsSystem`. A troop that flips between the two - a Miner while it tunnels - keeps its `GridUnitState` across the flip and its position is re-read each tick, but its route is not recomputed for the gap.
 
@@ -177,4 +177,4 @@ The integration requirements this document previously listed are now implemented
 
 - `core/src/test/java/org/crforge/core/pathfinding/GridGoldenTrajectoryTest.java` replays the six Knight cases through `GameEngine` and compares every tick.
 - `core/src/test/java/org/crforge/core/pathfinding/GridSmokeScenariosTest.java` runs several units at once, 600 ticks or a hundred ticks past the first attack lock, and checks the per-tick invariants on every grid-driven troop; the four disabled tests at the bottom hold the anomalies above.
-- The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. The `M` mode flip belongs to the original engine and is not offered there. See the controls table and the overlays section in [architecture.md](architecture.md).
+- The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. See the controls table and the overlays section in [architecture.md](architecture.md).

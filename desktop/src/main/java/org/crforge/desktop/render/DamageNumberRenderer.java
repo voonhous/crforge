@@ -8,9 +8,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.crforge.core.component.Health;
-import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.base.Entity;
 
 /**
  * Manages floating damage number popups. Detects damage by comparing health snapshots between
@@ -30,7 +27,7 @@ public class DamageNumberRenderer {
   }
 
   /**
-   * One entity's health as a frame sees it, whichever engine holds it.
+   * One entity's health as a frame of the battle sees it.
    *
    * @param id the entity's id, unique within its battle
    * @param x its position along the width, in game units
@@ -39,29 +36,6 @@ public class DamageNumberRenderer {
    * @param shield its shield
    */
   public record HealthSample(long id, int x, int y, int hp, int shield) {}
-
-  /**
-   * Detect damage by comparing current health to previous frame snapshot, and age existing popups.
-   * Must be called every frame (even when rendering is toggled off) to keep snapshots current.
-   */
-  public void update(GameState state) {
-    List<Entity> alive = state.getAliveEntities();
-    List<HealthSample> samples = new ArrayList<>(alive.size());
-    for (Entity entity : alive) {
-      Health health = entity.getHealth();
-      if (health == null) {
-        continue;
-      }
-      samples.add(
-          new HealthSample(
-              entity.getId(),
-              entity.getPosition().getX(),
-              entity.getPosition().getY(),
-              health.getCurrent(),
-              health.getShield()));
-    }
-    update(samples);
-  }
 
   /**
    * Detect damage by comparing each sample to the previous frame's sample of the same id, and age

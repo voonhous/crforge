@@ -6,21 +6,12 @@ import static org.crforge.desktop.render.RenderConstants.COLOR_CELL_HOVER;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
-import org.crforge.core.engine.GameEngine;
-import org.crforge.core.engine.GameState;
-import org.crforge.core.entity.structure.Tower;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.core.pathfinding.GridPathfindingSystem;
 import org.crforge.core.pathfinding.grid.CellCostField;
 import org.crforge.core.pathfinding.grid.CellCosts;
 import org.crforge.core.pathfinding.grid.CellGrid;
-import org.crforge.core.pathfinding.grid.FootprintOverlay;
-import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.player.Team;
 
 /**
  * Paints the arena's routing grid, one filled square per 500-unit cell, coloured by what the route
@@ -44,15 +35,10 @@ import org.crforge.core.player.Team;
  *       completeness, because the unit the overlay describes has to be somebody.
  * </ul>
  *
- * <p>The grid is the live one when the match runs under the grid rules, so a building deployed
- * mid-match shows up. Note that the overlay a tick stamps is rotated into the grid's previous slot
- * at the end of that tick, so between ticks the stamps live there and the current slot is a fresh
- * zeroed array; this renderer reads the slot that carries the stamps.
- *
- * <p>Under the waypoint rules there is no routing grid at all. The overlay then builds its own from
- * the arena's static cell map with the match's towers stamped into it, so the terrain and the tower
- * footprints are still visible. It is rebuilt whenever the set of standing towers changes, so a
- * destroyed tower stops occluding.
+ * <p>The grid is the battle's live one, so a building deployed mid-match shows up. Note that the
+ * overlay a tick stamps is rotated into the grid's previous slot at the end of that tick, so
+ * between ticks the stamps live there and the current slot is a fresh zeroed array; this renderer
+ * reads the slot that carries the stamps.
  *
  * <p>No number is drawn per cell - that would be 2304 glyphs a frame. The cell under the mouse is
  * outlined and its column, row, cost and class are printed in the status column instead.
@@ -69,43 +55,14 @@ public class CellCostOverlayRenderer {
 
   private final CellCosts costs = CellCosts.standard();
 
-  /** The grid built for a match that has no routing grid of its own, or null before the first. */
-  private CellGrid staticGrid;
-
-  /** Which towers {@link #staticGrid} was stamped from, so it can be rebuilt when they change. */
-  private String staticGridTowers;
-
   public CellCostOverlayRenderer(RenderContext ctx) {
     this.ctx = ctx;
   }
 
   /**
-   * Fills every cell of the arena and outlines the one under the mouse.
-   *
-   * @param engine the running engine
-   * @param hoverCol the column under the mouse, or a value outside the grid when there is none
-   * @param hoverRow the row under the mouse
-   */
-  public void render(GameEngine engine, int hoverCol, int hoverRow) {
-    render(snapshot(engine), hoverCol, hoverRow, ViewOrientation.STANDARD);
-  }
-
-  /**
-   * Fills every cell of a live routing grid, such as the battle core's, and outlines the one under
-   * the mouse. The grid's stamps are read from the slot the end of a tick rotates them into, as for
-   * the original engine's grid rules.
-   *
-   * @param grid the live grid, between two ticks
-   * @param hoverCol the column under the mouse, or a value outside the grid when there is none
-   * @param hoverRow the row under the mouse
-   */
-  public void render(CellGrid grid, int hoverCol, int hoverRow) {
-    render(grid, hoverCol, hoverRow, ViewOrientation.STANDARD);
-  }
-
-  /**
-   * Fills every cell of a live routing grid as {@link #render(CellGrid, int, int)} does, drawn the
-   * way up the view has the arena.
+   * Fills every cell of the battle's live routing grid, drawn the way up the view has the arena,
+   * and outlines the one under the mouse. The grid's stamps are read from the slot the end of a
+   * tick rotates them into.
    *
    * @param grid the live grid, between two ticks
    * @param hoverCol the battle's column under the mouse, or a value outside the grid
@@ -151,11 +108,6 @@ public class CellCostOverlayRenderer {
    * The status line for the cell under the mouse: its column and row, what it costs the priced unit
    * and why. Never null; a cell outside the arena says so.
    */
-  public String hoverStatus(GameEngine engine, int hoverCol, int hoverRow) {
-    return hoverStatus(snapshot(engine), hoverCol, hoverRow);
-  }
-
-  /** The status line for the cell under the mouse on a live routing grid, as for an engine's. */
   public String hoverStatus(CellGrid grid, int hoverCol, int hoverRow) {
     return hoverStatus(live(grid), hoverCol, hoverRow);
   }
@@ -172,77 +124,9 @@ public class CellCostOverlayRenderer {
         + snapshot.classOf(hoverCol, hoverRow).name().toLowerCase(Locale.ROOT);
   }
 
-  /** The grid and the footprint overlay this frame prices cells against. */
-  private Snapshot snapshot(GameEngine engine) {
-    GridPathfindingSystem system = engine.getGridPathfindingSystem();
-    if (system != null) {
-      return live(system.getGrid());
-    }
-    CellGrid grid = staticGrid(engine.getGameState());
-    return new Snapshot(costs, grid, grid.getCurrent(), grid.getActive() != 0);
-  }
-
   /** A live grid between two ticks: its stamps are in the slot the tick's end rotated them into. */
   private Snapshot live(CellGrid grid) {
     return new Snapshot(costs, grid, grid.getPrevious(), grid.getActive() != 0);
-  }
-
-  /**
-   * The grid used when the match has none: the arena's static cell map with the standing towers
-   * stamped into it. Rebuilt only when the standing towers change.
-   */
-  private CellGrid staticGrid(GameState state) {
-    List<Tower> towers = standingTowers(state);
-    StringBuilder signature = new StringBuilder();
-    for (Tower tower : towers) {
-      signature
-          .append(tower.getPosition().getX())
-          .append(':')
-          .append(tower.getPosition().getY())
-          .append(':')
-          .append(tower.getCollisionRadius())
-          .append('|');
-    }
-    String key = signature.toString();
-    if (staticGrid != null && key.equals(staticGridTowers)) {
-      return staticGrid;
-    }
-    CellGrid grid =
-        new CellGrid(
-            TileMap.standard1v1(),
-            PathfindingGlobals.PATHFINDING_DYNAMIC_OCCLUSIONS,
-            PathfindingGlobals.PATHFINDING_BUILDING_COST);
-    grid.setActive(1);
-    for (Tower tower : towers) {
-      int radius = tower.getCollisionRadius();
-      FootprintOverlay.rasterize(
-          grid,
-          tower.getPosition().getX(),
-          tower.getPosition().getY(),
-          radius,
-          radius,
-          grid.getBuildingCost());
-    }
-    staticGrid = grid;
-    staticGridTowers = key;
-    return grid;
-  }
-
-  /** The match's standing towers, king first for each side, in a stable order. */
-  private static List<Tower> standingTowers(GameState state) {
-    List<Tower> towers = new ArrayList<>();
-    for (Team team : List.of(Team.BLUE, Team.RED)) {
-      Tower crown = state.getCrownTower(team);
-      if (crown != null && crown.isAlive()) {
-        towers.add(crown);
-      }
-      for (Tower princess : state.getPrincessTowers(team)) {
-        if (princess.isAlive()) {
-          towers.add(princess);
-        }
-      }
-    }
-    return towers;
   }
 
   /**

@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.grid.TileMap;
-import org.crforge.core.player.Team;
 import org.crforge.core.util.GameUnits;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
@@ -83,15 +82,13 @@ class ViewOrientationTest {
   }
 
   @Test
-  @DisplayName(
-      "the side at the bottom is blue, named blue, Team.BLUE's colours and the HUD's first")
+  @DisplayName("the side at the bottom is drawn blue, named blue and the HUD's first")
   void theBottomSideIsBlue() {
     ViewOrientation standing = ViewOrientation.STANDARD;
     assertThat(standing.bottomSide()).isZero();
     assertThat(standing.topSide()).isEqualTo(1);
     assertThat(standing.blue(0)).isTrue();
-    assertThat(standing.team(0)).isEqualTo(Team.BLUE);
-    assertThat(standing.team(1)).isEqualTo(Team.RED);
+    assertThat(standing.blue(1)).isFalse();
     assertThat(standing.sideName(0)).isEqualTo("blue");
     assertThat(standing.sideName(1)).isEqualTo("red");
     assertThat(standing.atTop(1)).isTrue();
@@ -103,8 +100,6 @@ class ViewOrientationTest {
     assertThat(flipped.topSide()).isZero();
     assertThat(flipped.blue(1)).isTrue();
     assertThat(flipped.blue(0)).isFalse();
-    assertThat(flipped.team(1)).isEqualTo(Team.BLUE);
-    assertThat(flipped.team(0)).isEqualTo(Team.RED);
     assertThat(flipped.sideName(1)).isEqualTo("blue");
     assertThat(flipped.sideName(0)).isEqualTo("red");
     assertThat(flipped.atTop(0)).isTrue();
