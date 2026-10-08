@@ -77,9 +77,6 @@ public final class GridMovementQueries implements MovementQueries {
   /** The last budget this visit asked for, kept so the tick driver can report it afterwards. */
   private int lastSpeedBudget;
 
-  /** The last endpoint this visit asked for, kept so the tick driver can report it afterwards. */
-  private int lastEndpoint = -1;
-
   /**
    * Creates the answers for one visit of one unit.
    *
@@ -165,29 +162,22 @@ public final class GridMovementQueries implements MovementQueries {
     if (point == null) {
       return -1;
     }
-    lastEndpoint =
-        ReferenceEndpoint.selectEndpoint(
-            grid.getWidth(),
-            grid.getHeight(),
-            entity.getX(),
-            entity.getY(),
-            referenceCol,
-            referenceRow,
-            radius,
-            entity.isAir(),
-            PathfindingGlobals.KS_POS_TO_TARGET_FLYING_NO_WATER,
-            PathfindingGlobals.KS_POS_TO_TARGET_GROUND_AVOID_BUILDINGS,
-            ReferenceEndpoint.everyCellInBounds(grid.getWidth(), grid.getHeight()),
-            (x, y) -> FixedMath.squaredDistance(point.x(), point.y(), x, y),
-            grid::water,
-            (col, row) -> CellTests.overlayBlocks(grid, col, row),
-            null);
-    return lastEndpoint;
-  }
-
-  /** The last endpoint this visit asked for, or -1 when it asked for none. */
-  public int lastEndpoint() {
-    return lastEndpoint;
+    return ReferenceEndpoint.selectEndpoint(
+        grid.getWidth(),
+        grid.getHeight(),
+        entity.getX(),
+        entity.getY(),
+        referenceCol,
+        referenceRow,
+        radius,
+        entity.isAir(),
+        PathfindingGlobals.KS_POS_TO_TARGET_FLYING_NO_WATER,
+        PathfindingGlobals.KS_POS_TO_TARGET_GROUND_AVOID_BUILDINGS,
+        ReferenceEndpoint.everyCellInBounds(grid.getWidth(), grid.getHeight()),
+        (x, y) -> FixedMath.squaredDistance(point.x(), point.y(), x, y),
+        grid::water,
+        (col, row) -> CellTests.overlayBlocks(grid, col, row),
+        null);
   }
 
   /** 1 for a hovering unit, which a push does not move off water. */
