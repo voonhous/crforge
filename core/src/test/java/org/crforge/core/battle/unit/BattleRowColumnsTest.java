@@ -1,10 +1,16 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.flag;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.row;
+import static org.crforge.core.battle.Shipped.text;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.junit.jupiter.api.DisplayName;
@@ -59,8 +65,12 @@ class BattleRowColumnsTest {
       match.getBattle().step();
     }
 
-    // Without LoadFirstHit the timer would stand at its HitSpeed, 4000.
-    assertThat(afterLaunch).containsExactly("timer 0 load 3000", "timer 0 load 3000");
+    // Without LoadFirstHit the timer would stand at its HitSpeed; with it the timer is reset and
+    // the whole LoadTime is to wind up again.
+    GameRow row = unitRow("ZapMachine");
+    assertThat(flag(row, "LoadFirstHit")).isTrue();
+    String reset = "timer 0 load " + number(row, "LoadTime");
+    assertThat(afterLaunch).containsExactly(reset, reset);
   }
 
   @Test
@@ -68,9 +78,16 @@ class BattleRowColumnsTest {
       "a Hog Rider passes over a building beside it, inside its sight but beyond its side clip")
   void theSideClipSkipsABuildingBeside() {
     Standard1v1Battle match = passiveTowers();
-    // 7000 to the side: within the reach of 600 + 9500, beyond it less the side clip of 4000.
+    // To the side, a quarter of the side clip beyond the reach (the cannon's radius plus the Hog
+    // Rider's sight) less that clip: within the one, beyond the other.
+    GameRow hogRow = unitRow("HogRider");
+    int reach = number(unitRow("Cannon"), "CollisionRadius") + number(hogRow, "SightRange");
+    int clip = number(hogRow, "SightClipSide");
+    assertThat(clip).as("the Hog Rider clips its sight to the side").isPositive();
+    int side = reach - clip + clip / 4;
     CharacterEntity cannon =
-        match.deploy(0, GameData.unit("Cannon"), Standard1v1Battle.DEFAULT_LEVEL, 1, 16000, 13500);
+        match.deploy(
+            0, GameData.unit("Cannon"), Standard1v1Battle.DEFAULT_LEVEL, 1, 9000 + side, 13500);
     CharacterEntity hog =
         match.deploy(0, GameData.unit("HogRider"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 13500);
     for (int step = 0; step < 100 && hog.getTargeting().getReference() == null; step++) {
@@ -111,6 +128,15 @@ class BattleRowColumnsTest {
       match.getBattle().step();
     }
 
-    assertThat(priorities).containsExactly(0, 400, 1600);
+    // The barrel's goblins, k from 0: (20k)^2 each.
+    int goblins =
+        number(
+            row("projectiles", text(row("spells_other", "GoblinBarrel"), "Projectile")),
+            "SpawnCharacterCount");
+    List<Integer> expected = new ArrayList<>();
+    for (int k = 0; k < goblins; k++) {
+      expected.add(20 * k * 20 * k);
+    }
+    assertThat(priorities).containsExactlyElementsOf(expected);
   }
 }

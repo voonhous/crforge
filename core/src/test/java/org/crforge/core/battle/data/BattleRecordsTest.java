@@ -2,12 +2,21 @@ package org.crforge.core.battle.data;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.Shipped.column;
+import static org.crforge.core.battle.Shipped.flag;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.numbers;
+import static org.crforge.core.battle.Shipped.row;
+import static org.crforge.core.battle.Shipped.text;
+import static org.crforge.core.battle.Shipped.texts;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -48,31 +57,36 @@ class BattleRecordsTest {
   @DisplayName("a unit's fields are its row's columns, in milliseconds and game units")
   void aUnitIsItsColumns() {
     UnitData knight = records.unit("Knight");
+    GameRow row = unitRow("Knight");
     assertThat(knight.name()).isEqualTo("Knight");
-    assertThat(knight.speed()).isEqualTo(60);
-    assertThat(knight.range()).isEqualTo(1200);
-    assertThat(knight.sightRange()).isEqualTo(5500);
-    assertThat(knight.collisionRadius()).isEqualTo(500);
-    assertThat(knight.mass()).isEqualTo(6);
-    assertThat(knight.hitSpeedMs()).isEqualTo(1200);
-    assertThat(knight.loadTimeMs()).isEqualTo(700);
-    assertThat(knight.deployTimeMs()).isEqualTo(1000);
-    assertThat(knight.attacksGround()).isTrue();
-    assertThat(knight.attacksAir()).isFalse();
+    // The Knight never stops walking, so it is loaded at its column's speed.
+    assertThat(number(row, "StopMovementAfterMS")).isZero();
+    assertThat(knight.speed()).isEqualTo(number(row, "Speed"));
+    assertThat(knight.range()).isEqualTo(number(row, "Range"));
+    assertThat(knight.sightRange()).isEqualTo(number(row, "SightRange"));
+    assertThat(knight.collisionRadius()).isEqualTo(number(row, "CollisionRadius"));
+    assertThat(knight.mass()).isEqualTo(number(row, "Mass"));
+    assertThat(knight.hitSpeedMs()).isEqualTo(number(row, "HitSpeed"));
+    assertThat(knight.loadTimeMs()).isEqualTo(number(row, "LoadTime"));
+    assertThat(knight.deployTimeMs()).isEqualTo(number(row, "DeployTime"));
+    assertThat(knight.attacksGround()).isEqualTo(flag(row, "AttacksGround"));
+    assertThat(knight.attacksAir()).isEqualTo(flag(row, "AttacksAir"));
     assertThat(knight.air()).isFalse();
     assertThat(knight.building()).isFalse();
-    assertThat(knight.hitpoints()).isEqualTo(690);
-    assertThat(knight.damage()).isEqualTo(79);
+    assertThat(knight.hitpoints()).isEqualTo(number(row, "Hitpoints"));
+    assertThat(knight.damage()).isEqualTo(number(row, "Damage"));
     assertThat(knight.rarity()).isEqualTo(RarityTable.COMMON);
     assertThat(knight.projectile()).isNull();
-    assertThat(knight.projectileStartRadius()).isEqualTo(450);
-    assertThat(knight.projectileStartZ()).isEqualTo(450);
+    assertThat(knight.projectileStartRadius()).isEqualTo(number(row, "ProjectileStartRadius"));
+    assertThat(knight.projectileStartZ()).isEqualTo(number(row, "ProjectileStartZ"));
 
     UnitData valkyrie = records.unit("Valkyrie");
-    assertThat(valkyrie.areaDamageRadius()).isEqualTo(2000);
-    assertThat(valkyrie.selfAsAoeCenter()).isTrue();
-    assertThat(valkyrie.overrideAttackFinishTime()).isTrue();
-    assertThat(valkyrie.attackFinishTimeMs()).isEqualTo(100);
+    GameRow valkyrieRow = unitRow("Valkyrie");
+    assertThat(valkyrie.areaDamageRadius()).isEqualTo(number(valkyrieRow, "AreaDamageRadius"));
+    assertThat(valkyrie.selfAsAoeCenter()).isEqualTo(flag(valkyrieRow, "SelfAsAoeCenter"));
+    assertThat(valkyrie.overrideAttackFinishTime())
+        .isEqualTo(flag(valkyrieRow, "OverrideAttackFinishTime"));
+    assertThat(valkyrie.attackFinishTimeMs()).isEqualTo(number(valkyrieRow, "AttackFinishTime"));
   }
 
   @Test
@@ -81,19 +95,23 @@ class BattleRecordsTest {
           + " times, so its pauses cost it nothing")
   void aWalkAndWaitUnitsSpeedIsRaisedAsItLoads() {
     // (WaitMS + StopMovementAfterMS) * 1000 / StopMovementAfterMS, truncated, times Speed, over
-    // 1000, truncated.
-    // The Giant: 45 at 640 / 100, a ratio of 1156.
-    assertThat(records.unit("Giant").speed()).isEqualTo(52);
-    assertThat(records.unit("Giant").stopMovementAfterMs()).isEqualTo(640);
-    assertThat(records.unit("Giant").waitMs()).isEqualTo(100);
-    // The Golem: 45 at 1000 / 200, a ratio of 1200.
-    assertThat(records.unit("Golem").speed()).isEqualTo(54);
-    // The Ice Golem: 45 at 470 / 80, a ratio of 1170, and 52.65 truncated.
-    assertThat(records.unit("IceGolemite").speed()).isEqualTo(52);
-    // The Goblin Giant: 60 at 640 / 100, 69.36 truncated.
-    assertThat(records.unit("GoblinGiant").speed()).isEqualTo(69);
+    // 1000, truncated: a speed of 45 at 640 / 100, a ratio of 1156, is loaded at 52; 60 at 640 /
+    // 100, 69.36, at 69.
+    for (String name : List.of("Giant", "Golem", "IceGolemite", "GoblinGiant")) {
+      GameRow row = unitRow(name);
+      int walk = number(row, "StopMovementAfterMS");
+      int wait = number(row, "WaitMS");
+      assertThat(walk).as(name + " stops walking").isPositive();
+      assertThat(wait).as(name + " waits").isPositive();
+      int ratio = (wait + walk) * 1000 / walk;
+      assertThat(records.unit(name).speed())
+          .as(name)
+          .isEqualTo(number(row, "Speed") * ratio / 1000);
+      assertThat(records.unit(name).stopMovementAfterMs()).as(name).isEqualTo(walk);
+      assertThat(records.unit(name).waitMs()).as(name).isEqualTo(wait);
+    }
     // A unit that never stops keeps its column.
-    assertThat(records.unit("Knight").speed()).isEqualTo(60);
+    assertThat(records.unit("Knight").speed()).isEqualTo(number(unitRow("Knight"), "Speed"));
     assertThat(records.unit("Knight").stopMovementAfterMs()).isZero();
   }
 
@@ -117,13 +135,20 @@ class BattleRecordsTest {
       "a row without a mass is loaded with one worked out from its collision radius, and every"
           + " mass is held between 1 and 20")
   void aRowsMassIsWorkedOutAndHeldAsItLoads() {
-    // A building's row writes no mass: (radius * radius / 250) * radius / 62500, held to 20.
-    assertThat(records.unit("PrincessTower").mass()).isEqualTo(20);
-    assertThat(records.unit("KingTower").mass()).isEqualTo(20);
+    // A building's row writes no mass: (radius * radius / 250) * radius / 62500, held to 1..20.
+    for (String name : List.of("PrincessTower", "KingTower")) {
+      GameRow row = unitRow(name);
+      assertThat(number(row, "Mass")).as(name + " writes no mass").isZero();
+      int radius = number(row, "CollisionRadius");
+      int worked = Math.min(20, Math.max(1, (radius * radius / 250) * radius / 62500));
+      assertThat(records.unit(name).mass()).as(name).isEqualTo(worked);
+    }
     // A written mass within the bounds is kept.
-    assertThat(records.unit("Knight").mass()).isEqualTo(6);
-    assertThat(records.unit("Skeleton").mass()).isEqualTo(1);
-    assertThat(records.unit("Giant").mass()).isEqualTo(18);
+    for (String name : List.of("Knight", "Skeleton", "Giant")) {
+      int mass = number(unitRow(name), "Mass");
+      assertThat(mass).as(name + " writes a mass within the bounds").isBetween(1, 20);
+      assertThat(records.unit(name).mass()).as(name).isEqualTo(mass);
+    }
   }
 
   @Test
@@ -151,9 +176,10 @@ class BattleRecordsTest {
   @DisplayName("a unit with a flying height flies")
   void aFlyingUnit() {
     UnitData minion = records.unit("Minion");
+    assertThat(number(unitRow("Minion"), "FlyingHeight")).isPositive();
     assertThat(minion.air()).isTrue();
-    assertThat(minion.flyingHeight()).isEqualTo(1500);
-    assertThat(minion.attacksAir()).isTrue();
+    assertThat(minion.flyingHeight()).isEqualTo(number(unitRow("Minion"), "FlyingHeight"));
+    assertThat(minion.attacksAir()).isEqualTo(flag(unitRow("Minion"), "AttacksAir"));
   }
 
   @Test
@@ -162,11 +188,12 @@ class BattleRecordsTest {
     UnitData musketeer = records.unit("Musketeer");
     assertThat(musketeer.damage()).as("the unit's own column is empty").isZero();
     ProjectileData projectile = musketeer.projectile();
-    assertThat(projectile.name()).isEqualTo("MusketeerProjectile");
-    assertThat(projectile.damage()).isEqualTo(85);
-    assertThat(projectile.speed()).isEqualTo(1000);
-    assertThat(projectile.homing()).isTrue();
-    assertThat(projectile.onlyEnemies()).isTrue();
+    GameRow row = row("projectiles", text(unitRow("Musketeer"), "Projectile"));
+    assertThat(projectile.name()).isEqualTo(row.name());
+    assertThat(projectile.damage()).isEqualTo(number(row, "Damage"));
+    assertThat(projectile.speed()).isEqualTo(number(row, "Speed"));
+    assertThat(projectile.homing()).isEqualTo(flag(row, "Homing"));
+    assertThat(projectile.onlyEnemies()).isEqualTo(flag(row, "OnlyEnemies"));
     assertThat(projectile.rarity()).isEqualTo(RarityTable.COMMON);
     assertThat(projectile.damageMode()).isEqualTo(ScalingMode.CARD_DAMAGE);
   }
@@ -175,9 +202,10 @@ class BattleRecordsTest {
   @DisplayName("a projectile's damage scaling mode names its rule")
   void aProjectileScalingMode() {
     ProjectileData arrow = records.projectile("TowerPrincessProjectile");
+    GameRow row = row("projectiles", "TowerPrincessProjectile");
     assertThat(arrow.damageMode()).isEqualTo(ScalingMode.TOWER_DAMAGE);
-    assertThat(arrow.gravity()).isEqualTo(60);
-    assertThat(arrow.speed()).isEqualTo(600);
+    assertThat(arrow.gravity()).isEqualTo(number(row, "Gravity"));
+    assertThat(arrow.speed()).isEqualTo(number(row, "Speed"));
     assertThat(records.projectile("KingProjectile").damageMode())
         .isEqualTo(ScalingMode.KING_DAMAGE);
   }
@@ -189,36 +217,44 @@ class BattleRecordsTest {
           + " carried")
   void aProjectileTargetBuff() {
     ProjectileData snowball = records.projectile("SnowballSpell");
-    assertThat(snowball.targetBuff()).isEqualTo("IceWizardSlowDown");
-    assertThat(snowball.buffTimeMs()).isEqualTo(3000);
-    assertThat(snowball.applyBuffBeforeDamage()).isFalse();
+    GameRow snowballRow = row("projectiles", "SnowballSpell");
+    assertThat(snowball.targetBuff()).isEqualTo(text(snowballRow, "TargetBuff"));
+    assertThat(snowball.buffTimeMs()).isEqualTo(number(snowballRow, "BuffTime"));
+    assertThat(snowball.applyBuffBeforeDamage())
+        .isEqualTo(flag(snowballRow, "ApplyBuffBeforeDamage"));
     // An empty target limit is the loader's 1000.
-    assertThat(snowball.maximumTargets()).isEqualTo(1000);
+    assertThat(snowball.maximumTargets()).isEqualTo(number(snowballRow, "MaximumTargets", 1000));
     assertThat(snowball.unmodelledColumns()).isEmpty();
     ProjectileData voodoo = records.projectile("VoodooProjectile");
-    assertThat(voodoo.targetBuff()).isEqualTo("VoodooCurse");
-    assertThat(voodoo.applyBuffBeforeDamage()).isTrue();
+    GameRow voodooRow = row("projectiles", "VoodooProjectile");
+    assertThat(voodoo.targetBuff()).isEqualTo(text(voodooRow, "TargetBuff"));
+    assertThat(voodoo.applyBuffBeforeDamage()).isEqualTo(flag(voodooRow, "ApplyBuffBeforeDamage"));
     assertThat(voodoo.unmodelledColumns()).isEmpty();
     ProjectileData chain = records.projectile("ElectroDragonProjectile");
-    assertThat(chain.chainedHitRadius()).isEqualTo(4000);
-    assertThat(chain.chainedHitCount()).isEqualTo(3);
+    GameRow chainRow = row("projectiles", "ElectroDragonProjectile");
+    assertThat(chain.chainedHitRadius()).isEqualTo(number(chainRow, "ChainedHitRadius"));
+    assertThat(chain.chainedHitCount()).isEqualTo(number(chainRow, "ChainedHitCount"));
     assertThat(chain.unmodelledColumns()).isEmpty();
     // A spawned row's count and radius make its fan.
     ProjectileData explosion = records.projectile("FirecrackerExplosion");
-    assertThat(explosion.spawnCount()).isEqualTo(5);
-    assertThat(explosion.spawnRadius()).isEqualTo(80);
+    GameRow explosionRow = row("projectiles", "FirecrackerExplosion");
+    assertThat(explosion.spawnCount()).isEqualTo(number(explosionRow, "SpawnCount"));
+    assertThat(explosion.spawnRadius()).isEqualTo(number(explosionRow, "SpawnRadius"));
     assertThat(explosion.unmodelledColumns()).isEmpty();
     // A pingpong row's sweep time.
     ProjectileData axe = records.projectile("AxeManProjectile");
-    assertThat(axe.pingpongVisualTimeMs()).isEqualTo(1500);
+    assertThat(axe.pingpongVisualTimeMs())
+        .isEqualTo(number(row("projectiles", "AxeManProjectile"), "PingpongVisualTime"));
     assertThat(axe.unmodelledColumns()).isEmpty();
     // The Hunter's pellet: a line scatter, a random delay and a stop at the first landed hit.
     ProjectileData pellet = records.projectile("HunterProjectile");
+    GameRow pelletRow = row("projectiles", "HunterProjectile");
     assertThat(pellet.lineScatter()).isTrue();
-    assertThat(pellet.randomDelayMs()).isEqualTo(200);
-    assertThat(pellet.checkCollisions()).isTrue();
+    assertThat(pellet.randomDelayMs()).isEqualTo(number(pelletRow, "RandomDelay"));
+    assertThat(pellet.checkCollisions()).isEqualTo(flag(pelletRow, "CheckCollisions"));
     assertThat(pellet.unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Hunter").customFirstProjectile().name()).isEqualTo("HunterProjectile");
+    assertThat(records.unit("Hunter").customFirstProjectile().name())
+        .isEqualTo(text(unitRow("Hunter"), "CustomFirstProjectile"));
     // A projectile that flies to a point buffs through its hits on the way, which is not modelled.
     assertThat(records.projectile("SuperEliteArcherArrow").unmodelledColumns())
         .contains("TargetBuff");
@@ -230,13 +266,15 @@ class BattleRecordsTest {
           + " projectiles")
   void aProjectileSpawnChain(@TempDir Path folder) throws IOException {
     ProjectileData bomb = records.projectile("BombSkeletonProjectile_EV1");
-    assertThat(bomb.spawnProjectile()).isEqualTo("BombSkeletonProjectile_2_EV1");
-    assertThat(bomb.spawnChain()).isEqualTo(2);
+    GameRow bombRow = row("projectiles", "BombSkeletonProjectile_EV1");
+    assertThat(bomb.spawnProjectile()).isEqualTo(text(bombRow, "SpawnProjectile"));
+    assertThat(bomb.spawnChain()).isEqualTo(number(bombRow, "SpawnChain"));
     assertThat(bomb.chainIsNewProjectile()).isFalse();
     assertThat(bomb.unmodelledColumns()).isEmpty();
     ProjectileData fireWall = records.projectile("FireWallProjectile");
-    assertThat(fireWall.spawnProjectile()).isEqualTo("FireWallMovingProjectile");
-    assertThat(fireWall.spawnChain()).isEqualTo(2);
+    GameRow fireWallRow = row("projectiles", "FireWallProjectile");
+    assertThat(fireWall.spawnProjectile()).isEqualTo(text(fireWallRow, "SpawnProjectile"));
+    assertThat(fireWall.spawnChain()).isEqualTo(number(fireWallRow, "SpawnChain"));
     // No configured row makes its chain's spawns new projectiles; a row that does carries it.
     GameTables tables =
         GameData.altered(
@@ -256,13 +294,16 @@ class BattleRecordsTest {
   @DisplayName("a buff's death spawn is carried")
   void aBuffDeathSpawn() {
     BuffData curse = records.buff("VoodooCurse");
-    assertThat(curse.deathSpawn()).isEqualTo("VoodooHog");
-    assertThat(curse.deathSpawnCount()).isEqualTo(1);
-    assertThat(curse.deathSpawnIsEnemy()).isTrue();
-    assertThat(curse.deathSpawnDeployDelay()).isFalse();
-    assertThat(curse.otherBuffDeathSpawnAllowed()).isTrue();
+    GameRow row = row("character_buffs", "VoodooCurse");
+    assertThat(curse.deathSpawn()).isEqualTo(text(row, "DeathSpawn"));
+    assertThat(curse.deathSpawnCount()).isEqualTo(number(row, "DeathSpawnCount"));
+    assertThat(curse.deathSpawnIsEnemy()).isEqualTo(flag(row, "DeathSpawnIsEnemy"));
+    assertThat(curse.deathSpawnDeployDelay()).isEqualTo(flag(row, "DeathSpawnDeployDelay"));
+    assertThat(curse.otherBuffDeathSpawnAllowed())
+        .isEqualTo(flag(row, "OtherBuffDeathSpawnAllowed"));
     assertThat(curse.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("PancakesCurse").deathSpawnDeployDelay()).isTrue();
+    assertThat(records.buff("PancakesCurse").deathSpawnDeployDelay())
+        .isEqualTo(flag(row("character_buffs", "PancakesCurse"), "DeathSpawnDeployDelay"));
   }
 
   @Test
@@ -280,11 +321,12 @@ class BattleRecordsTest {
   @DisplayName("a card's placement is its row's columns, its units built from their own rows")
   void aCardIsItsColumns() {
     DeployCard barbarians = records.card("Barbarians");
+    GameRow row = row("spells_characters", "Barbarians");
     assertThat(barbarians.name()).isEqualTo("Barbarians");
-    assertThat(barbarians.unit().name()).isEqualTo("Barbarian");
-    assertThat(barbarians.count()).isEqualTo(5);
-    assertThat(barbarians.summonRadius()).isEqualTo(700);
-    assertThat(barbarians.summonDeployDelayMs()).isEqualTo(100);
+    assertThat(barbarians.unit().name()).isEqualTo(text(row, "SummonCharacter"));
+    assertThat(barbarians.count()).isEqualTo(number(row, "SummonNumber"));
+    assertThat(barbarians.summonRadius()).isEqualTo(number(row, "SummonRadius"));
+    assertThat(barbarians.summonDeployDelayMs()).isEqualTo(number(row, "SummonDeployDelay"));
     assertThat(barbarians.secondary()).isNull();
     assertThat(barbarians.secondaryCount()).isZero();
     assertThat(barbarians.canDeployOnEnemySide()).isFalse();
@@ -307,25 +349,34 @@ class BattleRecordsTest {
   void aBuildingCardIsATroopCard() {
     DeployCard cannon = records.card("Cannon");
     assertThat(cannon.spell()).isFalse();
-    assertThat(cannon.unit().name()).isEqualTo("Cannon");
+    assertThat(cannon.unit().name())
+        .isEqualTo(text(row("spells_buildings", "Cannon"), "SummonCharacter"));
     assertThat(cannon.unit().building()).isTrue();
     assertThat(cannon.count()).isEqualTo(1);
     assertThat(cannon.summonDeployDelayMs()).isZero();
 
     // A card's name is its own: the unit's row may be named otherwise.
-    assertThat(records.card("Elixir Collector").unit().name()).isEqualTo("ElixirCollector");
-    assertThat(records.card("GoblinHut").unit().name()).isEqualTo("GoblinHut_Rework");
+    for (String card : List.of("Elixir Collector", "GoblinHut")) {
+      assertThat(records.card(card).unit().name())
+          .as(card)
+          .isEqualTo(text(row("spells_buildings", card), "SummonCharacter"));
+    }
     // Deploying as a spell changes nothing for the Goblin Drill: its dig is its unit, which tunnels
     // in and is refused where it is played.
-    assertThat(records.card("GoblinDrill").unit().name()).isEqualTo("GoblinDrillDig");
+    assertThat(records.card("GoblinDrill").unit().name())
+        .isEqualTo(text(row("spells_buildings", "GoblinDrill"), "SummonCharacter"));
   }
 
   @Test
   @DisplayName("a level index on a card is not read: the summoned unit keeps the card's level")
   void theLevelIndexIsNotRead() {
     DeployCard army = records.card("SkeletonArmy");
-    assertThat(army.unit().name()).isEqualTo("Skeleton");
-    assertThat(army.count()).isEqualTo(15);
+    GameRow row = row("spells_characters", "SkeletonArmy");
+    assertThat(number(row, "SummonCharacterLevelIndex"))
+        .as("the row sets a level index")
+        .isPositive();
+    assertThat(army.unit().name()).isEqualTo(text(row, "SummonCharacter"));
+    assertThat(army.count()).isEqualTo(number(row, "SummonNumber"));
   }
 
   @Test
@@ -334,18 +385,17 @@ class BattleRecordsTest {
           + " the card's unit")
   void aListedCardSummonsItsList() {
     DeployCard card = records.card("ThreeMusketeers");
-    assertThat(card.unit().name()).isEqualTo("ThreeMusketeer_Rework_Character_1");
+    GameRow row = row("spells_characters", "ThreeMusketeers");
+    List<String> list = texts(row, "SummonCharactersList");
+    assertThat(card.unit().name()).isEqualTo(list.get(0));
     assertThat(card.primaryCount()).isZero();
     assertThat(card.secondaryTotal()).isZero();
-    assertThat(card.total()).isEqualTo(3);
+    assertThat(card.total()).isEqualTo(list.size());
     assertThat(card.listed())
         .extracting(l -> l.unit().name() + " " + l.offsetX() + " " + l.offsetY())
-        .containsExactly(
-            "ThreeMusketeer_Rework_Character_1 0 -1000",
-            "ThreeMusketeer_Rework_Character_2 -1000 1000",
-            "ThreeMusketeer_Rework_Character_3 1000 1000");
-    assertThat(card.listOffsetsXMirrored()).isTrue();
-    assertThat(card.summonDeployDelayMs()).isEqualTo(100);
+        .containsExactlyElementsOf(listed(row));
+    assertThat(card.listOffsetsXMirrored()).isEqualTo(flag(row, "CharactersOffsetsXMirrored"));
+    assertThat(card.summonDeployDelayMs()).isEqualTo(number(row, "SummonDeployDelay"));
     // A card without a list summons its groups as before.
     DeployCard knight = records.card("Knight");
     assertThat(knight.listed()).isEmpty();
@@ -361,18 +411,22 @@ class BattleRecordsTest {
           + " it, the named character as the card's unit")
   void aListBesidesTheFirstGroupFollowsIt() {
     DeployCard card = records.card("SkeletonArmy_EV1");
-    assertThat(card.unit().name()).isEqualTo("SkeletonArmy_EV1_Soldier");
+    GameRow row = row("spells_evolved", "SkeletonArmy_EV1");
+    String soldier = text(row, "SummonCharacter");
+    int soldiers = number(row, "SummonNumber");
+    List<String> list = texts(row, "SummonCharactersList");
+    assertThat(card.unit().name()).isEqualTo(soldier);
     assertThat(card.namesCharacter()).isTrue();
-    assertThat(card.primaryCount()).isEqualTo(15);
+    assertThat(card.primaryCount()).isEqualTo(soldiers);
     assertThat(card.secondaryTotal()).isZero();
-    assertThat(card.total()).isEqualTo(16);
-    assertThat(card.unitAt(0).name()).isEqualTo("SkeletonArmy_EV1_Soldier");
-    assertThat(card.unitAt(14).name()).isEqualTo("SkeletonArmy_EV1_Soldier");
-    assertThat(card.unitAt(15).name()).isEqualTo("SkeletonArmy_EV1_General");
+    assertThat(card.total()).isEqualTo(soldiers + list.size());
+    assertThat(card.unitAt(0).name()).isEqualTo(soldier);
+    assertThat(card.unitAt(soldiers - 1).name()).isEqualTo(soldier);
+    assertThat(card.unitAt(soldiers).name()).isEqualTo(list.get(0));
     assertThat(card.listed())
         .extracting(l -> l.unit().name() + " " + l.offsetX() + " " + l.offsetY())
-        .containsExactly("SkeletonArmy_EV1_General 0 1000");
-    assertThat(card.group()).isTrue();
+        .containsExactlyElementsOf(listed(row));
+    assertThat(card.group()).isEqualTo(flag(row, "IsAGroup"));
   }
 
   @Test
@@ -404,17 +458,30 @@ class BattleRecordsTest {
         .hasMessageContaining("more characters than offsets");
   }
 
+  /** A card row's listed characters, each with its offsets, as "name x y" in the list's order. */
+  private static List<String> listed(GameRow card) {
+    List<String> names = texts(card, "SummonCharactersList");
+    List<Integer> x = numbers(card, "SummonCharactersOffsetsX");
+    List<Integer> y = numbers(card, "SummonCharactersOffsetsY");
+    List<String> out = new ArrayList<>();
+    for (int i = 0; i < names.size(); i++) {
+      out.add(names.get(i) + " " + x.get(i) + " " + y.get(i));
+    }
+    return out;
+  }
+
   @Test
   @DisplayName("a unit carries the names of its row's three hook actions, null for none")
   void hookNames() {
     UnitData king = records.unit("KingTower");
-    assertThat(king.onStartingAction()).isEqualTo("KingTower_StartingGroup");
+    assertThat(king.onStartingAction()).isEqualTo(text(unitRow("KingTower"), "OnStartingAction"));
     assertThat(king.onDeathAction()).isNull();
     assertThat(records.unit("Witch_EV1").onStartingAction())
-        .isEqualTo("Witch_EV1_Start_Action_Group");
-    assertThat(records.unit("IceGolemite").onDeathAction()).isEqualTo("IceGolemiteDeathExplosion");
+        .isEqualTo(text(unitRow("Witch_EV1"), "OnStartingAction"));
+    assertThat(records.unit("IceGolemite").onDeathAction())
+        .isEqualTo(text(unitRow("IceGolemite"), "OnDeathAction"));
     assertThat(records.unit("BossBandit").onKilledAction())
-        .isEqualTo("BossBandit_defeated_by_bandit_check");
+        .isEqualTo(text(unitRow("BossBandit"), "OnKilledAction"));
     UnitData knight = records.unit("Knight");
     assertThat(knight.onStartingAction()).isNull();
     assertThat(knight.onDeathAction()).isNull();
@@ -448,15 +515,19 @@ class BattleRecordsTest {
     assertThat(golem.unmodelledDeathColumns()).isEmpty();
     assertThat(golem.deathSpawnPushback()).isTrue();
     assertThat(records.unit("BattleRam").unmodelledDeathColumns()).isEmpty();
-    assertThat(records.unit("BattleRam").spawnAngleShift()).isEqualTo(180);
+    assertThat(records.unit("BattleRam").spawnAngleShift())
+        .isEqualTo(number(unitRow("BattleRam"), "SpawnAngleShift"));
     assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns()).isEmpty();
     UnitData golemite = altered.unit("Golemite");
     assertThat(golemite.deathPushBack()).isEqualTo(900);
     assertThat(golemite.targetOnlyBuildings()).isTrue();
     UnitData elixirGolem = records.unit("ElixirGolem2");
-    assertThat(elixirGolem.deathSpawnCharacter()).isEqualTo("ElixirGolem4");
-    assertThat(elixirGolem.deathSpawnCount()).isEqualTo(2);
-    assertThat(elixirGolem.deathSpawnRadius()).isEqualTo(750);
+    GameRow elixirGolemRow = unitRow("ElixirGolem2");
+    assertThat(elixirGolem.deathSpawnCharacter())
+        .isEqualTo(text(elixirGolemRow, "DeathSpawnCharacter"));
+    assertThat(elixirGolem.deathSpawnCount()).isEqualTo(number(elixirGolemRow, "DeathSpawnCount"));
+    assertThat(elixirGolem.deathSpawnRadius())
+        .isEqualTo(number(elixirGolemRow, "DeathSpawnRadius"));
     assertThat(records.unit("Knight").deathSpawnCount()).isZero();
     UnitData knight = records.unit("Knight");
     assertThat(knight.deathDamage()).isZero();
@@ -467,19 +538,24 @@ class BattleRecordsTest {
   @DisplayName("a unit carries its charge, its river jump and whether its hit destroys it")
   void chargeAndJumpColumns() {
     UnitData prince = records.unit("Prince");
-    assertThat(prince.chargeRange()).isEqualTo(250);
-    assertThat(prince.chargeSpeedMultiplier()).isEqualTo(200);
-    assertThat(prince.damageSpecial()).isEqualTo(306);
-    assertThat(prince.keepChargingAfterAttack()).isFalse();
-    assertThat(prince.jumpEnabled()).isTrue();
-    assertThat(prince.jumpHeight()).isEqualTo(4000);
-    assertThat(prince.jumpSpeed()).isEqualTo(160);
-    assertThat(prince.kamikaze()).isFalse();
-    assertThat(records.unit("BattleRam_EV1").keepChargingAfterAttack()).isTrue();
+    GameRow princeRow = unitRow("Prince");
+    assertThat(prince.chargeRange()).isEqualTo(number(princeRow, "ChargeRange"));
+    assertThat(prince.chargeSpeedMultiplier())
+        .isEqualTo(number(princeRow, "ChargeSpeedMultiplier"));
+    assertThat(prince.damageSpecial()).isEqualTo(number(princeRow, "DamageSpecial"));
+    assertThat(prince.keepChargingAfterAttack())
+        .isEqualTo(flag(princeRow, "KeepChargingAfterAttack"));
+    assertThat(prince.jumpEnabled()).isEqualTo(flag(princeRow, "JumpEnabled"));
+    assertThat(prince.jumpHeight()).isEqualTo(number(princeRow, "JumpHeight"));
+    assertThat(prince.jumpSpeed()).isEqualTo(number(princeRow, "JumpSpeed"));
+    assertThat(prince.kamikaze()).isEqualTo(flag(princeRow, "Kamikaze"));
+    assertThat(records.unit("BattleRam_EV1").keepChargingAfterAttack())
+        .isEqualTo(flag(unitRow("BattleRam_EV1"), "KeepChargingAfterAttack"));
     UnitData ram = records.unit("BattleRam");
-    assertThat(ram.chargeRange()).isEqualTo(300);
-    assertThat(ram.jumpEnabled()).isFalse();
-    assertThat(ram.kamikaze()).isTrue();
+    GameRow ramRow = unitRow("BattleRam");
+    assertThat(ram.chargeRange()).isEqualTo(number(ramRow, "ChargeRange"));
+    assertThat(ram.jumpEnabled()).isEqualTo(flag(ramRow, "JumpEnabled"));
+    assertThat(ram.kamikaze()).isEqualTo(flag(ramRow, "Kamikaze"));
     UnitData knight = records.unit("Knight");
     assertThat(knight.chargeRange()).isZero();
     assertThat(knight.jumpEnabled()).isFalse();
@@ -489,39 +565,49 @@ class BattleRecordsTest {
   @DisplayName("a unit carries its dash, and the Golden Knight its chain and its ability's dash")
   void dashColumns() {
     UnitData bandit = records.unit("Assassin");
-    assertThat(bandit.dashCooldown()).isEqualTo(800);
-    assertThat(bandit.dashMinRange()).isEqualTo(3500);
-    assertThat(bandit.dashMaxRange()).isEqualTo(6000);
-    assertThat(bandit.dashDamage()).isEqualTo(152);
+    GameRow banditRow = unitRow("Assassin");
+    assertThat(bandit.dashCooldown()).isEqualTo(number(banditRow, "DashCooldown"));
+    assertThat(bandit.dashMinRange()).isEqualTo(number(banditRow, "DashMinRange"));
+    assertThat(bandit.dashMaxRange()).isEqualTo(number(banditRow, "DashMaxRange"));
+    assertThat(bandit.dashDamage()).isEqualTo(number(banditRow, "DashDamage"));
     assertThat(bandit.dashRadius()).isZero();
     assertThat(bandit.dashLandingTimeMs()).isZero();
-    assertThat(bandit.dashImmuneToDamageTimeMs()).isEqualTo(150);
-    assertThat(bandit.jumpSpeed()).isEqualTo(500);
+    assertThat(bandit.dashImmuneToDamageTimeMs())
+        .isEqualTo(number(banditRow, "DashImmuneToDamageTime"));
+    assertThat(bandit.jumpSpeed()).isEqualTo(number(banditRow, "JumpSpeed"));
     assertThat(bandit.unmodelledColumns()).isEmpty();
     UnitData megaKnight = records.unit("MegaKnight");
-    assertThat(megaKnight.dashRadius()).isEqualTo(2200);
-    assertThat(megaKnight.dashPushBack()).isEqualTo(1000);
-    assertThat(megaKnight.dashLandingTimeMs()).isEqualTo(300);
-    assertThat(megaKnight.dashConstantTimeMs()).isEqualTo(800);
-    assertThat(megaKnight.jumpHeight()).isEqualTo(3000);
-    assertThat(megaKnight.dashToTargetRadius()).isFalse();
-    // The Golden Knight's dashes chain: ten at most, the next looked for within 5500 of the
-    // landing, nearest first within 5500 behind it as ahead.
+    GameRow megaKnightRow = unitRow("MegaKnight");
+    assertThat(megaKnight.dashRadius()).isEqualTo(number(megaKnightRow, "DashRadius"));
+    assertThat(megaKnight.dashPushBack()).isEqualTo(number(megaKnightRow, "DashPushBack"));
+    assertThat(megaKnight.dashLandingTimeMs()).isEqualTo(number(megaKnightRow, "DashLandingTime"));
+    assertThat(megaKnight.dashConstantTimeMs())
+        .isEqualTo(number(megaKnightRow, "DashConstantTime"));
+    assertThat(megaKnight.jumpHeight()).isEqualTo(number(megaKnightRow, "JumpHeight"));
+    assertThat(megaKnight.dashToTargetRadius())
+        .isEqualTo(flag(megaKnightRow, "DashToTargetRadius"));
+    // The Golden Knight's dashes chain: DashCount at most, the next looked for within its
+    // secondary range of the landing, nearest first within its back dash radius behind it as
+    // ahead.
     UnitData goldenKnight = records.unit("GoldenKnight");
+    GameRow goldenKnightRow = unitRow("GoldenKnight");
     assertThat(goldenKnight.unmodelledColumns()).isEmpty();
-    assertThat(goldenKnight.dashCount()).isEqualTo(10);
-    assertThat(goldenKnight.dashSecondaryRange()).isEqualTo(5500);
-    assertThat(goldenKnight.backDashRadius()).isEqualTo(5500);
-    // Its ability waits for a reference within 5500 and runs its activation group as it fires;
-    // it names no pending buff.
+    assertThat(goldenKnight.dashCount()).isEqualTo(number(goldenKnightRow, "DashCount"));
+    assertThat(goldenKnight.dashSecondaryRange())
+        .isEqualTo(number(goldenKnightRow, "DashSecondaryRange"));
+    assertThat(goldenKnight.backDashRadius()).isEqualTo(number(goldenKnightRow, "BackDashRadius"));
+    // Its ability waits for a reference within its dash range and runs its activation group as
+    // it fires; it names no pending buff.
     AbilityData chain = goldenKnight.ability();
+    GameRow chainRow = row("character_abilities", text(goldenKnightRow, "Ability"));
     assertThat(chain.unmodelledColumns()).isEmpty();
-    assertThat(chain.dashRange()).isEqualTo(5500);
-    assertThat(chain.onActivationAction()).isEqualTo("GoldenKnight_OnAbilityActivationGroup");
+    assertThat(chain.dashRange()).isEqualTo(number(chainRow, "DashRange"));
+    assertThat(chain.onActivationAction()).isEqualTo(text(chainRow, "OnActivationAction"));
     assertThat(chain.pendingBuff()).isNull();
     // Its deploy push is read, and its spawner's limit changes nothing without a spawn.
-    assertThat(megaKnight.spawnPushback()).isEqualTo(1000);
-    assertThat(megaKnight.spawnPushbackRadius()).isEqualTo(1000);
+    assertThat(megaKnight.spawnPushback()).isEqualTo(number(megaKnightRow, "SpawnPushback"));
+    assertThat(megaKnight.spawnPushbackRadius())
+        .isEqualTo(number(megaKnightRow, "SpawnPushbackRadius"));
     assertThat(megaKnight.pushesOnDeploy()).isTrue();
     assertThat(megaKnight.unmodelledColumns()).isEmpty();
     assertThat(bandit.pushesOnDeploy()).isFalse();
@@ -536,7 +622,8 @@ class BattleRecordsTest {
     DeployCard megaKnight = records.card("MegaKnight");
     assertThat(megaKnight.spell()).isFalse();
     assertThat(megaKnight.unit().name()).isEqualTo("MegaKnight");
-    assertThat(megaKnight.projectile()).isEqualTo("MegaKnightAppear");
+    assertThat(megaKnight.projectile())
+        .isEqualTo(text(row("spells_characters", "MegaKnight"), "Projectile"));
     assertThat(megaKnight.casts()).isTrue();
     assertThat(megaKnight.multipleProjectiles()).isZero();
     assertThat(megaKnight.projectileWaves()).isZero();
@@ -552,14 +639,18 @@ class BattleRecordsTest {
           + " spawner's delays change nothing without a character to spawn")
   void anAreaEffectThatLaunches() {
     AreaEffectData lightning = records.areaEffect("Lightning");
-    assertThat(lightning.projectile()).isEqualTo("LighningSpell");
-    assertThat(lightning.hitBiggestTargets()).isTrue();
-    assertThat(lightning.projectileStartHeight()).isEqualTo(10);
+    GameRow lightningRow = row("area_effect_objects", "Lightning");
+    assertThat(lightning.projectile()).isEqualTo(text(lightningRow, "Projectile"));
+    assertThat(lightning.hitBiggestTargets()).isEqualTo(flag(lightningRow, "HitBiggestTargets"));
+    assertThat(lightning.projectileStartHeight())
+        .isEqualTo(number(lightningRow, "ProjectileStartHeight"));
     assertThat(lightning.unmodelledColumns()).isEmpty();
     AreaEffectData delivery = records.areaEffect("RoyalDeliveryArea");
-    assertThat(delivery.projectile()).isEqualTo("RoyalDeliveryProjectile");
-    assertThat(delivery.hitBiggestTargets()).isFalse();
-    assertThat(delivery.projectileStartHeight()).isZero();
+    GameRow deliveryRow = row("area_effect_objects", "RoyalDeliveryArea");
+    assertThat(delivery.projectile()).isEqualTo(text(deliveryRow, "Projectile"));
+    assertThat(delivery.hitBiggestTargets()).isEqualTo(flag(deliveryRow, "HitBiggestTargets"));
+    assertThat(delivery.projectileStartHeight())
+        .isEqualTo(number(deliveryRow, "ProjectileStartHeight"));
     assertThat(delivery.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").projectile()).isNull();
   }
@@ -571,15 +662,16 @@ class BattleRecordsTest {
           + " after its parent; a spawner that does not shuffle is listed as not modelled")
   void anAreaEffectThatSpawns() {
     AreaEffectData graveyard = records.areaEffect("SkeletonKingGraveyard");
-    assertThat(graveyard.spawnCharacter()).isEqualTo("SkeletonKingSkeleton");
-    assertThat(graveyard.spawnIntervalMs()).isEqualTo(250);
-    assertThat(graveyard.spawnInitialDelayMs()).isEqualTo(250);
-    assertThat(graveyard.spawnTimeMs()).isEqualTo(400);
-    assertThat(graveyard.spawnMaxCount()).isZero();
-    assertThat(graveyard.spawnMinRadius()).isEqualTo(2500);
-    assertThat(graveyard.spawnRandomizeSequence()).isTrue();
-    assertThat(graveyard.spawnClones()).isTrue();
-    assertThat(graveyard.stayAfterParentDies()).isTrue();
+    GameRow row = row("area_effect_objects", "SkeletonKingGraveyard");
+    assertThat(graveyard.spawnCharacter()).isEqualTo(text(row, "SpawnCharacter"));
+    assertThat(graveyard.spawnIntervalMs()).isEqualTo(number(row, "SpawnInterval"));
+    assertThat(graveyard.spawnInitialDelayMs()).isEqualTo(number(row, "SpawnInitialDelay"));
+    assertThat(graveyard.spawnTimeMs()).isEqualTo(number(row, "SpawnTime"));
+    assertThat(graveyard.spawnMaxCount()).isEqualTo(number(row, "SpawnMaxCount"));
+    assertThat(graveyard.spawnMinRadius()).isEqualTo(number(row, "SpawnMinRadius"));
+    assertThat(graveyard.spawnRandomizeSequence()).isEqualTo(flag(row, "SpawnRandomizeSequence"));
+    assertThat(graveyard.spawnClones()).isEqualTo(flag(row, "SpawnClones"));
+    assertThat(graveyard.stayAfterParentDies()).isEqualTo(flag(row, "StayAfterParentDies"));
     assertThat(graveyard.followsParent()).isTrue();
     assertThat(graveyard.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").spawnCharacter()).isNull();
@@ -593,7 +685,8 @@ class BattleRecordsTest {
           + " area effect, a variable's write or a group, and listed as not modelled otherwise")
   void anAttackActionOtherThanAModelledOneIsNotModelled(@TempDir Path folder) throws IOException {
     UnitData valkyrie = records.unit("Valkyrie_EV1");
-    assertThat(valkyrie.onAttackAction()).isEqualTo("Valkyrie_EV1_Tornado");
+    assertThat(valkyrie.onAttackAction())
+        .isEqualTo(text(unitRow("Valkyrie_EV1"), "OnAttackAction"));
     for (String name :
         List.of(
             "Valkyrie_EV1",
@@ -604,17 +697,18 @@ class BattleRecordsTest {
             "RoyalHog_EV1")) {
       assertThat(records.unit(name).unmodelledColumns()).as(name).isEmpty();
     }
-    assertThat(records.unit("MegaKnight_EV1").onAttackAction())
-        .isEqualTo("MegaKnight_EV1_uppercut_start_group");
-    assertThat(records.unit("BabyDragon_EV1").onAttackAction())
-        .isEqualTo("baby_dragon_evo_wind_action");
+    for (String name : List.of("MegaKnight_EV1", "BabyDragon_EV1")) {
+      assertThat(records.unit(name).onAttackAction())
+          .as(name)
+          .isEqualTo(text(unitRow(name), "OnAttackAction"));
+    }
     // The evolved Inferno Dragon's counts its attacks in a variable; its list's entries leave the
     // row's two variable damage times unread.
     assertThat(records.unit("InfernoDragon_EV1").onAttackAction())
-        .isEqualTo("InfernoDragon_EV1_IncrementAttackCount");
+        .isEqualTo(text(unitRow("InfernoDragon_EV1"), "OnAttackAction"));
     // The evolved Royal Hog's fall is a group, whose parts are built from their own rows.
     assertThat(records.unit("RoyalHog_EV1").onAttackAction())
-        .isEqualTo("RoyalHog_EV1_Fall_To_Ground_Group");
+        .isEqualTo(text(unitRow("RoyalHog_EV1"), "OnAttackAction"));
     // An action of a class whose run on a hit is not established, here an air-to-ground row
     // itself, is listed.
     GameTables tables =
@@ -635,38 +729,50 @@ class BattleRecordsTest {
           + " hit action chooses a buff its hit action")
   void aShapedAreaEffect() {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
+    GameRow windRow = row("area_effect_objects", "BabyDragon_EV1_wind_aeo");
+    GameRow windShape = row("shapes", text(windRow, "Shape"));
     assertThat(wind.shaped()).isTrue();
-    assertThat(List.of(wind.shapeWidth(), wind.shapeHeight())).containsExactly(8000, 9000);
-    assertThat(wind.filter()).isEqualTo("all_characters_from_both_teams");
-    assertThat(wind.onHitAction()).isEqualTo("BabyDragon_EV1_AEO_select_buff");
+    assertThat(List.of(wind.shapeWidth(), wind.shapeHeight()))
+        .containsExactly(number(windShape, "Width"), number(windShape, "Height"));
+    assertThat(wind.filter()).isEqualTo(text(windRow, "Filter"));
+    assertThat(wind.onHitAction()).isEqualTo(text(windRow, "OnHitAction"));
     assertThat(wind.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").shaped()).isFalse();
-    assertThat(records.areaEffect("Zap").filter()).isEqualTo("CommonAreaDamageFilter");
+    assertThat(records.areaEffect("Zap").filter())
+        .isEqualTo(text(row("area_effect_objects", "Zap"), "Filter"));
     // A circle whose hit action chooses a buff to spawn on what it reaches, hitting on every
     // update, as the Ice Golemite hero form's slow circle does; its damage type is read by no hit.
     AreaEffectData slow = records.areaEffect("IceGolemiteHero_Slow_AEO");
+    GameRow slowRow = row("area_effect_objects", "IceGolemiteHero_Slow_AEO");
     assertThat(slow.unmodelledColumns()).isEmpty();
-    assertThat(slow.shapeRadius()).isEqualTo(4000);
-    assertThat(slow.onHitAction()).isEqualTo("IceGolemiteHero_Select_Slow_Buff");
+    assertThat(slow.shapeRadius())
+        .isEqualTo(number(row("shapes", text(slowRow, "Shape")), "Radius"));
+    assertThat(slow.onHitAction()).isEqualTo(text(slowRow, "OnHitAction"));
     assertThat(slow.damage()).isZero();
     assertThat(slow.damageType()).isNull();
-    assertThat(slow.hitSpeedMs()).isEqualTo(50);
+    assertThat(slow.hitSpeedMs()).isEqualTo(number(slowRow, "HitSpeed"));
     // A circle whose damage names a damage type row, hitting every 1500 ms, as the Ice Golemite
     // hero form's ability has; where its looping effect is shown is the view's.
     AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");
+    GameRow stormRow = row("area_effect_objects", "IceGolemiteHero_Damage_AEO");
     assertThat(storm.unmodelledColumns()).isEmpty();
-    assertThat(storm.shapeRadius()).isEqualTo(4000);
-    assertThat(storm.typedDamage().name()).isEqualTo("IceGolemiteHero_AEO_Damage");
-    assertThat(storm.filter()).isEqualTo("CommonAreaDamageFilter");
-    assertThat(List.of(storm.hitSpeedMs(), storm.hitSpeedOffsetMs())).containsExactly(1500, 0);
+    assertThat(storm.shapeRadius())
+        .isEqualTo(number(row("shapes", text(stormRow, "Shape")), "Radius"));
+    assertThat(storm.typedDamage().name()).isEqualTo(text(stormRow, "Damage"));
+    assertThat(storm.filter()).isEqualTo(text(stormRow, "Filter"));
+    assertThat(List.of(storm.hitSpeedMs(), storm.hitSpeedOffsetMs()))
+        .containsExactly(number(stormRow, "HitSpeed"), number(stormRow, "HitSpeedOffset"));
     // A circle with a filter and its damage written inline, as the Giant hero form's landing has.
     AreaEffectData landing = records.areaEffect("GiantHero_LandingAEO");
+    GameRow landingRow = row("area_effect_objects", "GiantHero_LandingAEO");
     assertThat(landing.unmodelledColumns()).isEmpty();
     assertThat(landing.shaped()).isTrue();
-    assertThat(landing.shapeRadius()).isEqualTo(1000);
+    assertThat(landing.shapeRadius())
+        .isEqualTo(number(row("shapes", text(landingRow, "Shape")), "Radius"));
     assertThat(landing.shapeWidth()).isZero();
-    assertThat(landing.filter()).isEqualTo("CommonAreaDamageGround");
-    assertThat(landing.typedDamage().baseDamage()).isEqualTo(53);
+    assertThat(landing.filter()).isEqualTo(text(landingRow, "Filter"));
+    assertThat(landing.typedDamage().baseDamage())
+        .isEqualTo(column(landingRow, "Damage").path("BaseDamage").asInt());
   }
 
   @Test
@@ -675,8 +781,9 @@ class BattleRecordsTest {
           + " group of named rows, and listed as not modelled when written inline otherwise")
   void aBuffsHooksAreReadByName() {
     BuffData invisibility = records.buff("Ghost_EV1_Invisibility");
-    assertThat(invisibility.onStartAction()).isEqualTo("Ghost_EV1_Invisible_Group");
-    assertThat(invisibility.onRemoveAction()).isEqualTo("Ghost_EV1_Visible_Group");
+    GameRow invisibilityRow = row("character_buffs", "Ghost_EV1_Invisibility");
+    assertThat(invisibility.onStartAction()).isEqualTo(text(invisibilityRow, "OnStartAction"));
+    assertThat(invisibility.onRemoveAction()).isEqualTo(text(invisibilityRow, "OnRemoveAction"));
     assertThat(invisibility.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Rage").onStartAction()).isNull();
 
@@ -693,8 +800,9 @@ class BattleRecordsTest {
           + " Mega Minion's arrival buff sets both")
   void aBuffsProjectileAndRemovalOnAttackAreRead() {
     BuffData arrival = records.buff("MegaMinion_hero_Damage_Buff");
-    assertThat(arrival.overrideProjectile()).isEqualTo("MegaMinionSpit_DoubleDamage");
-    assertThat(arrival.removeOnAttack()).isTrue();
+    GameRow arrivalRow = row("character_buffs", "MegaMinion_hero_Damage_Buff");
+    assertThat(arrival.overrideProjectile()).isEqualTo(text(arrivalRow, "OverrideProjectile"));
+    assertThat(arrival.removeOnAttack()).isEqualTo(flag(arrivalRow, "RemoveOnAttack"));
     assertThat(arrival.onRemoveAction()).isNull();
     assertThat(arrival.unmodelledColumns()).isEmpty();
     assertThat(records.buff("Rage").overrideProjectile()).isNull();
@@ -796,12 +904,14 @@ class BattleRecordsTest {
           + " included; refused when that row follows the projectile")
   void aProjectileThatSpawnsAnAreaEffect() {
     ProjectileData spirit = records.projectile("HealSpiritProjectile");
-    assertThat(spirit.spawnAreaEffectObject()).isEqualTo("HealSpirit");
+    assertThat(spirit.spawnAreaEffectObject())
+        .isEqualTo(text(row("projectiles", "HealSpiritProjectile"), "SpawnAreaEffectObject"));
     assertThat(spirit.unmodelledColumns()).isEmpty();
     assertThat(records.projectile("FireballSpell").spawnAreaEffectObject()).isNull();
     // A row that follows the projectile is made on its first flight visit, not at its impact.
     ProjectileData parent = records.projectile("SuperArcherChargeArrow");
-    assertThat(parent.spawnAreaEffectObject()).isEqualTo("SuperArcherChargePull");
+    assertThat(parent.spawnAreaEffectObject())
+        .isEqualTo(text(row("projectiles", "SuperArcherChargeArrow"), "SpawnAreaEffectObject"));
     assertThat(parent.unmodelledColumns()).contains("SpawnAreaEffectObject");
     // The evolved Ice Spirit's area follows the projectile's target, which the impact hands it.
     assertThat(records.projectile("IceSpiritsProjectile_EV1").unmodelledColumns()).isEmpty();
@@ -815,19 +925,23 @@ class BattleRecordsTest {
   void cloneColumns(@TempDir Path folder) throws IOException {
     AreaEffectData clone = records.areaEffect("Clone");
     assertThat(clone.cloning()).isTrue();
-    assertThat(clone.onHitAction()).isEqualTo("CloneAction");
+    assertThat(clone.onHitAction())
+        .isEqualTo(text(row("area_effect_objects", "Clone"), "OnHitAction"));
     assertThat(clone.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").cloning()).isFalse();
     // The Goblin Curse's base spawns two buffs with each hit and the Blowdart Goblin's evolution
     // starts its poison damage; the Knight's hero taunts with a group of taunts.
     AreaEffectData curse = records.areaEffect("GoblinCurseBase");
-    assertThat(curse.onHitAction()).isEqualTo("GoblinCurseCreateBuffs");
+    assertThat(curse.onHitAction())
+        .isEqualTo(text(row("area_effect_objects", "GoblinCurseBase"), "OnHitAction"));
     assertThat(curse.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Knight_hero_TauntAEO").unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("BlowDartPoisonAeO_baseDamage").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Recruit_Chess").ignoreClone()).isTrue();
+    assertThat(records.unit("Recruit_Chess").ignoreClone())
+        .isEqualTo(flag(unitRow("Recruit_Chess"), "IgnoreClone"));
     assertThat(records.unit("Knight").ignoreClone()).isFalse();
-    assertThat(records.unit("Knight_EV1").clonedVersion()).isEqualTo("Knight");
+    assertThat(records.unit("Knight_EV1").clonedVersion())
+        .isEqualTo(text(unitRow("Knight_EV1"), "ClonedVersion"));
     assertThat(records.unit("Knight").clonedVersion()).isNull();
     assertThat(records.buff("Clone").unmodelledColumns()).isEmpty();
 
@@ -863,12 +977,15 @@ class BattleRecordsTest {
       "the Electro Giant carries its reflect, and a projectile whether its hits are reflected")
   void reflectColumns() {
     UnitData giant = records.unit("ElectroGiant");
+    GameRow row = unitRow("ElectroGiant");
     assertThat(giant.unmodelledColumns()).isEmpty();
-    assertThat(giant.reflectedAttackBuff()).isEqualTo("ZapFreeze");
-    assertThat(giant.reflectedAttackBuffDurationMs()).isEqualTo(500);
-    assertThat(giant.reflectedAttackRadius()).isEqualTo(2000);
-    assertThat(giant.reflectedAttackDamage()).isEqualTo(75);
-    assertThat(giant.reflectAttackCrownTowerDamage()).isEqualTo(38);
+    assertThat(giant.reflectedAttackBuff()).isEqualTo(text(row, "ReflectedAttackBuff"));
+    assertThat(giant.reflectedAttackBuffDurationMs())
+        .isEqualTo(number(row, "ReflectedAttackBuffDuration"));
+    assertThat(giant.reflectedAttackRadius()).isEqualTo(number(row, "ReflectedAttackRadius"));
+    assertThat(giant.reflectedAttackDamage()).isEqualTo(number(row, "ReflectedAttackDamage"));
+    assertThat(giant.reflectAttackCrownTowerDamage())
+        .isEqualTo(number(row, "ReflectAttackCrownTowerDamage"));
     assertThat(records.unit("Knight").reflectedAttackBuff()).isNull();
     assertThat(records.projectile("BarbLogHeroProjectileReRolling").ignoreReflectedAttack())
         .isTrue();
@@ -881,9 +998,11 @@ class BattleRecordsTest {
           + " presentation")
   void riderTargetingColumns() {
     UnitData rider = records.unit("RamRider");
-    assertThat(rider.targetOnlyTroops()).isTrue();
-    assertThat(rider.ignoreTargetsWithBuff()).isEqualTo("BolaSnare");
-    assertThat(rider.deprioritizeTargetsWithBuff()).isTrue();
+    GameRow row = unitRow("RamRider");
+    assertThat(rider.targetOnlyTroops()).isEqualTo(flag(row, "TargetOnlyTroops"));
+    assertThat(rider.ignoreTargetsWithBuff()).isEqualTo(text(row, "IgnoreTargetsWithBuff"));
+    assertThat(rider.deprioritizeTargetsWithBuff())
+        .isEqualTo(flag(row, "DeprioritizeTargetsWithBuff"));
     assertThat(rider.projectile().unmodelledColumns()).isEmpty();
     UnitData knight = records.unit("Knight");
     assertThat(knight.targetOnlyTroops()).isFalse();
@@ -896,63 +1015,80 @@ class BattleRecordsTest {
           + " the battle does not model")
   void buildingColumns() {
     UnitData tombstone = records.unit("Tombstone");
-    assertThat(tombstone.lifeTimeMs()).isEqualTo(30000);
-    assertThat(tombstone.spawnCharacter()).isEqualTo("Skeleton");
-    assertThat(tombstone.spawnNumber()).isEqualTo(2);
-    assertThat(tombstone.spawnIntervalMs()).isEqualTo(500);
-    assertThat(tombstone.spawnPauseTimeMs()).isEqualTo(3500);
-    assertThat(tombstone.spawnStartTimeMs()).isZero();
+    GameRow tombstoneRow = unitRow("Tombstone");
+    assertThat(tombstone.lifeTimeMs()).isEqualTo(number(tombstoneRow, "LifeTime"));
+    assertThat(tombstone.spawnCharacter()).isEqualTo(text(tombstoneRow, "SpawnCharacter"));
+    assertThat(tombstone.spawnNumber()).isEqualTo(number(tombstoneRow, "SpawnNumber"));
+    assertThat(tombstone.spawnIntervalMs()).isEqualTo(number(tombstoneRow, "SpawnInterval"));
+    assertThat(tombstone.spawnPauseTimeMs()).isEqualTo(number(tombstoneRow, "SpawnPauseTime"));
+    assertThat(tombstone.spawnStartTimeMs()).isEqualTo(number(tombstoneRow, "SpawnStartTime"));
     assertThat(tombstone.unmodelledColumns()).isEmpty();
-    assertThat(records.unit("GoblinDrill").spawnStartTimeMs()).isEqualTo(1000);
-    assertThat(records.unit("Mortar").minimumRange()).isEqualTo(3500);
+    assertThat(records.unit("GoblinDrill").spawnStartTimeMs())
+        .isEqualTo(number(unitRow("GoblinDrill"), "SpawnStartTime"));
+    assertThat(records.unit("Mortar").minimumRange())
+        .isEqualTo(number(unitRow("Mortar"), "MinimumRange"));
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
     assertThat(records.unit("DarkPrince").unmodelledColumns()).isEmpty();
     // The evolved Battle Ram's completed charge runs its push, which is modelled.
     assertThat(records.unit("BattleRam_EV1").unmodelledColumns()).isEmpty();
     assertThat(records.unit("BattleRam_EV1").onStartChargingAction())
-        .isEqualTo("BattleRam_EV1_PushBack");
+        .isEqualTo(text(unitRow("BattleRam_EV1"), "OnStartChargingAction"));
     assertThat(records.unit("BattleRam").onStartChargingAction()).isNull();
-    assertThat(records.unit("DarkPrince").shieldHitpoints()).isEqualTo(94);
+    assertThat(records.unit("DarkPrince").shieldHitpoints())
+        .isEqualTo(number(unitRow("DarkPrince"), "ShieldHitpoints"));
     // The evolved Wizard runs an action as its shield breaks; a push as it breaks is refused.
     assertThat(records.unit("Wizard_EV1").unmodelledColumns()).isEmpty();
-    assertThat(records.unit("Wizard_EV1").shieldLostAction()).isEqualTo("Wizard_EV1_ShieldLost");
-    assertThat(records.unit("Recruit_EV1").shieldLostAction()).isEqualTo("Recruit_EV1_StartCharge");
+    for (String name : List.of("Wizard_EV1", "Recruit_EV1")) {
+      assertThat(records.unit(name).shieldLostAction())
+          .as(name)
+          .isEqualTo(text(unitRow(name), "ShieldLostAction"));
+    }
     assertThat(records.unit("Knight").shieldLostAction()).isNull();
-    // The Tesla hides while it does not attack, 800 ms to go down and 800 to come up; its
+    // The Tesla hides while it does not attack, a while to go down and a while to come up; its
     // evolution runs an action as it rises and another as it starts to hide.
     UnitData tesla = records.unit("Tesla");
+    GameRow teslaRow = unitRow("Tesla");
     assertThat(tesla.unmodelledColumns()).isEmpty();
-    assertThat(tesla.hidesWhenNotAttacking()).isTrue();
-    assertThat(new int[] {tesla.hideTimeMs(), tesla.upTimeMs()}).containsExactly(800, 800);
+    assertThat(tesla.hidesWhenNotAttacking()).isEqualTo(flag(teslaRow, "HidesWhenNotAttacking"));
+    assertThat(new int[] {tesla.hideTimeMs(), tesla.upTimeMs()})
+        .containsExactly(number(teslaRow, "HideTimeMs"), number(teslaRow, "UpTimeMs"));
     UnitData teslaEvo = records.unit("Tesla_EV1");
+    GameRow teslaEvoRow = unitRow("Tesla_EV1");
     assertThat(teslaEvo.unmodelledColumns()).isEmpty();
-    assertThat(teslaEvo.onAppearAction()).isEqualTo("Tesla_EV1_AppearStun");
-    assertThat(teslaEvo.onDisappearAction()).isEqualTo("Tesla_EV1_Charging");
+    assertThat(teslaEvo.onAppearAction()).isEqualTo(text(teslaEvoRow, "OnAppearAction"));
+    assertThat(teslaEvo.onDisappearAction()).isEqualTo(text(teslaEvoRow, "OnDisappearAction"));
     assertThat(tesla.onAppearAction()).isNull();
     // The evolved Cannon's two shadows are read by no battle logic.
     assertThat(records.unit("Cannon_EV1").unmodelledColumns()).isEmpty();
-    // An elixir collector is modelled: one elixir every 13000 ms; an Elixir Golem's death pays
-    // 1000.
+    // An elixir collector is modelled: an amount of elixir every so often; an Elixir Golem's
+    // death pays its opponent.
     UnitData collector = records.unit("ElixirCollector");
+    GameRow collectorRow = unitRow("ElixirCollector");
     assertThat(collector.unmodelledColumns()).isEmpty();
     assertThat(new int[] {collector.manaCollectAmount(), collector.manaGenerateTimeMs()})
-        .containsExactly(1, 13000);
-    assertThat(records.unit("ElixirGolem1").manaOnDeathForOpponent()).isEqualTo(1000);
-    // The Goblin Giant's two Spear Goblins ride on it, at 900, turned by their own -22.
+        .containsExactly(
+            number(collectorRow, "ManaCollectAmount"), number(collectorRow, "ManaGenerateTimeMs"));
+    assertThat(records.unit("ElixirGolem1").manaOnDeathForOpponent())
+        .isEqualTo(number(unitRow("ElixirGolem1"), "ManaOnDeathForOpponent"));
+    // The Goblin Giant's Spear Goblins ride on it, at its spawn radius, turned by their own angle.
     UnitData goblinGiant = records.unit("GoblinGiant");
+    GameRow goblinGiantRow = unitRow("GoblinGiant");
     assertThat(goblinGiant.unmodelledColumns()).isEmpty();
-    assertThat(goblinGiant.spawnAttach()).isTrue();
-    assertThat(goblinGiant.spawnNumber()).isEqualTo(2);
-    assertThat(goblinGiant.spawnRadius()).isEqualTo(900);
+    assertThat(goblinGiant.spawnAttach()).isEqualTo(flag(goblinGiantRow, "SpawnAttach"));
+    assertThat(goblinGiant.spawnNumber()).isEqualTo(number(goblinGiantRow, "SpawnNumber"));
+    assertThat(goblinGiant.spawnRadius()).isEqualTo(number(goblinGiantRow, "SpawnRadius"));
     UnitData rider = records.unit("SpearGoblinGiant");
-    assertThat(rider.spawnAngleShift()).isEqualTo(-22);
-    assertThat(rider.spawnMaxAngle()).isEqualTo(90);
-    assertThat(rider.spawnAttachMaxRotation()).isZero();
-    assertThat(rider.flyingHeight()).isEqualTo(4000);
-    assertThat(rider.deathInheritIgnoreList()).isTrue();
+    GameRow riderRow = unitRow(text(goblinGiantRow, "SpawnCharacter"));
+    assertThat(rider.spawnAngleShift()).isEqualTo(number(riderRow, "SpawnAngleShift"));
+    assertThat(rider.spawnMaxAngle()).isEqualTo(number(riderRow, "SpawnMaxAngle"));
+    assertThat(rider.spawnAttachMaxRotation())
+        .isEqualTo(number(riderRow, "SpawnAttachMaxRotation"));
+    assertThat(rider.flyingHeight()).isEqualTo(number(riderRow, "FlyingHeight"));
+    assertThat(rider.deathInheritIgnoreList()).isEqualTo(flag(riderRow, "DeathInheritIgnoreList"));
     // A second spawn row is read.
     UnitData superWitch = records.unit("SuperWitch");
-    assertThat(superWitch.spawnCharacter2()).isEqualTo("Bat");
+    assertThat(superWitch.spawnCharacter2())
+        .isEqualTo(text(unitRow("SuperWitch"), "SpawnCharacter2"));
     assertThat(superWitch.spawnCharacter3()).isNull();
     assertThat(superWitch.unmodelledColumns()).isEmpty();
   }
@@ -963,11 +1099,12 @@ class BattleRecordsTest {
           + " gives its ring a fixed priority, which a spawner may not")
   void skeletonBarrelColumns() {
     UnitData barrel = records.unit("SkeletonBalloon");
+    GameRow row = unitRow("SkeletonBalloon");
     assertThat(barrel.unmodelledColumns()).isEmpty();
-    assertThat(barrel.flyDirectPaths()).isTrue();
-    assertThat(barrel.kamikaze()).isTrue();
-    assertThat(barrel.kamikazeTimeMs()).isEqualTo(500);
-    assertThat(barrel.deathSpawnCharacter()).isEqualTo("SkeletonContainerNew");
+    assertThat(barrel.flyDirectPaths()).isEqualTo(flag(row, "FlyDirectPaths"));
+    assertThat(barrel.kamikaze()).isEqualTo(flag(row, "Kamikaze"));
+    assertThat(barrel.kamikazeTimeMs()).isEqualTo(number(row, "KamikazeTime"));
+    assertThat(barrel.deathSpawnCharacter()).isEqualTo(text(row, "DeathSpawnCharacter"));
     UnitData container = records.unit("SkeletonContainerNew");
     assertThat(container.unmodelledColumns()).isEmpty();
     assertThat(container.unmodelledDeathColumns()).isEmpty();
@@ -983,18 +1120,21 @@ class BattleRecordsTest {
     UnitData phoenix = records.unit("Phoenix");
     assertThat(phoenix.unmodelledColumns()).isEmpty();
     assertThat(phoenix.unmodelledDeathColumns()).isEmpty();
-    assertThat(phoenix.deathSpawnProjectile().name()).isEqualTo("PhoenixFireball");
+    assertThat(phoenix.deathSpawnProjectile().name())
+        .isEqualTo(text(unitRow("Phoenix"), "DeathSpawnProjectile"));
     // The loader keeps a count of at least one under a death projectile, as under a death spawn.
-    assertThat(phoenix.deathSpawnCount()).isEqualTo(1);
+    assertThat(phoenix.deathSpawnCount())
+        .isEqualTo(Math.max(1, number(unitRow("Phoenix"), "DeathSpawnCount")));
     assertThat(phoenix.deathSpawnCharacter()).isNull();
     assertThat(records.unit("Knight").deathSpawnCount()).isZero();
     UnitData egg = records.unit("PhoenixEgg");
+    GameRow eggRow = unitRow("PhoenixEgg");
     assertThat(egg.unmodelledColumns()).isEmpty();
-    assertThat(egg.spawnCharacter()).isEqualTo("PhoenixNoRespawn");
-    assertThat(egg.spawnLimit()).isEqualTo(1);
-    assertThat(egg.destroyAtLimit()).isTrue();
-    assertThat(egg.spawnCharacterWithDeploy()).isTrue();
-    assertThat(egg.untargetableWhenSpawned()).isTrue();
+    assertThat(egg.spawnCharacter()).isEqualTo(text(eggRow, "SpawnCharacter"));
+    assertThat(egg.spawnLimit()).isEqualTo(number(eggRow, "SpawnLimit"));
+    assertThat(egg.destroyAtLimit()).isEqualTo(flag(eggRow, "DestroyAtLimit"));
+    assertThat(egg.spawnCharacterWithDeploy()).isEqualTo(flag(eggRow, "SpawnCharacterWithDeploy"));
+    assertThat(egg.untargetableWhenSpawned()).isEqualTo(flag(eggRow, "UntargetableWhenSpawned"));
     assertThat(egg.gameTagsToSet())
         .isEqualTo(
             BITS.noGiantbufferChefEnchantment()
@@ -1030,10 +1170,11 @@ class BattleRecordsTest {
           + " no soul")
   void ability() {
     AbilityData buffer = records.unit("GiantBuffer").ability();
-    assertThat(buffer.name()).isEqualTo("giantbuffer_ability");
-    assertThat(buffer.castTimeMs()).isEqualTo(933);
-    assertThat(buffer.triggerDelayMs()).isEqualTo(50);
-    assertThat(buffer.keepCurrentTarget()).isTrue();
+    GameRow bufferRow = row("character_abilities", text(unitRow("GiantBuffer"), "Ability"));
+    assertThat(buffer.name()).isEqualTo(bufferRow.name());
+    assertThat(buffer.castTimeMs()).isEqualTo(number(bufferRow, "CastTime"));
+    assertThat(buffer.triggerDelayMs()).isEqualTo(number(bufferRow, "TriggerDelay"));
+    assertThat(buffer.keepCurrentTarget()).isEqualTo(flag(bufferRow, "KeepCurrentTarget"));
     assertThat(buffer.champion()).isFalse();
     // Written inline, it is the actions table's row named after the ability and the column.
     assertThat(buffer.onActivationAction()).isEqualTo("giantbuffer_ability_OnActivationAction");
@@ -1042,27 +1183,34 @@ class BattleRecordsTest {
     // A champion's ability buffs the champion itself, and its controller reads its cost, cooldown
     // and charges.
     AbilityData queen = records.unit("ArcherQueen").ability();
+    GameRow queenRow = row("character_abilities", text(unitRow("ArcherQueen"), "Ability"));
     assertThat(queen.champion()).isTrue();
-    assertThat(queen.buff()).isEqualTo("ArcherQueenRapid");
-    assertThat(queen.buffTimeMs()).isEqualTo(3500);
-    assertThat(queen.manaCost()).isEqualTo(1);
-    assertThat(queen.cooldownMs()).isZero();
-    assertThat(queen.maxCharges()).isEqualTo(1);
+    assertThat(queen.buff()).isEqualTo(text(queenRow, "Buff"));
+    assertThat(queen.buffTimeMs()).isEqualTo(number(queenRow, "BuffTime"));
+    assertThat(queen.manaCost()).isEqualTo(number(queenRow, "ManaCost"));
+    assertThat(queen.cooldownMs()).isEqualTo(number(queenRow, "Cooldown"));
+    assertThat(queen.maxCharges()).isEqualTo(number(queenRow, "MaxCharges"));
     assertThat(queen.unmodelledColumns()).isEmpty();
-    assertThat(records.unit("BossBandit").ability().maxCharges()).isEqualTo(2);
+    assertThat(records.unit("BossBandit").ability().maxCharges())
+        .isEqualTo(
+            number(
+                row("character_abilities", text(unitRow("BossBandit"), "Ability")), "MaxCharges"));
     // A lane switch, and the character the ability leaves behind, are read.
     AbilityData miner = records.unit("MightyMiner").ability();
-    assertThat(miner.switchLanes()).isTrue();
-    assertThat(miner.activationSpawnCharacter()).isEqualTo("MightyMinerBomb");
+    GameRow minerRow = row("character_abilities", text(unitRow("MightyMiner"), "Ability"));
+    assertThat(miner.switchLanes()).isEqualTo(flag(minerRow, "SwitchLanes"));
+    assertThat(miner.activationSpawnCharacter())
+        .isEqualTo(text(minerRow, "ActivationSpawnCharacter"));
     assertThat(miner.unmodelledColumns()).isEmpty();
     assertThat(queen.switchLanes()).isFalse();
     assertThat(queen.activationSpawnCharacter()).isNull();
     // The follow-up state and the tags the unit carries in it are read; the Monk's row names no
     // area object (its activation action makes its Deflect).
     AbilityData monk = records.unit("Monk").ability();
+    GameRow monkRow = row("character_abilities", text(unitRow("Monk"), "Ability"));
     assertThat(monk.areaEffectObject()).isNull();
-    assertThat(monk.onActivationAction()).isEqualTo("monk_deflect_activation");
-    assertThat(monk.abilityStateDurationMs()).isEqualTo(4000);
+    assertThat(monk.onActivationAction()).isEqualTo(text(monkRow, "OnActivationAction"));
+    assertThat(monk.abilityStateDurationMs()).isEqualTo(number(monkRow, "AbilityStateDuration"));
     assertThat(monk.gameTagsWhileAbilityActive())
         .isEqualTo(BITS.avoidanceAsObstacle() | BITS.noMoveAllowAttract());
     assertThat(monk.unmodelledColumns()).isEmpty();
@@ -1071,11 +1219,12 @@ class BattleRecordsTest {
     assertThat(queen.gameTagsWhileAbilityActive()).isZero();
     // The souls an area object counts to resurrect are refused.
     AbilityData souls = records.unit("SkeletonKing").ability();
-    assertThat(souls.areaEffectObject()).isEqualTo("SkeletonKingGraveyard");
-    assertThat(souls.resurrectBaseCount()).isEqualTo(6);
-    assertThat(souls.resurrectEnemies()).isTrue();
-    assertThat(souls.resurrectOwnTroops()).isTrue();
-    assertThat(souls.spawnLimit()).isEqualTo(16);
+    GameRow soulsRow = row("character_abilities", text(unitRow("SkeletonKing"), "Ability"));
+    assertThat(souls.areaEffectObject()).isEqualTo(text(soulsRow, "AreaEffectObject"));
+    assertThat(souls.resurrectBaseCount()).isEqualTo(number(soulsRow, "ResurrectBaseCount"));
+    assertThat(souls.resurrectEnemies()).isEqualTo(flag(soulsRow, "ResurrectEnemies"));
+    assertThat(souls.resurrectOwnTroops()).isEqualTo(flag(soulsRow, "ResurrectOwnTroops"));
+    assertThat(souls.spawnLimit()).isEqualTo(number(soulsRow, "SpawnLimit"));
     assertThat(souls.unmodelledColumns()).isEmpty();
     assertThat(records.unit("Golem").ignoreResurrect()).isTrue();
     assertThat(records.unit("Knight").ignoreResurrect()).isFalse();
@@ -1089,10 +1238,12 @@ class BattleRecordsTest {
           + " it groups its volley")
   void deflectionColumns() {
     BuffData shield = records.buff("ShieldBoostMonk");
-    assertThat(shield.damageReduction()).isEqualTo(65);
-    assertThat(shield.ignorePushBack()).isTrue();
+    GameRow shieldRow = row("character_buffs", "ShieldBoostMonk");
+    assertThat(shield.damageReduction()).isEqualTo(number(shieldRow, "DamageReduction"));
+    assertThat(shield.ignorePushBack()).isEqualTo(flag(shieldRow, "IgnorePushBack"));
     assertThat(shield.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("DarkElixirBuff").damageReduction()).isEqualTo(-100);
+    assertThat(records.buff("DarkElixirBuff").damageReduction())
+        .isEqualTo(number(row("character_buffs", "DarkElixirBuff"), "DamageReduction"));
     assertThat(records.buff("Rage").damageReduction()).isZero();
     assertThat(records.buff("Rage").ignorePushBack()).isFalse();
     // The action the evolved Knight's buff runs as it reduces damage only plays an effect.
@@ -1128,7 +1279,8 @@ class BattleRecordsTest {
           + " whether it deploys again as it arrives")
   void ingamePathfindColumns() {
     UnitData miner = records.unit("MightyMiner");
-    assertThat(miner.ingamePathfindSpeed()).isEqualTo(650);
+    assertThat(miner.ingamePathfindSpeed())
+        .isEqualTo(number(unitRow("MightyMiner"), "IngamePathfindSpeed"));
     assertThat(miner.ingamePathfindVisible()).isFalse();
     assertThat(miner.ingamePathfindStopDeploys()).isTrue();
     assertThat(miner.unmodelledColumns()).isEmpty();
@@ -1151,11 +1303,11 @@ class BattleRecordsTest {
   @Test
   @DisplayName("a unit carries its row's global id, a building's as much as a character's")
   void globalId() {
-    assertThat(records.unit("MiniPekka").globalId()).isEqualTo(34000016);
-    assertThat(records.unit("KingTower").globalId()).isEqualTo(35000000);
+    assertThat(records.unit("MiniPekka").globalId()).isEqualTo(unitRow("MiniPekka").globalId());
+    assertThat(records.unit("KingTower").globalId()).isEqualTo(unitRow("KingTower").globalId());
     // A row named in an expression is looked up by name, characters first; this one hashes below 0.
     assertThat(records.unitGlobalId("DaggerDuchess")).isEqualTo(-1749071821);
-    assertThat(records.unitGlobalId("MiniPekka")).isEqualTo(34000016);
+    assertThat(records.unitGlobalId("MiniPekka")).isEqualTo(unitRow("MiniPekka").globalId());
     assertThat(records.unitGlobalId("NoSuchRow")).isNull();
   }
 
@@ -1177,7 +1329,10 @@ class BattleRecordsTest {
     assertThat(records.filter("EnemyTowersOnly").isFilterDead()).isFalse();
     GameObjectFilter skeletons = records.filter("friendly_skeletons_can_be_dead");
     assertThat(skeletons.getIncludeCharactersWithData())
-        .containsExactly("Witch_EV1_Healing_Skeleton");
+        .containsExactlyElementsOf(
+            texts(
+                row("game_object_filters", "friendly_skeletons_can_be_dead"),
+                "IncludeCharactersWithData"));
     // Its three tags, by the bits the game tags table gives them.
     GameObjectFilter noDash = records.filter("enemy_troops_no_dash");
     assertThat(noDash.getFilterTags())
@@ -1332,15 +1487,24 @@ class BattleRecordsTest {
   void theDaggerDuchessStartsItsChargeCounterAndPacesItsEntries() {
     UnitData duchess = records.unit("DaggerDuchess");
 
+    GameRow row = unitRow("DaggerDuchess");
+    List<Integer> multipliers = new ArrayList<>();
+    List<String> projectiles = new ArrayList<>();
+    for (JsonNode entry : column(row, "AttackSequenceList")) {
+      multipliers.add(entry.path("HitSpeedMultiplier").asInt());
+      projectiles.add(entry.path("Projectile").asText());
+    }
+
     assertThat(duchess.onStartingAction()).isEqualTo("DaggerDuchess_OnStartingAction");
     assertThat(duchess.attackSequence().mode()).isEqualTo(AttackSequence.MODE_NONE);
-    assertThat(duchess.attackSequence().order()).containsExactly(0, 1, 2, 3);
+    assertThat(duchess.attackSequence().order())
+        .containsExactlyElementsOf(numbers(row, "AttackSequence"));
     assertThat(duchess.attackSequence().entries())
         .extracting(AttackSequence.Entry::hitSpeedMultiplier)
-        .containsExactly(100, 100, 70, 90);
+        .containsExactlyElementsOf(multipliers);
     assertThat(duchess.attackSequence().entries())
         .extracting(entry -> entry.projectile().name())
-        .containsOnly("TowerKnifeThrowerProjectile");
+        .containsExactlyElementsOf(projectiles);
   }
 
   @Test
@@ -1390,12 +1554,15 @@ class BattleRecordsTest {
           + " individual buff")
   void anInlineBuff() {
     BuffData strongest = records.buff("DarkMagicAOE_Damage_lv3");
-    assertThat(strongest.damagePerSecond()).isEqualTo(2720);
-    assertThat(strongest.crownTowerDamagePerHit()).isEqualTo(38);
-    assertThat(strongest.hitFrequency()).isEqualTo(100);
-    assertThat(strongest.addAsIndividualBuff()).isTrue();
+    GameRow row = GameData.tables().inlineBuff("DarkMagicAOE_Damage_lv3");
+    assertThat(strongest.damagePerSecond()).isEqualTo(number(row, "DamagePerSecond"));
+    assertThat(strongest.crownTowerDamagePerHit()).isEqualTo(number(row, "CrownTowerDamagePerHit"));
+    assertThat(strongest.hitFrequency()).isEqualTo(number(row, "HitFrequency"));
+    assertThat(strongest.addAsIndividualBuff()).isEqualTo(flag(row, "AddAsIndividualBuff"));
     assertThat(strongest.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("DarkMagicAOE_Damage_lv1").damagePerSecond()).isEqualTo(600);
+    assertThat(records.buff("DarkMagicAOE_Damage_lv1").damagePerSecond())
+        .isEqualTo(
+            number(GameData.tables().inlineBuff("DarkMagicAOE_Damage_lv1"), "DamagePerSecond"));
     assertThat(records.buff("Rage").addAsIndividualBuff()).isFalse();
     assertThatThrownBy(() -> records.buff("DarkMagicAOE_Damage_lv4"))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1407,18 +1574,21 @@ class BattleRecordsTest {
       "a circle shape reads its radius, and any other shape is refused; Vines' snares, which name"
           + " a base and a buff for riders, are modelled")
   void vinesShapeAndSnares() {
-    assertThat(records.circleRadius("GiantHero_Slap_Shape")).isEqualTo(2500);
+    assertThat(records.circleRadius("GiantHero_Slap_Shape"))
+        .isEqualTo(number(row("shapes", "GiantHero_Slap_Shape"), "Radius"));
     assertThatThrownBy(() -> records.circleRadius("MegaMinion_hero_shape"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("is a Global");
     BuffData snare = records.buff("Vines_Trap_Snare_Large");
+    GameRow snareRow = row("character_buffs", "Vines_Trap_Snare_Large");
     assertThat(snare.unmodelledColumns()).isEmpty();
-    assertThat(snare.speedMultiplier()).isEqualTo(-100);
-    assertThat(snare.hitSpeedMultiplier()).isEqualTo(-100);
-    assertThat(snare.spawnSpeedMultiplier()).isEqualTo(-100);
-    assertThat(snare.damagePerSecond()).isEqualTo(60);
-    assertThat(snare.crownTowerDamagePerHit()).isEqualTo(14);
-    assertThat(snare.enableStacking()).isTrue();
+    assertThat(snare.speedMultiplier()).isEqualTo(number(snareRow, "SpeedMultiplier"));
+    assertThat(snare.hitSpeedMultiplier()).isEqualTo(number(snareRow, "HitSpeedMultiplier"));
+    assertThat(snare.spawnSpeedMultiplier()).isEqualTo(number(snareRow, "SpawnSpeedMultiplier"));
+    assertThat(snare.damagePerSecond()).isEqualTo(number(snareRow, "DamagePerSecond"));
+    assertThat(snare.crownTowerDamagePerHit())
+        .isEqualTo(number(snareRow, "CrownTowerDamagePerHit"));
+    assertThat(snare.enableStacking()).isEqualTo(flag(snareRow, "EnableStacking"));
   }
 
   @Test
@@ -1426,14 +1596,28 @@ class BattleRecordsTest {
       "a game mode's battle timeline, a card's cost, hand columns and options, and a global")
   void matchRows() {
     BattleTimeline ladder = records.gameModeTimeline("Ladder");
-    assertThat(ladder.name()).isEqualTo("Default");
-    assertThat(ladder.startingElixir()).isEqualTo(6);
-    assertThat(ladder.sectionLengths()).containsExactly(180, 120);
+    GameRow timeline = row("battle_timelines", text(row("game_modes", "Ladder"), "BattleTimeline"));
+    assertThat(ladder.name()).isEqualTo(timeline.name());
+    assertThat(ladder.startingElixir()).isEqualTo(number(timeline, "StartingElixir"));
+    assertThat(ladder.sectionLengths())
+        .containsExactlyElementsOf(numbers(timeline, "SectionLength"));
     assertThat(ladder.sectionTypes())
-        .containsExactly(BattleTimeline.NORMAL, BattleTimeline.OVERTIME);
-    assertThat(ladder.fullBarMs()).containsExactly(28000, 14000, 9300);
-    assertThat(ladder.cooldownMs()).containsExactly(1000, 500, 350);
-    assertThat(records.matchCard("Knight").cost()).isEqualTo(3);
+        .containsExactlyElementsOf(
+            texts(timeline, "SectionType").stream()
+                .map(
+                    type ->
+                        switch (type) {
+                          case "Normal" -> BattleTimeline.NORMAL;
+                          case "Overtime" -> BattleTimeline.OVERTIME;
+                          case "BonusTime" -> BattleTimeline.BONUS_TIME;
+                          default -> throw new AssertionError("no section type " + type);
+                        })
+                .toList());
+    assertThat(ladder.fullBarMs()).containsExactlyElementsOf(numbers(timeline, "ElixirFullBarMS"));
+    assertThat(ladder.cooldownMs())
+        .containsExactlyElementsOf(numbers(timeline, "NextSpellCooldownMS"));
+    assertThat(records.matchCard("Knight").cost())
+        .isEqualTo(number(row("spells_characters", "Knight"), "ManaCost"));
     assertThat(records.matchCard("Mirror").mirror()).isTrue();
     assertThat(records.matchCard("Mirror").omitFromStartingHand()).isTrue();
     assertThat(records.matchCard("Elixir Collector").omitFromStartingHand()).isTrue();
@@ -1441,12 +1625,24 @@ class BattleRecordsTest {
     // The Merge Maiden is played as one of its options: the triggers in ten-thousandths, each
     // option's cost and production stop its own row's.
     SpellVariant maiden = records.matchCard("MergeMaiden").variant();
-    assertThat(maiden.useProjectedTimeSummon()).isTrue();
-    assertThat(maiden.options())
-        .containsExactly(
-            new SpellVariant.Option("MergeMaiden_Mounted", 60000, 1200, 6, 0),
-            new SpellVariant.Option("MergeMaiden_Normal", 30000, 1200, 3, 0));
-    assertThat(records.globalNumber("MAX_MANA")).isEqualTo(10);
+    GameRow maidenRow = row("spells_other", "MergeMaiden");
+    List<SpellVariant.Option> options = new ArrayList<>();
+    for (JsonNode option : column(maidenRow, "Options")) {
+      GameRow spell = row("spells_characters", option.path("SpellData").asText());
+      options.add(
+          new SpellVariant.Option(
+              spell.name(),
+              // The trigger in ten-thousandths of an elixir: the column's, times 10.
+              option.path("AvailableManaTrigger").asInt() * 10,
+              option.path("PrecastPendingTime").asInt(),
+              number(spell, "ManaCost"),
+              number(spell, "ElixirProductionStopTime")));
+    }
+    assertThat(maiden.useProjectedTimeSummon())
+        .isEqualTo(flag(maidenRow, "UseProjectedTimeSummon"));
+    assertThat(maiden.options()).containsExactlyElementsOf(options);
+    assertThat(records.globalNumber("MAX_MANA"))
+        .isEqualTo(number(row("globals", "MAX_MANA"), "NumberValue"));
   }
 
   @Test
@@ -1488,18 +1684,18 @@ class BattleRecordsTest {
           + " one, none for a building - and its LoadFirstHit")
   void aUnitCarriesItsSightClips() {
     BattleRecords records = GameData.records();
-    UnitData hog = records.unit("HogRider");
-    assertThat(hog.sightClip()).isEqualTo(4000);
-    assertThat(hog.sightClipSide()).isEqualTo(4000);
-    UnitData golem = records.unit("Golem");
-    assertThat(golem.sightClip()).isEqualTo(2000);
-    assertThat(golem.sightClipSide()).isEqualTo(1900);
-    UnitData balloon = records.unit("Balloon");
-    assertThat(balloon.sightClip()).as("the row leaves it 0").isEqualTo(1000);
-    assertThat(balloon.sightClipSide()).isEqualTo(2000);
+    for (String name : List.of("HogRider", "Golem", "Balloon", "Knight")) {
+      GameRow row = unitRow(name);
+      // A character row that leaves its clip out, or 0, is loaded with 1000 behind.
+      int clip = number(row, "SightClip");
+      assertThat(records.unit(name).sightClip()).as(name).isEqualTo(clip == 0 ? 1000 : clip);
+      assertThat(records.unit(name).sightClipSide())
+          .as(name)
+          .isEqualTo(number(row, "SightClipSide"));
+    }
+    assertThat(number(unitRow("Balloon"), "SightClip")).as("the Balloon leaves it 0").isZero();
+    assertThat(number(unitRow("HogRider"), "SightClip")).as("the Hog Rider sets one").isPositive();
     UnitData knight = records.unit("Knight");
-    assertThat(knight.sightClip()).isEqualTo(1000);
-    assertThat(knight.sightClipSide()).isZero();
     assertThat(records.unit("Cannon").sightClip()).as("a building").isZero();
 
     assertThat(records.unit("ZapMachine").loadFirstHit()).isTrue();
@@ -1514,9 +1710,11 @@ class BattleRecordsTest {
   void aHoveringRowCarriesItsColumns() {
     BattleRecords records = GameData.records();
     UnitData ghost = records.unit("Ghost");
+    GameRow ghostRow = unitRow("Ghost");
     assertThat(ghost.hovering()).isTrue();
-    assertThat(ghost.buffWhenNotAttacking()).isEqualTo("Invisibility");
-    assertThat(ghost.buffWhenNotAttackingTimeMs()).isEqualTo(2000);
+    assertThat(ghost.buffWhenNotAttacking()).isEqualTo(text(ghostRow, "BuffWhenNotAttacking"));
+    assertThat(ghost.buffWhenNotAttackingTimeMs())
+        .isEqualTo(number(ghostRow, "BuffWhenNotAttackingTime"));
     assertThat(ghost.buffWhenNotAttackingUseAttackRange()).isTrue();
     assertThat(ghost.startWithBuffWhenNotAttacking()).as("the row leaves it empty").isTrue();
     assertThat(ghost.allowAreaDamageWhenInvisible()).isTrue();
@@ -1525,17 +1723,20 @@ class BattleRecordsTest {
 
     UnitData healer = records.unit("BattleHealer");
     assertThat(healer.hovering()).isTrue();
-    assertThat(healer.areaEffectOnHit()).isEqualTo("BattleHealerHeal");
+    assertThat(healer.areaEffectOnHit())
+        .isEqualTo(text(unitRow("BattleHealer"), "AreaEffectOnHit"));
     // Its spawn heal is its starting action's, not an area object of its row.
     assertThat(healer.spawnAreaObject()).isNull();
-    assertThat(healer.onStartingAction()).isEqualTo("BattleHealerSpawnHeal");
+    assertThat(healer.onStartingAction())
+        .isEqualTo(text(unitRow("BattleHealer"), "OnStartingAction"));
     assertThat(healer.buffWhenNotAttacking()).isNull();
     assertThat(healer.unmodelledColumns()).isEmpty();
     assertThat(records.unit("Knight").areaEffectOnHit()).isNull();
 
     // A buff while not attacking without its range gate is read: a touch test holds its countdown.
     UnitData bush = records.unit("SuspiciousBush");
-    assertThat(bush.buffWhenNotAttacking()).isEqualTo("BushInvisibility");
+    assertThat(bush.buffWhenNotAttacking())
+        .isEqualTo(text(unitRow("SuspiciousBush"), "BuffWhenNotAttacking"));
     assertThat(bush.buffWhenNotAttackingUseAttackRange()).isFalse();
     assertThat(bush.startWithBuffWhenNotAttacking()).isTrue();
     assertThat(bush.unmodelledColumns()).isEmpty();
@@ -1554,7 +1755,8 @@ class BattleRecordsTest {
   void aTauntingAreaEffect(@TempDir Path folder) throws IOException {
     BattleRecords records = GameData.records();
     AreaEffectData cancel = records.areaEffect("CancelTauntAEO");
-    assertThat(cancel.onHitAction()).isEqualTo("ResetTauntEffect");
+    assertThat(cancel.onHitAction())
+        .isEqualTo(text(row("area_effect_objects", "CancelTauntAEO"), "OnHitAction"));
     assertThat(cancel.oneHitPerTarget()).isTrue();
     assertThat(cancel.followsParent()).isTrue();
     assertThat(cancel.unmodelledColumns()).as("its Filter among them").isEmpty();
@@ -1600,12 +1802,14 @@ class BattleRecordsTest {
     assertThat(invisibility.invisible()).isTrue();
     assertThat(invisibility.unmodelledColumns()).isEmpty();
     BuffData heal = records.buff("BattleHealerAll");
-    assertThat(heal.invisible()).isFalse();
-    assertThat(heal.healPerSecond()).isEqualTo(40);
-    assertThat(heal.hitFrequency()).isEqualTo(250);
-    assertThat(heal.allowedOverHealPercent()).isZero();
+    GameRow healRow = row("character_buffs", "BattleHealerAll");
+    assertThat(heal.invisible()).isEqualTo(flag(healRow, "Invisible"));
+    assertThat(heal.healPerSecond()).isEqualTo(number(healRow, "HealPerSecond"));
+    assertThat(heal.hitFrequency()).isEqualTo(number(healRow, "HitFrequency"));
+    assertThat(heal.allowedOverHealPercent()).isEqualTo(number(healRow, "AllowedOverHealPerc"));
     assertThat(heal.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("BatsEV1_Heal").allowedOverHealPercent()).isEqualTo(200);
+    assertThat(records.buff("BatsEV1_Heal").allowedOverHealPercent())
+        .isEqualTo(number(row("character_buffs", "BatsEV1_Heal"), "AllowedOverHealPerc"));
   }
 
   @Test

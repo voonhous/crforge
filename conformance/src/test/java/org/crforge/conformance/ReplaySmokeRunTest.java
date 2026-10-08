@@ -389,7 +389,7 @@ class ReplaySmokeRunTest {
   }
 
   @Test
-  void aCaseGeneratedForVersion16_402_18RunsWhenTheRunNamesItsShape() throws IOException {
+  void aGeneratedCaseRunsWhenTheRunNamesItsShape() throws IOException {
     GameTables tables = GameTables.loadConfigured();
     byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnight());
 
@@ -403,12 +403,14 @@ class ReplaySmokeRunTest {
     assertThat(manifest.path("adapter").path("scenario_shape").asText()).isEqualTo("generated");
     List<String> lines = List.of(new String(generated.trace()).split("\n"));
     assertThat(lines).hasSize(261);
-    // Each king at level 1, as the recorded battles of the version's generated cases hold it, and
-    // the Knight placed on the play's run tick.
+    // Each king at level 1, its row's own hit points, as the recorded battles of the version's
+    // generated cases hold it, and the Knight placed on the play's run tick.
+    int kingHitpoints =
+        tables.table("buildings").row("KingTower").columns().get("Hitpoints").asInt();
     JsonNode first = MAPPER.readTree(lines.get(0));
     assertThat(first.path("entities").get(0).path("row").asText()).isEqualTo("KingTower");
-    assertThat(first.path("entities").get(0).path("hp").asInt()).isEqualTo(2400);
-    assertThat(first.path("entities").get(3).path("hp").asInt()).isEqualTo(2400);
+    assertThat(first.path("entities").get(0).path("hp").asInt()).isEqualTo(kingHitpoints);
+    assertThat(first.path("entities").get(3).path("hp").asInt()).isEqualTo(kingHitpoints);
     assertThat(MAPPER.readTree(lines.get(221)).path("entities").get(6).path("row").asText())
         .isEqualTo("Knight");
     // Read as a replay of the version, the case lacks the request lists.
