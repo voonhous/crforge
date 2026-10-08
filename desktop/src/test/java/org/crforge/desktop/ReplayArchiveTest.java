@@ -72,12 +72,12 @@ class ReplayArchiveTest {
   }
 
   /**
-   * The synthetic Archer Queen replay of data version 16.402.18, as the server sends it: one line
-   * of compact JSON.
+   * The synthetic Archer Queen replay with every field its version writes, as the server sends it:
+   * one line of compact JSON.
    */
   private static String replayText() throws IOException {
     try (InputStream in =
-        ReplayArchiveTest.class.getResourceAsStream("/replays/archer_queen_version16.json")) {
+        ReplayArchiveTest.class.getResourceAsStream("/replays/archer_queen_every_field.json")) {
       return MAPPER.writeValueAsString(MAPPER.readTree(in));
     }
   }

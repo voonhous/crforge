@@ -62,14 +62,25 @@ class ReplayCaptureBlockTest {
 
   @Test
   void refusesAReplayRecordedOnOtherDataNamingBoth() {
-    ObjectNode scenario =
-        recordedOn(GameVersions.DATA_16_402_19, "7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
+    // Another data version of the same client than the configured tables', and a content sha that
+    // is not theirs.
+    String other =
+        GameVersions.CLIENT_16_402_17_DATA.stream()
+            .filter(version -> !version.equals(tables.version()))
+            .findFirst()
+            .orElseThrow();
+    String otherSha = "the-content-sha-of-other-data";
+    assertThat(otherSha).isNotEqualTo(tables.contentSha());
+    ObjectNode scenario = recordedOn(other, otherSha);
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessageContaining(
-            "a replay recorded on client 16.402.17, data version 16.402.19 (content sha"
-                + " 7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec), read against the game tables of"
+            "a replay recorded on client 16.402.17, data version "
+                + other
+                + " (content sha "
+                + otherSha
+                + "), read against the game tables of"
                 + " data version "
                 + tables.version()
                 + " (content sha "
@@ -78,8 +89,7 @@ class ReplayCaptureBlockTest {
     // A survey lists it first and reads on.
     List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
     assertThat(refusals).hasSize(1);
-    assertThat(refusals.get(0).input())
-        .isEqualTo("capture.content_sha=7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec");
+    assertThat(refusals.get(0).input()).isEqualTo("capture.content_sha=" + otherSha);
   }
 
   @Test

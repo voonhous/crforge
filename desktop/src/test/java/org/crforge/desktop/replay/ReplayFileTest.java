@@ -160,13 +160,13 @@ class ReplayFileTest {
   }
 
   @Test
-  @DisplayName("a replay of 16.402.18 with every field its version writes is read and playable")
-  void replayOfVersion16() throws IOException {
+  @DisplayName("a replay with every field its version writes is read and playable")
+  void replayWithEveryField() throws IOException {
     Path file = Replays.write(folder, "replay.json", Replays.archerQueenWithEveryField());
 
     ReplayFile replay = ReplayFile.read(file, Replays.tables());
 
-    assertThat(replay.dataVersion()).isEqualTo(Replays.VERSION_16);
+    assertThat(replay.dataVersion()).isEqualTo(Replays.tables().version());
     assertThat(replay.header().location()).isEqualTo("PvP_spiritempress");
     assertThat(replay.header().commandTypes())
         .containsExactly(Map.entry(153, 1), Map.entry(189, 1));

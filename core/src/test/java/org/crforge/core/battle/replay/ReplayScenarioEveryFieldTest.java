@@ -13,11 +13,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * Replays of the game client whose data version is 16.402.18, read against that version's tables:
- * its command types, the fields its replays write beyond 14.593.1's, and each side's king level
- * read from its player data.
+ * Replays with every field the game client writes, read against the configured tables: its command
+ * types, the fields its replays write beyond the shape every version's replays share, and each
+ * side's king level read from its player data.
  */
-class ReplayScenarioVersion16Test {
+class ReplayScenarioEveryFieldTest {
 
   private static GameTables tables;
 
@@ -69,7 +69,7 @@ class ReplayScenarioVersion16Test {
   }
 
   @Test
-  void refusesTheCommandTypesOfVersion14_593_1() {
+  void refusesTheCommandTypesOfAnOlderClient() {
     ObjectNode scenario = Scenarios.knightWithEveryField();
     Scenarios.addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
@@ -212,7 +212,7 @@ class ReplayScenarioVersion16Test {
   }
 
   @Test
-  void refusesInAGeneratedCaseTheCommandTypesOfVersion14_593_1() {
+  void refusesInAGeneratedCaseTheCommandTypesOfAnOlderClient() {
     ObjectNode scenario = Scenarios.generatedKnight();
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
 

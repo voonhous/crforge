@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.desktop.battle.TableCopies;
 
 /**
@@ -33,14 +32,11 @@ final class Replays {
   static final int ABILITY = 189;
 
   /**
-   * The fixture as a replay of the game client whose data version is 16.402.18 writes it, with
-   * made-up players: its command types 153 and 189, and every field that version's replays write
-   * beyond the shape all versions share.
+   * The fixture as a replay of the configured version's game client writes it, with made-up
+   * players: its command types 153 and 189, and every field its replays write beyond the shape all
+   * versions share.
    */
-  static final String ARCHER_QUEEN_VERSION_16 = "/replays/archer_queen_version16.json";
-
-  /** The data version of {@link #ARCHER_QUEEN_VERSION_16}. */
-  static final String VERSION_16 = GameVersions.DATA_16_402_18;
+  static final String ARCHER_QUEEN_EVERY_FIELD = "/replays/archer_queen_every_field.json";
 
   private static GameTables tables;
 
@@ -79,9 +75,9 @@ final class Replays {
     return document;
   }
 
-  /** The fixture of version 16.402.18 as a document. */
+  /** The fixture with every field the configured version's replays write, as a document. */
   static ObjectNode archerQueenWithEveryField() {
-    return read(ARCHER_QUEEN_VERSION_16);
+    return read(ARCHER_QUEEN_EVERY_FIELD);
   }
 
   private static ObjectNode read(String resource) {

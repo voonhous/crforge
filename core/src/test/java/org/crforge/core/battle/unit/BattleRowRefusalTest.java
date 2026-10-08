@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -45,7 +47,10 @@ class BattleRowRefusalTest {
   @DisplayName("a spawner whose child limits its spawn group is refused as it spawns")
   void aGroupLimitIsRefusedOnASpawner() {
     Standard1v1Battle match = passiveTowers();
-    assertThat(GameData.unit("Skeleton_EV1").groupMaxSize()).isEqualTo(8);
+    // The evolved Skeleton's row limits its group.
+    assertThat(GameData.unit("Skeleton_EV1").groupMaxSize())
+        .isEqualTo(number(unitRow("Skeleton_EV1"), "GroupMaxSize"))
+        .isPositive();
     UnitData witch = GameData.unit("Witch").toBuilder().spawnCharacter("Skeleton_EV1").build();
     match.deploy(0, witch, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Witch");
 

@@ -1,11 +1,15 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.flag;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -68,23 +72,20 @@ class BattleLoadFirstHitTest {
     assertThat(timing.attackStart() - timing.deployEnd())
         .as("ticks from the deploy's end to the attack")
         .isLessThan(60);
-    // LoadTime 3000 and HitSpeed 4000: the countdown starts at 3000 on the first visit after the
-    // deploy's end and the hit lands as the attack time reaches 4000, 79 ticks after that end.
+    // The countdown starts at LoadTime on the first visit after the deploy's end and the hit lands
+    // on the visit whose attack time, 50 a visit, reaches HitSpeed: HitSpeed in ticks, rounded up,
+    // less one after the deploy's end (79 for LoadTime 3000 and HitSpeed 4000).
+    GameRow sparky = unitRow("ZapMachine");
+    assertThat(flag(sparky, "LoadFirstHit")).isTrue();
+    int hitSpeed = number(sparky, "HitSpeed");
     assertThat(timing.firstShot() - timing.deployEnd())
         .as("ticks from the deploy's end to the first shot")
-        .isEqualTo(79);
+        .isEqualTo((hitSpeed + 49) / 50 - 1);
   }
 
   @Test
   @DisplayName("a Sparky that attacks as soon as it has deployed fires after its whole load")
   void itFiresAfterItsWholeLoad() {
     assertWholeLoad(firstShot(GameData.tables(), GameData.records()));
-  }
-
-  @Test
-  @DisplayName("a Sparky that attacks as soon as it has deployed fires after its whole load (16)")
-  void itFiresAfterItsWholeLoadOnVersion16() {
-    GameTables tables = GameData.tables();
-    assertWholeLoad(firstShot(tables, new BattleRecords(tables)));
   }
 }
