@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
@@ -252,7 +253,7 @@ class BattleChangeDataTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a dash");
     Scene towers = new Scene("Knight");
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(towers.battle, "KingTower_0_0");
+    TowerEntity king = BattleTowers.towerNamed(towers.battle, "KingTower_0_0");
     assertThatThrownBy(() -> king.changeData("Knight", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("cannot take another data row");

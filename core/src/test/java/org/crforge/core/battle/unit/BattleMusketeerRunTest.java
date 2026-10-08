@@ -11,7 +11,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.HitSink;
@@ -88,7 +88,7 @@ class BattleMusketeerRunTest {
     int[] currentTick = {-1};
     SelectionChain selection = musketeer.getUnit().selection();
     HitSink inner = selection.getHitSink();
-    TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(battle, PRINCESS_TOWER);
     selection.setHitSink(
         (target, sequenceIndex, extraTargets, last) -> {
           hitTicks.add(currentTick[0]);
@@ -169,7 +169,7 @@ class BattleMusketeerRunTest {
 
     // Every tick the tower's hit points fall is one impact, recorded with the tick and what the
     // tower stands at afterwards; reaching zero is its death, a second event on the same tick.
-    TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(battle, PRINCESS_TOWER);
     int standing = tower.getHitPoints().getHitPoints();
     List<String> events = new ArrayList<>();
     for (int tick = 0; tick <= PRINCESS_DEATH_TICK; tick++) {
@@ -206,7 +206,7 @@ class BattleMusketeerRunTest {
     Battle battle = match.getBattle();
     CharacterEntity musketeer = deployMusketeer(match, reference);
 
-    TowerEntity tower = towerNamed(battle, PRINCESS_TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(battle, PRINCESS_TOWER);
     for (int i = 0; i < records.size(); i++) {
       battle.step();
       JsonNode record = records.get(i);
@@ -302,16 +302,6 @@ class BattleMusketeerRunTest {
       }
     }
     throw new IllegalStateException("no " + PRINCESS_TOWER + " in the reference");
-  }
-
-  /** The tower of the given name, as the battle holds it. */
-  static TowerEntity towerNamed(Battle battle, String name) {
-    for (BattleEntity entity : battle.getHolder().entities()) {
-      if (entity instanceof TowerEntity tower && tower.name().equals(name)) {
-        return tower;
-      }
-    }
-    throw new IllegalStateException("No tower named " + name);
   }
 
   static String referenceName(CharacterEntity unit) {

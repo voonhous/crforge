@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
@@ -166,7 +167,7 @@ class GoldenKnightChargeTest {
         Shipped.number(KNIGHT, "Range")
             + Shipped.number(KNIGHT, "CollisionRadius")
             + Shipped.number(Shipped.unitRow("Skeleton"), "CollisionRadius");
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(battle.getBattle(), "PrincessTower_1_1");
+    TowerEntity tower = BattleTowers.towerNamed(battle.getBattle(), "PrincessTower_1_1");
     int towerX = tower.getView().getX();
     int towerY = tower.getView().getY();
     standing(battle, "Skeleton", towerX, towerY - range + reach + 500, "near");

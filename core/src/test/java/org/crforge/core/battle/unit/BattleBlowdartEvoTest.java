@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionInstance;
@@ -257,7 +258,7 @@ class BattleBlowdartEvoTest {
           .as("once a hit speed")
           .isEqualTo(POISON_HIT_SPEED / 50);
     }
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(shots.match().getBattle(), TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(shots.match().getBattle(), TOWER);
     boolean controller = false;
     for (ActionInstance run : tower.actionHolder().running()) {
       controller |= run.getAction().name().equals(CONTROLLER);
@@ -293,7 +294,7 @@ class BattleBlowdartEvoTest {
     for (int i = 0; i < 40; i++) {
       match.getBattle().step();
     }
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), TOWER);
     int controllers = 0;
     for (ActionInstance run : tower.actionHolder().running()) {
       if (run instanceof BlowdartControllerRun controller) {

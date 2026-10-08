@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
@@ -198,7 +199,7 @@ class BattleLevelChangeTest {
     assertThat(dead.level()).isEqualTo(11);
     assertThat(knight.level()).isEqualTo(11);
 
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), "PrincessTower_0_1");
+    TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), "PrincessTower_0_1");
     assertThatThrownBy(() -> tower.actionHolder().start(relative(1), tower.actionHolder()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a tower");
