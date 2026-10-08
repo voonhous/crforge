@@ -15,9 +15,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Replays of data version 16.402.19, which game client 16.402.17 runs since 2026-10-06 after
- * 16.402.18. The replay fields and command types are the client's, so a replay of the newer data is
- * read as one of 16.402.18, against the newer data's own tables: the folder of 16.402.19 beside the
- * configured tables, as in a checkout of the game data repository. Skipped without it.
+ * 16.402.18. The replay fields, the generated cases' fields and the command types are the client's,
+ * so a replay or generated case of the newer data is read as one of 16.402.18, against the newer
+ * data's own tables: the folder of 16.402.19 beside the configured tables, as in a checkout of the
+ * game data repository. Skipped without it.
  */
 class ReplayScenarioNewerDataTest {
 
@@ -81,8 +82,15 @@ class ReplayScenarioNewerDataTest {
   }
 
   @Test
-  void hasNoGeneratedCaseFieldsUntilItsRecordedBattlesEstablishThem() {
-    assertThat(ReplayFormat.of(GameVersions.DATA_16_402_19)).isPresent();
-    assertThat(ReplayFormat.generated(GameVersions.DATA_16_402_19)).isEmpty();
+  void readsACaseGeneratedForTheNewerDataByTheFieldsOfTheOlderDatasGeneratedCases() {
+    // A generated case's fields are the client's too: read as on 16.402.18, not refused.
+    ReplayScenario mapping = new ReplayScenario(tables, ScenarioShape.GENERATED);
+    ObjectNode scenario = ScenarioItems.fitted(Scenarios.generatedKnight(), tables);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    assertThat(mapping.translate(scenario).towers())
+        .extracting(Standard1v1Battle.Towers::kingLevel)
+        .containsExactly(1, 1);
+    assertThat(mapping.mapping().get("cmd[i].ct")).startsWith("consumed: 153, a card play, or 189");
   }
 }

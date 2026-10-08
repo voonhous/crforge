@@ -20,7 +20,8 @@ import org.crforge.core.battle.data.GameVersions;
  *
  * <p>A case generated for the tests ({@link ScenarioShape#GENERATED}) is written in 14.593.1's
  * replay shape whatever its version, and is read by a version's generated cases' fields ({@link
- * #generated}), listed once the version's recorded battles of such cases have established them.
+ * #generated}), listed once recorded battles of such cases have established them, for every data
+ * version of the game client they were recorded on.
  *
  * @param dataVersion the data version, as the game tables name it
  * @param rootPins the replay's own fields pinned to one value, by field
@@ -149,19 +150,6 @@ public record ReplayFormat(
           true);
 
   /**
-   * The fields of a case generated for version 16.402.18 ({@link ScenarioShape#GENERATED}): version
-   * 14.593.1's, read with 16.402.18's command types. Such a case leaves out the request lists
-   * ({@code srq}, {@code srs}), the header switches {@code cardlvlmin}, {@code rrb} and {@code
-   * seb}, and the players' king levels ({@code kt}), and keeps 14.593.1's arena. The recorded
-   * battles of such cases play the same with the request lists empty, the switches at the values
-   * this version's replays pin, the arena of this version's replays and a king level of 1 for each
-   * side added, so each king stands at level 1, as the 14.593.1 fields give it; without a king
-   * level, the avatar's exp level does not change it.
-   */
-  public static final ReplayFormat GENERATED_16_402_18 =
-      V14_593_1.forDataVersion(GameVersions.DATA_16_402_18);
-
-  /**
    * The format of each data version whose replays' fields have been decided. The fields are the
    * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
    * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.402.19
@@ -170,15 +158,21 @@ public record ReplayFormat(
   private static final Map<String, ReplayFormat> BY_VERSION = byVersion();
 
   /**
-   * The fields of each data version's generated cases, once the version's recorded battles of such
-   * cases have established them. A 14.593.1 case is in its own version's replay shape.
+   * The fields of each data version's generated cases, once recorded battles of such cases on its
+   * game client have established them. A 14.593.1 case is in its own version's replay shape.
+   *
+   * <p>A case generated for a data version of client 16.402.17 ({@link
+   * GameVersions#CLIENT_16_402_17_DATA}) is read by version 14.593.1's fields, with the version's
+   * command types. Such a case leaves out the request lists ({@code srq}, {@code srs}), the header
+   * switches {@code cardlvlmin}, {@code rrb} and {@code seb}, and the players' king levels ({@code
+   * kt}), and keeps 14.593.1's arena. The recorded battles of such cases on data version 16.402.18
+   * play the same with the request lists empty, the switches at the values this client's replays
+   * pin, the arena of this client's replays and a king level of 1 for each side added, so each king
+   * stands at level 1, as the 14.593.1 fields give it; without a king level, the avatar's exp level
+   * does not change it. The fields are the client's, as its replays' are ({@link #BY_VERSION}), so
+   * they hold on every data version the client runs.
    */
-  private static final Map<String, ReplayFormat> GENERATED_BY_VERSION =
-      Map.of(
-          V14_593_1.dataVersion(),
-          V14_593_1,
-          GENERATED_16_402_18.dataVersion(),
-          GENERATED_16_402_18);
+  private static final Map<String, ReplayFormat> GENERATED_BY_VERSION = generatedByVersion();
 
   /** The table of {@link #BY_VERSION}. */
   private static Map<String, ReplayFormat> byVersion() {
@@ -186,6 +180,16 @@ public record ReplayFormat(
     byVersion.put(V14_593_1.dataVersion(), V14_593_1);
     for (String version : GameVersions.CLIENT_16_402_17_DATA) {
       byVersion.put(version, V16_402_18.forDataVersion(version));
+    }
+    return Map.copyOf(byVersion);
+  }
+
+  /** The table of {@link #GENERATED_BY_VERSION}. */
+  private static Map<String, ReplayFormat> generatedByVersion() {
+    Map<String, ReplayFormat> byVersion = new HashMap<>();
+    byVersion.put(V14_593_1.dataVersion(), V14_593_1);
+    for (String version : GameVersions.CLIENT_16_402_17_DATA) {
+      byVersion.put(version, V14_593_1.forDataVersion(version));
     }
     return Map.copyOf(byVersion);
   }
@@ -213,7 +217,7 @@ public record ReplayFormat(
   /**
    * The format a data version's generated cases are read by ({@link ScenarioShape#GENERATED}).
    * Unlike a replay's, it does not fall back to 14.593.1's: a version's generated cases are read
-   * only once its recorded battles have established their fields.
+   * only once recorded battles on its game client have established their fields.
    *
    * @param dataVersion the data version, or null
    * @return its generated cases' format, or empty when it is not established
