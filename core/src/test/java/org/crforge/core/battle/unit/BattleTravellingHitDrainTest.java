@@ -1,6 +1,8 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,13 +41,13 @@ class BattleTravellingHitDrainTest {
       int volleyPellets,
       int pelletsFlyingOn) {
 
-    /** The centre of the Barbarians' ring: the middle of the two. */
+    /** The centre of the Barbarians' ring: the mean of their points. */
     int centreX() {
-      return (barbarians.get(0)[0] + barbarians.get(1)[0]) / 2;
+      return barbarians.stream().mapToInt(b -> b[0]).sum() / barbarians.size();
     }
 
     int centreY() {
-      return (barbarians.get(0)[1] + barbarians.get(1)[1]) / 2;
+      return barbarians.stream().mapToInt(b -> b[1]).sum() / barbarians.size();
     }
   }
 
@@ -87,7 +89,9 @@ class BattleTravellingHitDrainTest {
       beforeY = recording.ram.getView().getY();
       battle.getBattle().step();
     }
-    assertThat(recording.barbarians).as("the ram died and left its Barbarians").hasSize(2);
+    assertThat(recording.barbarians)
+        .as("the ram died and left its Barbarians")
+        .hasSize(number(unitRow("BattleRam"), "DeathSpawnCount"));
     int deathTick = recording.barbarians.get(0)[2];
     // The pellets of the death tick's volley still in the battle at its end: those that did not
     // stop at the ram.
@@ -113,7 +117,8 @@ class BattleTravellingHitDrainTest {
     // The ring is centred where the ram stood after its step of the death tick, not before it.
     assertThat(death.centreY()).isLessThan(death.beforeY() - 50);
     // The volley killed it in one tick, and its later pellets passed over it.
-    assertThat(death.volleyPellets()).isEqualTo(10);
-    assertThat(death.pelletsFlyingOn()).isBetween(1, 9);
+    int pellets = number(unitRow("Hunter"), "MultipleProjectiles");
+    assertThat(death.volleyPellets()).isEqualTo(pellets);
+    assertThat(death.pelletsFlyingOn()).isBetween(1, pellets - 1);
   }
 }

@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -9,6 +11,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * When a direct hit's buff on damage is applied within its tick, and so how long a 500 ms stun
@@ -18,7 +21,8 @@ import org.junit.jupiter.api.Test;
  * target for all of its 500 / 50 = 10 visits.
  *
  * <p>The scene: the top side's Electro Wizard stands in reach of the bottom side's left princess
- * tower, which shoots back. The Wizard's first zap lands on the tower with ZapFreeze for 500 ms.
+ * tower, which shoots back. The Wizard's first zap lands on the tower with ZapFreeze for 500 ms:
+ * the scene writes the Wizard's stun time and its two targets a hit.
  */
 class BattleBuffOnDamageDrainTest {
 
@@ -84,7 +88,14 @@ class BattleBuffOnDamageDrainTest {
                 }
               }
             });
-    match.deploy(0, GameData.unit("ElectroWizard"), LEVEL, 1, WIZARD_X, WIZARD_Y, "Wizard");
+    match.deploy(
+        0,
+        match.getWorld().getRecords().unit("ElectroWizard"),
+        LEVEL,
+        1,
+        WIZARD_X,
+        WIZARD_Y,
+        "Wizard");
     int attackTime = -1;
     for (int step = 0; step < TICKS; step++) {
       int tick = match.getBattle().getTick();
@@ -110,8 +121,16 @@ class BattleBuffOnDamageDrainTest {
   @DisplayName(
       "the zap's ZapFreeze is applied at the damage drain: whole at the"
           + " end of its tick, held for ten ticks, the tower's attack resuming on the eleventh")
-  void theStunIsAppliedAtTheDrain() {
-    Record record = run(GameData.tables());
+  void theStunIsAppliedAtTheDrain(@TempDir Path folder) throws IOException {
+    Record record =
+        run(
+            GameData.altered(
+                folder,
+                "characters",
+                rows ->
+                    GameData.columns(rows, "ElectroWizard")
+                        .put("BuffOnDamageTime", 500)
+                        .put("MultipleTargets", 2)));
     assertThat(record.left.subList(0, 11))
         .containsExactly(500, 450, 400, 350, 300, 250, 200, 150, 100, 50, -1);
     assertThat(record.resumed).isEqualTo(record.zapTick + 11);

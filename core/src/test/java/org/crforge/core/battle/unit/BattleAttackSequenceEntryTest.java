@@ -87,7 +87,8 @@ class BattleAttackSequenceEntryTest {
 
   /**
    * The configured tables with the hero Elite Archer's second entry altered and its own attack
-   * action removed, so an index set to 1 stays there.
+   * action removed, so an index set to 1 stays there. The columns the launches are measured against
+   * are written: a hit speed of 1100, a start height of 500 and a start distance of 2000.
    */
   private static GameTables archer(Path folder, Consumer<ObjectNode> second) throws IOException {
     return GameData.altered(
@@ -96,6 +97,8 @@ class BattleAttackSequenceEntryTest {
         rows -> {
           ObjectNode columns = GameData.columns(rows, "EliteArcherHero");
           columns.remove("OnAttackSelfAction");
+          columns.put("HitSpeed", 1100).put("ProjectileStartZ", 500);
+          columns.put("ProjectileStartRadius", 2000);
           ArrayNode list = (ArrayNode) columns.get("AttackSequenceList");
           second.accept((ObjectNode) list.get(1));
         });
@@ -103,7 +106,7 @@ class BattleAttackSequenceEntryTest {
 
   /**
    * The configured tables with the Electro Wizard given an order of two entries of its own damage,
-   * each altered as asked.
+   * each altered as asked, and two targets a hit.
    */
   private static GameTables wizard(
       Path folder, Consumer<ObjectNode> first, Consumer<ObjectNode> second) throws IOException {
@@ -112,6 +115,7 @@ class BattleAttackSequenceEntryTest {
         "characters",
         rows -> {
           ObjectNode columns = GameData.columns(rows, "ElectroWizard");
+          columns.put("MultipleTargets", 2);
           columns.putArray("AttackSequence").add(0).add(1);
           columns.put("AttackSequenceMode", "None");
           ArrayNode list = columns.putArray("AttackSequenceList");
@@ -186,9 +190,8 @@ class BattleAttackSequenceEntryTest {
     assertThat(plain).extracting(Launch::projectile).containsOnly("ArcherArrow");
     assertThat(entry).extracting(Launch::projectile).containsOnly("ArcherArrow");
     // The row's ProjectileStartZ 500 and ProjectileStartRadius 2000, then the entry's 4000 and 150.
-    int plainZ = plain.get(0).startZ();
-    assertThat(plain).extracting(Launch::startZ).containsOnly(plainZ);
-    assertThat(entry).extracting(Launch::startZ).containsOnly(plainZ + 3500);
+    assertThat(plain).extracting(Launch::startZ).containsOnly(500);
+    assertThat(entry).extracting(Launch::startZ).containsOnly(4000);
     assertThat(plain).extracting(Launch::distance).allMatch(d -> d >= 1998 && d <= 2002);
     assertThat(entry).extracting(Launch::distance).allMatch(d -> d >= 148 && d <= 152);
     // HitSpeed 1100: 22 steps of 50 at the row's pace, 1100 / 65 rounded either way at 130.

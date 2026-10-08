@@ -1,6 +1,8 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.row;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,7 +23,7 @@ import org.junit.jupiter.api.Test;
  * floors it at 1, after whatever the hit's own stage took off. A damage type's stage - an area
  * effect's damage - lowers the amount by the reduction and floors it at 0 first; a buff's damage
  * over time is lowered by it as the buff hits. So a Zap and a Poison on the Valkyrie hero while its
- * whirlwind's ValkyrieHero_Damage_Reduction_Buff (a reduction of 15) is listed take 15 percent off
+ * whirlwind's ValkyrieHero_Damage_Reduction_Buff is listed take the buff's DamageReduction off
  * twice.
  */
 class DamageEntryReductionTest {
@@ -29,6 +31,10 @@ class DamageEntryReductionTest {
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String REDUCTION_BUFF = "ValkyrieHero_Damage_Reduction_Buff";
+
+  /** What the reduction leaves of an amount, in percent: 100 less the buff's DamageReduction. */
+  private static final int LEFT =
+      100 - number(row("character_buffs", REDUCTION_BUFF), "DamageReduction");
 
   /** The Valkyrie first, in the hero slot, and seven other cards. */
   private static final List<String> HERO_DECK =
@@ -61,7 +67,7 @@ class DamageEntryReductionTest {
     // The same Zap while the buff is listed.
     int reduced = firstHitOnHero(tables, records, "Zap", true);
 
-    assertThat(reduced).isEqualTo(plain * 85 / 100 * 85 / 100);
+    assertThat(reduced).isEqualTo(plain * LEFT / 100 * LEFT / 100);
   }
 
   @Test
@@ -75,7 +81,7 @@ class DamageEntryReductionTest {
     int plain = firstHitOnHero(tables, records, "Poison", false);
     int reduced = firstHitOnHero(tables, records, "Poison", true);
 
-    assertThat(reduced).isEqualTo(plain * 85 / 100 * 85 / 100);
+    assertThat(reduced).isEqualTo(plain * LEFT / 100 * LEFT / 100);
   }
 
   /**

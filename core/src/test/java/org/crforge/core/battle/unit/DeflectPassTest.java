@@ -2,6 +2,10 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.Shipped.actionNames;
+import static org.crforge.core.battle.Shipped.row;
+import static org.crforge.core.battle.Shipped.text;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +40,25 @@ class DeflectPassTest {
   private static final int MONK_SIDE = 0;
 
   private static final int ENEMY_SIDE = 1;
+
+  /** The area effect the Monk's ability spawns as it activates: its Deflect. */
+  private static final String DEFLECT =
+      actionNames(
+              text(
+                  row("character_abilities", text(unitRow("Monk"), "Ability")),
+                  "OnActivationAction"),
+              "SubActions")
+          .stream()
+          .filter(action -> "AreaEffectType".equals(text(action, "SpawnType")))
+          .map(action -> text(action, "SpawnData"))
+          .findFirst()
+          .orElseThrow();
+
+  /** The Magic Archer's arrow. */
+  private static final String ARROW = text(unitRow("EliteArcher"), "Projectile");
+
+  /** The Fireball card's projectile. */
+  private static final String FIREBALL = text(row("spells_other", "Fireball"), "Projectile");
 
   /** A battle with side 0's Monk standing at (3500, 10000), its Deflect cast and alive. */
   private record Scene(
@@ -90,7 +113,7 @@ class DeflectPassTest {
 
   private static boolean deflectAlive(Standard1v1Battle match) {
     for (BattleEntity entity : match.getWorld().getHolder().entities()) {
-      if (entity instanceof AreaEffectEntity area && area.getData().name().equals("Deflect")) {
+      if (entity instanceof AreaEffectEntity area && area.getData().name().equals(DEFLECT)) {
         return true;
       }
     }
@@ -128,7 +151,7 @@ class DeflectPassTest {
     }
     assertThat(scene.launchedBesideDeflect())
         .as("the arrow that hit was launched while the Deflect lived")
-        .anyMatch(p -> p.getData().name().equals("EliteArcherArrow"));
+        .anyMatch(p -> p.getData().name().equals(ARROW));
     assertThat(deflectAlive(scene.match())).as("the Deflect still lives").isTrue();
   }
 
@@ -151,8 +174,8 @@ class DeflectPassTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("EliteArcherArrow")
-        .hasMessageContaining("Deflect");
+        .hasMessageContaining(ARROW)
+        .hasMessageContaining(DEFLECT);
   }
 
   @Test
@@ -207,7 +230,7 @@ class DeflectPassTest {
               }
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("FireballSpell")
-        .hasMessageContaining("Deflect");
+        .hasMessageContaining(FIREBALL)
+        .hasMessageContaining(DEFLECT);
   }
 }

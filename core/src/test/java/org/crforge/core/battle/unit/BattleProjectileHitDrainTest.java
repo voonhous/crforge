@@ -2,6 +2,7 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -25,8 +26,10 @@ import org.junit.jupiter.api.io.TempDir;
  * it stands in reach of the top side's left princess tower, and dashes at it. One of the tower's
  * arrows reaches the Bandit while it dashes, refused; the next reaches it on the step after its
  * dash lands, with 50 ms of its 100 ms immunity left as the step begins; the Bandit's visit of that
- * step counts it to 0. The Bandit's row gives it 150 ms of immunity, which leaves 50 ms after that
- * visit, so the scene's tables give it 100 ms.
+ * step counts it to 0. A longer immunity would leave some after that visit, so the scene's tables
+ * give it 100 ms. The scene writes every column its outcome is read from - both units' rows, the
+ * towers' places, the columns of theirs the walk reads and their shots - so the arrows it sees are
+ * its own and not a version's.
  */
 class BattleProjectileHitDrainTest {
 
@@ -105,20 +108,106 @@ class BattleProjectileHitDrainTest {
     return record;
   }
 
+  /** The configured tables with the scene's columns written, the Bandit's immunity given. */
+  private static GameTables written(Path folder, int immunity) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Assassin")
+              .put("Hitpoints", 354)
+              .put("Damage", 76)
+              .put("DashDamage", 152)
+              .put("DashCooldown", 800)
+              .put("DashImmuneToDamageTime", immunity)
+              .put("DashMinRange", 3500)
+              .put("DashMaxRange", 6000)
+              .put("JumpSpeed", 500)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 600)
+              .put("Speed", 90)
+              .put("Mass", 3)
+              .put("CollisionRadius", 600)
+              .put("Range", 750)
+              .put("SightRange", 6000)
+              .put("DeployTime", 1000);
+          GameData.columns(rows, "Knight")
+              .put("Hitpoints", 690)
+              .put("Damage", 79)
+              .put("HitSpeed", 1200)
+              .put("LoadTime", 700)
+              .put("Speed", 60)
+              .put("Mass", 6)
+              .put("CollisionRadius", 500)
+              .put("Range", 1200)
+              .put("SightRange", 5500)
+              .put("DeployTime", 1000);
+        });
+    writeTowers(folder);
+    return GameTables.load(folder);
+  }
+
+  /** Writes the towers' columns, their shots and their places into an altered copy. */
+  private static void writeTowers(Path folder) throws IOException {
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("Range", 7500)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 800)
+              .put("Hitpoints", 1400)
+              .put("ProjectileStartRadius", 300)
+              .put("ProjectileStartZ", 3000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("Range", 7000)
+              .put("SightRange", 7000)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 500)
+              .put("Hitpoints", 2400)
+              .put("ProjectileStartRadius", 750)
+              .put("ProjectileStartZ", 3500)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "TowerPrincessProjectile")
+              .put("Damage", 50)
+              .put("Speed", 600)
+              .put("Gravity", 60);
+          GameData.columns(rows, "KingProjectile")
+              .put("Damage", 50)
+              .put("Speed", 1000)
+              .put("Gravity", 50);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+  }
+
   @Test
   @DisplayName(
       "an arrow one step after the Bandit's dash lands is dealt at the"
           + " damage drain, once the Bandit's visit has counted its immunity down to 0")
   void theArrowLandsAtTheDrain(@TempDir Path folder) throws IOException {
-    // A chosen synthetic immunity of 100 ms, two visits, in place of the shipped row's 150: short
-    // enough that the Bandit's visit of the step after the landing counts it down to 0 before the
+    // A chosen synthetic immunity of 100 ms, two visits: short enough that the Bandit's visit of
+    // the step after the landing counts it down to 0 before the
     // arrow of that step lands at the drain.
-    Record record =
-        run(
-            GameData.altered(
-                folder,
-                "characters",
-                rows -> GameData.columns(rows, "Assassin").put("DashImmuneToDamageTime", 100)));
+    Record record = run(written(folder, 100));
     assertThat(record.arrows).hasSize(2);
     assertThat(record.arrows.get(0)).as("an arrow during the dash").endsWith(" false 100");
     assertThat(record.arrows.get(1)).isEqualTo((record.landing + 1) + " true 0");

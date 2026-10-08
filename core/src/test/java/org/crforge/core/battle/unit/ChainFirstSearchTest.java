@@ -2,6 +2,9 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,12 +18,14 @@ import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Electro Dragon's chain (electro_dragon_ev1_attack, an ActionChainProjectileAttack): a
  * run's hop timer starts stopped, so its first next-target search waits, like every later one,
  * until the first hop's projectile has gone. The run then searches on the step it finds that
- * projectile gone, and the second hop flies from where the first target stood.
+ * projectile gone, and the second hop flies from where the first target stood. The scene writes the
+ * chain's range, its unbounded length and the targets it remembers.
  */
 class ChainFirstSearchTest {
 
@@ -33,8 +38,16 @@ class ChainFirstSearchTest {
   @DisplayName(
       "the second hop is launched on the step after the first hop's projectile has gone, never"
           + " while it flies")
-  void theFirstSearchWaitsForTheFirstHopToLand() {
-    GameTables tables = GameData.tables();
+  void theFirstSearchWaitsForTheFirstHopToLand(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            actions ->
+                ((ObjectNode) actions.get("electro_dragon_ev1_attack").get("fields"))
+                    .put("ChainRange", 4000)
+                    .put("MaxChainLength", -1)
+                    .put("MaximumTargetsToRememberForRepeatChecks", 2));
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     Battle battle = match.getBattle();
