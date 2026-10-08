@@ -48,12 +48,6 @@ public final class MovementChain {
   /** Where the pass's state requests and a completed charge go, or null to only record them. */
   private MovementRequests requests;
 
-  /** Largest number of pushes the push pass accumulated in one run during this visit. */
-  private int pushContributions;
-
-  /** Largest step, in game units, any displacement of this visit was allowed to spend. */
-  private int largestDisplacementStep;
-
   /**
    * Creates a chain over the state one movement visit works on, with a fixed neighbour list.
    *
@@ -211,7 +205,6 @@ public final class MovementChain {
     } finally {
       neighbours.release(near);
     }
-    pushContributions = Math.max(pushContributions, component.getPushCount());
   }
 
   /**
@@ -230,15 +223,6 @@ public final class MovementChain {
   }
 
   /**
-   * The largest number of neighbours the push pass accumulated a push from in one run during this
-   * visit. The displacement zeroes the accumulators as it spends them, so this is the only record
-   * left of whether the entity was pushed at all this tick.
-   */
-  public int pushContributions() {
-    return pushContributions;
-  }
-
-  /**
    * Runs one displacement on the shared state and hands back what it left behind.
    *
    * @param targetX destination along the arena's width, in game units
@@ -249,31 +233,20 @@ public final class MovementChain {
    */
   public MovementOutcome displace(
       int targetX, int targetY, int budget, int updateFacing, int attackFlag) {
-    int step =
-        Displacement.displace(
-            component,
-            owner,
-            grid,
-            config,
-            globals,
-            queries,
-            this,
-            targetX,
-            targetY,
-            budget,
-            updateFacing,
-            attackFlag);
-    largestDisplacementStep = Math.max(largestDisplacementStep, step);
+    Displacement.displace(
+        component,
+        owner,
+        grid,
+        config,
+        globals,
+        queries,
+        this,
+        targetX,
+        targetY,
+        budget,
+        updateFacing,
+        attackFlag);
     return new MovementOutcome(owner.getX(), owner.getY(), component.getWaypointReached());
-  }
-
-  /**
-   * The largest step, in game units, any displacement of this visit was allowed to spend: the
-   * smaller of the visit's budget, the distance left to the waypoint and the 250-unit substep cap.
-   * It does not include whatever a push added on top of that step.
-   */
-  public int largestDisplacementStep() {
-    return largestDisplacementStep;
   }
 
   /** Recomputes the route direction pair from the route's next waypoint. */

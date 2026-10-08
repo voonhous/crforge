@@ -107,9 +107,6 @@ public class CRForgeGame extends Game {
    * @param files the dropped files' paths
    */
   public void filesDropped(String[] files) {
-    if (versions == null) {
-      return;
-    }
     for (String file : files) {
       Path path = Paths.get(file);
       ReplayGameScreen.Browser browser = null;

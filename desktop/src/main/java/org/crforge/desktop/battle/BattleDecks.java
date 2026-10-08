@@ -6,10 +6,10 @@ import java.util.List;
  * The two decks the visualizer's Ladder battle is played with, by the card row names of the game
  * tables.
  *
- * <p>They are the decks the visualizer showed before it ran on the battle core, mapped from the
- * original engine's card ids to the tables' row names, so the same mechanics stay on show. Neither
- * holds the Mirror, a variant card or a champion, and no slot is marked for an evolution or a hero:
- * every card is played in its basic form at {@link BattleSession#LEVEL}.
+ * <p>They are the decks the visualizer has always shown, named by the tables' row names, so the
+ * same mechanics stay on show. Neither holds the Mirror, a variant card or a champion, and no slot
+ * is marked for an evolution or a hero: every card is played in its basic form at {@link
+ * BattleSession#LEVEL}.
  */
 public final class BattleDecks {
 
