@@ -121,7 +121,6 @@ public final class BattleAdapter {
         winner,
         session.isOver(),
         session.getHalted(),
-        session.getScenarioCase() == null ? null : session.getScenarioCase().name(),
         session.messages(sideNames));
   }
 

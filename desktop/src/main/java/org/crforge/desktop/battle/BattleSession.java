@@ -14,26 +14,17 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
-import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.core.battle.unit.UnitData;
-import org.crforge.desktop.GoldenScenario;
 
 /**
  * One battle on the battle core as the visualizer plays it: the battle, how its cards are played
  * from the screen, and what the player is told when a play is refused.
  *
- * <p>There are two kinds of session:
- *
- * <ul>
- *   <li><b>a Ladder battle</b> ({@link #ladder}): the standard arena with its six towers at {@link
- *       #LEVEL}, played as a Ladder match between two decks, each card played from its king's hand
- *       through the battle's own play path, so the match's gates, its elixir, its hand cycle and
- *       its clock are the battle core's;
- *   <li><b>a golden scenario</b> ({@link #scenario}): the arena with passive towers and the
- *       scenario's unit placed on tick 0, outside any match, as the battle core's own golden
- *       trajectory test places it. It has no hands.
- * </ul>
+ * <p>The screen starts <b>a Ladder battle</b> ({@link #ladder}): the standard arena with its six
+ * towers at {@link #LEVEL}, played as a Ladder match between two decks, each card played from its
+ * king's hand through the battle's own play path, so the match's gates, its elixir, its hand cycle
+ * and its clock are the battle core's. A battle built elsewhere, such as a replay's, is wrapped by
+ * {@link #of}.
  *
  * <p>A play is given as a player gives it, between two steps, and runs {@link
  * Standard1v1Battle#PLAY_DELAY_TICKS} ticks later. The session refuses a play on the spot, with a
@@ -56,12 +47,6 @@ public final class BattleSession {
   public static final int MESSAGES_KEPT = 6;
 
   @Getter private final Standard1v1Battle battle;
-
-  /** The golden scenario this session replays, or null for a Ladder battle. */
-  @Getter private final GoldenScenario.Case scenarioCase;
-
-  /** The scenario's unit, or null for a Ladder battle. */
-  @Getter private final CharacterEntity scenarioUnit;
 
   @Getter private final TrajectoryHub trajectories = new TrajectoryHub();
 
@@ -94,21 +79,12 @@ public final class BattleSession {
   /** A play given and not yet run: its side, its deck index and the cost it sets aside. */
   private record Pending(int side, int deckIndex, int cost) {}
 
-  private BattleSession(
-      Standard1v1Battle battle,
-      GoldenScenario.Case scenarioCase,
-      CharacterEntity scenarioUnit,
-      List<int[]> deckLevels) {
+  private BattleSession(Standard1v1Battle battle, List<int[]> deckLevels) {
     this.battle = battle;
     this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
-    this.scenarioCase = scenarioCase;
-    this.scenarioUnit = scenarioUnit;
     // Attached before the first step, so they hear every tick of the battle.
     trajectories.attach(battle.getWorld());
     battle.getWorld().addObserver(areaHits);
-    if (scenarioUnit != null) {
-      trajectories.follow(scenarioUnit);
-    }
   }
 
   /**
@@ -122,28 +98,12 @@ public final class BattleSession {
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL);
     // Both players' words are 0, so every new session deals and plays the same way.
     battle.startLadderMatch(blue, red, 0, 0);
-    return new BattleSession(battle, null, null, null);
+    return new BattleSession(battle, null);
   }
 
   /** A Ladder battle between the visualizer's default decks, {@link BattleDecks}. */
   public static BattleSession ladder(GameTables tables) {
     return ladder(tables, BattleDecks.BLUE, BattleDecks.RED);
-  }
-
-  /**
-   * A golden scenario: the towers passive and the case's unit placed on tick 0 at the case's point,
-   * so battle tick {@code n} is the reference's tick {@code n}.
-   *
-   * @param tables the game tables
-   * @param scenarioCase the case to replay
-   */
-  public static BattleSession scenario(GameTables tables, GoldenScenario.Case scenarioCase) {
-    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
-    UnitData unit = battle.getWorld().getRecords().unit(scenarioCase.card());
-    CharacterEntity placed =
-        battle.deploy(
-            0, unit, LEVEL, scenarioCase.side(), scenarioCase.deployX(), scenarioCase.deployY());
-    return new BattleSession(battle, scenarioCase, placed, null);
   }
 
   /**
@@ -187,12 +147,12 @@ public final class BattleSession {
           "a session starts before the battle's first step, not on tick "
               + battle.getBattle().getTick());
     }
-    BattleSession session = new BattleSession(battle, null, null, deckLevels);
+    BattleSession session = new BattleSession(battle, deckLevels);
     session.playedCards.putAll(playCards);
     return session;
   }
 
-  /** The Ladder match, or null for a golden scenario. */
+  /** The Ladder match, or null for a battle with no match started on it. */
   public LadderMatch match() {
     return battle.getMatch();
   }
@@ -320,7 +280,7 @@ public final class BattleSession {
    */
   public String cardUnavailableReason(int side, int slot) {
     LadderMatch match = match();
-    if (match == null) return "no hand in a golden scenario (R starts a Ladder battle)";
+    if (match == null) return "no hand in a battle without a match (R starts a Ladder battle)";
     if (halted != null || isOver()) return "the battle has stopped (R resets)";
     MatchCard card = handCard(side, slot);
     if (card == null) return "slot " + (slot + 1) + " is empty";

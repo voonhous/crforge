@@ -8,9 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.crforge.desktop.GoldenScenario;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,8 +16,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A visualizer session on the battle core: its plays go through the battle's play path, a refused
- * play becomes a message instead of a crash, and its golden scenarios and trajectory export run on
- * the battle core's own objects.
+ * play becomes a message instead of a crash, and its trajectory export runs on the battle core's
+ * own objects.
  */
 class BattleSessionTest {
 
@@ -163,24 +161,17 @@ class BattleSessionTest {
   }
 
   @Test
-  @DisplayName("a golden scenario's unit follows its reference trajectory tick for tick")
-  void aGoldenScenarioFollowsItsReference() {
-    for (String name : GoldenScenario.CASE_NAMES) {
-      GoldenScenario.Case reference = GoldenScenario.load(name);
-      BattleSession session = BattleSession.scenario(Tables.get(), reference);
-      GoldenScenario scenario = new GoldenScenario();
-      scenario.begin(reference, session.tick());
-      CharacterEntity unit = session.getScenarioUnit();
+  @DisplayName("a battle with no match started on it has no hands, and a play is refused")
+  void aBattleWithoutAMatchHasNoHands() {
+    BattleSession session = BattleSession.of(new Standard1v1Battle(Tables.get()));
 
-      for (int i = 0; i < reference.records().size(); i++) {
-        assertThat(session.step()).isTrue();
-        scenario.sample(session.tick(), unit.getView().getX(), unit.getView().getY());
-      }
+    assertThat(session.step()).isTrue();
 
-      assertThat(scenario.firstDeviationTick()).as("%s deviates", name).isNull();
-      assertThat(session.match()).isNull();
-      assertThat(session.play(0, 0, 9500, 8500)).isFalse();
-    }
+    assertThat(session.match()).isNull();
+    assertThat(session.handCard(0, 0)).isNull();
+    assertThat(session.cardUnavailableReason(0, 0)).contains("no hand");
+    assertThat(session.play(0, 0, 9500, 8500)).isFalse();
+    assertThat(session.messages()).last().asString().contains("no hand");
   }
 
   @Test

@@ -305,11 +305,6 @@ public final class BattleWorkspace implements Disposable {
     tools.add(diagnostics).padBottom(12).row();
     if (!replay) {
       tools
-          .add(button("Next golden scenario [S]", () -> command.accept(WorkspaceAction.SCENARIO)))
-          .height(32)
-          .padBottom(6)
-          .row();
-      tools
           .add(button("Export trajectories [E]", () -> command.accept(WorkspaceAction.EXPORT)))
           .height(32)
           .padBottom(6)
@@ -625,7 +620,7 @@ public final class BattleWorkspace implements Disposable {
     String time =
         String.format(Locale.ROOT, "%d:%02d", frame.timeMs() / 60000, frame.timeMs() / 1000 % 60);
     summary.setText(
-        (frame.scenario() == null ? (replay ? "Replay" : "Ladder") : frame.scenario())
+        (replay ? "Replay" : "Ladder")
             + "  |  "
             + time
             + (frame.overtime() ? " OT" : "")
@@ -647,7 +642,7 @@ public final class BattleWorkspace implements Disposable {
                 ? (result == null ? "Finished" : result)
                     + (stopReason == null ? "" : " - " + stopReason)
                 : frame.sides().isEmpty()
-                    ? "SCENARIO: pause or step to examine the reference trajectory."
+                    ? "NO MATCH: R starts a Ladder battle."
                     : inspecting
                         ? "INSPECT: click a unit to pin its details."
                         : "DEPLOY: select a card [1-8], then click the arena. Right click cancels.");

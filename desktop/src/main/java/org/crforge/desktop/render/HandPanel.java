@@ -105,7 +105,7 @@ final class HandPanel {
     title.setColor(view.getOrientation().blue(side) ? Color.SKY : Color.SALMON);
     title.setText(
         player == null
-            ? "Scenario - no hand"
+            ? "No match - no hand"
             : "SIDE "
                 + side
                 + " / "

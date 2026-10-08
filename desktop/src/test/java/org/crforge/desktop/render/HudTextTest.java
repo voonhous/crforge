@@ -30,7 +30,6 @@ class HudTextTest {
         winner,
         false,
         halted,
-        null,
         List.of("[100] red plays Knight on tick 100 (cmd0)"));
   }
 
@@ -96,8 +95,7 @@ class HudTextTest {
   @DisplayName("outside a match there are no crowns")
   void noMatch() {
     BattleFrame frame =
-        new BattleFrame(
-            5, 250, false, 0, List.of(), List.of(), false, -1, false, null, "k", List.of());
+        new BattleFrame(5, 250, false, 0, List.of(), List.of(), false, -1, false, null, List.of());
 
     assertThat(HudText.of(frame, ViewState.ladder(), STATUS).crowns()).isNull();
   }

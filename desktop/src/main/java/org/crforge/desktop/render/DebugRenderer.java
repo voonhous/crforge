@@ -32,7 +32,6 @@ public class DebugRenderer {
   private final AoeDamageRenderer aoeDamageRenderer;
   private final CellCostOverlayRenderer cellCostOverlayRenderer;
   private final RouteOverlayRenderer routeOverlayRenderer;
-  private final GoldenTrajectoryRenderer goldenTrajectoryRenderer;
 
   @Getter private boolean drawPaths = false;
   @Getter private boolean drawRanges = false;
@@ -57,7 +56,6 @@ public class DebugRenderer {
     this.aoeDamageRenderer = new AoeDamageRenderer(ctx);
     this.cellCostOverlayRenderer = new CellCostOverlayRenderer(ctx);
     this.routeOverlayRenderer = new RouteOverlayRenderer(ctx);
-    this.goldenTrajectoryRenderer = new GoldenTrajectoryRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -172,8 +170,7 @@ public class DebugRenderer {
       debugOverlayRenderer.renderPathLines(state);
     }
 
-    // 10.5. Golden scenario ghost trajectory and grid routes
-    goldenTrajectoryRenderer.render(gridStatus.golden());
+    // 10.5. Grid routes
     if (drawRoutes) {
       routeOverlayRenderer.render(engine);
     }
@@ -222,7 +219,7 @@ public class DebugRenderer {
 
   /**
    * The status column: one line per overlay that is on, then the active and pending pathfinding
-   * modes, the cell under the mouse while the cost overlay is up, and the golden scenario's lines.
+   * modes and the cell under the mouse while the cost overlay is up.
    */
   private List<String> statusLines(GameEngine engine, GridDebugStatus gridStatus) {
     List<String> lines = new ArrayList<>();
@@ -256,7 +253,6 @@ public class DebugRenderer {
           cellCostOverlayRenderer.hoverStatus(
               engine, gridStatus.hoverCellCol(), gridStatus.hoverCellRow()));
     }
-    lines.addAll(gridStatus.scenarioLines());
     return lines;
   }
 

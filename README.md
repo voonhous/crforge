@@ -46,7 +46,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 The debug visualizer runs the battle core, which needs the game tables: set `crforge.gameTables=<folder>` in `~/.gradle/gradle.properties` (or pass `-Pcrforge.gameTables=<folder>`, or set `CRFORGE_GAME_TABLES`). It prints the tables folder, data version and content sha at startup, and its key map; see
 [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing
-overlays (`G`, `N`), the golden scenarios (`S`) and the trajectory export (`E`).
+overlays (`G`, `N`) and the trajectory export (`E`).
 
 ### Python / RL Training
 
