@@ -28,11 +28,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line. Held by tornado_group_off_lane and"
-            + " tornado_heavy_light_tower: the radial share by the configured speed, the"
-            + " direction, the count and the two push bits. Translated but held by no run: the"
-            + " perpendicular share, the mass factor, the coincident centre and the skipped"
-            + " jumping and dashing states.")
+        "Agrees with the reference line for line. Held by the reference battles card_Tornado and"
+            + " spell_tornado_into_push: the radial share by the configured speed, the direction,"
+            + " the count and the two push bits. Translated but held by no run: the perpendicular"
+            + " share, the mass factor, the coincident centre and the skipped jumping and dashing"
+            + " states.")
 public final class BuffPush {
 
   private static final int PERCENT = 100;

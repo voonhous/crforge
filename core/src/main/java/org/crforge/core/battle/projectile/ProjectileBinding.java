@@ -27,9 +27,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the projectile as the context of its actions' expressions, and"
-            + " get_ping_pong_projectile_distance as the distance its sweep stored, held by"
-            + " ice_axe_barbarians; a variable's name as the projectile's own variable, held by"
-            + " hero_barb_log. Not modelled: every other name, refused as the row is built.")
+            + " get_ping_pong_projectile_distance as the distance its sweep stored, held by the"
+            + " reference battle evo_axeman_vs_musketeer; a variable's name as the projectile's"
+            + " own variable, held by hero_barb_log. Not modelled: every other name, refused as"
+            + " the row is built.")
 final class ProjectileBinding implements ActionBinding {
 
   private static final int PINGPONG_DISTANCE =

@@ -25,15 +25,15 @@ import org.crforge.core.pathfinding.grid.TileMap;
     note =
         "Settled: the order of the steps, the column interval and its two parities, the formation"
             + " radius chosen from the card, then the unit's spawn radius, then its collision"
-            + " radius, the clamp into the column, the creation inset, the unit's lane from its own"
-            + " position with the placed point as the reference, and its start; a spell card"
+            + " radius, the clamp into the column, the creation inset, the unit's lane from its"
+            + " own position with the placed point as the reference, and its start; a spell card"
             + " placed with no unit, its point handed to the cast; a building card placed as a"
             + " troop card is, its unit a building; a card's list of characters after its groups,"
             + " each at its own offset, the bottom side's negated, the top side's across the"
             + " width on the right half when the card mirrors it; the first unit's radius, angle"
-            + " shift and deploy time for every index. Not modelled: the elixir and the other gates"
-            + " before the map check. A card whose first row tunnels hands its units to the tunnel"
-            + " in place of a start, held by miner_princess.")
+            + " shift and deploy time for every index. Not modelled: the elixir and the other"
+            + " gates before the map check. A card whose first row tunnels hands its units to the"
+            + " tunnel in place of a start, held by the reference battle card_Miner.")
 public final class CardPlacement {
 
   /** How far from every edge of the arena a unit is created. */

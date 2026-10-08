@@ -38,15 +38,17 @@ import org.crforge.core.pathfinding.target.TargetingState;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Answers the movement pass from the live grid and the unit's own state; held by"
-            + " the 53 reference walks. Supplied: every map cell an acceptable endpoint, no status effects in the speed inputs, and a unit that"
-            + " always carries both components. Given its buffs, as a battle's unit is, it carries"
-            + " the modifier component, and the follower's time step is scaled by them, held by"
-            + " clone_golem_group. The ground and hovering tests read the unit's layer from its"
-            + " tag word and live height, never its row: a knocked unit under FORCE_IS_AIR takes"
-            + " the single-node route an air unit takes, held by mega_knight_ev1_uppercut; a"
-            + " hovering unit under either force tag hovers no longer, held by"
-            + " GridMovementAnswersTest.")
+        "Answers the movement pass from the live grid and the unit's own state; held by the walks"
+            + " of the reference battles and the six Knight walks GridGoldenTrajectoryTest"
+            + " replays. Supplied: every map cell an acceptable endpoint, no status effects in"
+            + " the speed inputs, and a unit that always carries both components. Given its"
+            + " buffs, as a battle's unit is, it carries the modifier component, and the"
+            + " follower's time step is scaled by them, held by the reference battles card_Clone"
+            + " and spell_clone_into_push. The ground and hovering tests read the unit's layer"
+            + " from its tag word and live height, never its row: a knocked unit under"
+            + " FORCE_IS_AIR takes the single-node route an air unit takes, held by"
+            + " cg_megaknight_evo_uppercut_giant; a hovering unit under either force tag hovers"
+            + " no longer, held by GridMovementAnswersTest.")
 public final class GridMovementQueries implements MovementQueries {
 
   /** Every relocation this visit asked for, in order. */

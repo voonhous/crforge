@@ -36,13 +36,16 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line: the starting elixir, the regeneration, the cap"
-            + " and the waste, the production stop, the whole elixir and the spend. Held by"
-            + " match_elixir_150s, both elixirs on every tick, and the adds a collector and a"
-            + " death make by match_elixir_sources. The last card and its copy are held by"
-            + " mirror_knight and mirror_fireball. The slot flags, the counts and each play's item"
-            + " are held by evolution_knight and evolution_hero_mirror. Not modelled: a boost's"
-            + " scaled rate"
-            + " and a paused regeneration, which no Ladder battle has, and the views' counters.")
+            + " and the waste, the production stop, the whole elixir and the spend. Held by the"
+            + " elixir every reference battle observes on both sides every tick, among them"
+            + " timeline_spells_through_rates, and the adds a collector and a death make by"
+            + " cg_elixir_collector_played and card_ElixirGolem. The last card and its copy are"
+            + " held by golden-gaps-v1/mirror_after_troop and mirror_after_spell. The slot flags,"
+            + " the counts and each play's item are held by knight_evolved_third_play and the"
+            + " hero reference battles (hero_giant, deck_hero_and_champion); a Mirror of an"
+            + " evolved play is not held by a recorded battle. Not modelled: a boost's scaled"
+            + " rate and a paused regeneration, which no Ladder battle has, and the views'"
+            + " counters.")
 public final class MatchSide {
 
   /** The elixir's scale: ten thousand to a whole elixir. */

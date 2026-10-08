@@ -22,11 +22,12 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the start's hold and target, the push point by the nearest tower"
             + " of the target's side and then the opposite king, the push through the entry past"
             + " the gates, the action on the target, the blend cleared after a push that went"
-            + " through, the hold for the follow-up delay, the end"
-            + " with another target in range or none, the mark of the target in the targeting"
-            + " queue and the target forgotten as it leaves; held by mega_knight_ev1_uppercut."
-            + " Refused: the push through the request's gates, the follow-up dash, the start"
-            + " without a current target and the facing's push point with no tower or king.")
+            + " through, the hold for the follow-up delay, the end with another target in range"
+            + " or none, the mark of the target in the targeting queue and the target forgotten"
+            + " as it leaves; held by the reference battles cg_megaknight_evo_uppercut_giant and"
+            + " evo_megaknight_vs_musketeer. Refused: the push through the request's gates, the"
+            + " follow-up dash, the start without a current target and the facing's push point"
+            + " with no tower or king.")
 public final class MegaKnightUppercut extends RowAction {
 
   /** How far the target is pushed. */

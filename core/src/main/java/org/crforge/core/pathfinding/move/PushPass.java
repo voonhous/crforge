@@ -35,10 +35,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line: early outs, skip order, the box and"
-            + " circle rejects, the coincident case, the magnitude chain and the write order."
-            + " Held: two and three equal units pushing apart, and the multi-unit parity"
-            + " scenes. Not held by any reference run: unequal masses, the height layers, the"
+        "Agrees with the reference line for line: early outs, skip order, the box and circle"
+            + " rejects, the coincident case, the magnitude chain and the write order. Held: two"
+            + " and three equal units pushing apart, and the multi-unit parity scenes. Not"
+            + " checked against a recorded battle: unequal masses, the height layers, the"
             + " no-pushed-by flags and edge separation. A crown tower as a static neighbour was"
             + " held at a mass of 0 by the tower-contact run, the walk behind a unit's own king"
             + " and six placement runs, all removed: a tower is loaded at a mass of 20, held by"

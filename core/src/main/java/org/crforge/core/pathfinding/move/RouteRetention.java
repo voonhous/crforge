@@ -24,8 +24,8 @@ import org.crforge.core.pathfinding.grid.Route;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line, but no fixture calls it with an"
-            + " overlay that changed, because no building appears or dies in a reference walk.")
+        "Agrees with the reference line for line; a call with an overlay that changed is not"
+            + " checked against a recorded battle.")
 public final class RouteRetention {
 
   private RouteRetention() {

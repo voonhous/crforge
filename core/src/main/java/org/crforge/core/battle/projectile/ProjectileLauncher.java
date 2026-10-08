@@ -31,19 +31,21 @@ import org.crforge.core.pathfinding.target.TargetingState;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the count, the spread and the angle base, the start from the launch columns,"
-            + " the aim at the stored reference position, the level and the hand-over in the attack"
-            + " tick. Held by the Musketeer run's launch ticks and start positions; the custom first"
-            + " projectile, the battle random draw of each further projectile and the line's fan by"
-            + " hunter_point_blank and hunter_range. Held by no run: the circle's turn. Supplied, not"
-            + " settled: the start radius and height are the unit's columns without an"
-            + " attack sequence step's override. Settled too: the hand-over of the projectile to"
-            + " the launcher's runs, which only the dart choice answers. Held by"
-            + " ability_hero_mega_minion_vs_musketeer: a buff's projectile in place of every"
+            + " the aim at the stored reference position, the level and the hand-over in the"
+            + " attack tick. Held by the projectile positions the reference battles"
+            + " card_Musketeer and musketeer_s1 observe from each launch, and by"
+            + " BattleProjectileFlightTest; the custom first projectile, the battle random draw"
+            + " of each further projectile and the line's fan by card_Hunter,"
+            + " evo_hunter_vs_musketeer and cg_hunter_evo_net_hogrider_giant. Held by no run: the"
+            + " circle's turn. Supplied, not settled: the start radius and height are the unit's"
+            + " columns without an attack sequence step's override. Settled too: the hand-over of"
+            + " the projectile to the launcher's runs, which only the dart choice answers. Held"
+            + " by ability_hero_mega_minion_vs_musketeer: a buff's projectile in place of every"
             + " projectile of the hit, after the launcher's runs; refused with several"
             + " projectiles, a custom first one or a picked dart. Not modelled: the special"
-            + " projectile column, a building target's edge"
-            + " adjustment, a burst that keeps its aim, and a line's fan without a target, which is"
-            + " refused. The pushback a launch gives its owner is asked for after each launch.")
+            + " projectile column, a building target's edge adjustment, a burst that keeps its"
+            + " aim, and a line's fan without a target, which is refused. The pushback a launch"
+            + " gives its owner is asked for after each launch.")
 public final class ProjectileLauncher {
 
   private ProjectileLauncher() {

@@ -17,10 +17,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the cause's id at the start, the wait while it is listed and the"
-            + " action on the object, itself the cause, once it is not; held by"
-            + " firecracker_snowball_goblins, where each released Goblin takes the snowball's"
-            + " after-release slow the tick after the snowball leaves. Refused: a run with no"
-            + " cause.")
+            + " action on the object, itself the cause, once it is not; held by the reference"
+            + " battle evo_snowball_on_musketeer, where a released unit takes the evolved"
+            + " Snowball's after-release slow. Refused: a run with no cause.")
 public final class RunActionOnInstigatorDeath extends RowAction {
 
   /** The action scheduled once the cause has left. */

@@ -19,12 +19,13 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start, the four phases, their pushes and FORCE_IS_GROUND,"
-            + " the re-trigger and the finish; held by vines_group and vines_tower. The climb's one"
-            + " step is held by BattleAirToGroundTest and the re-trigger of a hold on the ground by"
-            + " BattleShapeSelectorTest, by a selector written in Vines' form; the re-trigger of a"
-            + " hold in the air or of a climb by"
-            + " nothing. Refused: the path reset of an air unit at the end.")
+        "Settled line for line: the start, the four phases, their pushes and FORCE_IS_GROUND, the"
+            + " re-trigger and the finish; held by the reference battles spell_vines_into_push,"
+            + " cg_vines_king_giant_minipekka and card_Vines. The climb's one step is held by"
+            + " BattleAirToGroundTest and the re-trigger of a hold on the ground by"
+            + " BattleShapeSelectorTest, by a selector written in Vines' form; the re-trigger of"
+            + " a hold in the air or of a climb by nothing. Refused: the path reset of an air"
+            + " unit at the end.")
 final class AirToGroundRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */

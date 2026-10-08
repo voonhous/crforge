@@ -32,11 +32,11 @@ import org.crforge.core.pathfinding.target.RangeTest;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start's hold and target, the push point, the push through"
-            + " the entry, the action on the target, the hold for the delay, the ends, the mark"
-            + " and the leave notice; held by mega_knight_ev1_uppercut. The blend cleared after a"
-            + " push the entry took, on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest."
-            + " Refused: the start"
+        "Settled line for line: the start's hold and target, the push point, the push through the"
+            + " entry, the action on the target, the hold for the delay, the ends, the mark and"
+            + " the leave notice; held by the reference battles cg_megaknight_evo_uppercut_giant"
+            + " and evo_megaknight_vs_musketeer. The blend cleared after a push the entry took,"
+            + " on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. Refused: the start"
             + " without a current target, which reads the targeting component's previous"
             + " reference, a push point with no tower or king found, which turns to the facing,"
             + " and a target other than a character with a movement component.")

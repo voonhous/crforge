@@ -18,18 +18,18 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Every rule agrees with the reference in order and in comparison. Held for"
-            + " towers as the only targets. Not held by any fixture: the restriction columns"
-            + " other than air and ground, the excluded configuration, buffs that hide a"
-            + " target, and the jumping and in-game-pathfind states. The pending-damage rule's"
-            + " refusal is held by the battle references whose selections and drops it"
-            + " decides, lava_hound_river, tombstone_death_hook and"
-            + " match_elixir_150s among them, and its shield gate by pending_shield_guards; its"
-            + " dash, healing and timed-unit keeps by unit tests alone. Supplied: a target is"
-            + " ground exactly when it is not air, which the"
-            + " standard game reads from two separate columns. The bypass keeps a dead king, as"
-            + " the native card_Pekka, card_MegaKnight, card_MightyMiner and card_BossBandit runs"
-            + " do through the end delay.")
+        "Every rule agrees with the reference in order and in comparison. Held for towers as the"
+            + " only targets. Not held by any fixture: the restriction columns other than air and"
+            + " ground, the excluded configuration, buffs that hide a target, and the jumping and"
+            + " in-game-pathfind states. The pending-damage rule's refusal is held by the battle"
+            + " references whose selections and drops it decides,"
+            + " troops_lavahound_and_giant_skeleton_deaths, card_Tombstone and"
+            + " timeline_spells_through_rates among them, and its shield gate by"
+            + " status_guards_shields_vs_valkyrie_and_archers; its dash, healing and timed-unit"
+            + " keeps by unit tests alone. Supplied: a target is ground exactly when it is not"
+            + " air, which the standard game reads from two separate columns. The bypass keeps a"
+            + " dead king, as the reference battles card_Pekka, card_MegaKnight, card_MightyMiner"
+            + " and card_BossBandit do through the end delay.")
 public final class ReferenceValidator {
 
   /** Mode used by the re-check of a target that is already held. */

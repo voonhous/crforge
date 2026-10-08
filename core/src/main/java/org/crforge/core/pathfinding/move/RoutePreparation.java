@@ -26,9 +26,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line; held by the 53 reference walks for a"
-            + " unit with a tower as its reference. Not held: the friendly-only occlusion"
-            + " path, a same-path epsilon below one, and a replan that finds no route.")
+        "Agrees with the reference line for line; held by the walks of the reference battles and"
+            + " the six Knight walks GridGoldenTrajectoryTest replays for a unit with a tower as"
+            + " its reference. Not held: the friendly-only occlusion path, a same-path epsilon"
+            + " below one, and a replan that finds no route.")
 public final class RoutePreparation {
 
   private RoutePreparation() {

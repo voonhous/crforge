@@ -18,8 +18,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled and held by the recorded cases: the state off at first, the timer moving only"
             + " while the condition disagrees and reset when it agrees, both turns and their"
             + " actions, and that it never ends; its turns on the evolved Furnace's walk held by"
-            + " building_evolutions_barbarians. Supplied: a row without a condition reads as"
-            + " false, which no recorded case reaches.")
+            + " the reference battle evo_firespirithut_vs_giant. Supplied: a row without a"
+            + " condition reads as false, which no recorded case reaches.")
 public final class FlipFlop extends RowAction {
 
   /** Milliseconds one step moves the timer on. */

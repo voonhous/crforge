@@ -22,12 +22,13 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled and held by the recorded cases and the native runs of its hook: the start gate"
+        "Settled and held by the recorded cases and the recorded runs of its hook: the start gate"
             + " before the choice, the per-part conditions taking precedence, the first true one"
             + " chosen, the part past the last condition when none is true, the condition modulo"
             + " the list, none for a negative one or none at all, and the part scheduled with no"
-            + " delay and the select's cause; held by gift_select's draws at scheduling. The"
-            + " select's delay passed on to the part, held by building_evolutions_barbarians. Not"
+            + " delay and the select's cause; the draws at scheduling held by"
+            + " BattleSelectDrawTest. The select's delay passed on to the part, held by the"
+            + " reference battles evo_firespirithut_vs_giant and evo_cannon_vs_giant. Not"
             + " modelled: the context the chosen part inherits.")
 public final class Select extends RowAction {
 

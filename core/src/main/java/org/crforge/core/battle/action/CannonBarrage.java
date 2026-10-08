@@ -21,10 +21,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: every bomb in the first update, its point from the absolute offset"
-            + " and the owner's y forward for its side, its row, side and level, no parent, and the"
-            + " finish; held by building_evolutions_barbarians. Refused: the relative offset, the"
-            + " team rule of a mode of four players, a bomb off the arena and the shared columns.")
+        "Settled line for line: every bomb in the first update, its point from the absolute"
+            + " offset and the owner's y forward for its side, its row, side and level, no"
+            + " parent, and the finish; held by the reference battle evo_cannon_vs_giant."
+            + " Refused: the relative offset, the team rule of a mode of four players, a bomb off"
+            + " the arena and the shared columns.")
 public final class CannonBarrage extends RowAction {
 
   /** Each bomb's distance ahead of the owner, in tiles of 500. */

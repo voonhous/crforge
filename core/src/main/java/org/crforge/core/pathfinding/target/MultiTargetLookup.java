@@ -37,11 +37,11 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line on the lookup. Held by electro_wizard_tower_defence, whose"
-            + " wizard hits the nearest other Knight in range, or its reference again when there"
-            + " is none. The recursion for an index above 0 is held by no run: no card asks for a"
-            + " third target. A list of unique targets is refused by the owner, as no row sets"
-            + " one.")
+        "Settled line for line on the lookup. Held by the reference battles card_ElectroWizard,"
+            + " status_ewiz_stuns_darkprince_charge and hero_electrowizard, whose wizard hits a"
+            + " second target in range, or its reference again when there is none. The recursion"
+            + " for an index above 0 is held by no run: no card asks for a third target. A list"
+            + " of unique targets is refused by the owner, as no row sets one.")
 public final class MultiTargetLookup {
 
   /** What a remembered candidate ranks above its own priority. */

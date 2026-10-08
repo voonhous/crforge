@@ -12,11 +12,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled and held by golemite_convert: the swap on the owner, the target read before it"
-            + " and kept through the validator and the setter unless the row resets it. Held by"
-            + " goblin_demolisher_knight: a reset target and a walking row whose lifetime drains."
-            + " A projectile row's swap on the evolved Executioner's axe, held by"
-            + " ice_axe_barbarians.")
+        "Settled and held by BattleChangeDataTest: the swap on the owner, the target read before"
+            + " it and kept through the validator and the setter unless the row resets it. Held"
+            + " by the reference battle card_GoblinDemolisher and BattleChangeDataTest: a reset"
+            + " target and a walking row whose lifetime drains. A projectile row's swap on the"
+            + " evolved Executioner's axe, held by evo_axeman_vs_musketeer.")
 public final class ChangeGameObjectData extends RowAction {
 
   private final String newCharacterData;

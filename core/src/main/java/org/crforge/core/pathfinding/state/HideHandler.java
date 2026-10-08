@@ -22,11 +22,12 @@ import org.crforge.core.pathfinding.GridEntityState;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the counter's step in every state, the turn back from part-way down, the"
-            + " wrap, the step of 0, the hide start and the rise of a building, and the hidden"
-            + " test. Held by tesla_giant_passing, tesla_hidden_spells and tesla_ev1_knights."
-            + " Not modelled: hiding before the first hit, and the rise's area object and push,"
-            + " which no shipped row sets.")
+        "Settled: the counter's step in every state, the turn back from part-way down, the wrap,"
+            + " the step of 0, the hide start and the rise of a building, and the hidden test."
+            + " Held by the reference battles card_Tesla, grid_snowball_on_hidden_tesla,"
+            + " evo_tesla_vs_giant and evo_tesla_ring_giant_musketeer. Not modelled: hiding"
+            + " before the first hit, and the rise's area object and push, which no shipped row"
+            + " sets.")
 public final class HideHandler {
 
   /** The effect a building plays as it starts to hide. */

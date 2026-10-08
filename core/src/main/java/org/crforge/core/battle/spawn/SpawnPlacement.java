@@ -22,12 +22,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Settled and held by the recorded placements: the ring for a source that is not a"
             + " character, a single child on the point or one unit right of it, and children in"
-            + " front of a character source by its collision radius and theirs, held by"
-            + " tombstone_life and goblin_hut_life; the ring turned by a character source's angle"
-            + " shift and facing, held by night_witch; the ring turned over by the lane and the"
-            + " team, held by skeleton_barrel_tower and skeleton_barrel_shot_down. Not modelled:"
-            + " the in-front offset of a source that is not a character; a character source's"
-            + " minimum radius on a ring; and the step back a unit without hit points takes.")
+            + " front of a character source by its collision radius and theirs, held by the"
+            + " reference battles card_Tombstone and card_GoblinHut; the ring turned by a"
+            + " character source's angle shift and facing, held by card_DarkWitch; the ring"
+            + " turned over by the lane and the team, held by card_SkeletonBalloon and"
+            + " evo_skeletonballoon_vs_musketeer. Not modelled: the in-front offset of a source"
+            + " that is not a character; a character source's minimum radius on a ring; and the"
+            + " step back a unit without hit points takes.")
 public final class SpawnPlacement {
 
   /** The in-front test, asked of a point. */

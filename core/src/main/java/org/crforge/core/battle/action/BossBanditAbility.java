@@ -38,8 +38,8 @@ import org.crforge.core.pathfinding.GridEntityState;
         "Settled line for line: the warp and lock ticks from the battle tick, the lock asked at"
             + " once, its claim and second ask, the wait while dashing, the warp row scheduled on"
             + " the unit itself on the warp tick, the release countdown, the finish and the"
-            + " release it queues. Held by boss_bandit_ability_tower and"
-            + " boss_bandit_ability_charges. Refused: tags, a singleton, a next action, the gates,"
+            + " release it queues. Held by the reference battles ability_boss_bandit and"
+            + " card_BossBandit_until_stop. Refused: tags, a singleton, a next action, the gates,"
             + " a speed byte clear, no warp row, a release delay of 0 and an owner other than a"
             + " character.")
 public final class BossBanditAbility extends RowAction {

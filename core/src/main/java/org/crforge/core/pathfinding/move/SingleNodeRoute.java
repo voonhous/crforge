@@ -18,9 +18,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line; held by hog_river's jump. A fixed dash"
-            + " distance, which turns the stop-in-range byte off, is set by no row and not"
-            + " carried.")
+        "Agrees with the reference line for line; held by the river jumps of the reference"
+            + " battles card_HogRider and grid_zap_on_hog_river_jump. A fixed dash distance,"
+            + " which turns the stop-in-range byte off, is set by no row and not carried.")
 public final class SingleNodeRoute {
 
   private SingleNodeRoute() {

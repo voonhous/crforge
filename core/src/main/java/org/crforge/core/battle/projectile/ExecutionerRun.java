@@ -22,15 +22,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the level and rarity at the start, the damage hook's stored hit id"
-            + " and its amount by the edge distance from the start copy, at the level and rarity"
-            + " in the card mode whatever the crown-tower mode, the hit hook's match on that hit"
-            + " id, the strong hit's action on the target with the target as its cause and its"
-            + " push from the start copy while the sweep is in its first half and the target"
-            + " moves; held by ice_axe_barbarians and axe_man_ev1_barbarians. Held by no run: the"
-            + " hit hook on a hit other than the last one asked for, which every hit path asks"
-            + " first, a strong hit on the way out on a target without a movement component, and"
-            + " a hook on an axe whose context left.")
+        "Settled line for line: the level and rarity at the start, the damage hook's stored hit"
+            + " id and its amount by the edge distance from the start copy, at the level and"
+            + " rarity in the card mode whatever the crown-tower mode, the hit hook's match on"
+            + " that hit id, the strong hit's action on the target with the target as its cause"
+            + " and its push from the start copy while the sweep is in its first half and the"
+            + " target moves; held by the reference battle evo_axeman_vs_musketeer. Held by no"
+            + " run: the hit hook on a hit other than the last one asked for, which every hit"
+            + " path asks first, a strong hit on the way out on a target without a movement"
+            + " component, and a hook on an axe whose context left.")
 final class ExecutionerRun extends ActionInstance {
 
   private final ExecutionerEvoProjectile row;

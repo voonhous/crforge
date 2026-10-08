@@ -49,14 +49,14 @@ import org.crforge.core.pathfinding.index.SegmentTests;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the connection to the followed object's chain head, or the one"
-            + " after it, the waits for the cast and its end, the tether's updates, activation rows,"
-            + " damage passes, hits and hit actions, the death area made once at the connected"
-            + " object's point as it leaves, held in its place, and ended as the area effect"
-            + " leaves; held by goblinstein_tower, goblinstein_doctor_first and"
-            + " goblinstein_ability_tower; the hit's hidden test lifted, which no run reaches,"
-            + " is translated as the game's. The tags set on both ends each tether update are not"
-            + " set, as no battle code reads them; the presentation of the beam and its targets is"
-            + " not modelled.")
+            + " after it, the waits for the cast and its end, the tether's updates, activation"
+            + " rows, damage passes, hits and hit actions, the death area made once at the"
+            + " connected object's point as it leaves, held in its place, and ended as the area"
+            + " effect leaves; held by the reference battles ability_goblinstein,"
+            + " card_Goblinstein and random_battle16_s0009; the hit's hidden test lifted, which"
+            + " no run reaches, is translated as the game's. The tags set on both ends each"
+            + " tether update are not set, as no battle code reads them; the presentation of the"
+            + " beam and its targets is not modelled.")
 final class GoblinsteinRun extends ActionInstance {
 
   /** The first step, which connects. */

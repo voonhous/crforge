@@ -40,13 +40,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
         "Settled: the collection in id order through the shared validator, the air and ground"
             + " gates, the building-aware circle test, one tower-slot entity per area, the limit,"
             + " the even split rounded up, the crown-tower damage for a crown tower and the floor"
-            + " of one, with a projectile or a character as the owner. Held by the Wizard run's"
-            + " three impacts and the Valkyrie runs' areas, the owner's own side among them."
-            + " Supplied, not settled: nothing is untouchable. The second circle and the id list"
-            + " of a chain of projectiles are held by arrows_skeletons, not the partner of a 2v2"
-            + " tower. Not modelled: the area objects of their own kind, the heal of the owner's side,"
-            + " the push's floor and visuals, and the death presentation. The push is held by a"
-            + " Golemite's death damage.")
+            + " of one, with a projectile or a character as the owner. Held by the areas of the"
+            + " reference battles card_Wizard, card_Valkyrie, troops_knight_vs_valkyrie and"
+            + " troops_left_bridge_crowd. Supplied, not settled: nothing is untouchable. The"
+            + " second circle and the id list of a chain of projectiles are held by card_Arrows,"
+            + " arrows_s0_tower and spell_arrows_into_push, not the partner of a 2v2 tower. Not"
+            + " modelled: the area objects of their own kind, the heal of the owner's side, the"
+            + " push's floor and visuals, and the death presentation. The push is held by the"
+            + " death damage of golem_death_pushes_minipekka_pekka.")
 public final class AreaDamage {
 
   private AreaDamage() {

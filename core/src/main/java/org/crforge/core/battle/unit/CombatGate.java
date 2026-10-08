@@ -30,15 +30,17 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
     status = FidelityStatus.PARTIAL,
     note =
         "The gate agrees with the reference for the tags, the waiting state, the acting test and"
-            + " the drop and switch of a dead, deploying or stunned entity, held by zap_knight for"
-            + " the stun, and the casting state's KeepCurrentTarget, held by giant_buffer_knights."
-            + " A clone's setup state switches it off and keeps the reference, as the standard"
-            + " game does not reset a clone's target, held by clone_golem_group. An ability's"
-            + " follow-up state switches it off and keeps the reference, held by the Monk's runs,"
-            + " which take the attack up again from its load time as the state ends."
-            + " Not modelled: a Projectile buff (refused with its row)"
-            + " and the touchdown query (Ladder answers 0). A dashing row's null path asks for a"
-            + " resume, which the gate runs, held by bandit_knight's death.")
+            + " the drop and switch of a dead, deploying or stunned entity, held by the reference"
+            + " battles card_Zap and spell_zap_into_push for the stun, and the casting state's"
+            + " KeepCurrentTarget, held by cg_giantbuffer_buffs_friends. A clone's setup state"
+            + " switches it off and keeps the reference, as the standard game does not reset a"
+            + " clone's target, held by card_Clone and spell_clone_into_push. An ability's"
+            + " follow-up state switches it off and keeps the reference, held by ability_monk,"
+            + " which takes the attack up again from its load time as the state ends. Not"
+            + " modelled: a Projectile buff (refused with its row) and the touchdown query"
+            + " (Ladder answers 0). A dashing row's null path asks for a resume, which the gate"
+            + " runs, held by the Bandit's reference battles card_Assassin,"
+            + " grid_clone_over_bandit_dash and grid_log_over_bandit_dash_end.")
 final class CombatGate {
 
   /** The time step the gate scales by the hit speed multipliers, as the attack timer does. */

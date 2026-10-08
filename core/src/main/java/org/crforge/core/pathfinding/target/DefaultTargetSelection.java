@@ -24,14 +24,16 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "The published switches, the candidate filter, the smallest-offset rule, the ranking"
-            + " and the lane rule's operand - the unit's elapsed time, so a unit is kept to its"
-            + " own lane's towers for its first ten walking visits - agree with the reference,"
-            + " and the 54 reference walks hold them with the princess towers as the only"
-            + " candidates and the king as the seed. Not settled, and"
-            + " shared with the reference walks: the seed threshold is the squared approximate"
-            + " distance where the standard game appears to use the true one. The alternate"
-            + " seed, the goal mode and the six-object branch are not held by any fixture.")
+        "The published switches, the candidate filter, the smallest-offset rule, the ranking and"
+            + " the lane rule's operand - the unit's elapsed time, so a unit is kept to its own"
+            + " lane's towers for its first ten walking visits - agree with the reference, and"
+            + " the walks of the reference battles and the six Knight walks"
+            + " GridGoldenTrajectoryTest replays hold them with the princess towers as the only"
+            + " candidates and the king as the seed; the lane rule's first ten visits by"
+            + " golden-gaps-v1/walk_knight_left_inner. Not settled, and shared with the model's"
+            + " Knight walks: the seed threshold is the squared approximate distance where the"
+            + " standard game appears to use the true one. The alternate seed, the goal mode and"
+            + " the six-object branch are not held by any fixture.")
 public final class DefaultTargetSelection {
 
   /** Score no candidate can reach, used as the starting threshold. */

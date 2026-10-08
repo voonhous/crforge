@@ -5,8 +5,8 @@ package org.crforge.core.pathfinding.combat;
  * damage and the battle they are in.
  *
  * <p>Every method has a default that gives the answer a plain tower or troop gives in a running
- * standard battle, so an implementation only overrides what it changes. These are the answers the
- * reference run was produced with: nothing is untouchable, nothing blocks damage, and neither side
+ * standard battle, so an implementation only overrides what it changes. These are the answers of a
+ * plain unit and a plain tower: nothing is untouchable, nothing blocks damage, and neither side
  * carries a buff that changes the amount.
  */
 public interface DamageQueries {

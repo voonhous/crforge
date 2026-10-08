@@ -57,16 +57,17 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " claims by the lock and the filter, the first-capture and captured-object actions,"
             + " the capture buff with the projectile as parent and source, the claims nearest"
             + " first by priority, the eased drag, the put on the point, the route reset and the"
-            + " hide action while the unit is not hidden; held by firecracker_snowball_goblins,"
-            + " where it captures four Goblins and carries them. Held by no run: a capture that"
-            + " leaves or dies, a lock another holds, two units equally near and a unit within the"
-            + " hide distance before the drag time has passed. On a character, as the evolved Goblin"
-            + " Cage, with the drag delay and pause, the pull centre, the cooldown, the action per"
-            + " completed capture, the damage per hit and no capture buff: held by"
-            + " evo_goblincage_vs_giant, where it captures a Giant and hits it until the cage leaves."
-            + " The height change of a completed capture is pushed each step (the loader's -15000"
-            + " with floor 0 on both rows, which folds to no change on a unit standing at height"
-            + " 0). Refused: the shared columns, and the capture tags' readers it does not model.")
+            + " hide action while the unit is not hidden; held by the reference battle"
+            + " evo_snowball_on_musketeer, where the evolved Snowball captures. Held by no run: a"
+            + " capture that leaves or dies, a lock another holds, two units equally near and a"
+            + " unit within the hide distance before the drag time has passed. On a character, as"
+            + " the evolved Goblin Cage, with the drag delay and pause, the pull centre, the"
+            + " cooldown, the action per completed capture, the damage per hit and no capture"
+            + " buff: not held by a recorded battle (no 16.402.18 reference plays the evolved"
+            + " Goblin Cage). The height change of a completed capture is pushed each step (the"
+            + " loader's -15000 with floor 0 on both rows, which folds to no change on a unit"
+            + " standing at height 0). Refused: the shared columns, and the capture tags' readers"
+            + " it does not model.")
 public final class CaptureCharacter extends RowAction {
 
   /**

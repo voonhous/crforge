@@ -24,11 +24,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against reference routes compared node for node and against the route"
-            + " length of every tick of the 53 reference walks: neighbour order, step costs,"
-            + " the heuristic, open-node refresh and the termination rule. The accumulating"
-            + " heuristic, closed-node reopening and the expansion budget are switched off in"
-            + " the standard game and are held by this class's own tests only.")
+        "Settled against reference routes compared node for node and against the route length of"
+            + " every tick of the six Knight walks GridGoldenTrajectoryTest replays, and through"
+            + " the positions they observe, the walks of the reference battles: neighbour order,"
+            + " step costs, the heuristic, open-node refresh and the termination rule. The"
+            + " accumulating heuristic, closed-node reopening and the expansion budget are"
+            + " switched off in the standard game and are held by this class's own tests only.")
 public final class RouteSearch {
 
   /** Column step, row step and step factor of each neighbour, in the order they are examined. */

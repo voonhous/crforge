@@ -51,19 +51,19 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the owner's point, the start height, the aim from the two"
-            + " expressions evaluated on the owner, no target, the owner as launcher and owner and"
-            + " its level; held by building_evolutions_barbarians, where the evolved Furnace"
-            + " launches its spirits behind it to either side. The plain class's owner height and"
-            + " a target dropped by the gate are held by evo_wallbreakers_vs_musketeer, where the"
-            + " evolved Wall Breaker, shot dead on its way, launches its barrel on its own point."
-            + " The cause as the source when it is the owner, and the location class aimed by"
-            + " neither expression at no target, are held by ability_hero_musketeer, where the"
-            + " hero Musketeer's turret launches its knockback on its own point as it starts."
-            + " The target from the context and the start's move toward it, held by hero_balloon,"
-            + " where the hero Balloon's skeleton trooper falls on the enemy its ability found."
-            + " Refused: a cause other than the owner, an aim at a held target of either class"
-            + " without a context name, the count, the positions, the offsets and a clone as the"
-            + " owner.")
+            + " expressions evaluated on the owner, no target, the owner as launcher and owner"
+            + " and its level; held by the reference battle evo_firespirithut_vs_giant, where the"
+            + " evolved Furnace launches its spirits behind it to either side. The plain class's"
+            + " owner height and a target dropped by the gate are held by"
+            + " evo_wallbreakers_vs_musketeer, where the evolved Wall Breaker, shot dead on its"
+            + " way, launches its barrel on its own point. The cause as the source when it is the"
+            + " owner, and the location class aimed by neither expression at no target, are held"
+            + " by ability_hero_musketeer, where the hero Musketeer's turret launches its"
+            + " knockback on its own point as it starts. The target from the context and the"
+            + " start's move toward it, held by hero_balloon, where the hero Balloon's skeleton"
+            + " trooper falls on the enemy its ability found. Refused: a cause other than the"
+            + " owner, an aim at a held target of either class without a context name, the count,"
+            + " the positions, the offsets and a clone as the owner.")
 public final class SpawnProjectile extends RowAction {
 
   /** The projectile row's name. */

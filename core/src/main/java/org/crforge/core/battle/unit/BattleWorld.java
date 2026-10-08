@@ -123,37 +123,41 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the index and the overlay are rebuilt in the pre-pass from the id-ordered"
-            + " snapshot of the arena entities and retired in the post-pass, the overlay's per-side"
-            + " change flags are copied once per tick, a projectile is in neither and is handed to"
-            + " the holder in the tick of its launch, and a dead entity leaves the holder in the"
-            + " closing cleanup of the tick it dies - the king tower excepted, which never does -"
-            + " when every arena entity is told at once and its default target lists lose it; the"
-            + " death handler scheduling the death action and, unless the entity killed itself,"
-            + " the killed action on the dying entity with its killer as the cause, and a"
-            + " champion handed over after its spawn with no effect on it; the death slot inside"
-            + " the killing hit - the death damage around the dying entity with its pushback, and"
-            + " the death spawn on its ring - held by golemite_convert, golemite_death_damage and"
-            + " tombstone_death_hook; the death spawn's children flying back to the ring, held by"
-            + " golem_death_pushback; a ring turned over by the dying object's lane and team, its"
-            + " children given a fixed priority, held by skeleton_barrel_tower and"
-            + " skeleton_barrel_shot_down; a single child on the dying object's point and a bomb's"
-            + " death slot as its deploy ends, without the death hooks, held by"
-            + " giant_skeleton_bomb; several death spawn children in front of the dying object,"
-            + " a lifetime's death without the death handler and a building spawner's children in"
-            + " front of it, held by tombstone_life and goblin_hut_life; an area effect created by"
-            + " a death or placed directly and its hits dealt, held by area_effect_direct and"
-            + " the native card_RageBarbarian run, whose bottle, a child without hit points, deploys"
-            + " for its row's deploy time though its spawn does not ask; a troop card's projectile cast before its units and a unit's"
-            + " push as it enters the deploying state, finding nobody in a card play's command"
-            + " pass, held by mega_knight_group and mega_knight_jump, and the push's tests on what"
-            + " it finds by a unit that waits its turn, held by no run. Refused: a death whose row"
-            + " sets a column of the slot not"
-            + " modelled, a least radius that draws, a child without hit points that has a range, a"
-            + " spawner's turned or drawn ring and a spawner child without hit points, a building,"
-            + " pathing or starting an action, and a death hook with no attacker or no pending"
-            + " pass ahead of it. Left out: the elixir a death gives. Not"
-            + " modelled: the game mode's own per-tick work beside the index and the overlay, and"
-            + " the copy of the attacker the game makes as a death hook's cause.")
+            + " snapshot of the arena entities and retired in the post-pass, the overlay's"
+            + " per-side change flags are copied once per tick, a projectile is in neither and is"
+            + " handed to the holder in the tick of its launch, and a dead entity leaves the"
+            + " holder in the closing cleanup of the tick it dies - the king tower excepted,"
+            + " which never does - when every arena entity is told at once and its default target"
+            + " lists lose it; the death handler scheduling the death action and, unless the"
+            + " entity killed itself, the killed action on the dying entity with its killer as"
+            + " the cause, and a champion handed over after its spawn with no effect on it; the"
+            + " death slot inside the killing hit - the death damage around the dying entity with"
+            + " its pushback, and the death spawn on its ring - held by the reference battles"
+            + " golem_death_pushes_minipekka_pekka, troops_golem_dies_mid_fight, card_Tombstone"
+            + " and hero_tombstone; the"
+            + " death spawn's children flying back to the ring, held by"
+            + " golem_death_pushes_minipekka_pekka; a ring turned over by the dying object's lane"
+            + " and team, its children given a fixed priority, held by card_SkeletonBalloon and"
+            + " evo_skeletonballoon_vs_musketeer; a single child on the dying object's point and"
+            + " a bomb's death slot as its deploy ends, without the death hooks, held by"
+            + " giant_skeleton_bomb_pushes_knight and card_GiantSkeleton; several death spawn"
+            + " children in front of the dying object, a lifetime's death without the death"
+            + " handler and a building spawner's children in front of it, held by card_Tombstone"
+            + " and card_GoblinHut; an area effect created by a death or placed directly and its"
+            + " hits dealt, held by status_lumberjack_death_rage, the spell reference battles and"
+            + " card_RageBarbarian, whose bottle, a child without hit points, deploys for its"
+            + " row's deploy time though its spawn does not ask; a troop card's projectile cast"
+            + " before its units and a unit's push as it enters the deploying state, finding"
+            + " nobody in a card play's command pass, held by card_MegaKnight,"
+            + " card_MegaKnight_until_stop and grid_log_under_megaknight_jump, and the push's"
+            + " tests on what it finds by a unit that waits its turn, held by no run. Refused: a"
+            + " death whose row sets a column of the slot not modelled, a least radius that"
+            + " draws, a child without hit points that has a range, a spawner's turned or drawn"
+            + " ring and a spawner child without hit points, a building, pathing or starting an"
+            + " action, and a death hook with no attacker or no pending pass ahead of it. Left"
+            + " out: the elixir a death gives. Not modelled: the game mode's own per-tick work"
+            + " beside the index and the overlay, and the copy of the attacker the game makes as"
+            + " a death hook's cause.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -4194,23 +4198,25 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the Log's
-   * and the Barbarian Barrel's hits: the damage at the level, the id list, and no push from a hit
-   * that kills; held by no run: the own side spared, the crown-tower share, the untouchable
-   * listing, the air and jump checks, and the push itself. Held by the Log's and the Bowler's over
-   * a jumping Mega Knight: a dash under a row with a jump height spared, and the Log's hit once the
-   * Mega Knight has landed under it. In order: none on its own side when it hits enemies only, none
-   * on an entity it has hit already; an untouchable character is listed as hit and spared; a
-   * character on a layer the projectile does not reach, in the air, or, for a projectile that does
-   * not reach the air, in a jump or in a dash under a row with a jump height, is spared without
-   * being listed. An entity with hit points takes the projectile's damage at its level, or its
-   * crown-tower share, as the listening runs of a projectile with an action holder change it - the
-   * evolved Executioner's controller in place of it - from the direction of the pass's centre, and
-   * is listed as hit, a carrier whose row attaches its riders with the ids of its riders (held by
-   * the Bowler's over a Goblin Giant, whose riders' Spear Goblins it then passes over); then a
-   * character whose movement is still on is pushed the row's pushback away from the projectile, the
-   * row's push-all lifting the gates. A projectile that stops at collisions is finished by a hit
-   * that landed on an entity with hit points left, and the pass ends; held by the Hunter's pellets.
+   * A flying body's hit on one entity it covers, as the translated hit runs it. Held by the
+   * reference battles card_Log, spell_log_into_push, card_BarbLog and spell_barblog_into_push: the
+   * damage at the level, the id list, and no push from a hit that kills; held by no run: the own
+   * side spared, the crown-tower share, the untouchable listing, the air and jump checks, and the
+   * push itself. Held by the Log's and the Bowler's over a jumping Mega Knight: a dash under a row
+   * with a jump height spared, and the Log's hit once the Mega Knight has landed under it. In
+   * order: none on its own side when it hits enemies only, none on an entity it has hit already; an
+   * untouchable character is listed as hit and spared; a character on a layer the projectile does
+   * not reach, in the air, or, for a projectile that does not reach the air, in a jump or in a dash
+   * under a row with a jump height, is spared without being listed. An entity with hit points takes
+   * the projectile's damage at its level, or its crown-tower share, as the listening runs of a
+   * projectile with an action holder change it - the evolved Executioner's controller in place of
+   * it - from the direction of the pass's centre, and is listed as hit, a carrier whose row
+   * attaches its riders with the ids of its riders (held by the Bowler's over a Goblin Giant, whose
+   * riders' Spear Goblins it then passes over); then a character whose movement is still on is
+   * pushed the row's pushback away from the projectile, the row's push-all lifting the gates. A
+   * projectile that stops at collisions is finished by a hit that landed on an entity with hit
+   * points left, and the pass ends; held by the Hunter's pellets in the reference battle
+   * card_Hunter.
    *
    * @return true when the hit finished the projectile
    */

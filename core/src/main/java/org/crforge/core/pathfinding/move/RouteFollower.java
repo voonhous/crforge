@@ -43,13 +43,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line. Held: the ordinary walk, arrival, and"
-            + " the node advance at 1000 units; the water crossing of a jump-enabled unit, its"
-            + " single-node route and the jump visit to its landing, by hog_river; the"
-            + " stop-movement and wait timers by golem_death_pushback; the dash visit, its stop"
-            + " in range, its constant time and height profile and speeds of 250 and above, by"
-            + " bandit_knight and mega_knight_group. Not held by any fixture: the held-position"
-            + " head and a dash stopped on water.")
+        "Agrees with the reference line for line. Held: the ordinary walk, arrival, and the node"
+            + " advance at 1000 units; the water crossing of a jump-enabled unit, its single-node"
+            + " route and the jump visit to its landing, by the reference battles card_HogRider"
+            + " and grid_zap_on_hog_river_jump; the stop-movement and wait timers by"
+            + " golem_death_pushes_minipekka_pekka; the dash visit, its stop in range, its"
+            + " constant time and height profile and speeds of 250 and above, by card_Assassin,"
+            + " grid_clone_over_bandit_dash, card_MegaKnight and grid_log_under_megaknight_jump."
+            + " Not held by any fixture: the held-position head and a dash stopped on water.")
 public final class RouteFollower {
 
   /** Largest distance one displacement may cover, in game units. */

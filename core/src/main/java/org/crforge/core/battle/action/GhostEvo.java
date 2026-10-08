@@ -46,12 +46,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Settled line for line: the latch set at the start and from the Ghost's invisibility in"
             + " every step, after the damage area's countdown, which makes the area only on"
             + " landing on 0; the hit notice gated by the latch, the reference and its position"
-            + " kept, the two areas across the line to the point, the summon runs listed on"
-            + " them, the countdown and an area made at once for a delay of 0; the summon run's"
+            + " kept, the two areas across the line to the point, the summon runs listed on them,"
+            + " the countdown and an area made at once for a delay of 0; the summon run's"
             + " countdown, spawn and finish; and the reference forgotten as it leaves. Held by"
-            + " buff_after_hits_ghost_evo. Refused: the shared columns no row sets, a summon"
-            + " row's instant hit, its action on summons and a spawn without deploy, a hit with"
-            + " no reference and an owner other than a character.")
+            + " the reference battles evo_ghost_vs_musketeer and cg_ghost_evo_cloned. Refused:"
+            + " the shared columns no row sets, a summon row's instant hit, its action on summons"
+            + " and a spawn without deploy, a hit with no reference and an owner other than a"
+            + " character.")
 public final class GhostEvo extends RowAction {
 
   /** The step every countdown takes, in milliseconds. */

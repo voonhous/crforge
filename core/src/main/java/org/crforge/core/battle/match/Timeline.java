@@ -22,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Agrees with the reference line for line: the advance's three loops, their carry, the"
             + " overtime gate and the reload of all three entries on every move, and the freeze."
-            + " Held by match_elixir_150s: the rate at 2400. Not held: the sections' move into"
+            + " Held by the reference battles timeline_spells_through_rates and"
+            + " timeline_overtime_crown: the rate at 2400. Not held: the sections' move into"
             + " overtime and the time running out, the forced rate step and bonus time, which the"
             + " Ladder timeline never asks for.")
 public final class Timeline {

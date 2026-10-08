@@ -29,8 +29,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the request, the claim, the lock held by another, the queued"
             + " release, the pre-pass's drop and release queue and the post-pass's grant per"
-            + " channel, the first of equals keeping it. Held by giant_buffer_knights. The"
-            + " timeouts are never set in this build and are carried as none.")
+            + " channel, the first of equals keeping it. Held by the reference battle"
+            + " cg_giantbuffer_buffs_friends. The timeouts are never set in this build and are"
+            + " carried as none.")
 public final class TargetLocks {
 
   /** The two channels the manager is made with. */

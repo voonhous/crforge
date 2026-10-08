@@ -20,9 +20,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the age as the lifetime less the countdown, the walk to the last"
             + " age reached, the action at a new place scheduled on the area effect, the count"
-            + " without repeats, the finish of a list that does not match; held by"
-            + " baby_dragon_ev1_wind. Refused: an action other than an effect, and a run on an"
-            + " owner other than an area effect.")
+            + " without repeats, the finish of a list that does not match; held by the reference"
+            + " battle evo_babydragon_vs_musketeer. Refused: an action other than an effect, and"
+            + " a run on an owner other than an area effect.")
 public final class AliveTimer extends RowAction {
 
   /** The ages, in milliseconds, in order. */

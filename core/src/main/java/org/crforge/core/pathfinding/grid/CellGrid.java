@@ -30,9 +30,9 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the overlay's two buffers and their rotation, the per-side hash and"
-            + " change flags. Not held by any reference: a tick on which the set of occluders"
-            + " actually changes, since no building appears or dies in a reference walk.")
+        "Settled: the overlay's two buffers and their rotation, the per-side hash and change"
+            + " flags. Not checked against a recorded battle: a tick on which the set of"
+            + " occluders actually changes.")
 public final class CellGrid {
 
   /** One entry per side of the match. */

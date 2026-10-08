@@ -9,10 +9,10 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  * The balance switches the targeting visit and the validator read that are not already part of
  * {@link PathfindingGlobals}.
  *
- * <p>Every value is the published one. The reference trajectories were produced with six of these
- * switches left at zero, which is not a decision about them: a lone unit walking to a tower never
- * reaches any of the six, so the trajectories say nothing about them either way and are reproduced
- * identically with the published values.
+ * <p>Every value is the published one. The model's Knight walks GridGoldenTrajectoryTest replays
+ * were produced with six of these switches left at zero, which is not a decision about them: a lone
+ * unit walking to a tower never reaches any of the six, so those walks say nothing about them
+ * either way and are reproduced identically with the published values.
  *
  * @param rangeExtensionToKeepTarget extra range, in game units, a unit is allowed before it gives
  *     up a reference it already has
@@ -43,8 +43,9 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Every switch carries its published value. No reference walk reaches six of"
-            + " them, so those six are held by the value test and not by behaviour.")
+        "Every switch carries its published value. Six of them are held by the value test and not"
+            + " by behaviour: the model walks this was settled against never reach them, and"
+            + " whether a reference battle does is not checked.")
 @Builder(toBuilder = true)
 public record TargetingGlobals(
     int rangeExtensionToKeepTarget,

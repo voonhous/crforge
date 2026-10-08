@@ -17,7 +17,8 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
         "The attack range of a unit agrees with the reference, and so does the range it"
             + " advertises to the rest of the battle, which reads the owner's real movement"
             + " component: a walking continuous-damage attacker advertises the 500 units less it"
-            + " stops at. Held by inferno_dragon_zap and mighty_miner_knight_tower.")
+            + " stops at. Held by the reference battles status_inferno_dragon_ramp_retarget_stun,"
+            + " card_InfernoDragon and card_MightyMiner_until_stop.")
 public final class AttackRange {
 
   /** Attack range against a type-3 reference, which is fought at contact distance. */

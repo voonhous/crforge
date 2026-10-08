@@ -30,10 +30,10 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the destination by side and toward the middle, walked back off"
             + " the blocked cells, the once-per-object buff of the query's finds with the"
             + " projectile as the source at its level, the step by speed and the arrival's last"
-            + " buff and release with no impact; held by firecracker_snowball_goblins, where it"
-            + " buffs four Goblins and a princess tower; the destination by side and walked back"
-            + " also by BattleSnowballEvoTest. Held by no run: a distance across, which no shipped"
-            + " row sets, the arrival's last buff reaching what the step before did not, and a"
+            + " buff and release with no impact; held by the reference battle"
+            + " evo_snowball_on_musketeer; the destination by side and walked back also by"
+            + " BattleSnowballEvoTest. Held by no run: a distance across, which no shipped row"
+            + " sets, the arrival's last buff reaching what the step before did not, and a"
             + " building the query takes by its square that a circle would not. Refused: a"
             + " deflection and the shared columns.")
 public final class RollingProjectile extends RowAction {

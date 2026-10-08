@@ -41,11 +41,12 @@ import org.crforge.core.pathfinding.state.StateSetter;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Wires the index, the validator, the selector and default selection into one"
-            + " answer per tick; held by the 53 reference walks. A reference to an entity that"
-            + " leaves is cleared directly and not through the setter's null path. Hits go to"
-            + " a sink that applies nothing until the owner installs its own. The extra targets"
-            + " of a hit that reaches several come from the lookup, over a query of its own.")
+        "Wires the index, the validator, the selector and default selection into one answer per"
+            + " tick; held by the walks of the reference battles and the six Knight walks"
+            + " GridGoldenTrajectoryTest replays. A reference to an entity that leaves is cleared"
+            + " directly and not through the setter's null path. Hits go to a sink that applies"
+            + " nothing until the owner installs its own. The extra targets of a hit that reaches"
+            + " several come from the lookup, over a query of its own.")
 public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueries {
 
   /** Arena length in routing cells, used by the default selection's lane bonus. */

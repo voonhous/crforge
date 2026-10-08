@@ -31,9 +31,10 @@ import org.crforge.core.pathfinding.GridEntityState;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against the 53 reference walks, whose routes move when any of the six"
-            + " costs does. The water-permission branches and the blocked bit are not reached"
-            + " by a ground unit on the standard map and are held by its own tests only.")
+        "Settled against the walks of the reference battles and the six Knight walks"
+            + " GridGoldenTrajectoryTest replays. The water-permission branches and the blocked"
+            + " bit are not reached by a ground unit on the standard map and are held by its own"
+            + " tests only.")
 public final class CellCostField {
 
   private CellCostField() {

@@ -24,10 +24,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: cost field, wrapper and search composed with the standard settings,"
-            + " held by the 53 reference walks; the river jump's water permission held by"
-            + " hog_river. Supplied: the water permissions are passed in by the caller, and no"
-            + " caller passes a hovering unit's.")
+        "Settled: cost field, wrapper and search composed with the standard settings, held by the"
+            + " walks of the reference battles and the six Knight walks GridGoldenTrajectoryTest"
+            + " replays; the river jump's water permission held by the reference battles"
+            + " card_HogRider and grid_zap_on_hog_river_jump. Supplied: the water permissions are"
+            + " passed in by the caller, and no caller passes a hovering unit's.")
 public final class GridSearchService {
 
   private GridSearchService() {

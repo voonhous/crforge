@@ -28,8 +28,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
     note =
         "Settled: the area effect as the context of its actions' expressions; x and y as its"
             + " point, team_index as its side's low bit, team_y_direction as -1 for 0 and 1 for"
-            + " anything else, map_width as the arena's cells times 500, held by"
-            + " graveyard_tower_defender and graveyard_right_side1; rand as one draw from the"
+            + " anything else, map_width as the arena's cells times 500, held by the reference"
+            + " battles card_Graveyard and spell_graveyard_into_push; rand as one draw from the"
             + " battle's random source. Not modelled: every other name, refused as the row is"
             + " built.")
 final class AreaEffectBinding implements ActionBinding {

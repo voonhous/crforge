@@ -31,15 +31,16 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the point of the holder's owner, the side, level and parent from"
             + " the cause, the level re-based on the area effect's rarity, and the queue in the"
-            + " pass that ran the action; held by goblin_curse_knights, where the Goblin Curse's"
-            + " area effect spawns its base on its first pass, and by goblin_demolisher_knight,"
-            + " where the Goblin Demolisher spawns the area effect that follows it. The owner as"
-            + " the source, its side, level and parent the owner's, held by"
-            + " valkyrie_ev1_barbarians, where the area effect follows the owner too, and by"
-            + " royal_giant_ev1_knights. The offsets, the one along the length by the owner's side,"
-            + " held by ability_hero_wizard, where the hero Wizard's air projectile spawns its two"
-            + " area effects 1000 beyond its point. Refused: the location class, the level index,"
-            + " a cause that is missing or a clone, and an area effect that follows its target.")
+            + " pass that ran the action; held by the reference battles card_GoblinCurse and"
+            + " spell_goblincurse_into_push, where the Goblin Curse's area effect spawns its base"
+            + " on its first pass, and by card_GoblinDemolisher, where the Goblin Demolisher"
+            + " spawns the area effect that follows it. The owner as the source, its side, level"
+            + " and parent the owner's, held by evo_valkyrie_vs_musketeer, where the area effect"
+            + " follows the owner too, and by evo_royalgiant_vs_musketeer. The offsets, the one"
+            + " along the length by the owner's side, held by ability_hero_wizard, where the hero"
+            + " Wizard's air projectile spawns its two area effects 1000 beyond its point."
+            + " Refused: the location class, the level index, a cause that is missing or a clone,"
+            + " and an area effect that follows its target.")
 public final class SpawnAreaEffect extends RowAction {
 
   private final String areaEffect;

@@ -38,14 +38,15 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the offset by the side, the clamp, the vertical search off water"
             + " and blocked cells, the single position write, the pending damage reset, the route"
-            + " and reference cleared, the projectiles aimed at the unit dropped. Held by"
-            + " boss_bandit_ability_tower, boss_bandit_ability_charges and, for the dropped arrow,"
-            + " ability_hero_elite_archer. The flying warp's start, steps and arrival, held by"
-            + " ability_hero_mega_minion_vs_musketeer. Not modelled: the two effects. Refused:"
-            + " another mode, a relative speed, an instant injected warp, the tower offset, the"
-            + " untargetable step, tags, a singleton instant warp, a next action that waits, the"
-            + " gates, an owner other than a character, a flying warp the runner starts and a"
-            + " projectile aimed at the unit whose row keeps its target through the reset.")
+            + " and reference cleared, the projectiles aimed at the unit dropped. Held by the"
+            + " reference battles ability_boss_bandit and card_BossBandit_until_stop and, for the"
+            + " dropped arrow, ability_hero_elite_archer. The flying warp's start, steps and"
+            + " arrival, held by ability_hero_mega_minion_vs_musketeer. Not modelled: the two"
+            + " effects. Refused: another mode, a relative speed, an instant injected warp, the"
+            + " tower offset, the untargetable step, tags, a singleton instant warp, a next"
+            + " action that waits, the gates, an owner other than a character, a flying warp the"
+            + " runner starts and a projectile aimed at the unit whose row keeps its target"
+            + " through the reset.")
 public final class WarpCharacter extends RowAction {
 
   /**

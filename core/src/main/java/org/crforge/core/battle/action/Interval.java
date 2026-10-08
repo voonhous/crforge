@@ -21,14 +21,15 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled and held by the recorded cases: the start value, the half-rate step, the reload"
             + " by adding the interval, the action scheduled on the owner, the pause tag and that"
             + " it never ends; a pause tag of several names, any one of which holds it, and a"
-            + " singleton run re-triggered with nothing restarted, held by"
-            + " building_evolutions_barbarians. The rate percentage answers as given, asked each"
-            + " step, a rate below 1 moving nothing: the row builder gives a row that follows the"
-            + " hit speed what its owner's buffs make of 100 (held by evo_electrogiant up to its"
-            + " first pulse's hit, and by a recorded evolved Electro Giant under Rage whose second"
-            + " and third pulses come 7 and 28 ticks early), else a row affected by the spawn speed"
-            + " its owner's spawn rate, which no run holds with a buff, else 100. The action"
-            + " carries the context the run's start carried, held by ActionContextTest.")
+            + " singleton run re-triggered with nothing restarted, held by the reference battles"
+            + " evo_firespirithut_vs_giant and evo_cannon_vs_giant. The rate percentage answers"
+            + " as given, asked each step, a rate below 1 moving nothing: the row builder gives a"
+            + " row that follows the hit speed what its owner's buffs make of 100 (held by"
+            + " evo_electrogiant up to its first pulse's hit, and by a recorded evolved Electro"
+            + " Giant under Rage whose second and third pulses come 7 and 28 ticks early), else a"
+            + " row affected by the spawn speed its owner's spawn rate, which no run holds with a"
+            + " buff, else 100. The action carries the context the run's start carried, held by"
+            + " ActionContextTest.")
 public final class Interval extends RowAction {
 
   /** The rate of a row that follows no speed, and the hit speed a row that follows it scales. */

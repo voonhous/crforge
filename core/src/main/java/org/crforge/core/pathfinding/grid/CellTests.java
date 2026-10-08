@@ -16,8 +16,8 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Agrees with the reference line for line; held by its own tests, since no"
-            + " reference walk ends up asking either question.")
+        "Agrees with the reference line for line; held by its own tests. Whether a reference"
+            + " battle asks either question is not checked.")
 public final class CellTests {
 
   /** Bits that make a cell unusable to stand on: not placeable and blocked. */

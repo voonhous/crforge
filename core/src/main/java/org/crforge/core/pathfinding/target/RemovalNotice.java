@@ -25,14 +25,17 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the reference drop, the pending-damage answer, the three retarget loads and the"
-            + " previous reference, held by the kill run's five standing ticks after the princess"
-            + " tower's death; the retarget load skipped for a reference kept through a killing"
-            + " shot in flight, by every tower's re-lock on the tick after its arrow's kill in"
-            + " the battle references, and with another unit's kill, by tower_retarget_cannon,"
-            + " against the countdown of tower_retarget_knight. Not modelled: the forgetting of a held pingpong projectile and the"
-            + " morph back it triggers; the held projectile is read as the suspended flag, and a"
-            + " pingpong projectile's return to an owner whose targeting is off, the one case that"
-            + " would leave the forgetting to this notice, is refused.")
+            + " previous reference, held by the reference battles in which a princess tower"
+            + " falls, card_Pekka_until_stop among them, and RemovalNoticeTest; the retarget load"
+            + " skipped for a reference kept through a killing shot in flight, by every tower's"
+            + " re-lock on the tick after its arrow's kill in the battle references, and with"
+            + " another unit's kill, by card_Cannon, troops_cannon_pulls_hog and"
+            + " random_battle_s0012, against the countdown of the towers' retargets in"
+            + " card-deploy-c2 and troops_minipekka_vs_pekka. Not modelled: the forgetting of a"
+            + " held pingpong projectile and the morph back it triggers; the held projectile is"
+            + " read as the suspended flag, and a pingpong projectile's return to an owner whose"
+            + " targeting is off, the one case that would leave the forgetting to this notice, is"
+            + " refused.")
 public final class RemovalNotice {
 
   private RemovalNotice() {}

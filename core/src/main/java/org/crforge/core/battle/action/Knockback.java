@@ -21,13 +21,12 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start's tags and duration, each step's tags, the arc's"
-            + " height pushed, the landing's route reset and the finish; held by"
-            + " mega_knight_ev1_uppercut, a Knight knocked up by the evolved Mega Knight; the"
-            + " landing action with the cause passed on, held by ability_hero_giant_slap. Refused:"
-            + " the no-collision tag, an owner that"
-            + " is jumping, dashing, charging or dragged, and one with an ability, whose"
-            + " postponing no run holds.")
+        "Settled line for line: the start's tags and duration, each step's tags, the arc's height"
+            + " pushed, the landing's route reset and the finish; held by the reference battle"
+            + " cg_megaknight_evo_uppercut_giant, a Giant knocked up by the evolved Mega Knight;"
+            + " the landing action with the cause passed on, held by ability_hero_giant_slap."
+            + " Refused: the no-collision tag, an owner that is jumping, dashing, charging or"
+            + " dragged, and one with an ability, whose postponing no run holds.")
 public final class Knockback extends RowAction {
 
   /** The top of the arc, in game units. */

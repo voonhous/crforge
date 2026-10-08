@@ -22,9 +22,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line: the generator, the walk from the end, the four"
-            + " draws before the held cards return and the rest. Held by match_elixir_150s, both"
-            + " opening hands and queues. Not modelled: a game mode's forced card, same decks on"
-            + " both sides and a fixed deck order, which Ladder does not set.")
+            + " draws before the held cards return and the rest. Held by the opening hands and"
+            + " queues every reference battle observes on both sides. Not modelled: a game mode's"
+            + " forced card, same decks on both sides and a fixed deck order, which Ladder does"
+            + " not set.")
 public final class DeckShuffle {
 
   private static final int WORDS = 624;
