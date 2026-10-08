@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
@@ -592,19 +593,46 @@ class ReplaySmokeRunTest {
     }
   }
 
+  /**
+   * A horizon past an idle battle's own stop, from the tables in use: the battle runs the sections
+   * of the Ladder mode's battle timeline, then the tiebreaker of its equal crowns and the end
+   * screen's delay (the locations' EndScreenDelay). The tiebreaker takes seconds, far less than the
+   * sections, so twice the sections and the delay, in ticks of 50 ms, lie past the stop.
+   */
+  private int idleHorizon() {
+    String timeline =
+        tables
+            .table("game_modes")
+            .row(LadderMatch.GAME_MODE)
+            .columns()
+            .get("BattleTimeline")
+            .asText();
+    int sectionsMs = 0;
+    for (JsonNode seconds :
+        tables.table("battle_timelines").row(timeline).columns().get("SectionLength")) {
+      sectionsMs += seconds.asInt() * 1000;
+    }
+    int endScreenMs = 0;
+    for (GameRow location : tables.table("locations").rows()) {
+      endScreenMs = Math.max(endScreenMs, ScenarioItems.number(location, "EndScreenDelay"));
+    }
+    return 2 * (sectionsMs + endScreenMs) / 50;
+  }
+
   @Test
   void aTerminalRunStopsAtTheBattlesOwnStopAndKeepsTheEndDelay() throws IOException {
     ObjectNode idle = fit(Scenarios.knight());
     idle.putArray("cmd");
     Path out = folder.resolve("run");
+    int horizon = idleHorizon();
 
-    int exit = run(idle, out, terminalIdentity, 6600);
+    int exit = run(idle, out, terminalIdentity, horizon);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     int executed = manifest.path("executed_ticks").asInt();
-    assertThat(executed).isLessThan(6600);
+    assertThat(executed).isLessThan(horizon);
     assertThat(lines).hasSize(executed + 1);
     assertThat(manifest.path("observations").asInt()).isEqualTo(executed + 1);
     assertThat(manifest.path("termination").path("reason").asText()).isEqualTo("battle_stopped");
@@ -621,7 +649,7 @@ class ReplaySmokeRunTest {
     }
     assertThat(firstEnded).isPositive().isLessThan(executed);
     // The exact-horizon schema cannot represent that battle over the same horizon.
-    assertThat(run(idle, folder.resolve("exact"), identity, 6600))
+    assertThat(run(idle, folder.resolve("exact"), identity, horizon))
         .isEqualTo(ReplaySmokeRun.INVALID);
   }
 
@@ -630,19 +658,22 @@ class ReplaySmokeRunTest {
     GameTables tables = GameTables.load(tablesFolder);
     ObjectNode idle = fit(Scenarios.knight());
     idle.putArray("cmd");
-    run(idle, folder.resolve("terminal"), terminalIdentity, 6600);
+    int horizon = idleHorizon();
+    run(idle, folder.resolve("terminal"), terminalIdentity, horizon);
     ObjectNode unsupported = fit(Scenarios.knight());
     ((ObjectNode) unsupported.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
     run(unsupported, folder.resolve("unsupported"), identity, 30);
-    run(idle, folder.resolve("invalid"), identity, 6600);
+    run(idle, folder.resolve("invalid"), identity, horizon);
 
     ReplaySmokeRun.InProcessRun terminal =
-        ReplaySmokeRun.runInProcess(SmokeSchema.V2, 6600, MAPPER.writeValueAsBytes(idle), tables);
+        ReplaySmokeRun.runInProcess(
+            SmokeSchema.V2, horizon, MAPPER.writeValueAsBytes(idle), tables);
     ReplaySmokeRun.InProcessRun refused =
         ReplaySmokeRun.runInProcess(
             SmokeSchema.V1, 30, MAPPER.writeValueAsBytes(unsupported), tables);
     ReplaySmokeRun.InProcessRun stopped =
-        ReplaySmokeRun.runInProcess(SmokeSchema.V1, 6600, MAPPER.writeValueAsBytes(idle), tables);
+        ReplaySmokeRun.runInProcess(
+            SmokeSchema.V1, horizon, MAPPER.writeValueAsBytes(idle), tables);
 
     // The same trace, digest, steps and termination as the run written to disk.
     JsonNode manifest = MAPPER.readTree(folder.resolve("terminal/manifest.json").toFile());

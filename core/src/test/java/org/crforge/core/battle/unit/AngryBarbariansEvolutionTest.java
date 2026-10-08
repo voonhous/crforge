@@ -101,10 +101,28 @@ class AngryBarbariansEvolutionTest {
         .containsExactlyElementsOf(
             Shipped.texts(
                 Shipped.row("spells_evolved", "AngryBarbarians_EV1"), "SummonCharactersList"));
-    // Every play: the first unit deploys at once, the second waits its turn.
-    assertThat(states)
-        .hasSize(plain + 1)
-        .containsOnly(List.of(InitialDelay.DEPLOYING, InitialDelay.WAITING));
+    // Every play: the first unit deploys at once, each later one waits its turn. A plain play has
+    // the deck card's SummonNumber units (at least one), the evolved play one per listed character.
+    int plainUnits =
+        Math.max(
+            Shipped.number(Shipped.row("spells_characters", "AngryBarbarians"), "SummonNumber"), 1);
+    int evolvedUnits =
+        Shipped.texts(Shipped.row("spells_evolved", "AngryBarbarians_EV1"), "SummonCharactersList")
+            .size();
+    List<List<Integer>> expected =
+        new ArrayList<>(Collections.nCopies(plain, staggered(plainUnits)));
+    expected.add(staggered(evolvedUnits));
+    assertThat(states).containsExactlyElementsOf(expected);
+  }
+
+  /**
+   * The states of a staggered play's units on the tick it ran: the first deploys, the rest wait.
+   */
+  private static List<Integer> staggered(int units) {
+    List<Integer> states = new ArrayList<>();
+    states.add(InitialDelay.DEPLOYING);
+    states.addAll(Collections.nCopies(units - 1, InitialDelay.WAITING));
+    return states;
   }
 
   /** Steps the battle through the given tick. */
