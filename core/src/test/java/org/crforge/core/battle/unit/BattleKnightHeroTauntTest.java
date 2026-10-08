@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionOwner;
@@ -104,9 +105,8 @@ class BattleKnightHeroTauntTest {
           + " each step forces the reference again, and the end lets a standing king's go")
   void bothTowersAreTaunted() {
     Scene scene = new Scene();
-    TowerEntity princess =
-        BattleMusketeerRunTest.towerNamed(scene.match.getBattle(), "PrincessTower_1_1");
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(scene.match.getBattle(), "KingTower_1_0");
+    TowerEntity princess = BattleTowers.towerNamed(scene.match.getBattle(), "PrincessTower_1_1");
+    TowerEntity king = BattleTowers.towerNamed(scene.match.getBattle(), "KingTower_1_0");
     // The king stands passive, as a sleeping king does: it never takes the attacking state.
     king.holdFire();
     scene.step(40);

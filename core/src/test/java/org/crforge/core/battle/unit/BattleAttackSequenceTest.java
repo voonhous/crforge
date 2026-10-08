@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
@@ -103,7 +104,7 @@ class BattleAttackSequenceTest {
   void targetInRange() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), "PrincessTower_1_1");
+    TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), "PrincessTower_1_1");
     // Straight below the tower, wherever the tables place it, so the distance is along y alone.
     int archerY = tower.getView().getY() - 5500;
     CharacterEntity archer =

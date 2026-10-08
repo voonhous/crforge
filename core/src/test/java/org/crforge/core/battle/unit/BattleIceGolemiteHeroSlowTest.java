@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
@@ -56,7 +57,7 @@ class BattleIceGolemiteHeroSlowTest {
     CharacterEntity giant = match.deploy(0, GameData.unit("Giant"), LEVEL, 1, 5500, 21000, "giant");
     CharacterEntity friend =
         match.deploy(0, GameData.unit("Knight"), LEVEL, 0, 2500, 22000, "friend");
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), "PrincessTower_1_1");
+    TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), "PrincessTower_1_1");
     for (int k = 0; k < SETTLE; k++) {
       match.getBattle().step();
     }

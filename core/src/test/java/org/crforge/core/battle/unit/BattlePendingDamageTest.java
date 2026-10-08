@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
@@ -228,7 +229,7 @@ class BattlePendingDamageTest {
             20000,
             "Timed");
     match.getBattle().step();
-    TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), "PrincessTower_1_1");
+    TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), "PrincessTower_1_1");
     ValidatorQueries queries = match.getWorld().getValidatorQueries();
     for (CharacterEntity unit : List.of(knight, timed)) {
       unit.addPendingDamage(unit.getHitPoints().getHitPoints(), 100);

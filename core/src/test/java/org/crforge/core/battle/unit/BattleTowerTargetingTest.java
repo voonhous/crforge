@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -137,7 +138,7 @@ class BattleTowerTargetingTest {
       if (event.get("tick").asInt() == removalTick
           && event.get("event").asText().equals("reference")
           && event.path("removed").asText().equals(unitName)) {
-        TowerEntity tower = BattleMusketeerRunTest.towerNamed(battle, event.get("tower").asText());
+        TowerEntity tower = BattleTowers.towerNamed(battle, event.get("tower").asText());
         assertThat(referenceName(tower)).as(tower.name()).isNull();
         assertThat(tower.getView().getState())
             .as(tower.name())
@@ -165,9 +166,9 @@ class BattleTowerTargetingTest {
     // The wait that keeps the king inactive starts in the first tick's first pending pass, after
     // that tick's tags were folded, so the gate still switches the component on at its end.
     battle.step();
-    TowerEntity bottomKing = BattleMusketeerRunTest.towerNamed(battle, "KingTower_0_0");
-    TowerEntity topKing = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
-    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, PRINCESS_TOWER);
+    TowerEntity bottomKing = BattleTowers.towerNamed(battle, "KingTower_0_0");
+    TowerEntity topKing = BattleTowers.towerNamed(battle, "KingTower_1_0");
+    TowerEntity princess = BattleTowers.towerNamed(battle, PRINCESS_TOWER);
     // A king's default target is the other side's princess tower of its lane; the king it would
     // seed from is no candidate.
     assertThat(referenceName(bottomKing)).isEqualTo("PrincessTower_1_2");
@@ -208,7 +209,7 @@ class BattleTowerTargetingTest {
         new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(battle, "KingTower_1_0");
     // The reference tick each step of the top king's activation is first told on.
     Map<ActivationEvent.Kind, Integer> steps = new EnumMap<>(ActivationEvent.Kind.class);
     int[] at = {0};
@@ -285,7 +286,7 @@ class BattleTowerTargetingTest {
 
     for (int step = 1; step <= 10; step++) {
       battle.step();
-      TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, PRINCESS_TOWER);
+      TowerEntity princess = BattleTowers.towerNamed(battle, PRINCESS_TOWER);
       assertThat(princess.getView().getDelay()).as("after step %d", step).isEqualTo(50 * step);
     }
   }

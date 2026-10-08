@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -251,7 +252,7 @@ class BattleProjectileFlightTest {
     assertThat(shot.getOwner()).isSameAs(musketeer);
     assertThat(shot.getRoot()).isSameAs(musketeer);
     assertThat(shot.getTarget())
-        .isSameAs(BattleMusketeerRunTest.towerNamed(battle, BattleMusketeerRunTest.PRINCESS_TOWER));
+        .isSameAs(BattleTowers.towerNamed(battle, BattleMusketeerRunTest.PRINCESS_TOWER));
     assertThat(shot.getSide()).isEqualTo(musketeer.side());
     assertThat(shot.level()).isEqualTo(reference.get("level").asInt());
     assertThat(shot.damage()).isEqualTo(firstEvent(reference, "impact").get("damage").asInt());
@@ -294,8 +295,7 @@ class BattleProjectileFlightTest {
       battle.step();
     }
     ProjectileEntity shot = (ProjectileEntity) battle.getHolder().entities().get(0);
-    TowerEntity tower =
-        BattleMusketeerRunTest.towerNamed(battle, BattleMusketeerRunTest.PRINCESS_TOWER);
+    TowerEntity tower = BattleTowers.towerNamed(battle, BattleMusketeerRunTest.PRINCESS_TOWER);
     assertThat(shot.getTarget()).isSameAs(tower);
 
     // The tower is destroyed from outside, between two steps; the next step's opening cleanup

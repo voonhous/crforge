@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.BattleFunctions;
@@ -64,7 +65,7 @@ class BattleExpressionEnvironmentTest {
   void everyNameResolves() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
 
@@ -81,8 +82,8 @@ class BattleExpressionEnvironmentTest {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     Battle battle = match.getBattle();
     battle.step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
-    TowerEntity otherKing = BattleMusketeerRunTest.towerNamed(battle, "KingTower_0_0");
+    TowerEntity king = BattleTowers.towerNamed(battle, "KingTower_1_0");
+    TowerEntity otherKing = BattleTowers.towerNamed(battle, "KingTower_0_0");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
     Expression condition =
@@ -101,7 +102,7 @@ class BattleExpressionEnvironmentTest {
     assertThat(ExpressionEvaluator.evaluate(condition, environment)).isZero();
 
     // Its own side's princess tower destroyed: the side keeps only one.
-    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
+    TowerEntity princess = BattleTowers.towerNamed(battle, "PrincessTower_1_1");
     match.getWorld().dealDamage(princess.getTargetView(), 100000, 0, 1);
     assertThat(ExpressionEvaluator.evaluate(condition, environment))
         .as("a destroyed tower counts until the cleanup that removes it")
@@ -115,7 +116,7 @@ class BattleExpressionEnvironmentTest {
   void theKingDamaged() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
     int damaged = BattleFunctions.id("king_tower_damaged");
@@ -130,7 +131,7 @@ class BattleExpressionEnvironmentTest {
   void thePosition() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
     Expression right = ExpressionCompiler.compile("x + 1000", environment);
@@ -155,12 +156,10 @@ class BattleExpressionEnvironmentTest {
     match.getBattle().step();
     BattleExpressionEnvironment bottom =
         new BattleExpressionEnvironment(
-            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_0_0"),
-            match.getWorld());
+            BattleTowers.towerNamed(match.getBattle(), "KingTower_0_0"), match.getWorld());
     BattleExpressionEnvironment top =
         new BattleExpressionEnvironment(
-            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0"),
-            match.getWorld());
+            BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0"), match.getWorld());
 
     assertThat(evaluate("team_index", bottom)).isZero();
     assertThat(evaluate("team_index", top)).isEqualTo(1);
@@ -178,8 +177,7 @@ class BattleExpressionEnvironmentTest {
     match.getBattle().step();
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(
-            BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0"),
-            match.getWorld());
+            BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0"), match.getWorld());
 
     assertThat(evaluate("map_width", environment)).isEqualTo(18000);
     assertThat(evaluate("map_height", environment)).isEqualTo(32000);
@@ -198,7 +196,7 @@ class BattleExpressionEnvironmentTest {
     CharacterEntity superMiniPekka =
         new CharacterEntity(
             world, GameData.unit("SuperMiniPekka"), "SuperMiniPekka", 0, 2500, 10000, 11);
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment onMiniPekka = new BattleExpressionEnvironment(miniPekka, world);
 
     assertThat(evaluate("MiniPekka", onMiniPekka)).isEqualTo(34000016);
@@ -249,7 +247,7 @@ class BattleExpressionEnvironmentTest {
   void anUnportedFunctionFails() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(king, match.getWorld());
 
@@ -282,7 +280,7 @@ class BattleExpressionEnvironmentTest {
     knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     assertThat(environment.call(isMoving, new int[0])).as("its movement off").isZero();
 
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     assertThat(new BattleExpressionEnvironment(king, match.getWorld()).call(isMoving, new int[0]))
         .as("a tower")
         .isZero();
@@ -325,7 +323,7 @@ class BattleExpressionEnvironmentTest {
         match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 5500, 10000);
     clone.markClone(null);
     match.getBattle().step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
 
     assertThat(evaluate("is_clone()", new BattleExpressionEnvironment(knight, match.getWorld())))
         .isZero();
@@ -371,7 +369,7 @@ class BattleExpressionEnvironmentTest {
     assertThat(evaluate("is_dodging_damage", banditSees))
         .as("the immunity still counting")
         .isEqualTo(1);
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(match.getBattle(), "KingTower_1_0");
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_1_0");
     assertThat(
             evaluate("is_dodging_damage", new BattleExpressionEnvironment(king, match.getWorld())))
         .as("a tower")
@@ -386,8 +384,8 @@ class BattleExpressionEnvironmentTest {
   void hasCrownTowerInRangeReadsTheEnemyTowers() {
     Standard1v1Battle match = new Standard1v1Battle(written);
     Battle battle = match.getBattle();
-    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
+    TowerEntity princess = BattleTowers.towerNamed(battle, "PrincessTower_1_1");
+    TowerEntity king = BattleTowers.towerNamed(battle, "KingTower_1_0");
     int princessX = princess.getView().getX();
     int princessY = princess.getView().getY();
     int princessRadius = princess.getView().getCollisionRadius();
@@ -460,8 +458,8 @@ class BattleExpressionEnvironmentTest {
     CharacterEntity knight =
         match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 10000);
     battle.step();
-    TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
-    TowerEntity princess = BattleMusketeerRunTest.towerNamed(battle, "PrincessTower_1_1");
+    TowerEntity king = BattleTowers.towerNamed(battle, "KingTower_1_0");
+    TowerEntity princess = BattleTowers.towerNamed(battle, "PrincessTower_1_1");
     BattleExpressionEnvironment knightSees =
         new BattleExpressionEnvironment(knight, match.getWorld());
 
