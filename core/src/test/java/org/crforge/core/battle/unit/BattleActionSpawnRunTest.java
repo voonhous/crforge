@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,6 +44,7 @@ import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -108,7 +112,7 @@ class BattleActionSpawnRunTest {
   @ParameterizedTest(name = "{0}")
   @ValueSource(strings = {"mirror_knight"})
   void theRunMatchesTheReferenceTickForTick(String name) {
-    JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
+    JsonNode reference = load("/pathfinding/golden/" + name + ".json");
     // A run made without the towers fighting names no tower level; its towers stand at 11.
     Standard1v1Battle match =
         new Standard1v1Battle(
@@ -409,7 +413,7 @@ class BattleActionSpawnRunTest {
             });
     List<CharacterEntity> placed = new ArrayList<>();
     if (!reference.get("card").isNull()) {
-      placed.addAll(BattleTowerRunTest.deployAll(match, reference));
+      placed.addAll(deployAll(match, reference));
     } else if (!reference.has("action_owners")) {
       // A unit a card play created is listed with its command, and so is what it morphs into; the
       // command places the one, the battle makes the other, and neither is placed here. A unit an
@@ -579,7 +583,7 @@ class BattleActionSpawnRunTest {
     List<String> groups = new ArrayList<>();
     List<String> deaths = new ArrayList<>();
     Map<String, Integer> spawnTicks = new HashMap<>();
-    match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
+    match.getWorld().addObserver(eventCollector(currentTick, events));
     List<String> areaEffects = new ArrayList<>();
     match.getWorld().addObserver(areaEffectLog(currentTick, areaEffects));
     // Every hit a shield took.
@@ -966,11 +970,11 @@ class BattleActionSpawnRunTest {
               }
             });
 
-    Map<Integer, List<JsonNode>> records = BattleTowerRunTest.otherRecordsByTick(reference);
+    Map<Integer, List<JsonNode>> records = otherRecordsByTick(reference);
     // The run's own unit's records, when it has one, are held to its outside like the others, each
     // read at the end of its tick, the deploy-end tick's too.
     if (!reference.get("card").isNull()) {
-      List<JsonNode> own = BattleMusketeerRunTest.records(reference);
+      List<JsonNode> own = records(reference);
       for (int i = 0; i < own.size(); i++) {
         ObjectNode named = own.get(i).deepCopy();
         named.put("name", placed.get(0).name());
@@ -1743,7 +1747,7 @@ class BattleActionSpawnRunTest {
 
     List<String> expectedEvents = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
-      expectedEvents.add(BattleTowerRunTest.eventLine(event));
+      expectedEvents.add(eventLine(event));
     }
     assertThat(pushesAfterTheirArea(events))
         .as("every launch, impact, hit and death")
@@ -1781,7 +1785,7 @@ class BattleActionSpawnRunTest {
         battle.getHolder().entities().stream()
             .anyMatch(e -> e instanceof WorldEntity w && w.name().equals(recorded));
     if (battle.getHolder().entities().contains(unit)) {
-      assertThat(BattleMusketeerRunTest.referenceName(unit))
+      assertThat(unitReferenceName(unit))
           .as("%s reference", where)
           .isEqualTo(stillThere ? recorded : null);
     }
@@ -6831,5 +6835,669 @@ class BattleActionSpawnRunTest {
         drain.add("%d %s %d %d".formatted(currentTick[0], target.name(), damage, hitPoints));
       }
     };
+  }
+
+  // The helpers below came from the deleted kill, Musketeer and tower run tests: they read the
+  // golden runs' layout and collect the events those runs list.
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  static JsonNode load(String resource) {
+    try (InputStream stream = BattleActionSpawnRunTest.class.getResourceAsStream(resource)) {
+      if (stream == null) {
+        throw new IllegalStateException("Missing test resource " + resource);
+      }
+      return MAPPER.readTree(stream);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to read " + resource, e);
+    }
+  }
+
+  /** The reference's records as objects keyed by its field names. */
+  static List<JsonNode> records(JsonNode reference) {
+    List<String> fields = new ArrayList<>();
+    reference.get("fields").forEach(field -> fields.add(field.asText()));
+    List<JsonNode> records = new ArrayList<>();
+    for (JsonNode row : reference.get("records")) {
+      ObjectNode record = MAPPER.createObjectNode();
+      for (int i = 0; i < fields.size(); i++) {
+        record.set(fields.get(i), row.get(i));
+      }
+      records.add(record);
+    }
+    return records;
+  }
+
+  static String unitReferenceName(CharacterEntity unit) {
+    TargetView reference = unit.getUnit().targeting().getReference();
+    return reference == null ? null : reference.name();
+  }
+
+  /**
+   * The records of the further units, each tagged with its unit's name and keyed by tick, from the
+   * layout's compact rows.
+   */
+  static Map<Integer, List<JsonNode>> otherRecordsByTick(JsonNode reference) {
+    Map<Integer, List<JsonNode>> byTick = new HashMap<>();
+    if (!reference.has("unit_records")) {
+      return byTick;
+    }
+    List<String> fields = new ArrayList<>();
+    reference.get("unit_fields").forEach(field -> fields.add(field.asText()));
+    reference
+        .get("unit_records")
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              for (JsonNode row : entry.getValue()) {
+                ObjectNode record = MAPPER.createObjectNode();
+                record.put("name", entry.getKey());
+                for (int i = 0; i < fields.size(); i++) {
+                  record.set(fields.get(i), row.get(i));
+                }
+                byTick
+                    .computeIfAbsent(record.get("tick").asInt(), t -> new ArrayList<>())
+                    .add(record);
+              }
+            });
+    return byTick;
+  }
+
+  /**
+   * Collects every launch, impact, hit and death as the reference lists them. An area effect's hit
+   * pushes each victim right after damaging it; the reference lists its pushbacks after all its
+   * hits, at its area, which is the order kept here.
+   */
+  static WorldObserver eventCollector(int[] currentTick, List<String> events) {
+    return new WorldObserver() {
+      /** The pushbacks of the area effect hit under way, listed with its area. */
+      private final List<String> areaEffectPushbacks = new ArrayList<>();
+
+      /** True between an area effect's first victim and its area. */
+      private boolean inAreaEffectHit;
+
+      @Override
+      public void reflectedHit(
+          int tick, WorldEntity reflector, WorldEntity struck, int damage, DamageResult result) {
+        events.add(
+            "%d reflected_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    reflector.name(),
+                    struck.name(),
+                    damage,
+                    struck.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], struck.name()));
+        }
+      }
+
+      @Override
+      public void damageDealt(int tick, WorldEntity target, int damage, DamageResult result) {
+        // The reference lists every hit handed to the damage entry, whether it lands or the entry
+        // refuses it: one of no damage, as a building without damage lands its attacks, and one on
+        // an untouchable target, such as a dash landing on a dasher.
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d hit %s %d %d"
+                .formatted(
+                    currentTick[0], target.name(), damage, target.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      /**
+       * A typed hit from the drain, listed with what it took, the hit points left, its damage id
+       * and its source, then its death.
+       */
+      @Override
+      public void typedHitDealt(
+          int tick,
+          WorldEntity source,
+          WorldEntity target,
+          int amount,
+          int damageId,
+          DamageResult result) {
+        events.add(
+            "%d typed_hit %s %d %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    result.applied(),
+                    target.getTargetView().getHitPoints(),
+                    damageId,
+                    source == null ? null : source.name()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      /** A Kamikaze unit's kill of itself, listed as the reference lists it, then its death. */
+      @Override
+      public void kamikazeKilled(int tick, WorldEntity unit, int damage, DamageResult result) {
+        events.add(
+            "%d kamikaze_kill %s %d %d"
+                .formatted(
+                    currentTick[0], unit.name(), damage, unit.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], unit.name()));
+        }
+      }
+
+      /** A step of a Kamikaze unit's drain, listed as the reference lists it, then its death. */
+      @Override
+      public void kamikazeDrained(
+          int tick, WorldEntity unit, int damage, int hitPointsBefore, DamageResult result) {
+        events.add(
+            "%d kamikaze_drain %s %d %d"
+                .formatted(
+                    currentTick[0], unit.name(), damage, unit.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], unit.name()));
+        }
+      }
+
+      /** A fallen king's circle kills with no hit of its own: the reference lists the death. */
+      @Override
+      public void circleKilled(int tick, WorldEntity target, int radius) {
+        events.add("%d death %s".formatted(currentTick[0], target.name()));
+      }
+
+      @Override
+      public void clearingKilled(int tick, WorldEntity target) {
+        events.add("%d death %s".formatted(currentTick[0], target.name()));
+      }
+
+      @Override
+      public void drained(int tick, WorldEntity target, int damage, int hitPoints, boolean died) {
+        if (died) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
+      public void areaHit(
+          int tick,
+          WorldEntity attacker,
+          WorldEntity victim,
+          int damage,
+          int hitId,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area_hit %s %s %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    attacker.name(),
+                    victim.name(),
+                    damage,
+                    victim.getTargetView().getHitPoints(),
+                    hitId));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], victim.name()));
+        }
+      }
+
+      @Override
+      public void areaDamaged(
+          int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    area.x(),
+                    area.y(),
+                    area.radius(),
+                    area.damage(),
+                    area.towerDamage(),
+                    area.hitId(),
+                    viewNames(outcome.inCircle()),
+                    viewNames(outcome.validated()),
+                    viewNames(outcome.damaged()),
+                    area.push(),
+                    viewNames(outcome.pushed())));
+      }
+
+      @Override
+      public void diedAtRemoval(int tick, WorldEntity entity) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add("%d deploy_end_death %s".formatted(currentTick[0], entity.name()));
+      }
+
+      @Override
+      public void areaEffectHit(
+          int tick,
+          AreaEffectEntity areaEffect,
+          WorldEntity victim,
+          int damage,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        inAreaEffectHit = true;
+        events.add(
+            "%d area_effect_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    areaEffect.name(),
+                    victim.name(),
+                    damage,
+                    victim.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], victim.name()));
+        }
+      }
+
+      @Override
+      public void tetherHit(
+          int tick,
+          AreaEffectEntity owner,
+          WorldEntity target,
+          int damage,
+          int directionX,
+          int directionY,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d tether_hit %s %s %d %d"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    target.name(),
+                    damage,
+                    target.getTargetView().getHitPoints()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
+      public void areaEffectDamaged(
+          int tick, AreaEffectEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+        inAreaEffectHit = false;
+        events.addAll(areaEffectPushbacks);
+        areaEffectPushbacks.clear();
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
+                .formatted(
+                    currentTick[0],
+                    owner.name(),
+                    area.x(),
+                    area.y(),
+                    area.radius(),
+                    area.damage(),
+                    area.towerDamage(),
+                    area.hitId(),
+                    viewNames(outcome.inCircle()),
+                    viewNames(outcome.validated()),
+                    viewNames(outcome.damaged()),
+                    area.push(),
+                    viewNames(outcome.pushed())));
+      }
+
+      @Override
+      public void buffDamaged(
+          int tick,
+          WorldEntity target,
+          BuffInstance buff,
+          int damage,
+          int hitPointsBefore,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d buff_hit %s %d %d %d %s"
+                .formatted(
+                    currentTick[0],
+                    target.name(),
+                    damage,
+                    target.getTargetView().getHitPoints(),
+                    hitPointsBefore,
+                    buff.getSource() == null ? null : buff.getSource().name()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+
+      @Override
+      public void combatGateDropped(
+          int tick, WorldEntity entity, TargetView reference, int hitSpeed) {
+        // Only a drop a stun causes is listed: that of a living entity whose hit speed is 0.
+        if (currentTick[0] < 0 || hitSpeed != 0 || !entity.getView().isAlive()) {
+          return;
+        }
+        events.add(
+            "%d combat_gate_drop %s %s %d"
+                .formatted(currentTick[0], entity.name(), reference.name(), hitSpeed));
+      }
+
+      @Override
+      public void combatComponentSwitched(int tick, WorldEntity entity, boolean on, int hitSpeed) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d combat_component %s %d %d"
+                .formatted(currentTick[0], entity.name(), on ? 1 : 0, hitSpeed));
+      }
+
+      @Override
+      public void projectileLaunched(int tick, ProjectileEntity projectile) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d launch %s %s %s %s %d %d %d aim %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    projectile.name(),
+                    projectile.getData().name(),
+                    projectile.launcherName(),
+                    projectile.targetName(),
+                    projectile.getX(),
+                    projectile.getY(),
+                    projectile.getZ(),
+                    projectile.getAimX(),
+                    projectile.getAimY(),
+                    projectile.getAimZ()));
+      }
+
+      @Override
+      public void pushbackRequested(
+          int tick,
+          WorldEntity unit,
+          boolean started,
+          int fromX,
+          int fromY,
+          MovementState pushback) {
+        (inAreaEffectHit ? areaEffectPushbacks : events)
+            .add(
+                "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
+                    .formatted(
+                        currentTick[0],
+                        unit.name(),
+                        started ? 1 : 0,
+                        fromX,
+                        fromY,
+                        unit.getView().getX(),
+                        unit.getView().getY(),
+                        pushback.getTargetX(),
+                        pushback.getTargetY(),
+                        pushback.getPushbackBudget()));
+      }
+
+      @Override
+      public void relocated(int tick, WorldEntity unit, int x, int y, int toX, int toY) {
+        events.add(
+            "%d relocate %s %d %d to %d %d".formatted(currentTick[0], unit.name(), x, y, toX, toY));
+      }
+
+      @Override
+      public void projectileImpacted(
+          int tick,
+          ProjectileEntity projectile,
+          WorldEntity target,
+          int damage,
+          DamageResult result) {
+        if (currentTick[0] < 0) {
+          return;
+        }
+        events.add(
+            "%d impact %s %s %d %d %d %d %d"
+                .formatted(
+                    currentTick[0],
+                    projectile.name(),
+                    target.name(),
+                    damage,
+                    target.getTargetView().getHitPoints(),
+                    projectile.getX(),
+                    projectile.getY(),
+                    projectile.getZ()));
+        if (result.died()) {
+          events.add("%d death %s".formatted(currentTick[0], target.name()));
+        }
+      }
+    };
+  }
+
+  private static List<String> viewNames(List<TargetView> views) {
+    return views.stream().map(TargetView::name).toList();
+  }
+
+  private static List<String> jsonNames(JsonNode list) {
+    List<String> names = new ArrayList<>();
+    list.forEach(name -> names.add(name.asText()));
+    return names;
+  }
+
+  /** One reference event in the collector's layout. */
+  static String eventLine(JsonNode event) {
+    int tick = event.get("tick").asInt();
+    String kind = event.get("event").asText();
+    return switch (kind) {
+      case "hit" ->
+          "%d hit %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "death" -> "%d death %s".formatted(tick, event.get("target").asText());
+      case "typed_hit" ->
+          "%d typed_hit %s %d %d %d %s"
+              .formatted(
+                  tick,
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("hit_id").asInt(),
+                  event.get("source").asText());
+      case "reflected_hit" ->
+          "%d reflected_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("attacker").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "kamikaze_kill" ->
+          "%d kamikaze_kill %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "kamikaze_drain" ->
+          "%d kamikaze_drain %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "pushback" ->
+          "%d pushback %s %d from %d %d at %d %d target %d %d budget %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("started").asInt(),
+                  event.get("frm").get(0).asInt(),
+                  event.get("frm").get(1).asInt(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("target").get(0).asInt(),
+                  event.get("target").get(1).asInt(),
+                  event.get("budget").asInt());
+      case "relocate" ->
+          "%d relocate %s %d %d to %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("to").get(0).asInt(),
+                  event.get("to").get(1).asInt());
+      case "launch" ->
+          "%d launch %s %s %s %s %d %d %d aim %d %d %d"
+              .formatted(
+                  tick,
+                  event.get("projectile").asText(),
+                  event.get("config").asText(),
+                  event.get("owner").isNull() ? null : event.get("owner").asText(),
+                  event.get("target").isNull() ? null : event.get("target").asText(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("z").asInt(),
+                  event.get("aim").get(0).asInt(),
+                  event.get("aim").get(1).asInt(),
+                  event.get("aim_z").asInt());
+      case "impact" ->
+          "%d impact %s %s %d %d %d %d %d"
+              .formatted(
+                  tick,
+                  event.get("projectile").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("x").asInt(),
+                  event.get("y").asInt(),
+                  event.get("z").asInt());
+      case "area_hit" ->
+          "%d area_hit %s %s %d %d %d"
+              .formatted(
+                  tick,
+                  event.get("attacker").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("hit_id").asInt());
+      case "deploy_end_death" ->
+          "%d deploy_end_death %s".formatted(tick, event.get("unit").asText());
+      case "area_effect_hit" ->
+          "%d area_effect_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("area_effect").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "tether_hit" ->
+          "%d tether_hit %s %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("area_effect").asText(),
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt());
+      case "area" ->
+          "%d area %s %d %d r%d %d %d %d %s %s %s push %d %s"
+              .formatted(
+                  tick,
+                  event.get("owner").asText(),
+                  event.get("centre").get(0).asInt(),
+                  event.get("centre").get(1).asInt(),
+                  event.get("radius").asInt(),
+                  event.get("damage").asInt(),
+                  event.get("tower_damage").asInt(),
+                  event.get("hit_id").asInt(),
+                  jsonNames(event.get("in_circle")),
+                  jsonNames(event.get("validated")),
+                  jsonNames(event.get("victims")),
+                  event.get("push").asInt(),
+                  jsonNames(event.get("pushed")));
+      case "buff_hit" ->
+          "%d buff_hit %s %d %d %d %s"
+              .formatted(
+                  tick,
+                  event.get("target").asText(),
+                  event.get("damage").asInt(),
+                  event.get("hp").asInt(),
+                  event.get("before").asInt(),
+                  event.get("source").isNull() ? null : event.get("source").asText());
+      case "combat_gate_drop" ->
+          "%d combat_gate_drop %s %s %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("ref").asText(),
+                  event.get("hit_speed").asInt());
+      case "combat_component" ->
+          "%d combat_component %s %d %d"
+              .formatted(
+                  tick,
+                  event.get("unit").asText(),
+                  event.get("on").asInt(),
+                  event.get("hit_speed").asInt());
+      default -> throw new IllegalStateException("unknown event " + kind);
+    };
+  }
+
+  /**
+   * Places the reference's unit on tick 0 and every further unit the reference lists on its own
+   * tick, under its own name, at the reference's level, then schedules each row the reference lists
+   * on its unit in the command pass of its tick, the unit as its cause, as a buff's starting action
+   * or an ability's activation would.
+   *
+   * <p>A placement runs at the head of the step of its tick, so a unit placed on the reference's
+   * tick {@code n} is first visited in battle step {@code n}, as in the reference.
+   *
+   * @return the reference's unit first, then the further units in the order the reference lists
+   *     them
+   */
+  static List<CharacterEntity> deployAll(Standard1v1Battle match, JsonNode reference) {
+    List<CharacterEntity> units = new ArrayList<>();
+    units.add(
+        match.deploy(
+            0,
+            unitData(reference.get("card").asText()),
+            reference.get("level").asInt(),
+            reference.get("side").asInt(),
+            reference.get("deploy").get(0).asInt(),
+            reference.get("deploy").get(1).asInt()));
+    if (reference.has("units")) {
+      for (JsonNode unit : reference.get("units")) {
+        units.add(
+            match.deploy(
+                unit.get("tick").asInt(),
+                unitData(unit.get("card").asText()),
+                // A further unit may be placed at a level of its own.
+                unit.path("level").asInt(reference.get("level").asInt()),
+                unit.get("side").asInt(),
+                unit.get("deploy").get(0).asInt(),
+                unit.get("deploy").get(1).asInt(),
+                unit.get("name").asText()));
+      }
+    }
+    for (JsonNode schedule : reference.path("unit_schedules")) {
+      String name = schedule.get("unit").asText();
+      CharacterEntity unit =
+          units.stream().filter(u -> u.name().equals(name)).findFirst().orElseThrow();
+      match.scheduleAction(
+          schedule.get("tick").asInt(),
+          unit,
+          GameData.actions()
+              .build(schedule.get("action").asText(), match.getWorld().binding(unit)));
+    }
+    return units;
+  }
+
+  private static UnitData unitData(String cardName) {
+    return GameData.unit(cardName);
   }
 }

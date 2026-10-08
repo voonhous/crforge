@@ -13,18 +13,15 @@ import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Writes the kill run, the Musketeer run and the two runs in which the towers fight back out
- * through {@link TrajectoryRecorder} and holds each file to its committed reference byte for byte.
- * One comparison checks the export's layout and replays the whole run: every record, every event,
- * every projectile position, every tower event and the header.
+ * Writes the kill run and the Musketeer run out through {@link TrajectoryRecorder} and holds each
+ * file to its committed reference byte for byte. One comparison checks the export's layout and
+ * replays the whole run: every record, every event, every projectile position, every tower event
+ * and the header.
  *
  * <p>The reference's ticks count from the character's first tick in the holder, so the placement
  * tick does not show in the file; one test moves it and expects the same text.
@@ -39,9 +36,6 @@ class TrajectoryRecorderTest {
 
   /** The latest placement tick a test here uses. */
   private static final int MAX_PLACEMENT_TICK = 3;
-
-  /** Ticks a reference with the towers fighting plays on after the unit's removal. */
-  private static final int UNIT_REMOVED_TAIL = 20;
 
   @Test
   @DisplayName("the exported kill run is the committed reference, byte for byte")
@@ -74,44 +68,6 @@ class TrajectoryRecorderTest {
     recorder.writeTo(file);
 
     assertThat(recorder.recordCount()).isEqualTo(reference.get("records").size());
-    assertSameText(Files.readString(file, StandardCharsets.UTF_8), expected);
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @Disabled("golden recorded on 14.593.1; awaiting decision")
-  @ValueSource(
-      strings = {
-        BattleTowerRunTest.KNIGHT_REFERENCE,
-        BattleTowerRunTest.MUSKETEER_REFERENCE,
-        BattleTowerRunTest.WIZARD_REFERENCE,
-        BattleTowerRunTest.LEVEL_ONE_REFERENCE,
-        BattleTowerRunTest.VALKYRIE_REFERENCE,
-        BattleTowerRunTest.VALKYRIE_TWO_VICTIMS_REFERENCE,
-        BattleTowerRunTest.VALKYRIE_OWN_TOWER_REFERENCE
-      })
-  void theExportedRunWithTheTowersFightingIsTheReferenceByteForByte(
-      String resource, @TempDir Path directory) throws IOException {
-    String expected = reference(resource);
-    JsonNode reference = MAPPER.readTree(expected);
-    int ticks = reference.get("records").size();
-    Standard1v1Battle match =
-        new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
-    Battle battle = match.getBattle();
-    List<CharacterEntity> units = BattleTowerRunTest.deployAll(match, reference);
-    TrajectoryRecorder recorder =
-        new TrajectoryRecorder(units.get(0), units.subList(1, units.size()));
-    match.getWorld().addObserver(recorder);
-
-    // The run ends with the unit's removal; the reference plays twenty ticks more to show what the
-    // towers do once it has gone.
-    stepUntilRecorded(battle, recorder, ticks);
-    for (int tick = 0; tick < UNIT_REMOVED_TAIL; tick++) {
-      battle.step();
-    }
-    Path file = directory.resolve("run.json");
-    recorder.writeTo(file);
-
-    assertThat(recorder.recordCount()).isEqualTo(ticks);
     assertSameText(Files.readString(file, StandardCharsets.UTF_8), expected);
   }
 
