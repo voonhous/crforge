@@ -304,11 +304,6 @@ public final class BattleWorkspace implements Disposable {
     diagnostics = wrapped("");
     tools.add(diagnostics).padBottom(12).row();
     if (!replay) {
-      tools
-          .add(button("Export trajectories [E]", () -> command.accept(WorkspaceAction.EXPORT)))
-          .height(32)
-          .padBottom(6)
-          .row();
       tools.add(versionControls).row();
       Label resetNote = wrapped("Changing version starts a new battle.");
       resetNote.setColor(MUTED);

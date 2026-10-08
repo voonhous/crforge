@@ -8,8 +8,6 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +46,6 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>M: Not offered: the battle core has one set of movement rules; logs a note
  *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
- *   <li>E: Export the recorded trajectories of every played unit to build/trajectories
  *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
  *       version the battle core refuses is reported in the messages and the battle stays
  *   <li>F: Not offered here: the view flips in the replay viewer only, since this screen's clicks,
@@ -69,9 +66,6 @@ public class DebugGameScreen implements Screen {
 
   /** Seconds of game time one battle step covers. */
   private static final float STEP_SECONDS = Battle.STEP_MS / 1000f;
-
-  /** Where the trajectory export writes its files. */
-  private static final Path TRAJECTORY_DIRECTORY = Path.of("build", "trajectories");
 
   /** The note the status column carries for the control this screen no longer offers. */
   private static final String M_NOTE = "M: n/a on the battle core";
@@ -193,7 +187,6 @@ public class DebugGameScreen implements Screen {
         view.toggleAnnotations();
         log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
       }
-      case EXPORT -> exportTrajectories();
       case NEXT_VERSION -> switchDataVersion();
       case FASTER -> adjustSpeed(2f);
       case SLOWER -> adjustSpeed(0.5f);
@@ -376,22 +369,6 @@ public class DebugGameScreen implements Screen {
         versions.current().contentSha());
   }
 
-  /** Writes one file per recorded unit and logs where they went. */
-  private void exportTrajectories() {
-    try {
-      List<Path> written = session.getTrajectories().export(TRAJECTORY_DIRECTORY);
-      if (written.isEmpty()) {
-        log.info("No trajectories recorded yet: play a card first");
-        return;
-      }
-      for (Path file : written) {
-        log.info("Wrote trajectory {}", file.toAbsolutePath());
-      }
-    } catch (IOException e) {
-      log.error("Failed to export trajectories", e);
-    }
-  }
-
   private void logLatestMessage() {
     List<String> messages = session.messages();
     if (!messages.isEmpty()) {
@@ -530,7 +507,6 @@ public class DebugGameScreen implements Screen {
           M     - Not offered on the battle core (one set of movement rules)
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
-          E     - Export played units' trajectories to build/trajectories
 
         Data:
           V     - Switch to the next data version of the data root (new Ladder battle)

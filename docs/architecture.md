@@ -190,7 +190,6 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `M`           | Not offered: the battle core has one set of movement rules (logs a note)      |
 | `G`           | Toggle the routing cell cost overlay                                          |
 | `N`           | Toggle the route, reference and state overlay                                 |
-| `E`           | Export the recorded trajectories of the played units to `build/trajectories`  |
 | `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
 | `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
 | `T`           | Hide / show the diagnostics sidebar                                           |
@@ -281,8 +280,6 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 `N` draws, for every troop, the polyline through the cells still left on its route, a ring on the position it is holding as its reference, and a label with its state, how many route cells are left and how far its movement visit asked to move in the last tick.
 
 `A` draws a fading circle for every area hit: a unit's splash and a death's area, each hit of an area effect, and the arrival of a projectile with an area. `D` floats the hit points and shield each character lost since the last frame.
-
-`E` writes one file per unit made by a card play to `build/trajectories`, named after the unit (`b1_0.json` is the first unit of blue's first play), in the layout of the reference trajectories the battle core's `TrajectoryRecorder` writes: the header, the events of every hit, launch and impact, and one record per tick from the unit's first tick in the battle. Recording starts with each battle and is cleared by a reset.
 
 ---
 

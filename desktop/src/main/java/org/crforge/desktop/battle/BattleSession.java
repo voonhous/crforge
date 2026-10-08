@@ -48,8 +48,6 @@ public final class BattleSession {
 
   @Getter private final Standard1v1Battle battle;
 
-  @Getter private final TrajectoryHub trajectories = new TrajectoryHub();
-
   @Getter private final AreaHitLog areaHits = new AreaHitLog();
 
   /** The messages kept, oldest first, each naming its side when it has one. */
@@ -82,8 +80,7 @@ public final class BattleSession {
   private BattleSession(Standard1v1Battle battle, List<int[]> deckLevels) {
     this.battle = battle;
     this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
-    // Attached before the first step, so they hear every tick of the battle.
-    trajectories.attach(battle.getWorld());
+    // Attached before the first step, so it hears every tick of the battle.
     battle.getWorld().addObserver(areaHits);
   }
 
