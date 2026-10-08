@@ -20,8 +20,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * The evolved Royal Hog flies until it falls: its first hit, or the step its hit points fall to 99%
  * of its maximum, runs its fall group, gated on a tag the fall's own run carries so it runs once. A
- * fall its hit runs starts in the step of the hit and descends over 500 ms, ten steps; the step
- * after them the hog lands, takes its grounded row and makes its landing area, which hits the
+ * fall its hit runs starts in the step of the hit and descends over its transition duration; the
+ * step after it the hog lands, takes its grounded row and makes its landing area, which hits the
  * enemies around it a step later, and its route is emptied 100 ms after the landing. It is then
  * held on the ground layer for the rest of the battle.
  *
@@ -159,8 +159,8 @@ class BattleRoyalHogEvoTest {
         .isEqualTo(Shipped.number(Shipped.unitRow(HOG), "Damage"));
     assertThat(fall.landings()).as("one landing area, one fall").hasSize(1);
     int landing = fall.landings().get(0);
-    // The fall's TransitionDuration in steps, a part step counting as one (500 ms is ten); it
-    // lands on the step after them.
+    // The fall's TransitionDuration in steps, a part step counting as one; it lands on the step
+    // after them.
     int fallSteps = (Shipped.number("RoyalHog_EV1_To_Ground", "TransitionDuration") + 49) / 50;
     assertThat(landing).as("the step it lands").isEqualTo(firstHit + fallSteps + 1);
     // The landing area is in the filter form: its hit on the tower is a typed hit, a step later.

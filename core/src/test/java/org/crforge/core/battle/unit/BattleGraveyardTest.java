@@ -110,10 +110,10 @@ class BattleGraveyardTest {
   @Test
   @DisplayName(
       "the offsets across the width are turned over only strictly right of the middle: at 9000 the"
-          + " -3500 row goes left, at 9500 right")
+          + " first row's offset is kept, at 9500 turned over")
   void theMiddleMirrorsOnlyStrictlyRightOfIt() {
-    // The group's first sub-action, Graveyard_rework_Spawn_Skeleton_2 in the configured tables,
-    // writes x + (-3500 * select(x > (map_width / 2), -1, 1)) and y - (0 * ...).
+    // The group's first sub-action writes x plus its offset across the width times
+    // select(x > (map_width / 2), -1, 1), and y with its offset along the length.
     String first = subAction(0);
     int across = offset(first, "XPositionExpression");
     int behind = offset(first, "YPositionExpression");
@@ -132,17 +132,17 @@ class BattleGraveyardTest {
 
   @Test
   @DisplayName(
-      "the area effect's end drops a spawn still queued: with a life of 2200, which keeps the area"
-          + " effect one update past it, the first spawn runs on its last update's tick, with 2150"
-          + " never")
+      "the area effect's end drops a spawn still queued: with a life of the first spawn's delay,"
+          + " which keeps the area effect one update past it, the first spawn runs on its last"
+          + " update's tick, with 50 ms less never")
   void theEndDropsWhatIsStillQueued(@TempDir Path folder) throws IOException {
     Path longer = folder.resolve("longer");
     Path shorter = folder.resolve("shorter");
     longer.toFile().mkdirs();
     shorter.toFile().mkdirs();
 
-    // The first spawn, Graveyard_rework_Spawn_Skeleton_2 at 2200 ms in the configured tables, 3500
-    // left of the point: the area effect lives exactly to it, then 50 ms less.
+    // The first spawn, the group's first sub-action at its delay, its offset across the width from
+    // the point: the area effect lives exactly to it, then 50 ms less.
     int firstDelay = Shipped.numbers(GROUP, "SubActionsDelay").get(0);
     int across = offset(subAction(0), "XPositionExpression");
     Scene lasting = new Scene(life(longer, firstDelay)).graveyard(0, 6000, 12000).step(PLACED + 80);
@@ -165,9 +165,8 @@ class BattleGraveyardTest {
       "a point on water is refused, so the skeleton is made one unit right of it, still on the"
           + " water")
   void aPointOnWaterGoesOneUnitRight() {
-    // Graveyard_rework_Spawn_Skeleton_4, the third sub-action at 3300 ms in the configured tables,
-    // puts the bottom side's skeleton 3500 behind the point, y - (-3500 * team_y_direction), the
-    // direction -1 for the bottom side: (6000, 16000), in the river.
+    // The third sub-action puts the bottom side's skeleton behind the point by its offset along
+    // the length times team_y_direction, -1 for the bottom side: from (6000, 19500), in the river.
     String third = subAction(2);
     int x = 6000 + offset(third, "XPositionExpression");
     int y = 19500 + offset(third, "YPositionExpression");

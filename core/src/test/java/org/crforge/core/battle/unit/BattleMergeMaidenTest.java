@@ -36,24 +36,24 @@ class BattleMergeMaidenTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
-  /** The maiden on foot's cost (3). */
+  /** The maiden on foot's cost. */
   private static final int ON_FOOT = Shipped.cost("MergeMaiden_Normal");
 
-  /** The mounted maiden's cost (6). */
+  /** The mounted maiden's cost. */
   private static final int MOUNTED = Shipped.cost("MergeMaiden_Mounted");
 
-  /** The Zap's cost (2). */
+  /** The Zap's cost. */
   private static final int ZAP = Shipped.cost("Zap");
 
   @Test
   @DisplayName(
-      "the option is picked from the elixir after the step 21 before the play's run: 5.99 then,"
-          + " 6.34 at the run, is the maiden on foot; a tick later, 6.01, the mounted one")
+      "the option is picked from the elixir after the step 21 before the play's run: just below"
+          + " the mounted option's trigger then, though past it by the run, the maiden on foot; a"
+          + " tick later, the mounted one")
   void theOptionIsPickedAsThePlayIsGiven() {
-    // The Zap on 21 leaves 4.39 after its step, and 1x adds 178 a step: 5.99 after step 111,
-    // 6.01 after step 112. The first step after which the elixir reaches the mounted option's
-    // trigger is found on a battle of the same plays, so the two plays below run 21 ticks after
-    // the step before it and after it.
+    // The first step after which the elixir reaches the mounted option's trigger is found on a
+    // battle of the same plays, so the two plays below run 21 ticks after the step before it and
+    // after it.
     int reached = firstStepReaching(mountedTrigger());
     int footTick = reached - 1 + 21;
     Standard1v1Battle foot = new Standard1v1Battle(GameData.tables());
@@ -81,13 +81,13 @@ class BattleMergeMaidenTest {
 
   @Test
   @DisplayName(
-      "a play picked as the maiden on foot with less than 3 elixir at its run is refused with 0xd,"
-          + " nothing taken")
+      "a play picked as the maiden on foot with less elixir than its cost at its run is refused"
+          + " for want of elixir, nothing taken")
   void aPlayTheElixirDoesNotCoverIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
-    // The first Merge Maiden comes mounted for 6 and leaves 0.37; the second is picked on foot
-    // after step 21 and finds 0.75 at its run.
+    // The first Merge Maiden comes mounted; the second is picked on foot after step 21 and finds
+    // less than its cost at its run.
     battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
     battle.playVariant(42, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
     run(battle, 42);
@@ -167,7 +167,7 @@ class BattleMergeMaidenTest {
 
   /**
    * The elixir, in ten-thousandths, from which the Merge Maiden's card picks its mounted option:
-   * the option's AvailableManaTrigger, in thousandths, times 10 (6000 is 6 elixir).
+   * the option's AvailableManaTrigger, in thousandths, times 10.
    */
   private static int mountedTrigger() {
     for (JsonNode option : Shipped.column(Shipped.row("spells_other", "MergeMaiden"), "Options")) {

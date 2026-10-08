@@ -33,8 +33,8 @@ class ChefCookingTowerLostTest {
   private static final String PANCAKE = "ChefTower_pancake_projectile";
 
   /**
-   * The configured tables with the cooking row's numbers as the test writes them, those of data
-   * version 16.402.18: the step counts below are worked out from them.
+   * The configured tables with the cooking row's numbers as the test writes them: the step counts
+   * below are worked out from them.
    */
   private static GameTables cooking(Path folder) throws IOException {
     return GameData.altered(

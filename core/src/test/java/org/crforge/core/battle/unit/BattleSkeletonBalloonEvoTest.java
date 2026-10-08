@@ -154,7 +154,7 @@ class BattleSkeletonBalloonEvoTest {
     assertThat(scene.balloonAlive).containsExactly(true, false);
     assertThat(scene.spawns).hasSize(2 * SKELETONS).containsOnly("Skeleton");
     // The life-end spawn runs on the update that takes the countdown below 0, the one after its
-    // LifeDuration's steps (600 ms: the thirteenth after the tick it was made on).
+    // LifeDuration's steps, counted from the tick it was made on.
     assertThat(scene.spawnTicks.get(0))
         .isEqualTo(scene.containerTicks.get(0) + lifeSteps("SkeletonBalloonEvoDummyAeO_EXTRA"));
     assertThat(scene.spawnTicks.get(SKELETONS))

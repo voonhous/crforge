@@ -245,7 +245,7 @@ class BattleBlowdartEvoTest {
     assertThat(poison.get(0)[0])
         .as("the first poison hit")
         .isEqualTo(firstHit + AREA_HIT_OFFSET / 50 + 1 + POISON_HIT_SPEED / 50);
-    // The first stack's amount at this level (25 is 30), its crown tower share (a quarter, 7).
+    // The first stack's amount at this level, and its crown tower share.
     GameRow area = Shipped.row("area_effect_objects", AREAS.get(0));
     int amount = Shipped.scaled(Shipped.numbers(POISON, "DamageList").get(0), area, LEVEL);
     int share = Shipped.number(POISON, "CrownDamageDamageMultiplier");

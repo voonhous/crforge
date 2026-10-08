@@ -72,8 +72,7 @@ class BattleAbilityTest {
     assertThat(buffer.getUnit().timers().isAbilityReady()).isFalse();
     int cast = tick[0];
 
-    // It casts for its row's CastTime, in whole visits counting the one it entered in (933 ms is
-    // eighteen visits).
+    // It casts for its row's CastTime, in whole visits counting the one it entered in.
     int castTime =
         Shipped.number(
             Shipped.row(

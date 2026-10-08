@@ -74,7 +74,7 @@ class BattleLoadFirstHitTest {
         .isLessThan(60);
     // The countdown starts at LoadTime on the first visit after the deploy's end and the hit lands
     // on the visit whose attack time, 50 a visit, reaches HitSpeed: HitSpeed in ticks, rounded up,
-    // less one after the deploy's end (79 for LoadTime 3000 and HitSpeed 4000).
+    // less one after the deploy's end.
     GameRow sparky = unitRow("ZapMachine");
     assertThat(flag(sparky, "LoadFirstHit")).isTrue();
     int hitSpeed = number(sparky, "HitSpeed");

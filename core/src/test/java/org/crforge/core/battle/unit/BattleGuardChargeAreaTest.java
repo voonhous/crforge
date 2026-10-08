@@ -23,12 +23,12 @@ import org.junit.jupiter.api.io.TempDir;
  * game's guard run reads none of the row's push columns: on the step that starts the charge it
  * makes the area effect at the guard's point, the guard its source and the object it follows, and
  * ends it as the run finishes. What the charge pushes and hits is the area effect's: a filter form
- * row that pushes every enemy ground character it lists to the edge of its 2500 circle on every
- * update and hits each once.
+ * row that pushes every enemy ground character it lists to the edge of its circle on every update
+ * and hits each once.
  *
  * <p>The scene: the guard's area effect, DummySpawnLittlePrinceGuard, is placed for the bottom
- * side; its start makes the guard 850 ms later, which deploys for 300 ms and charges 4000 up the
- * lane past a top side Knight walking down toward it.
+ * side; its start makes the guard after its delay, which deploys and charges up the lane past a top
+ * side Knight walking down toward it.
  */
 class BattleGuardChargeAreaTest {
 
@@ -41,7 +41,7 @@ class BattleGuardChargeAreaTest {
   /** The tick the guard's area effect is placed on. */
   private static final int PLACED = 30;
 
-  /** The area effect's point: the guard appears 2000 behind it and charges to 4000 ahead. */
+  /** The area effect's point: the guard appears behind it and charges ahead of it. */
   private static final int X = 3500;
 
   private static final int Y = 12000;
@@ -49,7 +49,7 @@ class BattleGuardChargeAreaTest {
   /** The tick the scene runs to, well after the charge has ended. */
   private static final int END = 120;
 
-  /** The guard's charge area effect, as data version 16.402.18 writes it. */
+  /** The guard's charge area effect, as the guard spawn row names it. */
   private static final String CLEAVE = "ChampionGuardCleave";
 
   /** What the scene saw. */
@@ -193,7 +193,7 @@ class BattleGuardChargeAreaTest {
     assertThat(scene.chargeStarted).as("the charge").isPositive();
     assertThat(scene.cleaveMade).as("made on the charge's step").isEqualTo(scene.chargeStarted);
     assertThat(scene.cleave.side()).isZero();
-    // Made before the charge moves the guard: at the point it deployed on, 2000 behind Y.
+    // Made before the charge moves the guard: at the point it deployed on.
     assertThat(scene.guardAtCleaveMade[2]).isEqualTo(scene.guardAtCleaveMade[0]);
     assertThat(scene.guardAtCleaveMade[3]).isEqualTo(scene.guardAtCleaveMade[1]);
     // It follows the guard: wherever the guard stands after a step, it stands there too.

@@ -69,7 +69,7 @@ class BattleHunterEvoTest {
     assertThat(shotAt).as("a net thrown").isNotEmpty();
     assertThat(snared).as("the net's hit snares the Musketeer").isNotEmpty();
     assertThat(snared.get(0)).isGreaterThan(shotAt.values().iterator().next());
-    // The snare's time in steps, a part step counting as one (3000 ms is 60).
+    // The snare's time in steps, a part step counting as one.
     int snareTime = Shipped.number("Hunter_EV1_apply_snare_small", "SpawnTime");
     assertThat(snared.get(snared.size() - 1) - snared.get(0) + 1)
         .as("for the snare's time, then the snare is gone")

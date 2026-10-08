@@ -55,19 +55,19 @@ class BattleFishermanTest {
   private static final int KNIGHT_RADIUS =
       Shipped.number(Shipped.unitRow("Knight"), "CollisionRadius");
 
-  /** The near bound of a Knight's ring: its radius plus the special's minimum range (4000). */
+  /** The near bound of a Knight's ring: its radius plus the special's minimum range. */
   private static final int RING_MIN = KNIGHT_RADIUS + Shipped.number(FISHERMAN, "SpecialMinRange");
 
-  /** The far bound of a Knight's ring: its radius plus the special's range (7500). */
+  /** The far bound of a Knight's ring: its radius plus the special's range. */
   private static final int RING_MAX = KNIGHT_RADIUS + Shipped.number(FISHERMAN, "SpecialRange");
 
-  /** The special's load, in milliseconds (1300). */
+  /** The special's load, in milliseconds: the row's SpecialLoadTime. */
   private static final int LOAD = Shipped.number(FISHERMAN, "SpecialLoadTime");
 
   /** The floor of a pulled troop's speed, in percent of the drag-back speed. */
   private static final int PULL_FLOOR = 60;
 
-  /** A distance from the Fisherman inside a Knight's ring, 1500 past its near bound (5500). */
+  /** A distance from the Fisherman inside a Knight's ring, 1500 past its near bound. */
   private static final int IN_RING = RING_MIN + 1500;
 
   /** A battle with the towers passive, one Fisherman that never walks, and what his hooks do. */
@@ -204,14 +204,14 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "the load takes 50 a visit off its 1300 and fires 26 visits after it armed; slowed, 35 a"
-          + " visit, 38 visits")
+      "the load takes 50 a visit off the row's load time and fires on the visit that empties it;"
+          + " slowed, the slow's share of 50 a visit")
   void theLoad() {
     Scene plain = new Scene();
     plain.still(0, 1, "Knight", X, Y + IN_RING, "K");
     plain.step(60);
     int armedAt = Integer.parseInt(plain.armed.get(0).split(" ")[0]);
-    // The load loses 50 a visit and fires on the visit that empties it: 26 for 1300.
+    // The load loses 50 a visit and fires on the visit that empties it.
     assertThat(plain.launchTicks.get(0) - armedAt).isEqualTo(visitsToEmpty(LOAD, 50));
 
     Scene slowed = new Scene();
@@ -222,8 +222,8 @@ class BattleFishermanTest {
         .apply(GameData.records().buff("IceWizardSlowDown"), 10000, LEVEL, null, 0);
     slowed.step(80);
     int slowedAt = Integer.parseInt(slowed.armed.get(0).split(" ")[0]);
-    // Under the slow's hit speed multiplier the load loses that share of 50 a visit: 35 for -30,
-    // so 1265 after the arming visit and 38 visits in all.
+    // Under the slow's hit speed multiplier the load loses that share of 50 a visit, the arming
+    // visit's included.
     int slowedStep =
         50
             * (100
@@ -236,8 +236,8 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a hook on a building drags the Fisherman to it, 450 a visit, until within both radii, and"
-          + " lets him walk on")
+      "a hook on a building drags the Fisherman to it at the self-drag speed, until within both"
+          + " radii, and lets him walk on")
   void aBuilding() {
     Scene scene = new Scene();
     scene.still(0, 1, "Cannon", X, Y + IN_RING, "C");
@@ -246,14 +246,14 @@ class BattleFishermanTest {
     GridEntity f = scene.fisherman.getView();
     int before = f.getY();
     scene.step(1);
-    // The hook's self-drag speed (450).
+    // The hook row's DragSelfSpeed.
     assertThat(f.getY() - before).isEqualTo(Shipped.number(HOOK, "DragSelfSpeed"));
     assertThat(f.getX()).isEqualTo(X);
     while (f.getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING && scene.tick < 200) {
       scene.step(1);
     }
     assertThat(scene.states.get(1)).endsWith(" F 13 1");
-    // Within the Cannon's radius and his of the point it was hooked at (600 and 500).
+    // Within the Cannon's radius and his of the point it was hooked at.
     assertThat(scene.hooks.get(0).getY() - f.getY())
         .isLessThanOrEqualTo(
             Shipped.number(Shipped.unitRow("Cannon"), "CollisionRadius")
@@ -289,7 +289,7 @@ class BattleFishermanTest {
     int from = pull.getY();
     golem.step(1);
     // The pull reads the speed the Golem's row is loaded at: its 60, raised by its walk and wait
-    // times, (wait + walk) * 1000 / walk * speed / 1000, to 72.
+    // times, (wait + walk) * 1000 / walk * speed / 1000.
     GameRow golemRow = Shipped.unitRow("Golem");
     int walk = Shipped.number(golemRow, "StopMovementAfterMS");
     int wait = Shipped.number(golemRow, "WaitMS");
@@ -379,15 +379,14 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a troop slower than 60 is pulled at 60 of the drag-back speed: a Bowler comes back at a"
-          + " Knight's pace")
+      "a Bowler is pulled at its row's speed or 60 of the drag-back speed, whichever is larger")
   void aSlowTroopOn16() {
     Scene scene = new Scene();
     scene.still(0, 1, "Bowler", X, Y + IN_RING, "B");
     ProjectileEntity hook = scene.stepToTheHook();
     int before = hook.getY();
     scene.step(1);
-    // The Bowler's speed (45) is below the floor.
+    // The Bowler's speed, from its row, against the floor.
     int speed = Shipped.number(Shipped.unitRow("Bowler"), "Speed");
     assertThat(before - hook.getY())
         .isEqualTo(Shipped.number(HOOK, "DragBackSpeed") * Math.max(PULL_FLOOR, speed) / 100);
@@ -704,7 +703,7 @@ class BattleFishermanTest {
     scene.step(1);
   }
 
-  /** The visits a countdown takes to reach 0 or below at a given step: 26 for 1300 at 50. */
+  /** The visits a countdown takes to reach 0 or below at a given step. */
   private static int visitsToEmpty(int countdown, int step) {
     return (countdown + step - 1) / step;
   }

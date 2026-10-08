@@ -85,8 +85,8 @@ class BattleIceSpiritEvoTest {
       assertThat(area.getY()).isEqualTo(y);
     }
 
-    // The filter form's one hit falls on the update its HitSpeedOffset starts (3000 ms: the 61st),
-    // kept by the countdown below 0; its typed hit is dealt at that step's damage drain.
+    // The filter form's one hit falls on the update its HitSpeedOffset starts, kept by the
+    // countdown below 0; its typed hit is dealt at that step's damage drain.
     int hitStep = Shipped.number(AREA, "HitSpeedOffset") / 50 + 1;
     int damage =
         Shipped.scaled(Shipped.column(AREA, "Damage").path("BaseDamage").asInt(), AREA, LEVEL);
