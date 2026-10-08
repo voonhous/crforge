@@ -8,14 +8,10 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.crforge.core.engine.AoeDamageEvent;
-import org.crforge.core.engine.GameState;
-import org.crforge.core.player.Team;
 
 /**
  * Renders fading circles for instantaneous AOE damage bursts (melee splash, projectile impact AOE,
- * death explosions, instant spells). Events are recorded by CombatSystem.applySpellDamage() and
- * consumed here each frame.
+ * death explosions, instant spells). The screen hands over the battle's area hits of each frame.
  */
 public class AoeDamageRenderer {
 
@@ -31,30 +27,18 @@ public class AoeDamageRenderer {
   }
 
   /**
-   * Consume AOE damage events from the game state and age existing indicators. Must be called every
-   * frame (even when rendering is toggled off) to keep indicators current.
-   */
-  public void update(GameState state) {
-    // Consume new events
-    for (AoeDamageEvent event : state.getAoeDamageEvents()) {
-      add(event.centerX(), event.centerY(), event.radius(), event.sourceTeam());
-    }
-    age();
-  }
-
-  /**
-   * Starts one indicator, whichever engine dealt the area hit.
+   * Starts one indicator for an area hit.
    *
    * @param centerX the circle's centre along the width, in game units
    * @param centerY the circle's centre along the length, in game units
    * @param radius the circle's radius, in game units
-   * @param sourceTeam the team whose hit it was, which colours it
+   * @param blue whether the side whose hit it was is drawn blue, which colours it
    */
-  public void add(float centerX, float centerY, float radius, Team sourceTeam) {
+  public void add(float centerX, float centerY, float radius, boolean blue) {
     float worldX = unitsToPixels(centerX);
     float worldY = unitsToPixels(centerY) + BOTTOM_UI_HEIGHT;
     float worldRadius = unitsToPixels(radius);
-    activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, sourceTeam));
+    activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, blue));
   }
 
   /**
@@ -89,7 +73,7 @@ public class AoeDamageRenderer {
     for (AoeIndicator indicator : activeIndicators) {
       float alpha = 1.0f - (indicator.elapsed / INDICATOR_DURATION);
       float fillAlpha = alpha * FILL_ALPHA_MAX;
-      setTeamColor(indicator.sourceTeam, fillAlpha);
+      setSideColor(indicator.blue, fillAlpha);
       ctx.getShapeRenderer().circle(indicator.x, indicator.y, indicator.radius, CIRCLE_SEGMENTS);
     }
     ctx.getShapeRenderer().end();
@@ -99,7 +83,7 @@ public class AoeDamageRenderer {
     for (AoeIndicator indicator : activeIndicators) {
       float alpha = 1.0f - (indicator.elapsed / INDICATOR_DURATION);
       float outlineAlpha = alpha * OUTLINE_ALPHA_MAX;
-      setTeamColor(indicator.sourceTeam, outlineAlpha);
+      setSideColor(indicator.blue, outlineAlpha);
       ctx.getShapeRenderer().circle(indicator.x, indicator.y, indicator.radius, CIRCLE_SEGMENTS);
     }
     ctx.getShapeRenderer().end();
@@ -107,8 +91,8 @@ public class AoeDamageRenderer {
     Gdx.gl.glDisable(GL20.GL_BLEND);
   }
 
-  private void setTeamColor(Team team, float alpha) {
-    if (team == Team.BLUE) {
+  private void setSideColor(boolean blue, float alpha) {
+    if (blue) {
       ctx.getShapeRenderer().setColor(0.3f, 0.5f, 1.0f, alpha);
     } else {
       ctx.getShapeRenderer().setColor(1.0f, 0.3f, 0.3f, alpha);
@@ -120,14 +104,14 @@ public class AoeDamageRenderer {
     final float x;
     final float y;
     final float radius;
-    final Team sourceTeam;
+    final boolean blue;
     float elapsed;
 
-    AoeIndicator(float x, float y, float radius, Team sourceTeam) {
+    AoeIndicator(float x, float y, float radius, boolean blue) {
       this.x = x;
       this.y = y;
       this.radius = radius;
-      this.sourceTeam = sourceTeam;
+      this.blue = blue;
       this.elapsed = 0f;
     }
   }

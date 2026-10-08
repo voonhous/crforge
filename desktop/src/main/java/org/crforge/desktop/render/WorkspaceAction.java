@@ -13,7 +13,6 @@ public enum WorkspaceAction {
   DAMAGE,
   AREA_HITS,
   HP,
-  LEGACY_PATHFINDING,
   CELL_COSTS,
   ROUTES,
   FLIP,
@@ -46,7 +45,6 @@ public enum WorkspaceAction {
       case Input.Keys.D -> DAMAGE;
       case Input.Keys.A -> AREA_HITS;
       case Input.Keys.H -> HP;
-      case Input.Keys.M -> LEGACY_PATHFINDING;
       case Input.Keys.G -> CELL_COSTS;
       case Input.Keys.N -> ROUTES;
       case Input.Keys.F -> FLIP;

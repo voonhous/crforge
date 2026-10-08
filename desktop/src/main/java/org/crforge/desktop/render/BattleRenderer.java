@@ -250,7 +250,7 @@ public class BattleRenderer {
       damageNumbers.render();
     }
     for (AreaHitLog.AreaHit hit : inputs.newAreaHits()) {
-      areaHits.add(view.x(hit.x()), view.y(hit.y()), hit.radius(), view.team(hit.side()));
+      areaHits.add(view.x(hit.x()), view.y(hit.y()), hit.radius(), view.blue(hit.side()));
     }
     areaHits.age();
     if (drawAoeDamage) {

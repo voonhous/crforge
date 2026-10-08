@@ -43,7 +43,6 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>D: Toggle floating damage numbers
  *   <li>A: Toggle area damage indicators
  *   <li>H: Toggle HP numbers
- *   <li>M: Not offered: the battle core has one set of movement rules; logs a note
  *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
  *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
@@ -66,9 +65,6 @@ public class DebugGameScreen implements Screen {
 
   /** Seconds of game time one battle step covers. */
   private static final float STEP_SECONDS = Battle.STEP_MS / 1000f;
-
-  /** The note the status column carries for the control this screen no longer offers. */
-  private static final String M_NOTE = "M: n/a on the battle core";
 
   /** The note the status column carries for the flip this screen does not offer. */
   private static final String F_NOTE = "F: flips a replay only";
@@ -164,10 +160,6 @@ public class DebugGameScreen implements Screen {
         renderer.toggleDrawHpNumbers();
         log.info("HP numbers: {}", renderer.isDrawHpNumbers() ? "ON" : "OFF");
       }
-      case LEGACY_PATHFINDING ->
-          log.info(
-              "M flips the original engine's pathfinding mode; the battle core has one set"
-                  + " of movement rules, so there is nothing to flip");
       case CELL_COSTS -> {
         renderer.toggleDrawCellCosts();
         log.info("Cell cost overlay: {}", renderer.isDrawCellCosts() ? "ON" : "OFF");
@@ -460,7 +452,7 @@ public class DebugGameScreen implements Screen {
               selectedCard,
               preview,
               List.of(),
-              List.of(versions.statusLine(), M_NOTE, F_NOTE),
+              List.of(versions.statusLine(), F_NOTE),
               view),
           false);
       newAreaHits.clear();
@@ -504,7 +496,6 @@ public class DebugGameScreen implements Screen {
 
         Pathing:
           P     - Toggle heading lines
-          M     - Not offered on the battle core (one set of movement rules)
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
 
