@@ -90,7 +90,7 @@ public final class GameUnits {
   /**
    * Converts a raw data speed (60 = one tile per second) to game units per second. The result is
    * fractional for most speeds, e.g. raw 45 = 750 units/s but raw 650 = 10,833.3 units/s, so speeds
-   * stay floating point and movement integrates through {@code Position}'s fixed-point carry.
+   * stay floating point.
    */
   public static float rawSpeedToUnitsPerSecond(float rawSpeed) {
     return rawSpeed * UNITS_PER_TILE / RAW_SPEED_PER_TILE_PER_SECOND;
