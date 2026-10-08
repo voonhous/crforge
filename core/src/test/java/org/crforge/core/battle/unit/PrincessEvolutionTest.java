@@ -1,9 +1,9 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -63,11 +63,6 @@ class PrincessEvolutionTest {
                 .add(PLAIN)
                 .add(SPECIAL));
     tables = GameTables.load(folder);
-  }
-
-  /** The fields of an action row in the actions table, to alter. */
-  private static ObjectNode fields(ObjectNode rows, String action) {
-    return (ObjectNode) rows.get(action).get("fields");
   }
 
   /** The first arrow of an entry of the Princess's attack sequence, as her row lists it. */

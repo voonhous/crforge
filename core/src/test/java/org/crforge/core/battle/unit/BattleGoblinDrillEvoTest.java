@@ -2,8 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.GameData.fields;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -79,22 +79,9 @@ class BattleGoblinDrillEvoTest {
             GameData.columns(rows, "GoblinDrill_EV1_Dig")
                 .put("SpawnPathfindSpeed", 300)
                 .put("DeployTime", 1000));
-    GameData.alterLoaded(
-        folder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
+    GameData.alterLoaded(folder, "spawn_groups", GameData::placeTowers);
     tables = GameTables.load(folder);
     records = new BattleRecords(tables);
-  }
-
-  /** The fields of an action row in the actions table, to alter. */
-  private static ObjectNode fields(ObjectNode rows, String action) {
-    return (ObjectNode) rows.get(action).get("fields");
   }
 
   /** The evolved drill standing on the ring of the top side's right princess tower. */

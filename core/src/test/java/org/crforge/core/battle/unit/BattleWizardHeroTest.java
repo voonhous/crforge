@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -402,11 +403,6 @@ class BattleWizardHeroTest {
           ability.put("MaxCharges", CHARGES);
         });
     return GameTables.load(folder);
-  }
-
-  /** The fields of an action row, to alter. */
-  private static ObjectNode fields(ObjectNode rows, String action) {
-    return (ObjectNode) rows.get(action).get("fields");
   }
 
   /** The pinned copy whose action at the height leaves out the swap to the flying row. */

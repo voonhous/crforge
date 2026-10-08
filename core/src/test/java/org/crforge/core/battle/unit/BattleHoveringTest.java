@@ -8,11 +8,8 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
-import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
-import org.crforge.core.pathfinding.combat.PackedLevel;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -123,7 +120,7 @@ class BattleHoveringTest {
     match.deploy(0, GameData.unit("Valkyrie"), LEVEL, 1, 9000, 12500, "Valkyrie");
     // Until the Valkyrie's first swing lands on the Knight; the loop guard is a battle's whole
     // length.
-    int guard = battleTicks();
+    int guard = Shipped.battleTicks();
     for (int step = 0;
         knight.getHitPoints().getHitPoints() == knight.getHitPoints().getMaximum();
         step++) {
@@ -341,24 +338,11 @@ class BattleHoveringTest {
     // The row's heal per second at the king's level, raised by its crown-tower percent and rounded
     // up; a troop takes only the hit's share of it, HitFrequency ms of the second, at each hit.
     int percent = Math.max(Shipped.number(HEALER, "CrownTowerDamagePercent"), -100) + 100;
-    int perSecond =
-        (percent * scaled(Shipped.number(HEALER, "HealPerSecond"), king.getPackedLevel()) + 99)
-            / 100;
+    int healPerSecond =
+        Shipped.scaledAtPackedLevel(
+            Shipped.number(HEALER, "HealPerSecond"), HEALER, king.getPackedLevel());
+    int perSecond = (percent * healPerSecond + 99) / 100;
     assertThat(heals).containsExactly(perSecond);
-  }
-
-  /**
-   * A battle's whole length in ticks: the sections of the Ladder mode's battle timeline, in seconds
-   * of 20 ticks, summed.
-   */
-  private static int battleTicks() {
-    String timeline =
-        Shipped.text(Shipped.row("game_modes", LadderMatch.GAME_MODE), "BattleTimeline");
-    int seconds = 0;
-    for (int length : Shipped.numbers(Shipped.row("battle_timelines", timeline), "SectionLength")) {
-      seconds += length;
-    }
-    return seconds * 1000 / 50;
   }
 
   /**
@@ -367,21 +351,6 @@ class BattleHoveringTest {
    */
   private static int visitsToTheFirstHit() {
     return Shipped.number(HEALER, "HitFrequency") / 50;
-  }
-
-  /**
-   * A heal buff's value at a packed level: its row's rarity's multiplier, in hundredths, at the
-   * level's step, truncated.
-   */
-  private static int scaled(int value, int packedLevel) {
-    String name = Shipped.text(HEALER, "Rarity");
-    RarityTable rarity =
-        RarityTable.PUBLISHED.stream()
-            .filter(table -> table.name().equals(name))
-            .findFirst()
-            .orElseThrow();
-    int steps = PackedLevel.steps(packedLevel);
-    return steps == 0 ? value : value * rarity.multiplier(steps - 1) / 100;
   }
 
   @Test
@@ -408,7 +377,8 @@ class BattleHoveringTest {
     // points, held at 150 percent of its maximum.
     int maximum = knight.getHitPoints().getMaximum();
     int heal =
-        scaled(Shipped.number(HEALER, "HealPerSecond"), knight.getPackedLevel())
+        Shipped.scaledAtPackedLevel(
+                Shipped.number(HEALER, "HealPerSecond"), HEALER, knight.getPackedLevel())
             * Shipped.number(HEALER, "HitFrequency")
             / 1000;
     int expected = Math.min(maximum * 150 / 100, maximum + heal);

@@ -3,7 +3,6 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -74,32 +72,9 @@ class BattleBuildingEvoTest {
           GameData.columns(rows, "Cannon").put("CollisionRadius", 600);
           GameData.columns(rows, "PrincessTower").put("CollisionRadius", 1000);
         });
-    GameData.alterLoaded(
-        folder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
+    GameData.alterLoaded(folder, "spawn_groups", GameData::placeTowers);
     tables = GameTables.load(folder);
     records = new BattleRecords(tables);
-  }
-
-  /**
-   * A damage scaled by a row's rarity at the scenes' level: the rarity's multiplier, in hundredths,
-   * at the level's step above the rarity's first level, truncated.
-   */
-  private static int scaled(int damage, GameRow row) {
-    String name = Shipped.text(row, "Rarity");
-    RarityTable rarity =
-        RarityTable.PUBLISHED.stream()
-            .filter(table -> table.name().equals(name))
-            .findFirst()
-            .orElseThrow();
-    int steps = LEVEL - rarity.firstLevel();
-    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
   }
 
   /** The one number an expression of an action's field multiplies by, read from its text. */
@@ -209,7 +184,8 @@ class BattleBuildingEvoTest {
     // The buff's CrownTowerDamagePerHit at the level (21 is 53), dealt on its first visit.
     GameRow buff = Shipped.row("character_buffs", "Tesla_EV1_WithDamage");
     assertThat(damage)
-        .containsExactly(21, scaled(Shipped.number(buff, "CrownTowerDamagePerHit"), buff));
+        .containsExactly(
+            21, Shipped.scaled(Shipped.number(buff, "CrownTowerDamagePerHit"), buff, LEVEL));
     assertThat(targetsTesla)
         .containsEntry(20, true)
         .containsEntry(21, false)

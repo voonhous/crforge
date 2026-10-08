@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.battle.TableCopies;
 
@@ -38,18 +39,13 @@ final class Replays {
    */
   static final String ARCHER_QUEEN_EVERY_FIELD = "/replays/archer_queen_every_field.json";
 
-  private static GameTables tables;
-
   private Replays() {
     // Utility class
   }
 
   /** The configured game tables, loaded once. */
-  static synchronized GameTables tables() {
-    if (tables == null) {
-      tables = GameTables.loadConfigured();
-    }
-    return tables;
+  static GameTables tables() {
+    return GameData.tables();
   }
 
   /**

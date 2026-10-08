@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 
 /**
@@ -27,13 +28,8 @@ public final class TableCopies {
    * @return the folder
    */
   public static Path copy(Path root, String version) throws IOException {
-    Path source = GameTables.configuredDirectory().orElseThrow();
     Path folder = Files.createDirectories(root.resolve(version));
-    try (Stream<Path> files = Files.list(source)) {
-      for (Path file : files.filter(f -> f.toString().endsWith(".json")).toList()) {
-        Files.copy(file, folder.resolve(file.getFileName()));
-      }
-    }
+    GameData.copyConfigured(folder);
     return folder;
   }
 

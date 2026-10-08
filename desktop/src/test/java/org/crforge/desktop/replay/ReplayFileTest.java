@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +37,7 @@ class ReplayFileTest {
 
   /** A replay document with its plays' items fitted to the tables: their rows' costs and levels. */
   private static ObjectNode fit(ObjectNode document) {
-    return ReplayItems.fitted(document, Replays.tables());
+    return ScenarioItems.fitted(document, Replays.tables());
   }
 
   @Test

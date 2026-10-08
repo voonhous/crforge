@@ -18,7 +18,6 @@ import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -193,7 +192,7 @@ class BattleGoblinsteinTest {
     int interval = Shipped.number(ability, "TetherHitInterval");
     int count = (duration + interval - 1) / interval;
     GameRow doctorRow = Shipped.unitRow("goblinstein_doctor");
-    int damage = atLevel(Shipped.number(ability, "TetherDamage"), doctorRow, LEVEL);
+    int damage = Shipped.scaled(Shipped.number(ability, "TetherDamage"), doctorRow, LEVEL);
     assertThat(passes).hasSize(count);
     assertThat(passes).allMatch(pass -> pass.endsWith(" [near]"));
     assertThat(hits).hasSize(count).allMatch(hit -> hit.equals("near " + damage));
@@ -279,7 +278,7 @@ class BattleGoblinsteinTest {
     // the most elixir there can be; and no sooner than 22 ticks after the play it repeats.
     int cost =
         Math.min(
-            cost("Goblinstein") + cost("Mirror"),
+            Shipped.cost("Goblinstein") + Shipped.cost("Mirror"),
             Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue"));
     int mirror = Math.max(21 + 22, coveredFrom(battle, match, cost));
     battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
@@ -287,16 +286,6 @@ class BattleGoblinsteinTest {
     assertThatThrownBy(() -> run(battle, mirror))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("m: a Mirror of the champion Goblinstein, which no reference holds");
-  }
-
-  /** A card's elixir cost, as its row writes it. */
-  private static int cost(String card) {
-    for (String table : List.of("spells_characters", "spells_other")) {
-      if (GameData.tables().table(table).has(card)) {
-        return Shipped.number(Shipped.row(table, card), "ManaCost");
-      }
-    }
-    throw new AssertionError("no card row " + card);
   }
 
   /**
@@ -315,21 +304,5 @@ class BattleGoblinsteinTest {
     while (battle.getBattle().getTick() <= lastTick) {
       battle.getBattle().step();
     }
-  }
-
-  /**
-   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
-   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
-   * base itself on the first level.
-   */
-  private static int atLevel(int base, GameRow row, int level) {
-    String rarity = Shipped.text(row, "Rarity");
-    RarityTable table =
-        RarityTable.PUBLISHED.stream()
-            .filter(candidate -> candidate.name().equals(rarity))
-            .findFirst()
-            .orElseThrow();
-    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
-    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

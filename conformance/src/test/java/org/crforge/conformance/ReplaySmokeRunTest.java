@@ -16,17 +16,16 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,12 +93,12 @@ class ReplaySmokeRunTest {
 
   /** The columns of a table's row, to write into. */
   private ObjectNode columns(String table, String row) {
-    return (ObjectNode) rowsOf(table).get(row).get("columns");
+    return GameData.columns(rowsOf(table), row);
   }
 
   /** The fields of an action, to write into. */
   private ObjectNode fields(String action) {
-    return (ObjectNode) document("actions").get("actions").get(action).get("fields");
+    return GameData.fields((ObjectNode) document("actions").get("actions"), action);
   }
 
   /** Writes the place of each of a spawn group's objects, in cells of 500: x, then y, in turn. */
@@ -118,16 +117,9 @@ class ReplaySmokeRunTest {
   private void useWrittenTables() throws IOException {
     Path copy = folder.resolve("tables");
     Files.createDirectory(copy);
-    try (Stream<Path> files = Files.list(tablesFolder)) {
-      for (Path file : files.toList()) {
-        String name = file.getFileName().toString();
-        ObjectNode document = written.get(name.replaceFirst("\\.json$", ""));
-        if (document != null) {
-          MAPPER.writeValue(copy.resolve(name).toFile(), document);
-        } else {
-          Files.copy(file, copy.resolve(name));
-        }
-      }
+    GameData.copyConfigured(copy);
+    for (Map.Entry<String, ObjectNode> document : written.entrySet()) {
+      MAPPER.writeValue(copy.resolve(document.getKey() + ".json").toFile(), document.getValue());
     }
     useTables(copy);
   }
@@ -147,26 +139,9 @@ class ReplaySmokeRunTest {
     return ScenarioItems.fitted(scenario, tables);
   }
 
-  /** A unit's row as the tables write it: a character's, else a building's. */
+  /** A unit's row as the tables in use write it: a character's, else a building's. */
   private GameRow unitRow(String name) {
-    return tables.table("characters").has(name)
-        ? tables.table("characters").row(name)
-        : tables.table("buildings").row(name);
-  }
-
-  /** The published rarity of a row's Rarity column, Common when it names none. */
-  private static RarityTable rarity(GameRow row) {
-    JsonNode name = row.columns().get("Rarity");
-    String rarity = name == null || name.isNull() ? "Common" : name.asText();
-    return RarityTable.PUBLISHED.stream()
-        .filter(table -> table.name().equals(rarity))
-        .findFirst()
-        .orElseThrow();
-  }
-
-  private static boolean flag(GameRow row, String column) {
-    JsonNode value = row.columns().get(column);
-    return value != null && value.asBoolean();
+    return Shipped.unitRow(tables, name);
   }
 
   /**
@@ -179,10 +154,10 @@ class ReplaySmokeRunTest {
     return LevelScaling.hitpoints(
         ScalingGlobals.standard(),
         ScenarioItems.number(row, "Hitpoints"),
-        PackedLevel.fromLevel(level, rarity(row)),
-        rarity(row),
-        flag(row, "IsSummoner"),
-        flag(row, "IsSummonerTower"));
+        PackedLevel.fromLevel(level, Shipped.rarity(row)),
+        Shipped.rarity(row),
+        Shipped.flag(row, "IsSummoner"),
+        Shipped.flag(row, "IsSummonerTower"));
   }
 
   /**
@@ -205,9 +180,10 @@ class ReplaySmokeRunTest {
     return LevelScaling.scale(
         ScalingGlobals.standard(),
         ScenarioItems.number(projectile, "Damage"),
-        PackedLevel.pack(PackedLevel.fromLevel(level, rarity(launcher)), rarity(projectile)),
+        PackedLevel.pack(
+            PackedLevel.fromLevel(level, Shipped.rarity(launcher)), Shipped.rarity(projectile)),
         scaling,
-        rarity(projectile));
+        Shipped.rarity(projectile));
   }
 
   /** A card's level counted from 1 at a level index: plus its rarity's RelativeLevel plus 1. */
@@ -595,28 +571,17 @@ class ReplaySmokeRunTest {
 
   /**
    * A horizon past an idle battle's own stop, from the tables in use: the battle runs the sections
-   * of the Ladder mode's battle timeline, then the tiebreaker of its equal crowns and the end
-   * screen's delay (the locations' EndScreenDelay). The tiebreaker takes seconds, far less than the
-   * sections, so twice the sections and the delay, in ticks of 50 ms, lie past the stop.
+   * of the Ladder mode's battle timeline ({@link Shipped#battleTicks}), then the tiebreaker of its
+   * equal crowns and the end screen's delay (the locations' EndScreenDelay). The tiebreaker takes
+   * seconds, far less than the sections, so twice the sections and the delay, in ticks of 50 ms,
+   * lie past the stop.
    */
   private int idleHorizon() {
-    String timeline =
-        tables
-            .table("game_modes")
-            .row(LadderMatch.GAME_MODE)
-            .columns()
-            .get("BattleTimeline")
-            .asText();
-    int sectionsMs = 0;
-    for (JsonNode seconds :
-        tables.table("battle_timelines").row(timeline).columns().get("SectionLength")) {
-      sectionsMs += seconds.asInt() * 1000;
-    }
     int endScreenMs = 0;
     for (GameRow location : tables.table("locations").rows()) {
       endScreenMs = Math.max(endScreenMs, ScenarioItems.number(location, "EndScreenDelay"));
     }
-    return 2 * (sectionsMs + endScreenMs) / 50;
+    return 2 * Shipped.battleTicks(tables) + 2 * endScreenMs / 50;
   }
 
   @Test

@@ -2,7 +2,6 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -91,15 +90,7 @@ class BattleMultiUnitParityTest {
                 .put("LoadTime", Math.round(stats.getLoadTime() * 1000))
                 .put("DeployTime", Math.round(stats.getDeployTime() * 1000)));
     // The towers on the tiles the older engine's arena puts them on.
-    GameData.alterLoaded(
-        folder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
+    GameData.alterLoaded(folder, "spawn_groups", GameData::placeTowers);
     return GameTables.load(folder);
   }
 
