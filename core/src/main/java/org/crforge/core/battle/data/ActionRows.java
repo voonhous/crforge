@@ -829,13 +829,15 @@ public final class ActionRows {
           Map.entry(
               "ActionRunIfInstigatorMatches",
               Set.of("GameObjectFilter", "MatchName", "ActionToRun", "ActionToRunIfNoMatch")),
-          // The adjustment written as an expression in place of the number.
+          // The adjustment written as an expression in place of the number, and whether it runs on
+          // the entity whose holder runs it rather than on its cause.
           Map.entry(
               "ActionSetCharacterLevel",
               Set.of(
                   "RelativeLevelAdjustment",
                   "AbsoluteLevelToSet",
-                  "RelativeLevelAdjustmentExpression")),
+                  "RelativeLevelAdjustmentExpression",
+                  "ExecuteOnParent")),
           Map.entry("ActionDealDamage", Set.of("BaseDamageAmount", "BaseDamageType")),
           // A run that counters a hit on its owner: the damage reaction's timers and actions, and
           // the counter's gates and scale.
@@ -2839,12 +2841,17 @@ public final class ActionRows {
      */
     /**
      * A level change, by its number columns or, as the shipped rows write it, by an expression for
-     * the relative adjustment. A row that writes both forms is refused.
+     * the relative adjustment, on its cause or, with ExecuteOnParent, on the entity whose holder
+     * runs it. A row that writes both forms is refused.
      */
     private SetCharacterLevel setCharacterLevel(String name, ActionRow shared, JsonNode f) {
+      boolean onParent = bool(f, "ExecuteOnParent");
       if (!f.hasNonNull("RelativeLevelAdjustmentExpression")) {
         return new SetCharacterLevel(
-            shared, integer(f, "RelativeLevelAdjustment"), integer(f, "AbsoluteLevelToSet", 1));
+            shared,
+            integer(f, "RelativeLevelAdjustment"),
+            integer(f, "AbsoluteLevelToSet", 1),
+            onParent);
       }
       if (f.has("RelativeLevelAdjustment") || f.has("AbsoluteLevelToSet")) {
         throw new UnsupportedOperationException(
@@ -2857,7 +2864,7 @@ public final class ActionRows {
         throw new UnsupportedOperationException(
             name + " writes an empty level expression, which is not modelled");
       }
-      return SetCharacterLevel.ofExpression(shared, adjustment);
+      return SetCharacterLevel.ofExpression(shared, adjustment, onParent);
     }
 
     private LaserBall laserBall(String name, ActionRow shared, JsonNode f) {
