@@ -12,13 +12,15 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.SetCharacterLevel;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A level-changing action on units in the battle: it changes its cause's level, and the unit's
- * damage and hit points follow the new level as the level change has them.
+ * A level-changing action on units in the battle: it changes its cause's level, or with
+ * ExecuteOnParent the level of the entity whose holder runs it, and the unit's damage and hit
+ * points follow the new level as the level change has them.
  */
 class BattleLevelChangeTest {
 
@@ -160,6 +162,134 @@ class BattleLevelChangeTest {
             low.getWorld().getActions().build(CHEF_LEVEL_UP, low.getWorld().binding(one)),
             one.actionHolder());
     assertThat(one.level()).as("held at the rarity's first level").isEqualTo(1);
+  }
+
+  /** A hand-written level change: the expression form, with the given ExecuteOnParent column. */
+  private static final String WRITTEN_LEVEL_UP = "TestLevelUp";
+
+  /** The steps the written level change adds. */
+  private static final int WRITTEN_STEPS = 2;
+
+  /**
+   * The configured tables with {@link #WRITTEN_LEVEL_UP} written: a relative adjustment of {@link
+   * #WRITTEN_STEPS} as an expression, run on the cause or, with ExecuteOnParent, on the entity
+   * whose holder runs it.
+   */
+  private static GameTables writtenLevelUp(Path folder, boolean onParent) throws IOException {
+    return GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode row = rows.putObject(WRITTEN_LEVEL_UP);
+          row.put("class", "LogicActionSetCharacterLevelData");
+          row.put("ClassType", "ActionSetCharacterLevel");
+          ObjectNode fields = row.putObject("fields");
+          fields.put("ClassType", "ActionSetCharacterLevel");
+          fields.put("RelativeLevelAdjustmentExpression", String.valueOf(WRITTEN_STEPS));
+          fields.put("ExecuteOnParent", onParent);
+        });
+  }
+
+  @Test
+  @DisplayName(
+      "a level change run on its parent changes the entity whose holder runs it, not its cause;"
+          + " written false, the column leaves it on the cause")
+  void onTheParentTheHoldersOwnerChanges(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            writtenLevelUp(Files.createDirectories(folder.resolve("parent")), true), 11, false);
+    CharacterEntity owner = knight(match, 11, "Owner", 3500);
+    CharacterEntity cause = knight(match, 11, "Cause", 14500);
+    CharacterEntity raised = knight(match, 11 + WRITTEN_STEPS, "Raised", 9000);
+    match.getBattle().step();
+
+    owner
+        .actionHolder()
+        .start(
+            match.getWorld().getActions().build(WRITTEN_LEVEL_UP, match.getWorld().binding(owner)),
+            cause.actionHolder());
+    assertThat(owner.level()).isEqualTo(11 + WRITTEN_STEPS);
+    assertThat(owner.getHitPoints().getMaximum()).isEqualTo(raised.getHitPoints().getMaximum());
+    assertThat(owner.getDamage()).isEqualTo(raised.getDamage());
+    assertThat(cause.level()).as("the cause is left as it was").isEqualTo(11);
+
+    Standard1v1Battle onCause =
+        new Standard1v1Battle(
+            writtenLevelUp(Files.createDirectories(folder.resolve("cause")), false), 11, false);
+    CharacterEntity holder = knight(onCause, 11, "Owner", 3500);
+    CharacterEntity instigator = knight(onCause, 11, "Cause", 14500);
+    onCause.getBattle().step();
+    holder
+        .actionHolder()
+        .start(
+            onCause
+                .getWorld()
+                .getActions()
+                .build(WRITTEN_LEVEL_UP, onCause.getWorld().binding(holder)),
+            instigator.actionHolder());
+    assertThat(instigator.level()).isEqualTo(11 + WRITTEN_STEPS);
+    assertThat(holder.level()).isEqualTo(11);
+  }
+
+  @Test
+  @DisplayName("a level change run on its parent needs no cause, and leaves a dead parent alone")
+  void onTheParentWithoutACauseAndOnADeadParent(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(writtenLevelUp(folder, true), 11, false);
+    CharacterEntity owner = knight(match, 11, "Owner", 3500);
+    CharacterEntity dead = knight(match, 11, "Dead", 14500);
+    CharacterEntity cause = knight(match, 11, "Cause", 9000);
+    match.getBattle().step();
+
+    owner
+        .actionHolder()
+        .start(
+            match.getWorld().getActions().build(WRITTEN_LEVEL_UP, match.getWorld().binding(owner)));
+    assertThat(owner.level()).isEqualTo(11 + WRITTEN_STEPS);
+
+    dead.getHitPoints().setHitPoints(0);
+    dead.actionHolder()
+        .start(
+            match.getWorld().getActions().build(WRITTEN_LEVEL_UP, match.getWorld().binding(dead)),
+            cause.actionHolder());
+    assertThat(dead.level()).isEqualTo(11);
+    assertThat(cause.level()).isEqualTo(11);
+  }
+
+  /** The lifetime the decaying Knight's row is written with, in milliseconds. */
+  private static final int LIFE_TIME_MS = 20000;
+
+  @Test
+  @DisplayName(
+      "a unit whose hit points decay keeps decaying after a level change: the step is worked out"
+          + " again from the new maximum and the lifetime, the carried hundredths are kept")
+  void aDecayingUnitKeepsDecaying(@TempDir Path folder) throws IOException {
+    knightWritten(folder);
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> GameData.columns(rows, "Knight").put("LifeTime", LIFE_TIME_MS));
+    Standard1v1Battle match = new Standard1v1Battle(GameTables.load(folder), 11, false);
+    CharacterEntity knight = knight(match, 11, "Knight", 3500);
+    CharacterEntity twelve = knight(match, 12, "Twelve", 14500);
+    for (int i = 0; i < 30; i++) {
+      match.getBattle().step();
+    }
+    HitPoints hitPoints = knight.getHitPoints();
+    int oldMaximum = hitPoints.getMaximum();
+    assertThat(hitPoints.getDecayStep()).isEqualTo(oldMaximum * 100_000 / LIFE_TIME_MS / 20);
+    int carry = hitPoints.getDecayCarry();
+    int before = hitPoints.getHitPoints();
+    assertThat(before).as("the unit has decayed").isLessThan(oldMaximum);
+
+    knight.actionHolder().start(relative(1), knight.actionHolder());
+
+    int maximum = twelve.getHitPoints().getMaximum();
+    assertThat(knight.level()).isEqualTo(12);
+    assertThat(hitPoints.getMaximum()).isEqualTo(maximum);
+    assertThat(hitPoints.getDecayStep()).isEqualTo(maximum * 100_000 / LIFE_TIME_MS / 20);
+    assertThat(hitPoints.getDecayCarry()).isEqualTo(carry);
+    assertThat(hitPoints.getHitPoints())
+        .isEqualTo(Math.max(before, maximum * (before * 100_000 / oldMaximum) / 100_000));
   }
 
   @Test

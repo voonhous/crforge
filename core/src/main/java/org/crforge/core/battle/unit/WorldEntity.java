@@ -2097,6 +2097,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    *
    * <p>A fall is reached only by a negative adjustment, which only the expression form writes.
    *
+   * <p>An entity whose hit points decay over its row's lifetime keeps decaying: the decay's step is
+   * worked out again from the new maximum and the row's lifetime, as the entity's creation works it
+   * out, and the hundredths it carries are kept.
+   *
    * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
    * The shield's maximum follows the level too, and a shield that is up, under an old maximum of at
    * least 1, keeps its share as the hit points do, never lowered on a rise and never below 1 on a
@@ -2114,10 +2118,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (data.king() || data.summonerTower()) {
       throw new UnsupportedOperationException(
           "changing the level of " + name() + ", a tower, is not established");
-    }
-    if (hitPoints != null && hitPoints.getDecayStep() != 0) {
-      throw new UnsupportedOperationException(
-          "changing the level of " + name() + ", whose hit points decay, is not established");
     }
     packedLevel = PackedLevel.pack(packed, data.rarity());
     targetView.setPendingDamageKey(packedLevel);
@@ -2137,6 +2137,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     hitPoints.setMaximum(maximum);
     hitPoints.setTeamPool(0, maximum);
     hitPoints.setTeamPool(1, maximum);
+    // The lifetime decay's step is worked out again from the new maximum, as the maxima are; the
+    // hundredths carried so far are kept.
+    hitPoints.setDecayStep(HitPoints.decayStep(maximum, data.lifeTimeMs()));
     // The share is kept either way: on a rise the hit points are never lowered, on a fall they are
     // never taken below 1. Both steps are 32-bit and truncate, as the game's own arithmetic does.
     int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;

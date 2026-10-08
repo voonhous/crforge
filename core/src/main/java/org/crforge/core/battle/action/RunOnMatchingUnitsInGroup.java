@@ -11,8 +11,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>An owner in no group does nothing. Otherwise the chain is walked from its first object, the
  * owner among them, each object put through the filter for the owner's team and row name - a filter
  * that drops the dead drops an owner that is dying - and every object that passes has the action
- * scheduled on its own holder, built for it, with the owner as its cause, no delay whatever the
- * action's own and not asked to start at once.
+ * scheduled on its own holder, built for it, with the owner as its cause and the context the start
+ * carried, no delay whatever the action's own and not asked to start at once. So the Tombstone's
+ * hero building hands its hit points and level, written into the scratch board of the context its
+ * group makes, to its passive monster.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -20,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: nothing for an owner in no group, the chain from its first object with the owner"
             + " in it, the filter for the owner's team and name, and the action on each match's"
             + " own holder, built for it, the owner as its cause and no delay; held by"
-            + " hero_goblins. A row that limits the walk to a range is refused for its column.")
+            + " hero_goblins. The start's context passed on with each schedule, read from the"
+            + " build's perform. A row that limits the walk to a range is refused for its column.")
 public final class RunOnMatchingUnitsInGroup extends RowAction {
 
   private final GameObjectFilter filter;
@@ -44,13 +47,18 @@ public final class RunOnMatchingUnitsInGroup extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    return start(holder, instigator, null);
+  }
+
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator, ActionContext context) {
     GroupChain chain = holder.getOwner().groupChain();
     if (!chain.grouped() || actionToRun == null) {
       return null;
     }
     for (GroupChain.Member member : chain.members()) {
       if (filter.matches(member.subject(), chain.team(), chain.rowName())) {
-        member.holder().schedule(member.actions().apply(actionToRun), 0, false, holder);
+        member.holder().schedule(member.actions().apply(actionToRun), 0, false, holder, context);
       }
     }
     return null;

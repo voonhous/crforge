@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.crforge.core.battle.GameData.fields;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -231,6 +232,93 @@ class TombstoneHeroTest {
     battle.getBattle().step();
     assertThat(monster.getView().getX()).isEqualTo(x - 2 * pushX);
     assertThat(monster.getView().getY()).isEqualTo(y - 2 * pushY);
+  }
+
+  /** The scratch key the written chain hands the building's level over in. */
+  private static final String LEVEL_KEY = "test_level";
+
+  /**
+   * The building hands its level to the passive monster with the hit points it already hands over,
+   * and the monster runs a level change on its parent - itself, the entity whose holder runs it -
+   * by the building's level less its own. The chain is written into the scene's rows: the
+   * building's hit-point write goes on to write its level into the same scratch and the monster's
+   * hit-point read goes on to read it into a variable and change its level.
+   */
+  @Test
+  @DisplayName(
+      "the passive monster takes the building's level, which the building hands over with its"
+          + " hit points: a level change on the parent, the monster, not on its cause, the"
+          + " building")
+  void theMonsterTakesTheBuildingsLevel(@TempDir Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode setHp = fields(rows, "Tombstone_hero_set_hp");
+          JsonNode send = setHp.get("NextAction");
+          setHp.putObject("NextAction").put("action", "TestSetLevel");
+          ObjectNode setLevel = action(rows, "TestSetLevel", "ActionBlackboardSetInt");
+          setLevel.put("Key", LEVEL_KEY);
+          setLevel.set("NextAction", send);
+          setLevel.put("NextActionWait", true);
+          setLevel.put("UpdatePhase", "PostGameObjectTick");
+          setLevel.put("UseScratch", true);
+          setLevel.put("Value", "character_level");
+
+          ObjectNode track = fields(rows, "Tombstone_hero_Monster_TrackHealthValue_Action");
+          track.putObject("NextAction").put("action", "TestTrackLevel");
+          track.put("NextActionWait", true);
+          ObjectNode trackLevel = action(rows, "TestTrackLevel", "ActionContextToVariable");
+          trackLevel.put("BlackboardKey", LEVEL_KEY);
+          trackLevel.putObject("NextAction").put("action", "TestApplyLevel");
+          trackLevel.put("NextActionWait", true);
+          trackLevel.put("OutputVariable", GameData.TEST_VARIABLE);
+          trackLevel.put("UseScratch", true);
+          ObjectNode apply = action(rows, "TestApplyLevel", "ActionSetCharacterLevel");
+          apply.put("ExecuteIfTrue", GameData.TEST_VARIABLE + " >= 0");
+          apply.put("ExecuteOnParent", true);
+          apply.put(
+              "RelativeLevelAdjustmentExpression", GameData.TEST_VARIABLE + " - character_level");
+        });
+    GameData.addTestVariable(folder);
+    GameData.alterLoaded(
+        folder,
+        "variables",
+        rows -> GameData.columns(rows, GameData.TEST_VARIABLE).put("DefaultValue", -1));
+    Scene scene = scene(GameTables.load(folder));
+    List<CharacterEntity> units = play(scene);
+    CharacterEntity building = units.get(1);
+    CharacterEntity monster = units.get(2);
+    for (int i = 0; i < 25; i++) {
+      scene.battle().getBattle().step();
+    }
+    assertThat(building.level()).isEqualTo(LEVEL);
+    assertThat(monster.level()).as("the same level changes nothing").isEqualTo(LEVEL);
+
+    // The building falls one level, as a level change on it would leave it.
+    building.changeLevel(building.actionPackedLevel() - 1);
+    // The building hands its hit points and level over every 100 ms: within the next two steps
+    // the monster has taken the new level, and the building, the change's cause, keeps it.
+    for (int i = 0; i < 2; i++) {
+      scene.battle().getBattle().step();
+    }
+    assertThat(monster.level()).isEqualTo(LEVEL - 1);
+    assertThat(building.level()).as("the cause is left at its level").isEqualTo(LEVEL - 1);
+    for (int i = 0; i < 20; i++) {
+      scene.battle().getBattle().step();
+    }
+    assertThat(monster.level()).isEqualTo(LEVEL - 1);
+    assertThat(building.level()).isEqualTo(LEVEL - 1);
+  }
+
+  /** A hand-written action row of the class, its fields to fill. */
+  private static ObjectNode action(ObjectNode rows, String name, String classType) {
+    ObjectNode row = rows.putObject(name);
+    row.put("class", "Logic" + classType + "Data");
+    row.put("ClassType", classType);
+    ObjectNode fields = row.putObject("fields");
+    fields.put("ClassType", classType);
+    return fields;
   }
 
   /** The length a step's averaged push is clamped to. */
