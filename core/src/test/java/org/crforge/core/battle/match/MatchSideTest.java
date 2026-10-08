@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,36 +29,58 @@ class MatchSideTest {
     return new Timeline(GameData.records().gameModeTimeline(LadderMatch.GAME_MODE));
   }
 
-  @Test
-  @DisplayName("from 6 elixir, 178 a step at 1x: full on the visit of tick 224, the rest wasted")
-  void theElixirFillsAtOneX() {
-    MatchSide side = side();
-    Timeline timeline = ladder();
-    for (int tick = 0; tick <= 223; tick++) {
-      timeline.advance(tick);
-      side.visit(timeline, MAX_MANA);
-    }
-    assertThat(side.getElixir()).isEqualTo(60000 + 178 * 224);
-    timeline.advance(224);
-    side.visit(timeline, MAX_MANA);
-    assertThat(side.getElixir()).isEqualTo(100000);
-    assertThat(side.getWasted()).isEqualTo(50);
+  /** A list column of the Ladder game mode's battle timeline row. */
+  private static List<Integer> timelineColumn(String name) {
+    GameRow timeline =
+        Shipped.row(
+            "battle_timelines",
+            Shipped.text(Shipped.row("game_modes", "Ladder"), "BattleTimeline"));
+    return Shipped.numbers(timeline, name);
+  }
+
+  /**
+   * The elixir a step adds at a full bar time: a bar of the most elixir in ten-thousandths over the
+   * full bar time in steps of 50 ms, rounded down.
+   */
+  private static int step(int fullBarMs) {
+    return MAX_MANA * 10000 * 50 / fullBarMs;
   }
 
   @Test
-  @DisplayName("357 a step at 2x and 537 at 3x")
+  @DisplayName("from 6 elixir at the first rate's step: full on the visit that crosses the cap")
+  void theElixirFillsAtOneX() {
+    int step = step(timelineColumn("ElixirFullBarMS").get(0));
+    // The visits it takes from 6 elixir to the cap; the last one crosses it.
+    int visits = (100000 - 60000 + step - 1) / step;
+    MatchSide side = side();
+    Timeline timeline = ladder();
+    for (int tick = 0; tick < visits - 1; tick++) {
+      timeline.advance(tick);
+      side.visit(timeline, MAX_MANA);
+    }
+    assertThat(side.getElixir()).isEqualTo(60000 + step * (visits - 1));
+    timeline.advance(visits - 1);
+    side.visit(timeline, MAX_MANA);
+    assertThat(side.getElixir()).isEqualTo(100000);
+    assertThat(side.getWasted()).isEqualTo(60000 + step * visits - 100000);
+  }
+
+  @Test
+  @DisplayName("the elixir step follows the rate: the second and the third rate's full bar")
   void theElixirStepFollowsTheRate() {
+    List<Integer> fullBar = timelineColumn("ElixirFullBarMS");
+    List<Integer> rateLengths = timelineColumn("ElixirRateLength");
     MatchSide side = side();
     side.play(0);
     Timeline timeline = ladder();
-    timeline.advance(2400);
+    timeline.advance(rateLengths.get(0) * 20);
     int before = side.getElixir();
     side.visit(timeline, MAX_MANA);
-    assertThat(side.getElixir() - before).isEqualTo(357);
-    timeline.advance(4800);
+    assertThat(side.getElixir() - before).isEqualTo(step(fullBar.get(1)));
+    timeline.advance((rateLengths.get(0) + rateLengths.get(1)) * 20);
     before = side.getElixir();
     side.visit(timeline, MAX_MANA);
-    assertThat(side.getElixir() - before).isEqualTo(537);
+    assertThat(side.getElixir() - before).isEqualTo(step(fullBar.get(2)));
   }
 
   @Test
@@ -81,8 +105,11 @@ class MatchSideTest {
     side.play(1);
     side.visit(timeline, MAX_MANA);
     assertThat(side.getHand().slots()).containsExactly(4, Hand.EMPTY, 2, 3);
-    assertThat(side.getHand().getCooldownMs()).isEqualTo(1000);
-    for (int visit = 1; visit < 20; visit++) {
+    int cooldownMs = timelineColumn("NextSpellCooldownMS").get(0);
+    assertThat(side.getHand().getCooldownMs()).isEqualTo(cooldownMs);
+    // Each visit counts the cooldown down by 50 ms: the second slot fills on the visit that runs
+    // it out.
+    for (int visit = 1; visit < (cooldownMs + 49) / 50; visit++) {
       side.visit(timeline, MAX_MANA);
     }
     assertThat(side.getHand().slots()).containsExactly(4, Hand.EMPTY, 2, 3);

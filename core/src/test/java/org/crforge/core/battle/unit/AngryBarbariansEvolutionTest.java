@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.match.LadderMatch;
@@ -14,11 +15,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The evolved Angry Barbarians (AngryBarbarians_EV1 of data version 16.402.18) as a match plays
- * them: the evolved row lists its two characters, AngryBarbarian_EV1 and AngryBarbarian_EV1_2, but
- * sets no SummonDeployDelay of its own. The stagger between a play's units is read from the deck's
- * card, AngryBarbarians, whose SummonDeployDelay is 100: the second unit waits its turn before it
- * deploys, as the plain play's second unit does.
+ * The evolved Angry Barbarians (AngryBarbarians_EV1) as a match plays them: the evolved row lists
+ * its two characters, AngryBarbarian_EV1 and AngryBarbarian_EV1_2, but sets no SummonDeployDelay of
+ * its own. The stagger between a play's units is read from the deck's card, AngryBarbarians, whose
+ * SummonDeployDelay is set: the second unit waits its turn before it deploys, as the plain play's
+ * second unit does.
  */
 class AngryBarbariansEvolutionTest {
 
@@ -42,6 +43,15 @@ class AngryBarbariansEvolutionTest {
       "an evolved play's second unit waits the deck card's stagger before it deploys, as the plain"
           + " play's does")
   void theEvolvedPlayStaggersAsTheDeckCard() {
+    // The case this test is about: the deck card staggers its units, the evolved row does not.
+    assertThat(
+            Shipped.number(
+                Shipped.row("spells_characters", "AngryBarbarians"), "SummonDeployDelay"))
+        .isPositive();
+    assertThat(
+            Shipped.column(
+                Shipped.row("spells_evolved", "AngryBarbarians_EV1"), "SummonDeployDelay"))
+        .isNull();
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, true);
     int[] slots = new int[8];
     slots[0] = MatchSide.EVOLUTION_SLOT;
@@ -50,7 +60,11 @@ class AngryBarbariansEvolutionTest {
     List<Standard1v1Battle.Play> barbarians = new ArrayList<>();
     // Each play's units' states on the tick the play ran.
     List<List<Integer>> states = new ArrayList<>();
-    for (int tick = 20; barbarians.size() < 2; tick += 200) {
+    // The plays before the evolved one: the evolved row's DarkElixirCost.
+    int plain =
+        Shipped.number(Shipped.row("spells_evolved", "AngryBarbarians_EV1"), "DarkElixirCost");
+    List<CharacterEntity> previous = List.of();
+    for (int tick = 20; barbarians.size() < plain + 1; tick += 200) {
       assertThat(tick).isLessThan(4000);
       run(battle, tick - 1);
       int pick = -1;
@@ -69,21 +83,28 @@ class AngryBarbariansEvolutionTest {
         barbarians.add(play);
         states.add(play.units().stream().map(unit -> unit.getView().getState()).toList());
       }
+      // Each play's units are removed before the next play, so no tower falls and the match runs
+      // on for as many plays as the evolved row's cost asks.
+      previous.forEach(unit -> battle.getWorld().kill(unit, null));
+      previous = play.units();
     }
 
-    // The first play is plain, the second evolved.
+    // The plays before the count reaches the cost are plain, the last evolved.
+    List<String> spells = new ArrayList<>(Collections.nCopies(plain, "AngryBarbarians"));
+    spells.add("AngryBarbarians_EV1");
     assertThat(barbarians)
         .extracting(play -> play.evolution().spell().name())
-        .containsExactly("AngryBarbarians", "AngryBarbarians_EV1");
-    Standard1v1Battle.Play evolved = barbarians.get(1);
+        .containsExactlyElementsOf(spells);
+    Standard1v1Battle.Play evolved = barbarians.get(plain);
     assertThat(evolved.units())
         .extracting(unit -> unit.getData().name())
-        .containsExactly("AngryBarbarian_EV1", "AngryBarbarian_EV1_2");
-    // Both plays: the first unit deploys at once, the second waits its turn.
+        .containsExactlyElementsOf(
+            Shipped.texts(
+                Shipped.row("spells_evolved", "AngryBarbarians_EV1"), "SummonCharactersList"));
+    // Every play: the first unit deploys at once, the second waits its turn.
     assertThat(states)
-        .containsExactly(
-            List.of(InitialDelay.DEPLOYING, InitialDelay.WAITING),
-            List.of(InitialDelay.DEPLOYING, InitialDelay.WAITING));
+        .hasSize(plain + 1)
+        .containsOnly(List.of(InitialDelay.DEPLOYING, InitialDelay.WAITING));
   }
 
   /** Steps the battle through the given tick. */

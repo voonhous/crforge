@@ -26,26 +26,47 @@ class ReplayScenarioEveryFieldTest {
     tables = GameData.tables();
   }
 
+  /** A scenario with its plays' items fitted to the tables: the costs and levels of their rows. */
+  private static ObjectNode fit(ObjectNode scenario) {
+    return ScenarioItems.fitted(scenario, tables);
+  }
+
+  /** The princess towers' level at level index 0: their rarity's RelativeLevel plus 1. */
+  private static int princessLevel() {
+    String rarity =
+        tables.table("support_cards").row("King_PrincessTowers").columns().get("Rarity").asText();
+    return ScenarioItems.relativeLevel(tables, "support_rarities", rarity) + 1;
+  }
+
+  /** The Knight's level at level index 0: its rarity's RelativeLevel plus 1. */
+  private static int knightLevel() {
+    return ScenarioItems.levelField(tables, ScenarioItems.card(tables, "Knight"), 0) + 1;
+  }
+
   @Test
   void readsEveryFieldOfTheVersionsReplay() {
-    assertThat(new ReplayScenario(tables).survey(Scenarios.knightWithEveryField())).isEmpty();
+    assertThat(new ReplayScenario(tables).survey(fit(Scenarios.knightWithEveryField()))).isEmpty();
   }
 
   @Test
   void translatesThePlayAndBuildsEachKingAtItsPlayerDatasKingLevel() {
     ReplayScenario mapping = new ReplayScenario(tables);
-    ScenarioPlan plan = mapping.translate(Scenarios.knightWithEveryField());
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    ScenarioPlan plan = mapping.translate(scenario);
 
-    // Side 0's kt 15, side 1's kt 16; the princess towers at level index 0 stand at level 1.
+    // Side 0's kt 15, side 1's kt 16; the princess towers at level index 0 stand at their first
+    // level.
     assertThat(plan.towers())
         .containsExactly(
-            new Standard1v1Battle.Towers("King_PrincessTowers", 15, 1),
-            new Standard1v1Battle.Towers("King_PrincessTowers", 16, 1));
+            new Standard1v1Battle.Towers("King_PrincessTowers", 15, princessLevel()),
+            new Standard1v1Battle.Towers("King_PrincessTowers", 16, princessLevel()));
     // The Knight's item carries its cosmetic field, 2, which is no battle input.
+    int item = scenario.path("cmd").get(0).path("c").path("sel").path("pd").asInt();
+    assertThat((item >>> 17) & 0x3).isEqualTo(2);
     assertThat(plan.plays())
         .containsExactly(
             new ScenarioPlan.Play(
-                0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30440000, null, null));
+                0, 200, 220, 0, "Knight", knightLevel(), 3500, 14000, item, null, null));
     // Side 1's avatar leaves out the high word of its account id: 0, as its commands give it.
     assertThat(plan.accounts().get(1)).containsExactly(0, 2);
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
@@ -59,7 +80,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void readsAnAbilityCommandOfType189() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     Scenarios.addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
     ((ObjectNode) scenario.path("cmd").get(1)).put("ct", 189);
 
@@ -70,7 +91,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesTheCommandTypesOfAnOlderClient() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     Scenarios.addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
     ((ObjectNode) scenario.path("cmd").get(1)).put("ct", 178);
@@ -86,17 +107,20 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesAKingLevelOutsideTheKingsLevels() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
-    ((ObjectNode) scenario.path("battle").path("hbd").get(1)).put("kt", 17);
+    // The king's levels are 1 to its Common rarity's LevelCount: one past them is refused.
+    int pastTheLast =
+        ScenarioItems.number(tables.table("rarities").row("Common"), "LevelCount") + 1;
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    ((ObjectNode) scenario.path("battle").path("hbd").get(1)).put("kt", pastTheLast);
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("battle.hbd[1].kt=17");
+        .hasMessageContaining("battle.hbd[1].kt=" + pastTheLast);
   }
 
   @Test
   void refusesPlayerDataWithoutAKingLevelOrWithAnotherField() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     ((ObjectNode) scenario.path("battle").path("hbd").get(0)).put("xyz", 1);
     ((ObjectNode) scenario.path("battle").path("hbd").get(1)).remove("kt");
 
@@ -110,7 +134,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesAnEventOfAnotherTypeOrWithAnotherField() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     ArrayNode events = (ArrayNode) scenario.path("evt");
     ((ObjectNode) events.get(0)).put("type", 2);
     ((ObjectNode) events.get(1)).put("xy", 0);
@@ -126,7 +150,7 @@ class ReplayScenarioEveryFieldTest {
   void carriesTheArenaOfAnyTrophyArena() {
     // A replay from another trophy arena's TV channel: the arena names the players' trophy arena,
     // which sets no battle input; the map is the location's.
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("arena", 54000020);
     ((ObjectNode) battle.path("avatar0")).put("arena", 54000020);
@@ -143,7 +167,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesAnotherValueOfAPinnedFieldOfTheVersion() {
-    ObjectNode scenario = Scenarios.knightWithEveryField();
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     scenario.putArray("srq").add(1);
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", true);
@@ -160,21 +184,22 @@ class ReplayScenarioEveryFieldTest {
   @Test
   void readsACaseGeneratedForTheVersionByTheFieldsOfItsGeneratedCases() {
     ReplayScenario mapping = new ReplayScenario(tables, ScenarioShape.GENERATED);
-    ObjectNode scenario = Scenarios.generatedKnight();
+    ObjectNode scenario = fit(Scenarios.generatedKnight());
 
     assertThat(mapping.survey(scenario)).isEmpty();
     ScenarioPlan plan = mapping.translate(scenario);
 
     // No player data gives a king level: each king stands at level 1, the princess towers at
-    // level index 0 at level 1.
+    // level index 0 at their first level.
     assertThat(plan.towers())
         .containsExactly(
-            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1),
-            new Standard1v1Battle.Towers("King_PrincessTowers", 1, 1));
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, princessLevel()),
+            new Standard1v1Battle.Towers("King_PrincessTowers", 1, princessLevel()));
+    int item = scenario.path("cmd").get(0).path("c").path("sel").path("pd").asInt();
     assertThat(plan.plays())
         .containsExactly(
             new ScenarioPlan.Play(
-                0, 200, 220, 0, "Knight", 1, 3500, 14000, 0x30400000, null, null));
+                0, 200, 220, 0, "Knight", knightLevel(), 3500, 14000, item, null, null));
     assertThat(plan.accounts()).containsExactly(new int[] {0, 1}, new int[] {0, 2});
     assertThat(plan.playerDataChoices()).containsExactly(1, 1);
     assertThat(mapping.mapping())
@@ -189,14 +214,14 @@ class ReplayScenarioEveryFieldTest {
   void refusesACaseGeneratedForTheVersionReadAsAReplay() {
     // A replay of the version must hold the request lists: a generated case is read as one only
     // when the caller names its shape.
-    assertThat(new ReplayScenario(tables).survey(Scenarios.generatedKnight()))
+    assertThat(new ReplayScenario(tables).survey(fit(Scenarios.generatedKnight())))
         .containsExactly(
             new ReplayScenario.Refusal("the scenario has no srq", "the reading stops here"));
   }
 
   @Test
   void refusesInAGeneratedCaseTheFieldsOnlyTheVersionsReplaysWrite() {
-    ObjectNode scenario = Scenarios.generatedKnight();
+    ObjectNode scenario = fit(Scenarios.generatedKnight());
     scenario.putArray("srq");
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", false);
@@ -213,7 +238,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesInAGeneratedCaseTheCommandTypesOfAnOlderClient() {
-    ObjectNode scenario = Scenarios.generatedKnight();
+    ObjectNode scenario = fit(Scenarios.generatedKnight());
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
 
     assertThat(new ReplayScenario(tables, ScenarioShape.GENERATED).survey(scenario))

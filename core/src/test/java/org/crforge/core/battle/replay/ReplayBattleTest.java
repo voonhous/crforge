@@ -15,7 +15,9 @@ class ReplayBattleTest {
   @Test
   void buildsTheBattleAScenarioGivesWithItsCommandsQueuedBeforeItsFirstStep() {
     GameTables tables = GameTables.loadConfigured();
-    ScenarioPlan plan = new ReplayScenario(tables).translate(Scenarios.archerQueenAbility());
+    ScenarioPlan plan =
+        new ReplayScenario(tables)
+            .translate(ScenarioItems.fitted(Scenarios.archerQueenAbility(), tables));
 
     Standard1v1Battle battle = ReplayBattle.build(tables, plan);
 
@@ -36,10 +38,12 @@ class ReplayBattleTest {
   @Test
   void checkingThePlaysThatRanRefusesAnItemOtherThanTheOneTheBattleBuilt() {
     GameTables tables = GameTables.loadConfigured();
-    ObjectNode scenario = Scenarios.knightEvolvedThirdPlay();
-    // The third Knight play given without its evolution field, which the battle sets.
+    ObjectNode scenario = ScenarioItems.fitted(Scenarios.knightEvolvedThirdPlay(), tables);
+    // The third Knight play given with the other evolution field than the one the battle sets.
     ArrayNode commands = (ArrayNode) scenario.path("cmd");
-    ((ObjectNode) commands.get(10).path("c").path("sel")).put("pd", 0x30480180);
+    ObjectNode third = (ObjectNode) commands.get(10).path("c").path("sel");
+    int item = third.path("pd").asInt() ^ 1;
+    third.put("pd", item);
     ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
     Standard1v1Battle battle = ReplayBattle.build(tables, plan);
 
@@ -52,6 +56,6 @@ class ReplayBattleTest {
               }
             })
         .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("cmd[10].c.sel.pd=" + 0x30480180);
+        .hasMessageContaining("cmd[10].c.sel.pd=" + item);
   }
 }

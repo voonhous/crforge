@@ -21,6 +21,7 @@ import org.crforge.conformance.ReferenceSuite.CaseResult;
 import org.crforge.conformance.ReferenceSuite.References;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,8 @@ class ReferenceSuiteTest {
   @Test
   void aRecordedBattleIsRunInProcessAndComparedWithItsReference() throws IOException {
     GameTables tables = GameTables.load(GameTables.configuredDirectory().orElseThrow());
-    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.knight());
+    // The knight scenario, its play's item fitted to the tables: the Knight's cost and level.
+    byte[] scenario = MAPPER.writeValueAsBytes(ScenarioItems.fitted(Scenarios.knight(), tables));
     ReplaySmokeRun.InProcessRun recorded =
         ReplaySmokeRun.runInProcess(SmokeSchema.V1, 260, scenario, tables);
     // One battle recorded as given, one with its stream state changed on observation 230.
@@ -155,7 +157,8 @@ class ReferenceSuiteTest {
   @Test
   void aCorpusOfGeneratedCasesNamesTheirShapeAndItsCasesAreReadAsSuch() throws IOException {
     GameTables tables = GameTables.loadConfigured();
-    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnight());
+    byte[] scenario =
+        MAPPER.writeValueAsBytes(ScenarioItems.fitted(Scenarios.generatedKnight(), tables));
     ReplaySmokeRun.InProcessRun recorded =
         ReplaySmokeRun.runInProcess(SmokeSchema.V1, 260, scenario, tables, ScenarioShape.GENERATED);
     writeReference("knight", scenario, recorded.trace());

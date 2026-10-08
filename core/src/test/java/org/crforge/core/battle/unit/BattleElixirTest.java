@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
@@ -53,8 +54,10 @@ class BattleElixirTest {
     for (int i = 0; i < 40 && paid.isEmpty(); i++) {
       battle.getBattle().step();
     }
-    assertThat(paid).containsExactly("ElixirGolem1 1 10000");
-    assertThat(match.side(1).getElixir()).isGreaterThanOrEqualTo(before + 10000);
+    // The row's ManaOnDeathForOpponent in thousandths of an elixir, paid in ten-thousandths.
+    int payout = Shipped.number(Shipped.unitRow("ElixirGolem1"), "ManaOnDeathForOpponent") * 10;
+    assertThat(paid).containsExactly("ElixirGolem1 1 " + payout);
+    assertThat(match.side(1).getElixir()).isGreaterThanOrEqualTo(before + payout);
   }
 
   @Test

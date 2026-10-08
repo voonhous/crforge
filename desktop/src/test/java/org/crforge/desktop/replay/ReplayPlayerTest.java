@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.battle.BattleAdapter;
@@ -32,9 +33,14 @@ class ReplayPlayerTest {
         ReplayFile.parse(Path.of("replay.json"), document, Replays.tables()), Replays.tables());
   }
 
+  /** A replay document with its plays' items fitted to the tables: their rows' costs and levels. */
+  private static ObjectNode fit(ObjectNode document) {
+    return ReplayItems.fitted(document, Replays.tables());
+  }
+
   @Test
   void manualStepPausesRunsOneTickAndDiscardsFractionalPlaybackTime() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
     player.advance(STEP_SECONDS * 0.75f);
     assertThat(player.stepOnce()).isTrue();
     assertThat(player.getSession().tick()).isEqualTo(1);
@@ -52,7 +58,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("the replay's play and ability command run at their ticks and are noted")
   void commandsRunAndAreNoted() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
 
     while (player.step()) {
       // To the replay's end tick
@@ -74,7 +80,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("the notes name a side by its colour in the view, read as the frame is drawn")
   void theNotesNameTheSideByTheViewsColour() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
     while (player.step()) {
       // To the replay's end tick
     }
@@ -97,7 +103,7 @@ class ReplayPlayerTest {
   @DisplayName(
       "the frame shows the replay's own levels: each hand card's, each tower's, the unit's")
   void theFrameShowsTheReplaysLevels() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     // Side 0's cards past the Archer Queen, which is played, each at a level of its own.
     ArrayNode deck = (ArrayNode) document.path("battle").path("deck0").path("sp");
     for (int i = 1; i < deck.size(); i++) {
@@ -146,7 +152,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("the replay stops at its end tick and shows the battle's result beside its own")
   void stopsAtTheEndTick() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
 
     int steps = 0;
     while (player.step()) {
@@ -157,12 +163,18 @@ class ReplayPlayerTest {
     assertThat(player.finished()).isTrue();
     assertThat(player.getSession().tick()).isEqualTo(400);
     assertThat(player.stopReason()).isEqualTo("the replay's end tick 400");
+    // The battle's own crowns as they stand, the bottom side's first: side 1 in the flipped view.
+    LadderMatch match = player.getSession().match();
+    assertThat(match.isEnded()).isFalse();
     assertThat(player.statusLines(ViewOrientation.FLIPPED))
         .contains(
             "tick 400 / 400",
             "commands run 2 / 2",
             "stopped: the replay's end tick 400",
-            "battle result: not decided on tick 400, crowns 0 - 0",
+            "battle result: not decided on tick 400, crowns "
+                + match.crowns(1)
+                + " - "
+                + match.crowns(0),
             "recorded result: none in the replay");
     assertThat(player.advance(1f)).isZero();
   }
@@ -170,7 +182,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("real time steps the battle at the chosen speed, and pause holds it")
   void clockSpeedAndPause() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
 
     assertThat(player.advance(STEP_SECONDS * 10.5f)).isEqualTo(10);
     player.faster();
@@ -193,7 +205,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("restarting builds the replay's battle anew at tick 0 and plays it the same way")
   void restart() {
-    ReplayPlayer player = player(Replays.archerQueen());
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
     for (int i = 0; i < 300; i++) {
       player.step();
     }
@@ -215,16 +227,19 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("a play that runs with an item other than the battle's halts the replay")
   void anItemOtherThanTheBattlesHalts() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     // Side 1's Archer in its deck's evolution slot, played on tick 230 with the count field 2
-    // (bits 7..9), where the battle builds its first play with the count field 1.
+    // (bits 7..9), where the battle builds its first play with the count field 1: the slot flags
+    // field 1 (bit 19) and the deck index field 2 (bits 22..27), its cost and level from its rows.
     ((ObjectNode) document.path("battle").path("deck1").path("sp").get(1)).put("el", 1);
     ObjectNode play = ((ArrayNode) document.path("cmd")).insertObject(1);
     play.put("ct", Replays.PLAY);
     ObjectNode body = play.putObject("c");
     body.put("t", 210).put("t2", 230).put("idHi", 0).put("idLo", 2);
     body.put("px", 3500).put("py", 18000).put("sid", -1);
-    body.putObject("sel").put("os", 26000001).put("pd", 0x30880100);
+    body.putObject("sel").put("os", 26000001).put("pd", (2 << 22) | (1 << 19) | (2 << 7));
+    fit(document);
+    int item = document.path("cmd").get(1).path("c").path("sel").path("pd").asInt();
     ReplayPlayer player = player(document);
 
     while (player.step()) {
@@ -236,7 +251,7 @@ class ReplayPlayerTest {
     assertThat(player.getSession().tick()).isEqualTo(231);
     assertThat(player.getSession().getHalted())
         .startsWith("the battle left the replay, a play whose packed item is not")
-        .contains("cmd[1].c.sel.pd=" + 0x30880100);
+        .contains("cmd[1].c.sel.pd=" + item);
     assertThat(player.stopReason()).startsWith("halted on tick 231");
     assertThat(player.statusLines(ViewOrientation.FLIPPED))
         .contains("recorded result: none in the replay");
@@ -245,7 +260,7 @@ class ReplayPlayerTest {
   @Test
   @DisplayName("a refused replay has no battle, and stepping it does nothing")
   void aRefusedReplayHasNoBattle() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     // The play's command type of another data version, 14.593.1.
     ((ObjectNode) document.path("cmd").get(0)).put("ct", 124);
 

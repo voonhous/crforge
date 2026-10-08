@@ -18,6 +18,7 @@ import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.TableCopies;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.replay.ReplayFile;
+import org.crforge.desktop.replay.ReplayItems;
 import org.crforge.desktop.replay.ReplayPlayer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,10 +74,14 @@ class ReplayDataTest {
     return write(document);
   }
 
+  /**
+   * The fixture, its plays' items fitted to the configured tables, whose rows the root's two
+   * versions copy: their costs and levels.
+   */
   private static ObjectNode fixture() throws IOException {
     try (InputStream in =
         ReplayDataTest.class.getResourceAsStream("/replays/archer_queen_every_field.json")) {
-      return (ObjectNode) MAPPER.readTree(in);
+      return ReplayItems.fitted((ObjectNode) MAPPER.readTree(in), GameTables.loadConfigured());
     }
   }
 

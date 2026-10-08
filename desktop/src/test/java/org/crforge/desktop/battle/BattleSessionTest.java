@@ -41,6 +41,11 @@ class BattleSessionTest {
         .hasSizeGreaterThan(16);
   }
 
+  /** A card's cost: its row's ManaCost, as the characters' card table writes it. */
+  private static int cost(String card) {
+    return Tables.get().table("spells_characters").row(card).columns().get("ManaCost").asInt();
+  }
+
   @Test
   @DisplayName("a note from the screen joins the session's messages")
   void aNoteIsKept() {
@@ -62,7 +67,7 @@ class BattleSessionTest {
         .isEqualTo(session.cardUnavailableReason(0, 0));
     assertThat(session.play(0, 0, 9500, 8500)).isFalse();
 
-    assertThat(elixir).isLessThan(8);
+    assertThat(elixir).isLessThan(cost("Golem"));
     assertThat(session.messages()).last().asString().contains("Golem refused, not enough elixir");
     assertThat(session.isPending(0, 0)).isFalse();
   }
@@ -110,7 +115,7 @@ class BattleSessionTest {
     BattleSession session = only("Musketeer");
     int elixir = session.match().side(0).wholeElixir();
     // One Musketeer is covered; a second while the first waits to run is not.
-    assertThat(elixir).isBetween(4, 7);
+    assertThat(elixir).isBetween(cost("Musketeer"), 2 * cost("Musketeer") - 1);
     assertThat(session.play(0, 0, 3500, 8500)).isTrue();
     assertThat(session.cardUnavailableReason(0, 1)).contains("not enough elixir");
     assertThat(session.play(0, 1, 14500, 8500)).isFalse();
@@ -141,9 +146,10 @@ class BattleSessionTest {
     assertThat(session.cardUnavailableReason(0, mirror)).isNull();
     assertThat(BattleAdapter.frame(session).sides().get(0).hand().get(mirror).unavailableReason())
         .isNull();
+    String archer = session.cardUnavailableReason(0, slot(session, "Archer"));
     assertThat(session.play(0, mirror, 14500, 8500)).isTrue();
-    // Mirror reserves zero until its item resolves; the remaining Archer stays selectable.
-    assertThat(session.cardUnavailableReason(0, slot(session, "Archer"))).isNull();
+    // Mirror reserves zero until its item resolves; the remaining Archer stays as it was.
+    assertThat(session.cardUnavailableReason(0, slot(session, "Archer"))).isEqualTo(archer);
 
     boolean stepped = true;
     for (int i = 0; i < 40 && stepped; i++) {
