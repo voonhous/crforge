@@ -41,7 +41,7 @@ class BattlePlacementRunTest {
   @ParameterizedTest(name = "{0}")
   @ValueSource(strings = {"knight_side1", "deploy_refused", "two_knights", "minions_left"})
   void theRunMatchesTheReferenceTickForTick(String name) {
-    JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
+    JsonNode reference = BattleActionSpawnRunTest.load("/pathfinding/golden/" + name + ".json");
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
@@ -50,7 +50,7 @@ class BattlePlacementRunTest {
     int[] currentTick = {-1};
     List<String> events = new ArrayList<>();
     List<String> positions = new ArrayList<>();
-    match.getWorld().addObserver(BattleTowerRunTest.eventCollector(currentTick, events));
+    match.getWorld().addObserver(BattleActionSpawnRunTest.eventCollector(currentTick, events));
     match
         .getWorld()
         .addObserver(
@@ -68,7 +68,7 @@ class BattlePlacementRunTest {
               }
             });
 
-    Map<Integer, List<JsonNode>> records = BattleTowerRunTest.otherRecordsByTick(reference);
+    Map<Integer, List<JsonNode>> records = BattleActionSpawnRunTest.otherRecordsByTick(reference);
     int lastTick = records.keySet().stream().mapToInt(Integer::intValue).max().orElse(0);
     for (JsonNode event : reference.get("events")) {
       lastTick = Math.max(lastTick, event.get("tick").asInt());
@@ -103,7 +103,7 @@ class BattlePlacementRunTest {
         // reference to observe afterwards, so its reference is not compared on that tick.
         boolean unitLeft = !battle.getHolder().entities().contains(unit);
         if (!unitLeft) {
-          assertThat(BattleMusketeerRunTest.referenceName(unit))
+          assertThat(BattleActionSpawnRunTest.unitReferenceName(unit))
               .as("%s reference", where)
               .isEqualTo(stillThere ? recorded : null);
         }
@@ -115,7 +115,7 @@ class BattlePlacementRunTest {
 
     List<String> expected = new ArrayList<>();
     for (JsonNode event : reference.get("events")) {
-      expected.add(BattleTowerRunTest.eventLine(event));
+      expected.add(BattleActionSpawnRunTest.eventLine(event));
     }
     assertThat(events)
         .as("every launch, impact, hit and death")
