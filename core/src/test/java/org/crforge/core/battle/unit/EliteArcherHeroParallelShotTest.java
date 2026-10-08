@@ -13,6 +13,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -96,17 +97,19 @@ class EliteArcherHeroParallelShotTest {
     ProjectileEntity second = sides.get(1);
     assertThat(first.getId()).isLessThan(second.getId());
     assertThat(middle.getId()).isLessThan(first.getId());
-    // Made before the middle's first step, from where it stood, and not moved on that tick.
-    assertThat(first.getX() + second.getX()).isEqualTo(2 * startX);
-    assertThat(first.getY() + second.getY()).isEqualTo(2 * startY);
-    int acrossX = first.getX() - startX;
-    int acrossY = first.getY() - startY;
-    assertThat(Math.abs(acrossX * line[0] + acrossY * line[1]))
-        .isLessThan(Math.abs(line[0]) + Math.abs(line[1]));
-    assertThat(acrossX * line[1] - acrossY * line[0]).isPositive();
-    // Half the starting action's distance to each side, rounded on the way.
-    long half = Shipped.number(PARALLEL, "ProjectileDistance") / 2;
-    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(half - 1, half + 1);
+    // Each side shot stands across the line from where the middle stood, made before its first
+    // step and not moved on that tick: the line turned a quarter and scaled, in the game's
+    // integer arithmetic, to its offset, from less half the action's distance up by the distance
+    // over the count less one; the first to the right of the line as it flies.
+    int distance = Shipped.number(PARALLEL, "ProjectileDistance");
+    int count = Shipped.number(PARALLEL, "ProjectileCount");
+    int offset = -(distance / 2);
+    for (ProjectileEntity side : sides) {
+      int[] across = across(line, offset);
+      assertThat(new int[] {side.getX(), side.getY()})
+          .containsExactly(startX + across[0], startY + across[1]);
+      offset += distance / (Math.max(count, 2) - 1);
+    }
     for (ProjectileEntity side : sides) {
       assertThat(side.side()).isEqualTo(middle.side());
       assertThat(side.level()).isEqualTo(middle.level());
@@ -116,6 +119,16 @@ class EliteArcherHeroParallelShotTest {
           .as("its constant height")
           .isEqualTo(Shipped.number(Shipped.row("projectiles", SIDE), "ConstantHeight"));
     }
+  }
+
+  /**
+   * The point across a line at an offset: the line turned a quarter, scaled to the offset with the
+   * game's integer normalization.
+   */
+  private static int[] across(int[] line, int offset) {
+    int[] across = {-line[1], line[0]};
+    FixedMath.normalize(across, offset);
+    return across;
   }
 
   /** The projectiles of a row the holder lists, in its order. */

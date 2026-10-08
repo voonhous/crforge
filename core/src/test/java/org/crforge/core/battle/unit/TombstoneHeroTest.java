@@ -20,6 +20,7 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -157,18 +158,32 @@ class TombstoneHeroTest {
   void theTapWakesTheMonster(@TempDir Path folder) throws IOException {
     // The intervals the scene's steps line up with, written into a copy of their rows: the
     // dummy's check for the active monster every 100 ms, the building's kill check every step,
-    // and its kill 100 ms after it finds the monster.
-    GameTables tables =
-        GameData.altered(
-            folder,
-            "actions",
-            rows -> {
-              fields(rows, "TombstoneHero_check_tomb_interval").put("Interval", 100);
-              fields(rows, "Tombstone_hero_kill_check").put("Interval", 50);
-              ArrayNode delays =
-                  fields(rows, "Tombstone_hero_kill_group").putArray("SubActionsDelay");
-              delays.add(0).add(100);
-            });
+    // and its kill 100 ms after it finds the monster. The building's and the active monster's
+    // radii, the monster's mass and speed are written too: with the building of radius 1000 over a
+    // monster of radius 750 on the same point, the separation's push is past the clamp.
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          fields(rows, "TombstoneHero_check_tomb_interval").put("Interval", 100);
+          fields(rows, "Tombstone_hero_kill_check").put("Interval", 50);
+          ArrayNode delays = fields(rows, "Tombstone_hero_kill_group").putArray("SubActionsDelay");
+          delays.add(0).add(100);
+        });
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> GameData.columns(rows, LISTED.get(1)).put("CollisionRadius", 1000));
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          ObjectNode active = GameData.columns(rows, ACTIVE);
+          active.put("CollisionRadius", 750);
+          active.put("Mass", 18);
+          active.put("Speed", 60);
+        });
+    GameTables tables = GameTables.load(folder);
     Scene scene = scene(tables);
     Standard1v1Battle battle = scene.battle();
     List<CharacterEntity> units = play(scene);
@@ -196,11 +211,15 @@ class TombstoneHeroTest {
     assertThat(dummy.getData().name())
         .isEqualTo(Shipped.text("Tombstone_hero_switch_dummy_to_broken_tomb", "NewCharacterData"));
     assertThat(HitPoints.alive(building.getHitPoints())).isTrue();
-    // The building, still standing, pushes the monster off its point, as far along the length as
-    // across: the push the separation of the two rows makes.
-    int pushX = x - monster.getView().getX();
-    int pushY = y - monster.getView().getY();
-    assertThat(pushX).isPositive().isEqualTo(pushY);
+    // The building, still standing, pushes the monster off its point along the diagonal: the
+    // separation's push of one step, held to the clamp of 150 the step applies, scaled with the
+    // game's integer normalization.
+    int[] push = {PUSH_CLAMP, PUSH_CLAMP};
+    FixedMath.normalize(push, PUSH_CLAMP);
+    int pushX = push[0];
+    int pushY = push[1];
+    assertThat(monster.getView().getX()).isEqualTo(x - pushX);
+    assertThat(monster.getView().getY()).isEqualTo(y - pushY);
 
     // The building's kill lands at the drain: it pushes the monster once more, as far, on the tick
     // of its death, and leaves the battle at the next cleanup.
@@ -212,6 +231,9 @@ class TombstoneHeroTest {
     assertThat(monster.getView().getX()).isEqualTo(x - 2 * pushX);
     assertThat(monster.getView().getY()).isEqualTo(y - 2 * pushY);
   }
+
+  /** The length a step's averaged push is clamped to. */
+  private static final int PUSH_CLAMP = 150;
 
   /** The fields of an action row, to alter. */
   private static ObjectNode fields(ObjectNode rows, String action) {

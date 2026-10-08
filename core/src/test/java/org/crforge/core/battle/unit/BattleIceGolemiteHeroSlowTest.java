@@ -77,9 +77,12 @@ class BattleIceGolemiteHeroSlowTest {
       match.getBattle().step();
       assertThat(slows(tower)).as("tower, update %d", k + 1).hasSize(1);
     }
-    assertThat(tower.getBuffs().items().get(0).getRemaining())
-        .isGreaterThan(
-            Shipped.number(Shipped.actionNames(CHOICE, "SubActions").get(0), "SpawnTime") - 100);
+    // The last update refreshed it to its spawn's whole time; the circle's life is then out, so
+    // the next step only counts it down.
+    int time = Shipped.number(Shipped.actionNames(CHOICE, "SubActions").get(0), "SpawnTime");
+    assertThat(tower.getBuffs().items().get(0).getRemaining()).isEqualTo(time);
+    match.getBattle().step();
+    assertThat(tower.getBuffs().items().get(0).getRemaining()).isEqualTo(time - 50);
   }
 
   /**

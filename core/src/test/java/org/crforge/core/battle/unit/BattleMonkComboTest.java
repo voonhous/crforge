@@ -11,6 +11,8 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
@@ -59,8 +61,8 @@ class BattleMonkComboTest {
 
   @Test
   @DisplayName(
-      "against a princess tower the Monk stops 500 inside its reach and hits two, two, three times"
-          + " as hard, around and around")
+      "against a princess tower the Monk stops 500 inside its reach and hits with its three"
+          + " entries' damages, around and around")
   void theComboCyclesOnATower() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     Battle battle = match.getBattle();
@@ -68,14 +70,30 @@ class BattleMonkComboTest {
     GridEntity view = monk.getView();
     WorldEntity tower = leftPrincessTower(match, 1);
     int before = tower.getHitPoints().getHitPoints();
+    // Its range, the Monk's radius and the tower's, less the 500 a walking unit with a mode
+    // loses.
+    long reach =
+        Shipped.number(MONK, "Range")
+            + Shipped.number(MONK, "CollisionRadius")
+            + Shipped.number(Shipped.unitRow("PrincessTower"), "CollisionRadius")
+            - PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER;
     List<Integer> hits = new ArrayList<>();
-    int stopDistance = -1;
+    // The first step the Monk ends within that reach, where it stood, and the step it attacks.
+    int within = -1;
+    int[] withinAt = null;
+    int attacks = -1;
+    int[] attacksAt = null;
     for (int tick = 0; tick < 600 && hits.size() < 6; tick++) {
       battle.step();
-      if (stopDistance < 0 && view.getState() == GridEntityState.ATTACKING) {
-        long dx = view.getX() - tower.getView().getX();
-        long dy = view.getY() - tower.getView().getY();
-        stopDistance = (int) Math.sqrt((double) (dx * dx + dy * dy));
+      long dx = view.getX() - tower.getView().getX();
+      long dy = view.getY() - tower.getView().getY();
+      if (within < 0 && dx * dx + dy * dy <= reach * reach) {
+        within = tick;
+        withinAt = new int[] {view.getX(), view.getY()};
+      }
+      if (attacks < 0 && view.getState() == GridEntityState.ATTACKING) {
+        attacks = tick;
+        attacksAt = new int[] {view.getX(), view.getY()};
       }
       int now = tower.getHitPoints().getHitPoints();
       if (now < before) {
@@ -84,20 +102,16 @@ class BattleMonkComboTest {
       }
     }
 
-    // Its range, the Monk's radius and the tower's, less the 500 a walking unit with a mode
-    // loses; a step of the walk is the Monk's speed.
-    int reach =
-        Shipped.number(MONK, "Range")
-            + Shipped.number(MONK, "CollisionRadius")
-            + Shipped.number(Shipped.unitRow("PrincessTower"), "CollisionRadius")
-            - PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER;
-    assertThat(stopDistance)
-        .isLessThanOrEqualTo(reach)
-        .isGreaterThan(reach - Shipped.number(MONK, "Speed"));
-    assertThat(hits).hasSize(6);
-    assertThat(hits.get(0)).isEqualTo(hits.get(1));
-    assertThat(hits.get(2)).isGreaterThan(hits.get(0));
-    assertThat(hits.subList(3, 6)).isEqualTo(hits.subList(0, 3));
+    // It walks until it ends a step within the shortened reach, and attacks from there on the next
+    // step.
+    assertThat(within).isNotNegative();
+    assertThat(attacks).isEqualTo(within + 1);
+    assertThat(attacksAt).containsExactly(withinAt);
+    // Its three entries' damages at its level, around and around.
+    int first = scaled(Shipped.number(MONK, "Damage"), monk);
+    int second = scaled(Shipped.number(MONK, "VariableDamage2"), monk);
+    int third = scaled(Shipped.number(MONK, "VariableDamage3"), monk);
+    assertThat(hits).containsExactly(first, second, third, first, second, third);
   }
 
   @Test
@@ -162,6 +176,21 @@ class BattleMonkComboTest {
     assertThat(new int[] {push[5], push[6]})
         .containsExactly(push[3] + THIRD_PUSH * dx / length, push[4] + THIRD_PUSH * dy / length);
     assertThat(giant.getUnit().movement().getPushbackInFlight()).isEqualTo(1);
+  }
+
+  /**
+   * A damage scaled by a unit's row's rarity at its level: the rarity's multiplier, in hundredths,
+   * at the level's step, truncated.
+   */
+  private static int scaled(int damage, CharacterEntity unit) {
+    String name = Shipped.text(Shipped.unitRow(unit.getData().name()), "Rarity");
+    RarityTable rarity =
+        RarityTable.PUBLISHED.stream()
+            .filter(table -> table.name().equals(name))
+            .findFirst()
+            .orElseThrow();
+    int steps = PackedLevel.steps(unit.getPackedLevel());
+    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
   }
 
   /** The side's princess tower on the left lane, the one the Monk placed there walks to. */

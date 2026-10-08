@@ -11,6 +11,8 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -148,8 +150,28 @@ class BattleGiantHeroAbilityTest {
     assertThat(effectName).isEqualTo(landing);
     assertThat(effectSide).isZero();
     assertThat(knightHp[land]).isEqualTo(knightHp[land - 1]);
-    assertThat(knightHp[land + 1]).isLessThan(knightHp[land]);
+    // Its hit: the area row's base damage scaled by the Giant's row and level.
+    int base =
+        Shipped.column(Shipped.row("area_effect_objects", landing), "Damage")
+            .path("BaseDamage")
+            .asInt();
+    assertThat(knightHp[land + 1]).isEqualTo(knightHp[land] - scaled(base, giant));
     assertThat(knightXs[land + 1]).isEqualTo(pushedFrom + 250 * (land + 2 - push));
+  }
+
+  /**
+   * A damage scaled by a unit's row's rarity at its level: the rarity's multiplier, in hundredths,
+   * at the level's step, truncated.
+   */
+  private static int scaled(int damage, CharacterEntity unit) {
+    String name = Shipped.text(Shipped.unitRow(unit.getData().name()), "Rarity");
+    RarityTable rarity =
+        RarityTable.PUBLISHED.stream()
+            .filter(table -> table.name().equals(name))
+            .findFirst()
+            .orElseThrow();
+    int steps = PackedLevel.steps(unit.getPackedLevel());
+    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
   }
 
   /** Slot flags with the first card in the hero slot. */
