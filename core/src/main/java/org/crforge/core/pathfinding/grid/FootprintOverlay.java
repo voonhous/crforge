@@ -33,11 +33,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Settled against the walks of the reference battles, which route around the tower"
-            + " footprints stamped here, and the six Knight walks GridGoldenTrajectoryTest"
-            + " replays, and against the per-side change flags the reference route retention"
-            + " reads. The hero Elite Archer's decoy, an IsOccluder character, stands still for"
-            + " its whole life in its reference battle. The rasteriser's handling of a moving"
-            + " occluder is held by its own tests.")
+            + " footprints stamped here, and against the per-side change flags the reference route"
+            + " retention reads. The hero Elite Archer's decoy, an IsOccluder character, stands"
+            + " still for its whole life in its reference battle. The rasteriser's handling of a"
+            + " moving occluder is held by its own tests.")
 public final class FootprintOverlay {
 
   /** Virtual type of the entities the build considers; everything else is skipped. */

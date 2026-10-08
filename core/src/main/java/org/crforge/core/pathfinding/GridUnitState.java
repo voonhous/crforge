@@ -12,11 +12,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
 /**
  * Everything one troop needs to be driven by the grid movement and targeting rules.
  *
- * <p>The component is attached to a troop the first time the grid system sees it, and lives as long
- * as the troop does. It holds the troop's view of itself on the routing grid, the working state of
- * its two component passes, the countdowns the per-entity state visit owns, the configuration
- * columns those passes read, and the selection chain that answers "which target should I have now"
- * for this troop.
+ * <p>The battle builds the component with each character, and it lives as long as the character
+ * does; a change of the character's row builds a new one around the same views, working state and
+ * selection chain, with the new row's configuration. It holds the troop's view of itself on the
+ * routing grid, the working state of its two component passes, the countdowns the per-entity state
+ * visit owns, the configuration columns those passes read, and the selection chain that answers
+ * "which target should I have now" for this troop.
  *
  * <p>This is a plain mutable holder with no behaviour of its own; whatever runs the grid rules
  * drives it.

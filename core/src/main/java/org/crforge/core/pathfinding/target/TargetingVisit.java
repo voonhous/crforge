@@ -49,17 +49,17 @@ import org.crforge.core.pathfinding.move.MovementState;
     note =
         "Agrees with the reference line for line: every early return, the uneven comparisons and"
             + " the order of timer reads and writes. Held: selection, keeping and dropping a"
-            + " reference, and the lock, by the walks of the reference battles and the six Knight"
-            + " walks GridGoldenTrajectoryTest replays; the attack tick and the hit cadence by"
-            + " the hit ticks of the reference battles; the dash wind-up, its ring and its start"
-            + " by card_Assassin, grid_clone_over_bandit_dash, card_MegaKnight and"
-            + " grid_log_under_megaknight_jump; the keep of a reference the pending-damage rule"
-            + " refuses, by an owner that has hit, by every tower's re-lock after its arrow's"
-            + " kill in the battle references. The turn toward the reference as an attack starts,"
-            + " which only a target indicator attack's shot reads, by card_GoblinMachine and"
-            + " random_battle16_s0025. Not held by any fixture: the turn as a special loads, as a"
-            + " dash winds up and toward no reference, a dash's contact hits, the dash to a"
-            + " target's edge, special loads, bursts, several targets and the block timer.")
+            + " reference, and the lock, by the walks of the reference battles; the attack tick"
+            + " and the hit cadence by the hit ticks of the reference battles; the dash wind-up,"
+            + " its ring and its start by card_Assassin, grid_clone_over_bandit_dash,"
+            + " card_MegaKnight and grid_log_under_megaknight_jump; the keep of a reference the"
+            + " pending-damage rule refuses, by an owner that has hit, by every tower's re-lock"
+            + " after its arrow's kill in the battle references. The turn toward the reference as"
+            + " an attack starts, which only a target indicator attack's shot reads, by"
+            + " card_GoblinMachine and random_battle16_s0025. Not held by any fixture: the turn as"
+            + " a special loads, as a dash winds up and toward no reference, a dash's contact"
+            + " hits, the dash to a target's edge, special loads, bursts, several targets and the"
+            + " block timer.")
 public final class TargetingVisit {
 
   /** Entity states in which the targeting pass does nothing at all. */

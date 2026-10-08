@@ -23,8 +23,7 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "The sine and arctangent tables are the published ones, entry for entry; every facing and"
-            + " avoidance angle of the walks of the reference battles and of the six Knight walks"
-            + " GridGoldenTrajectoryTest replays reads them.")
+            + " avoidance angle of the walks of the reference battles reads them.")
 public final class TrigTables {
 
   /** Number of entries in the sine table: one per whole degree of a quarter turn, inclusive. */

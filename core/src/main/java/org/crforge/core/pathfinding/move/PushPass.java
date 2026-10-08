@@ -37,14 +37,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line: early outs, skip order, the box and circle"
             + " rejects, the coincident case, the magnitude chain and the write order. Held: two"
-            + " and three equal units pushing apart, and the multi-unit parity scenes. Not"
-            + " checked against a recorded battle: unequal masses, the height layers, the"
-            + " no-pushed-by flags and edge separation. A crown tower as a static neighbour was"
-            + " held at a mass of 0 by the tower-contact run, the walk behind a unit's own king"
-            + " and six placement runs, all removed: a tower is loaded at a mass of 20, held by"
-            + " the records' own test, and its push on a unit inside its reach is held by no run"
-            + " here. The static test (no movement component), a radius above 500 and the"
-            + " single-axis copy by its own tests.")
+            + " and three equal units pushing apart. Not checked against a recorded battle:"
+            + " unequal masses, the height layers, the no-pushed-by flags and edge separation. A"
+            + " crown tower as a static neighbour was held at a mass of 0 by the tower-contact"
+            + " run, the walk behind a unit's own king and six placement runs, all removed: a"
+            + " tower is loaded at a mass of 20, held by the records' own test, and its push on a"
+            + " unit inside its reach is held by no run here. The static test (no movement"
+            + " component), a radius above 500 and the single-axis copy by its own tests.")
 public final class PushPass {
 
   /** Extra reach, in game units, the neighbour query adds to the unit's collision radius. */

@@ -29,12 +29,10 @@ import org.crforge.core.pathfinding.grid.CellGrid;
     status = FidelityStatus.PARTIAL,
     note =
         "Runs each pass at the point the visit announces it, so later passes see earlier writes;"
-            + " held by the walks of the reference battles, the six Knight walks"
-            + " GridGoldenTrajectoryTest replays and the multi-unit parity scenes. Hands the"
-            + " follower's state requests, a completed charge and a dash's landing to the owner's"
-            + " requests when it has them, held by the reference battles card_Prince,"
-            + " card_HogRider and card_Assassin; without them they are recorded by name only, as"
-            + " are the end actions.")
+            + " held by the walks of the reference battles. Hands the follower's state requests, a"
+            + " completed charge and a dash's landing to the owner's requests when it has them,"
+            + " held by the reference battles card_Prince, card_HogRider and card_Assassin;"
+            + " without them they are recorded by name only, as are the end actions.")
 public final class MovementChain {
 
   private final MovementState component;

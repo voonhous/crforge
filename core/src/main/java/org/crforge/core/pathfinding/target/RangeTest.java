@@ -17,8 +17,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "The range test, the squared distance, the minimum range and the reference-in-range"
             + " answer agree with the reference line for line and decide the lock tick of every"
-            + " walk of the reference battles and of the six Knight walks"
-            + " GridGoldenTrajectoryTest replays. The touch test agrees with its record; whether"
+            + " walk of the reference battles. The touch test agrees with its record; whether"
             + " a reference battle turns on its answer is not checked.")
 public final class RangeTest {
 

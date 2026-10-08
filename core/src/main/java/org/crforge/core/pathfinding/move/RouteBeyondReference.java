@@ -26,8 +26,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line: scan order, the strict comparison and the"
             + " answer for a route of fewer than two nodes; held by its own tests and asked on"
-            + " every replan of the walks of the reference battles and of the six Knight walks"
-            + " GridGoldenTrajectoryTest replays.")
+            + " every replan of the walks of the reference battles.")
 public final class RouteBeyondReference {
 
   private RouteBeyondReference() {
