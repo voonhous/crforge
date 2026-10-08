@@ -6,10 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -39,10 +42,29 @@ class BattleMirrorTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
-  /** A Knight's hit points at level 11, and at 12, the level a Mirror at 11 plays it at. */
-  private static final int KNIGHT_HP_11 = 1766;
+  /** The Knight's row. */
+  private static final GameRow KNIGHT = Shipped.unitRow("Knight");
 
-  private static final int KNIGHT_HP_12 = 1938;
+  /**
+   * A Knight's hit points at level 11, and at the level a Mirror at 11 plays it at, 12 (1766 and
+   * 1938).
+   */
+  private static final int KNIGHT_HP_11 =
+      atLevel(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL);
+
+  /** How many levels above its own a Mirror plays the card it repeats: the global's (1). */
+  private static final int MIRROR_LEVEL_OFFSET =
+      Shipped.number(Shipped.row("globals", "MIRROR_LEVEL_OFFSET"), "NumberValue");
+
+  private static final int KNIGHT_HP_12 =
+      atLevel(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL + MIRROR_LEVEL_OFFSET);
+
+  /** The most elixir there can be, which a Mirror's item cost is held to. */
+  private static final int MAX_MANA =
+      Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
+
+  /** The ticks a Mirror runs after the play before it at the soonest, past its pending window. */
+  private static final int AFTER_A_PLAY = 22;
 
   @Test
   @DisplayName(
@@ -51,25 +73,33 @@ class BattleMirrorTest {
   void aMirrorAfterAMirrorRepeatsTheSameCard() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
+    // Each Mirror costs the Knight's cost and its own (3 and 1), held to the most elixir there can
+    // be, and is played once the elixir covers it.
+    int knightCost = cost("Knight");
+    int mirrorCost = Math.min(knightCost + cost("Mirror"), MAX_MANA);
     battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    battle.playMirror(100, "Mirror", LEVEL, 0, 14500, 10000, "m1");
-    battle.playMirror(400, "Mirror", LEVEL, 0, 3500, 10000, "m2");
-    run(battle, 400);
+    run(battle, 20);
+    int first = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
+    battle.playMirror(first, "Mirror", LEVEL, 0, 14500, 10000, "m1");
+    run(battle, first);
+    int second = Math.max(first + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
+    battle.playMirror(second, "Mirror", LEVEL, 0, 3500, 10000, "m2");
+    run(battle, second);
 
     Standard1v1Battle.Play knight = battle.getPlays().get(0);
     assertThat(knight.units().get(0).getHitPoints().getMaximum()).isEqualTo(KNIGHT_HP_11);
     for (Standard1v1Battle.Play play : battle.getPlays().subList(1, 3)) {
       MirrorItem item = play.mirror();
       assertThat(item.repeats().name()).isEqualTo("Knight");
-      assertThat(item.level()).isEqualTo(LEVEL + 1);
-      assertThat(item.cost()).isEqualTo(4);
+      assertThat(item.level()).isEqualTo(LEVEL + MIRROR_LEVEL_OFFSET);
+      assertThat(item.cost()).isEqualTo(mirrorCost);
       assertThat(play.units().get(0).getData().name()).isEqualTo("Knight");
       assertThat(play.units().get(0).getHitPoints().getMaximum()).isEqualTo(KNIGHT_HP_12);
     }
     MatchSide side = match.side(0);
     assertThat(side.lastPlayed().name()).isEqualTo("Knight");
     // The Knight's 3, then 4 for each Mirror.
-    assertThat(side.getSpent()).isEqualTo((3 + 4 + 4) * MatchSide.SCALE);
+    assertThat(side.getSpent()).isEqualTo((knightCost + 2 * mirrorCost) * MatchSide.SCALE);
   }
 
   @Test
@@ -90,7 +120,7 @@ class BattleMirrorTest {
     // The item is the Mirror's own: its level and its cost.
     assertThat(play.mirror().repeats()).isNull();
     assertThat(play.mirror().levelField()).isEqualTo(LEVEL - 1);
-    assertThat(play.mirror().cost()).isEqualTo(1);
+    assertThat(play.mirror().cost()).isEqualTo(cost("Mirror"));
     assertThat(match.side(0).getSpent()).isZero();
     assertThat(match.side(0).getHand().slots()).isEqualTo(hand);
     assertThat(match.side(0).lastPlayed()).isNull();
@@ -138,14 +168,39 @@ class BattleMirrorTest {
   @DisplayName("a Mirror of a champion is refused once its gates pass")
   void aMirrorOfAChampionIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
-    battle.startLadderMatch(QUEEN_MIRRORS, KNIGHTS, 0, 0);
+    LadderMatch match = battle.startLadderMatch(QUEEN_MIRRORS, KNIGHTS, 0, 0);
     battle.play(20, GameData.card("ArcherQueen"), LEVEL, 0, 3500, 10000, "q");
-    // The Archer Queen's 5 and the Mirror's 1: the elixir covers 6 by then.
-    battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, 20);
+    // The Archer Queen's 5 and the Mirror's 1: played once the elixir covers 6.
+    int covered =
+        coveredFrom(battle, match, Math.min(cost("ArcherQueen") + cost("Mirror"), MAX_MANA));
+    int mirror = Math.max(20 + AFTER_A_PLAY, covered);
+    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
 
-    assertThatThrownBy(() -> run(battle, 300))
+    assertThatThrownBy(() -> run(battle, mirror))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("m: a Mirror of the champion ArcherQueen, which no reference holds");
+  }
+
+  /** A card's elixir cost, as its row writes it. */
+  private static int cost(String card) {
+    for (String table : List.of("spells_characters", "spells_other")) {
+      if (GameData.tables().table(table).has(card)) {
+        return Shipped.number(Shipped.row(table, card), "ManaCost");
+      }
+    }
+    throw new AssertionError("no card row " + card);
+  }
+
+  /**
+   * Steps a match until side 0's whole elixir covers a cost, and answers the next tick to run: a
+   * play queued for it finds the elixir, which only grows while the side plays nothing.
+   */
+  private static int coveredFrom(Standard1v1Battle battle, LadderMatch match, int cost) {
+    while (match.side(0).wholeElixir() < cost) {
+      battle.getBattle().step();
+    }
+    return battle.getBattle().getTick();
   }
 
   /** Steps the battle until it has run the given tick, and one step more. */
@@ -153,5 +208,21 @@ class BattleMirrorTest {
     while (battle.getBattle().getTick() <= lastTick) {
       battle.getBattle().step();
     }
+  }
+
+  /**
+   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
+   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
+   * base itself on the first level.
+   */
+  private static int atLevel(int base, GameRow row, int level) {
+    String rarity = Shipped.text(row, "Rarity");
+    RarityTable table =
+        RarityTable.PUBLISHED.stream()
+            .filter(candidate -> candidate.name().equals(rarity))
+            .findFirst()
+            .orElseThrow();
+    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
+    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

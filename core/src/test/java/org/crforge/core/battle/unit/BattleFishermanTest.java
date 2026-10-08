@@ -9,8 +9,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -42,8 +44,31 @@ class BattleFishermanTest {
 
   private static final int Y = 11000;
 
-  /** A distance from the Fisherman inside a Knight's ring, 4000 to 7500. */
-  private static final int IN_RING = 5500;
+  /** The Fisherman's row, whose special columns the expected values read. */
+  private static final GameRow FISHERMAN = Shipped.unitRow("Fisherman");
+
+  /** The hook's row: its drag speeds. */
+  private static final GameRow HOOK =
+      Shipped.row("projectiles", Shipped.text(FISHERMAN, "ProjectileSpecial"));
+
+  /** A Knight's radius, from which both bounds of its ring are counted. */
+  private static final int KNIGHT_RADIUS =
+      Shipped.number(Shipped.unitRow("Knight"), "CollisionRadius");
+
+  /** The near bound of a Knight's ring: its radius plus the special's minimum range (4000). */
+  private static final int RING_MIN = KNIGHT_RADIUS + Shipped.number(FISHERMAN, "SpecialMinRange");
+
+  /** The far bound of a Knight's ring: its radius plus the special's range (7500). */
+  private static final int RING_MAX = KNIGHT_RADIUS + Shipped.number(FISHERMAN, "SpecialRange");
+
+  /** The special's load, in milliseconds (1300). */
+  private static final int LOAD = Shipped.number(FISHERMAN, "SpecialLoadTime");
+
+  /** The floor of a pulled troop's speed, in percent of the drag-back speed. */
+  private static final int PULL_FLOOR = 60;
+
+  /** A distance from the Fisherman inside a Knight's ring, 1500 past its near bound (5500). */
+  private static final int IN_RING = RING_MIN + 1500;
 
   /** A battle with the towers passive, one Fisherman that never walks, and what his hooks do. */
   private static final class Scene {
@@ -160,14 +185,17 @@ class BattleFishermanTest {
       "the load arms on a reference from its radius plus the minimum range out to its radius plus"
           + " the special range, both bounds inclusive")
   void theRing() {
-    for (int distance : new int[] {3999, 4000, 7500, 7501}) {
+    for (int distance : new int[] {RING_MIN - 1, RING_MIN, RING_MAX, RING_MAX + 1}) {
       Scene scene = new Scene();
       scene.still(0, 1, "Knight", X, Y + distance, "K");
       scene.step(30);
-      boolean inRing = distance >= 4000 && distance <= 7500;
+      boolean inRing = distance >= RING_MIN && distance <= RING_MAX;
       if (inRing) {
         assertThat(scene.armed).as("%d", distance).hasSize(1);
-        assertThat(scene.armed.get(0)).as("%d", distance).endsWith(" K 4000 7500 1250");
+        // The load already less the arming visit's 50.
+        assertThat(scene.armed.get(0))
+            .as("%d", distance)
+            .endsWith(" K " + RING_MIN + " " + RING_MAX + " " + (LOAD - 50));
       } else {
         assertThat(scene.armed).as("%d", distance).isEmpty();
       }
@@ -183,7 +211,8 @@ class BattleFishermanTest {
     plain.still(0, 1, "Knight", X, Y + IN_RING, "K");
     plain.step(60);
     int armedAt = Integer.parseInt(plain.armed.get(0).split(" ")[0]);
-    assertThat(plain.launchTicks.get(0) - armedAt).isEqualTo(26);
+    // The load loses 50 a visit and fires on the visit that empties it: 26 for 1300.
+    assertThat(plain.launchTicks.get(0) - armedAt).isEqualTo(visitsToEmpty(LOAD, 50));
 
     Scene slowed = new Scene();
     slowed.still(0, 1, "Knight", X, Y + IN_RING, "K");
@@ -193,8 +222,16 @@ class BattleFishermanTest {
         .apply(GameData.records().buff("IceWizardSlowDown"), 10000, LEVEL, null, 0);
     slowed.step(80);
     int slowedAt = Integer.parseInt(slowed.armed.get(0).split(" ")[0]);
-    assertThat(slowed.armed.get(0)).endsWith(" 1265");
-    assertThat(slowed.launchTicks.get(0) - slowedAt).isEqualTo(38);
+    // Under the slow's hit speed multiplier the load loses that share of 50 a visit: 35 for -30,
+    // so 1265 after the arming visit and 38 visits in all.
+    int slowedStep =
+        50
+            * (100
+                + Shipped.number(
+                    Shipped.row("character_buffs", "IceWizardSlowDown"), "HitSpeedMultiplier"))
+            / 100;
+    assertThat(slowed.armed.get(0)).endsWith(" " + (LOAD - slowedStep));
+    assertThat(slowed.launchTicks.get(0) - slowedAt).isEqualTo(visitsToEmpty(LOAD, slowedStep));
   }
 
   @Test
@@ -209,14 +246,18 @@ class BattleFishermanTest {
     GridEntity f = scene.fisherman.getView();
     int before = f.getY();
     scene.step(1);
-    assertThat(f.getY() - before).isEqualTo(450);
+    // The hook's self-drag speed (450).
+    assertThat(f.getY() - before).isEqualTo(Shipped.number(HOOK, "DragSelfSpeed"));
     assertThat(f.getX()).isEqualTo(X);
     while (f.getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING && scene.tick < 200) {
       scene.step(1);
     }
     assertThat(scene.states.get(1)).endsWith(" F 13 1");
-    // Within the Cannon's 600 and his 500 of the point it was hooked at.
-    assertThat(scene.hooks.get(0).getY() - f.getY()).isLessThanOrEqualTo(1100);
+    // Within the Cannon's radius and his of the point it was hooked at (600 and 500).
+    assertThat(scene.hooks.get(0).getY() - f.getY())
+        .isLessThanOrEqualTo(
+            Shipped.number(Shipped.unitRow("Cannon"), "CollisionRadius")
+                + Shipped.number(FISHERMAN, "CollisionRadius"));
     assertThat(scene.fisherman.isActive(CharacterEntity.MOVEMENT_SLOT)).isTrue();
   }
 
@@ -226,6 +267,7 @@ class BattleFishermanTest {
           + " its mass or its pushback")
   void aSlowTroop(@TempDir Path folder) throws IOException {
     // A Knight at 20, and a Golem at 60, which its walk and wait times raise as its row is loaded.
+    int drag = Shipped.number(HOOK, "DragBackSpeed");
     GameTables altered =
         GameData.altered(
             folder,
@@ -239,16 +281,20 @@ class BattleFishermanTest {
     ProjectileEntity hook = scene.stepToTheHook();
     int before = hook.getY();
     scene.step(1);
-    assertThat(before - hook.getY()).isEqualTo(850 * 60 / 100);
+    assertThat(before - hook.getY()).isEqualTo(drag * PULL_FLOOR / 100);
 
     Scene golem = new Scene(altered);
     golem.still(0, 1, "Golem", X, Y + IN_RING, "G");
     ProjectileEntity pull = golem.stepToTheHook();
     int from = pull.getY();
     golem.step(1);
-    // The pull reads the speed the Golem's row is loaded at: its 60, raised to 72 by its walk and
-    // wait times.
-    assertThat(from - pull.getY()).isEqualTo(850 * 72 / 100);
+    // The pull reads the speed the Golem's row is loaded at: its 60, raised by its walk and wait
+    // times, (wait + walk) * 1000 / walk * speed / 1000, to 72.
+    GameRow golemRow = Shipped.unitRow("Golem");
+    int walk = Shipped.number(golemRow, "StopMovementAfterMS");
+    int wait = Shipped.number(golemRow, "WaitMS");
+    int loaded = (wait + walk) * 1000 / walk * 60 / 1000;
+    assertThat(from - pull.getY()).isEqualTo(drag * Math.max(PULL_FLOOR, loaded) / 100);
   }
 
   @Test
@@ -341,7 +387,10 @@ class BattleFishermanTest {
     ProjectileEntity hook = scene.stepToTheHook();
     int before = hook.getY();
     scene.step(1);
-    assertThat(before - hook.getY()).isEqualTo(850 * 60 / 100);
+    // The Bowler's speed (45) is below the floor.
+    int speed = Shipped.number(Shipped.unitRow("Bowler"), "Speed");
+    assertThat(before - hook.getY())
+        .isEqualTo(Shipped.number(HOOK, "DragBackSpeed") * Math.max(PULL_FLOOR, speed) / 100);
   }
 
   @Test
@@ -653,5 +702,10 @@ class BattleFishermanTest {
       scene.step(1);
     }
     scene.step(1);
+  }
+
+  /** The visits a countdown takes to reach 0 or below at a given step: 26 for 1300 at 50. */
+  private static int visitsToEmpty(int countdown, int step) {
+    return (countdown + step - 1) / step;
   }
 }

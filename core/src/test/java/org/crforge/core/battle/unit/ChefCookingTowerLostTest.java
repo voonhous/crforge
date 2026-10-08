@@ -2,7 +2,11 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -12,6 +16,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Royal Chef's cooking (ChefTower_CookingAction of data version 16.402.18) once a princess
@@ -26,6 +31,31 @@ class ChefCookingTowerLostTest {
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String PANCAKE = "ChefTower_pancake_projectile";
+
+  /**
+   * The configured tables with the cooking row's numbers as the test writes them, those of data
+   * version 16.402.18: the step counts below are worked out from them.
+   */
+  private static GameTables cooking(Path folder) throws IOException {
+    return GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode row = (ObjectNode) rows.get("ChefTower_CookingAction").get("fields");
+          row.put("StartCookingDelay", 7000);
+          row.put("ContributionNeeded", 23000);
+          row.put("ContributionBaseline", 600);
+          row.put("ContributionIdle", 200);
+          row.put("HoldFullBarTime", 1.2);
+          row.put("MinCurrentHpPercentageThreshold", 33);
+          row.put("MinMaxHpThreshold", 2);
+          row.put("PancakeStartOffset", 200);
+          row.put("PancakeThrowDelay", 250);
+          row.put("PancakeThrowDelayTreshold", 500);
+          row.put("PancakeThrowDuration", 900);
+          row.put("WaitPancakeThrowAfterAttackTime", 100);
+        });
+  }
 
   /** The Royal Chef's towers on side 1, passive like side 0's, so each tower stays idle. */
   private static Standard1v1Battle battle(GameTables tables) {
@@ -42,15 +72,15 @@ class ChefCookingTowerLostTest {
       "a destroyed princess tower adds nothing from the step after it leaves: with the other tower"
           + " idle the bar fills at 800 a step, so a pancake follows the last after 581 steps"
           + " instead of 466")
-  void aDestroyedTowerAddsNothing() {
-    GameTables tables = GameData.tables();
+  void aDestroyedTowerAddsNothing(@TempDir Path folder) throws IOException {
+    GameTables tables = cooking(folder);
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     // A friendly Giant behind the left tower for every pancake to go to.
     battle.play(200, records.card("Giant"), LEVEL, 1, 3500, 29000, "g");
     List<Integer> thrown = new ArrayList<>();
     Set<ProjectileEntity> seen = new HashSet<>();
-    TowerEntity right = chefTower(battle, 14500);
+    TowerEntity right = chefTowers(battle).get(1);
     for (int tick = 1; tick <= 2900; tick++) {
       if (tick == 1200) {
         // After the second pancake: the right tower dies, and leaves at that step's cleanup.
@@ -72,15 +102,15 @@ class ChefCookingTowerLostTest {
 
   @Test
   @DisplayName("with both princess towers destroyed the cooking ends and no pancake follows")
-  void bothTowersDestroyedEndTheCooking() {
-    GameTables tables = GameData.tables();
+  void bothTowersDestroyedEndTheCooking(@TempDir Path folder) throws IOException {
+    GameTables tables = cooking(folder);
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     battle.play(200, records.card("Giant"), LEVEL, 1, 3500, 29000, "g");
     List<Integer> thrown = new ArrayList<>();
     Set<ProjectileEntity> seen = new HashSet<>();
-    TowerEntity left = chefTower(battle, 3500);
-    TowerEntity right = chefTower(battle, 14500);
+    TowerEntity left = chefTowers(battle).get(0);
+    TowerEntity right = chefTowers(battle).get(1);
     for (int tick = 1; tick <= 2000; tick++) {
       if (tick == 700) {
         battle.getWorld().kill(right, null);
@@ -92,15 +122,17 @@ class ChefCookingTowerLostTest {
     assertThat(thrown).hasSize(1).first().matches(tick -> tick < 700);
   }
 
-  /** Side 1's princess-slot tower at a point across the arena. */
-  private static TowerEntity chefTower(Standard1v1Battle battle, int x) {
-    return battle.getWorld().getHolder().entities().stream()
-        .filter(TowerEntity.class::isInstance)
-        .map(TowerEntity.class::cast)
-        .filter(tower -> tower.getData().name().equals("ChefTower"))
-        .filter(tower -> tower.getView().getX() == x)
-        .findFirst()
-        .orElseThrow();
+  /** Side 1's princess-slot towers, left then right across the arena (3500, then 14500). */
+  private static List<TowerEntity> chefTowers(Standard1v1Battle battle) {
+    List<TowerEntity> towers =
+        battle.getWorld().getHolder().entities().stream()
+            .filter(TowerEntity.class::isInstance)
+            .map(TowerEntity.class::cast)
+            .filter(tower -> tower.getData().name().equals("ChefTower"))
+            .sorted(Comparator.comparingInt(tower -> tower.getView().getX()))
+            .toList();
+    assertThat(towers).hasSize(2);
+    return towers;
   }
 
   /** Adds the tick of every pancake not seen before. */

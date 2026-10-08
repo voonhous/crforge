@@ -32,6 +32,12 @@ class BattleTauntTest {
 
   private static final String BUFF = "GoblinDemolisher_ResetTargetBuff";
 
+  /**
+   * The taunt's duration the tests write into ResetTauntEffect's ValidDuration where they read it:
+   * one step.
+   */
+  private static final int DURATION = 50;
+
   /** A point on the bottom side's left, away from every tower. */
   private static final int X = 3500;
 
@@ -87,11 +93,11 @@ class BattleTauntTest {
   /**
    * The configured tables with the cancelling area effect's filter, OnlyGoblinDemolisher, widened
    * to every character and building of its own side, so its filter-form hit pass reaches the units
-   * beside the Demolisher too.
+   * beside the Demolisher too; and the taunt lasting {@link #DURATION}.
    */
   private static GameTables ownSide(Path folder) throws IOException {
     Files.createDirectories(folder);
-    return GameData.altered(
+    GameData.altered(
         folder,
         "game_object_filters",
         rows -> {
@@ -99,6 +105,26 @@ class BattleTauntTest {
           columns.remove("IncludeCharactersWithData");
           columns.put("MatchTypeBuildings", true);
         });
+    lasting(folder, DURATION);
+    return GameTables.load(folder);
+  }
+
+  /** The configured tables with the taunt lasting {@link #DURATION}. */
+  private static GameTables oneStepTaunt(Path folder) throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(folder, "actions", rows -> {});
+    lasting(folder, DURATION);
+    return GameTables.load(folder);
+  }
+
+  /** Writes the taunt's duration into a folder the configured tables were copied into. */
+  private static void lasting(Path folder, int durationMs) throws IOException {
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows ->
+            ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
+                .put("ValidDuration", durationMs));
   }
 
   private static String reference(WorldEntity unit) {
@@ -121,10 +147,10 @@ class BattleTauntTest {
     assertThat(reference(scene.demolisher)).isEqualTo("demolisher");
     assertThat(pekka.getBuffs().carries(BUFF)).isTrue();
     assertThat(pekka.getTargeting().getTargetLockingBuffs()).isOne();
-    assertThat(pekka.getTargeting().getRetargetCooldownMs()).isEqualTo(50);
+    assertThat(pekka.getTargeting().getRetargetCooldownMs()).isEqualTo(DURATION);
     String armed =
-        "[set_target demolisher 0 0 1, raise LOCK_TARGET, remaining 50, apply_buff %s 50 level %d"
-                .formatted(BUFF, scene.demolisher.getPackedLevel())
+        "[set_target demolisher 0 0 1, raise LOCK_TARGET, remaining %d, apply_buff %s %d level %d"
+                .formatted(DURATION, BUFF, DURATION, scene.demolisher.getPackedLevel())
             + " source demolisher side 0]";
     assertThat(scene.taunts)
         .containsExactlyInAnyOrder(
@@ -148,8 +174,8 @@ class BattleTauntTest {
   @DisplayName(
       "a unit attacking as its taunt steps keeps the reference it was forced onto; the step only"
           + " clears its re-selection wait")
-  void anAttackingUnitKeepsItsReference() {
-    Scene scene = new Scene(GameData.tables());
+  void anAttackingUnitKeepsItsReference(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(oneStepTaunt(folder));
     scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y + 1300, "enemy");
     for (int i = 0; i < 60; i++) {
       scene.match.getBattle().step();
@@ -190,11 +216,7 @@ class BattleTauntTest {
     // The taunt lasts 100 ms, so the run is still on when the kill lands at the damage drain of
     // the step after the cancel's.
     ownSide(folder);
-    GameData.alterLoaded(
-        folder,
-        "actions",
-        rows ->
-            ((ObjectNode) rows.get("ResetTauntEffect").get("fields")).put("ValidDuration", 100));
+    lasting(folder, 100);
     Scene scene = new Scene(GameTables.load(folder));
     CharacterEntity pekka = scene.match.deploy(0, GameData.unit("Pekka"), LEVEL, 0, X, Y, "pekka");
     scene.match.getBattle().step();

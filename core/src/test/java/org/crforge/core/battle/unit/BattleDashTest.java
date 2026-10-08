@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -63,11 +64,15 @@ class BattleDashTest {
     assertThat(scene.dasher.untouchable()).isTrue();
 
     scene.stepUntil(GridEntityState.MOVING);
-    // The immunity was topped up to 150 on its last dashing visit and counts down 50 a visit.
-    assertThat(scene.dasher.untouchable()).isTrue();
-    scene.match.getBattle().step();
-    assertThat(scene.dasher.untouchable()).isTrue();
-    scene.match.getBattle().step();
+    // The immunity was topped up to the row's DashImmuneToDamageTime on its last dashing visit and
+    // counts down 50 a visit: it holds on the visits that leave some of it, the walking visit's
+    // among them (two for 150), and is gone on the next.
+    int immunity = Shipped.number(Shipped.unitRow("Assassin"), "DashImmuneToDamageTime");
+    int held = (immunity + 49) / 50 - 1;
+    for (int visit = 0; visit < held; visit++) {
+      assertThat(scene.dasher.untouchable()).as("visit %d", visit).isTrue();
+      scene.match.getBattle().step();
+    }
     assertThat(scene.dasher.untouchable()).isFalse();
   }
 
@@ -138,8 +143,10 @@ class BattleDashTest {
     while (scene.dasher.getView().getBlockCountdownMs() == 0) {
       scene.match.getBattle().step();
     }
-    // The landing's own state visit takes the hold from 50 to 100; three more visits stand still
-    // at 150, 200 and 250, and the fourth reaches the landing time of 300 and walks on.
+    // The landing's own state visit takes the hold from 50 to 100; the visits after stand still
+    // while the hold is short of the row's landing time and the one that reaches it walks on: for
+    // 300, three stand at 150, 200 and 250 and the fourth walks.
+    int landing = Shipped.number(Shipped.unitRow("MegaKnight"), "DashLandingTime");
     int held = 0;
     while (true) {
       scene.match.getBattle().step();
@@ -149,7 +156,7 @@ class BattleDashTest {
       }
       assertThat(scene.dasher.getSpeedBudget()).isZero();
     }
-    assertThat(held).isEqualTo(4);
+    assertThat(held).isEqualTo((landing + 49) / 50 - 2);
     assertThat(scene.dasher.getView().getState()).isEqualTo(GridEntityState.MOVING);
     assertThat(scene.dasher.getView().getBlockCountdownMs()).isZero();
   }
