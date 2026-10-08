@@ -53,359 +53,34 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Plays the hundred runs in which an action, a death, a building or a unit's own spawner spawns
- * characters, or a unit charges, jumps or dashes, through {@link Battle} and holds the battle to
- * them tick for tick.
+ * Plays the runs that no reference battle holds yet through {@link Battle} and holds the battle to
+ * them tick for tick: every unit's position, state and hit points, and each event list a run
+ * carries (actions, spawns, buffs, area effects, projectiles, reflects and Mirror items).
  *
- * <p>The rows are the game's own, built from its action rows. Four runs give the battle an action
- * owner: an entity with an action holder, a position, a side and a level and nothing else, on which
- * the row is scheduled in the command pass of its tick. In {@code witch_hooks} a Witch placed
- * directly runs its row's own starting action, whose rounds spawn Skeletons around it and link each
- * into its group. In {@code bush_goblins} a group spawns two Bush Goblins to either side of a
- * bottom-side owner a tick apart, the second pushed one unit off the first as it is registered. In
- * {@code brawler_goblins} a top-side owner spawns four Goblin Brawlers, the side flipping both axes
- * of the location. In {@code gift_knight} the owner spawns a Knight on itself that walks at once:
- * its registration visit takes its target and a first step. {@code abort_instigator} drops a spawn
- * that Knight caused when it dies. In {@code tombstone_death_hook} a Wizard's projectile kills a
- * Tombstone while it deploys, and the Tombstone's death action, scheduled as it dies with the
- * projectile as its cause, runs in its phase-3 pass and spawns SkeletonKing on it, a champion
- * handed over to its side. In {@code goblin_wave} the Goblin Hero's second-wave rows are scheduled
- * on a Knight of each side, which has a run of its own: each spawns four deploying goblins around
- * its Knight, placed by the Knight's team and the middle of the arena, and links each into the
- * Knight's group. In {@code golemite_convert} a baby golemite turns into an Elixir Golem, which
- * dies on tick 110 and spawns two golemites on the ring of its death spawn radius, each immune for
- * its first ticks and killed by a tower later. In {@code golemite_death_damage} a Golemite's death
- * damages a tower and a Knight around it and pushes the Knight away. In {@code archer_ev1_vs_tower}
- * and {@code archer_ev1_knight} the evolved Archer's starting-attack row picks its attack sequence
- * index by whether its target is within 4500: its long shots launch the double-damage arrow of its
- * second entry, and once a Knight closes in it goes back to its first. In {@code
- * area_effect_direct} two area effects placed directly hit a Knight and a tower, one of them
- * pushing the Knight, and leave as their countdown runs out. In {@code gift_select} two owners each
- * schedule the gift delivery's select on the same tick, from a random state of the run's own: each
- * select draws its part as it is scheduled, in the command pass, the first owner's draw first, and
- * the part it chose spawns its unit in that owner's phase-1 pass.
+ * <p>The runs are the battle generator's output on the earlier data, not recordings of the game.
+ * The others were deleted once reference battles held what they checked; these seven stay until
+ * reference battles recorded for them take their place.
  *
- * <p>Four runs place a building directly with the towers fighting. In {@code cannon_knight} a
- * Cannon deploys, stands, takes the default tower as its reference on the tick after and locks on a
- * Knight that walks into range, firing until the Knight destroys it, its hit points falling by its
- * lifetime's decay meanwhile; in {@code mortar_knight} a Mortar drops the Knight once it comes
- * inside its minimum range. In {@code tombstone_life} a Tombstone spawns Skeletons in front of it
- * in waves of two from the end of its deploy, until its decay kills it and its death spawns four
- * more on the same point; {@code goblin_hut_life} does the same with a Goblin Hut's three Spear
- * Goblins and its one death spawn on its own point.
+ * <p>{@code mirror_knight} plays a Knight and then the Mirror, which repeats it one level up for
+ * one elixir more and goes to the back of the queue itself. {@code mirror_fireball} does the same
+ * with a Fireball, its first Mirror refused, the elixir short of the item's cost. Each is held to
+ * every Mirror item - the card it repeats, its level and its cost - and to the last card kept.
  *
- * <p>Every spawned child is registered inside the pass that made it, joins the live list at the
- * tick's closing cleanup and is first visited on the next tick. A child of an action or a death
- * cannot be targeted until its sixth state visit, so the towers lock on it six ticks late; a
- * building's spawner gives its children no such immunity.
- *
- * <p>Three runs place a spell's area effect directly on a walking or attacking Knight, and hold its
- * buffs. In {@code rage_knight} Rage, with its chained RageDamage, refreshes a 1000 ms buff on the
- * Knight every six ticks: from the tick after the first, the Knight walks at 78 and steps its
- * attack timer by 65, and it goes back to 60 and 50 once the last refresh runs out. In {@code
- * zap_knight} Zap's 500 ms stun drops the attacking Knight's reference and switches its targeting
- * off on the tick it lands, and the first gate after the buff goes switches it back on. In {@code
- * poison_knight_tower} Poison, stacking by its source, hits a red Knight for 92 and a princess
- * tower for 23 every twenty visits and slows the Knight to 51.
- *
- * <p>Six runs hold air units, created at their flying height, routed to one node, crossing water
- * and meeting only units on their side of height 0: {@code minion_musketeer}, a Minion shot down by
- * a Musketeer while a Knight cannot reach it; {@code balloon_tower}, a Balloon and its bomb, which
- * dies on the ground as its deploy ends; {@code balloon_river}, a Balloon and its bomb dying over
- * the river, the bomb no default target; {@code balloons_cross}, two Balloons crossing over a
- * Knight with the towers passive; {@code lava_hound_river}, a Lava Hound dying over the river and
- * its pups flying back to their ring points; and {@code baby_dragon_left}, a Baby Dragon firing
- * from its height. A further unit is placed at its own level where the run gives one.
- *
- * <p>Three runs play a spell by a command: {@code fireball_knight_tower}, a Fireball from the blue
- * king tower landing on a Knight and a princess tower and pushing the Knight; {@code
- * zap_knight_cast}, the Zap run with its area effect cast at the snapped point; and {@code
- * goblin_barrel_tower}, a Goblin Barrel whose Goblins stand in formation around its landing point;
- * {@code arrows_skeletons}, Arrows' three waves of chained arrows, landing on their ring points. A
- * run lasts to its last projectile position. {@code log_goblins} and {@code barb_barrel_knight}, a
- * thrown projectile whose impact launches a rolling one, which hits what its body passes. Four runs
- * hold shields - {@code recruit_tower}, {@code guards_knight}, {@code poison_guards} and {@code
- * tombstone_crazy_life} - and every hit a shield took.
- *
- * <p>Two runs place a unit whose own spawner fires while it walks and attacks: {@code
- * witch_left_lane}, a Witch whose four Skeletons stand on the ring of its spawn radius around it,
- * the first wave while it walks and the second while it attacks a princess tower; and {@code
- * night_witch}, a Night Witch whose two Bats a wave stand at its sides, the ring turned by its
- * angle shift and the angle it faces, as does the Bat of its death spawn.
- *
- * <p>{@code goblin_giant_tower} plays a Goblin Giant, whose two Spear Goblins ride on it: made as
- * the play sets it deploying and queued ahead of it, so they take the lower ids and are visited
- * first, placed behind its shoulders a tick behind it, shooting the tower from their height while
- * nothing can target them, and let go in the cleanup that removes the Giant, each leaving a Spear
- * Goblin where it rode.
- *
- * <p>Three runs hold the charge and the river jump: {@code prince_tower} and {@code
- * dark_prince_tower}, a unit charged by the steps it walks, twice as fast once full, whose first
- * hit lands at once for its special damage; and {@code hog_river}, a Hog Rider whose route crosses
- * the river and which jumps it to the first land cell beyond. One holds the dash: {@code
- * bandit_knight}, a Bandit's wind-up, its dash stopped in range of a Knight and its single landing
- * hit. Each is also held to every charge completed and lost, every state a movement pass asked for,
- * every dash started and every landing. No run holds a Mega Knight: the battle refuses it, as its
- * push as it deploys is not modelled. {@code hog_clip_cannon} plays a Hog Rider with a Cannon
- * behind it, inside its sight but beyond its sight clip, so it takes the princess tower ahead.
- *
- * <p>{@code ram_rider_tower} plays a Ram Rider: the Ram charges into the princess tower while its
- * rider, which targets troops only, takes no target; the run lists no actions, so the rider's
- * attachment and release are held from its {@code unit_spawner} log.
- *
- * <p>{@code match_elixir_150s} is a Ladder match: both decks shuffled with the battle's source, and
- * on every tick both elixirs, hands and cooldowns, the timeline and the crowns held to the
- * reference's trace, and every play's match code - a card still in the queue refused with 9, one
- * the elixir does not cover with 0xd. {@code match_overtime_tiebreak} and {@code
- * match_overtime_draw} play past overtime with equal crowns into the tiebreaker: its clearing with
- * nothing to clear, its idle window, every step of its drain, and its end by a fallen princess
- * tower, or as a draw by equal towers. {@code match_building_cards} plays building cards from the
- * hand: a Cannon snapped to its tile corner, a Tombstone moved off the Cannon's tiles, a Cannon
- * pulled back from across the river and an Elixir Collector that pays its king, each living as the
- * same building placed directly. {@code mirror_knight} plays a Knight and then the Mirror, which
- * repeats it one level up for one elixir more and goes to the back of the queue itself. {@code
- * mirror_fireball} does the same with a Fireball, its first Mirror refused with 0xd, the elixir
- * short of the item's cost. Each is held to every Mirror item - the card it repeats, its level and
- * its cost - and to the last card kept. {@code merge_maiden_mounted} plays the Merge Maiden with 6
- * elixir or more, so it comes as the mounted maiden, a flyer, for 6; {@code merge_maiden_normal}
- * plays it after a Zap with less than 6, so it comes as the maiden on foot, for 3. Each is held to
- * the item its play carried - the option, its cost and the Merge Maiden's deck index - and to both
- * kings' elixir and hands.
- *
- * <p>{@code electro_wizard_knights} and {@code ice_wizard_knights} play a wizard onto two Knights:
- * the card names no unit, so it is cast as a spell, its area effect zapping or chilling the Knights
- * while its starting action makes the wizard in the same tick. Both end before the wizard's own
- * first attack.
- *
- * <p>{@code royal_giant_tower} and {@code elite_archer_knight} fire a projectile at a constant
- * height: the Royal Giant's cannonball starts at 1500 and descends onto the tower it homes on, and
- * the Elite Archer's arrow flies level at 2000 past a Knight, the first two arrows re-aiming at it
- * on their first two steps. {@code snowball_knights} casts a Snowball onto two Knights, whose
- * impact damages and pushes both and then slows both with its target buff. {@code
- * witch_mother_skeletons} shoots Skeletons with a curse applied before the damage, so each dies
- * carrying it and leaves a Voodoo Hog for the other side. {@code electro_dragon_knights} hops an
- * Electro Dragon's bolt across three Knights, freezing each. {@code firecracker_knight} bursts a
- * Firecracker's shell into a fan of five explosions. {@code axe_man_knights} sweeps an Axe Man's
- * axe out past two Knights and back, hitting each on the way out and again on the way back, while
- * the thrower waits for its return. {@code hunter_point_blank} fires a Hunter's ten pellets at a
- * Knight close enough for all ten to hit it as they are launched, and {@code hunter_range} fires
- * them from further off, each stopping at the first Knight it hits. {@code ram_rider_bola} has a
- * Ram Rider snare a Knight with her bola, again with each throw while the snare still holds. {@code
- * giant_buffer_knights} plays a Giant Buffer behind two Knights: it claims both through the
- * battle's target locks, casts its ability for eighteen ticks, and fires a projectile at each,
- * whose impact enchants the Knight, so every third hit either lands on the princess tower carries
- * the added damage. The looping effect the enchantment chooses only shows something; the reference
- * leaves such rows out of its runs, and so does the log here. {@code miner_princess} plays a Miner
- * that tunnels from its king tower to a point beside the enemy's princess tower, hidden from the
- * tower until it surfaces there. {@code goblin_drill_princess} plays a Goblin Drill, placed as its
- * building's footprint, whose dig tunnels there and morphs as it surfaces into the building, which
- * takes its target in its registration visit, deploys, and makes its damage area at once; the area
- * leaves at the next tick's opening cleanup.
- *
- * <p>{@code electro_wizard_tower_defence} plays an Electro Wizard behind a tower two Knights
- * attack: each attack hits its reference and then the nearest other enemy in range, or its
- * reference again when there is none, each hit a whole hit with its own hit id followed by its
- * ZapFreeze, which a later hit refreshes; it goes on to stun a princess tower between its arrows.
- * {@code mini_sparkys_knight} plays Mini Sparkys at a Knight, each hit one target with the same
- * buff, so the Knight stays stunned until 500 ms past the last of the three.
- *
- * <p>{@code inferno_tower_giant_knight}, {@code inferno_dragon_zap} and {@code
- * mighty_miner_knight_tower} play continuous-damage attackers, whose hits ramp through the windows
- * their attack timer walks: an Inferno Tower that keeps its ramp through a Giant's death and starts
- * over on a Knight, an Inferno Dragon whose ramp a Zap resets as its stun drops the target, and a
- * Mighty Miner that walks 500 closer than its range before it stops.
- *
- * <p>{@code ghost_river_wizard_tower} plays a Ghost that hovers over the river, invisible from its
- * creation: a Knight cannot take it until its first hit makes it visible, and two seconds after its
- * attacks end it is invisible again, so the princess tower that had locked on it falls back to its
- * default target while the arrow and fireball already in flight still land on it. {@code
- * battle_healer_knights} plays a Battle Healer whose area object heals the friendly Knight beside
- * it as it deploys, and whose every hit makes an area effect that heals its friends where it
- * stands.
- *
- * <p>{@code bush_princess_tower} plays a Suspicious Bush, invisible from its creation, that walks
- * past the towers untaken until its one hit on a princess tower kills it: its death makes an area
- * effect that never hits and whose starting action spawns two Bush Goblins beside where it died.
- * {@code bush_valkyrie_knight} plays one that a Valkyrie's swing kills on its way while it is still
- * invisible, its goblins coming where it died.
- *
- * <p>{@code pending_shield_guards} plays Guards at a Musketeer's range: the Musketeer's shot on its
- * way to a Guard would kill it, but the Guard's shield is up, so the princess tower that has not
- * fired yet keeps the same Guard rather than turning to another.
- *
- * <p>{@code tesla_giant_passing} plays a Tesla that takes its default target as its deploy ends,
- * hides once its counter reaches its hide time and rises when a Giant walks into its reach: it hits
- * the Giant once, loses it as the Giant walks on, and hides again. {@code tesla_hidden_spells}
- * holds who may reach a hidden Tesla: a Fireball that lands while it is going down deals its
- * damage, one still in flight as it goes down lands for nothing, a Zap passes it by, and a Freeze,
- * which reaches hidden units, damages and freezes it, the freeze holding its counter. Each is held
- * to the deploy end's targeting visit and to every change of the hide counter that shows something.
- *
- * <p>{@code earthquake_barbarians_tower} plays an Earthquake over Barbarians and a princess tower:
- * each hit of its damage over time comes on the Earthquake's own clock, 950 ms into each second of
- * its age, so every target is hit on the same ticks whenever it walked in, and a Barbarian that has
- * walked out is still hit while its instance lasts. {@code earthquake_tesla_overlap} plays two
- * Earthquakes overlapping on a hidden Tesla and a Knight that walks in late: each Earthquake lists
- * its own instance and hits on its own clock, so the hits interleave.
- *
- * <p>{@code tornado_group_off_lane} plays a Tornado over five Barbarians: each update pulls every
- * one in its circle toward its centre, and the next movement visit adds the pull to the route step,
- * so they are dragged off their lane and walk back to it once the Tornado has gone. {@code
- * tornado_heavy_light_tower} plays a Tornado over a Giant and a Knight beside a princess tower: the
- * pull is a share of each unit's own speed, so the Giant moves less than the Knight, and the tower
- * takes the damage but does not move. Each is held to every pull: the targets, the vector to the
- * centre and the push accumulators before and after.
- *
- * <p>{@code mega_knight_group} plays a Mega Knight onto three Knights: its card casts its
- * appearance before it makes the unit, which lands six ticks after the play for 430 on each Knight
- * and pushes each, and its push as it enters the deploying state finds nobody, the index being
- * empty in the command pass. {@code mega_knight_jump} plays one that jumps onto a Knight and lands
- * on it, its appearance hitting no one. Each is held to every push a unit makes as it enters its
- * deploying state: its radius and distance, what its query found and whom it pushed.
- *
- * <p>{@code lightning_defenders_tower} casts a Lightning over a group defending a princess tower:
- * its three strikes go to the tower, the defending Knight and the Musketeer, each the enemy in its
- * circle with the most hit points and shield not struck before, and each lands a tick after its
- * launch and stuns what it hits. {@code royal_delivery_group} casts a Royal Delivery whose last
- * update drops its crate onto its own point, the area effect leaving as it does; the crate lands a
- * tick later on the group around it and makes a Recruit. Each is held to every launch of an area
- * effect: its chooser's candidates, those it refused and struck before, and the projectile.
- *
- * <p>{@code heal_spirit_group} places a Heal Spirit that jumps at two enemy Knights fighting its
- * own: its projectile's impact makes the HealSpirit area effect at the impact point, whose one hit
- * on the next tick buffs the own Knights and Minion in its circle, healing the Knights four times.
- *
- * <p>{@code clone_golem_group} casts a Clone over a Golem and a Musketeer: its hit clones both in
- * the tick's last pending pass, each clone of 1 hit point copying the Clone buff its unit took, and
- * the clones step back while the units step forward for ten visits; the Golem's clone dies to
- * Arrows a tick later, its two Golemites clones too, and the Musketeer's shoots a Knight dead. Each
- * is held to every clone scheduled, made and moved apart, and to the buffs copied.
- *
- * <p>{@code clone_rage_group} casts a Clone over two Knights and a Musketeer and places a Rage over
- * the clones and their units: its buff heals nothing, so its filter passes the clones as any unit
- * and each hit buffs them with the units, asking the filter of a clone by the walk and again by the
- * apply. {@code clone_zap_poison_group} casts a Zap over the same clones, whose damage kills them
- * before its buff block, so none is stunned, and a Poison that buffs the Musketeer's clone and
- * kills it with the buff's first damage. {@code clone_heal_spirit_knight} has a Heal Spirit's area
- * heal a Knight and refuse its clone, its buff healing 157 a second. Each is held to every ask of
- * an area effect's buff test of a clone, with the path that asked.
+ * <p>{@code ram_rider_bola} has a Ram Rider snare a Knight with her bola, again with each throw
+ * while the snare still holds. {@code ram_rider_drop_knights} and {@code ram_rider_drop_tower} hold
+ * the rider's reference dropped on every bola: against two Knights, which she takes in turn as each
+ * snare ends, and while the Ram charges a princess tower, until the Ram dies and the rider with it.
+ * {@code parent_buff_ram_rider_rage} has a Rage refresh its buff on a Ram every six ticks, each
+ * handed to its rider, whose throws come 17 or 18 ticks apart instead of 22; it is held to every
+ * hand-over and the rider's instances after it.
  *
  * <p>{@code electro_giant_struck} plays an Electro Giant into two Knights and a Musketeer: every
  * Knight hit and every shot from inside its reach is struck back with 192 and a stun, which drops
- * the attacker's reference that tick, and the hit that kills it is still struck back. {@code
- * electro_giant_tower} walks one into a princess tower, whose arrows from inside its reach take 128
- * back each, the crown-tower column, until the tower falls to its own reflected arrow. Each is held
- * to every hit that reached the reflect, what it struck back with, and every reflected hit.
+ * the attacker's reference that tick, and the hit that kills it is still struck back. It is held to
+ * every hit that reached the reflect, what it struck back with, and every reflected hit.
  *
- * <p>{@code fisherman_knight} walks a Fisherman at a Knight: in the ring past its minimum range it
- * loads its special standing still and hooks the Knight with it, pulls it back at its speed's share
- * of the drag speed and lets go short of itself, then fights it. {@code fisherman_tower} hooks a
- * princess tower, which cannot be pulled, so the Fisherman drags himself to it at the self-drag
- * speed and hits it until its arrows kill him. Each is held to every load armed, every state the
- * hook set, and the hold and the pull its projectile's leaving ended.
- *
- * <p>{@code graveyard_tower_defender} casts a Graveyard on a princess tower while a Knight walks in
- * to defend it: the area effect's group spawns a skeleton every half second or so at a point its
- * position expressions work out from the area effect's own point and side, a point beyond the
- * arena's edge going one unit right and then clamped into it. {@code graveyard_right_side1} casts
- * one for the top side on the right half, where the offsets across the width are turned over.
- *
- * <p>{@code skeleton_barrel_tower} flies a Skeleton Barrel straight at a princess tower: its hits
- * deal nothing and kill it no more, and from its first hit its state visit drains its hit points a
- * share at a time until it dies, dropping its container, which dies as its deploy ends and makes
- * seven Skeletons on a ring turned over across the width in the left lane. {@code
- * skeleton_barrel_shot_down} has a Musketeer and the tower shoot one down before it hits, and the
- * container falls where it died. Each is held to every Kamikaze end and drain, and to the lane each
- * ring child asked for.
- *
- * <p>{@code goblin_cage_knight} plays a Goblin Cage that a Knight leaves its lane for: the cage's
- * shake is listed as it starts and does nothing, the cage takes the Knight but its first hit is not
- * yet due when the Knight's third hit and the decay kill it, and its Goblin Brawler, made on its
- * point, kills the Knight. {@code goblin_cage_lifetime} leaves one alone until its decay kills it
- * and its Brawler stands on its point.
- *
- * <p>{@code berserker_knight} places a Berserker against a Knight on one lane: its starting action
- * sets its attack sequence index to 0 as it starts, and every hit it lands flips it, 0, 1, 0, 1,
- * over three equal entries, so it deals 102 every twelve ticks until the Knight kills it. {@code
- * berserker_tower} has one walk into a princess tower and hit it the same way until the arrows kill
- * it. Each is held to the index before and after every start and notice.
- *
- * <p>{@code dark_magic_knight} casts Dark Magic in a Knight's path: its laser ball fires on three
- * ticks twenty apart, each fire finding the Knight alone and putting the strongest of its buffs on
- * it, which hits for 340 two ticks later. {@code dark_magic_group} casts one on five Barbarians and
- * their princess tower: the count of what each fire finds picks the buff, the weakest for six and
- * the middle one for four and for three, and the tower takes its per-hit column. Each is held to
- * the laser ball's start and every fire, with what it found and the timer, and to the princess
- * tower's runs as to a unit's.
- *
- * <p>{@code vines_group} casts Vines over a Giant, a Knight and a Minion: its selector picks them
- * by hit points on three ticks, and the Minion, pulled down to the ground, is taken and killed by a
- * Knight that attacks only ground units. {@code vines_tower} casts it over a princess tower and a
- * Knight: the snared tower shoots nothing until the snare goes, and the third pick finds nobody.
- * Each is held to every selector step and every air-to-ground run's phase change.
- *
- * <p>{@code little_prince_giant} plays a Little Prince against a Giant: its starting-attack row
- * reads attack_count at every hit, putting its first speed-up on at the third and its fastest at
- * the sixth, each alive while its life condition holds, so its shots come 24, 12, then 8 ticks
- * apart; a princess tower kills the Giant, and the far tower, out of range, clears the ramp. {@code
- * little_prince_retarget} has it kill three Spear Goblins one after another, each new target in
- * range keeping the ramp, then take a princess tower out of range, which clears it. Each is held to
- * every read of attack_count and every ask of a buff's life condition.
- *
- * <p>{@code boss_bandit_bandit_knight} plays a Boss Bandit against a Bandit and then a Knight: the
- * two dash at each other on the same tick and both landing hits are refused, and each kill the Boss
- * Bandit makes schedules its row's killed-done check on it, with what it killed as the cause, in
- * its next pending pass; the check matches the Bandit and runs its voice line, and finds no match
- * in the Knight. {@code boss_bandit_tower_bandit} has a Bandit kill a Boss Bandit at a princess
- * tower, whose killed action checks its killer the same way and matches. Each is held to every
- * killed-done check scheduled and every check of an action's cause.
- *
- * <p>{@code goblinstein_tower} plays Goblinstein toward a princess tower: the card links its
- * monster and then its doctor, placed behind it toward the middle, into a group chain; the doctor's
- * starting action makes an area effect that follows it and never hits, whose ability run connects
- * to the monster on its first step and then waits for a cast that never comes. The tower kills the
- * monster, and the run makes its death area where the monster fell, which never hits either; the
- * tower then kills the doctor, its area effect leaves with it and ends the death area in the same
- * cleanup. {@code goblinstein_doctor_first} has a Knight kill the doctor first: the area effect
- * leaves with it, and the monster's later death makes nothing. Each is held to every link and
- * unlink of the chain and to what the ability's run did.
- *
- * <p>{@code card_run_knight_pair} plays the run's Knight on the left beside a second Knight placed
- * directly on the right, both on tick 0: each leaves the deploying state at the end of tick 19, the
- * twentieth state visit, and both walk, are shot and lock their tower on the same ticks. {@code
- * card_run_baby_dragon_pair} does the same with two Baby Dragons. Each record is read at the end of
- * its tick, so the run's own unit is held to the same timing as the one placed beside it.
- *
- * <p>{@code mighty_miner_ability_tower} has its player use the Mighty Miner's ability as it attacks
- * a princess tower: nine ticks into the cast it switches lanes, across to the mirror of its
- * position, hidden and dropped by the tower, whose arrow in flight loses it, and leaves its bomb at
- * the tower, which takes the bomb's death damage; it deploys again on arrival, its reference
- * dropped, and ramps from the start on the other tower. {@code mighty_miner_ability_walk} uses it
- * as the Miner walks at a Knight, which turns to the Miner's tower and walks into the bomb's
- * circle, hit and pushed back up the lane.
- *
- * <p>{@code parent_buff_goblin_giant} has a Freeze, then a Zap, land on a Goblin Giant while its
- * Spear Goblins throw at a princess tower: the area reaches only the Giant, which hands each buff
- * to both riders, so all three stop at their own combat gates and their instances run out on the
- * same tick. {@code parent_buff_ram_rider_rage} has a Rage refresh its buff on a Ram every six
- * ticks, each handed to its rider, whose throws come 17 or 18 ticks apart instead of 22. Each is
- * held to every hand-over and the rider's instances after it.
- *
- * <p>{@code valkyrie_ev1_barbarians} has an evolved Valkyrie spin among three Barbarians: each hit
- * runs its attack action on itself with the hit's target as cause, which makes a mini tornado on
- * the Valkyrie that pulls every Barbarian and hits each once, and gives the Valkyrie a buff that
- * keeps enemies from pushing it. {@code royal_giant_ev1_knights} has an evolved Royal Giant shell a
- * princess tower with two Knights at its feet: each launch makes an area at the Royal Giant that
- * hits and pushes both Knights back the next tick.
- *
- * <p>Not every run described above is still played. The references are the battle generator's,
- * which walked a unit that walks in bursts at its Speed column as written, gave every building a
- * mass of 0 and never turned an attacking unit toward its reference; the game loads the first at a
- * raised speed and the second at a mass worked out from its radius, and turns the unit on every
- * attack tick. The runs those three rules move were removed with their files, and are listed in
- * {@code core/src/test/resources/pathfinding/README.md}. The runs left are in two lists: the first
- * is played; the second holds the runs recorded on the earlier data that the 16.402.18 rows or
- * rules move, disabled until it is decided how to re-record them.
+ * <p>The runs are in two lists: the first is played; the second holds the runs that the current
+ * rows or rules move, disabled until the recorded references replace them.
  */
 class BattleActionSpawnRunTest {
 
@@ -418,118 +93,12 @@ class BattleActionSpawnRunTest {
   @ParameterizedTest(name = "{0}")
   @ValueSource(
       strings = {
-        "bush_goblins",
-        "tombstone_death_hook",
-        "goblin_wave",
-        "golemite_convert",
-        "archer_ev1_vs_tower",
-        "archer_ev1_knight",
-        "area_effect_direct",
-        "giant_skeleton_bomb",
-        "cannon_knight",
-        "goblin_hut_life",
-        "mortar_knight",
-        "rage_knight",
-        "zap_knight",
-        "balloon_tower",
-        "baby_dragon_left",
-        "zap_knight_cast",
-        "log_goblins",
-        "barb_barrel_knight",
-        "poison_guards",
-        "dark_prince_tower",
-        "hog_river",
-        "hog_clip_cannon",
-        "bandit_knight",
-        "ram_rider_tower",
         "mirror_fireball",
-        "merge_maiden_mounted",
-        "merge_maiden_normal",
-        "electro_wizard_knights",
-        "ice_wizard_knights",
-        "elite_archer_knight",
-        "snowball_knights",
-        "electro_dragon_knights",
-        "firecracker_knight",
-        "axe_man_knights",
-        "hunter_point_blank",
-        "hunter_range",
         "ram_rider_bola",
-        "kamikaze_fire_spirits",
-        "kamikaze_wall_breakers",
-        "kamikaze_ice_spirits",
-        "moving_cannon_left",
-        "furnace_left",
-        "giant_buffer_knights",
-        "giant_buffer_musketeer",
-        "miner_princess",
-        "electro_wizard_tower_defence",
-        "mini_sparkys_knight",
-        "inferno_dragon_zap",
-        "mighty_miner_knight_tower",
-        "ghost_river_wizard_tower",
-        "battle_healer_knights",
-        "bush_princess_tower",
-        "bush_valkyrie_knight",
-        "tesla_hidden_spells",
-        "earthquake_barbarians_tower",
-        "earthquake_tesla_overlap",
-        "tornado_group_off_lane",
-        "mega_knight_group",
-        "mega_knight_jump",
-        "lightning_defenders_tower",
-        "royal_delivery_group",
-        "clone_rage_group",
-        "clone_zap_poison_group",
-        "clone_heal_spirit_knight",
         "electro_giant_struck",
-        "electro_giant_tower",
-        "fisherman_knight",
-        "fisherman_tower",
-        "three_musketeers_pekka",
-        "three_musketeers_air_building",
-        "graveyard_right_side1",
-        "skeleton_barrel_shot_down",
-        "goblin_cage_knight",
-        "goblin_cage_lifetime",
-        "goblin_curse_knights",
-        "goblin_demolisher_knight",
-        "dark_magic_knight",
-        "vines_tower",
-        "goblin_machine_knight",
-        "goblin_machine_tower",
-        "little_prince_retarget",
-        "boss_bandit_bandit_knight",
-        "boss_bandit_tower_bandit",
-        "goblinstein_tower",
-        "goblinstein_doctor_first",
-        "archer_queen_ability",
-        "archer_queen_ability_refused",
-        "reference_loss_musketeer_rage",
-        "card_run_baby_dragon_pair",
-        "little_prince_ability_knights",
         "ram_rider_drop_knights",
         "ram_rider_drop_tower",
-        "golden_knight_chain",
-        "bandit_dash_past",
-        "golden_knight_ladder_chain",
-        "tower_retarget_cannon",
-        "mighty_miner_ability_tower",
-        "mighty_miner_ability_walk",
-        "skeleton_king_ability_souls",
-        "parent_buff_ram_rider_rage",
-        "evolution_knight",
-        "valkyrie_ev1_barbarians",
-        "buff_after_hits_barbarians_bats",
-        "buff_after_hits_ghost_evo",
-        "shield_lost_wizard",
-        "mega_knight_ev1_uppercut",
-        "baby_dragon_ev1_wind",
-        "knight_ev1_tower_knight",
-        "knight_ev1_fireball_valkyrie",
-        "tesla_ev1_knights",
-        "ice_axe_barbarians",
-        "axe_man_ev1_barbarians"
+        "parent_buff_ram_rider_rage"
       })
   @Disabled("golden recorded on 14.593.1; awaiting decision")
   void theRunMatchesTheReferenceTickForTickAwaitingDecision(String name) {
@@ -537,35 +106,7 @@ class BattleActionSpawnRunTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @ValueSource(
-      strings = {
-        "gift_knight",
-        "abort_instigator",
-        "gift_select",
-        "tombstone_life",
-        "minion_musketeer",
-        "balloons_cross",
-        "lava_hound_river",
-        "arrows_skeletons",
-        "recruit_tower",
-        "guards_knight",
-        "prince_tower",
-        "match_overtime_tiebreak",
-        "match_overtime_draw",
-        "mirror_knight",
-        "pending_shield_guards",
-        "phoenix_egg_killed",
-        "goblin_hut_lifetime",
-        "berserker_knight",
-        "berserker_tower",
-        "reference_loss_knight",
-        "card_run_knight_pair",
-        "boss_bandit_ability_tower",
-        "boss_bandit_ability_charges",
-        "golden_knight_tower",
-        "tower_retarget_knight",
-        "shield_lost_recruits"
-      })
+  @ValueSource(strings = {"mirror_knight"})
   void theRunMatchesTheReferenceTickForTick(String name) {
     JsonNode reference = BattleMusketeerRunTest.load("/pathfinding/golden/" + name + ".json");
     // A run made without the towers fighting names no tower level; its towers stand at 11.
