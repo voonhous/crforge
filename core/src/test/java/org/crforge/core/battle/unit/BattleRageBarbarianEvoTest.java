@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -77,7 +78,8 @@ class BattleRageBarbarianEvoTest {
         match.deploy(0, GameData.unit("RageBarbarianEvoGhost"), 11, 0, 9000, 8000);
     // The starting group's parts are queued in order, and the pending pass takes the last entry
     // into each started one's place: the group, the forever invisibility, the two waits, and only
-    // then the life controller buff (5500 ms), which the second wait swaps for itself and so arms.
+    // then the life controller buff (its SpawnTime), which the second wait swaps for itself and so
+    // arms.
     int buffGone = -1;
     int dead = -1;
     for (int step = 0; step < 160 && dead < 0; step++) {
@@ -91,10 +93,13 @@ class BattleRageBarbarianEvoTest {
         dead = step;
       }
     }
-    // 5500 ms is 110 steps: the instance applied in the first runs out in the 110th, whose run
-    // pass finds it missing and schedules the kill, run in the same step's later pending pass.
-    assertThat(buffGone).isEqualTo(109);
-    assertThat(dead).isEqualTo(109);
+    // The buff's time in whole steps, a part step counting as one (5500 ms is 110 steps): the
+    // instance applied in the first runs out in the last of them, whose run pass finds it missing
+    // and schedules the kill, run in the same step's later pending pass.
+    int lifeTime = Shipped.number("add_buff_for_count_lifetime", "SpawnTime");
+    int lastStep = (lifeTime + 49) / 50 - 1;
+    assertThat(buffGone).isEqualTo(lastStep);
+    assertThat(dead).isEqualTo(lastStep);
   }
 
   private static CharacterEntity character(Battle battle, String row) {

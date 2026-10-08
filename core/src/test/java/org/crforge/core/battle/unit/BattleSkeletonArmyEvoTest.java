@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -16,8 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The evolved Skeleton Army: its card names its soldier fifteen times and lists its general
- * besides, so the play makes the fifteen soldiers in their ring and then the general at its own
+ * The evolved Skeleton Army: its card names its soldier SummonNumber times (fifteen) and lists its
+ * general besides, so the play makes the soldiers in their ring and then the general at its own
  * offset, all linked into one chain as the card is a group. A soldier that dies while the general
  * is in the chain leaves a spectral skeleton where it stood, which joins the chain; the general's
  * death kills the spectral skeletons of its chain.
@@ -31,6 +33,14 @@ class BattleSkeletonArmyEvoTest {
   private static final String GENERAL = "SkeletonArmy_EV1_General";
 
   private static final String SPECTRAL = "SkeletonArmy_EV1_Spectral";
+
+  /** The evolved card's row. */
+  private static final GameRow CARD = Shipped.row("spells_evolved", "SkeletonArmy_EV1");
+
+  /** The card's soldiers, and the play's units: the soldiers and the general. */
+  private static final int SOLDIERS = Shipped.number(CARD, "SummonNumber");
+
+  private static final int UNITS = SOLDIERS + 1;
 
   /** The army played on tick 0 at (3500, 10000), with the towers passive. */
   private static Standard1v1Battle played(GameTables tables) {
@@ -70,25 +80,28 @@ class BattleSkeletonArmyEvoTest {
 
   @Test
   @DisplayName(
-      "the play makes fifteen soldiers and then the general, the general at its listed offset"
-          + " negated for the bottom side, all sixteen in one chain in creation order")
+      "the play makes its SummonNumber of soldiers and then the general, the general at its listed"
+          + " offset negated for the bottom side, all of them in one chain in creation order")
   void theGeneralFollowsItsSoldiers() {
     Standard1v1Battle match = played(GameData.tables());
     match.getBattle().step();
     Standard1v1Battle.Play play = match.getPlays().get(0);
 
     List<CharacterEntity> units = play.units();
-    assertThat(units).hasSize(16);
-    assertThat(units.subList(0, 15)).allMatch(unit -> unit.getData().name().equals(SOLDIER));
-    assertThat(units.get(15).getData().name()).isEqualTo(GENERAL);
+    assertThat(units).hasSize(UNITS);
+    assertThat(units.subList(0, SOLDIERS)).allMatch(unit -> unit.getData().name().equals(SOLDIER));
+    assertThat(units.get(SOLDIERS).getData().name()).isEqualTo(GENERAL);
 
-    CardPlacement.Unit general = play.result().units().get(15);
-    assertThat(List.of(general.dx(), general.dy())).containsExactly(0, -1000);
+    // The listed offset, both of its parts negated for the bottom side's play.
+    int dx = -Shipped.numbers(CARD, "SummonCharactersOffsetsX").get(0);
+    int dy = -Shipped.numbers(CARD, "SummonCharactersOffsetsY").get(0);
+    CardPlacement.Unit general = play.result().units().get(SOLDIERS);
+    assertThat(List.of(general.dx(), general.dy())).containsExactly(dx, dy);
     assertThat(List.of(general.x(), general.y()))
-        .containsExactly(play.result().x(), play.result().y() - 1000);
+        .containsExactly(play.result().x() + dx, play.result().y() + dy);
 
-    assertThat(units.get(0).chainSize()).isEqualTo(16);
-    for (int k = 0; k < 15; k++) {
+    assertThat(units.get(0).chainSize()).isEqualTo(UNITS);
+    for (int k = 0; k < SOLDIERS; k++) {
       assertThat(units.get(k).chainNext()).isSameAs(units.get(k + 1));
     }
   }
@@ -113,9 +126,9 @@ class BattleSkeletonArmyEvoTest {
     // Made where the soldier stood, then pushed apart from its neighbours in the same tick.
     assertThat(Math.abs(spectral.getView().getX() - dead.get(0).getView().getX())).isLessThan(500);
     assertThat(Math.abs(spectral.getView().getY() - dead.get(0).getView().getY())).isLessThan(500);
-    CharacterEntity general = match.getPlays().get(0).units().get(15);
+    CharacterEntity general = match.getPlays().get(0).units().get(SOLDIERS);
     assertThat(general.getView().isAlive()).isTrue();
-    assertThat(general.chainSize()).isEqualTo(16);
+    assertThat(general.chainSize()).isEqualTo(UNITS);
   }
 
   @Test
@@ -141,7 +154,7 @@ class BattleSkeletonArmyEvoTest {
       assertThat(living(match, SPECTRAL)).isEmpty();
       List<CharacterEntity> units =
           match.getPlays().isEmpty() ? List.of() : match.getPlays().get(0).units();
-      general = units.size() == 16 ? units.get(15) : null;
+      general = units.size() == UNITS ? units.get(SOLDIERS) : null;
       if (general != null && !general.getView().isAlive()) {
         break;
       }
@@ -150,7 +163,7 @@ class BattleSkeletonArmyEvoTest {
     assertThat(general.getView().isAlive()).isFalse();
     int soldiers = living(match, SOLDIER).size();
     // The Musketeer goes on to kill soldiers; none leaves a spectral skeleton.
-    assertThat(soldiers).isEqualTo(15);
+    assertThat(soldiers).isEqualTo(SOLDIERS);
     for (int i = 0; i < 300 && living(match, SOLDIER).size() == soldiers; i++) {
       match.getBattle().step();
       assertThat(living(match, SPECTRAL)).isEmpty();

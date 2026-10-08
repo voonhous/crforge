@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +15,8 @@ import org.junit.jupiter.api.Test;
  * The evolved Minion Horde's minion (MinionHorde_EV1 of data version 16.402.18): its row's
  * OnDamageTakenAction, MinionHorde_EV1_OnDamage_Group, runs on the minion itself after a hit has
  * taken hit points off it. The group's gate lets it through once, while the minion's variable is
- * still 0: it gives the minion MinionHorde_EV1_GhostBuff for 3000 ms and sets the variable. The
- * buff makes the minion invisible and raises NO_DAMAGE in its tag word, so nothing lands on it
+ * still 0: it gives the minion MinionHorde_EV1_GhostBuff for its SpawnTime and sets the variable.
+ * The buff makes the minion invisible and raises NO_DAMAGE in its tag word, so nothing lands on it
  * while the buff lasts; a hit after it lands again, and gives no second buff.
  */
 class MinionHordeEvolutionTest {
@@ -27,8 +28,11 @@ class MinionHordeEvolutionTest {
   /** A buff listed or taken off the minion, at its tick. */
   private record BuffEvent(int tick, String buff, boolean applied) {}
 
+  /** The action that gives the minion its ghost buff. */
+  private static final String APPLY_GHOST_BUFF = "MinionHorde_EV1_ApplyGhostBuff";
+
   @Test
-  @DisplayName("the minion's first hit makes it a ghost for 3 s, and only the first")
+  @DisplayName("the minion's first hit makes it a ghost for its buff's time, and only the first")
   void theFirstHitMakesTheMinionAGhost() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -79,7 +83,9 @@ class MinionHordeEvolutionTest {
     assertThat(from)
         .as("the buff follows the first loss within a tick")
         .isBetween(first, first + 1);
-    assertThat(to - from).as("the buff lasts 3000 ms").isEqualTo(60);
+    // The buff's time counts down 50 a step and it is taken off on the step that ends it.
+    int spawnTime = Shipped.number(APPLY_GHOST_BUFF, "SpawnTime");
+    assertThat(to - from).as("the buff lasts its SpawnTime").isEqualTo((spawnTime + 49) / 50);
     assertThat(losses.stream().filter(t -> t > first && t <= to))
         .as("nothing lands on the ghost")
         .isEmpty();

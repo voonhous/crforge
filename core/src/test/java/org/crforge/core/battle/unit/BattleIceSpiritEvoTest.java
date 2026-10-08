@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,10 +21,28 @@ class BattleIceSpiritEvoTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The area the spirit's hit drops. */
+  private static final GameRow AREA = Shipped.row("area_effect_objects", "IceSpiritsAOE_EV1");
+
+  /**
+   * A damage scaled by a row's rarity at the scene's level: the rarity's multiplier, in hundredths,
+   * at the level's step above the rarity's first level, truncated.
+   */
+  private static int scaled(int damage, GameRow row) {
+    String name = Shipped.text(row, "Rarity");
+    RarityTable rarity =
+        RarityTable.PUBLISHED.stream()
+            .filter(table -> table.name().equals(name))
+            .findFirst()
+            .orElseThrow();
+    int steps = LEVEL - rarity.firstLevel();
+    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
+  }
+
   @Test
   @DisplayName(
       "the area following the unit the spirit hit stays on that unit's last point once it leaves,"
-          + " and still hits there, 3000 ms after the impact, the unit beside it")
+          + " and still hits there, its HitSpeedOffset after the impact, the unit beside it")
   void theAreaStaysWhereItsUnitLeft() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     List<AreaEffectEntity> made = new ArrayList<>();
@@ -80,8 +101,10 @@ class BattleIceSpiritEvoTest {
       assertThat(area.getY()).isEqualTo(y);
     }
 
-    // The filter form's one hit falls on the update its HitSpeedOffset of 3000 ms starts, the
-    // 61st, kept by the countdown below 0; its typed hit is dealt at that step's damage drain.
-    assertThat(hits).containsExactly((impact + 61) + " B1 110");
+    // The filter form's one hit falls on the update its HitSpeedOffset starts (3000 ms: the 61st),
+    // kept by the countdown below 0; its typed hit is dealt at that step's damage drain.
+    int hitStep = Shipped.number(AREA, "HitSpeedOffset") / 50 + 1;
+    int damage = scaled(Shipped.column(AREA, "Damage").path("BaseDamage").asInt(), AREA);
+    assertThat(hits).containsExactly((impact + hitStep) + " B1 " + damage);
   }
 }
