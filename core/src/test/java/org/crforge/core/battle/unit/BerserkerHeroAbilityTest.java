@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -15,11 +16,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Berserker hero's ability (data version 16.402.18): the tap lists BerserkerHero_buff on the
- * hero for 3500 ms and swaps it into its bear form. The buff's DamageMultiplier of 164 scales every
- * hit the hero deals to 164 percent of the plain hit, truncated, and its UNKILLABLE tag keeps the
- * hero's hit points at 1 at least for as long as it is listed: a hit that would kill it leaves it
- * at 1.
+ * The Berserker hero's ability: the tap lists BerserkerHero_buff on the hero for a while and swaps
+ * it into its bear form. The buff's DamageMultiplier scales every hit the hero deals to that
+ * percent of the plain hit, truncated, and its UNKILLABLE tag keeps the hero's hit points at 1 at
+ * least for as long as it is listed: a hit that would kill it leaves it at 1.
  *
  * <p>The scene is the recorded hero Berserker battle's commands, at the default level: side 0's
  * hero Berserker played on tick 220 at (3500, 14000), side 1's Musketeer on tick 270 at (3500,
@@ -40,7 +40,10 @@ class BerserkerHeroAbilityTest {
 
   private static final int TAP = 305;
 
-  /** A Ladder match of 16.402.18 whose side 0 holds the hero Berserker in its hand. */
+  /** The buff the ability lists on the hero. */
+  private static final String BUFF = "BerserkerHero_buff";
+
+  /** A Ladder match whose side 0 holds the hero Berserker in its hand. */
   private static Standard1v1Battle battle(GameTables tables) {
     int[] heroFirst = new int[8];
     heroFirst[0] = MatchSide.HERO_SLOT;
@@ -66,9 +69,9 @@ class BerserkerHeroAbilityTest {
 
   @Test
   @DisplayName(
-      "under the buff each of the hero's hits takes 164 percent of the plain hit off the Musketeer,"
-          + " truncated, and a hit that would kill the hero leaves it at 1 hit point while the buff"
-          + " is listed")
+      "under the buff each of the hero's hits takes the buff's damage multiplier's percent of the"
+          + " plain hit off the Musketeer, truncated, and a hit that would kill the hero leaves it at"
+          + " 1 hit point while the buff is listed")
   void theBuffScalesTheHitsAndKeepsTheHeroAlive() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -78,17 +81,41 @@ class BerserkerHeroAbilityTest {
     stepTo(battle, 272);
     CharacterEntity hero = named(battle, "BerserkerHero").get(0);
     CharacterEntity musketeer = named(battle, "Musketeer").get(0);
-    battle.useAbility(TAP, 0, hero.name(), "BerserkerHeroAbility");
-    List<Integer> musketeerLosses = new ArrayList<>();
+    // The tap on the recorded tick, or later once the hero has hit the Musketeer once and side 0
+    // holds the ability row's cost.
+    int cost =
+        Shipped.number(
+            Shipped.row(
+                "character_abilities",
+                Shipped.text(Shipped.unitRow(hero.getData().name()), "Ability")),
+            "ManaCost");
+    boolean tapped = false;
+    int tapTick = 0;
+    List<Integer> plainLosses = new ArrayList<>();
+    List<Integer> buffedLosses = new ArrayList<>();
     List<Integer> heroHitPoints = new ArrayList<>();
     int musketeerBefore = musketeer.getHitPoints().getHitPoints();
     int heroBefore = hero.getHitPoints().getHitPoints();
-    while (battle.getBattle().getTick() < 360) {
+    // The recorded battle runs on 55 ticks past its tap.
+    while (!tapped || battle.getBattle().getTick() < tapTick + 55) {
+      if (!tapped) {
+        assertThat(battle.getBattle().getTick()).as("the tap").isLessThan(TAP + 60);
+      }
+      int tick = battle.getBattle().getTick();
+      if (!tapped
+          && tick >= TAP
+          && !plainLosses.isEmpty()
+          && battle.getMatch().side(0).wholeElixir() >= cost) {
+        battle.useAbility(tick, 0, hero.name(), "BerserkerHeroAbility");
+        tapped = true;
+        tapTick = tick;
+      }
       battle.getBattle().step();
       int musketeerNow = musketeer.getHitPoints().getHitPoints();
       // The killing hit takes only what is left; the hits before it show the amount.
       if (musketeerNow != musketeerBefore && musketeerNow > 0) {
-        musketeerLosses.add(musketeerBefore - musketeerNow);
+        (hero.getBuffs().carries(BUFF) ? buffedLosses : plainLosses)
+            .add(musketeerBefore - musketeerNow);
         musketeerBefore = musketeerNow;
       }
       int heroNow = hero.getHitPoints().getHitPoints();
@@ -98,11 +125,14 @@ class BerserkerHeroAbilityTest {
       }
     }
     assertThat(battle.getAbilityUses()).hasSize(1);
-    // One plain hit before the tap, then the buffed ones until the Musketeer dies.
-    int plain = musketeerLosses.get(0);
-    assertThat(musketeerLosses.subList(1, musketeerLosses.size()))
+    // Plain hits before the tap, then the buffed ones until the Musketeer dies.
+    assertThat(plainLosses).isNotEmpty();
+    int plain = plainLosses.get(0);
+    assertThat(plainLosses).containsOnly(plain);
+    assertThat(buffedLosses)
         .isNotEmpty()
-        .containsOnly(plain * 164 / 100);
+        .containsOnly(
+            plain * Shipped.number(Shipped.row("character_buffs", BUFF), "DamageMultiplier") / 100);
     // The Musketeer's and the towers' shots bring the hero down to 1, and no further.
     assertThat(heroHitPoints).contains(1);
     assertThat(heroHitPoints).allMatch(hitPoints -> hitPoints >= 1);

@@ -7,6 +7,8 @@ import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
@@ -26,20 +28,33 @@ class BattleMonkComboTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  private static final GameRow MONK = Shipped.unitRow("Monk");
+
+  /** How far the third hit pushes. */
+  private static final int THIRD_PUSH = Shipped.number(MONK, "MeleePushback3");
+
   @Test
-  @DisplayName("the Monk loads its order 0, 1, 2 in the static loop, the third entry with a push")
+  @DisplayName(
+      "the Monk loads its row's order in the static loop, the entries hitting with Damage and the"
+          + " variable damages, the third with a push")
   void theComboIsLoaded() {
     AttackSequence sequence = GameData.unit("Monk").attackSequence();
 
     assertThat(sequence.mode()).isEqualTo(AttackSequence.MODE_STATIC_LOOP);
-    assertThat(sequence.order()).containsExactly(0, 1, 2);
+    assertThat(sequence.order()).containsExactlyElementsOf(Shipped.numbers(MONK, "AttackSequence"));
     assertThat(sequence.entries())
         .extracting(AttackSequence.Entry::damage)
-        .containsExactly(55, 55, 165);
-    assertThat(sequence.entries().get(2).meleePushback()).isEqualTo(1800);
+        .containsExactly(
+            Shipped.number(MONK, "Damage"),
+            Shipped.number(MONK, "VariableDamage2"),
+            Shipped.number(MONK, "VariableDamage3"));
+    assertThat(sequence.entries().get(2).meleePushback()).isEqualTo(THIRD_PUSH);
     assertThat(sequence.entries())
         .extracting(AttackSequence.Entry::meleePushbackAll)
-        .containsExactly(false, false, true);
+        .containsExactly(
+            Shipped.flag(MONK, "IsMeleePushbackAll1"),
+            Shipped.flag(MONK, "IsMeleePushbackAll2"),
+            Shipped.flag(MONK, "IsMeleePushbackAll3"));
   }
 
   @Test
@@ -51,7 +66,7 @@ class BattleMonkComboTest {
     Battle battle = match.getBattle();
     CharacterEntity monk = match.deploy(0, GameData.unit("Monk"), LEVEL, 0, 3500, 20000, "Monk");
     GridEntity view = monk.getView();
-    WorldEntity tower = princessTower(match, 1, 3500);
+    WorldEntity tower = leftPrincessTower(match, 1);
     int before = tower.getHitPoints().getHitPoints();
     List<Integer> hits = new ArrayList<>();
     int stopDistance = -1;
@@ -69,11 +84,16 @@ class BattleMonkComboTest {
       }
     }
 
-    // Range 1200, the Monk's radius 500 and the tower's 1000, less the 500 a walking unit with a
-    // mode loses; a step of the walk is 60.
+    // Its range, the Monk's radius and the tower's, less the 500 a walking unit with a mode
+    // loses; a step of the walk is the Monk's speed.
     int reach =
-        1200 + 500 + 1000 - PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER;
-    assertThat(stopDistance).isLessThanOrEqualTo(reach).isGreaterThan(reach - 60);
+        Shipped.number(MONK, "Range")
+            + Shipped.number(MONK, "CollisionRadius")
+            + Shipped.number(Shipped.unitRow("PrincessTower"), "CollisionRadius")
+            - PathfindingGlobals.LOGIC_CHARACTER_CONTINUOUS_DAMAGE_ATTACK_CLOSER;
+    assertThat(stopDistance)
+        .isLessThanOrEqualTo(reach)
+        .isGreaterThan(reach - Shipped.number(MONK, "Speed"));
     assertThat(hits).hasSize(6);
     assertThat(hits.get(0)).isEqualTo(hits.get(1));
     assertThat(hits.get(2)).isGreaterThan(hits.get(0));
@@ -82,7 +102,7 @@ class BattleMonkComboTest {
 
   @Test
   @DisplayName(
-      "the third hit pushes a Giant, whose row ignores pushback, 1800 away from where the Monk"
+      "the third hit pushes a Giant, whose row ignores pushback, its push away from where the Monk"
           + " stands")
   void theThirdHitPushesAGiant() {
     assertThat(GameData.unit("Giant").ignorePushback()).isTrue();
@@ -135,24 +155,29 @@ class BattleMonkComboTest {
     assertThat(new int[] {push[1], push[2]})
         .as("pushed from where the Monk stands")
         .containsExactly(push[7], push[8]);
-    // The setter aims 1800 along the line from the Monk through the Giant, C division.
+    // The setter aims the push along the line from the Monk through the Giant, C division.
     int dx = push[3] - push[1];
     int dy = push[4] - push[2];
     int length = (int) Math.sqrt((double) dx * dx + (double) dy * dy);
     assertThat(new int[] {push[5], push[6]})
-        .containsExactly(push[3] + 1800 * dx / length, push[4] + 1800 * dy / length);
+        .containsExactly(push[3] + THIRD_PUSH * dx / length, push[4] + THIRD_PUSH * dy / length);
     assertThat(giant.getUnit().movement().getPushbackInFlight()).isEqualTo(1);
   }
 
-  private static WorldEntity princessTower(Standard1v1Battle match, int side, int x) {
+  /** The side's princess tower on the left lane, the one the Monk placed there walks to. */
+  private static WorldEntity leftPrincessTower(Standard1v1Battle match, int side) {
+    WorldEntity left = null;
     for (BattleEntity entity : match.getBattle().getHolder().entities()) {
       if (entity instanceof TowerEntity t
           && t.side() == side
           && !t.getData().king()
-          && t.getView().getX() == x) {
-        return t;
+          && (left == null || t.getView().getX() < left.getView().getX())) {
+        left = t;
       }
     }
-    throw new IllegalStateException("no princess tower at " + x);
+    if (left == null) {
+      throw new IllegalStateException("no princess tower of side " + side);
+    }
+    return left;
   }
 }

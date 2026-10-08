@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -15,11 +19,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Dark Prince's hero form (data version 16.402.18): the ability's tap dismounts the hero. Its
- * activation group swaps the hero onto its walking row, which neither charges nor jumps the river,
- * spawns the mount where the hero stands, and runs the warp-back loop: a group gated on WARP_TIME
- * below 500 whose parts warp the hero 200 back and, 50 ms later, add 50 to WARP_TIME and schedule
- * the group again. So the hero is warped back one step a tick, ten times, 2000 in all.
+ * The Dark Prince's hero form: the ability's tap dismounts the hero. Its activation group swaps the
+ * hero onto its walking row, which neither charges nor jumps the river, spawns the mount where the
+ * hero stands, and runs the warp-back loop: a group gated on WARP_TIME below its bound whose parts
+ * warp the hero back by the warp's WarpY and, a tick later, add a step to WARP_TIME and schedule
+ * the group again. So the hero is warped back one step a tick, as many times as the steps fit under
+ * the bound.
  *
  * <p>The scene is the recorded hero Dark Prince battle's: side 0's hero Dark Prince placed at
  * (3500, 14000) on 220, an enemy Musketeer at (3500, 21500) on 270, the ability tapped on 311.
@@ -40,10 +45,17 @@ class DarkPrinceHeroTest {
   /** The tick the ability command runs on. */
   private static final int TAP = 311;
 
+  /** The hero's activation group. */
+  private static final String ACTIVATION =
+      Shipped.text(
+          Shipped.row(
+              "character_abilities", Shipped.text(Shipped.unitRow("DarkPrinceHero"), "Ability")),
+          "OnActivationAction");
+
   @Test
   @DisplayName(
       "the tap swaps the hero onto its walking row and spawns its mount; the warp-back loop then"
-          + " warps it 200 back a tick, ten times, as its count reaches 500")
+          + " warps it back a tick, as many times as its steps fit under its bound")
   void theTapDismountsAndWarpsBack() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -54,23 +66,42 @@ class DarkPrinceHeroTest {
     CharacterEntity hero = named(battle, "DarkPrinceHero").get(0);
     battle.useAbility(TAP, 0, hero.name(), "a");
     stepTo(battle, TAP);
+    // The activation group's parts: the swap, the warp-back group and the mount's spawn.
+    List<String> parts = Shipped.actionNames(ACTIVATION, "SubActions");
+    String walking = Shipped.text(parts.get(1), "NewCharacterData");
+    String warpGroup = parts.get(2);
+    String mount = Shipped.text(parts.get(4), "SpawnData");
+    List<String> loop = Shipped.actionNames(warpGroup, "SubActions");
+    int warpY = Shipped.number(loop.get(0), "WarpY");
+    // The loop's bound and its step, as its gate and its increment write them.
+    int bound = number("WARP_TIME < (\\d+)", Shipped.text(warpGroup, "ExecuteIfTrue"));
+    int increment = number("WARP_TIME \\+ (\\d+)", Shipped.text(loop.get(1), "Value"));
+    int warps = (bound + increment - 1) / increment;
     int before = hero.getView().getY();
     List<Integer> steps = new ArrayList<>();
     int last = before;
-    for (int k = 1; k <= 14; k++) {
+    for (int k = 1; k <= warps + 4; k++) {
       stepTo(battle, TAP + k);
       if (k == 1) {
-        assertThat(hero.getData().name()).isEqualTo("DarkPrinceHero_Walking");
-        assertThat(named(battle, "DarkPrinceHero_Mount")).hasSize(1);
+        assertThat(hero.getData().name()).isEqualTo(walking);
+        assertThat(named(battle, mount)).hasSize(1);
       }
       int y = hero.getView().getY();
       steps.add(y - last);
       last = y;
     }
-    // Ten warps of 200 back toward its own side, one a tick from the tap's own step, then none.
-    assertThat(steps)
-        .containsExactly(-200, -200, -200, -200, -200, -200, -200, -200, -200, -200, 0, 0, 0, 0);
-    assertThat(before - last).isEqualTo(2000);
+    // The warps back toward its own side, one a tick from the tap's own step, then none.
+    List<Integer> expected = new ArrayList<>(Collections.nCopies(warps, warpY));
+    expected.addAll(Collections.nCopies(4, 0));
+    assertThat(steps).containsExactlyElementsOf(expected);
+    assertThat(before - last).isEqualTo(-warpY * warps);
+  }
+
+  /** The number a pattern's one group finds in an expression. */
+  private static int number(String pattern, String expression) {
+    Matcher matcher = Pattern.compile(pattern).matcher(expression);
+    assertThat(matcher.matches()).as(expression).isTrue();
+    return Integer.parseInt(matcher.group(1));
   }
 
   /** A battle with the Dark Prince hero form in side 0's hand. */

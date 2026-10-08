@@ -2,16 +2,24 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Mega Knight's card play where the reference runs do not take it: its appearance cast from
@@ -25,9 +33,33 @@ class BattleMegaKnightTest {
   /** A tick after every unit placed on the first one has deployed. */
   private static final int PLAY_TICK = 25;
 
+  /** The Mega Knight's card row. */
+  private static final GameRow CARD = Shipped.row("spells_characters", "MegaKnight");
+
+  /** The Mega Knight's unit row. */
+  private static final GameRow UNIT = Shipped.unitRow(Shipped.text(CARD, "SummonCharacter"));
+
+  /** The appearance the card casts. */
+  private static final GameRow APPEAR =
+      Shipped.row("projectiles", Shipped.text(CARD, "Projectile"));
+
+  /** The king tower's collision radius, which the cast of a troop card's projectile scales. */
+  private static final int KING_RADIUS =
+      Shipped.number(Shipped.unitRow("KingTower"), "CollisionRadius");
+
+  /**
+   * How far before the point, along the length, the appearance starts: five times the king's
+   * collision radius.
+   */
+  private static final int APPEAR_BEHIND = 5 * KING_RADIUS;
+
+  /** The push on deploy as the deploy push line writes it: its radius, then its distance. */
+  private static final String DEPLOY_PUSH =
+      Shipped.number(UNIT, "SpawnPushbackRadius") + " " + Shipped.number(UNIT, "SpawnPushback");
+
   /** A battle with the towers passive, its deploy pushes, pushbacks and damage logged. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match;
     final List<String> deployPushes = new ArrayList<>();
     final List<String> hiddenFound = new ArrayList<>();
     final List<String> pushbacks = new ArrayList<>();
@@ -35,6 +67,11 @@ class BattleMegaKnightTest {
     private int units;
 
     Scene() {
+      this(GameData.tables());
+    }
+
+    Scene(GameTables tables) {
+      match = new Standard1v1Battle(tables, LEVEL, false);
       match
           .getWorld()
           .addObserver(
@@ -162,20 +199,33 @@ class BattleMegaKnightTest {
 
   @Test
   @DisplayName(
-      "the card casts its appearance before it makes its unit: from the point less 7000 along the"
-          + " length, at 4200, whichever side plays")
-  void theAppearanceStartsShortOfThePointOnEitherSide() {
+      "the card casts its appearance before it makes its unit: from the point less five king"
+          + " radii along the length, at three, whichever side plays; with a king radius of 1400"
+          + " and a speed of 1000, from 7000 short at 4200, its first visit 1000 along and 600"
+          + " down")
+  void theAppearanceStartsShortOfThePointOnEitherSide(@TempDir Path folder) throws IOException {
+    // The king's radius and the appearance's speed written into a copy of their rows, so the
+    // start and the first visit are the numbers below.
+    GameData.altered(
+        folder,
+        "buildings",
+        rows -> GameData.columns(rows, "KingTower").put("CollisionRadius", 1400));
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> GameData.columns(rows, Shipped.text(CARD, "Projectile")).put("Speed", 1000));
+    GameTables tables = GameTables.load(folder);
     for (int side = 0; side < 2; side++) {
-      Scene scene = new Scene();
+      Scene scene = new Scene(tables);
       int y = side == 0 ? 11000 : 21000;
       scene.match.play(PLAY_TICK, GameData.card("MegaKnight"), LEVEL, side, 14500, y, "MK");
       scene.stepThrough(PLAY_TICK);
       Standard1v1Battle.Play play = scene.match.getPlays().get(0);
-      assertThat(play.units()).hasSize(1);
+      assertThat(play.units()).hasSize(Shipped.number(CARD, "SummonNumber"));
       List<ProjectileEntity> shots = scene.projectiles();
       assertThat(shots).hasSize(1);
       ProjectileEntity shot = shots.get(0);
-      assertThat(shot.getData().name()).isEqualTo("MegaKnightAppear");
+      assertThat(shot.getData().name()).isEqualTo(Shipped.text(CARD, "Projectile"));
       assertThat(shot.getOwner().name()).isEqualTo("KingTower_" + side + "_0");
       // One visit of its flight on the play tick: 1000 along its way, 600 down.
       assertThat(new int[] {shot.getX(), shot.getY(), shot.getZ()})
@@ -193,17 +243,34 @@ class BattleMegaKnightTest {
     CharacterEntity knight = scene.unit(1, "Knight", 3500, 12300);
     CharacterEntity giant = scene.unit(1, "Giant", 3500, 10600);
     scene.match.play(PLAY_TICK, GameData.card("MegaKnight"), LEVEL, 0, 3500, 11000, "MK");
-    scene.stepThrough(PLAY_TICK + 6);
+    // The appearance's first visit is on the play tick; it lands on the visit that covers the rest
+    // of its way.
+    int speed = Shipped.number(APPEAR, "Speed");
+    int lands = PLAY_TICK + (APPEAR_BEHIND + speed - 1) / speed - 1;
+    scene.stepThrough(lands);
 
-    // In the command pass the world's tick is still the last one run.
-    assertThat(scene.deployPushes).containsExactly((PLAY_TICK - 1) + " MK_0 1000 1000 [] []");
-    // The appearance lands six ticks after the play, on the placed point.
+    // In the command pass the world's tick is still the last one run: each unit of the play
+    // pushes there and finds nobody.
+    Standard1v1Battle.Play play = scene.match.getPlays().get(0);
+    List<String> commandPass = new ArrayList<>();
+    for (int i = 0; i < play.units().size(); i++) {
+      commandPass.add((PLAY_TICK - 1) + " MK_" + i + " " + DEPLOY_PUSH + " [] []");
+    }
+    assertThat(scene.deployPushes).containsExactlyElementsOf(commandPass);
+    // The appearance lands on the placed point and pushes the Knight its pushback away.
     assertThat(scene.pushbacks)
-        .containsExactly((PLAY_TICK + 6) + " " + knight.name() + " true 3499 11500 225");
+        .containsExactly(
+            "%d %s true %d %d %d"
+                .formatted(
+                    lands,
+                    knight.name(),
+                    play.result().x(),
+                    play.result().y(),
+                    budget(Shipped.number(APPEAR, "Pushback"))));
+    int damage = scaled(Shipped.number(APPEAR, "Damage"), play.units().get(0));
     assertThat(scene.damage)
         .containsExactlyInAnyOrder(
-            (PLAY_TICK + 6) + " " + knight.name() + " 430",
-            (PLAY_TICK + 6) + " " + giant.name() + " 430");
+            lands + " " + knight.name() + " " + damage, lands + " " + giant.name() + " " + damage);
   }
 
   @Test
@@ -226,9 +293,10 @@ class BattleMegaKnightTest {
     scene.stepThrough(PLAY_TICK);
 
     assertThat(scene.deployPushes).hasSize(2);
-    assertThat(scene.deployPushes.get(0)).isEqualTo((PLAY_TICK - 1) + " MK_0 1000 1000 [] []");
+    assertThat(scene.deployPushes.get(0))
+        .isEqualTo((PLAY_TICK - 1) + " MK_0 " + DEPLOY_PUSH + " [] []");
     String waiting = scene.deployPushes.get(1);
-    assertThat(waiting).startsWith(PLAY_TICK + " MK_1 1000 1000 [");
+    assertThat(waiting).startsWith(PLAY_TICK + " MK_1 " + DEPLOY_PUSH + " [");
     assertThat(waiting)
         .contains(knight.name(), giant.name(), friend.name(), minion.name(), cannon.name())
         .doesNotContain(beside.name(), far.name());
@@ -236,11 +304,17 @@ class BattleMegaKnightTest {
         .isIn(
             "[%s, %s]".formatted(knight.name(), giant.name()),
             "[%s, %s]".formatted(giant.name(), knight.name()));
-    // Each asked away from the Mega Knight by the whole distance: a budget of 225.
+    // Each asked away from the waiting Mega Knight by the whole distance.
+    CharacterEntity second = scene.match.getPlays().get(0).units().get(1);
+    String from =
+        " true %d %d %d"
+            .formatted(
+                second.getView().getX(),
+                second.getView().getY(),
+                budget(Shipped.number(UNIT, "SpawnPushback")));
     assertThat(scene.pushbacks)
         .containsExactlyInAnyOrder(
-            PLAY_TICK + " " + knight.name() + " true 2749 11500 225",
-            PLAY_TICK + " " + giant.name() + " true 2749 11500 225");
+            PLAY_TICK + " " + knight.name() + from, PLAY_TICK + " " + giant.name() + from);
   }
 
   @Test
@@ -271,10 +345,19 @@ class BattleMegaKnightTest {
   @Test
   @DisplayName("a hidden enemy is passed by: a Miner tunnelling past is found and not pushed")
   void aHiddenEnemyIsPassedBy() {
+    // A Miner played on 0 still tunnels past the waiting Mega Knight on the tick before it
+    // surfaces beside it, where it would be pushed: that tick is found by a battle of the Miner
+    // alone.
+    Scene alone = new Scene();
+    alone.match.play(0, GameData.card("Miner"), LEVEL, 1, 2749, 11300, "Miner");
+    alone.stepThrough(0);
+    CharacterEntity tunnelling = alone.match.getPlays().get(0).units().get(0);
+    while (tunnelling.hidden()) {
+      assertThat(alone.match.getBattle().getTick()).isLessThan(200);
+      alone.match.getBattle().step();
+    }
+    int played = alone.match.getBattle().getTick() - 2;
     Scene scene = new Scene();
-    // A Miner played on 0 still tunnels past the waiting Mega Knight on 27; it surfaces beside it
-    // on 28, where it is pushed.
-    int played = 27;
     scene.match.play(0, GameData.card("Miner"), LEVEL, 1, 2749, 11300, "Miner");
     scene.match.play(played, twoWaiting(50), LEVEL, 0, 3500, 11000, "MK");
     scene.stepThrough(played);
@@ -283,8 +366,28 @@ class BattleMegaKnightTest {
     assertThat(scene.hiddenFound).as("tunnelling as it is found").containsExactly(miner.name());
     assertThat(scene.deployPushes).hasSize(2);
     String waiting = scene.deployPushes.get(1);
-    assertThat(waiting).startsWith(played + " MK_1 1000 1000 [").contains(miner.name());
+    assertThat(waiting).startsWith(played + " MK_1 " + DEPLOY_PUSH + " [").contains(miner.name());
     assertThat(waiting).endsWith(" []");
+  }
+
+  /**
+   * The budget of a pushback asked over a distance: the first step of a run of steps growing by 25
+   * whose sum covers the distance.
+   */
+  private static int budget(int distance) {
+    int step = 0;
+    int total = 0;
+    do {
+      step += 25;
+      total += step;
+    } while (total < distance);
+    return step;
+  }
+
+  /** A damage of the Mega Knight's card at the level of the unit its play made. */
+  private static int scaled(int damage, CharacterEntity megaKnight) {
+    int steps = PackedLevel.steps(megaKnight.getPackedLevel());
+    return steps == 0 ? damage : damage * RarityTable.LEGENDARY.multiplier(steps - 1) / 100;
   }
 
   @Test

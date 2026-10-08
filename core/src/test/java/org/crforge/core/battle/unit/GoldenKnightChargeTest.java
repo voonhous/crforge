@@ -9,7 +9,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -19,19 +21,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Golden Knight's ability in data version 16.402.18 (GoldenKnightChain): the ability row names
- * both a dash range and an activation action, and only the action dashes. The tap starts the
- * activation group at once, whatever lies within the dash range; its selector waits for the closest
- * enemy ground character within 5500 while the charge buff speeds the knight up, then runs the
- * dashing attack chain, which dashes the knight at the closest such character. From that first
- * landing the knight's own chain goes on to the next characters within its secondary dash range, as
- * its row's DashCount lets it, and the run ends once the knight has stopped dashing.
+ * The Golden Knight's ability (GoldenKnightChain): the ability row names both a dash range and an
+ * activation action, and only the action dashes. The tap starts the activation group at once,
+ * whatever lies within the dash range; its selector waits for the closest enemy ground character
+ * within its shape while the charge buff speeds the knight up, then runs the dashing attack chain,
+ * which dashes the knight at the closest such character. From that first landing the knight's own
+ * chain goes on to the next characters within its secondary dash range, as its row's DashCount lets
+ * it, and the run ends once the knight has stopped dashing.
  */
 class GoldenKnightChargeTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   private static final String CHARGE_BUFF = "GoldenKnightCharge";
+
+  /** The Golden Knight's row. */
+  private static final GameRow KNIGHT = Shipped.unitRow("GoldenKnight");
+
+  /** The Golden Knight's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(KNIGHT, "Ability"));
 
   /** The Golden Knight and seven Skeletons, which cost 1 elixir a play. */
   private static final List<String> KNIGHT_SKELETONS =
@@ -50,7 +59,7 @@ class GoldenKnightChargeTest {
   @Test
   @DisplayName(
       "a tap with no enemy within the dash range does not dash: the knight walks faster under the"
-          + " charge buff until an enemy comes within 5500, then dashes at it")
+          + " charge buff until an enemy comes within its selector's shape, then dashes at it")
   void aTapWithNoTargetWaitsForOne() {
     GameTables tables = GameData.tables();
     Standard1v1Battle battle = battle(tables);
@@ -58,7 +67,7 @@ class GoldenKnightChargeTest {
     playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 6000, "g");
     CharacterEntity knight = battle.getPlays().get(0).units().get(0);
     int tap = afterDeployWithElixir(battle, match);
-    // Nothing of side 1 but its towers, all beyond 5500 of the knight.
+    // Nothing of side 1 but its towers, all beyond the selector's shape around the knight.
     battle.useAbility(tap, 0, "g_0", "a");
     run(battle, tap + 2);
     assertThat(knight.getBuffs().carries(CHARGE_BUFF)).isTrue();
@@ -115,14 +124,16 @@ class GoldenKnightChargeTest {
   }
 
   @Test
-  @DisplayName("a chain stops at its tenth dash with targets left in reach")
+  @DisplayName("a chain stops at its row's dash count with targets left in reach")
   void aChainStopsAtItsCount() {
     GameTables tables = GameData.tables();
     Standard1v1Battle battle = battle(tables);
     LadderMatch match = battle.getMatch();
     playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 12000, "g");
     CharacterEntity knight = battle.getPlays().get(0).units().get(0);
-    for (int i = 0; i < 14; i++) {
+    int dashes = Shipped.number(KNIGHT, "DashCount");
+    // Four more Skeletons than the chain dashes, four abreast.
+    for (int i = 0; i < dashes + 4; i++) {
       standing(battle, "Skeleton", 2900 + 400 * (i % 4), 15900 + 400 * (i / 4), "s" + i);
     }
     Chain chain = new Chain(battle);
@@ -130,9 +141,9 @@ class GoldenKnightChargeTest {
     battle.useAbility(tap, 0, "g_0", "a");
     chain.untilItEnds(battle);
 
-    assertThat(chain.started).hasSize(10).doesNotHaveDuplicates();
-    // Each landing kills its Skeleton, the tenth too, so the chain ends with no reference.
-    assertThat(chain.ends).containsExactly("10 null");
+    assertThat(chain.started).hasSize(dashes).doesNotHaveDuplicates();
+    // Each landing kills its Skeleton, the last too, so the chain ends with no reference.
+    assertThat(chain.ends).containsExactly(dashes + " null");
     assertThat(knight.getView().getState()).isNotEqualTo(GridEntityState.DASHING);
   }
 
@@ -144,12 +155,22 @@ class GoldenKnightChargeTest {
     Standard1v1Battle battle = battle(tables);
     LadderMatch match = battle.getMatch();
     playWhenReady(battle, match, tables, 0, "GoldenKnight", 3500, 16000, "g");
-    // The charge's selector takes enemy characters alone: its first dash is at this Skeleton,
-    // 3000 short of the left princess tower, which is the nearest object to the landing. The
-    // second Skeleton is farther from that landing than the tower, and within the secondary range
-    // of the tower's point, so only the stop at a crown tower ends the chain.
-    standing(battle, "Skeleton", 3500, 22500, "near");
-    standing(battle, "Skeleton", 8000, 24000, "far");
+    // The charge's selector takes enemy characters alone: its first dash is at this Skeleton in
+    // front of the left princess tower, which is the nearest object to the landing. The knight
+    // lands about its reach short of the Skeleton (its range and both collision radii), and the
+    // Skeleton stands where such a landing is 500 inside the secondary range of the tower's
+    // point. The second Skeleton is farther from that landing than the tower, and within the
+    // secondary range of the tower's point, so only the stop at a crown tower ends the chain.
+    int range = Shipped.number(KNIGHT, "DashSecondaryRange");
+    int reach =
+        Shipped.number(KNIGHT, "Range")
+            + Shipped.number(KNIGHT, "CollisionRadius")
+            + Shipped.number(Shipped.unitRow("Skeleton"), "CollisionRadius");
+    TowerEntity tower = BattleMusketeerRunTest.towerNamed(battle.getBattle(), "PrincessTower_1_1");
+    int towerX = tower.getView().getX();
+    int towerY = tower.getView().getY();
+    standing(battle, "Skeleton", towerX, towerY - range + reach + 500, "near");
+    standing(battle, "Skeleton", towerX + range - 1000, towerY - 1500, "far");
     Chain chain = new Chain(battle);
     int tap = afterDeployWithElixir(battle, match);
     battle.useAbility(tap, 0, "g_0", "a");
@@ -251,12 +272,13 @@ class GoldenKnightChargeTest {
   }
 
   /**
-   * Steps past the last play's deploy until side 0 holds an elixir for the ability, and answers the
-   * next tick.
+   * Steps past the last play's deploy, the knight row's DeployTime and a tick, until side 0 holds
+   * the elixir its ability row costs, and answers the next tick.
    */
   private static int afterDeployWithElixir(Standard1v1Battle battle, LadderMatch match) {
-    int deployed = battle.getBattle().getTick() + 21;
-    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < 1) {
+    int deployed = battle.getBattle().getTick() + Shipped.number(KNIGHT, "DeployTime") / 50 + 1;
+    int cost = Shipped.number(ABILITY, "ManaCost");
+    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < cost) {
       battle.getBattle().step();
     }
     return battle.getBattle().getTick();

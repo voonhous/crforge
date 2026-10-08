@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -16,10 +17,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The hero Elite Archer's ability shot of data version 16.402.18, whose starting action is an
- * ActionCreateParallelProjectiles: as it sets off it makes two side shots of its side row, 1500
- * apart across its line, one each side of where it stands, both flying the side row's
- * ProjectileRange along that line.
+ * The hero Elite Archer's ability shot, whose starting action is an
+ * ActionCreateParallelProjectiles: as it sets off it makes two side shots of its side row, the
+ * action's distance apart across its line, one each side of where it stands, both flying the side
+ * row's ProjectileRange along that line.
  */
 class EliteArcherHeroParallelShotTest {
 
@@ -32,6 +33,10 @@ class EliteArcherHeroParallelShotTest {
 
   /** The row of the ability shot's two side shots. */
   private static final String SIDE = "EliteArcherHero_Ability_Triple_Shot_Projectile";
+
+  /** The ability shot's starting action, which makes the side shots. */
+  private static final String PARALLEL =
+      Shipped.text(Shipped.row("projectiles", MIDDLE), "OnStartingAction");
 
   /** Long enough for the hero to deploy, use its ability, walk back and fire its ability shot. */
   private static final int LIMIT = 700;
@@ -46,7 +51,8 @@ class EliteArcherHeroParallelShotTest {
   @Test
   @DisplayName(
       "the hero Elite Archer's ability shot starts two side shots as it sets off: one tick after"
-          + " it, before its first step, each 750 to one side of where it stands, across its line,"
+          + " it, before its first step, each half the action's distance to one side of where it"
+          + " stands, across its line,"
           + " the first to the right, of its side, level and root")
   void theAbilityShotStartsTwoSideShots() {
     GameTables tables = GameData.tables();
@@ -85,7 +91,7 @@ class EliteArcherHeroParallelShotTest {
     int[] line = {middle.getAimX() - startX, middle.getAimY() - startY};
     step(battle);
     List<ProjectileEntity> sides = shots(battle, SIDE);
-    assertThat(sides).hasSize(2);
+    assertThat(sides).hasSize(Shipped.number(PARALLEL, "ProjectileCount"));
     ProjectileEntity first = sides.get(0);
     ProjectileEntity second = sides.get(1);
     assertThat(first.getId()).isLessThan(second.getId());
@@ -98,13 +104,17 @@ class EliteArcherHeroParallelShotTest {
     assertThat(Math.abs(acrossX * line[0] + acrossY * line[1]))
         .isLessThan(Math.abs(line[0]) + Math.abs(line[1]));
     assertThat(acrossX * line[1] - acrossY * line[0]).isPositive();
-    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(749L, 751L);
+    // Half the starting action's distance to each side, rounded on the way.
+    long half = Shipped.number(PARALLEL, "ProjectileDistance") / 2;
+    assertThat(Math.round(Math.hypot(acrossX, acrossY))).isBetween(half - 1, half + 1);
     for (ProjectileEntity side : sides) {
       assertThat(side.side()).isEqualTo(middle.side());
       assertThat(side.level()).isEqualTo(middle.level());
       assertThat(side.getTarget()).isNull();
       assertThat(side.getRoot()).as("the ability shot's root").isSameAs(hero);
-      assertThat(side.getZ()).as("its constant height").isEqualTo(2000);
+      assertThat(side.getZ())
+          .as("its constant height")
+          .isEqualTo(Shipped.number(Shipped.row("projectiles", SIDE), "ConstantHeight"));
     }
   }
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -17,11 +18,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Balloon hero's ability (BalloonHero_Ability of data version 16.402.18): the tap starts a
- * shape selector that, a step later, picks the enemy closest to the hero in its circle and runs the
- * activation group on the hero itself, the hero its own cause. The group makes a context, writes
- * the enemy its resolver finds into it, and 50 ms later launches the skeleton trooper's projectile
- * at that enemy, its start moved 250 toward it. The projectile speeds up every 150 ms by a speed
+ * The Balloon hero's ability (BalloonHero_Ability): the tap starts a shape selector that, a step
+ * later, picks the enemy closest to the hero in its circle and runs the activation group on the
+ * hero itself, the hero its own cause. The group makes a context, writes the enemy its resolver
+ * finds into it, and 50 ms later launches the skeleton trooper's projectile at that enemy, its
+ * start moved the spawn's start offset toward it. The projectile speeds up every 150 ms by a speed
  * override its variable feeds, and where it lands a Skeleton Trooper is spawned, whose landing area
  * effect hurts what stands there. With nobody in the circle the selector finishes without a pick,
  * and its finishing action's failsafe launches the projectile with no context, at no target.
@@ -30,7 +31,10 @@ class BalloonHeroAbilityTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  private static final String PROJECTILE = "BalloonHero_Skeletrooper_Projectile";
+  /** The spawn of the skeleton trooper's projectile. */
+  private static final String SPAWNER = "BalloonHero_Skeletrooper_Spawner";
+
+  private static final String PROJECTILE = Shipped.text(SPAWNER, "SpawnData");
 
   /** The Balloon first, in the hero slot, and seven other cards. */
   private static final List<String> HERO_DECK =
@@ -87,8 +91,8 @@ class BalloonHeroAbilityTest {
   @Test
   @DisplayName(
       "the trooper falls on the enemy closest to the hero, not the one of the most hit points: its"
-          + " projectile starts 250 toward it, speeds up every 150 ms and spawns the trooper where"
-          + " it lands, whose landing hurts the enemy")
+          + " projectile starts its spawn's start offset toward it, speeds up every 150 ms and"
+          + " spawns the trooper where it lands, whose landing hurts the enemy")
   void theTrooperFallsOnTheClosestEnemy() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -119,7 +123,7 @@ class BalloonHeroAbilityTest {
     assertThat(battle.getAbilityUses()).hasSize(1);
     assertThat(match.side(0).getElixir()).isLessThan(elixir);
     assertThat(flying).isNotNull();
-    // One launch, at the Knight, its start 250 from the hero's point toward the Knight.
+    // One launch, at the Knight, its start the spawn's offset from the hero's point toward it.
     assertThat(launches).hasSize(1);
     Launch launch = launches.get(0);
     assertThat(launch.target()).isSameAs(knight);
@@ -130,7 +134,8 @@ class BalloonHeroAbilityTest {
     // direction is checked by its length and side.
     int length =
         FixedMath.guardedDistance(launch.x() - launch.ownerX(), launch.y() - launch.ownerY());
-    assertThat(length).isBetween(249, 250);
+    int offset = Shipped.number(SPAWNER, "ProjectileStartOffset");
+    assertThat(length).isBetween(offset - 1, offset);
     assertThat(Integer.signum(launch.y() - launch.ownerY())).isEqualTo(Integer.signum(toward[1]));
     // The override starts at log(5) * 10000 / 80 and grows to log(7) * 10000 / 80 as the variable
     // passes 7; the flight lands before the variable passes 9.

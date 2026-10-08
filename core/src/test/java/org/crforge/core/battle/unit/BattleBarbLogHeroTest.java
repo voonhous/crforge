@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
@@ -37,6 +39,13 @@ class BattleBarbLogHeroTest {
       List.of("BarbLog", "Archer", "Knight", "Giant", "Minions", "Musketeer", "Fireball", "Arrows");
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
+
+  /** The barbarian's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(Shipped.unitRow(BARBARIAN), "Ability"));
+
+  /** The reroll, the action the ability's activation runs. */
+  private static final String REROLL = Shipped.text(ABILITY, "OnActivationAction");
 
   @Test
   @DisplayName(
@@ -101,10 +110,11 @@ class BattleBarbLogHeroTest {
 
   @Test
   @DisplayName(
-      "the ability's reroll backs the barbarian off toward its side by 142 a step for six steps,"
-          + " then rolls it in BarbLogHeroProjectileReRolling from where it stands, healed by half"
-          + " its missing hit points; it follows the projectile a step behind, taking no damage"
-          + " and untargetable, and deploys for 1000 ms where the projectile ends")
+      "the ability's reroll backs the barbarian off toward its side by the offset's share of a"
+          + " step while its spawn delay runs, then rolls it in its projectile from where it"
+          + " stands, healed by the variable's percent of its missing hit points; it follows the"
+          + " projectile a step behind, taking no damage and untargetable, and deploys for the"
+          + " reroll's deploy duration where the projectile ends")
   void theRerollRollsTheBarbarianForward() {
     Standard1v1Battle battle = null;
     LadderMatch match = null;
@@ -123,7 +133,8 @@ class BattleBarbLogHeroTest {
       step(battle);
     }
     CharacterEntity barbarian = named(battle, BARBARIAN).get(0);
-    for (int i = 0; i < 40 || match.side(0).wholeElixir() < 1; i++) {
+    int abilityCost = Shipped.number(ABILITY, "ManaCost");
+    for (int i = 0; i < 40 || match.side(0).wholeElixir() < abilityCost; i++) {
       step(battle);
     }
     battle.useAbility(battle.getBattle().getTick(), 0, barbarian.getId(), "a");
@@ -133,30 +144,38 @@ class BattleBarbLogHeroTest {
       step(battle);
     }
     // The activation starts the run on the cast's first step; its first update is on the next.
+    // Each step takes 50 ms off the spawn delay; while some is left the barbarian backs off toward
+    // its side (down for side 0) by the offset's share of a step.
+    String projectile = Shipped.text(REROLL, "ReRollProjectile");
+    int spawnDelay = Shipped.number(REROLL, "SpawnDelay");
+    int share = Math.abs(Shipped.number(REROLL, "OffsetY")) * 50 / spawnDelay;
+    int backSteps = (spawnDelay + 49) / 50 - 1;
     int x = barbarian.getView().getX();
     int y = barbarian.getView().getY();
-    for (int i = 1; i <= 6; i++) {
+    for (int i = 1; i <= backSteps; i++) {
       step(battle);
-      assertThat(barbarian.getView().getY()).isEqualTo(y - 142 * i);
+      assertThat(barbarian.getView().getY()).isEqualTo(y - share * i);
       assertThat(barbarian.getView().getX()).isEqualTo(x);
-      assertThat(projectiles(battle, "BarbLogHeroProjectileReRolling")).isEmpty();
+      assertThat(projectiles(battle, projectile)).isEmpty();
     }
     int missing = barbarian.getHitPoints().getMaximum() - barbarian.getHitPoints().getHitPoints();
     int before = barbarian.getHitPoints().getHitPoints();
     step(battle);
-    // The seventh step launches the projectile where the barbarian stands, and the start action
-    // heals it.
-    assertThat(barbarian.getHitPoints().getHitPoints()).isEqualTo(before + missing * 50 / 100);
+    // The step that finds the delay out launches the projectile where the barbarian stands, and
+    // the start action heals it by the variable's percent of what it is missing.
+    int percent =
+        Shipped.number(Shipped.row("variables", "BarbLog_hero_heal_percent"), "DefaultValue");
+    assertThat(barbarian.getHitPoints().getHitPoints()).isEqualTo(before + missing * percent / 100);
     step(battle);
-    List<ProjectileEntity> rolling = projectiles(battle, "BarbLogHeroProjectileReRolling");
+    List<ProjectileEntity> rolling = projectiles(battle, projectile);
     assertThat(rolling).hasSize(1);
     ProjectileEntity barrel = rolling.get(0);
     assertThat(barrel.getOwner()).isSameAs(barbarian);
-    assertThat(barbarian.getView().getY()).isEqualTo(y - 142 * 6);
+    assertThat(barbarian.getView().getY()).isEqualTo(y - share * backSteps);
     long rollingTags = BITS.noDamage() | BITS.untargetable() | BITS.noAttack();
     int steps = 0;
     int healed = barbarian.getHitPoints().getHitPoints();
-    while (projectiles(battle, "BarbLogHeroProjectileReRolling").contains(barrel)) {
+    while (projectiles(battle, projectile).contains(barrel)) {
       assertThat(barbarian.getView().getFlags() & rollingTags).isEqualTo(rollingTags);
       assertThat(barbarian.getHitPoints().getHitPoints()).isEqualTo(healed);
       int px = barrel.getX();
@@ -167,12 +186,13 @@ class BattleBarbLogHeroTest {
       assertThat(++steps).isLessThan(40);
     }
     assertThat(barbarian.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
-    assertThat(barbarian.getView().getDeployCountdown()).isEqualTo(1000);
+    assertThat(barbarian.getView().getDeployCountdown())
+        .isEqualTo(Shipped.number(REROLL, "DeployDuration"));
     step(battle);
     step(battle);
     assertThat(barbarian.actionHolder().running())
         .extracting(run -> run.getAction().name())
-        .doesNotContain("BarbLogHero_spawn_reroll");
+        .doesNotContain(REROLL);
   }
 
   @Test

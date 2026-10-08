@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -31,6 +33,22 @@ class BattleMonkTest {
 
   /** The two tags the Monk carries in its follow-up state. */
   private static final long TAGS = BITS.avoidanceAsObstacle() | BITS.noMoveAllowAttract();
+
+  /** The Monk's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(Shipped.unitRow("Monk"), "Ability"));
+
+  /** The percent of damage the Monk's ability buff lets through: what its reduction leaves. */
+  private static final int LETS_THROUGH =
+      100
+          - Shipped.number(
+              Shipped.row(
+                  "character_buffs",
+                  Shipped.text(
+                      Shipped.actionNames(Shipped.text(ABILITY, "OnActivationAction"), "SubActions")
+                          .get(1),
+                      "SpawnData")),
+              "DamageReduction");
 
   /** A Monk placed for the bottom side, standing where it deploys, with what its ability did. */
   private static final class Scene {
@@ -115,8 +133,10 @@ class BattleMonkTest {
       assertThat(scene.monk.getView().getY()).isEqualTo(y);
     }
     int left = scene.tick;
-    assertThat(left - entered).as("ticks in the state").isEqualTo(79);
-    assertThat(tagged).hasSize(79);
+    // The state lasts its ability's state duration, less the step that enters it.
+    int ticks = Shipped.ticks(Shipped.number(ABILITY, "AbilityStateDuration")) - 1;
+    assertThat(left - entered).as("ticks in the state").isEqualTo(ticks);
+    assertThat(tagged).hasSize(ticks);
     assertThat(tagged.get(0)).isEqualTo(entered + 1);
     assertThat(tagged.get(tagged.size() - 1)).isEqualTo(left);
     scene.step();
@@ -124,7 +144,9 @@ class BattleMonkTest {
   }
 
   @Test
-  @DisplayName("a Poison on the Monk under its ability deals 35 percent of what it deals beside it")
+  @DisplayName(
+      "a Poison on the Monk under its ability deals what its buff's reduction leaves of what it"
+          + " deals beside it")
   void damageOverTimeIsReduced() {
     Scene scene = new Scene();
     CharacterEntity plain = scene.match.deploy(0, GameData.unit("Monk"), LEVEL, 0, 4500, 10000);
@@ -162,7 +184,7 @@ class BattleMonkTest {
     assertThat(shielded).isNotEmpty().hasSameSizeAs(beside);
     for (int i = 0; i < shielded.size(); i++) {
       assertThat(shielded.get(i)[0]).isEqualTo(beside.get(i)[0]);
-      assertThat(shielded.get(i)[2]).isEqualTo(beside.get(i)[2] * 35 / 100);
+      assertThat(shielded.get(i)[2]).isEqualTo(beside.get(i)[2] * LETS_THROUGH / 100);
     }
   }
 
@@ -209,7 +231,9 @@ class BattleMonkTest {
   }
 
   @Test
-  @DisplayName("damage on its way is lethal to the Monk under its ability only at 35 percent")
+  @DisplayName(
+      "damage on its way is lethal to the Monk under its ability only at what its buff's reduction"
+          + " leaves")
   void theLethalTestIsReduced() {
     Scene scene = new Scene();
     scene.request();
@@ -219,7 +243,7 @@ class BattleMonkTest {
 
     scene.followUp();
     assertThat(queries.pendingDamageAccepted(scene.monk.getTargetView(), hitPoints)).isFalse();
-    int lethal = (hitPoints * 100 + 34) / 35;
+    int lethal = (hitPoints * 100 + LETS_THROUGH - 1) / LETS_THROUGH;
     assertThat(queries.pendingDamageAccepted(scene.monk.getTargetView(), lethal)).isTrue();
     assertThat(queries.pendingDamageAccepted(scene.monk.getTargetView(), lethal - 1)).isFalse();
   }

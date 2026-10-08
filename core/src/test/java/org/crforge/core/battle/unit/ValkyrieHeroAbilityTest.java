@@ -7,7 +7,10 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -17,14 +20,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Valkyrie hero form's ability (ValkyrieHero_Ability of data version 16.402.18): the tap picks
- * the closest enemy ground character in the hero's circle and runs the whirlwind on the hero
- * itself. Its charge buff sets ABILITY_PENDING, which only the health bar shows; the attack chain
- * sends the hero at the enemy under the chain's phase buff, faster than the charge buff alone, and
- * once the hero reaches it the chain has nothing left to reach: the phase buff comes off and the
- * hero holds still at its reference, spinning, while the interval spawns the whirlwind's area
- * effect at the hero's point every 250 ms. The spin lasts 3500 ms, fourteen area effects; then the
- * chain completes, and its finishing action keeps the hero from attacking for 400 ms.
+ * The Valkyrie hero form's ability (ValkyrieHero_Ability): the tap picks the closest enemy ground
+ * character in the hero's circle and runs the whirlwind on the hero itself. Its charge buff sets
+ * ABILITY_PENDING, which only the health bar shows; the attack chain sends the hero at the enemy
+ * under the chain's phase buff, faster than the charge buff alone, and once the hero reaches it the
+ * chain has nothing left to reach: the phase buff comes off and the hero holds still at its
+ * reference, spinning, while the interval spawns the whirlwind's area effect at the hero's point
+ * every interval. Each spawn adds its step to the spin's timer, and the spin lasts until the timer
+ * reaches the spin's most; then the chain completes, and its finishing action keeps the hero from
+ * attacking for a while.
  */
 class ValkyrieHeroAbilityTest {
 
@@ -48,6 +52,9 @@ class ValkyrieHeroAbilityTest {
   /** The tick the ability command runs on. */
   private static final int CAST = 300;
 
+  /** The interval that spawns the whirlwind's area effect. */
+  private static final String INTERVAL = "ValkyrieHero_Spawn_AEO_Interval";
+
   /** A battle with the Valkyrie hero form in side 0's hand. */
   private static Standard1v1Battle battle(GameTables tables) {
     Standard1v1Battle battle = null;
@@ -62,8 +69,8 @@ class ValkyrieHeroAbilityTest {
   @Test
   @DisplayName(
       "the hero charges the closest enemy under the phase buff, then holds still at it while the"
-          + " whirlwind's area effect spawns at its point every 250 ms, fourteen in all, and the"
-          + " finishing action forbids its attack")
+          + " whirlwind's area effect spawns at its point every interval until the spin's timer"
+          + " reaches its most, and the finishing action forbids its attack")
   void theWhirlwindChargesThenSpinsInPlace() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -106,19 +113,36 @@ class ValkyrieHeroAbilityTest {
     assertThat(phaseEnd).isGreaterThan(firstPhase);
     assertThat(phaseBuff.subList(phaseEnd, phaseBuff.size())).doesNotContain(true);
     // The buff is listed and removed in a step after its movement: the step after the listing is
-    // the faster one, and the step after the reach removed it is the charge buff's alone.
-    assertThat(steps.get(firstPhase + 1)).isEqualTo(150);
-    assertThat(steps.get(phaseEnd + 1)).isEqualTo(120);
-    // Fourteen area effects 250 ms apart after the first, the hero still from the second step
-    // after the chain's reach.
-    assertThat(spawnTicks).hasSize(14);
+    // the faster one, and the step after the reach removed it is the charge buff's alone, each the
+    // hero's speed scaled by its buff's speed multiplier.
+    int speed = Shipped.number(Shipped.unitRow("ValkyrieHero"), "Speed");
+    assertThat(steps.get(firstPhase + 1)).isEqualTo(speed * speedMultiplier(PHASE_BUFF) / 100);
+    assertThat(steps.get(phaseEnd + 1))
+        .isEqualTo(speed * speedMultiplier("ValkyrieHero_Charge") / 100);
+    // Each spawn's group adds its step to the spin's timer, and the spin ends once the timer
+    // reaches the variable's most: that many area effects, an interval apart after the first,
+    // the hero still from the second step after the chain's reach.
+    int most =
+        Shipped.number(Shipped.row("variables", "ValkyrieHero_Max_SpinDuration"), "DefaultValue");
+    Matcher added =
+        Pattern.compile("ValkyrieHero_SpinDuration \\+ (\\d+)")
+            .matcher(Shipped.text("ValkyrieHero_Update_Timer", "Value"));
+    assertThat(added.matches()).isTrue();
+    int step = Integer.parseInt(added.group(1));
+    assertThat(spawnTicks).hasSize((most + step - 1) / step);
     for (int i = 2; i < spawnTicks.size(); i++) {
-      assertThat(spawnTicks.get(i) - spawnTicks.get(i - 1)).isEqualTo(5);
+      assertThat(spawnTicks.get(i) - spawnTicks.get(i - 1))
+          .isEqualTo(Shipped.ticks(Shipped.number(INTERVAL, "Interval")));
     }
     int lastSpawn = spawnTicks.get(spawnTicks.size() - 1) - CAST - 1;
     assertThat(steps.subList(phaseEnd + 2, lastSpawn)).containsOnly(0);
-    // The chain completes and its finishing action forbids the attack for 400 ms.
+    // The chain completes and its finishing action forbids the attack.
     assertThat(forbidden).isTrue();
+  }
+
+  /** The speed multiplier of a buff's row. */
+  private static int speedMultiplier(String buff) {
+    return Shipped.number(Shipped.row("character_buffs", buff), "SpeedMultiplier");
   }
 
   /** Slot flags with the first card in the hero slot. */

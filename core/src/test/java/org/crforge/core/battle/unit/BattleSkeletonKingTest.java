@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.pathfinding.GridEntity;
@@ -28,6 +30,26 @@ class BattleSkeletonKingTest {
       List.of("SkeletonKing", "Knight", "Knight", "Knight", "Knight", "Knight", "Knight", "Knight");
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
+
+  /** The King's ability row. */
+  private static final GameRow ABILITY =
+      Shipped.row("character_abilities", Shipped.text(Shipped.unitRow("SkeletonKing"), "Ability"));
+
+  /** The graveyard the ability makes. */
+  private static final GameRow GRAVEYARD =
+      Shipped.row("area_effect_objects", Shipped.text(ABILITY, "AreaEffectObject"));
+
+  /** How many skeletons the graveyard makes with no soul collected. */
+  private static final int BASE_COUNT = Shipped.number(ABILITY, "ResurrectBaseCount");
+
+  /**
+   * The steps from the ability's request to the graveyard's last skeleton, with a few spare: its
+   * trigger delay, then the graveyard's life, an interval for each skeleton.
+   */
+  private static final int GRAVEYARD_STEPS =
+      Shipped.ticks(Shipped.number(ABILITY, "TriggerDelay"))
+          + Shipped.ticks(BASE_COUNT * Shipped.number(GRAVEYARD, "SpawnInterval"))
+          + 10;
 
   /** A ladder match with passive towers, the Skeleton King played for side 0, and its souls. */
   private static final class Scene {
@@ -110,6 +132,24 @@ class BattleSkeletonKingTest {
     }
   }
 
+  /**
+   * The update of the graveyard that makes its first skeleton. Its life is the ability's, an
+   * interval for each skeleton, counted down from there while its spawns are timed on its row's
+   * LifeDuration: it starts that life short of the row's, and a skeleton is due each time the
+   * elapsed time less the first delay passes a whole interval.
+   */
+  private static int firstSpawnUpdate() {
+    int interval = Shipped.number(GRAVEYARD, "SpawnInterval");
+    int delay = Shipped.number(GRAVEYARD, "SpawnInitialDelay");
+    int start = Shipped.number(GRAVEYARD, "LifeDuration") - BASE_COUNT * interval;
+    int update = 1;
+    while (Math.floorDiv(start + 50 * update - delay, interval)
+        == Math.floorDiv(start - delay, interval)) {
+      update++;
+    }
+    return update;
+  }
+
   private static boolean inHand(LadderMatch match, String card) {
     List<MatchCard> deck = match.side(0).deck();
     return Arrays.stream(match.side(0).getHand().slots())
@@ -123,22 +163,27 @@ class BattleSkeletonKingTest {
   void theGraveyardOutlivesItsKing() {
     Scene scene = new Scene();
     int tick = scene.battle.getBattle().getTick();
-    while (scene.match.side(0).wholeElixir() < 2) {
+    while (scene.match.side(0).wholeElixir() < Shipped.number(ABILITY, "ManaCost")) {
       scene.battle.getBattle().step();
     }
     tick = scene.battle.getBattle().getTick();
     scene.battle.useAbility(tick, 0, "s_0", "a");
-    scene.run(tick + 9);
-    assertThat(scene.lifetime).as("six skeletons, 250 each").isEqualTo(1500);
-    // Three updates in: no skeleton yet.
-    scene.run(tick + 12);
+    // The ability fires as its trigger delay runs out, on the command's tick and the steps after.
+    int fired = tick + Shipped.ticks(Shipped.number(ABILITY, "TriggerDelay")) - 1;
+    scene.run(fired);
+    assertThat(scene.lifetime)
+        .as("the base count of skeletons, an interval each")
+        .isEqualTo(BASE_COUNT * Shipped.number(GRAVEYARD, "SpawnInterval"));
+    // Short of its first spawn: no skeleton yet.
+    int first = firstSpawnUpdate();
+    scene.run(fired + first - 1);
     assertThat(scene.spawned).isEmpty();
     int x = scene.king.getView().getX();
     int y = scene.king.getView().getY();
     scene.kill(scene.king);
-    scene.run(tick + 45);
+    scene.run(tick + GRAVEYARD_STEPS);
 
-    assertThat(scene.spawned).hasSize(6);
+    assertThat(scene.spawned).hasSize(BASE_COUNT);
     for (String line : scene.spawned) {
       assertThat(line.split(" ")[1]).isEqualTo(Integer.toString(x));
       assertThat(line.split(" ")[2]).isEqualTo(Integer.toString(y));
@@ -154,12 +199,19 @@ class BattleSkeletonKingTest {
     int kx = 9000;
     int ky = 10000;
     CharacterEntity king = battle.deploy(0, GameData.unit("SkeletonKing"), LEVEL, 0, kx, ky, "s");
-    // Eight Cannons of the King's side on the ring the skeletons are placed in.
+    // Eight Cannons of the King's side on the ring the skeletons are placed in: halfway between
+    // the graveyard's least spawn radius and its radius less a skeleton's collision radius.
+    int ring =
+        (Shipped.number(GRAVEYARD, "SpawnMinRadius")
+                + Shipped.number(GRAVEYARD, "Radius")
+                - Shipped.number(
+                    Shipped.unitRow(Shipped.text(GRAVEYARD, "SpawnCharacter")), "CollisionRadius"))
+            / 2;
     List<CharacterEntity> cannons = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
       double angle = Math.toRadians(i * 45);
-      int x = kx + (int) Math.round(2750 * Math.sin(angle));
-      int y = ky + (int) Math.round(2750 * Math.cos(angle));
+      int x = kx + (int) Math.round(ring * Math.sin(angle));
+      int y = ky + (int) Math.round(ring * Math.cos(angle));
       cannons.add(battle.deploy(0, GameData.unit("Cannon"), LEVEL, 0, x, y, "c" + i));
     }
     List<int[]> made = new ArrayList<>();
@@ -182,11 +234,11 @@ class BattleSkeletonKingTest {
     }
     king.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     king.requestAbility();
-    while (battle.getBattle().getTick() < 70) {
+    while (battle.getBattle().getTick() < 30 + GRAVEYARD_STEPS) {
       battle.getBattle().step();
     }
 
-    assertThat(made).hasSize(6);
+    assertThat(made).hasSize(BASE_COUNT);
     assertThat(made.stream().mapToInt(m -> m[2]).sum()).as("points drawn again").isPositive();
     int reach = GameData.unit("SkeletonKingSkeleton").collisionRadius();
     for (int[] m : made) {

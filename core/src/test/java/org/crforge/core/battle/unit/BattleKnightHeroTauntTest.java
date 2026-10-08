@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -21,7 +22,22 @@ class BattleKnightHeroTauntTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  private static final String BUFF = "Knight_hero_IsTauntedBuff";
+  /** The ability's spawn of the taunting area effect. */
+  private static final String SPAWN = "Knight_hero_CreateTauntAEO";
+
+  /** The taunt the area effect's hit group runs. */
+  private static final String TAUNT =
+      Shipped.actionNames(
+              Shipped.text(
+                  Shipped.row("area_effect_objects", Shipped.text(SPAWN, "SpawnData")),
+                  "OnHitAction"),
+              "SubActions")
+          .get(0);
+
+  private static final String BUFF = Shipped.text(TAUNT, "CrownTowerBuff");
+
+  /** How long a crown tower is taunted, in ms. */
+  private static final int DURATION = Shipped.number(TAUNT, "CrownTowerDuration");
 
   /** A point before the top side's left princess tower, inside its range. */
   private static final int X = 3269;
@@ -66,8 +82,7 @@ class BattleKnightHeroTauntTest {
 
     /** Runs the ability's spawn of the taunting area effect, the Knight its cause. */
     void taunt() {
-      BattleAction spawn =
-          GameData.actions().build("Knight_hero_CreateTauntAEO", match.getWorld().binding(knight));
+      BattleAction spawn = GameData.actions().build(SPAWN, match.getWorld().binding(knight));
       knight.actionHolder().start(spawn, knight.actionHolder());
     }
 
@@ -101,8 +116,8 @@ class BattleKnightHeroTauntTest {
     scene.taunt();
     scene.step(1);
     String armed =
-        "4000 [set_target knight 0 0 0, raise LOCK_TARGET, remaining 4000, apply_buff %s 4000 level %d"
-                .formatted(BUFF, scene.knight.getPackedLevel())
+        "%d [set_target knight 0 0 0, raise LOCK_TARGET, remaining %d, apply_buff %s %d level %d"
+                .formatted(DURATION, DURATION, BUFF, DURATION, scene.knight.getPackedLevel())
             + " source knight side 0]";
     assertThat(scene.taunts)
         .containsExactlyInAnyOrder(
@@ -113,22 +128,28 @@ class BattleKnightHeroTauntTest {
     assertThat(reference(king)).isEqualTo("knight");
     assertThat(princess.getBuffs().carries(BUFF)).isTrue();
     assertThat(king.getBuffs().carries(BUFF)).isTrue();
-    assertThat(princess.getTargeting().getRetargetCooldownMs()).isEqualTo(4000);
+    assertThat(princess.getTargeting().getRetargetCooldownMs()).isEqualTo(DURATION);
 
     scene.taunts.clear();
     scene.step(1);
     String stepped = "[set_target knight 0 0 1, raise LOCK_TARGET, raise LOCK_TARGET]";
     assertThat(scene.taunts)
         .containsExactlyInAnyOrder(
-            "PrincessTower_1_1 3950 " + stepped, "KingTower_1_0 3950 " + stepped);
+            "PrincessTower_1_1 " + (DURATION - 50) + " " + stepped,
+            "KingTower_1_0 " + (DURATION - 50) + " " + stepped);
 
-    scene.step(78);
+    // The step that takes the duration to 0 or below lets both go.
+    int steps = (DURATION + 49) / 50;
+    int last = DURATION - 50 * steps;
+    scene.step(steps - 2);
     scene.taunts.clear();
     scene.step(1);
     assertThat(scene.taunts)
         .containsExactlyInAnyOrder(
-            "PrincessTower_1_1 0 [remaining 0, finish, remove_buff " + BUFF + "]",
-            "KingTower_1_0 0 [remaining 0, remaining 0, set_target null 0 1 0, finish, remove_buff "
+            "PrincessTower_1_1 " + last + " [remaining 0, finish, remove_buff " + BUFF + "]",
+            "KingTower_1_0 "
+                + last
+                + " [remaining 0, remaining 0, set_target null 0 1 0, finish, remove_buff "
                 + BUFF
                 + "]");
     assertThat(king.getView().getState()).isEqualTo(GridEntityState.STANDING);

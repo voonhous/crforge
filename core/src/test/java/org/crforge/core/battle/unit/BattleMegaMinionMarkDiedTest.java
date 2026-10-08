@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
@@ -95,9 +96,10 @@ class BattleMegaMinionMarkDiedTest {
     Standard1v1Battle battle = heroPlayed(tables, records, "Archer");
     CharacterEntity hero = named(battle, HERO).get(0);
     ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
-    // Two Archers: the mark holds one, and finds the other once it searches again.
+    // The Archers the card makes: the mark holds one, and finds another once it searches again.
     CharacterEntity archer = marked(battle, records, hero, "Archer");
-    assertThat(named(battle, "Archer")).hasSize(2);
+    assertThat(named(battle, "Archer"))
+        .hasSize(Shipped.number(Shipped.row("spells_characters", "Archer"), "SummonNumber"));
     battle.getWorld().kill(archer, null);
     int limit = battle.getBattle().getTick() + 5;
     while (slot.getCooldownMs() == 0) {
