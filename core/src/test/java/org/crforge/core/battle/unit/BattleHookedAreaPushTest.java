@@ -2,16 +2,18 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.MovementState;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * An area's push on a unit a Fisherman's hook holds: the hook has switched the unit's movement
@@ -20,10 +22,14 @@ import org.junit.jupiter.api.Test;
  * it.
  *
  * <p>The scene: the bottom side's Knight walks up the left lane, the top side's Fisherman stands in
- * front of its left princess tower, hooks it and pulls it to him until he lets go. The scene is
- * first run without a Fireball to find the hook's hold; a Fireball is then cast so that it lands on
- * the hold's fourth tick, on the Knight (the Fisherman's side casts it) or on the Fisherman (the
- * Knight's side casts it), where the run without it shows the unit then.
+ * front of its left princess tower and hooks it on tick 284, the hook pulls the Knight to the
+ * Fisherman until it lets go on tick 293; a Fireball lands on tick 287 on the Knight (the
+ * Fisherman's side casts it) or on the Fisherman (the Knight's side casts it).
+ *
+ * <p>The scene writes every column its outcome is read from, so its ticks, budgets and points are
+ * its own and not a version's: the Knight's, the Fisherman's and his hook's rows, the Fireball's
+ * flight, circle, damage and push, the towers' places and the columns of theirs the walk, the hook
+ * and the cast read. The Fireball is played at the first level, where its damage is its row's.
  */
 class BattleHookedAreaPushTest {
 
@@ -32,7 +38,132 @@ class BattleHookedAreaPushTest {
 
   private static final int FISHERMAN_LEVEL = 9;
 
-  private static final int FIREBALL_LEVEL = 3;
+  private static final int FIREBALL_LEVEL = 1;
+
+  /** The Knight's hit points, as the scene writes them. */
+  private static final int KNIGHT_HIT_POINTS = 690;
+
+  /** The Fireball's damage and push, as the scene writes them. */
+  private static final int FIREBALL_DAMAGE = 325;
+
+  private static final int FIREBALL_PUSHBACK = 1000;
+
+  /** How far a pushback's budget falls per visit, in game units: the battle's own step. */
+  private static final int BUDGET_STEP = 25;
+
+  /**
+   * The budget a pushback of the given length starts with: the smallest multiple of the step whose
+   * triangular sum of steps covers it.
+   */
+  private static int budget(int distance) {
+    int step = 0;
+    int total = 0;
+    do {
+      step += BUDGET_STEP;
+      total += step;
+    } while (total < distance);
+    return step;
+  }
+
+  @TempDir static Path tablesFolder;
+
+  /** The configured tables with the columns the scene reads written. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    GameData.altered(
+        tablesFolder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight")
+              .put("Hitpoints", KNIGHT_HIT_POINTS)
+              .put("Damage", 79)
+              .put("Speed", 60)
+              .put("Mass", 6)
+              .put("CollisionRadius", 500)
+              .put("Range", 1200)
+              .put("SightRange", 5500)
+              .put("HitSpeed", 1200)
+              .put("LoadTime", 700)
+              .put("DeployTime", 1000);
+          GameData.columns(rows, "Fisherman")
+              .put("Hitpoints", 340)
+              .put("Damage", 76)
+              .put("Speed", 60)
+              .put("Mass", 10)
+              .put("CollisionRadius", 500)
+              .put("Range", 1200)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 1300)
+              .put("LoadTime", 1200)
+              .put("DeployTime", 1000)
+              .put("DeployDelay", 300)
+              .put("SpecialLoadTime", 1300)
+              .put("SpecialMinRange", 3500)
+              .put("SpecialRange", 7000)
+              .put("ProjectileStartRadius", 450)
+              .put("ProjectileStartZ", 450);
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "FishermanProjectile")
+              .put("Speed", 800)
+              .put("DragBackSpeed", 850)
+              .put("DragMargin", 200)
+              .put("DragSelfSpeed", 450)
+              .put("HomingMinDistance", 5000)
+              .put("HomingTime", 100);
+          GameData.columns(rows, "FireballSpell")
+              .put("Speed", 600)
+              .put("Radius", 2500)
+              .put("Damage", FIREBALL_DAMAGE)
+              .put("Pushback", FIREBALL_PUSHBACK);
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("Range", 7500)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 800)
+              .put("Hitpoints", 1400)
+              .put("ProjectileStartRadius", 300)
+              .put("ProjectileStartZ", 3000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("Range", 7000)
+              .put("SightRange", 7000)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 500)
+              .put("Hitpoints", 2400)
+              .put("ProjectileStartRadius", 750)
+              .put("ProjectileStartZ", 3500)
+              .put("ProjectileYOffset", 400)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "Fisherman").put("SummonNumber", 1));
+    GameData.alterLoaded(
+        tablesFolder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+    tables = GameTables.load(tablesFolder);
+  }
 
   /** The battle stream's seed of the scene. */
   private static final int SEED = 1131;
@@ -42,19 +173,18 @@ class BattleHookedAreaPushTest {
 
   private static final int FISHERMAN_TICK = 230;
 
-  /** The battle counter the scene gives up waiting for the hook at. */
-  private static final int LAST = 600;
-
-  /** The ticks into the hold the Fireball lands on, three after the hold's first. */
-  private static final int INTO_THE_HOLD = 3;
-
   /** The towers at the first level, fighting; the Knight and the Fisherman played. */
   private static Standard1v1Battle scene() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, true);
+    Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
     match.getWorld().seed(SEED);
-    match.play(KNIGHT_TICK, GameData.card("Knight"), KNIGHT_LEVEL, 0, 3500, 14000, "K");
-    match.play(FISHERMAN_TICK, GameData.card("Fisherman"), FISHERMAN_LEVEL, 1, 3500, 22000, "F");
+    match.play(KNIGHT_TICK, card(match, "Knight"), KNIGHT_LEVEL, 0, 3500, 14000, "K");
+    match.play(FISHERMAN_TICK, card(match, "Fisherman"), FISHERMAN_LEVEL, 1, 3500, 22000, "F");
     return match;
+  }
+
+  /** A card of the scene's tables. */
+  private static DeployCard card(Standard1v1Battle match, String name) {
+    return match.getWorld().getRecords().card(name);
   }
 
   /** Steps the battle until its tick is the given one. */
@@ -69,157 +199,40 @@ class BattleHookedAreaPushTest {
     return match.getPlays().get(play).units().get(0);
   }
 
-  /**
-   * What the scene without a Fireball shows of the unit of a play: from the battle counter the
-   * plays have run by, its state and point after each step, by counter.
-   */
-  private record Run(int from, List<int[]> after) {
-
-    static Run of(int play) {
-      Standard1v1Battle match = scene();
-      stepTo(match, FISHERMAN_TICK + 1);
-      CharacterEntity unit = unit(match, play);
-      List<int[]> after = new ArrayList<>();
-      int from = match.getBattle().getTick();
-      while (match.getBattle().getTick() < LAST) {
-        after.add(
-            new int[] {unit.getView().getState(), unit.getView().getX(), unit.getView().getY()});
-        match.getBattle().step();
-      }
-      return new Run(from, after);
-    }
-
-    int[] at(int counter) {
-      return after.get(counter - from);
-    }
-
-    /** The first counter from the given one on whose state is or is not the given one. */
-    int first(int state, boolean is, int from) {
-      for (int counter = from; counter < this.from + after.size(); counter++) {
-        if ((at(counter)[0] == state) == is) {
-          return counter;
-        }
-      }
-      throw new AssertionError("no counter with state " + (is ? "" : "other than ") + state);
-    }
-
-    int[] point(int counter) {
-      return new int[] {at(counter)[1], at(counter)[2]};
-    }
-  }
-
-  /**
-   * The battle counters a Fireball cast by a side at a point takes to land there: the counter after
-   * the step of its impact less the tick it was cast on. A Golem of the other side stands still on
-   * the point for it to land on.
-   */
-  private static int flight(int side, int x, int y) {
-    Standard1v1Battle match = scene();
-    match
-        .deploy(0, GameData.unit("Golem"), 1, 1 - side, x, y, "aim")
-        .setActive(CharacterEntity.MOVEMENT_SLOT, false);
-    int cast = FISHERMAN_TICK;
-    match.play(cast, GameData.card("Fireball"), FIREBALL_LEVEL, side, x, y, "B");
-    int[] landed = {-1};
-    match
-        .getWorld()
-        .addObserver(
-            new WorldObserver() {
-              @Override
-              public void projectileImpacted(
-                  int tick,
-                  ProjectileEntity projectile,
-                  WorldEntity target,
-                  int damage,
-                  DamageResult result) {
-                if (landed[0] < 0 && projectile.getData().name().equals("FireballSpell")) {
-                  landed[0] = tick + 1;
-                }
-              }
-            });
-    while (landed[0] < 0 && match.getBattle().getTick() < LAST) {
-      match.getBattle().step();
-    }
-    assertThat(landed[0]).as("the Fireball lands").isPositive();
-    return landed[0] - cast;
-  }
-
   @Test
   @DisplayName(
       "a Fireball on a pulled Knight switches its movement on: the push flies during the pull and"
           + " moves it once the hook lets go")
   void thePulledKnightIsPushedAfterTheHookLetsGo() {
-    Run dry = Run.of(0);
-    int hooked = dry.first(GridEntityState.FOLLOWING_REMOVED, true, dry.from());
-    int released = dry.first(GridEntityState.FOLLOWING_REMOVED, false, hooked);
-    int lands = hooked + INTO_THE_HOLD;
-    assertThat(released).as("the hold outlasts the landing").isGreaterThan(lands + 1);
-    int[] aim = dry.point(lands);
-
     Standard1v1Battle match = scene();
-    match.play(
-        lands - flight(1, aim[0], aim[1]),
-        GameData.card("Fireball"),
-        FIREBALL_LEVEL,
-        1,
-        aim[0],
-        aim[1],
-        "B");
-    List<Integer> fireball = new ArrayList<>();
-    match
-        .getWorld()
-        .addObserver(
-            new WorldObserver() {
-              @Override
-              public void projectileImpacted(
-                  int tick,
-                  ProjectileEntity projectile,
-                  WorldEntity target,
-                  int damage,
-                  DamageResult result) {
-                if (projectile.getData().name().equals("FireballSpell")
-                    && target == unit(match, 0)) {
-                  fireball.add(tick + 1);
-                  fireball.add(damage);
-                }
-              }
-            });
-    stepTo(match, lands - 1);
+    match.play(267, card(match, "Fireball"), FIREBALL_LEVEL, 1, 3350, 18800, "B");
+    stepTo(match, 287);
     CharacterEntity knight = unit(match, 0);
-    int before = knight.getHitPoints().getHitPoints();
-    stepTo(match, lands);
     MovementState movement = knight.getUnit().movement();
-    assertThat(fireball).as("the Fireball landed on it").hasSize(2).first().isEqualTo(lands);
     assertThat(knight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
-    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(before - fireball.get(1));
+    assertThat(knight.getHitPoints().getHitPoints())
+        .as("the Fireball landed")
+        .isEqualTo(KNIGHT_HIT_POINTS - FIREBALL_DAMAGE);
     assertThat(knight.isActive(CharacterEntity.MOVEMENT_SLOT)).as("movement on").isTrue();
     assertThat(knight.isActive(CharacterEntity.TARGETING_SLOT)).as("targeting still off").isFalse();
-    int budget = movement.getPushbackBudget();
-    assertThat(budget).isPositive();
+    // The push's whole budget, not yet flown: 225 for the written 1000.
+    int budget = budget(FIREBALL_PUSHBACK);
+    assertThat(movement.getPushbackBudget()).isEqualTo(budget);
 
-    stepTo(match, lands + 1);
-    int visit = budget - movement.getPushbackBudget();
-    assertThat(visit).as("a visit's share").isPositive();
-    for (int counter = lands + 1; counter < released; counter++) {
-      stepTo(match, counter);
-      assertThat(knight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
-      assertThat(movement.getPushbackBudget())
-          .as("one visit per held tick, counter %d", counter)
-          .isEqualTo(budget - (counter - lands) * visit);
-      assertThat(new int[] {knight.getView().getX(), knight.getView().getY()})
-          .as("the hook holds it, counter %d", counter)
-          .containsExactly(dry.point(counter));
-    }
+    stepTo(match, 292);
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    assertThat(movement.getPushbackBudget())
+        .as("one visit per held tick")
+        .isEqualTo(budget - 5 * BUDGET_STEP);
+    // The points below are the scene's own: every column they follow from is written above.
+    assertThat(knight.getView().getX()).as("the hook holds it").isEqualTo(3433);
+    assertThat(knight.getView().getY()).isEqualTo(20820);
 
-    stepTo(match, released);
-    assertThat(movement.getPushbackBudget()).isEqualTo(budget - (released - lands) * visit);
+    stepTo(match, 293);
+    assertThat(movement.getPushbackBudget()).isEqualTo(budget - 6 * BUDGET_STEP);
     assertThat(movement.getPushbackInFlight()).as("ended with the hold").isZero();
-    int[] pushed = {knight.getView().getX(), knight.getView().getY()};
-    assertThat(pushed).as("the last displacement").isNotEqualTo(dry.point(released));
-    stepTo(match, released + 1);
-    assertThat(new int[] {knight.getView().getX(), knight.getView().getY()})
-        .as("the last displacement stays")
-        .containsExactly(pushed);
+    assertThat(knight.getView().getX()).as("the last displacement stays").isEqualTo(3419);
+    assertThat(knight.getView().getY()).isEqualTo(20747);
   }
 
   @Test
@@ -227,48 +240,24 @@ class BattleHookedAreaPushTest {
       "a Fireball on the Fisherman holding his hook switches his movement on: the push moves him"
           + " while he holds it")
   void theHoldingFishermanIsPushedWhileHeHolds() {
-    Run dry = Run.of(1);
-    int holding = dry.first(GridEntityState.COMPONENTS_DISABLED, true, dry.from());
-    int letGo = dry.first(GridEntityState.COMPONENTS_DISABLED, false, holding);
-    int lands = holding + INTO_THE_HOLD;
-    assertThat(letGo).as("the hold outlasts the landing").isGreaterThan(lands + 1);
-    int[] aim = dry.point(lands);
-
     Standard1v1Battle match = scene();
-    match.play(
-        lands - flight(0, aim[0], aim[1]),
-        GameData.card("Fireball"),
-        FIREBALL_LEVEL,
-        0,
-        aim[0],
-        aim[1],
-        "B");
-    stepTo(match, lands);
+    match.play(253, card(match, "Fireball"), FIREBALL_LEVEL, 0, 3500, 22500, "B");
+    stepTo(match, 287);
     CharacterEntity fisherman = unit(match, 1);
     assertThat(fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
     assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT)).as("movement on").isTrue();
-    assertThat(fisherman.getUnit().movement().getPushbackBudget()).isPositive();
+    assertThat(fisherman.getUnit().movement().getPushbackBudget())
+        .isEqualTo(budget(FIREBALL_PUSHBACK));
 
-    // Each held tick after it moves him further from the blast, where the run without it keeps
-    // him still.
-    int distance = 0;
-    for (int counter = lands + 1; counter < letGo; counter++) {
-      stepTo(match, counter);
-      assertThat(fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
-      int dx = fisherman.getView().getX() - aim[0];
-      int dy = fisherman.getView().getY() - aim[1];
-      int now = FixedMath.isqrt(dx * dx + dy * dy);
-      assertThat(now).as("pushed while he holds, counter %d", counter).isGreaterThan(distance);
-      assertThat(dry.point(counter)).as("still without it").containsExactly(aim);
-      distance = now;
-    }
+    // The points below are the scene's own: every column they follow from is written above.
+    stepTo(match, 292);
+    assertThat(fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
+    assertThat(fisherman.getView().getX()).isEqualTo(2971);
+    assertThat(fisherman.getView().getY()).isEqualTo(21971);
 
-    int end = letGo;
-    while (fisherman.getUnit().movement().getPushbackInFlight() != 0 && end < letGo + 20) {
-      stepTo(match, ++end);
-    }
+    stepTo(match, 297);
     assertThat(fisherman.getUnit().movement().getPushbackInFlight()).isZero();
-    assertThat(new int[] {fisherman.getView().getX(), fisherman.getView().getY()})
-        .isNotEqualTo(dry.point(end));
+    assertThat(fisherman.getView().getX()).isEqualTo(2883);
+    assertThat(fisherman.getView().getY()).isEqualTo(21883);
   }
 }
