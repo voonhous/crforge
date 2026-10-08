@@ -190,7 +190,6 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `M`           | Not offered: the battle core has one set of movement rules (logs a note)      |
 | `G`           | Toggle the routing cell cost overlay                                          |
 | `N`           | Toggle the route, reference and state overlay                                 |
-| `S`           | Run the next golden scenario (passive towers, the reference unit on tick 0)   |
 | `E`           | Export the recorded trajectories of the played units to `build/trajectories`  |
 | `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
 | `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
@@ -283,9 +282,7 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 
 `A` draws a fading circle for every area hit: a unit's splash and a death's area, each hit of an area effect, and the arrival of a projectile with an area. `D` floats the hit points and shield each character lost since the last frame.
 
-`S` cycles through three reference deployments of a Knight (left, right and centre). Each starts a battle of its own with the towers passive and places the Knight at the reference position on tick 0, as the battle core's golden trajectory test does, so the battle's first step is the reference's tick 0. The reference trajectory is drawn as a ghost polyline with a ring on the position the reference gives for the current tick, and the status column reports either `deviation: none` or the first tick at which the live unit was somewhere else, with how far away it was. The scenario has no hands; `R` returns to a Ladder battle. The bundled trajectories are copies of the core golden files, which are the output of a model of the game's rules, not captures of the shipped game; see `desktop/src/main/resources/trajectories/README.md`.
-
-`E` writes one file per unit made by a card play (and the scenario's unit) to `build/trajectories`, named after the unit (`b1_0.json` is the first unit of blue's first play), in the layout of the reference trajectories the battle core's `TrajectoryRecorder` writes: the header, the events of every hit, launch and impact, and one record per tick from the unit's first tick in the battle. Recording starts with each battle and is cleared by a reset.
+`E` writes one file per unit made by a card play to `build/trajectories`, named after the unit (`b1_0.json` is the first unit of blue's first play), in the layout of the reference trajectories the battle core's `TrajectoryRecorder` writes: the header, the events of every hit, launch and impact, and one record per tick from the unit's first tick in the battle. Recording starts with each battle and is cleared by a reset.
 
 ---
 

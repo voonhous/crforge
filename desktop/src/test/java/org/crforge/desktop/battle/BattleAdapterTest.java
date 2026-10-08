@@ -85,7 +85,6 @@ class BattleAdapterTest {
     assertThat(frame.elixirRate()).isEqualTo(1);
     assertThat(frame.overtime()).isFalse();
     assertThat(frame.ended()).isFalse();
-    assertThat(frame.scenario()).isNull();
   }
 
   @Test

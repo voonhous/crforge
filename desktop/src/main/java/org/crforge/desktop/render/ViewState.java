@@ -10,10 +10,10 @@ import lombok.Getter;
  * drawn, never the battle.
  *
  * <p>The annotations are the text beside the arena that is not the battle's HUD: the status column
- * (the tick line, the toggles on, the replay's or scenario's status and the controls legend) and
- * the message column with its halted line. Hiding them leaves the battle itself (bodies, towers,
- * health and shield bars, and the name labels of the characters and area effects), the hands,
- * elixir, clock, crowns and result, and every overlay with a key of its own as they are.
+ * (the tick line, the toggles on, the replay's status and the controls legend) and the message
+ * column with its halted line. Hiding them leaves the battle itself (bodies, towers, health and
+ * shield bars, and the name labels of the characters and area effects), the hands, elixir, clock,
+ * crowns and result, and every overlay with a key of its own as they are.
  */
 public final class ViewState {
 

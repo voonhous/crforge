@@ -204,15 +204,6 @@ public final class RenderConstants {
   /** Marker on the position a troop currently holds as its reference. */
   public static final Color COLOR_ROUTE_REFERENCE = new Color(1f, 0.85f, 0.2f, 0.9f);
 
-  /** Ghost polyline of a golden scenario's whole reference trajectory. */
-  public static final Color COLOR_GOLDEN_PATH = new Color(0.85f, 0.85f, 0.85f, 0.45f);
-
-  /** Hollow marker on the reference position for the tick currently being simulated. */
-  public static final Color COLOR_GOLDEN_MARKER = new Color(1f, 1f, 1f, 0.9f);
-
-  /** Marker on the first tick where the live unit left the reference trajectory. */
-  public static final Color COLOR_GOLDEN_DEVIATION = new Color(1f, 0.2f, 0.2f, 0.95f);
-
   // ---- Damage number colors ----
 
   /** Red color for floating HP damage numbers. */

@@ -18,7 +18,6 @@ import java.util.List;
  * @param winner the winning side, or -1 for a draw, once the match has ended
  * @param over whether the battle has stopped stepping by its own rule
  * @param halted why the session stopped stepping on a refusal, or null
- * @param scenario the golden scenario's name, or null for a Ladder battle
  * @param messages the session's latest messages, oldest first
  */
 public record BattleFrame(
@@ -32,7 +31,6 @@ public record BattleFrame(
     int winner,
     boolean over,
     String halted,
-    String scenario,
     List<String> messages) {
 
   /**

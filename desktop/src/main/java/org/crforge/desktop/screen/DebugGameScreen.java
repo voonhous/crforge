@@ -17,10 +17,8 @@ import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.MatchCard;
-import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.util.GameUnits;
-import org.crforge.desktop.GoldenScenario;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
@@ -28,7 +26,6 @@ import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.BattleWorkspace;
-import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 import org.crforge.desktop.render.WorkspaceAction;
@@ -51,7 +48,6 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>M: Not offered: the battle core has one set of movement rules; logs a note
  *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
- *   <li>S: Run the next golden scenario (passive towers, the reference unit placed on tick 0)
  *   <li>E: Export the recorded trajectories of every played unit to build/trajectories
  *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
  *       version the battle core refuses is reported in the messages and the battle stays
@@ -108,8 +104,6 @@ public class DebugGameScreen implements Screen {
   private int hoverCellX = -1;
 
   private int hoverCellY = -1;
-
-  private final GoldenScenario goldenScenario = new GoldenScenario();
 
   /** The area hits of the steps run since the last frame. */
   private final List<AreaHitLog.AreaHit> newAreaHits = new ArrayList<>();
@@ -199,7 +193,6 @@ public class DebugGameScreen implements Screen {
         view.toggleAnnotations();
         log.info("Annotations: {}", view.isAnnotations() ? "ON" : "OFF");
       }
-      case SCENARIO -> startGoldenScenario();
       case EXPORT -> exportTrajectories();
       case NEXT_VERSION -> switchDataVersion();
       case FASTER -> adjustSpeed(2f);
@@ -348,7 +341,6 @@ public class DebugGameScreen implements Screen {
   private void startSession(BattleSession next) {
     workspace.reset();
     session = next;
-    goldenScenario.clear();
     newAreaHits.clear();
     deselect();
     accumulator = 0f;
@@ -384,28 +376,6 @@ public class DebugGameScreen implements Screen {
         versions.current().contentSha());
   }
 
-  /**
-   * Starts the next golden scenario on a battle of its own: the towers passive and the reference
-   * unit placed on tick 0, so the battle's first step is the reference's tick 0.
-   */
-  private void startGoldenScenario() {
-    GoldenScenario.Case scenarioCase = GoldenScenario.load(goldenScenario.nextCaseName());
-    session = BattleSession.scenario(versions.current(), scenarioCase);
-    workspace.reset();
-    goldenScenario.begin(scenarioCase, session.tick());
-    newAreaHits.clear();
-    deselect();
-    accumulator = 0f;
-    paused = false;
-    log.info(
-        "Golden scenario {}: {} for side {} at ({}, {})",
-        scenarioCase.name(),
-        scenarioCase.card(),
-        scenarioCase.side(),
-        scenarioCase.deployX(),
-        scenarioCase.deployY());
-  }
-
   /** Writes one file per recorded unit and logs where they went. */
   private void exportTrajectories() {
     try {
@@ -422,27 +392,6 @@ public class DebugGameScreen implements Screen {
     }
   }
 
-  /** The golden scenario's trajectory as the renderer needs it. */
-  private GoldenOverlay goldenOverlay() {
-    if (!goldenScenario.isActive()) {
-      return GoldenOverlay.none();
-    }
-    int tick = goldenScenario.referenceTick(session.tick());
-    return new GoldenOverlay(
-        goldenScenario.goldenPath(),
-        goldenScenario.goldenAt(tick),
-        goldenScenario.deviationPoint());
-  }
-
-  /** Compares the golden scenario's unit with the reference trajectory for the step just run. */
-  private void sampleGoldenScenario() {
-    CharacterEntity unit = session.getScenarioUnit();
-    if (!goldenScenario.isActive() || unit == null) {
-      return;
-    }
-    goldenScenario.sample(session.tick(), unit.getView().getX(), unit.getView().getY());
-  }
-
   private void logLatestMessage() {
     List<String> messages = session.messages();
     if (!messages.isEmpty()) {
@@ -455,8 +404,7 @@ public class DebugGameScreen implements Screen {
     paused = true;
     accumulator = 0;
     if (session.getHalted() != null || session.isOver()) return;
-    if (session.step()) sampleGoldenScenario();
-    else logLatestMessage();
+    if (!session.step()) logLatestMessage();
     newAreaHits.addAll(session.getAreaHits().drain());
   }
 
@@ -468,8 +416,8 @@ public class DebugGameScreen implements Screen {
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
     try {
-      // Fixed timestep simulation. Sampling happens inside this loop, not once a frame: a frame
-      // covers several steps at high speeds and none at low ones.
+      // Fixed timestep simulation: a frame covers several steps at high speeds and none at low
+      // ones.
       if (!paused && session.getHalted() == null && !session.isOver()) {
         accumulator += delta * simSpeed;
         while (accumulator >= STEP_SECONDS) {
@@ -481,7 +429,6 @@ public class DebugGameScreen implements Screen {
             accumulator = 0f;
             break;
           }
-          sampleGoldenScenario();
         }
       }
 
@@ -493,7 +440,7 @@ public class DebugGameScreen implements Screen {
           versions.current().contentSha(),
           versions.developmentVersion());
       BattleFrame frame = BattleAdapter.frame(session, view.getOrientation()::sideName);
-      List<String> status = new ArrayList<>(goldenScenario.statusLines());
+      List<String> status = new ArrayList<>();
       if (renderer.isDrawCellCosts()) {
         status.add(
             renderer.hoveredCellStatus(session.getBattle().getWorld(), hoverCellX, hoverCellY));
@@ -535,8 +482,7 @@ public class DebugGameScreen implements Screen {
               selectedSlot,
               selectedCard,
               preview,
-              goldenOverlay(),
-              goldenScenario.statusLines(),
+              List.of(),
               List.of(versions.statusLine(), M_NOTE, F_NOTE),
               view),
           false);
@@ -584,7 +530,6 @@ public class DebugGameScreen implements Screen {
           M     - Not offered on the battle core (one set of movement rules)
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
-          S     - Run next golden scenario (passive towers, reference unit on tick 0)
           E     - Export played units' trajectories to build/trajectories
 
         Data:

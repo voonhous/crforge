@@ -51,11 +51,8 @@ public final class TrajectoryHub {
     world.addObserver(observer);
   }
 
-  /**
-   * Starts recording a unit that is not made by a card play, such as a golden scenario's unit
-   * placed directly. Call it before the step the unit is first visited in.
-   */
-  public void follow(CharacterEntity unit) {
+  /** Starts recording a unit, before the step it is first visited in. */
+  private void follow(CharacterEntity unit) {
     recorders.putIfAbsent(unit.name(), new TrajectoryRecorder(unit));
   }
 

@@ -19,7 +19,6 @@ import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.BattleWorkspace;
-import org.crforge.desktop.render.GoldenOverlay;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.render.ViewState;
 import org.crforge.desktop.render.WorkspaceAction;
@@ -358,7 +357,6 @@ public class ReplayGameScreen implements Screen {
               -1,
               null,
               null,
-              GoldenOverlay.none(),
               status,
               List.of(),
               view),

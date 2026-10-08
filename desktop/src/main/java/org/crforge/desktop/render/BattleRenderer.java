@@ -34,8 +34,8 @@ import org.crforge.desktop.battle.UnitStatus;
  * screen toggles, and the HUD.
  *
  * <p>It shares the original renderer's resources, colours and layout, and draws the overlays that
- * exist for both engines through the same renderers: the routing cell costs, the routes, the golden
- * trajectory, the damage numbers and the area damage indicators.
+ * exist for both engines through the same renderers: the routing cell costs, the routes, the damage
+ * numbers and the area damage indicators.
  *
  * <p>Every arena position, team colour and side name goes through the screen's {@link
  * ViewOrientation}, so a flipped view draws the whole arena and every overlay turned by 180
@@ -69,7 +69,6 @@ public class BattleRenderer {
   private final HudRenderer backgrounds;
   private final CellCostOverlayRenderer cellCosts;
   private final RouteOverlayRenderer routes;
-  private final GoldenTrajectoryRenderer golden;
   private final DamageNumberRenderer damageNumbers;
   private final AoeDamageRenderer areaHits;
 
@@ -139,7 +138,6 @@ public class BattleRenderer {
     this.backgrounds = new HudRenderer(ctx);
     this.cellCosts = new CellCostOverlayRenderer(ctx);
     this.routes = new RouteOverlayRenderer(ctx);
-    this.golden = new GoldenTrajectoryRenderer(ctx);
     this.damageNumbers = new DamageNumberRenderer(ctx);
     this.areaHits = new AoeDamageRenderer(ctx);
   }
@@ -189,8 +187,7 @@ public class BattleRenderer {
    * @param selectedSlot the selected hand slot, or -1
    * @param selectedCard the battle's row of the selected card, or null
    * @param preview where the selected card would be placed at the hovered tile, or null
-   * @param goldenOverlay the golden scenario's trajectory, or {@link GoldenOverlay#none()}
-   * @param scenarioLines the golden scenario's status lines
+   * @param screenLines the screen's own status lines, such as a replay's
    * @param notes lines about controls this screen does not offer
    * @param view the screen's view settings: the orientation and whether annotations are shown
    */
@@ -205,8 +202,7 @@ public class BattleRenderer {
       int selectedSlot,
       DeployCard selectedCard,
       CardPlacement.Result preview,
-      GoldenOverlay goldenOverlay,
-      List<String> scenarioLines,
+      List<String> screenLines,
       List<String> notes,
       ViewState view) {}
 
@@ -239,7 +235,6 @@ public class BattleRenderer {
     if (drawPaths) {
       renderHeadings(frame);
     }
-    golden.render(inputs.goldenOverlay(), view);
     if (drawRoutes) {
       routes.render(routed(frame), view);
     }
@@ -915,7 +910,9 @@ public class BattleRenderer {
     ctx.getSpriteBatch().end();
   }
 
-  /** The status column: the overlays that are on, the hovered cell, the scenario and the notes. */
+  /**
+   * The status column: the overlays that are on, the hovered cell, the screen's lines and notes.
+   */
   private List<String> statusLines(Inputs inputs) {
     List<String> lines = new ArrayList<>();
     if (drawPaths) {
@@ -942,7 +939,7 @@ public class BattleRenderer {
           cellCosts.hoverStatus(
               inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY()));
     }
-    lines.addAll(inputs.scenarioLines());
+    lines.addAll(inputs.screenLines());
     lines.add("engine: battle core");
     lines.addAll(inputs.view().statusLines());
     lines.addAll(inputs.notes());
