@@ -22,10 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A select whose condition draws from the battle's random source, in the cases gift_select does not
- * reach: the draw falls as the select is scheduled, even while its own entry waits; a condition the
- * data writes as a list compiles from its first element; and an action owner's expressions answer
- * rand and nothing else.
+ * A select whose condition draws from the battle's random source, not held by a recorded battle:
+ * the draw falls as the select is scheduled, even while its own entry waits; a condition the data
+ * writes as a list compiles from its first element; and an action owner's expressions answer rand
+ * and nothing else.
  */
 class BattleSelectDrawTest {
 

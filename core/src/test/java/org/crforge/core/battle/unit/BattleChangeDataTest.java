@@ -24,10 +24,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A character taking another row, in the cases golemite_convert does not reach: hit points kept
- * above a smaller maximum, a target given up by the row and the attack timing it leaves, a target
- * kept on the new row's columns, the new row as the unit's attackers read it, the swaps that are
- * refused, and the hit-point functions the swap's rows read.
+ * A character taking another row, in the cases the reference battle card_ElixirGolem does not
+ * reach: hit points kept above a smaller maximum, a target given up by the row and the attack
+ * timing it leaves, a target kept on the new row's columns, the new row as the unit's attackers
+ * read it, the swaps that are refused, and the hit-point functions the swap's rows read.
  */
 class BattleChangeDataTest {
 

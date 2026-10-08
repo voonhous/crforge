@@ -301,7 +301,10 @@ class BattleBuffAfterHitsTest {
         .hasMessageContaining("runs an action as it is listed or removed");
   }
 
-  /** An evolved Royal Ghost and a Knight it reaches, as buff_after_hits_ghost_evo places them. */
+  /**
+   * An evolved Royal Ghost and a Knight it reaches; the evolved Royal Ghost itself is held by the
+   * reference battles evo_ghost_vs_musketeer and cg_ghost_evo_cloned.
+   */
   private static CharacterEntity ghostAndKnight(Scene scene) {
     CharacterEntity ghost =
         scene.match.deploy(0, GameData.unit("Ghost_EV1"), LEVEL, 0, 3500, 9500, "G");
