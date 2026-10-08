@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -52,7 +52,7 @@ class TombstoneHeroTest {
 
   /** A Ladder match of 16.402.18 whose side 0 holds the hero Tombstone in its hand. */
   private static Scene scene() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     int[] heroFirst = new int[8];
     heroFirst[0] = MatchSide.HERO_SLOT;

@@ -2,31 +2,23 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When an area effect's life ends. The game of data version 16.402.18 keeps every area effect, a
- * row with hit switches as well as one with a filter, until its countdown is below 0: one whose
- * countdown reaches 0 exactly has one more update, and its life-end action waits for that update.
- * The game of 14.593.1 removes a row with hit switches at the cleanup that finds its countdown
- * below 1.
+ * When an area effect's life ends. The game keeps every area effect, a row with hit switches as
+ * well as one with a filter, until its countdown is below 0: one whose countdown reaches 0 exactly
+ * has one more update, and its life-end action waits for that update.
  *
  * <p>The scene: the bottom side's Rage Barbarian walks up the left lane to the top side's princess
  * tower and dies to it on tick 236. Its death area effect, RageBarbarianDummyForSpawn, lives 50 ms
- * and throws the bottle; the bottle's BarbarianRage lives 5500 ms. Both rows have hit switches in
- * the configured tables. The same battle runs on the configured tables and on those tables
- * relabelled as data version 16.402.18, which differ only in the version's rule.
+ * and throws the bottle; the bottle's BarbarianRage lives 5500 ms. Both rows have hit switches.
  */
 class BattleAreaEffectLifeTest {
 
@@ -47,8 +39,6 @@ class BattleAreaEffectLifeTest {
 
   /** The tick the scene runs to, after the rage has left on either version. */
   private static final int END = 400;
-
-  @TempDir Path folder;
 
   /** What the scene saw of one area effect. */
   private static final class Life {
@@ -112,10 +102,10 @@ class BattleAreaEffectLifeTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 an area effect whose countdown reaches 0 has one more update and"
+      "an area effect whose countdown reaches 0 has one more update and"
           + " leaves once its countdown is below 0")
-  void anAreaEffectStaysUntilItsCountdownIsBelowZero() throws IOException {
-    Map<String, Life> lives = scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
+  void anAreaEffectStaysUntilItsCountdownIsBelowZero() {
+    Map<String, Life> lives = scene(GameData.tables());
 
     Life death = lives.get(DEATH_AREA);
     assertThat(death.created).isEqualTo(DEATH);
@@ -126,24 +116,5 @@ class BattleAreaEffectLifeTest {
     assertThat(rage.countdowns).as("5500 ms of life: 111 updates").hasSize(111);
     assertThat(rage.countdowns.get(110)).isEqualTo(-50);
     assertThat(rage.listed).hasSize(111);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 an area effect with hit switches leaves at the cleanup after the"
-          + " update that brings its countdown to 0")
-  void anAreaEffectLeavesAtZeroOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    Map<String, Life> lives = scene(GameData.tables());
-
-    Life death = lives.get(DEATH_AREA);
-    assertThat(death.created).isEqualTo(DEATH);
-    assertThat(death.countdowns).as("its update").containsExactly(0);
-    assertThat(death.listed).as("listed after").containsExactly(DEATH + 1);
-
-    Life rage = lives.get(RAGE);
-    assertThat(rage.countdowns).as("5500 ms of life: 110 updates").hasSize(110);
-    assertThat(rage.countdowns.get(109)).isZero();
-    assertThat(rage.listed).hasSize(110);
   }
 }

@@ -234,12 +234,10 @@ final class UppercutRun extends ActionInstance {
           unit.world().getActions().build(onTargets.name(), unit.world().binding(pushedUnit));
       pushedUnit.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, unit.actionHolder());
     }
-    // A push the entry took clears the target's avoidance blend, so no push step is turned by
-    // the way it was steering: it flies straight toward its tower. Only the data versions whose
-    // game has the row's switch do this.
-    if (entered == 1
-        && unit.world().uppercutResetsAvoidance()
-        && row.isResetAvoidanceAtPushback()) {
+    // A push the entry took clears the target's avoidance blend, as the row's
+    // ResetAvoidanceAtPushback says (true unless the row turns it off), so no push step is turned
+    // by the way it was steering: it flies straight toward its tower.
+    if (entered == 1 && row.isResetAvoidanceAtPushback()) {
       pushedUnit.getUnit().movement().setAvoidanceBlend(0);
     }
     return true;

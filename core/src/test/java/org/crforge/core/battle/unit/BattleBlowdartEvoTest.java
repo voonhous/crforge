@@ -131,15 +131,17 @@ class BattleBlowdartEvoTest {
 
   @Test
   @DisplayName(
-      "the poison damages the tower once a second from 25 ticks after the first hit, a quarter of"
+      "the poison damages the tower once a second from 26 ticks after the first hit, a quarter of"
           + " the stack's scaled amount on a crown tower")
   void thePoisonDamagesTheTower() {
     Shots shots = throwAtTheTower(200);
     int firstHit = shots.dartHits().get(0)[0];
     List<int[]> poison = shots.poison();
     assertThat(poison).isNotEmpty();
-    assertThat(poison.get(0)[0]).as("the first poison hit").isEqualTo(firstHit + 25);
-    assertThat(poison.get(0)[1]).as("20 at this level is 24, a quarter of it 6").isEqualTo(6);
+    // The poison area's first hit falls on the update its HitSpeedOffset of 250 ms starts, the
+    // sixth, and its hit action's damage waits a second after that.
+    assertThat(poison.get(0)[0]).as("the first poison hit").isEqualTo(firstHit + 26);
+    assertThat(poison.get(0)[1]).as("25 at this level is 30, a quarter of it 7").isEqualTo(7);
     for (int i = 1; i < poison.size(); i++) {
       assertThat(poison.get(i)[0] - poison.get(i - 1)[0]).as("once a second").isEqualTo(20);
     }

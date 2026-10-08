@@ -100,10 +100,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * does nothing else. A row shaped as a circle, the Giant hero form's landing or the Ice Golemite
  * hero form's damage and knockback circles, lists what its filter passes in the circle about its
  * point, and each hit queues its damage on every one of them and pushes each away from its point.
- * When the countdown reaches 0 its life-end action is scheduled on itself; it leaves at the cleanup
- * that finds the countdown below 1. On a data version whose game keeps an area effect until its
- * countdown is below 0, every row waits so, as the filter form always does: the life-end action
- * comes with the update that takes the countdown below 0, and the cleanup after it removes it.
+ * An area effect stays until its countdown is below 0: its life-end action comes with the update
+ * that takes the countdown below 0, and the cleanup after it removes it, so a row whose countdown
+ * reaches 0 exactly has one more update.
  *
  * <p>A row with a spawner, created by an ability, makes its characters about its point from its
  * update, after the counters and the radius: one each spawn interval after the initial delay,
@@ -142,7 +141,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " target without a hit action. Created by a unit's ability at the unit, the unit its"
             + " parent and the object it follows, and the deflection radius it measures"
             + " projectiles against, held by monk_ability_tower and monk_ability_musketeer, and"
-            + " for a filter form row of a newer data version by ability_monk and"
+            + " for a filter form row by ability_monk and"
             + " MonkDeflectTest. A"
             + " lifetime an ability gives it, on which its radius and its spawner's count run"
             + " while its hit schedule and its spawner's clock keep its row's, and its spawner:"
@@ -205,14 +204,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and the ages' repeats by BattleUppercutWindTest. The filter form: its hit"
             + " schedule, its list through its filter nearest first, its damage type's amounts"
             + " for a troop and a crown tower, its buff on each listed object and its one more"
-            + " update, held by the newer data's Zap, Rage, Poison and Freeze plays; its damage"
+            + " update, held by the 16.402.18 references' Zap, Rage, Poison and Freeze plays; its damage"
             + " order within a tick and a protecting buff on its target held by no run. Its"
             + " target limit, its list taken again with the most hit points and shield first,"
             + " and its projectile onto each object it hits or, with TargetProjectiles off, one"
-            + " onto its own point, held by the newer data's Lightning, Vines and Royal Delivery"
+            + " onto its own point, held by the 16.402.18 references' Lightning, Vines and Royal Delivery"
             + " plays; an end on its first hit with such a projectile held by no run. Its pull"
             + " of each object it lists for an attracting buff, after the push and before the"
-            + " damage, held by the newer data's Tornado and evolved Valkyrie plays.")
+            + " damage, held by the 16.402.18 references' Tornado and evolved Valkyrie plays.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Milliseconds one update takes off the countdown. */
@@ -398,30 +397,24 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Ends it: its countdown goes to 0, or below it where its life ends below 0, so the next cleanup
-   * after its update removes it.
+   * Ends it: its countdown goes below 0, so the next cleanup after its update removes it.
+   *
+   * <p>The game keeps every area effect until its countdown is below 0, a row with hit switches as
+   * well as one with a filter, so one whose countdown reaches 0 exactly has one more update, and
+   * runs its life-end action on that update; its end, as an object it follows leaves or an attack
+   * ends its signal, sets the countdown to -1.
    */
   void end() {
-    countdown = lifeEndsBelowZero() ? -1 : 0;
+    countdown = -1;
   }
 
   /**
-   * Sets its countdown to 0 on every data version, as Goblinstein's ability does to the death area
-   * it holds when its own area effect leaves. Where its life ends below 0 it is then not removable:
-   * it has one more update, which takes the countdown below 0, and leaves in the cleanup after it;
-   * elsewhere the same cleanup removes it.
+   * Sets its countdown to 0, as Goblinstein's ability does to the death area it holds when its own
+   * area effect leaves. It is then not removable: it has one more update, which takes the countdown
+   * below 0, and leaves in the cleanup after it.
    */
   void zeroCountdown() {
     countdown = 0;
-  }
-
-  /**
-   * Whether its life ends only once its countdown is below 0: always for the filter form, which
-   * only the newer data writes, and for every row on a data version whose game tests each area
-   * effect so (see {@link BattleWorld#areaLifeEndsBelowZero()}).
-   */
-  private boolean lifeEndsBelowZero() {
-    return data.filterHits() || world.areaLifeEndsBelowZero();
   }
 
   /**
@@ -552,7 +545,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     } else if (!circleHits(hits, radius, damage, speed, hit, bound)) {
       return;
     }
-    boolean lifeEnded = lifeEndsBelowZero() ? countdown < 0 : countdown <= 0;
+    boolean lifeEnded = countdown < 0;
     if (lifeEnded && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
       world.lifeTimeEndScheduled(this, ending.name());
@@ -972,7 +965,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * An object that left the battle: a parent that leaves is forgotten, and an object it follows
    * that leaves ends its life, so the same cleanup removes it, unless its row stays after its
    * parent dies: it then stands on its last point for the rest of its life. A row linked to its
-   * instigator's life, as a newer data version writes, ends its life as its parent leaves too.
+   * instigator's life ends its life as its parent leaves too.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
@@ -1442,12 +1435,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Whether the cleanup removes it: once its countdown is below 1, or, where its life ends below 0,
-   * below 0, so a row whose countdown reaches 0 exactly has one more update.
+   * Whether the cleanup removes it: once its countdown is below 0, so a row whose countdown reaches
+   * 0 exactly has one more update.
    */
   @Override
   public boolean isRemovable() {
-    return lifeEndsBelowZero() ? countdown < 0 : countdown < 1;
+    return countdown < 0;
   }
 
   /**

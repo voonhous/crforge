@@ -98,38 +98,26 @@ public final class GameData {
     mapper.writeValue(file.toFile(), document);
   }
 
-  /**
-   * The configured tables copied into a folder with every file labelled as another data version,
-   * for a test that holds a rule keyed by the data version on the configured rows.
-   *
-   * @param folder the folder to copy them into
-   * @param version the data version the copy is labelled with
-   * @return the relabelled tables
-   */
-  public static GameTables relabelled(Path folder, String version) throws IOException {
-    copyConfigured(folder);
-    relabel(folder, version);
-    return GameTables.load(folder);
-  }
+  /** The variable the tests' hand-written action rows write; no configured table declares it. */
+  public static final String TEST_VARIABLE = "TestVariable";
 
   /**
-   * Labels every table file of a folder the configured tables were already copied into as another
-   * data version; load the folder again to read the change.
+   * Declares {@link #TEST_VARIABLE} in the variables table of a folder the configured tables were
+   * already copied into, after every configured variable; load the folder again to read it.
    *
    * @param folder the folder
-   * @param version the data version the files are labelled with
    */
-  public static void relabel(Path folder, String version) throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
-    try (Stream<Path> files = Files.list(folder)) {
-      for (Path file : files.toList()) {
-        if (file.getFileName().toString().endsWith(".json")) {
-          ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-          document.put(GameTables.VERSION_FIELD, version);
-          mapper.writeValue(file.toFile(), document);
-        }
-      }
-    }
+  public static void addTestVariable(Path folder) throws IOException {
+    alterLoaded(
+        folder,
+        "variables",
+        rows -> {
+          int index = rows.size();
+          ObjectNode row = rows.putObject(TEST_VARIABLE);
+          row.put("index", index);
+          row.put("class", "LogicVariableData");
+          row.putObject("columns");
+        });
   }
 
   /** The columns of a row in the rows of a table, to alter. */

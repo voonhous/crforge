@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -13,11 +12,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The end of Goblinstein's death area (dead_goblinstein) as the doctor's area effect leaves with
- * the doctor. The ability's run ends the death area it holds by setting its countdown to 0, on
- * every data version. The game of data version 16.402.18 keeps an area effect until its countdown
- * is below 0, so the death area has one more update and leaves in the cleanup of the step after the
- * doctor's; the game of 14.593.1 removes it once its countdown is below 1, in the same cleanup as
- * the doctor.
+ * the doctor. The ability's run ends the death area it holds by setting its countdown to 0. The
+ * game keeps an area effect until its countdown is below 0, so the death area has one more update
+ * and leaves in the cleanup of the step after the doctor's.
  */
 class GoblinsteinDeathAreaEndTest {
 
@@ -25,22 +22,14 @@ class GoblinsteinDeathAreaEndTest {
 
   @Test
   @DisplayName(
-      "on 16.402.18 the death area is still listed on the step the doctor and its area effect"
-          + " leave, and leaves on the next")
-  void theDeathAreaLeavesTheStepAfterTheDoctorOn16() {
-    GameTables tables = Version16Tables.load();
+      "the death area is still listed on the step the doctor and its area effect leave, and leaves"
+          + " on the next")
+  void theDeathAreaLeavesTheStepAfterTheDoctor() {
+    GameTables tables = GameData.tables();
     int[] steps = leaveSteps(tables, new BattleRecords(tables));
 
     assertThat(steps[1]).as("the death area's last listed step").isEqualTo(steps[0]);
     assertThat(steps[2]).as("the death area's countdown on its last listed step").isZero();
-  }
-
-  @Test
-  @DisplayName("on 14.593.1 the death area leaves in the same cleanup as the doctor")
-  void theDeathAreaLeavesWithTheDoctorOn14() {
-    int[] steps = leaveSteps(GameData.tables(), new BattleRecords(GameData.tables()));
-
-    assertThat(steps[1]).as("the death area's last listed step").isEqualTo(steps[0] - 1);
   }
 
   /**

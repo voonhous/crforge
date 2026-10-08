@@ -38,8 +38,9 @@ subprojects {
 
     tasks.withType<Test> {
         useJUnitPlatform()
-        // The game tables live outside the repository; the tests that need them are skipped unless a
-        // folder is named by -Pcrforge.gameTables=<dir> or the CRFORGE_GAME_TABLES variable.
+        // The game tables live outside the repository; the tests that need them fail, naming the
+        // setting, unless a folder is named by -Pcrforge.gameTables=<dir> or the
+        // CRFORGE_GAME_TABLES variable.
         val gameTables =
             (findProperty("crforge.gameTables") as String?) ?: System.getenv("CRFORGE_GAME_TABLES")
         inputs.property("crforge.gameTables", gameTables ?: "")

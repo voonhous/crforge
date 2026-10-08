@@ -339,23 +339,6 @@ public interface WorldObserver {
       int tick, ChampionController slot, int elixir, List<ChampionView> views) {}
 
   /**
-   * An ability's dash looked around its unit: every object of the neighbour query, whether it was
-   * valid and how far, the stuns the unit shed, and the winner.
-   *
-   * @param tick the tick it happened on
-   * @param unit the unit
-   * @param candidates the objects looked at, in the query's order
-   * @param cleansed the stun buffs removed from the unit, in removal order
-   * @param chosen the winner, or null for none
-   */
-  default void abilityDashed(
-      int tick,
-      CharacterEntity unit,
-      List<CharacterEntity.DashCandidate> candidates,
-      List<String> cleansed,
-      WorldEntity chosen) {}
-
-  /**
    * A unit whose dashes chain started a dash: its count, hit list and first vector already kept.
    *
    * @param tick the tick it happened on

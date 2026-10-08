@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.DamageResult;
@@ -27,7 +27,7 @@ class RoninParryTest {
   @Test
   @DisplayName("a Knight's first hit on the Ronin is parried and struck back twice over")
   void aMeleeHitIsParriedAndReflected() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     List<Hit> hits = new ArrayList<>();

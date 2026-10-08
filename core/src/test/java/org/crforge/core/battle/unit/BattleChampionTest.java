@@ -37,8 +37,8 @@ class BattleChampionTest {
 
   @Test
   @DisplayName(
-      "a second play of the champion card makes its slot follow the new copy, its cooldown"
-          + " cleared; the old copy stays as a plain unit, and a command naming it is refused")
+      "a second play of the champion card makes its slot follow the new copy, its charge"
+          + " refilled; the old copy stays as a plain unit, and a command naming it is refused")
   void aSecondPlayIsFollowed() {
     // The towers stand passive, so the first copy lives on; the first player's word whose shuffle
     // deals her into the opening hand.
@@ -58,7 +58,8 @@ class BattleChampionTest {
     battle.useAbility(used, 0, "q_0", "a1");
     run(battle, used);
     assertThat(lastUse(battle).outcome().code()).isEqualTo(AbilityCommand.OK);
-    assertThat(slot.getCooldownMs()).isPositive();
+    // Her ability has one charge and no cooldown: the use spends it.
+    assertThat(slot.getCharges()).isZero();
 
     // Four plays of Skeletons cycle her back into the hand.
     for (int i = 0; i < 4; i++) {
@@ -69,7 +70,7 @@ class BattleChampionTest {
     CharacterEntity second = battle.getPlays().get(battle.getPlays().size() - 1).units().get(0);
     assertThat(second.getDeployIndex()).isEqualTo(5);
     assertThat(slot.getDeployIndex()).isEqualTo(second.getDeployIndex());
-    assertThat(slot.getCooldownMs()).isZero();
+    assertThat(slot.getCharges()).isEqualTo(1);
     assertThat(battle.getWorld().getHolder().entities()).contains(first);
 
     int now = afterDeployWithElixir(battle, match);
@@ -183,8 +184,9 @@ class BattleChampionTest {
     run(battle, used);
     assertThat(lastUse(battle).outcome().code()).isEqualTo(AbilityCommand.OK);
     assertThat(lastUse(battle).outcome().requested()).containsExactly(queen);
-    assertThat(second.getCooldownMs()).isPositive();
-    assertThat(first.getCooldownMs()).isZero();
+    // Her one charge spent; the Golden Knight's slot, never played, keeps its own.
+    assertThat(second.getCharges()).isZero();
+    assertThat(first.getCharges()).isNotZero();
   }
 
   @Test

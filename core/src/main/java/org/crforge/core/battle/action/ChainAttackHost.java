@@ -27,14 +27,6 @@ public interface ChainAttackHost {
    */
   boolean attackingOrNoAttack();
 
-  /**
-   * True when a run starts with its hop timer stopped, so its first next-target search waits until
-   * the first hop's projectile has gone, as every later one does; false when the timer starts at 0
-   * and the first search runs on the step after the first hop, while its projectile still flies.
-   * The rule is the game build's (see the battle's data version rules).
-   */
-  boolean firstSearchWaitsForHop();
-
   /** True while the owner's targeting component is on. */
   boolean targetingOn();
 

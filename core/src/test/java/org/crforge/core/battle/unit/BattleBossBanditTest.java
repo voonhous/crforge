@@ -33,8 +33,8 @@ class BattleBossBanditTest {
 
   @Test
   @DisplayName(
-      "a kill schedules the killer's killed-done check after the dying unit's death damage and"
-          + " before its death hooks, and the check runs in the killer's next pending pass")
+      "a kill schedules the killer's killed-done check in the dying unit's death, and the check runs"
+          + " in the killer's next pending pass")
   void theHookComesBetweenTheDeathSlotAndTheDeathHooks() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     List<String> log = new ArrayList<>();
@@ -57,7 +57,6 @@ class BattleBossBanditTest {
     assertThat(log)
         .containsExactly(
             "hit Golemite",
-            "area Golemite BossBandit",
             "killed_done BossBandit Golemite BossBandit_won_against_bandit_check false",
             "checked BossBandit BossBandit_won_against_bandit_check Golemite Golemite null");
   }

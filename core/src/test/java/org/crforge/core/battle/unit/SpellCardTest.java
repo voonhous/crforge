@@ -35,13 +35,15 @@ class SpellCardTest {
 
   @Test
   @DisplayName(
-      "a card that names no unit but casts is a spell from the characters card table too: the"
-          + " wizards cast their area effect, which makes the wizard")
-  void theWizardsAreSpells() {
+      "a card that lists its unit and casts deploys as a spell: the wizards list the wizard, 50 ms"
+          + " late, and make their area effect")
+  void theWizardsDeployAsSpells() {
     DeployCard electro = GameData.card("ElectroWizard");
-    assertThat(electro.spell()).isTrue();
+    assertThat(electro.spellAsDeploy()).isTrue();
     assertThat(electro.areaEffect()).isEqualTo("ElectroWizardZap");
-    assertThat(electro.placementUnit()).isNull();
+    assertThat(electro.listed())
+        .extracting(listed -> listed.unit().name() + " " + listed.delayMs())
+        .containsExactly("ElectroWizard 50");
     assertThat(GameData.card("IceWizard").areaEffect()).isEqualTo("IceWizardCold");
     // Deploying as a spell changes nothing for a card with a unit and no cast.
     DeployCard heal = GameData.card("Heal");

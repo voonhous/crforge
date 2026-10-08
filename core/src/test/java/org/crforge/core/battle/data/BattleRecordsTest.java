@@ -228,15 +228,28 @@ class BattleRecordsTest {
   @DisplayName(
       "a projectile's spawn chain is carried, and whether its spawns share its group or are new"
           + " projectiles")
-  void aProjectileSpawnChain() {
+  void aProjectileSpawnChain(@TempDir Path folder) throws IOException {
     ProjectileData bomb = records.projectile("BombSkeletonProjectile_EV1");
     assertThat(bomb.spawnProjectile()).isEqualTo("BombSkeletonProjectile_2_EV1");
     assertThat(bomb.spawnChain()).isEqualTo(2);
     assertThat(bomb.chainIsNewProjectile()).isFalse();
     assertThat(bomb.unmodelledColumns()).isEmpty();
-    ProjectileData rocket = records.projectile("RocketSpell_crazy_1");
-    assertThat(rocket.spawnChain()).isEqualTo(4);
-    assertThat(rocket.chainIsNewProjectile()).isTrue();
+    ProjectileData fireWall = records.projectile("FireWallProjectile");
+    assertThat(fireWall.spawnProjectile()).isEqualTo("FireWallMovingProjectile");
+    assertThat(fireWall.spawnChain()).isEqualTo(2);
+    // No configured row makes its chain's spawns new projectiles; a row that does carries it.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "projectiles",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "FireWallProjectile");
+              columns.put("SpawnChain", 4);
+              columns.put("ChainIsNewProjectile", true);
+            });
+    ProjectileData chained = new BattleRecords(tables).projectile("FireWallProjectile");
+    assertThat(chained.spawnChain()).isEqualTo(4);
+    assertThat(chained.chainIsNewProjectile()).isTrue();
   }
 
   @Test
@@ -246,9 +259,10 @@ class BattleRecordsTest {
     assertThat(curse.deathSpawn()).isEqualTo("VoodooHog");
     assertThat(curse.deathSpawnCount()).isEqualTo(1);
     assertThat(curse.deathSpawnIsEnemy()).isTrue();
-    assertThat(curse.deathSpawnDeployDelay()).isTrue();
+    assertThat(curse.deathSpawnDeployDelay()).isFalse();
     assertThat(curse.otherBuffDeathSpawnAllowed()).isTrue();
     assertThat(curse.unmodelledColumns()).isEmpty();
+    assertThat(records.buff("PancakesCurse").deathSpawnDeployDelay()).isTrue();
   }
 
   @Test
@@ -396,10 +410,11 @@ class BattleRecordsTest {
     UnitData king = records.unit("KingTower");
     assertThat(king.onStartingAction()).isEqualTo("KingTower_StartingGroup");
     assertThat(king.onDeathAction()).isNull();
-    assertThat(records.unit("Witch_crazy_1").onStartingAction())
-        .isEqualTo("Witch_crazy_1_start_action_group");
-    assertThat(records.unit("Tombstone_crazy_1").onDeathAction())
-        .isEqualTo("Tombstone_crazy_1_OnDeathAction");
+    assertThat(records.unit("Witch_EV1").onStartingAction())
+        .isEqualTo("Witch_EV1_Start_Action_Group");
+    assertThat(records.unit("IceGolemite").onDeathAction()).isEqualTo("IceGolemiteDeathExplosion");
+    assertThat(records.unit("BossBandit").onKilledAction())
+        .isEqualTo("BossBandit_defeated_by_bandit_check");
     UnitData knight = records.unit("Knight");
     assertThat(knight.onStartingAction()).isNull();
     assertThat(knight.onDeathAction()).isNull();
@@ -410,8 +425,21 @@ class BattleRecordsTest {
   @DisplayName(
       "a unit carries its death damage, pushback and death spawn, and lists the columns of its"
           + " death the battle does not model")
-  void deathColumns() {
-    UnitData tombstone = records.unit("Tombstone_crazy_1");
+  void deathColumns(@TempDir Path folder) throws IOException {
+    // No configured row deals damage or pushes as it dies, its death area effect doing both; a row
+    // that does carries them.
+    GameData.altered(
+        folder,
+        "buildings",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "Tombstone");
+          columns.put("DeathDamage", 500);
+          columns.put("DeathDamageRadius", 3000);
+        });
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Golemite").put("DeathPushBack", 900));
+    BattleRecords altered = new BattleRecords(GameTables.load(folder));
+    UnitData tombstone = altered.unit("Tombstone");
     assertThat(tombstone.deathDamage()).isEqualTo(500);
     assertThat(tombstone.deathDamageRadius()).isEqualTo(3000);
     assertThat(tombstone.unmodelledDeathColumns()).isEmpty();
@@ -422,7 +450,7 @@ class BattleRecordsTest {
     assertThat(records.unit("BattleRam").unmodelledDeathColumns()).isEmpty();
     assertThat(records.unit("BattleRam").spawnAngleShift()).isEqualTo(180);
     assertThat(records.unit("ElixirGolem1").unmodelledDeathColumns()).isEmpty();
-    UnitData golemite = records.unit("Golemite");
+    UnitData golemite = altered.unit("Golemite");
     assertThat(golemite.deathPushBack()).isEqualTo(900);
     assertThat(golemite.targetOnlyBuildings()).isTrue();
     UnitData elixirGolem = records.unit("ElixirGolem2");
@@ -447,7 +475,7 @@ class BattleRecordsTest {
     assertThat(prince.jumpHeight()).isEqualTo(4000);
     assertThat(prince.jumpSpeed()).isEqualTo(160);
     assertThat(prince.kamikaze()).isFalse();
-    assertThat(records.unit("Ram_crazy_1").keepChargingAfterAttack()).isTrue();
+    assertThat(records.unit("BattleRam_EV1").keepChargingAfterAttack()).isTrue();
     UnitData ram = records.unit("BattleRam");
     assertThat(ram.chargeRange()).isEqualTo(300);
     assertThat(ram.jumpEnabled()).isFalse();
@@ -467,7 +495,7 @@ class BattleRecordsTest {
     assertThat(bandit.dashDamage()).isEqualTo(152);
     assertThat(bandit.dashRadius()).isZero();
     assertThat(bandit.dashLandingTimeMs()).isZero();
-    assertThat(bandit.dashImmuneToDamageTimeMs()).isEqualTo(100);
+    assertThat(bandit.dashImmuneToDamageTimeMs()).isEqualTo(150);
     assertThat(bandit.jumpSpeed()).isEqualTo(500);
     assertThat(bandit.unmodelledColumns()).isEmpty();
     UnitData megaKnight = records.unit("MegaKnight");
@@ -484,12 +512,13 @@ class BattleRecordsTest {
     assertThat(goldenKnight.dashCount()).isEqualTo(10);
     assertThat(goldenKnight.dashSecondaryRange()).isEqualTo(5500);
     assertThat(goldenKnight.backDashRadius()).isEqualTo(5500);
-    // Its ability dashes at the nearest within 5500, and keeps its pending buff while it waits.
+    // Its ability waits for a reference within 5500 and runs its activation group as it fires;
+    // it names no pending buff.
     AbilityData chain = goldenKnight.ability();
     assertThat(chain.unmodelledColumns()).isEmpty();
     assertThat(chain.dashRange()).isEqualTo(5500);
-    assertThat(chain.dashTargetFurthest()).isFalse();
-    assertThat(chain.pendingBuff()).isEqualTo("GoldenKnightCharge");
+    assertThat(chain.onActivationAction()).isEqualTo("GoldenKnight_OnAbilityActivationGroup");
+    assertThat(chain.pendingBuff()).isNull();
     // Its deploy push is read, and its spawner's limit changes nothing without a spawn.
     assertThat(megaKnight.spawnPushback()).isEqualTo(1000);
     assertThat(megaKnight.spawnPushbackRadius()).isEqualTo(1000);
@@ -576,7 +605,7 @@ class BattleRecordsTest {
       assertThat(records.unit(name).unmodelledColumns()).as(name).isEmpty();
     }
     assertThat(records.unit("MegaKnight_EV1").onAttackAction())
-        .isEqualTo("MegaKnight_EV1_uppercut");
+        .isEqualTo("MegaKnight_EV1_uppercut_start_group");
     assertThat(records.unit("BabyDragon_EV1").onAttackAction())
         .isEqualTo("baby_dragon_evo_wind_action");
     // The evolved Inferno Dragon's counts its attacks in a variable; its list's entries leave the
@@ -601,12 +630,10 @@ class BattleRecordsTest {
 
   @Test
   @DisplayName(
-      "a shaped area effect reads its rectangle and its filter, and its damage type without"
-          + " damage; a circle with a filter and damage reads its radius and damage type, with a"
-          + " crown tower share too, a circle that pushes without damage its push, and one whose"
-          + " hit action chooses a buff its hit action; a circle that neither damages, pushes nor"
-          + " has such a hit action, or splits its damage, is not modelled")
-  void aShapedAreaEffect(@TempDir Path folder) throws IOException {
+      "a shaped area effect of the filter form reads its rectangle and its filter; a circle with a"
+          + " filter and damage reads its radius and its damage, by name or inline, and one whose"
+          + " hit action chooses a buff its hit action")
+  void aShapedAreaEffect() {
     AreaEffectData wind = records.areaEffect("BabyDragon_EV1_wind_aeo");
     assertThat(wind.shaped()).isTrue();
     assertThat(List.of(wind.shapeWidth(), wind.shapeHeight())).containsExactly(8000, 9000);
@@ -614,28 +641,7 @@ class BattleRecordsTest {
     assertThat(wind.onHitAction()).isEqualTo("BabyDragon_EV1_AEO_select_buff");
     assertThat(wind.unmodelledColumns()).isEmpty();
     assertThat(records.areaEffect("Zap").shaped()).isFalse();
-    assertThat(records.areaEffect("Zap").filter()).isNull();
-    // A circle that pushes without damage, as the Ice Golemite hero form's knockback does: its
-    // damage type is read by no hit.
-    AreaEffectData knockback = records.areaEffect("IceGolemiteHero_KnockBack_AEO");
-    assertThat(knockback.unmodelledColumns()).isEmpty();
-    assertThat(knockback.shapeRadius()).isEqualTo(1500);
-    assertThat(knockback.pushback()).isEqualTo(1000);
-    assertThat(knockback.damage()).isZero();
-    assertThat(knockback.damageType()).isNull();
-    assertThat(knockback.filter()).isEqualTo("CommonAreaDamageFilter");
-    // A circle that neither damages nor pushes is not held.
-    Files.createDirectories(folder.resolve("still"));
-    GameTables still =
-        GameData.altered(
-            folder.resolve("still"),
-            "area_effect_objects",
-            rows -> GameData.columns(rows, "IceGolemiteHero_KnockBack_AEO").put("Pushback", 0));
-    assertThat(
-            new BattleRecords(still)
-                .areaEffect("IceGolemiteHero_KnockBack_AEO")
-                .unmodelledColumns())
-        .contains("Shape");
+    assertThat(records.areaEffect("Zap").filter()).isEqualTo("CommonAreaDamageFilter");
     // A circle whose hit action chooses a buff to spawn on what it reaches, hitting on every
     // update, as the Ice Golemite hero form's slow circle does; its damage type is read by no hit.
     AreaEffectData slow = records.areaEffect("IceGolemiteHero_Slow_AEO");
@@ -645,34 +651,22 @@ class BattleRecordsTest {
     assertThat(slow.damage()).isZero();
     assertThat(slow.damageType()).isNull();
     assertThat(slow.hitSpeedMs()).isEqualTo(50);
-    // A circle whose damage a crown tower takes less of, hitting every 1500 ms, as the Ice
-    // Golemite hero form's ability has; where its looping effect is shown is the view's.
+    // A circle whose damage names a damage type row, hitting every 1500 ms, as the Ice Golemite
+    // hero form's ability has; where its looping effect is shown is the view's.
     AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");
     assertThat(storm.unmodelledColumns()).isEmpty();
     assertThat(storm.shapeRadius()).isEqualTo(4000);
-    assertThat(storm.crownTowerDamagePercent()).isEqualTo(-95);
-    assertThat(storm.damageType()).isEqualTo("IceGolemiteHero_AEO_Damage");
+    assertThat(storm.typedDamage().name()).isEqualTo("IceGolemiteHero_AEO_Damage");
     assertThat(storm.filter()).isEqualTo("CommonAreaDamageFilter");
-    assertThat(List.of(storm.hitSpeedMs(), storm.hitSpeedOffsetMs())).containsExactly(1500, 1450);
-    // The same circle splitting its damage among what it reaches is not held.
-    GameTables shared =
-        GameData.altered(
-            folder,
-            "area_effect_objects",
-            rows -> GameData.columns(rows, "IceGolemiteHero_Damage_AEO").put("SharedDamage", true));
-    assertThat(
-            new BattleRecords(shared).areaEffect("IceGolemiteHero_Damage_AEO").unmodelledColumns())
-        .contains("Shape");
-    // A circle with a filter and damage queued through its damage type, as the Giant hero form's
-    // landing has.
+    assertThat(List.of(storm.hitSpeedMs(), storm.hitSpeedOffsetMs())).containsExactly(1500, 0);
+    // A circle with a filter and its damage written inline, as the Giant hero form's landing has.
     AreaEffectData landing = records.areaEffect("GiantHero_LandingAEO");
     assertThat(landing.unmodelledColumns()).isEmpty();
     assertThat(landing.shaped()).isTrue();
     assertThat(landing.shapeRadius()).isEqualTo(1000);
     assertThat(landing.shapeWidth()).isZero();
-    assertThat(landing.damageType()).isEqualTo("GiantHero_LandingAEO_DamageType");
-    assertThat(landing.filter()).isEqualTo("GroundCharacterTargets");
-    assertThat(landing.damage()).isEqualTo(53);
+    assertThat(landing.filter()).isEqualTo("CommonAreaDamageGround");
+    assertThat(landing.typedDamage().baseDamage()).isEqualTo(53);
   }
 
   @Test
@@ -696,17 +690,15 @@ class BattleRecordsTest {
   @Test
   @DisplayName(
       "a buff's projectile in place of its carrier's and its removal on attack are read: the hero"
-          + " Mega Minion's arrival buff sets both, its crown tower buff only the projectile")
+          + " Mega Minion's arrival buff sets both")
   void aBuffsProjectileAndRemovalOnAttackAreRead() {
     BuffData arrival = records.buff("MegaMinion_hero_Damage_Buff");
     assertThat(arrival.overrideProjectile()).isEqualTo("MegaMinionSpit_DoubleDamage");
     assertThat(arrival.removeOnAttack()).isTrue();
-    assertThat(arrival.onRemoveAction()).isEqualTo("MegaMinion_hero_CrownTowerBuff_Spawn");
+    assertThat(arrival.onRemoveAction()).isNull();
     assertThat(arrival.unmodelledColumns()).isEmpty();
-    BuffData crownTower = records.buff("MegaMinion_hero_CrownTower_Buff");
-    assertThat(crownTower.overrideProjectile()).isEqualTo("MegaMinionSpit_CrownTowerDamage");
-    assertThat(crownTower.removeOnAttack()).isFalse();
     assertThat(records.buff("Rage").overrideProjectile()).isNull();
+    assertThat(records.buff("Rage").removeOnAttack()).isFalse();
   }
 
   @Test
@@ -717,7 +709,7 @@ class BattleRecordsTest {
     BuffData notPushed = records.buff("Valkyrie_NotPushed_BUF");
     assertThat(notPushed.gameTagsToSet()).isEqualTo(BITS.noPushedByEnemy());
     assertThat(notPushed.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("Valkyrie_MiniTornado_EV1").gameTagsToSet()).isZero();
+    assertThat(records.buff("Valkyrie_MiniTornado_EV1_BUFF").gameTagsToSet()).isZero();
 
     GameTables tables =
         GameData.altered(
@@ -775,8 +767,17 @@ class BattleRecordsTest {
             "area_effect_objects",
             rows -> {
               GameData.columns(rows, "Lightning").put("ProjectileStartHeight", -1);
-              // Two hits over its life, without HitBiggestTargets.
-              GameData.columns(rows, "RoyalDeliveryArea").put("HitSpeed", 1000);
+              // Two hits over its life, without HitBiggestTargets, written in the hit-switch form
+              // whose hit pass spreads them: the configured row is in the filter form.
+              ObjectNode delivery = GameData.columns(rows, "RoyalDeliveryArea");
+              delivery.remove("Filter");
+              delivery.put("HitsAir", true);
+              delivery.put("HitsGround", true);
+              delivery.put("OnlyEnemies", true);
+              delivery.put("IgnoreBuildings", true);
+              delivery.put("HitSpeed", 1000);
+              // A hit-switch row puts a projectile onto each object it hits unless it says not.
+              delivery.remove("TargetProjectiles");
               // One hit only, the projectile on its own point.
               GameData.columns(rows, "Zap").put("Projectile", "RoyalDeliveryProjectile");
             });
@@ -830,12 +831,30 @@ class BattleRecordsTest {
     assertThat(records.unit("Knight").clonedVersion()).isNull();
     assertThat(records.buff("Clone").unmodelledColumns()).isEmpty();
 
+    // The configured Clone is in the filter form, which refuses a number damage by its Damage
+    // column; written in the hit-switch form, whose hit pass reads the Clone switch, it is refused
+    // by its Clone column.
     GameTables tables =
         GameData.altered(
             folder,
             "area_effect_objects",
             rows -> GameData.columns(rows, "Clone").put("Damage", 100));
     assertThat(new BattleRecords(tables).areaEffect("Clone").unmodelledColumns())
+        .containsExactly("Damage");
+    GameTables switches =
+        GameData.altered(
+            Files.createDirectories(folder.resolve("switches")),
+            "area_effect_objects",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "Clone");
+              columns.remove("Filter");
+              columns.put("HitsAir", true);
+              columns.put("HitsGround", true);
+              columns.put("OnlyOwnTroops", true);
+              columns.put("IgnoreBuildings", true);
+              columns.put("Damage", 100);
+            });
+    assertThat(new BattleRecords(switches).areaEffect("Clone").unmodelledColumns())
         .containsExactly("Clone");
   }
 
@@ -849,7 +868,7 @@ class BattleRecordsTest {
     assertThat(giant.reflectedAttackBuffDurationMs()).isEqualTo(500);
     assertThat(giant.reflectedAttackRadius()).isEqualTo(2000);
     assertThat(giant.reflectedAttackDamage()).isEqualTo(75);
-    assertThat(giant.reflectAttackCrownTowerDamage()).isEqualTo(50);
+    assertThat(giant.reflectAttackCrownTowerDamage()).isEqualTo(38);
     assertThat(records.unit("Knight").reflectedAttackBuff()).isNull();
     assertThat(records.projectile("BarbLogHeroProjectileReRolling").ignoreReflectedAttack())
         .isTrue();
@@ -885,7 +904,7 @@ class BattleRecordsTest {
     assertThat(tombstone.spawnStartTimeMs()).isZero();
     assertThat(tombstone.unmodelledColumns()).isEmpty();
     assertThat(records.unit("GoblinDrill").spawnStartTimeMs()).isEqualTo(1000);
-    assertThat(records.unit("Mortar").minimumRange()).isEqualTo(2900);
+    assertThat(records.unit("Mortar").minimumRange()).isEqualTo(3500);
     assertThat(records.unit("Cannon").spawnCharacter()).isNull();
     assertThat(records.unit("DarkPrince").unmodelledColumns()).isEmpty();
     // The evolved Battle Ram's completed charge runs its push, which is modelled.
@@ -931,11 +950,11 @@ class BattleRecordsTest {
     assertThat(rider.spawnAttachMaxRotation()).isZero();
     assertThat(rider.flyingHeight()).isEqualTo(4000);
     assertThat(rider.deathInheritIgnoreList()).isTrue();
-    // A second spawn row is read; the level this data gives it is a column nothing reads.
+    // A second spawn row is read.
     UnitData superWitch = records.unit("SuperWitch");
     assertThat(superWitch.spawnCharacter2()).isEqualTo("Bat");
     assertThat(superWitch.spawnCharacter3()).isNull();
-    assertThat(superWitch.unmodelledColumns()).containsExactly("SpawnCharacterLevelIndex2");
+    assertThat(superWitch.unmodelledColumns()).isEmpty();
   }
 
   @Test
@@ -981,9 +1000,9 @@ class BattleRecordsTest {
             BITS.noGiantbufferChefEnchantment()
                 | BITS.avoidanceAsObstacle()
                 | BITS.noMoveAllowAttract());
-    // The same three written with spaces are the same tags.
+    // The same three written with spaces, and NO_ATTACK, are the same tags and that one.
     assertThat(records.unit("EliteArcherHero_Dummy").gameTagsToSet())
-        .isEqualTo(egg.gameTagsToSet());
+        .isEqualTo(egg.gameTagsToSet() | BITS.noAttack());
     // The Goblins hero's banner sets three more the battle reads: no damage, no contact, no
     // targeting; a row with one of them alone is taken too.
     assertThat(records.unit("GoblinHero_Flag_Building").gameTagsToSet())
@@ -1027,8 +1046,8 @@ class BattleRecordsTest {
     assertThat(queen.buff()).isEqualTo("ArcherQueenRapid");
     assertThat(queen.buffTimeMs()).isEqualTo(3500);
     assertThat(queen.manaCost()).isEqualTo(1);
-    assertThat(queen.cooldownMs()).isEqualTo(17000);
-    assertThat(queen.maxCharges()).isZero();
+    assertThat(queen.cooldownMs()).isZero();
+    assertThat(queen.maxCharges()).isEqualTo(1);
     assertThat(queen.unmodelledColumns()).isEmpty();
     assertThat(records.unit("BossBandit").ability().maxCharges()).isEqualTo(2);
     // A lane switch, and the character the ability leaves behind, are read.
@@ -1038,9 +1057,11 @@ class BattleRecordsTest {
     assertThat(miner.unmodelledColumns()).isEmpty();
     assertThat(queen.switchLanes()).isFalse();
     assertThat(queen.activationSpawnCharacter()).isNull();
-    // An area object, the follow-up state and the tags the unit carries in it are read.
+    // The follow-up state and the tags the unit carries in it are read; the Monk's row names no
+    // area object (its activation action makes its Deflect).
     AbilityData monk = records.unit("Monk").ability();
-    assertThat(monk.areaEffectObject()).isEqualTo("Deflect");
+    assertThat(monk.areaEffectObject()).isNull();
+    assertThat(monk.onActivationAction()).isEqualTo("monk_deflect_activation");
     assertThat(monk.abilityStateDurationMs()).isEqualTo(4000);
     assertThat(monk.gameTagsWhileAbilityActive())
         .isEqualTo(BITS.avoidanceAsObstacle() | BITS.noMoveAllowAttract());
@@ -1156,7 +1177,7 @@ class BattleRecordsTest {
     assertThat(records.filter("EnemyTowersOnly").isFilterDead()).isFalse();
     GameObjectFilter skeletons = records.filter("friendly_skeletons_can_be_dead");
     assertThat(skeletons.getIncludeCharactersWithData())
-        .containsExactlyInAnyOrder("Skeleton", "Skeleton_EV1", "SkeletonWarrior");
+        .containsExactly("Witch_EV1_Healing_Skeleton");
     // Its three tags, by the bits the game tags table gives them.
     GameObjectFilter noDash = records.filter("enemy_troops_no_dash");
     assertThat(noDash.getFilterTags())
@@ -1258,11 +1279,13 @@ class BattleRecordsTest {
                   resolved.removeAll();
                   resolved.setAll(base.deepCopy());
                   resolved.put("Base", "FILTER.friendly_troop_no_buildings");
-                  resolved.put("FilterFlying", true);
+                  // Its own columns add one its base leaves at the default.
+                  resolved.put("FilterDead", false);
                   ObjectNode missing = GameData.columns(rows, "friendly_skeletons_can_be_dead");
                   missing.put("Base", "FILTER.friendly_troop_no_buildings");
                 }));
-    assertThat(altered.filter("friendly_troop").isFilterFlying()).isTrue();
+    assertThat(altered.filter("friendly_troop").isFilterDead()).isFalse();
+    assertThat(altered.filter("friendly_troop").isFilterBuildings()).isTrue();
     assertThat(altered.filter("friendly_troop").isMatchTeamOwn()).isTrue();
     assertThatThrownBy(() -> altered.filter("friendly_skeletons_can_be_dead"))
         .isInstanceOf(UnsupportedOperationException.class)
@@ -1367,12 +1390,12 @@ class BattleRecordsTest {
           + " individual buff")
   void anInlineBuff() {
     BuffData strongest = records.buff("DarkMagicAOE_Damage_lv3");
-    assertThat(strongest.damagePerSecond()).isEqualTo(1330);
-    assertThat(strongest.crownTowerDamagePerHit()).isEqualTo(19);
+    assertThat(strongest.damagePerSecond()).isEqualTo(2720);
+    assertThat(strongest.crownTowerDamagePerHit()).isEqualTo(38);
     assertThat(strongest.hitFrequency()).isEqualTo(100);
     assertThat(strongest.addAsIndividualBuff()).isTrue();
     assertThat(strongest.unmodelledColumns()).isEmpty();
-    assertThat(records.buff("DarkMagicAOE_Damage_lv1").damagePerSecond()).isEqualTo(297);
+    assertThat(records.buff("DarkMagicAOE_Damage_lv1").damagePerSecond()).isEqualTo(600);
     assertThat(records.buff("Rage").addAsIndividualBuff()).isFalse();
     assertThatThrownBy(() -> records.buff("DarkMagicAOE_Damage_lv4"))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1384,7 +1407,7 @@ class BattleRecordsTest {
       "a circle shape reads its radius, and any other shape is refused; Vines' snares, which name"
           + " a base and a buff for riders, are modelled")
   void vinesShapeAndSnares() {
-    assertThat(records.circleRadius("Vines_AOE_Shape")).isEqualTo(2500);
+    assertThat(records.circleRadius("GiantHero_Slap_Shape")).isEqualTo(2500);
     assertThatThrownBy(() -> records.circleRadius("MegaMinion_hero_shape"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("is a Global");
@@ -1394,7 +1417,7 @@ class BattleRecordsTest {
     assertThat(snare.hitSpeedMultiplier()).isEqualTo(-100);
     assertThat(snare.spawnSpeedMultiplier()).isEqualTo(-100);
     assertThat(snare.damagePerSecond()).isEqualTo(60);
-    assertThat(snare.crownTowerDamagePerHit()).isEqualTo(15);
+    assertThat(snare.crownTowerDamagePerHit()).isEqualTo(14);
     assertThat(snare.enableStacking()).isTrue();
   }
 
@@ -1503,7 +1526,9 @@ class BattleRecordsTest {
     UnitData healer = records.unit("BattleHealer");
     assertThat(healer.hovering()).isTrue();
     assertThat(healer.areaEffectOnHit()).isEqualTo("BattleHealerHeal");
-    assertThat(healer.spawnAreaObject()).isEqualTo("BattleHealerSpawnHeal");
+    // Its spawn heal is its starting action's, not an area object of its row.
+    assertThat(healer.spawnAreaObject()).isNull();
+    assertThat(healer.onStartingAction()).isEqualTo("BattleHealerSpawnHeal");
     assertThat(healer.buffWhenNotAttacking()).isNull();
     assertThat(healer.unmodelledColumns()).isEmpty();
     assertThat(records.unit("Knight").areaEffectOnHit()).isNull();
@@ -1514,8 +1539,7 @@ class BattleRecordsTest {
     assertThat(bush.buffWhenNotAttackingUseAttackRange()).isFalse();
     assertThat(bush.startWithBuffWhenNotAttacking()).isTrue();
     assertThat(bush.unmodelledColumns()).isEmpty();
-    for (String unit :
-        List.of("SuspiciousBush", "SuperKnight", "Hunter_crazy_2", "RageBarbarianEvoGhost")) {
+    for (String unit : List.of("SuspiciousBush", "SuperKnight", "RageBarbarianEvoGhost")) {
       assertThat(records.unit(unit).unmodelledColumns())
           .as(unit)
           .doesNotContain("BuffWhenNotAttacking");
@@ -1544,7 +1568,16 @@ class BattleRecordsTest {
         GameData.altered(
             folder,
             "area_effect_objects",
-            rows -> GameData.columns(rows, "Zap").put("OneHitPerTarget", true));
+            rows -> {
+              // The configured Zap chooses by a filter; written with its hit switches instead.
+              ObjectNode zap = GameData.columns(rows, "Zap");
+              zap.remove("Filter");
+              zap.put("Damage", 75);
+              zap.put("HitsAir", true);
+              zap.put("HitsGround", true);
+              zap.put("OnlyEnemies", true);
+              zap.put("OneHitPerTarget", true);
+            });
     assertThat(new BattleRecords(tables).areaEffect("Zap").unmodelledColumns())
         .containsExactly("OneHitPerTarget");
   }

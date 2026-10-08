@@ -25,21 +25,24 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * An action that spawns characters on a ring around a character: the evolved Witch's interval spawn
- * of data version 16.402.18 (Count 4, SpawnRadius 2000, no deploy, not a death spawn). The ring is
- * the plain one, child {@code i} of {@code n} at {@code (n - 1 - i) * 360 / n}; a source whose row
- * sets an angle shift turns it by that shift and the angle it faces; and the source's running
- * actions hear of every child, so the Witch's soul drain counts the ring's skeletons as hers. Each
- * scene adds the spawn row to the configured actions and schedules it on a unit.
+ * (Count 4, SpawnRadius 2000, no deploy, not a death spawn). The ring is the plain one, child
+ * {@code i} of {@code n} at {@code (n - 1 - i) * 360 / n}; a source whose row sets an angle shift
+ * turns it by that shift and the angle it faces; and the source's running actions hear of every
+ * child, so the Witch's soul drain counts the ring's skeletons as hers. Each scene adds the spawn
+ * row to the configured actions and schedules it on a unit.
  */
 class BattleCharacterRingSpawnTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /**
-   * The added row: four SkeletonWarrior (which the soul drain counts) on a 2000 ring, as
+   * The added row: four Witch_EV1_Healing_Skeleton (which the soul drain counts) on a 2000 ring, as
    * Witch_EV1_Interval_Spawn makes its skeletons.
    */
   private static final String RING = "Test_Ring_Spawn";
+
+  /** The skeleton row the evolved Witch's soul drain counts, which the ring makes. */
+  private static final String COUNTED = "Witch_EV1_Healing_Skeleton";
 
   /** The tick the row is scheduled on: the units have deployed and started their actions. */
   private static final int SCHEDULED = 30;
@@ -63,7 +66,7 @@ class BattleCharacterRingSpawnTest {
               .put("ClassType", "ActionSpawnToLocation")
               .put("Count", 4)
               .put("IsDeathSpawn", false)
-              .put("SpawnData", "SkeletonWarrior")
+              .put("SpawnData", "Witch_EV1_Healing_Skeleton")
               .put("SpawnRadius", 2000)
               .put("SpawnType", "CharacterType")
               .put("UseDeploy", false);
@@ -86,7 +89,8 @@ class BattleCharacterRingSpawnTest {
           @Override
           public void characterSpawned(
               int tick, SpawnHost source, CharacterEntity child, int x, int y) {
-            if (source == unit && child.getData().name().equals("SkeletonWarrior")) {
+            // The ring's children are made on the tick the row is scheduled for.
+            if (source == unit && tick == SCHEDULED) {
               int shift = unit.getData().spawnAngleShift();
               int turn =
                   shift == 0
@@ -184,8 +188,12 @@ class BattleCharacterRingSpawnTest {
       match.getBattle().step();
       for (CharacterEntity skeleton : hers) {
         if (skeleton.getHitPoints().getHitPoints() <= 0 && dead.add(skeleton)) {
-          deaths.add(tick);
-          if (skeleton.getData().name().equals("SkeletonWarrior")) {
+          // Her drain's troop filter counts only Witch_EV1_Healing_Skeleton, not the skeletons
+          // of her interval spawn.
+          if (skeleton.getData().name().equals(COUNTED)) {
+            deaths.add(tick);
+          }
+          if (ring.stream().anyMatch(m -> m.child() == skeleton)) {
             ringDeaths.add(tick);
           }
         }
@@ -229,7 +237,7 @@ class BattleCharacterRingSpawnTest {
             })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(
-            "spawning SkeletonWarrior asks for a ring around a character whose row attaches its"
+            "spawning Witch_EV1_Healing_Skeleton asks for a ring around a character whose row attaches its"
                 + " children, which is not established");
   }
 }

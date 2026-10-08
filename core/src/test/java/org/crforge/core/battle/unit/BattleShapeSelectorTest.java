@@ -3,12 +3,14 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ShapeSelector;
@@ -19,20 +21,92 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Vines' selector where the reference runs do not reach: a circle that holds nobody, two objects of
- * equal score, a shield that changes the pick, a row that may pick an object again, and a selector
- * on a unit.
+ * A shape selector run by an area effect where the reference runs do not reach: a circle that holds
+ * nobody, two objects of equal score, a shield that changes the pick, a row that may pick an object
+ * again, an underground object, and a selector on a crown tower.
+ *
+ * <p>The selector is the Giant hero form's slap selector, a row that scores by hit points and
+ * shield and picks each object once, written with three entries of Vines' air-to-ground group at 0,
+ * 50 and 150 ms, Vines' filter and none of the slap's wait, pause tags, tags or actions on its
+ * owner. Vines' area effect is written to run it 900 ms after it is placed, for 2000 ms, in place
+ * of its filter-form hit pass.
  */
 class BattleShapeSelectorTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  private static final String SELECTOR = "Vines_Target_Selector";
+  private static final String SELECTOR = "GiantHero_Target_Selector";
+
+  /** The group the area effect starts with, a row the test writes. */
+  private static final String START = "Test_Selector_Start";
 
   /** A point on the top side, away from every tower. */
   private static final int X = 9000;
 
   private static final int Y = 20000;
+
+  /**
+   * The configured tables with the selector and Vines' area effect written as the class comment
+   * says, the selector's columns then edited.
+   */
+  private static GameTables selectorTables(Path folder, Consumer<ObjectNode> edit)
+      throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode f = (ObjectNode) rows.get(SELECTOR).get("fields");
+          for (String column :
+              List.of(
+                  "AbortIfInstigatorDies",
+                  "ActionOnSelfWhenTriggeredLeft",
+                  "ActionOnSelfWhenTriggeredRight",
+                  "GameTagsToSet",
+                  "PauseTags",
+                  "WaitForTarget")) {
+            f.remove(column);
+          }
+          ArrayNode actions = f.putArray("Actions");
+          for (int i = 0; i < 3; i++) {
+            actions.addObject().put("action", "Vines_Action_Group");
+          }
+          f.putArray("Delays").add(0).add(50).add(150);
+          f.put("TargetFilter", "enemy_troops_for_vines");
+          edit.accept(f);
+          ObjectNode start = rows.putObject(START);
+          start.put("class", "LogicActionGroupData");
+          start.put("ClassType", "ActionGroup");
+          ObjectNode group = start.putObject("fields");
+          group.put("ClassType", "ActionGroup");
+          group.putArray("SubActions").addObject().put("action", SELECTOR);
+          group.putArray("SubActionsDelay").add(900);
+        });
+    GameData.alterLoaded(
+        folder,
+        "area_effect_objects",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "Vines_AeO");
+          for (String column :
+              List.of(
+                  "Filter",
+                  "HitBiggestTargets",
+                  "HitSpeed",
+                  "HitSpeedOffset",
+                  "MaximumTargets",
+                  "OnHitAction",
+                  "OneHitPerTarget")) {
+            columns.remove(column);
+          }
+          columns.put("LifeDuration", 2000);
+          columns.put("OnStartingAction", START);
+        });
+    return GameTables.load(folder);
+  }
+
+  private static GameTables selectorTables(Path folder) throws IOException {
+    return selectorTables(folder, f -> {});
+  }
 
   /**
    * A battle with the towers holding fire, and every selector step and air-to-ground re-trigger.
@@ -88,8 +162,8 @@ class BattleShapeSelectorTest {
   @DisplayName(
       "a circle that holds nobody ends each due step before its finish's test, so the run finishes"
           + " a tick after its last due tick")
-  void anEmptyCircle() {
-    Scene scene = new Scene(GameData.tables());
+  void anEmptyCircle(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(selectorTables(folder));
     scene.vines();
     scene.steps(25);
     assertThat(scene.steps)
@@ -104,8 +178,8 @@ class BattleShapeSelectorTest {
   @DisplayName(
       "of two Knights of equal hit points the lower id is picked first, though the query finds"
           + " the other first; the third entry picks nobody")
-  void equalScoresGoToTheLowerId() {
-    Scene scene = new Scene(GameData.tables());
+  void equalScoresGoToTheLowerId(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(selectorTables(folder));
     // The query walks its buckets from the left, so it finds the second Knight first.
     scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X + 2000, Y, "first");
     scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X - 2000, Y, "second");
@@ -123,7 +197,7 @@ class BattleShapeSelectorTest {
       "a Guard's shield lifts it over a Minion when shields count; by hit points alone the Minion"
           + " is picked first")
   void aShieldCounts(@TempDir Path folder) throws IOException {
-    Scene shields = new Scene(GameData.tables());
+    Scene shields = new Scene(selectorTables(folder.resolve("shields")));
     shields.match.deploy(0, GameData.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
     shields.match.deploy(0, GameData.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
     shields.vines();
@@ -132,15 +206,11 @@ class BattleShapeSelectorTest {
         .first()
         .isEqualTo("18 chosen [0=guard] none [] empty false finished false");
 
-    Files.createDirectories(folder);
-    GameTables plain =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get(SELECTOR).get("fields"))
-                    .put("TargetSelectionMode", "HighestCurrentHp"));
-    Scene hitPoints = new Scene(plain);
+    Scene hitPoints =
+        new Scene(
+            selectorTables(
+                folder.resolve("hit_points"),
+                f -> f.put("TargetSelectionMode", "HighestCurrentHp")));
     hitPoints.match.deploy(0, GameData.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
     hitPoints.match.deploy(0, GameData.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
     hitPoints.vines();
@@ -155,13 +225,7 @@ class BattleShapeSelectorTest {
       "a row that may pick an object again picks a lone Knight with every entry, and each later"
           + " pick starts its air-to-ground run over")
   void pickingAgain(@TempDir Path folder) throws IOException {
-    Files.createDirectories(folder);
-    GameTables again =
-        GameData.altered(
-            folder,
-            "actions",
-            rows -> ((ObjectNode) rows.get(SELECTOR).get("fields")).put("OncePerTarget", false));
-    Scene scene = new Scene(again);
+    Scene scene = new Scene(selectorTables(folder, f -> f.put("OncePerTarget", false)));
     scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "knight");
     scene.vines();
     scene.steps(22);
@@ -177,12 +241,11 @@ class BattleShapeSelectorTest {
   @Test
   @DisplayName(
       "Vines' filter drops underground objects, though not hidden ones: a Miner tunnelling through"
-          + " its circle is never picked")
-  void aTunnellingMinerIsNotPicked() {
-    Scene scene = new Scene(GameData.tables());
+          + " the circle is never picked")
+  void aTunnellingMinerIsNotPicked(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(selectorTables(folder));
     // The top side's Miner tunnels from its king to the bottom side's left lane: it crosses the
-    // circle about (5000, 17500) from tick 17 to tick 21, every due step of the selector, and
-    // surfaces at tick 33.
+    // circle about (5000, 17500) through every due step of the selector.
     scene.match.play(0, GameData.card("Miner"), LEVEL, 1, 3500, 8000, "miner");
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, 5000, 17500, "vines");
     scene.steps(25);

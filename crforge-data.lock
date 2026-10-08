@@ -2,11 +2,8 @@
 # and tested against, and the data version folders in it. CI checks that commit out for the game
 # tables (<version>/) and the recorded reference battles (references/<version>/). Move it in the
 # change that needs newer data.
-# - version: the data version under work. CI runs its reference battles, each case held to
-#   conformance/reference-expectations/<version>.json, and the debug visualizer opens it by default.
-# - unitTestVersion: the data version whose tables the unit tests read; they pin values of that
-#   version. CI also runs its reference battles, held to their own expectations file, as a
-#   regression set.
+# - version: the data version under work. The unit tests read its tables and pin its values, CI
+#   runs its reference battles, each case held to conformance/reference-expectations/<version>.json,
+#   and the debug visualizer opens it by default.
 commit=bc76d2721eabffea06326d5504cd1e4adf15d02c
 version=16.402.18
-unitTestVersion=14.593.1

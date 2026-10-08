@@ -53,15 +53,18 @@ class BattleKillActionTest {
     assertThat(blue.getView().isMovementActive()).isTrue();
 
     new ActionHolder(blue).start(new Kill(ActionRow.named("kill"), null));
+    // The kill is queued for the damage drain of the next step.
+    assertThat(blue.getHitPoints().getHitPoints()).isEqualTo(full);
+    battle.step();
     assertThat(blue.getHitPoints().getHitPoints()).isZero();
     assertThat(blue.getView().isMovementActive()).as("its death switches movement off").isFalse();
     assertThat(deaths).containsExactly("Blue_0 " + full + " died");
-    assertThat(battle.getHolder().entities()).as("still listed until the cleanup").contains(blue);
     battle.step();
     assertThat(battle.getHolder().entities()).doesNotContain(blue);
 
     shielded.getHitPoints().setShield(300);
     new ActionHolder(shielded).start(new Kill(ActionRow.named("kill"), null));
+    battle.step();
     assertThat(shielded.getHitPoints().getShield()).isZero();
     assertThat(shielded.getHitPoints().getHitPoints()).isEqualTo(full);
     assertThat(shielded.getView().isAlive()).isTrue();

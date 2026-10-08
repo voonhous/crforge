@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -85,7 +84,7 @@ class BattleLoadFirstHitTest {
   @Test
   @DisplayName("a Sparky that attacks as soon as it has deployed fires after its whole load (16)")
   void itFiresAfterItsWholeLoadOnVersion16() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     assertWholeLoad(firstShot(tables, new BattleRecords(tables)));
   }
 }

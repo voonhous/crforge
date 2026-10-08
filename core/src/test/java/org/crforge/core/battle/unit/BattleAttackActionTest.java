@@ -67,7 +67,8 @@ class BattleAttackActionTest {
         GameData.altered(
             folder,
             "character_buffs",
-            rows -> GameData.columns(rows, "Valkyrie_MiniTornado_EV1").put("AttractMaxAngle", 90));
+            rows ->
+                GameData.columns(rows, "Valkyrie_MiniTornado_EV1_BUFF").put("AttractMaxAngle", 90));
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, true);
     valkyrieAmongBarbarians(battle);
 

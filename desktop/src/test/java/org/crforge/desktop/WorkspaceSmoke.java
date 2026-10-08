@@ -14,7 +14,6 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.StatusSmokeFixture;
 import org.crforge.desktop.battle.BattleAdapter;
@@ -49,8 +48,14 @@ public class WorkspaceSmoke extends CRForgeGame {
     config.setTitle("CRForge UI smoke check");
     config.setForegroundFPS(30);
     config.setInitialVisible(false);
-    if (!tables.version().equals(GameVersions.DATA_14_593_1))
-      throw new IllegalArgumentException("UI smoke fixtures require tables 14.593.1");
+    // The synthetic replay fixture is written in the replay shape of the lock's data version.
+    String lockVersion = choice.lock() == null ? null : choice.lock().version();
+    if (!tables.version().equals(lockVersion))
+      throw new IllegalArgumentException(
+          "UI smoke fixtures require the tables of the lock's data version, "
+              + lockVersion
+              + "; got "
+              + tables.version());
     new Lwjgl3Application(new WorkspaceSmoke(versions, versions.ladder()), config);
   }
 

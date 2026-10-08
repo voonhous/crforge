@@ -27,10 +27,11 @@ import lombok.Builder;
  * @param manaCost the elixir a player pays to use the ability, in whole elixir
  * @param cooldownMs how long after a use its controller refuses the next
  * @param maxCharges how many uses one play of the champion allows; 0 for no limit
- * @param dashRange how far the ability's dash reaches for its first target; 0 for no dash
- * @param dashTargetFurthest true when the dash takes the furthest target in its reach rather than
- *     the nearest
- * @param pendingBuff the buff a unit waiting to cast its dash carries, or null
+ * @param dashRange for an ability that does nothing else as it fires, the reach, centre to centre,
+ *     its reference must be within for a request to open the cast; 0 for none. The fire itself does
+ *     not dash
+ * @param pendingBuff the buff a unit waiting for that reference would carry, which is refused, or
+ *     null
  * @param switchLanes true for an ability that sends the unit across the arena to the mirror of its
  *     position, routing there in the in-game pathfinding state
  * @param activationSpawnCharacter the row of the character the ability leaves on the unit's spot as
@@ -46,10 +47,10 @@ import lombok.Builder;
  * @param resurrectOwnTroops true when a death of the unit's own side counts a soul
  * @param spawnLimit the most characters the area effect makes, the base count and the souls
  *     together
- * @param soulsFromDeaths true for an older data version, whose ability rows have no
- *     ResurrectChargesExpression column: the unit counts a soul for each death its death notice
- *     tells it of, and an ability with a base count spends them on its area effect. False for a
- *     newer one, where the unit counts none and the charges expression sizes the area effect
+ * @param soulsFromDeaths true for an ability row without a ResurrectChargesExpression column: the
+ *     unit counts a soul for each death its death notice tells it of, and an ability with a base
+ *     count spends them on its area effect. False for a newer one, where the unit counts none and
+ *     the charges expression sizes the area effect
  * @param resurrectChargesExpression the expression, read in the unit's context as the ability
  *     fires, whose value adds characters to the base count, at most SpawnLimit in all, and sizes
  *     the area effect's lifetime; null for none, whose area effect keeps its row's lifetime
@@ -73,7 +74,6 @@ public record AbilityData(
     int cooldownMs,
     int maxCharges,
     int dashRange,
-    boolean dashTargetFurthest,
     String pendingBuff,
     boolean switchLanes,
     String activationSpawnCharacter,

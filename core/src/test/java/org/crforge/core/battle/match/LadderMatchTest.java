@@ -50,7 +50,9 @@ class LadderMatchTest {
     LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.getBattle().step();
     battle.getWorld().kill(battle.getWorld().kingTower(1), null);
-    // The next step's head sees it and ends the match.
+    // The kill lands at the next step's damage drain; the head of the step after sees it and ends
+    // the match.
+    battle.getBattle().step();
     battle.getBattle().step();
 
     assertThat(match.isEnded()).isTrue();
@@ -93,9 +95,9 @@ class LadderMatchTest {
       battle.getBattle().step();
       steps++;
     }
-    // 66 steps of the tiebreaker: the 66th, which begins at 3250 ms, drains and finds a king at 0;
-    // the next ends the match.
-    assertThat(steps).isEqualTo(67);
+    // The kills land at the first step's damage drain; then 66 steps of the tiebreaker: the 66th,
+    // which begins at 3250 ms, drains and finds a king at 0; the next ends the match.
+    assertThat(steps).isEqualTo(68);
     assertThat(match.getTiebreakMs()).isEqualTo(3300);
     assertThat(match.getWinner()).isEqualTo(-1);
     assertThat(List.of(match.crowns(0), match.crowns(1))).containsExactly(3, 3);

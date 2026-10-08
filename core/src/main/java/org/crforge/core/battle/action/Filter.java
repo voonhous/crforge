@@ -14,7 +14,7 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled and held by the recorded cases: both branches, the default of true, a missing"
             + " branch. The branch scheduled with the start's cause and context, read from the"
-            + " newer build's perform; held by BattleRunOnResolvedTest.")
+            + " build's perform; held by BattleRunOnResolvedTest.")
 public final class Filter extends RowAction {
 
   private final IntSupplier condition;

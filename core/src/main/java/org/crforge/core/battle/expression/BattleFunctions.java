@@ -18,9 +18,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the 47 names, their ids 0 to 46, their argument counts and case-insensitive"
-            + " matching. A newer data version's name, ability_charges_left (no arguments), takes"
-            + " the next id, 47, which is this table's own: the newer build numbers its functions"
-            + " otherwise, and only the name reaches the battle. Another newer name,"
+            + " matching. A later name, ability_charges_left (no arguments), takes"
+            + " the next id, 47, which is this table's own: the build numbers its functions"
+            + " otherwise, and only the name reaches the battle. Another later name,"
             + " is_valid_position (two arguments), takes 48 the same way, is_dodging_damage (no"
             + " arguments) 49, is_crown_tower (no arguments) 50 and character_level (no arguments)"
             + " 51.")

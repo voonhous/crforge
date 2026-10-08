@@ -2,31 +2,23 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * When a direct hit's buff on damage is applied within its tick, and so how long a 500 ms stun
- * holds what it lands on. The game of data version 16.402.18 applies the attacker's BuffOnDamage at
- * the holder's damage drain, right after the hit's damage, once the damage entry has let the hit
- * through: after the buff pass of that tick, so the instance is first counted down on the next tick
- * and holds its target for all of its 500 / 50 = 10 visits. The game of 14.593.1 applies it inside
- * the attacker's hit, before the buff pass of the same tick, which counts it down at once: the
- * target's attack is held one tick less.
+ * holds what it lands on. The game applies the attacker's BuffOnDamage at the holder's damage
+ * drain, right after the hit's damage, once the damage entry has let the hit through: after the
+ * buff pass of that tick, so the instance is first counted down on the next tick and holds its
+ * target for all of its 500 / 50 = 10 visits.
  *
  * <p>The scene: the top side's Electro Wizard stands in reach of the bottom side's left princess
  * tower, which shoots back. The Wizard's first zap lands on the tower with ZapFreeze for 500 ms.
- * The same battle runs on the configured tables and on those tables relabelled as data version
- * 16.402.18, which differ only in the version's rule.
  */
 class BattleBuffOnDamageDrainTest {
 
@@ -43,8 +35,6 @@ class BattleBuffOnDamageDrainTest {
 
   /** The ticks recorded after the zap's own. */
   private static final int AFTER = 14;
-
-  @TempDir Path folder;
 
   /** Side 0's left princess tower, the one the Wizard stands in reach of. */
   private static TowerEntity leftTower(Standard1v1Battle match) {
@@ -118,24 +108,12 @@ class BattleBuffOnDamageDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the zap's ZapFreeze is applied at the damage drain: whole at the"
+      "the zap's ZapFreeze is applied at the damage drain: whole at the"
           + " end of its tick, held for ten ticks, the tower's attack resuming on the eleventh")
-  void theStunIsAppliedAtTheDrain() throws IOException {
-    Record record = run(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
+  void theStunIsAppliedAtTheDrain() {
+    Record record = run(GameData.tables());
     assertThat(record.left.subList(0, 11))
         .containsExactly(500, 450, 400, 350, 300, 250, 200, 150, 100, 50, -1);
     assertThat(record.resumed).isEqualTo(record.zapTick + 11);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the same ZapFreeze is applied inside the hit and counted down in"
-          + " its own tick: held for nine ticks, the tower's attack resuming on the tenth")
-  void theStunIsAppliedInTheHitOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    Record record = run(GameData.tables());
-    assertThat(record.left.subList(0, 10))
-        .containsExactly(450, 400, 350, 300, 250, 200, 150, 100, 50, -1);
-    assertThat(record.resumed).isEqualTo(record.zapTick + 10);
   }
 }

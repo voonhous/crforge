@@ -2,21 +2,16 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When the damage of a projectile's area impact lands within its tick. The game of data version
- * 16.402.18 queues each victim's share for the holder's damage drain, as it queues a direct hit, so
- * a direct hit dealt earlier in the tick lands before it; the game of 14.593.1 deals both at once,
- * the direct hit in the attacker's targeting visit and the impact in the projectile's post-hook, in
- * that order too. Dealt at once on 16.402.18, the impact would land ahead of the queued direct hit.
+ * When the damage of a projectile's area impact lands within its tick. The game queues each
+ * victim's share for the holder's damage drain, as it queues a direct hit, so a direct hit dealt
+ * earlier in the tick lands before it. Dealt at once, the impact would land ahead of the queued
+ * direct hit.
  *
  * <p>The order shows on a shield, which takes a hit up to what it has left and loses the hit's
  * excess as it breaks. The scene: the bottom side's Knight walks up the left lane and meets the top
@@ -24,10 +19,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Dark Prince on the step the Knight's first hit lands on it, with the shield whole. The Knight's
  * hit takes the shield down to 15 and the Fireball breaks it, its excess lost, so the Dark Prince
  * keeps every hit point. The other order would break the shield with the Fireball and take the
- * Knight's whole hit off the hit points. The same battle runs on the configured tables and on those
- * tables relabelled as data version 16.402.18, which differ only in the version's rule. The rows
- * the scene plays hold the same values in the tables of 16.402.18, where it runs to the same hit
- * points and shield.
+ * Knight's whole hit off the hit points.
  */
 class BattleProjectileAreaDrainTest {
 
@@ -52,8 +44,6 @@ class BattleProjectileAreaDrainTest {
   private static final int HIT_POINTS = 469;
 
   private static final int SHIELD = 94;
-
-  @TempDir Path folder;
 
   /** The towers at the first level, holding fire; the Knight, the Dark Prince and the Fireball. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -95,25 +85,13 @@ class BattleProjectileAreaDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the Fireball's impact lands at the damage drain after the"
+      "the Fireball's impact lands at the damage drain after the"
           + " Knight's hit, so the shield takes both and the Dark Prince keeps its hit points")
-  void theImpactLandsAfterTheDirectHit() throws IOException {
-    CharacterEntity darkPrince =
-        throughBothHits(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18)));
+  void theImpactLandsAfterTheDirectHit() {
+    CharacterEntity darkPrince = throughBothHits(scene(GameData.tables()));
     assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
     assertThat(darkPrince.getHitPoints().getHitPoints())
         .as("the Fireball's excess lost with the shield")
         .isEqualTo(HIT_POINTS);
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the Knight's hit lands in its targeting visit and the Fireball's"
-          + " impact after it, in the same order")
-  void theImpactLandsAfterTheDirectHitOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    CharacterEntity darkPrince = throughBothHits(scene(GameData.tables()));
-    assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
-    assertThat(darkPrince.getHitPoints().getHitPoints()).isEqualTo(HIT_POINTS);
   }
 }

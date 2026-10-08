@@ -820,10 +820,8 @@ public interface ActionOwner {
   }
 
   /**
-   * Shoots the action's row of projectiles across the owner's line. Only a projectile answers. In
-   * 14.593.1 a character's line starts its projectile start radius along it and no reference holds
-   * one, and any other owner shoots nothing; in 16.402.18 every owner but a projectile shoots
-   * nothing. No row runs it on another owner; it is refused.
+   * Shoots the action's row of projectiles across the owner's line. Only a projectile answers:
+   * every other owner shoots nothing. No row runs it on another owner; it is refused.
    *
    * @param action the action, which names the row, the count and the spread
    */

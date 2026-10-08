@@ -27,8 +27,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled by the native cases of its perform and held by boss_bandit_bandit_knight and"
             + " boss_bandit_tower_bandit: a killer's check of what it killed and a killed unit's"
             + " check of its killer, each matching a Bandit and missing a Knight, the branch"
-            + " scheduled on the owner as its own cause. The object filter (a newer data"
-            + " version's JumpHack check) is read from the newer build's perform, which passes"
+            + " scheduled on the owner as its own cause. The object filter (the JumpHack check) is"
+            + " read from the build's perform, which passes"
             + " the cause, the owner's team and the owner's identity to the filter test before"
             + " the names.")
 public final class RunIfInstigatorMatches extends RowAction {

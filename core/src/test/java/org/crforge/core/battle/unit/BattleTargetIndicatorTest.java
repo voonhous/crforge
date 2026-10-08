@@ -118,8 +118,10 @@ class BattleTargetIndicatorTest {
             "50 step [find 5000008, begin, signal 0 5000008 3000000] load 1500 1550 cooldown -1 -1",
             "70 shoot from 3500 10800 5000 aim 3500 16500",
             "70 step [shoot 0 3000000 4000002 3500 10800 5000] load 2500 2550 cooldown -1 50",
-            "94 signal_ended",
-            "94 step [finished 0 done, remove 0 3000000] load 3700 3750 cooldown 1200 1250");
+            // The rocket, at Speed 350, lands 18 steps after the shot: the load and cooldown run on
+            // 50 a step from 2550 and 50.
+            "88 signal_ended",
+            "88 step [finished 0 done, remove 0 3000000] load 3400 3450 cooldown 900 950");
     assertThat(scene.musketeer.getHitPoints().getHitPoints())
         .isEqualTo(scene.musketeer.getHitPoints().getMaximum());
   }
@@ -140,7 +142,7 @@ class BattleTargetIndicatorTest {
             "70 step [shoot 0 3000000 4000002 3500 10800 5000] load 2500 2550 cooldown -1 50",
             "80 signal_ended",
             "80 stop [stop 1, remove 0 3000000]",
-            "93 impact U 304");
+            "87 impact U 304");
   }
 
   @Test

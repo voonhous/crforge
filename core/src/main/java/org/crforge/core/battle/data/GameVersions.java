@@ -11,15 +11,15 @@ import java.util.Set;
  * <p>The data moves without a client update, and what a replay writes, how its commands are
  * numbered and the rules of the battle are the client's, not the data's: a rule or a replay field
  * established on one data version of a client holds on every data version that client runs. The
- * rules are still looked up by the data version, through the sets here. The list of pairs is {@code
+ * battle tracks one client and has no rule keyed by the data version; the replay fields and command
+ * types are still looked up by the data version, through the sets here. The list of pairs is {@code
  * docs/game-versions.md}.
- *
- * <p>The client sets are kept only while 14.593.1 is the regression set: once it goes, the
- * simulator tracks one client and its version gates go with it.
  */
 public final class GameVersions {
 
-  /** Data version 14.593.1, whose tables the unit tests read. */
+  /**
+   * Data version 14.593.1, whose replay fields and command types the replay reading still names.
+   */
   public static final String DATA_14_593_1 = "14.593.1";
 
   /** Data version 16.402.18, the first run by game client 16.402.17. */

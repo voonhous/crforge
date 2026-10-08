@@ -1,14 +1,11 @@
 package org.crforge.core.battle.data;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.unit.AreaDamageType;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,39 +19,16 @@ import org.junit.jupiter.api.Test;
  * effect of that form. Each row of the form is read as the filter form, its damage as its damage
  * type, never as 0 or as hitting nothing; a shaped row so written too, its shape where it lists
  * what it reaches.
- *
- * <p>Run when the configured game tables are those of 16.402.18, or sit beside a folder of them as
- * in a checkout of the game data repository; skipped otherwise.
  */
 class NewTableFormsTest {
-
-  /** The data version whose forms these are. */
-  private static final String VERSION = GameVersions.DATA_16_402_18;
 
   private static GameTables tables;
   private static BattleRecords records;
 
   @BeforeAll
   static void load() {
-    Optional<Path> folder = folder();
-    assumeTrue(folder.isPresent(), "no game tables of " + VERSION + " configured");
-    tables = GameTables.load(folder.get());
-    assertThat(tables.version()).isEqualTo(VERSION);
-    records = new BattleRecords(tables);
-  }
-
-  /** The configured folder when it is of the version, else a folder of the version beside it. */
-  private static Optional<Path> folder() {
-    Optional<Path> configured = GameTables.configuredDirectory();
-    if (configured.isEmpty()) {
-      return Optional.empty();
-    }
-    Path folder = configured.get().toAbsolutePath();
-    if (folder.getFileName().toString().equals(VERSION)) {
-      return Optional.of(folder);
-    }
-    Path beside = folder.resolveSibling(VERSION);
-    return Files.isDirectory(beside) ? Optional.of(beside) : Optional.empty();
+    tables = GameData.tables();
+    records = GameData.records();
   }
 
   /** The area effect rows whose Damage is written in the given form. */

@@ -20,11 +20,14 @@ class BattleBuffDamagePercentTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** A buff row that sets only the two columns given. */
+  /**
+   * A buff row that sets only the two columns given. Of the configured buffs only TripleDamage sets
+   * 200 or 300, and its first attack removes it.
+   */
   private static BuffData percents(String name, int damageMultiplier, int crownTowerPercent) {
     return BuffData.builder()
         .name(name)
-        .rarity(GameData.records().buff("crazy_FullFire").rarity())
+        .rarity(GameData.records().buff("Rage").rarity())
         .damageMultiplier(damageMultiplier)
         .characterCrownTowerDamagePercent(crownTowerPercent)
         .build();
@@ -82,8 +85,7 @@ class BattleBuffDamagePercentTest {
   @DisplayName("a hit dealt under a damage multiplier of 200 takes twice the plain hit")
   void aMultiplierScalesTheHit() {
     int plain = hits(false, List.of()).get(0);
-    assertThat(hits(false, List.of(GameData.records().buff("crazy_FullFire"))))
-        .containsOnly(plain * 200 / 100);
+    assertThat(hits(false, List.of(percents("double", 200, 0)))).containsOnly(plain * 200 / 100);
   }
 
   @Test
@@ -94,8 +96,8 @@ class BattleBuffDamagePercentTest {
     int plain = hits(false, List.of()).get(0);
     List<BuffData> buffs =
         List.of(
-            GameData.records().buff("crazy_FatalStrike"),
-            GameData.records().buff("crazy_FullFire"),
+            percents("triple", 300, 0),
+            percents("double", 200, 0),
             percents("half", 50, 0),
             percents("still", -100, 0));
     assertThat(hits(false, buffs)).containsOnly(plain * 150 / 100);
@@ -114,8 +116,7 @@ class BattleBuffDamagePercentTest {
           + " make half the plain hit, and the crown tower percent alone does not touch a unit")
   void theCrownTowerPercentScalesATowerHit() {
     int plain = hits(true, List.of()).get(0);
-    List<BuffData> buffs =
-        List.of(GameData.records().buff("crazy_FullFire"), percents("tower", 0, 25));
+    List<BuffData> buffs = List.of(percents("double", 200, 0), percents("tower", 0, 25));
     assertThat(hits(true, buffs)).containsOnly(plain * 200 / 100 * 25 / 100);
     int unit = hits(false, List.of()).get(0);
     assertThat(hits(false, List.of(percents("tower", 0, 25)))).containsOnly(unit);

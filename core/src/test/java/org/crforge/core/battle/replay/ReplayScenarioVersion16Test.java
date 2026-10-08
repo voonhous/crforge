@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Replays of the game client whose data version is 16.402.18, read against that version's tables:
  * its command types, the fields its replays write beyond 14.593.1's, and each side's king level
- * read from its player data. Skipped without tables of 16.402.18 ({@link Version16Tables}).
+ * read from its player data.
  */
 class ReplayScenarioVersion16Test {
 
@@ -23,18 +23,18 @@ class ReplayScenarioVersion16Test {
 
   @BeforeAll
   static void loadTables() {
-    tables = Version16Tables.load();
+    tables = GameData.tables();
   }
 
   @Test
   void readsEveryFieldOfTheVersionsReplay() {
-    assertThat(new ReplayScenario(tables).survey(Scenarios.knightOfVersion16())).isEmpty();
+    assertThat(new ReplayScenario(tables).survey(Scenarios.knightWithEveryField())).isEmpty();
   }
 
   @Test
   void translatesThePlayAndBuildsEachKingAtItsPlayerDatasKingLevel() {
     ReplayScenario mapping = new ReplayScenario(tables);
-    ScenarioPlan plan = mapping.translate(Scenarios.knightOfVersion16());
+    ScenarioPlan plan = mapping.translate(Scenarios.knightWithEveryField());
 
     // Side 0's kt 15, side 1's kt 16; the princess towers at level index 0 stand at level 1.
     assertThat(plan.towers())
@@ -59,7 +59,7 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void readsAnAbilityCommandOfType189() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     Scenarios.addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
     ((ObjectNode) scenario.path("cmd").get(1)).put("ct", 189);
 
@@ -70,9 +70,10 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesTheCommandTypesOfVersion14_593_1() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     Scenarios.addAbility((ArrayNode) scenario.path("cmd"), 350, 1, 5000006);
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
+    ((ObjectNode) scenario.path("cmd").get(1)).put("ct", 178);
 
     List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
 
@@ -85,7 +86,7 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesAKingLevelOutsideTheKingsLevels() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     ((ObjectNode) scenario.path("battle").path("hbd").get(1)).put("kt", 17);
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
@@ -95,7 +96,7 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesPlayerDataWithoutAKingLevelOrWithAnotherField() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     ((ObjectNode) scenario.path("battle").path("hbd").get(0)).put("xyz", 1);
     ((ObjectNode) scenario.path("battle").path("hbd").get(1)).remove("kt");
 
@@ -109,7 +110,7 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesAnEventOfAnotherTypeOrWithAnotherField() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     ArrayNode events = (ArrayNode) scenario.path("evt");
     ((ObjectNode) events.get(0)).put("type", 2);
     ((ObjectNode) events.get(1)).put("xy", 0);
@@ -125,7 +126,7 @@ class ReplayScenarioVersion16Test {
   void carriesTheArenaOfAnyTrophyArena() {
     // A replay from another trophy arena's TV channel: the arena names the players' trophy arena,
     // which sets no battle input; the map is the location's.
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("arena", 54000020);
     ((ObjectNode) battle.path("avatar0")).put("arena", 54000020);
@@ -142,7 +143,7 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesAnotherValueOfAPinnedFieldOfTheVersion() {
-    ObjectNode scenario = Scenarios.knightOfVersion16();
+    ObjectNode scenario = Scenarios.knightWithEveryField();
     scenario.putArray("srq").add(1);
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", true);
@@ -159,7 +160,7 @@ class ReplayScenarioVersion16Test {
   @Test
   void readsACaseGeneratedForTheVersionByTheFieldsOfItsGeneratedCases() {
     ReplayScenario mapping = new ReplayScenario(tables, ScenarioShape.GENERATED);
-    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+    ObjectNode scenario = Scenarios.generatedKnight();
 
     assertThat(mapping.survey(scenario)).isEmpty();
     ScenarioPlan plan = mapping.translate(scenario);
@@ -188,14 +189,14 @@ class ReplayScenarioVersion16Test {
   void refusesACaseGeneratedForTheVersionReadAsAReplay() {
     // A replay of the version must hold the request lists: a generated case is read as one only
     // when the caller names its shape.
-    assertThat(new ReplayScenario(tables).survey(Scenarios.generatedKnightOfVersion16()))
+    assertThat(new ReplayScenario(tables).survey(Scenarios.generatedKnight()))
         .containsExactly(
             new ReplayScenario.Refusal("the scenario has no srq", "the reading stops here"));
   }
 
   @Test
   void refusesInAGeneratedCaseTheFieldsOnlyTheVersionsReplaysWrite() {
-    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+    ObjectNode scenario = Scenarios.generatedKnight();
     scenario.putArray("srq");
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", false);
@@ -212,24 +213,10 @@ class ReplayScenarioVersion16Test {
 
   @Test
   void refusesInAGeneratedCaseTheCommandTypesOfVersion14_593_1() {
-    ObjectNode scenario = Scenarios.generatedKnightOfVersion16();
+    ObjectNode scenario = Scenarios.generatedKnight();
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
 
     assertThat(new ReplayScenario(tables, ScenarioShape.GENERATED).survey(scenario))
         .containsExactly(new ReplayScenario.Refusal("the command type 124", "cmd[0].ct"));
-  }
-
-  @Test
-  void refusesAFieldOnlyVersion16_402_18sReplaysWriteInAReplayOfVersion14_593_1() {
-    // The 14.593.1 tables read a replay by 14.593.1's fields: kt is a field with no mapping there.
-    GameTables shared = GameTables.loadConfigured();
-    ObjectNode scenario = Scenarios.knight();
-    ((ObjectNode) scenario.path("battle").path("hbd").get(0)).put("kt", 15);
-    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(0)).put("pr", 2);
-
-    assertThat(new ReplayScenario(shared).survey(scenario))
-        .extracting(ReplayScenario.Refusal::input)
-        .containsExactly(
-            "battle.hbd={\"em\":{\"oe\":[],\"de\":[]},\"kt\":15}", "battle.deck0.sp.pr");
   }
 }

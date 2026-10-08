@@ -21,16 +21,16 @@ import org.junit.jupiter.params.provider.CsvSource;
 /**
  * The kinds a game object filter's Filters list may name that no switch column tests, asked by a
  * battle's death listener: IgnoreResurrect leaves out a character whose row sets IgnoreResurrect.
- * The shipped filters here write switches, so the test rewrites the evolved Witch's skeleton filter
- * as the newer data version writes its rows, a Filters list, and adds the kind to it.
+ * No configured filter names the kind, so the test adds it to the evolved Witch's skeleton filter's
+ * Filters list.
  */
 class BattleFilterKindsTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
   /**
-   * The tables with friendly_skeletons_can_be_dead written as a Filters list that also names
-   * IgnoreResurrect, and the Skeleton row's IgnoreResurrect set as given.
+   * The tables with friendly_skeletons_can_be_dead's Filters list also naming IgnoreResurrect, and
+   * the IgnoreResurrect of the skeleton it lists, Witch_EV1_Healing_Skeleton, set as given.
    */
   private static GameTables ignoreResurrect(Path folder, boolean skeletonIgnores)
       throws IOException {
@@ -39,26 +39,18 @@ class BattleFilterKindsTest {
         "game_object_filters",
         rows -> {
           ObjectNode filter = GameData.columns(rows, "friendly_skeletons_can_be_dead");
-          for (String column :
-              List.of(
-                  "FilterClones",
-                  "FilterIfNoHitpointComponent",
-                  "FilterPrincessTowers",
-                  "FilterSummoner")) {
-            filter.remove(column);
-          }
-          ArrayNode kinds = filter.putArray("Filters");
-          kinds.add("Clones").add("NoHitpointComponent").add("PrincessTowers").add("Summoner");
-          kinds.add("IgnoreResurrect");
+          ((ArrayNode) filter.get("Filters")).add("IgnoreResurrect");
         });
     GameData.alterLoaded(
         folder,
         "characters",
-        rows -> GameData.columns(rows, "Skeleton").put("IgnoreResurrect", skeletonIgnores));
+        rows ->
+            GameData.columns(rows, "Witch_EV1_Healing_Skeleton")
+                .put("IgnoreResurrect", skeletonIgnores));
     return GameTables.load(folder);
   }
 
-  @ParameterizedTest(name = "Skeleton IgnoreResurrect {0}")
+  @ParameterizedTest(name = "Witch_EV1_Healing_Skeleton IgnoreResurrect {0}")
   @CsvSource({"false, true", "true, false"})
   @DisplayName(
       "a death listener whose filter lists IgnoreResurrect hears no death of a character whose row"

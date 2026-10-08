@@ -24,14 +24,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The area effect class of a newer data version has no hit switches: a row names a game object
- * filter, which alone chooses what it reaches, and writes its damage as a damage type, inline or
- * named, with an amount for anything and one for a crown tower. On an update a hit is due it lists
- * the objects in its circle that pass the filter, nearest first, and queues its damage on each,
- * then applies its buff to each. A hit is due on the step its HitSpeedOffset falls in and on every
- * step a whole number of HitSpeed steps after it, and the row stays one update longer than a row
- * with hit switches: until its countdown is below 0. Each scene plays a spell of the configured
- * tables rewritten in that form, with a filter written as the newer data writes it.
+ * The area effect class has no hit switches: a row names a game object filter, which alone chooses
+ * what it reaches, and writes its damage as a damage type, inline or named, with an amount for
+ * anything and one for a crown tower. On an update a hit is due it lists the objects in its circle
+ * that pass the filter, nearest first, and queues its damage on each, then applies its buff to
+ * each. A hit is due on the step its HitSpeedOffset falls in and on every step a whole number of
+ * HitSpeed steps after it, and the row stays until its countdown is below 0. Each scene plays a
+ * spell of the configured tables in that form, any hit switch dropped and its filter
+ * CommonAreaDamageFilter written without the filter's tags.
  */
 class BattleAreaEffectFilterFormTest {
 
@@ -588,10 +588,14 @@ class BattleAreaEffectFilterFormTest {
     return pulls;
   }
 
-  /** Places a Tornado of side 0 on tick 25, once the units of the first tick have deployed. */
+  /**
+   * Places a Tornado of side 0 on tick 25, once the units of the first tick have deployed, and
+   * steps through its first hit: its row's HitSpeedOffset of 50 puts it on the step after its first
+   * update.
+   */
   private static void tornado(Standard1v1Battle match) {
     match.placeAreaEffect(25, "Tornado", LEVEL, 0, 3500, 23500, "Tornado");
-    stepTo(match, 26);
+    stepTo(match, 27);
   }
 
   @Test
@@ -642,7 +646,7 @@ class BattleAreaEffectFilterFormTest {
     CharacterEntity far = match.deploy(0, knightRow, LEVEL, 1, 7000, 25000, "far");
     List<List<AreaEffectEntity.Pull>> pulls = pulls(match);
     tornado(match);
-    stepTo(match, 30);
+    stepTo(match, 31);
 
     assertThat(pulls).hasSize(5);
     for (List<AreaEffectEntity.Pull> hit : pulls) {

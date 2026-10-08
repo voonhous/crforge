@@ -129,16 +129,15 @@ class BattleAttackSequenceTest {
   }
 
   @Test
-  @DisplayName(
-      "the Princess_crazy_1's StaticLoop entries, each with its hit speed multiplier, build")
-  void aStaticLoopWithItsPaceBuilds() {
+  @DisplayName("the hero Electro Wizard's entries, each with its hit speed multiplier, build")
+  void entriesWithTheirPaceBuild() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
-    CharacterEntity princess =
+    CharacterEntity wizard =
         new CharacterEntity(
-            match.getWorld(), GameData.unit("Princess_crazy_1"), "P", 0, 3500, 10000, 11);
-    assertThat(princess.getData().attackSequence().entries())
+            match.getWorld(), GameData.unit("ElectroWizardHero"), "W", 0, 3500, 10000, 11);
+    assertThat(wizard.getData().attackSequence().entries())
         .extracting(AttackSequence.Entry::hitSpeedMultiplier)
-        .containsExactly(100, 1500, 1500);
+        .containsExactly(100, 360, 360);
   }
 
   private static int evaluate(String text, BattleExpressionEnvironment environment) {

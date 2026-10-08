@@ -43,6 +43,17 @@ class BattleTableValueShapeTest {
     }
   }
 
+  /**
+   * The configured Zap, a filter form row, written with its hit switches instead of its filter, as
+   * an area effect without a filter writes them.
+   */
+  private static void hitSwitches(ObjectNode columns) {
+    columns.remove("Filter");
+    columns.put("HitsAir", true);
+    columns.put("HitsGround", true);
+    columns.put("OnlyEnemies", true);
+  }
+
   /** The configured tables with the area effect row's columns edited. */
   private static GameTables withAreaEffect(Path folder, String row, Consumer<ObjectNode> edit)
       throws IOException {
@@ -63,6 +74,7 @@ class BattleTableValueShapeTest {
                 folder,
                 "Zap",
                 columns -> {
+                  hitSwitches(columns);
                   columns.set("Damage", damage);
                   columns.remove("CrownTowerDamagePercent");
                 }),
@@ -83,7 +95,13 @@ class BattleTableValueShapeTest {
   void aDamageByNameIsRefused(@TempDir Path folder) throws IOException {
     Standard1v1Battle match =
         new Standard1v1Battle(
-            withAreaEffect(folder, "Zap", columns -> columns.put("Damage", "ElectroWizZap")),
+            withAreaEffect(
+                folder,
+                "Zap",
+                columns -> {
+                  hitSwitches(columns);
+                  columns.put("Damage", "ElectroWizZap");
+                }),
             LEVEL,
             false);
     match.placeAreaEffect(CAST_TICK, "Zap", LEVEL, 1, X, Y, "Zap");
@@ -110,6 +128,7 @@ class BattleTableValueShapeTest {
                   columns.remove("HitsGround");
                   columns.remove("OnlyEnemies");
                   columns.put("Filter", "CommonAreaDamageFilter");
+                  columns.put("Damage", 75);
                 }),
             LEVEL,
             false);

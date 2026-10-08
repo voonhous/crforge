@@ -315,18 +315,18 @@ public final class BattleRecords {
    * The tags a buff may set: the two the push pass reads, which keep the carrier's enemies, or its
    * own side, from pushing it, and are the only code that tests either; UNIT_CUSTOM_TAG_1, which no
    * battle code and no filter tests, read only by the expressions of the carrier's own action rows,
-   * which read the tag word the buff is folded into; and a newer data version's
-   * IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET, which only the targeting visit's keep test reads, from
-   * the same tag word; and NO_DAMAGE, as the evolved Minion Horde's ghost buff sets it: the tag
-   * word's recompute folds every listed instance's tags in beside the row's and the runs', and the
-   * damage entry and the typed hit read NO_DAMAGE from that word, as for a row that sets it; and
-   * ABILITY_PENDING, as the Valkyrie hero form's charge buff sets it, which only the health bar's
-   * view reads from the tag word: no battle code, filter or row tests it; and UNKILLABLE, as the
-   * Berserker hero form's buff sets it, which only the subtraction, holding the carrier's hit
-   * points at 1 against a hit that does not pierce immunity, and the target validator, sparing the
-   * carrier the pending damage rule, read from the tag word; and NO_ATTACK and
-   * NO_MOVE_ALLOW_ATTRACT, as the Electro Wizard hero form's recovery buffs set them, which every
-   * reader tests in the same tag word as a row's. A buff that sets any other is refused.
+   * which read the tag word the buff is folded into; and IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET,
+   * which only the targeting visit's keep test reads, from the same tag word; and NO_DAMAGE, as the
+   * evolved Minion Horde's ghost buff sets it: the tag word's recompute folds every listed
+   * instance's tags in beside the row's and the runs', and the damage entry and the typed hit read
+   * NO_DAMAGE from that word, as for a row that sets it; and ABILITY_PENDING, as the Valkyrie hero
+   * form's charge buff sets it, which only the health bar's view reads from the tag word: no battle
+   * code, filter or row tests it; and UNKILLABLE, as the Berserker hero form's buff sets it, which
+   * only the subtraction, holding the carrier's hit points at 1 against a hit that does not pierce
+   * immunity, and the target validator, sparing the carrier the pending damage rule, read from the
+   * tag word; and NO_ATTACK and NO_MOVE_ALLOW_ATTRACT, as the Electro Wizard hero form's recovery
+   * buffs set them, which every reader tests in the same tag word as a row's. A buff that sets any
+   * other is refused.
    */
   private static final Set<String> MODELLED_BUFF_TAGS =
       Set.of(
@@ -341,9 +341,8 @@ public final class BattleRecords {
           "NO_MOVE_ALLOW_ATTRACT");
 
   /**
-   * The actions a buff schedules on its carrier as an instance is listed, removed and refreshed
-   * (the last a newer data version's): read when they name an action row, listed as not modelled
-   * when written inline.
+   * The actions a buff schedules on its carrier as an instance is listed, removed and refreshed:
+   * read when they name an action row, listed as not modelled when written inline.
    */
   private static final Set<String> BUFF_HOOK_COLUMNS =
       Set.of("OnStartAction", "OnRemoveAction", "OnStackedAction");
@@ -1118,9 +1117,9 @@ public final class BattleRecords {
 
   /**
    * The fields of an attack sequence entry its loader reads: its damage, projectile, timing, range
-   * overrides, push and attack action, and those of a newer data version: its first projectile, its
-   * number of targets and whether it remembers them, the action its hit runs in place of the row's
-   * attack action, and its start delay.
+   * overrides, push and attack action, its first projectile, its number of targets and whether it
+   * remembers them, the action its hit runs in place of the row's attack action, and its start
+   * delay.
    */
   private static final Set<String> SEQUENCE_ENTRY_FIELDS =
       Set.of(
@@ -1189,12 +1188,11 @@ public final class BattleRecords {
    * is its field of the same name; the dead are filtered unless the row says not; the tags it
    * excludes, written as names separated by commas, are the bits the game tags table gives them;
    * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
-   * switches, or the names of its Filters list, which a newer data version writes in their place
-   * and which may also name three kinds no switch tests (Self, Kamikaze and IgnoreResurrect);
-   * MatchSelf, also of the newer version, passes only the object that asks, and its two buff
-   * checkers keep or drop an object by the buffs the asker applied to it. A row that sets any other
-   * column, as a filter it builds on, is refused: read without it, the filter would match what the
-   * row does not.
+   * switches, or the names of its Filters list, which the shipped rows write in their place and
+   * which may also name three kinds no switch tests (Self, Kamikaze and IgnoreResurrect); MatchSelf
+   * passes only the object that asks, and its two buff checkers keep or drop an object by the buffs
+   * the asker applied to it. A row that sets any other column, as a filter it builds on, is
+   * refused: read without it, the filter would match what the row does not.
    *
    * @param name the row's name
    */
@@ -1222,10 +1220,10 @@ public final class BattleRecords {
   }
 
   /**
-   * Whether a filter row's Base, a newer data version's "FILTER.name", is already resolved in the
-   * row: the base row is a filter of this table and every column it sets the row sets to the same
-   * value, so the row read alone is the filter the base and the row make together. Any other Base
-   * is left unread, and refused.
+   * Whether a filter row's Base, written "FILTER.name", is already resolved in the row: the base
+   * row is a filter of this table and every column it sets the row sets to the same value, so the
+   * row read alone is the filter the base and the row make together. Any other Base is left unread,
+   * and refused.
    */
   private static boolean baseResolved(GameTable table, GameRow row) {
     // Read from the raw columns, so that a Base not resolved stays unread and is refused.
@@ -1262,11 +1260,11 @@ public final class BattleRecords {
 
   /**
    * The kinds of object a game object filter's Filters list may name, each with the switch of the
-   * same test: a filter that lists a kind leaves out what the switch leaves out. A newer data
-   * version writes the kinds as this list in place of the switches; the filter's test reads each
-   * listed kind as the very check the switch asks (the same object queries, and the same character
-   * row columns for the pushback and dash checks). The kinds the switches have no test for are
-   * {@link #LIST_ONLY_FILTER_KINDS}; any other kind is refused.
+   * same test: a filter that lists a kind leaves out what the switch leaves out. The shipped rows
+   * write the kinds as this list in place of the switches; the filter's test reads each listed kind
+   * as the very check the switch asks (the same object queries, and the same character row columns
+   * for the pushback and dash checks). The kinds the switches have no test for are {@link
+   * #LIST_ONLY_FILTER_KINDS}; any other kind is refused.
    */
   private static final Map<String, String> FILTER_LIST_SWITCHES =
       Map.ofEntries(
@@ -1293,9 +1291,8 @@ public final class BattleRecords {
           .collect(Collectors.toUnmodifiableMap(Map.Entry::getValue, Map.Entry::getKey));
 
   /**
-   * The kinds a Filters list may name that no switch tests, the newer data version's alone: Self,
-   * the asker itself; Kamikaze, a character whose row sets Kamikaze; IgnoreResurrect, a character
-   * whose row sets IgnoreResurrect.
+   * The kinds a Filters list may name that no switch tests: Self, the asker itself; Kamikaze, a
+   * character whose row sets Kamikaze; IgnoreResurrect, a character whose row sets IgnoreResurrect.
    */
   private static final Set<String> LIST_ONLY_FILTER_KINDS =
       Set.of("Self", "Kamikaze", "IgnoreResurrect");
@@ -1661,8 +1658,8 @@ public final class BattleRecords {
         unmodelled.add(column);
       }
     }
-    // The filter form: a row that names a filter and neither hit switch, as the area effect class
-    // of a newer data version writes every row, which has no hit switches. It chooses what it
+    // The filter form: a row that names a filter and neither hit switch, as every shipped area
+    // effect row is, its class having no hit switches. It chooses what it
     // reaches by the filter alone and deals its damage as a damage type. A shaped row is of the
     // form when it names no damage type column either, which that class does not have: its Damage
     // column is its damage type, and it lists what it reaches in its shape.
@@ -2343,7 +2340,6 @@ public final class BattleRecords {
         .cooldownMs(ability.intValue("Cooldown"))
         .maxCharges(ability.intValue("MaxCharges"))
         .dashRange(ability.intValue("DashRange"))
-        .dashTargetFurthest(ability.bool("DashTargetFurthest"))
         .pendingBuff(set(ability, "PendingBuff") ? ability.string("PendingBuff") : null)
         .switchLanes(ability.bool("SwitchLanes"))
         .activationSpawnCharacter(
@@ -2358,8 +2354,8 @@ public final class BattleRecords {
         .resurrectEnemies(ability.bool("ResurrectEnemies"))
         .resurrectOwnTroops(ability.bool("ResurrectOwnTroops"))
         .spawnLimit(ability.intValue("SpawnLimit"))
-        // A newer data version sizes the area effect by an expression, its souls drained by
-        // actions into a variable, and counts no death on the unit.
+        // A row with ResurrectChargesExpression sizes the area effect by it, its souls drained by
+        // actions into a variable, and counts no death on the unit; one without counts the deaths.
         .soulsFromDeaths(!ability.has("ResurrectChargesExpression"))
         .resurrectChargesExpression(
             set(ability, "ResurrectChargesExpression")
@@ -2586,8 +2582,8 @@ public final class BattleRecords {
       return spell(row);
     }
     // A card with a unit and an area effect makes the area effect at the placed point after its
-    // units, as the cast makes them in that order. Deployed as a spell, as the wizards of a newer
-    // data version are, its search does not snap to its unit; without that, or with a projectile
+    // units, as the cast makes them in that order. Deployed as a spell, as the wizards are, its
+    // search does not snap to its unit; without that, or with a projectile
     // as well, it is in no row and is refused.
     boolean areaEffect = set(row, "AreaEffectObject");
     if (areaEffect && (!row.bool("SpellAsDeploy") || set(row, "Projectile"))) {

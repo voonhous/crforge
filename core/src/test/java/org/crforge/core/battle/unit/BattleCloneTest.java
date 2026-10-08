@@ -3,24 +3,31 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Clone where the reference runs leave it: whom its hit reaches, the clone each unit gets - its
  * level, its 1 hit point and its shield, its buffs - and the move that sets the two apart, a clone
  * never cloned again and its death spawns clones too; and the clones the battle refuses. Then the
- * area effects with a buff over clones where the runs do not take them: a Rage and a Heal Spirit's
- * area beside a Minion's clone, a Tornado's pull, and an Earthquake's air test after the buff test.
+ * area effects with a buff over clones where the runs do not take them, written in the hit-switch
+ * form: a Rage and a Heal Spirit's area beside a Minion's clone, a Zap, a Tornado's pull, and an
+ * Earthquake's air test after the buff test.
  */
 class BattleCloneTest {
 
@@ -36,7 +43,7 @@ class BattleCloneTest {
 
   /** A battle with the towers passive that logs what every Clone does. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match;
     final List<String> scheduled = new ArrayList<>();
     final List<CharacterEntity> clones = new ArrayList<>();
     final List<String> refused = new ArrayList<>();
@@ -47,6 +54,11 @@ class BattleCloneTest {
     int tick;
 
     Scene() {
+      this(GameData.tables());
+    }
+
+    Scene(GameTables tables) {
+      match = new Standard1v1Battle(tables, LEVEL, false);
       match
           .getWorld()
           .addObserver(
@@ -158,9 +170,11 @@ class BattleCloneTest {
     scene.still(0, 0, "Knight", X + 4000, Y, "far");
     scene.clone(CAST_TICK);
 
-    assertThat(scene.scheduled).containsExactlyInAnyOrder("knight", "minion");
+    // The Clone's filter lists its own side's characters but buildings and clones; its hit action
+    // is scheduled on each, and its perform passes by the unit a Clone ignores.
+    assertThat(scene.scheduled).containsExactlyInAnyOrder("knight", "minion", "chess");
     assertThat(scene.cloneNames()).containsExactlyInAnyOrder("knight_clone0", "minion_clone0");
-    assertThat(scene.refused).isEmpty();
+    assertThat(scene.refused).containsExactly("chess ignore clone");
   }
 
   @Test
@@ -303,11 +317,51 @@ class BattleCloneTest {
   }
 
   /**
+   * The configured tables with the five area effects below written in the hit-switch form, as an
+   * area effect without a filter writes them: its hit switches and its own-side or enemy switch in
+   * place of its filter, a number damage and a crown tower percent in place of the Zap's damage
+   * table, one buff a hit, the Earthquake reaching hidden units and starting no area of its own,
+   * and the Tornado hitting from its first update. Every 16.402.18 area effect is in the filter
+   * form, whose hit pass lists what it reaches through its filter and never asks the clone test;
+   * these hold the hit-switch walk's test, which the battle keeps.
+   */
+  private static GameTables hitSwitches(Path folder) throws IOException {
+    Files.createDirectories(folder);
+    return GameData.altered(
+        folder,
+        "area_effect_objects",
+        rows -> {
+          for (String row : List.of("Rage", "HealSpirit", "Zap", "Tornado", "Earthquake")) {
+            ObjectNode columns = GameData.columns(rows, row);
+            columns.remove("Filter");
+            columns.put("HitsGround", true);
+            if (!row.equals("Earthquake")) {
+              columns.put("HitsAir", true);
+            }
+            if (row.equals("Rage") || row.equals("HealSpirit")) {
+              columns.put("OnlyOwnTroops", true);
+            } else {
+              columns.put("OnlyEnemies", true);
+            }
+            if (!row.equals("Zap") && !row.equals("Tornado")) {
+              columns.put("BuffNumber", 1);
+            }
+          }
+          GameData.columns(rows, "HealSpirit").put("IgnoreBuildings", true);
+          GameData.columns(rows, "Zap").put("Damage", 75).put("CrownTowerDamagePercent", -70);
+          GameData.columns(rows, "Tornado").remove("HitSpeedOffset");
+          ObjectNode earthquake = GameData.columns(rows, "Earthquake");
+          earthquake.put("AffectsHidden", true);
+          earthquake.remove("OnStartingAction");
+        });
+  }
+
+  /**
    * A Knight and a Minion beside it cloned, and an area effect placed over them on the next tick:
    * for side 0 when it buffs its own troops, for side 1 otherwise.
    */
-  private static Scene clonesUnder(String row, int side) {
-    Scene scene = new Scene();
+  private static Scene clonesUnder(Path folder, String row, int side) throws IOException {
+    Scene scene = new Scene(hitSwitches(folder));
     scene.still(0, 0, "Knight", X, Y, "knight");
     scene.still(0, 0, "Minion", X + 600, Y, "minion");
     scene.clone(CAST_TICK);
@@ -324,8 +378,8 @@ class BattleCloneTest {
   @DisplayName(
       "a Rage, whose buff heals nothing, buffs the clones as it buffs any unit: its test is asked of"
           + " each clone twice a hit, by the walk and again by the apply, and passes")
-  void aRageBuffsTheClones() {
-    Scene scene = clonesUnder("Rage", 0);
+  void aRageBuffsTheClones(@TempDir Path folder) throws IOException {
+    Scene scene = clonesUnder(folder, "Rage", 0);
     scene.step(6);
 
     assertThat(scene.gate)
@@ -342,8 +396,8 @@ class BattleCloneTest {
   @DisplayName(
       "a Heal Spirit's area, whose buff heals 157 a second, refuses the clones in its walk and buffs"
           + " their originals")
-  void aHealingAreaRefusesTheClones() {
-    Scene scene = clonesUnder("HealSpirit", 0);
+  void aHealingAreaRefusesTheClones(@TempDir Path folder) throws IOException {
+    Scene scene = clonesUnder(folder, "HealSpirit", 0);
     scene.step(2);
 
     assertThat(scene.gate)
@@ -359,8 +413,8 @@ class BattleCloneTest {
   @DisplayName(
       "a Zap kills the clones with its damage, whose validator asks the test, and so does not stun"
           + " them: the buff's walk tests alive before it asks")
-  void aZapKillsTheClonesBeforeItsBuff() {
-    Scene scene = clonesUnder("Zap", 1);
+  void aZapKillsTheClonesBeforeItsBuff(@TempDir Path folder) throws IOException {
+    Scene scene = clonesUnder(folder, "Zap", 1);
     scene.step(1);
 
     assertThat(scene.gate)
@@ -380,8 +434,8 @@ class BattleCloneTest {
   @DisplayName(
       "a Tornado pulls the clones before it buffs them, its pull asking the test first, and its"
           + " damage kills them")
-  void aTornadoPullsTheClones() {
-    Scene scene = clonesUnder("Tornado", 1);
+  void aTornadoPullsTheClones(@TempDir Path folder) throws IOException {
+    Scene scene = clonesUnder(folder, "Tornado", 1);
     scene.step(1);
 
     assertThat(scene.gate)
@@ -403,8 +457,8 @@ class BattleCloneTest {
       "an Earthquake passes a ground clone and buffs it until its damage kills it; an air clone"
           + " passes the buff test and is refused by the air test after it, so it is asked once a"
           + " hit and never buffed")
-  void anEarthquakeOnAGroundAndAnAirClone() {
-    Scene scene = clonesUnder("Earthquake", 1);
+  void anEarthquakeOnAGroundAndAnAirClone(@TempDir Path folder) throws IOException {
+    Scene scene = clonesUnder(folder, "Earthquake", 1);
     scene.step(2);
 
     assertThat(scene.gate)

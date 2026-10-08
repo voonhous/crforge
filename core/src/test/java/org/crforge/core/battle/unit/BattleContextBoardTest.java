@@ -60,6 +60,7 @@ class BattleContextBoardTest {
     GameData.columns((ObjectNode) document.get("rows"), "Knight")
         .put("OnStartingAction", "Board_group");
     mapper.writeValue(file.toFile(), document);
+    GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
 

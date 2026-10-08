@@ -130,7 +130,7 @@ class BattleMegaMinionMarkDiedTest {
     int tick = battle.getBattle().getTick();
     battle.play(tick, records.card(card), LEVEL, 1, 14500, 25500, "e");
     int limit = tick + 60;
-    while (mark(hero).target() == null) {
+    while (markTarget(hero) == null) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
       step(battle);
     }
@@ -151,6 +151,19 @@ class BattleMegaMinionMarkDiedTest {
         .map(SetIndicatorOnTarget.Run.class::cast)
         .findFirst()
         .orElseThrow();
+  }
+
+  /**
+   * The target of the hero's mark, or null while it has none or the mark has not started yet: the
+   * hero's starting group starts it 1500 ms in.
+   */
+  private static SetIndicatorOnTarget.Candidate markTarget(CharacterEntity hero) {
+    return hero.actionHolder().running().stream()
+        .filter(SetIndicatorOnTarget.Run.class::isInstance)
+        .map(SetIndicatorOnTarget.Run.class::cast)
+        .findFirst()
+        .map(SetIndicatorOnTarget.Run::target)
+        .orElse(null);
   }
 
   /**

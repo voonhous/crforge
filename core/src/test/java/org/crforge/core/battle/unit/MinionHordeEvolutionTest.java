@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +30,7 @@ class MinionHordeEvolutionTest {
   @Test
   @DisplayName("the minion's first hit makes it a ghost for 3 s, and only the first")
   void theFirstHitMakesTheMinionAGhost() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     List<BuffEvent> minionBuffs = new ArrayList<>();

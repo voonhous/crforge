@@ -8,6 +8,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.IntUnaryOperator;
@@ -172,190 +173,10 @@ public class BattleWorld implements HolderPasses {
   @Getter private final CellCosts costs = CellCosts.standard();
 
   /**
-   * The data versions whose game drops a unit's route when its pushback's flight ends. The rule is
-   * the game build's, not a table value: the game of data version 16.402.18 drops it, the game of
-   * 14.593.1 keeps it and walks back toward the waypoint it held before the push.
+   * The match-wide movement settings: the standard game's, with a pushback's end dropping the
+   * route.
    */
-  private static final Set<String> PUSHBACK_END_DROPS_ROUTE = GameVersions.CLIENT_16_402_17_DATA;
-
-  /**
-   * The data versions whose game lands a direct hit's damage at the holder's damage drain, after
-   * every post-hook, instead of inside the attacker's targeting visit. The rule is the game
-   * build's, not a table value: the game of data version 16.402.18 queues the hit as it queues a
-   * typed hit, so a unit the hit kills keeps its movement visit of that tick and dies where that
-   * visit left it; the game of 14.593.1 deals the hit at once, and the death switches the unit's
-   * movement off before the movement pass.
-   *
-   * <p>The attacker's buff on damage follows its direct hit to the drain (see {@link
-   * #hitBuffOnDamage(WorldEntity, WorldEntity)}): the drain applies it right after the hit's
-   * damage, once the damage entry has let the hit through, a hit that kills included. That is after
-   * the tick's buff pass, so a 500 ms stun is first counted down on the next tick and holds its
-   * target for all of its ten visits; the game of 14.593.1 applies it inside the hit, before the
-   * buff pass of the same tick, and holds the target one tick less.
-   *
-   * <p>The same rule lands each victim's share of a character's area damage at the drain (see
-   * {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)}): the area of a direct hit and of a
-   * dash landing; no row of 16.402.18 sets a death damage. The area still pushes its victims at
-   * once, before their damage lands, so a victim the area kills is pushed too.
-   *
-   * <p>It lands each victim's share of a projectile's area impact at the drain too (see {@link
-   * #dealProjectileAreaDamage(ProjectileEntity, WorldEntity, int, int)}), pushed at once as well.
-   * The share counts for the projectile's shooter, and the projectile's listening runs hear of it,
-   * as the drain deals it.
-   *
-   * <p>It lands a projectile's hit on its one target at the drain as well (see {@link
-   * #dealProjectileHit(ProjectileEntity, WorldEntity, int, int, int, int)}), whose guards are then
-   * tested as the drain deals it: a dasher hit on the step its immunity runs out, after its dash,
-   * has that immunity counted down by its own state visit of the step before the drain, and takes
-   * the hit; the game of 14.593.1 refuses it inside the impact.
-   *
-   * <p>And it lands the two kills of a whole hit points at the drain: a fallen king's circle's (see
-   * {@link #circleKill(WorldEntity, int)}) and a Kamikaze unit's of itself as its hit ends (see
-   * {@link #kamikazeKill(WorldEntity)}). The circle runs in the match update, before the holder
-   * tick, so an entity it kills is still alive through that tick's passes - a tower or a unit that
-   * targets it still attacks it, and it takes its own visits - and dies at the drain. A Kamikaze
-   * unit killed in its own hit is still alive for the entities visited after it in that tick: one
-   * that targets it walks at it once more, and its body still stands among the others. A kill
-   * action's kill of its owner (see {@link #kill(WorldEntity, WorldEntity)}) goes the same way: its
-   * owner's kill action is scheduled at once, and the owner dies at the drain, so a building a
-   * pending pass kills still pushes the units around it in that tick's movement pass.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> DIRECT_HIT_AT_DRAIN = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version lands a direct hit's damage at the damage drain. */
-  private boolean directHitAtDrain;
-
-  /**
-   * The data versions whose game keeps every area effect until its countdown is below 0, so one
-   * whose countdown reaches 0 exactly has one more update, and runs its life-end action on that
-   * update; its end, as an object it follows leaves or an attack ends its signal, sets the
-   * countdown to -1. The rule is the game build's, not a table value: the game of data version
-   * 16.402.18 tests each area effect so, a row with hit switches as well as one with a filter; the
-   * game of 14.593.1 removes it once its countdown is below 1, runs the life-end action at 0 and
-   * ends it at 0.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> AREA_LIFE_ENDS_BELOW_ZERO = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version keeps an area effect until its countdown is below 0. */
-  private boolean areaLifeEndsBelowZero;
-
-  /**
-   * The data versions whose game's guard run makes its row's area effect (SpawnAEO), which pushes
-   * and hits what the charge passes, in place of its own push pass. The rule is the game build's,
-   * not a table value: the game of data version 16.402.18 reads no push column of the guard spawn
-   * row, makes the area effect at the guard's point on the step that starts the charge and ends it
-   * as the run finishes; the game of 14.593.1 pushes and hits by the row's push columns itself.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> GUARD_RUN_MAKES_AREA = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version's guard run makes its row's area effect. */
-  private boolean guardRunMakesArea;
-
-  /**
-   * The data versions whose game schedules a dying object's death action from its death slot, with
-   * the dying object as its own cause, rather than from the death handler with what killed it. The
-   * rule is the game build's, not a table value: the game of data version 16.402.18 ends every
-   * death slot with the row's death action on the dying object's holder - so an area effect it
-   * spawns is for the dying object's side, and a death the slot runs without the death handler (a
-   * removal, a rider let go, a decay) has it too - and its death handler schedules the killed
-   * action alone, unless the object killed itself or the death has no killing side. The game of
-   * 14.593.1 schedules both from the death handler, with the killer as their cause.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> DEATH_ACTION_AT_DEATH_SLOT = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version schedules the death action from the death slot. */
-  private boolean deathActionAtDeathSlot;
-
-  /**
-   * The data versions whose game's evolved Mega Knight uppercut clears its target's avoidance blend
-   * after a push the pushback entry took, as the row's ResetAvoidanceAtPushback says (true unless
-   * the row turns it off). The rule is the game build's: the game of data version 16.402.18 has the
-   * column, the game of 14.593.1 has no such column and never clears the blend, so a target
-   * steering around something is pushed along the turned path there.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> UPPERCUT_RESETS_AVOIDANCE = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version's uppercut clears its target's avoidance blend. */
-  private boolean uppercutResetsAvoidance;
-
-  /**
-   * The data versions whose game starts a chain projectile attack's run with its hop timer stopped,
-   * so the run's first next-target search waits until the first hop's projectile has gone, as every
-   * later one does, and the second hop is launched on the step the run finds it gone. The rule is
-   * the game build's, not a table value: the game of data version 16.402.18 builds the run with the
-   * timer at -1; the game of 14.593.1 builds it at 0, so its first search runs on the step after
-   * the first hop, while that hop's projectile still flies.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> CHAIN_FIRST_SEARCH_WAITS_FOR_HOP =
-      GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version's chain run waits for its first hop to land. */
-  private boolean chainFirstSearchWaitsForHop;
-
-  /**
-   * The data versions whose game's ability effect no longer dashes. The game of 14.593.1 dashes as
-   * an ability with a dash range fires: at the nearest object within that range its targeting would
-   * take, the unit's stuns removed first. The game of data version 16.402.18 reads the dash range
-   * only in the gate that lets the ability start, and its effect runs the activation action, the
-   * buff, the area effect, the lane switch and the character left behind, but no dash: the Golden
-   * Knight, whose ability row there names both a dash range and an activation action, dashes
-   * through that action's dashing attack chain instead.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> ABILITY_FIRE_WITHOUT_DASH = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version's ability effect no longer dashes. */
-  private boolean abilityFireWithoutDash;
-
-  /**
-   * The data versions whose game ends a hooking projectile whose target is gone: the projectile's
-   * visit ends it as it ends one that lost its owner, without a step, a release where it stands or
-   * an impact, once its target has left the battle (or was let go, as a deflection lets it go) or
-   * has no hit points left. The rule is the game build's, not a table value: the game of data
-   * version 16.402.18 asks the target as well as the owner; the game of 14.593.1 asks only the
-   * owner, so a hook whose target left flies on to where the target last stood and lands there on
-   * nothing.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> HOOK_ENDS_WITHOUT_TARGET = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** True when the battle's data version ends a hooking projectile whose target is gone. */
-  private boolean hookEndsWithoutTarget;
-
-  /**
-   * The data versions whose game pulls a hooked target at no less than the hook's drag speed: the
-   * step scales the drag speed by the target's speed column as a percentage, floored at 60 (the
-   * speed of a medium-speed unit) in the game of data version 16.402.18 and at 30 in the game of
-   * 14.593.1, so a slow target such as a Bowler or a Giant comes back at a Knight's pace on the
-   * first and at three quarters of it on the second. The floor of the other drag, the hook that
-   * stands and moves its owner, stays 30 in both. The rule is the game build's, not a table value.
-   *
-   * <p>Kept only while 14.593.1 is the regression set; it goes with that version.
-   */
-  private static final Set<String> HOOK_PULL_FLOOR_60 = GameVersions.CLIENT_16_402_17_DATA;
-
-  /** The least speed column a hooked target's pull scales the drag speed by. */
-  @Getter private int hookPullSpeedFloor;
-
-  /**
-   * The match-wide movement settings: the standard game's, with the rules of the data version the
-   * battle's tables are loaded from.
-   */
-  @Getter private MovementGlobals movementGlobals;
+  @Getter private final MovementGlobals movementGlobals;
 
   /** The neighbour answers the push pass and the avoidance handler ask for. */
   @Getter private final NeighbourQuery neighbourQuery;
@@ -415,10 +236,14 @@ public class BattleWorld implements HolderPasses {
   /** The most victims a death's damage takes. */
   private static final int DEATH_DAMAGE_LIMIT = 1000;
 
-  /** The least speed column a hooked target's pull scales by where the floor is 60. */
-  private static final int HOOK_PULL_FLOOR = 60;
+  /**
+   * The least speed column a hooked target's pull scales the drag speed by: the step scales the
+   * drag speed by the target's speed column as a percentage, floored at 60 (the speed of a
+   * medium-speed unit), so a slow target such as a Bowler or a Giant comes back at a Knight's pace.
+   */
+  public static final int HOOK_PULL_SPEED_FLOOR = 60;
 
-  /** The least speed column a hook's drag scales by otherwise. */
+  /** The least speed column the other drag, the hook that stands and moves its owner, scales by. */
   public static final int MIN_HOOK_SPEED_FLOOR = 30;
 
   /** The most characters an area effect's buff reaches in one hit. */
@@ -506,10 +331,9 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * One direct hit waiting for the drain, on a data version that lands it there: what the
-   * attacker's targeting visit hands the damage entry, dealt as {@link #dealDamage(WorldEntity,
-   * TargetView, int, int, int)} deals it at once, then followed by the attacker's buff on damage
-   * when the hit landed.
+   * One direct hit waiting for the drain: what the attacker's targeting visit hands the damage
+   * entry, dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)} deals it at once,
+   * then followed by the attacker's buff on damage when the hit landed.
    *
    * @param attacker the entity whose hit it is
    * @param target the view the hit resolved against
@@ -522,9 +346,8 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * One victim's share of a character's area damage waiting for the drain, on a data version that
-   * lands it there: dealt as {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)} deals it
-   * at once.
+   * One victim's share of a character's area damage waiting for the drain: dealt there as {@link
+   * #dealAreaDamageNow(WorldEntity, WorldEntity, int, int)} deals it.
    *
    * @param attacker the entity whose hit made the area
    * @param victim the entity the area collected
@@ -535,9 +358,9 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * One victim's share of a projectile's area impact waiting for the drain, on a data version that
-   * lands it there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int,
-   * int, int)} deals it at once, without a direction.
+   * One victim's share of a projectile's area impact waiting for the drain: dealt as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
+   * without a direction.
    *
    * @param projectile the projectile, standing at its aim
    * @param victim the entity the area collected
@@ -549,9 +372,9 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * A projectile's hit on its one target waiting for the drain, on a data version that lands it
-   * there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int,
-   * int)} deals it at once, with the flight's direction.
+   * A projectile's hit on its one target waiting for the drain: dealt as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
+   * with the flight's direction.
    *
    * @param projectile the projectile, standing at its aim
    * @param target the entity the impact resolved against
@@ -570,8 +393,7 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
-   * The kill of a fallen king's circle waiting for the drain, on a data version that lands it
-   * there: dealt as {@link #circleKill(WorldEntity, int)} deals it at once.
+   * The kill of a fallen king's circle waiting for the drain, where it is dealt.
    *
    * @param target the entity the circle reached
    * @param radius the circle's radius
@@ -579,16 +401,14 @@ public class BattleWorld implements HolderPasses {
   private record CircleKillDue(WorldEntity target, int radius) implements QueuedHit {}
 
   /**
-   * A Kamikaze unit's kill of itself waiting for the drain, on a data version that lands it there:
-   * dealt as {@link #kamikazeKill(WorldEntity)} deals it at once.
+   * A Kamikaze unit's kill of itself waiting for the drain, where it is dealt.
    *
    * @param unit the unit whose hit ended
    */
   private record KamikazeKillDue(WorldEntity unit) implements QueuedHit {}
 
   /**
-   * A kill action's kill of its owner waiting for the drain, on a data version that lands it there:
-   * dealt as {@link #kill(WorldEntity, WorldEntity)} deals it at once.
+   * A kill action's kill of its owner waiting for the drain, where it is dealt.
    *
    * @param target the kill action's owner
    * @param killer the entity that caused the action, or null for none
@@ -598,7 +418,7 @@ public class BattleWorld implements HolderPasses {
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
    * share of a character's or a projectile's area, a projectile's hit on its one target, a circle's
-   * kill or a Kamikaze unit's kill on a version that queues them.
+   * kill or a Kamikaze unit's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
@@ -613,10 +433,9 @@ public class BattleWorld implements HolderPasses {
           ActionKillDue {}
 
   /**
-   * A travelling hit of a projectile flying to a point waiting for the drain, on a data version
-   * that lands it there: dealt as {@link #dealProjectileDamage(ProjectileEntity, WorldEntity, int,
-   * int, int, int)} deals it at once, from the direction of the pass's centre, with nothing after
-   * it.
+   * A travelling hit of a projectile flying to a point waiting for the drain: dealt as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
+   * from the direction of the pass's centre, with nothing after it.
    *
    * @param projectile the projectile whose body covered the entity
    * @param target the entity it covered
@@ -660,6 +479,43 @@ public class BattleWorld implements HolderPasses {
   /**
    * The hits dealt this tick that wait for the drain, in the order they were dealt: one queue, so a
    * direct hit and a typed hit land in the order they were dealt.
+   *
+   * <p>The game lands a direct hit's damage at the holder's damage drain, after every post-hook,
+   * instead of inside the attacker's targeting visit: it queues the hit as it queues a typed hit,
+   * so a unit the hit kills keeps its movement visit of that tick and dies where that visit left
+   * it.
+   *
+   * <p>The attacker's buff on damage follows its direct hit to the drain: the drain applies it
+   * right after the hit's damage, once the damage entry has let the hit through, a hit that kills
+   * included. That is after the tick's buff pass, so a 500 ms stun is first counted down on the
+   * next tick and holds its target for all of its ten visits.
+   *
+   * <p>The same rule lands each victim's share of a character's area damage at the drain (see
+   * {@link #dealAreaDamage(WorldEntity, WorldEntity, int, int)}): the area of a direct hit and of a
+   * dash landing; no row sets a death damage. The area still pushes its victims at once, before
+   * their damage lands, so a victim the area kills is pushed too.
+   *
+   * <p>It lands each victim's share of a projectile's area impact at the drain too (see {@link
+   * #dealProjectileAreaDamage(ProjectileEntity, WorldEntity, int, int)}), pushed at once as well.
+   * The share counts for the projectile's shooter, and the projectile's listening runs hear of it,
+   * as the drain deals it.
+   *
+   * <p>It lands a projectile's hit on its one target at the drain as well (see {@link
+   * #dealProjectileHit(ProjectileEntity, WorldEntity, int, int, int, int)}), whose guards are then
+   * tested as the drain deals it: a dasher hit on the step its immunity runs out, after its dash,
+   * has that immunity counted down by its own state visit of the step before the drain, and takes
+   * the hit.
+   *
+   * <p>And it lands the two kills of a whole hit points at the drain: a fallen king's circle's (see
+   * {@link #circleKill(WorldEntity, int)}) and a Kamikaze unit's of itself as its hit ends (see
+   * {@link #kamikazeKill(WorldEntity)}). The circle runs in the match update, before the holder
+   * tick, so an entity it kills is still alive through that tick's passes - a tower or a unit that
+   * targets it still attacks it, and it takes its own visits - and dies at the drain. A Kamikaze
+   * unit killed in its own hit is still alive for the entities visited after it in that tick: one
+   * that targets it walks at it once more, and its body still stands among the others. A kill
+   * action's kill of its owner (see {@link #kill(WorldEntity, WorldEntity)}) goes the same way: its
+   * owner's kill action is scheduled at once, and the owner dies at the drain, so a building a
+   * pending pass kills still pushes the units around it in that tick's movement pass.
    */
   private final List<QueuedHit> queuedHits = new ArrayList<>();
 
@@ -680,7 +536,10 @@ public class BattleWorld implements HolderPasses {
             PathfindingGlobals.PATHFINDING_DYNAMIC_OCCLUSIONS,
             PathfindingGlobals.PATHFINDING_BUILDING_COST);
     this.index = new SpatialIndex(tileMap.width(), tileMap.height());
-    this.movementGlobals = MovementGlobals.forStandardArena(tileMap.width());
+    // The game drops a unit's route when its pushback's flight ends, so its next walk searches a
+    // fresh one from where the pushback left it.
+    this.movementGlobals =
+        MovementGlobals.forStandardArena(tileMap.width()).withPushbackEndDropsRoute(true);
     this.neighbourQuery = new IndexNeighbourQuery(index);
     this.holder = new EntityHolder(this);
   }
@@ -772,8 +631,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * The global that decides when a travelling hit queued for the drain dooms what it hit for the
    * rest of its volley: set, by the damage queued for the entity against its hit points and shield;
-   * clear, by the one hit's damage against its hit points, which is refused. Only read on a data
-   * version that queues travelling hits (see {@link #DIRECT_HIT_AT_DRAIN}); set in 16.402.18.
+   * clear, by the one hit's damage against its hit points, which is refused (see {@link
+   * #queuedHits}); set in 16.402.18.
    */
   private static final String PROJECTILE_DAMAGE_BUG = "V16_PROJECTILE_DAMAGE_BUG";
 
@@ -803,67 +662,37 @@ public class BattleWorld implements HolderPasses {
   /**
    * Loads the game's tables into the battle: declares their variables and game tags and keeps the
    * records and action rows built from them, which the battle's entities build their actions from.
+   * The battle models the rules of one game client, so tables of a data version that client has not
+   * run are refused, whatever their rows: they would play under rules they were never run with.
    *
    * @param tables the game tables of one data version
+   * @throws UnsupportedOperationException for tables of a data version the battle does not model
    */
   public void load(GameTables tables) {
+    requireModelled(tables);
     declare(tables);
     this.flagBits = EntityFlags.of(tables);
     this.records = new BattleRecords(tables);
     this.actions = new ActionRows(tables, records);
-    this.movementGlobals =
-        movementGlobals.withPushbackEndDropsRoute(
-            PUSHBACK_END_DROPS_ROUTE.contains(tables.version()));
-    this.directHitAtDrain = DIRECT_HIT_AT_DRAIN.contains(tables.version());
-    this.areaLifeEndsBelowZero = AREA_LIFE_ENDS_BELOW_ZERO.contains(tables.version());
-    this.guardRunMakesArea = GUARD_RUN_MAKES_AREA.contains(tables.version());
-    this.deathActionAtDeathSlot = DEATH_ACTION_AT_DEATH_SLOT.contains(tables.version());
-    this.uppercutResetsAvoidance = UPPERCUT_RESETS_AVOIDANCE.contains(tables.version());
-    this.chainFirstSearchWaitsForHop = CHAIN_FIRST_SEARCH_WAITS_FOR_HOP.contains(tables.version());
-    this.abilityFireWithoutDash = ABILITY_FIRE_WITHOUT_DASH.contains(tables.version());
-    this.hookEndsWithoutTarget = HOOK_ENDS_WITHOUT_TARGET.contains(tables.version());
-    this.hookPullSpeedFloor =
-        HOOK_PULL_FLOOR_60.contains(tables.version()) ? HOOK_PULL_FLOOR : MIN_HOOK_SPEED_FLOOR;
   }
 
   /**
-   * Whether the battle's data version's chain projectile attack runs its first next-target search
-   * only once the first hop's projectile has gone (see {@link #CHAIN_FIRST_SEARCH_WAITS_FOR_HOP}).
+   * Refuses tables whose data version is not one the battle models: a data version game client
+   * 16.402.17 has run ({@link GameVersions#CLIENT_16_402_17_DATA}).
+   *
+   * @param tables the game tables
+   * @throws UnsupportedOperationException for any other data version
    */
-  boolean chainFirstSearchWaitsForHop() {
-    return chainFirstSearchWaitsForHop;
-  }
-
-  /**
-   * Whether the battle's data version's ability effect dashes (see {@link
-   * #ABILITY_FIRE_WITHOUT_DASH}).
-   */
-  boolean abilityFireDashes() {
-    return !abilityFireWithoutDash;
-  }
-
-  /**
-   * Whether the battle's data version's uppercut clears its target's avoidance blend after its push
-   * (see {@link #UPPERCUT_RESETS_AVOIDANCE}).
-   */
-  boolean uppercutResetsAvoidance() {
-    return uppercutResetsAvoidance;
-  }
-
-  /**
-   * Whether the battle's data version's guard run makes its row's area effect in place of its own
-   * push pass (see {@link #GUARD_RUN_MAKES_AREA}).
-   */
-  boolean guardRunMakesArea() {
-    return guardRunMakesArea;
-  }
-
-  /**
-   * Whether the battle's data version keeps an area effect until its countdown is below 0 (see
-   * {@link #AREA_LIFE_ENDS_BELOW_ZERO}).
-   */
-  boolean areaLifeEndsBelowZero() {
-    return areaLifeEndsBelowZero;
+  public static void requireModelled(GameTables tables) {
+    if (!GameVersions.CLIENT_16_402_17_DATA.contains(tables.version())) {
+      throw new UnsupportedOperationException(
+          "the battle models the rules of game client "
+              + GameVersions.CLIENT_16_402_17
+              + ", which runs data versions "
+              + new TreeSet<>(GameVersions.CLIENT_16_402_17_DATA)
+              + "; it does not play tables of data version "
+              + tables.version());
+    }
   }
 
   /**
@@ -1063,10 +892,9 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Deals the damage of one entity's direct hit, as its targeting visit's hit application hands it
-   * to the damage entry: at once, as {@link #dealDamage(WorldEntity, TargetView, int, int, int)}
-   * does, on a data version whose game deals it inside the visit; queued for the damage drain, in
-   * the order hits are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}).
-   * A hit dealt after the tick's drain waits for the next tick's, as a typed hit does.
+   * to the damage entry: queued for the damage drain, in the order hits are dealt (see {@link
+   * #queuedHits}), where it is dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)}
+   * deals it. A hit dealt after the tick's drain waits for the next tick's, as a typed hit does.
    *
    * @param attacker the entity whose hit it is
    * @param target the view the hit resolved against
@@ -1076,11 +904,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void dealDirectHit(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
-    if (directHitAtDrain) {
-      queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
-    } else {
-      dealDamage(attacker, target, damage, directionX, directionY);
-    }
+    queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
   }
 
   /**
@@ -1275,16 +1099,14 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Whether a hooking projectile has lost its target, on a battle whose game ends it then (see
-   * {@link #HOOK_ENDS_WITHOUT_TARGET}): the target has left the battle or was let go, or it has hit
+   * Whether a hooking projectile has lost its target, which ends it: the projectile's visit ends it
+   * as it ends one that lost its owner, without a step, a release where it stands or an impact,
+   * once its target has left the battle or was let go (as a deflection lets it go), or has hit
    * points and none are left, as a destroyed crown tower that stays in the battle has none.
    *
    * @param projectile the hooking projectile
    */
   public boolean hookTargetLost(ProjectileEntity projectile) {
-    if (!hookEndsWithoutTarget) {
-      return false;
-    }
     WorldEntity target = projectile.getTarget();
     return target == null || !target.getTargetView().alive();
   }
@@ -1744,22 +1566,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills an entity, as a kill action kills its owner, and tells every observer what the kill did
-   * as they are told of a hit of its whole hit points. On a data version that lands it at the
-   * damage drain the kill is queued, and the entity stays alive until the drain of the tick (see
-   * {@link #DIRECT_HIT_AT_DRAIN}).
+   * as they are told of a hit of its whole hit points. The kill is queued for the damage drain, and
+   * the entity stays alive until the drain of the tick (see {@link #queuedHits}).
    *
    * @param target the entity
    * @param killer the entity that caused it, or null for none
    */
   public void kill(WorldEntity target, WorldEntity killer) {
-    if (directHitAtDrain) {
-      queuedHits.add(new ActionKillDue(target, killer));
-      return;
-    }
-    killNow(target, killer);
+    queuedHits.add(new ActionKillDue(target, killer));
   }
 
-  /** A kill action's kill, dealt: at once, or at the damage drain on a version that queues it. */
+  /** A kill action's kill, dealt at the damage drain. */
   private void killNow(WorldEntity target, WorldEntity killer) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
     DamageResult result = target.takeKill(null, killer);
@@ -1929,21 +1746,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills a Kamikaze unit at the end of its hit: its whole hit points, with itself as the attacker
-   * on its own side, so its death action runs alone. Every observer is told of the kill. On a data
-   * version that lands it at the damage drain the kill is queued, and the unit stays alive until
-   * the drain of the tick (see {@link #DIRECT_HIT_AT_DRAIN}).
+   * on its own side, so its death action runs alone. Every observer is told of the kill. The kill
+   * is queued for the damage drain, and the unit stays alive until the drain of the tick (see
+   * {@link #queuedHits}).
    *
    * @param unit the unit
    */
   public void kamikazeKill(WorldEntity unit) {
-    if (directHitAtDrain) {
-      queuedHits.add(new KamikazeKillDue(unit));
-      return;
-    }
-    kamikazeKillNow(unit);
+    queuedHits.add(new KamikazeKillDue(unit));
   }
 
-  /** The Kamikaze kill, dealt: at once, or at the damage drain on a version that queues it. */
+  /** The Kamikaze kill, dealt at the damage drain. */
   private void kamikazeKillNow(WorldEntity unit) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKill(unit, unit);
@@ -1988,22 +1801,18 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills an entity of a fallen king's side that the king's circle reached: its whole hit points,
-   * no attacker, told to every observer as the circle's kill rather than a hit. On a data version
-   * that lands it at the damage drain the kill is queued, and the entity stays alive until the
-   * drain of the tick (see {@link #DIRECT_HIT_AT_DRAIN}).
+   * no attacker, told to every observer as the circle's kill rather than a hit. The kill is queued
+   * for the damage drain, and the entity stays alive until the drain of the tick (see {@link
+   * #queuedHits}).
    *
    * @param target the entity
    * @param radius the circle's radius
    */
   public void circleKill(WorldEntity target, int radius) {
-    if (directHitAtDrain) {
-      queuedHits.add(new CircleKillDue(target, radius));
-      return;
-    }
-    circleKillNow(target, radius);
+    queuedHits.add(new CircleKillDue(target, radius));
   }
 
-  /** The circle's kill, dealt: at once, or at the damage drain on a version that queues it. */
+  /** The circle's kill, dealt at the damage drain. */
   private void circleKillNow(WorldEntity target, int radius) {
     DamageResult result = target.takeKill();
     for (WorldObserver observer : observers) {
@@ -2065,9 +1874,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Deals one victim's share of the area of an entity's hit, and tells every observer what it did:
-   * at once on a data version whose game deals it inside the area, queued for the damage drain, in
-   * the order hits are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}).
-   * A victim that has left the battle takes nothing.
+   * queued for the damage drain, in the order hits are dealt (see {@link #queuedHits}). A victim
+   * that has left the battle takes nothing.
    *
    * @param attacker the entity whose hit made the area
    * @param victim the entity the area collected
@@ -2077,11 +1885,8 @@ public class BattleWorld implements HolderPasses {
    */
   public DamageResult dealAreaDamage(
       WorldEntity attacker, WorldEntity victim, int damage, int hitId) {
-    if (directHitAtDrain) {
-      queuedHits.add(new AreaHitDue(attacker, victim, damage, hitId));
-      return DamageResult.NOTHING;
-    }
-    return dealAreaDamageNow(attacker, victim, damage, hitId);
+    queuedHits.add(new AreaHitDue(attacker, victim, damage, hitId));
+    return DamageResult.NOTHING;
   }
 
   /**
@@ -2116,12 +1921,11 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals one victim's share of a projectile's area impact: at once, as {@link
-   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it without a
-   * direction, on a data version whose game deals it inside the impact; queued for the damage
-   * drain, in the order hits are dealt, on one whose game lands it there (see {@link
-   * #DIRECT_HIT_AT_DRAIN}). Dealt at the drain, the share counts for the projectile's shooter as it
-   * is then, and the projectile's listening runs hear of it there.
+   * Deals one victim's share of a projectile's area impact: queued for the damage drain, in the
+   * order hits are dealt (see {@link #queuedHits}), where it is dealt as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it, without a
+   * direction. Dealt at the drain, the share counts for the projectile's shooter as it is then, and
+   * the projectile's listening runs hear of it there.
    *
    * @param projectile the projectile, standing at its aim
    * @param victim the entity the area collected
@@ -2131,18 +1935,14 @@ public class BattleWorld implements HolderPasses {
    */
   public DamageResult dealProjectileAreaDamage(
       ProjectileEntity projectile, WorldEntity victim, int damage, int hitId) {
-    if (directHitAtDrain) {
-      queuedHits.add(new ProjectileAreaHitDue(projectile, victim, damage, hitId));
-      return DamageResult.NOTHING;
-    }
-    return dealProjectileDamage(projectile, victim, damage, hitId, 0, 0);
+    queuedHits.add(new ProjectileAreaHitDue(projectile, victim, damage, hitId));
+    return DamageResult.NOTHING;
   }
 
   /**
-   * Deals the damage of a projectile's hit on its one target: at once, as {@link
-   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} does, on a data
-   * version whose game deals it inside the impact; queued for the damage drain, in the order hits
-   * are dealt, on one whose game lands it there (see {@link #DIRECT_HIT_AT_DRAIN}). Queued, the
+   * Deals the damage of a projectile's hit on its one target: queued for the damage drain, in the
+   * order hits are dealt (see {@link #queuedHits}), where it is dealt as {@link
+   * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it. The
    * target's guards are tested as the drain deals it, after every post-hook of the tick: a dasher
    * whose immunity its own state visit of that tick counted down to 0 takes the hit.
    *
@@ -2160,12 +1960,7 @@ public class BattleWorld implements HolderPasses {
       int hitId,
       int directionX,
       int directionY) {
-    if (directHitAtDrain) {
-      queuedHits.add(
-          new ProjectileHitDue(projectile, target, damage, hitId, directionX, directionY));
-      return;
-    }
-    dealProjectileDamage(projectile, target, damage, hitId, directionX, directionY);
+    queuedHits.add(new ProjectileHitDue(projectile, target, damage, hitId, directionX, directionY));
   }
 
   /**
@@ -2960,17 +2755,6 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Tells the observers what an ability's dash looked at, the stuns it removed and its winner. */
-  void abilityDashed(
-      CharacterEntity unit,
-      List<CharacterEntity.DashCandidate> candidates,
-      List<String> cleansed,
-      WorldEntity chosen) {
-    for (WorldObserver observer : observers) {
-      observer.abilityDashed(tick, unit, candidates, cleansed, chosen);
-    }
-  }
-
   /** Tells the observers a unit whose dashes chain started a dash, with its chain's bookkeeping. */
   void chainDashStarted(
       CharacterEntity unit, int fromX, int fromY, int aimX, int aimY, int radius) {
@@ -3022,18 +2806,14 @@ public class BattleWorld implements HolderPasses {
    * <p>Between the two, the killer's hook: an arena entity whose hit killed, and whose row has a
    * killed-done action, schedules it on itself - see {@link #killedDone}.
    *
-   * <p>Then the death handler's hooks: the row's death action and, unless the entity killed itself,
-   * its killed action, each built for the entity and scheduled on its own holder with the row's own
-   * delay, what killed it as the cause: the unit for a direct hit or its area, the projectile
-   * itself for an impact, the source of a typed hit, the killer of a kill. The entity stays in the
-   * tick's snapshot until the closing cleanup, so a hook with no delay runs in the next pending
-   * pass of the same tick: phase 2 after a hit in a component pass, phase 3 after an impact or a
-   * typed hit, and at once, the death action before the killed action is scheduled, after a kill
-   * inside a pending pass.
-   *
-   * <p>On a data version that schedules the death action from the death slot (see {@link
-   * #DEATH_ACTION_AT_DEATH_SLOT}) the slot has scheduled it, the dying entity its own cause, and
-   * the handler schedules the killed action alone (see {@link #killedHook}).
+   * <p>Then the death handler's hook: the death slot has scheduled the row's death action already,
+   * the dying entity its own cause (see {@link #slotDeathAction}), so the handler schedules the
+   * killed action alone (see {@link #killedHook}), built for the entity and scheduled on its own
+   * holder with the row's own delay, what killed it as the cause: the unit for a direct hit or its
+   * area, the projectile itself for an impact, the source of a typed hit, the killer of a kill. The
+   * entity stays in the tick's snapshot until the closing cleanup, so a hook with no delay runs in
+   * the next pending pass of the same tick: phase 2 after a hit in a component pass, phase 3 after
+   * an impact or a typed hit, and at once after a kill inside a pending pass.
    *
    * <p>Refused rather than guessed: a death hook with no cause, which the game gives a cause that
    * carries only a side, and one scheduled after the tick's last pending pass, which would leave
@@ -3053,11 +2833,7 @@ public class BattleWorld implements HolderPasses {
     UnitData data = dying.getData();
     deathSlot(dying, data);
     killedDone(dying, attacker);
-    if (deathActionAtDeathSlot) {
-      killedHook(dying, attacker, data, killingSide);
-    } else {
-      deathHooks(dying, attacker, data);
-    }
+    killedHook(dying, attacker, data, killingSide);
     deathReward(dying, data, killingSide);
   }
 
@@ -3163,12 +2939,11 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The death handler's hook on a data version that schedules the death action from the death slot
-   * (see {@link #DEATH_ACTION_AT_DEATH_SLOT}): the dying unit's killed action alone, with what
-   * killed it as the cause. None when the row has no killed action, when the death has no killing
-   * side, or when the unit killed itself on the killing side. Refused rather than guessed, as
-   * {@link #deathHooks} refuses them: a killed action with no attacker, whose cause would carry a
-   * side alone, and one scheduled after the tick's last pending pass.
+   * The death handler's hook: the dying unit's killed action alone, with what killed it as the
+   * cause; the death slot schedules the death action (see {@link #slotDeathAction}). None when the
+   * row has no killed action, when the death has no killing side, or when the unit killed itself on
+   * the killing side. Refused rather than guessed: a killed action with no attacker, whose cause
+   * would carry a side alone, and one scheduled after the tick's last pending pass.
    *
    * @param dying the entity that died
    * @param attacker what killed it, or null for nothing
@@ -3221,11 +2996,12 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The death slot's last act on a data version that schedules the death action there (see {@link
-   * #DEATH_ACTION_AT_DEATH_SLOT}): the row's death action, built for the dying object and scheduled
-   * on its own holder with the row's own delay, the dying object its own cause. It runs in the next
-   * pending pass of the tick; after the tick's last pending pass the object leaves at the closing
-   * cleanup with the entry unrun.
+   * The death slot's last act: the row's death action, built for the dying object and scheduled on
+   * its own holder with the row's own delay, the dying object its own cause, rather than from the
+   * death handler with what killed it. So an area effect it spawns is for the dying object's side,
+   * and a death the slot runs without the death handler (a removal, a rider let go, a decay) has it
+   * too. It runs in the next pending pass of the tick; after the tick's last pending pass the
+   * object leaves at the closing cleanup with the entry unrun.
    *
    * @param dying the object dying
    * @param data its row
@@ -3243,56 +3019,6 @@ public class BattleWorld implements HolderPasses {
             ActionHolder.OWN_DELAY,
             false,
             dying.actionHolder());
-  }
-
-  /** The death handler's hooks: the dying unit's death and killed actions, with their cause. */
-  private void deathHooks(WorldEntity dying, BattleEntity attacker, UnitData data) {
-    if (data.onDeathAction() == null && data.onKilledAction() == null) {
-      return;
-    }
-    ActionHolder cause;
-    int side;
-    if (attacker instanceof WorldEntity entity) {
-      cause = entity.actionHolder();
-      side = entity.side();
-    } else if (attacker instanceof ProjectileEntity projectile) {
-      cause = projectile.actionHolder();
-      side = projectile.getSide();
-    } else if (attacker instanceof AreaEffectEntity areaEffect) {
-      cause = areaEffect.actionHolder();
-      side = areaEffect.side();
-    } else {
-      throw new UnsupportedOperationException(
-          dying.name()
-              + " died with no attacker; the cause its death hooks would carry, a side alone, is"
-              + " not modelled");
-    }
-    if (!holder.hasPendingPassAhead()) {
-      throw new UnsupportedOperationException(
-          dying.name()
-              + " died after the tick's last pending pass, where its death hooks would leave with"
-              + " it; such a death is not established");
-    }
-    // A unit that killed itself runs its death action alone.
-    boolean selfKill = attacker == dying && side == dying.side();
-    List<String> hooks = new ArrayList<>();
-    if (data.onDeathAction() != null) {
-      hooks.add(data.onDeathAction());
-    }
-    if (!selfKill && data.onKilledAction() != null) {
-      hooks.add(data.onKilledAction());
-    }
-    boolean inPendingPass = holder.isInPendingPass();
-    for (WorldObserver observer : observers) {
-      observer.deathHooksScheduled(tick, dying, attacker, side, List.copyOf(hooks), inPendingPass);
-    }
-    for (String hook : hooks) {
-      // Built one at a time: inside a pending pass the death action runs before the killed action
-      // is even scheduled.
-      dying
-          .actionHolder()
-          .schedule(actions.build(hook, binding(dying)), ActionHolder.OWN_DELAY, false, cause);
-    }
   }
 
   /**
@@ -3323,24 +3049,8 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.decayDied(tick, dying, hitPointsBefore);
     }
+    // The death slot schedules the death action, on itself with itself as the cause.
     deathSlot(dying, data);
-    // On a data version that schedules it from the death slot, the slot has done so.
-    if (!deathActionAtDeathSlot && data.onDeathAction() != null) {
-      // The death action alone, on itself with itself as the cause, taken by the tick's next
-      // pending pass.
-      List<String> hooks = List.of(data.onDeathAction());
-      boolean inPendingPass = holder.isInPendingPass();
-      for (WorldObserver observer : observers) {
-        observer.deathHooksScheduled(tick, dying, dying, dying.side(), hooks, inPendingPass);
-      }
-      dying
-          .actionHolder()
-          .schedule(
-              actions.build(data.onDeathAction(), binding(dying)),
-              ActionHolder.OWN_DELAY,
-              false,
-              dying.actionHolder());
-    }
   }
 
   /**
@@ -4557,31 +4267,21 @@ public class BattleWorld implements HolderPasses {
         projectile.getHitIds().add(rider.getId());
       }
     }
-    boolean landed;
-    if (directHitAtDrain) {
-      // Queued for the drain, where the entity takes it and may die, after every movement visit
-      // of the tick; then, should the entity's queued damage now kill it, it is doomed for the
-      // rest of the volley.
-      queuedHits.add(
-          new TravellingHitDue(
-              projectile, entity, damage, hitId, view.getX() - x, view.getY() - y));
-      if (projectile.getGroup() != null && queuedKill(entity)) {
-        projectile.getGroup().doom(id);
-      }
-      landed = true;
-    } else {
-      landed =
-          dealProjectileDamage(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y)
-              .landed();
+    // Queued for the drain, where the entity takes it and may die, after every movement visit of
+    // the tick; then, should the entity's queued damage now kill it, it is doomed for the rest of
+    // the volley.
+    queuedHits.add(
+        new TravellingHitDue(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y));
+    if (projectile.getGroup() != null && queuedKill(entity)) {
+      projectile.getGroup().doom(id);
     }
     if (data.pushback() >= 1 && entity instanceof CharacterEntity character) {
       character.pushedByTravellingHit(
           projectile.getX(), projectile.getY(), data.pushback(), data.pushbackAll());
     }
     // A projectile that stops at collisions is finished by a hit on an entity that had hit points
-    // left: one that landed, where the hit is dealt at once; any, where it waits for the drain,
-    // whose guards are not asked yet.
-    if (standing && landed && data.checkCollisions()) {
+    // left: any, as the hit waits for the drain, whose guards are not asked yet.
+    if (standing && data.checkCollisions()) {
       projectile.finishOnCollision();
       return true;
     }
@@ -4757,7 +4457,7 @@ public class BattleWorld implements HolderPasses {
     deathSpawn(dying, data);
     deathProjectiles(dying, data);
     deathNotice(dying);
-    if (deathActionAtDeathSlot && data.onDeathAction() != null) {
+    if (data.onDeathAction() != null) {
       slotDeathAction(dying, data);
     }
   }
@@ -5462,9 +5162,8 @@ public class BattleWorld implements HolderPasses {
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
    * direct hit, a share of a character's or a projectile's area, or a projectile's hit on its one
-   * target, on a data version that queues them: the damage dealt as it is dealt at once, with its
-   * reflect, its observers, its death or the reference drop; a circle's or a Kamikaze unit's kill,
-   * on such a version, as it is dealt at once.
+   * target: the damage dealt, with its reflect, its observers, its death or the reference drop; a
+   * circle's or a Kamikaze unit's kill.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -5553,13 +5252,9 @@ public class BattleWorld implements HolderPasses {
       if (result.died()) {
         target.die(source);
       }
-      // On a data version whose game applies a buff on damage at the drain, it applies the source's
-      // after a typed hit it lets through as well; no reference holds a typed hit from such a
-      // source.
-      if (directHitAtDrain
-          && result.landed()
-          && source != null
-          && source.getData().buffOnDamage() != null) {
+      // The game applies a buff on damage at the drain, so it applies the source's after a typed
+      // hit it lets through as well; no reference holds a typed hit from such a source.
+      if (result.landed() && source != null && source.getData().buffOnDamage() != null) {
         throw new UnsupportedOperationException(
             source.name() + " deals a typed hit with a BuffOnDamage, not modelled");
       }
@@ -7979,23 +7674,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A hit's buff on damage as the attacker's hit application reaches it, after its direct hit or an
-   * attack sequence entry's action: applied at once on a data version whose game applies it inside
-   * the hit; nothing on one whose game applies it at the damage drain (see {@link
-   * #DIRECT_HIT_AT_DRAIN}), whose hit application no longer calls the apply, so the queued direct
-   * hit carries it there (see {@link #drainBuffOnDamage(WorldEntity, TargetView, DamageResult)}).
-   *
-   * @param attacker the entity whose hit it is
-   * @param target what the hit reached
-   */
-  void hitBuffOnDamage(WorldEntity attacker, WorldEntity target) {
-    if (directHitAtDrain) {
-      return;
-    }
-    buffOnDamage(attacker, target);
-  }
-
-  /**
    * A queued direct hit's buff on damage, as the drain deals the hit: applied right after the
    * damage, the hit's death and its reflect, when the damage entry let the hit through (the drain
    * applies it only for a record its bookkeeping accepted), a hit that kills included; nothing for
@@ -8048,23 +7726,13 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Whether a projectile's target buff after its damage is applied at the damage drain rather than
-   * at its impact: on a data version whose game lands the projectile's hits there (see {@link
-   * #DIRECT_HIT_AT_DRAIN}).
-   */
-  public boolean projectileBuffAtDrain() {
-    return directHitAtDrain;
-  }
-
-  /**
-   * A queued projectile hit's target buff, as the drain deals the hit, on a data version that
-   * applies it there: right after the damage, the hit's death and its reflect, to the victim of
-   * that one hit, for a projectile whose row sets a target buff and does not apply it before the
-   * damage, when the damage entry let the hit through - a hit that kills included. It reaches the
-   * victims of an area impact one by one, as the drain deals their shares, so only what the area
-   * damaged takes it. Applied with the projectile as the source, at its level and for its side, for
-   * the row's buff time at that level; the drain asks nothing of the victim's dash immunity, which
-   * the damage entry has answered already.
+   * A queued projectile hit's target buff, as the drain deals the hit: right after the damage, the
+   * hit's death and its reflect, to the victim of that one hit, for a projectile whose row sets a
+   * target buff and does not apply it before the damage, when the damage entry let the hit through
+   * - a hit that kills included. It reaches the victims of an area impact one by one, as the drain
+   * deals their shares, so only what the area damaged takes it. Applied with the projectile as the
+   * source, at its level and for its side, for the row's buff time at that level; the drain asks
+   * nothing of the victim's dash immunity, which the damage entry has answered already.
    *
    * <p>Being applied after every post-hook of the tick, the buff is first read by the victim's
    * combat gate on the next tick: a stun leaves the victim its targeting visit of that tick, under

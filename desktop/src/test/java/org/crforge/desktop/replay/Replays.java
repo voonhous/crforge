@@ -1,13 +1,12 @@
 package org.crforge.desktop.replay;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
 import org.crforge.desktop.battle.TableCopies;
@@ -20,13 +19,23 @@ final class Replays {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  /** The fixture: side 0 plays its Archer Queen on tick 220 and taps her ability on tick 350. */
+  /**
+   * The fixture: side 0 plays its Archer Queen on tick 220 and taps her ability on tick 350. It is
+   * written in the shape every version's replays share, which {@link #archerQueen} completes into
+   * one of the configured version.
+   */
   static final String ARCHER_QUEEN = "/replays/archer_queen_ability.json";
+
+  /** The command type of a card play in the configured version's replays. */
+  static final int PLAY = 153;
+
+  /** The command type of an ability command in the configured version's replays. */
+  static final int ABILITY = 189;
 
   /**
    * The fixture as a replay of the game client whose data version is 16.402.18 writes it, with
-   * made-up players: its command types 153 and 189, and the fields that version's replays write
-   * beyond 14.593.1's.
+   * made-up players: its command types 153 and 189, and every field that version's replays write
+   * beyond the shape all versions share.
    */
   static final String ARCHER_QUEEN_VERSION_16 = "/replays/archer_queen_version16.json";
 
@@ -48,33 +57,30 @@ final class Replays {
   }
 
   /**
-   * The tables of {@link #VERSION_16}: the configured tables when they are of that version, else a
-   * folder of them beside the configured ones, as in a checkout of the game data repository.
-   *
-   * @return the tables, or empty when there are none
+   * The fixture as a replay of the configured version writes it, with the least it must hold beyond
+   * the shared shape: the request lists, the header's switches, each side's king level ({@code kt})
+   * 1 in its player data, and the version's command types. A document to change in a test.
    */
-  static Optional<GameTables> version16Tables() {
-    Optional<Path> configured = GameTables.configuredDirectory();
-    if (configured.isEmpty()) {
-      return Optional.empty();
-    }
-    Path folder = configured.get().toAbsolutePath();
-    Path version16 =
-        folder.getFileName().toString().equals(VERSION_16)
-            ? folder
-            : folder.resolveSibling(VERSION_16);
-    return Files.isDirectory(version16)
-        ? Optional.of(GameTables.load(version16))
-        : Optional.empty();
-  }
-
-  /** The fixture as a document, to change in a test. */
   static ObjectNode archerQueen() {
-    return read(ARCHER_QUEEN);
+    ObjectNode document = read(ARCHER_QUEEN);
+    document.putArray("srq");
+    document.putArray("srs");
+    ObjectNode battle = (ObjectNode) document.path("battle");
+    battle.put("cardlvlmin", 0);
+    battle.put("rrb", false);
+    battle.put("seb", false);
+    for (JsonNode data : battle.path("hbd")) {
+      ((ObjectNode) data).put("kt", 1);
+    }
+    for (JsonNode command : document.path("cmd")) {
+      ((ObjectNode) command)
+          .put("ct", command.has("c") && command.path("c").has("cgid") ? ABILITY : PLAY);
+    }
+    return document;
   }
 
   /** The fixture of version 16.402.18 as a document. */
-  static ObjectNode archerQueenOfVersion16() {
+  static ObjectNode archerQueenWithEveryField() {
     return read(ARCHER_QUEEN_VERSION_16);
   }
 

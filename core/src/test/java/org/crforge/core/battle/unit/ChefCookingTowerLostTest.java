@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -43,7 +43,7 @@ class ChefCookingTowerLostTest {
           + " idle the bar fills at 800 a step, so a pancake follows the last after 581 steps"
           + " instead of 466")
   void aDestroyedTowerAddsNothing() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     // A friendly Giant behind the left tower for every pancake to go to.
@@ -73,7 +73,7 @@ class ChefCookingTowerLostTest {
   @Test
   @DisplayName("with both princess towers destroyed the cooking ends and no pancake follows")
   void bothTowersDestroyedEndTheCooking() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     battle.play(200, records.card("Giant"), LEVEL, 1, 3500, 29000, "g");

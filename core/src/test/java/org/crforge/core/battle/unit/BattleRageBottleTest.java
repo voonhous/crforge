@@ -32,9 +32,11 @@ class BattleRageBottleTest {
     for (int i = 0; i < 40; i++) {
       battle.step();
     }
-    int x = lumberjack.x();
-    int y = lumberjack.y();
+    // The kill lands at the next step's damage drain, after that step's walk: the bottle stands
+    // where the Lumberjack died.
     match.getWorld().kill(lumberjack, null);
+    int x = -1;
+    int y = -1;
 
     List<Integer> deployingSteps = new ArrayList<>();
     int bottleLeft = -1;
@@ -42,6 +44,10 @@ class BattleRageBottleTest {
     boolean bottleSeen = false;
     for (int step = 1; step <= 40; step++) {
       battle.step();
+      if (x < 0 && !lumberjack.getView().isAlive()) {
+        x = lumberjack.x();
+        y = lumberjack.y();
+      }
       CharacterEntity bottle = character(battle, "RageBarbarianBottle");
       if (bottle != null) {
         bottleSeen = true;

@@ -113,17 +113,18 @@ class BattleRoyalHogEvoTest {
     int firstHit = hits.get(0)[0];
     assertThat(hits.get(0)[1]).as("the hog's hit at the first level").isEqualTo(29);
     assertThat(fall.landings()).as("one landing area, one fall").hasSize(1);
-    assertThat(fall.groundedAt()).as("the step it lands, its row swapped").isEqualTo(firstHit + 11);
-    assertThat(fall.areaHits()).hasSize(1);
-    assertThat(fall.areaHits().get(0)[1])
-        .as("the landing area's damage at the first level")
-        .isEqualTo(33);
-    assertThat(fall.areaHits().get(0)[0])
-        .as("its hit, a step later")
-        .isEqualTo(fall.groundedAt() + 1);
+    int landing = fall.landings().get(0);
+    assertThat(landing).as("the step it lands").isEqualTo(firstHit + 11);
+    // The landing area is in the filter form: its hit on the tower is a typed hit, a step later.
+    assertThat(fall.areaHits()).isEmpty();
+    assertThat(hits.get(1))
+        .as("the landing area's damage at the first level, a step later")
+        .containsExactly(landing + 1, 17);
     // The fall runs once: every later hit is the hog's own, one every 1.2 s.
-    for (int i = 1; i < hits.size(); i++) {
-      assertThat(hits.get(i)[0] - hits.get(i - 1)[0]).as("hit %d", i + 1).isEqualTo(24);
+    List<int[]> own = new ArrayList<>(hits);
+    own.remove(1);
+    for (int i = 1; i < own.size(); i++) {
+      assertThat(own.get(i)[0] - own.get(i - 1)[0]).as("hit %d", i + 1).isEqualTo(24);
     }
     assertThat(fall.hog().getData().name()).isEqualTo(GROUNDED);
     assertThat(fall.air().get(fall.air().size() - 1)).as("held on the ground layer").isFalse();

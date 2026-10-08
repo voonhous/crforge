@@ -160,6 +160,9 @@ class BattleUppercutWindTest {
     scene.step(40);
     TowerEntity tower = scene.world().princessTowers(1).get(0);
     mk.getUnit().targeting().setReference(tower.getTargetView());
+    // The uppercut runs only while the attack counter its attacks keep is even; the Mega Knight
+    // has attacked the tower by now, so it is set back to 0.
+    mk.setVariable(scene.world().variableKey("MegaKnight_EV1_Do_Uppercut_Counter"), 0);
     scene.log.clear();
 
     mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), tower.actionHolder());
@@ -199,29 +202,6 @@ class BattleUppercutWindTest {
             "update mk pushed 1000",
             "update mk waiting 950",
             "update mk other target in range 950");
-  }
-
-  @Test
-  @DisplayName(
-      "the uppercut's push keeps the pushed unit's avoidance blend in a data version whose"
-          + " uppercut has no switch to clear it")
-  void thePushKeepsTheBlendWithoutTheSwitch() {
-    Scene scene = new Scene();
-    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 14000, "mk");
-    CharacterEntity knight = scene.unit(1, "Knight", 3500, 15600, "k");
-    // Just deployed, before its first hit; held where it stands.
-    scene.step(22);
-    mk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
-    mk.getUnit().targeting().setReference(knight.getTargetView());
-    mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), knight.actionHolder());
-    knight.getUnit().movement().setAvoidanceBlend(-150);
-
-    scene.step(1);
-
-    assertThat(knight.getUnit().movement().getAttackPushback()).as("an attack's push").isEqualTo(1);
-    assertThat(scene.world().uppercutResetsAvoidance()).isFalse();
-    // One walking step's decay before the push, none after it.
-    assertThat(knight.getUnit().movement().getAvoidanceBlend()).isEqualTo(-140);
   }
 
   @Test
@@ -300,8 +280,9 @@ class BattleUppercutWindTest {
 
     buffer.requestAbility();
     assertThat(buffer.abilityPending()).as("left pending").isTrue();
-    // The knock's 21 updates, three of them before the request, the last one landing the unit;
-    // the finished run stays listed, its tag with it, one step more, and the next visit casts.
+    // The knock's 19 updates (900 ms), three of them before the request, the last one landing the
+    // unit; the finished run stays listed, its tag with it, one step more, and the next visit
+    // casts.
     int steps = 0;
     while (buffer.getView().getState() != GridEntityState.CASTING) {
       assertThat(buffer.getView().getFlags() & BITS.abilityPostponed())
@@ -311,7 +292,7 @@ class BattleUppercutWindTest {
       steps++;
       assertThat(steps).as("cast at last").isLessThan(40);
     }
-    assertThat(steps).isEqualTo(20);
+    assertThat(steps).isEqualTo(18);
     assertThat(buffer.getView().getFlags() & BITS.abilityPostponed()).isZero();
     assertThat(buffer.abilityPending()).isFalse();
   }
@@ -383,6 +364,9 @@ class BattleUppercutWindTest {
         .containsExactly(
             "wind " + name + " " + point,
             "retrigger " + name + " 6000",
+            // Cut to 0, the wind has one more update, its countdown going below 0, whose alive
+            // time of 6000 passes the start group's alive timer of 5950.
+            "age baby_dragon_evo_wind_end_blow",
             "left " + name,
             "ended " + name,
             "wind BabyDragon_EV1_wind_aeo_3000001 " + point);
@@ -501,9 +485,11 @@ class BattleUppercutWindTest {
     knight.actionHolder().start(scene.row("MegaKnight_EV1_uppercut_send_flying", knight), null);
 
     scene.step(2);
-    assertThat(knight.getView().getHeightOffset()).isEqualTo(1900);
+    // The first update's rise: 190 hundredths of a share, the share 8000 over the nine steps of
+    // the half of the knock's 900 ms, 888.
+    assertThat(knight.getView().getHeightOffset()).isEqualTo(1687);
     assertThat(knight.getView().isAir()).isTrue();
-    scene.step(19);
+    scene.step(17);
     assertThat(knight.getUnit().movement().getRoute().isEmpty())
         .as("the route at landing")
         .isTrue();

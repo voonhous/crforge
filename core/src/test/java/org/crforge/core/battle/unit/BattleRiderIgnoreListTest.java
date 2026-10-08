@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.Version16Tables;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -19,7 +18,7 @@ import org.junit.jupiter.api.Test;
  * a carrier lists its riders as hit too. When the carrier dies its riders are let go and each
  * leaves its death spawn, a Spear Goblin; the rider's row sets the inherited ignore list, so every
  * list that holds the rider lists the Spear Goblin as well, and the body that hit the carrier
- * passes over the Spear Goblins without hitting them. The same on both data versions.
+ * passes over the Spear Goblins without hitting them.
  */
 class BattleRiderIgnoreListTest {
 
@@ -27,19 +26,11 @@ class BattleRiderIgnoreListTest {
 
   @Test
   @DisplayName(
-      "on 16.402.18 a rolling Log that hit a Goblin Giant lists its riders and passes over the"
-          + " Spear Goblins they leave")
-  void theLogPassesOverTheRidersSpawnsOn16() {
-    GameTables tables = Version16Tables.load();
+      "a rolling Log that hit a Goblin Giant lists its riders and passes over the Spear Goblins"
+          + " they leave")
+  void theLogPassesOverTheRidersSpawns() {
+    GameTables tables = GameData.tables();
     check(tables, new BattleRecords(tables));
-  }
-
-  @Test
-  @DisplayName(
-      "on 14.593.1 a rolling Log that hit a Goblin Giant lists its riders and passes over the"
-          + " Spear Goblins they leave")
-  void theLogPassesOverTheRidersSpawnsOn14() {
-    check(GameData.tables(), new BattleRecords(GameData.tables()));
   }
 
   private static void check(GameTables tables, BattleRecords records) {

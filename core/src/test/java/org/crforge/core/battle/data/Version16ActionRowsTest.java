@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.ReadyChampionAbility;
@@ -35,7 +35,7 @@ class Version16ActionRowsTest {
       };
 
   private static ActionRows rows() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     return new ActionRows(tables, new BattleRecords(tables));
   }
 

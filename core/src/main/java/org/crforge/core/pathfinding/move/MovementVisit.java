@@ -34,8 +34,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the river, by the Sparky run; the attached placement of a rider without a rotation"
             + " limit, by the Goblin Giant's run. Not held by any fixture: the limited rotation of an"
             + " attacking rider, the pushback visit's end action, the block countdown. Collision"
-            + " checks are always on. The route dropped at a flight's end, data version 16.402.18"
-            + " only, is held by its reference battles of a Monk's push on a Giant, the Zap"
+            + " checks are always on. The route dropped at a flight's end, which the battle core"
+            + " always sets, is held by the reference battles of a Monk's push on a Giant, the Zap"
             + " Machine's recoil and two death explosions' pushes.")
 public final class MovementVisit {
 
@@ -207,8 +207,9 @@ public final class MovementVisit {
         chain.mark(config.attackPushbackEndAction());
       }
     }
-    // Where the game's version asks for it, the flight's end, an attack pushback's after its end
-    // action, drops the route and its leads-away bit: the next visit that prepares a route then
+    // When the globals ask for it, as the battle core's always do, the flight's end, an attack
+    // pushback's after its end action, drops the route and its leads-away bit: the next visit that
+    // prepares a route then
     // searches one from where the pushback left the entity, instead of walking back toward the
     // waypoint it held before the push.
     if (chain.globals().pushbackEndDropsRoute()) {

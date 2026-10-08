@@ -2,29 +2,22 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When the kill of a fallen king's circle lands within its tick. The game of data version 16.402.18
- * hands the circle's kill to the damage entry, which queues it for the holder's damage drain after
- * every post-hook, so a tower that targets the killed unit still sees it alive in its targeting
- * visit of that tick and stays attacking until the next; the game of 14.593.1 kills at once in the
- * match update, before the holder tick, and the tower finds its target gone in the same tick.
+ * When the kill of a fallen king's circle lands within its tick. The game hands the circle's kill
+ * to the damage entry, which queues it for the holder's damage drain after every post-hook, so a
+ * tower that targets the killed unit still sees it alive in its targeting visit of that tick and
+ * stays attacking until the next.
  *
  * <p>The scene: side 1's Knight walks down the left lane and fights side 0's left princess tower.
  * Side 1's king is then killed, which ends the match; from the next update its circle grows over
- * the arena and kills every entity of side 1 it reaches, the Knight among them. The same battle
- * runs on the configured tables and on those tables relabelled as data version 16.402.18, which
- * differ only in the version's rule.
+ * the arena and kills every entity of side 1 it reaches, the Knight among them.
  */
 class BattleCircleKillDrainTest {
 
@@ -42,8 +35,6 @@ class BattleCircleKillDrainTest {
 
   private static final List<String> DECK =
       List.of("Knight", "Archer", "Giant", "Minions", "Musketeer", "Fireball", "Arrows", "Zap");
-
-  @TempDir Path folder;
 
   /** The towers at the first level, fighting, in a Ladder match; side 1's Knight played. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -100,23 +91,11 @@ class BattleCircleKillDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the circle's kill lands at the damage drain, so the tower that"
+      "the circle's kill lands at the damage drain, so the tower that"
           + " targets the Knight still attacks on the tick the circle kills it")
-  void theTowerStillAttacksOnTheKillTick() throws IOException {
-    int[] states =
-        towerStateAtTheKill(scene(GameData.relabelled(folder, GameVersions.DATA_16_402_18)));
+  void theTowerStillAttacksOnTheKillTick() {
+    int[] states = towerStateAtTheKill(scene(GameData.tables()));
     assertThat(states[0]).as("on the kill's tick").isEqualTo(ATTACKING);
     assertThat(states[1]).as("on the next tick").isZero();
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the circle kills the Knight in the match update, and the tower"
-          + " finds its target gone in the same tick")
-  void theTowerStopsOnTheKillTickOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    int[] states = towerStateAtTheKill(scene(GameData.tables()));
-    assertThat(states[0]).as("on the kill's tick").isZero();
-    assertThat(states[1]).isZero();
   }
 }

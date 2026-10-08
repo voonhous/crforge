@@ -1,7 +1,6 @@
 package org.crforge.core.battle.action;
 
 import java.util.List;
-import org.crforge.core.battle.filter.GameObjectFilter;
 
 /**
  * What a guard's run asks of the battle about the guard it runs on and what stands around it.
@@ -20,67 +19,6 @@ public interface GuardHost {
 
   /** The guard's side's direction along the arena's length: +1 for side 0, -1 for side 1. */
   int teamSign();
-
-  /** The guard's position along the arena's width. */
-  int x();
-
-  /** The guard's position along the arena's length. */
-  int y();
-
-  /**
-   * The objects the object query around the guard answers: every object whose centre lies strictly
-   * within the radius plus its collision radius and that passes the filter, asked for the guard's
-   * team, in the query's order.
-   *
-   * @param radius the circle's radius
-   * @param filter the filter row
-   * @return the ids, in the query's order
-   */
-  List<Integer> query(int radius, GameObjectFilter filter);
-
-  /**
-   * Pushes an object away from the guard, as the request that skips every gate does: refused only
-   * while a pushback is in flight and the longer one is not to be kept.
-   *
-   * @param id the object
-   * @param distance how far
-   * @param subtract true to take the current separation off the distance first
-   * @param keepLonger true to accept the push with a pushback in flight, keeping the longer one
-   * @return -1 for an object whose movement component is off or absent, which is not asked; else 1
-   *     when the setter ran and 0 when it was refused
-   */
-  int push(int id, int distance, boolean subtract, boolean keepLonger);
-
-  /** True for a character. */
-  boolean character(int id);
-
-  /** True while the object may not be touched, a dash's immunity included. */
-  boolean untouchable(int id);
-
-  /** True for an object with hit points. */
-  boolean hasHitPoints(int id);
-
-  /**
-   * A damage value at the guard's level, by the card damage rule and the guard's rarity.
-   *
-   * @param base the value at the first level
-   * @return the scaled value
-   */
-  int damageAtLevel(int base);
-
-  /**
-   * Hits an object for an amount, the guard the attacker, along the line from the guard to it.
-   *
-   * @param id the object
-   * @param amount the damage
-   */
-  void hit(int id, int amount);
-
-  /**
-   * True when the battle's data version's guard run makes its row's area effect, which pushes and
-   * hits, in place of pushing and hitting by itself.
-   */
-  boolean makesArea();
 
   /**
    * Makes an area effect at the guard's point for its side and at its level, the guard its source
@@ -118,9 +56,6 @@ public interface GuardHost {
    * guard's collision radius alone and never on a reference coming into range.
    */
   void charge(int x, int y);
-
-  /** The name of an object, for the battle's observers. */
-  String name(int id);
 
   /**
    * One step of the run, told to the battle's observers.

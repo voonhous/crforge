@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -70,7 +70,7 @@ class BerserkerHeroAbilityTest {
           + " truncated, and a hit that would kill the hero leaves it at 1 hit point while the buff"
           + " is listed")
   void theBuffScalesTheHitsAndKeepsTheHeroAlive() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = battle(tables);
     battle.play(220, records.card("Berserker"), LEVEL, 0, 3500, 14000, "b");

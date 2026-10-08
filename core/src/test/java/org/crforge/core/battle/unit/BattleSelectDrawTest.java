@@ -3,6 +3,10 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.GameData;
@@ -12,8 +16,10 @@ import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.RowAction;
 import org.crforge.core.battle.action.Select;
+import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A select whose condition draws from the battle's random source, in the cases gift_select does not
@@ -65,13 +71,31 @@ class BattleSelectDrawTest {
 
   @Test
   @DisplayName("a select condition written as a list compiles from its first element")
-  void aListConditionTakesItsFirst() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+  void aListConditionTakesItsFirst(@TempDir Path folder) throws IOException {
+    // No configured select writes its condition as a list; this one writes ["rand(3)"] over three
+    // effects.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> {
+              ObjectNode row = rows.putObject("Test_ListSelect");
+              row.put("class", "LogicActionSelectData");
+              row.put("ClassType", "ActionSelect");
+              ObjectNode fields = row.putObject("fields");
+              fields.put("ClassType", "ActionSelect");
+              fields.putArray("Condition").add("rand(3)");
+              ArrayNode parts = fields.putArray("SubActions");
+              for (String part :
+                  List.of(
+                      "Witch_Heal_Effect", "PekkaEV1_SoulArrived_FX", "LittlePrinceMaxSpeedSFX")) {
+                parts.addObject().put("action", part);
+              }
+            });
+    Standard1v1Battle match = new Standard1v1Battle(tables);
     match.getWorld().seed(0x37);
     ActionOwnerEntity owner = match.addActionOwner("Owner", 0, 14500, 12000, 10);
-    // BabyDragon_crazy_1_SpawnGroup writes its condition as ["rand(3)"].
-    BattleAction select =
-        GameData.actions().build("BabyDragon_crazy_1_SpawnGroup", owner.binding());
+    BattleAction select = match.getWorld().getActions().build("Test_ListSelect", owner.binding());
 
     owner.actionHolder().schedule(select, ActionHolder.OWN_DELAY, false, owner.actionHolder());
 

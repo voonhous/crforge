@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -17,9 +17,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The hero Elite Archer's ability shot of data version 16.402.18, whose starting action is an
- * ActionCreateParallelProjectiles (14.593.1's ActionShootProjectilesInCharacterDirection, the same
- * row): as it sets off it makes two side shots of its side row, 1500 apart across its line, one
- * each side of where it stands, both flying the side row's ProjectileRange along that line.
+ * ActionCreateParallelProjectiles: as it sets off it makes two side shots of its side row, 1500
+ * apart across its line, one each side of where it stands, both flying the side row's
+ * ProjectileRange along that line.
  */
 class EliteArcherHeroParallelShotTest {
 
@@ -49,7 +49,7 @@ class EliteArcherHeroParallelShotTest {
           + " it, before its first step, each 750 to one side of where it stands, across its line,"
           + " the first to the right, of its side, level and root")
   void theAbilityShotStartsTwoSideShots() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = null;
     LadderMatch match = null;

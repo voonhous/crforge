@@ -2,29 +2,21 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.pathfinding.combat.HitPoints;
-import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When a Kamikaze unit's kill of itself lands within its tick. The game of data version 16.402.18
- * hands the kill that ends a Kamikaze hit to the damage entry, which queues it for the holder's
- * damage drain after every post-hook, so a unit listed after it that targets it still sees it alive
- * in its own visits of that tick; the game of 14.593.1 kills it inside its hit, and the later unit
- * finds its target gone in the same tick.
+ * When a Kamikaze unit's kill of itself lands within its tick. The game hands the kill that ends a
+ * Kamikaze hit to the damage entry, which queues it for the holder's damage drain after every
+ * post-hook, so a unit listed after it that targets it still sees it alive in its own visits of
+ * that tick.
  *
  * <p>The scene: side 0's Fire Spirit and side 1's Valkyrie, played on the same tick in the left
  * lane, meet at the river. The Valkyrie, listed after the Fire Spirit, walks at it; the Fire Spirit
- * jumps at the Valkyrie and its hit, which launches its projectile, ends with its own kill. The
- * same battle runs on the configured tables and on those tables relabelled as data version
- * 16.402.18, which differ only in the version's rule.
+ * jumps at the Valkyrie and its hit, which launches its projectile, ends with its own kill.
  */
 class BattleKamikazeKillDrainTest {
 
@@ -33,8 +25,6 @@ class BattleKamikazeKillDrainTest {
 
   /** The tick of the Fire Spirit's hit, which ends with its kill. */
   private static final int KILL = 128;
-
-  @TempDir Path folder;
 
   /** The towers at the first level, fighting; the Fire Spirit and the Valkyrie played. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -70,27 +60,13 @@ class BattleKamikazeKillDrainTest {
 
   @Test
   @DisplayName(
-      "on data version 16.402.18 the Kamikaze kill lands at the damage drain, so the Valkyrie"
+      "the Kamikaze kill lands at the damage drain, so the Valkyrie"
           + " still walks at the Fire Spirit on the tick of its hit")
-  void theValkyrieStillWalksAtTheSpirit() throws IOException {
-    Standard1v1Battle match =
-        beforeTheKill(GameData.relabelled(folder, GameVersions.DATA_16_402_18));
+  void theValkyrieStillWalksAtTheSpirit() {
+    Standard1v1Battle match = beforeTheKill(GameData.tables());
     CharacterEntity valkyrie = match.getPlays().get(1).units().get(0);
     assertThat(valkyrie.getView().getX()).as("one more step at the spirit").isEqualTo(3416);
     assertThat(valkyrie.getView().getY()).isEqualTo(18034);
     assertThat(valkyrie.getTargeting().getReference()).as("dropped at its death").isNull();
-  }
-
-  @Test
-  @DisplayName(
-      "on data version 14.593.1 the Kamikaze kill lands inside the hit, and the Valkyrie turns to"
-          + " a tower in the same tick")
-  void theValkyrieTurnsOnTheOlderVersion() {
-    assertThat(GameData.tables().version()).isEqualTo(GameVersions.DATA_14_593_1);
-    Standard1v1Battle match = beforeTheKill(GameData.tables());
-    CharacterEntity valkyrie = match.getPlays().get(1).units().get(0);
-    TargetView reference = valkyrie.getTargeting().getReference();
-    assertThat(reference).as("a new target at once").isNotNull();
-    assertThat(match.getWorld().liveObject(reference.id())).isInstanceOf(TowerEntity.class);
   }
 }

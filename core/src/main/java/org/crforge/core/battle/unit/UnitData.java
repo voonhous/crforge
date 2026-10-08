@@ -213,7 +213,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param dashImmuneToDamageTimeMs how long, after its dash, nothing can hurt it; while it dashes
  *     with one, nothing can
  * @param dashToTargetRadius true when its dash aims at its target's edge rather than its centre
- * @param dashCount how many dashes one chain of its ability's dash makes; 0 for no chain
+ * @param dashCount how many dashes one chain makes, from the dash that starts it; 0 for no chain
  * @param dashSecondaryRange how far from where a dash of its chain lands it looks for the next
  *     target; 0 for its greatest dash range
  * @param backDashRadius within what distance of its landing the next target of a chain may lie in

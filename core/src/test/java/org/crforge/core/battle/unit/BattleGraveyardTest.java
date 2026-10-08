@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The Graveyard's area effect: its starting group queues thirteen skeleton spawns, each at a point
+ * The Graveyard's area effect: its starting group queues twelve skeleton spawns, each at a point
  * its position expressions work out from the area effect's own point and side. What the references
  * do not reach is held here: the middle of the arena, which mirrors the offsets across the width
  * only strictly right of it; the end of the area effect, which drops a spawn still queued; a point
@@ -86,28 +86,30 @@ class BattleGraveyardTest {
           + " -3500 row goes left, at 9500 right")
   void theMiddleMirrorsOnlyStrictlyRightOfIt() {
     // Graveyard_rework_Spawn_Skeleton_2, x + (-3500 * select(x > (map_width / 2), -1, 1)), is the
-    // group's second sub-action, 2700 ms after the start.
+    // group's first sub-action, 2200 ms after the start.
     Scene middle = new Scene(GameData.tables()).graveyard(0, 9000, 12000).step(PLACED + 60);
-    assertThat(middle.spawns).element(1).isEqualTo("54 Graveyard_rework_Skeleton 5500 12000");
+    assertThat(middle.spawns).element(0).isEqualTo("44 Graveyard_rework_Skeleton 5500 12000");
 
     Scene right = new Scene(GameData.tables()).graveyard(0, 9500, 12000).step(PLACED + 60);
-    assertThat(right.spawns).element(1).isEqualTo("54 Graveyard_rework_Skeleton 13000 12000");
+    assertThat(right.spawns).element(0).isEqualTo("44 Graveyard_rework_Skeleton 13000 12000");
   }
 
   @Test
   @DisplayName(
-      "the area effect's end drops a spawn still queued: with a life of 2250 the first spawn runs"
-          + " on its last update's tick, with 2200 never")
+      "the area effect's end drops a spawn still queued: with a life of 2200, which keeps the area"
+          + " effect one update past it, the first spawn runs on its last update's tick, with 2150"
+          + " never")
   void theEndDropsWhatIsStillQueued(@TempDir Path folder) throws IOException {
     Path longer = folder.resolve("longer");
     Path shorter = folder.resolve("shorter");
     longer.toFile().mkdirs();
     shorter.toFile().mkdirs();
 
-    Scene lasting = new Scene(life(longer, 2250)).graveyard(0, 3500, 12000).step(PLACED + 80);
-    assertThat(lasting.spawns).containsExactly("44 Graveyard_rework_Skeleton 3500 15500");
+    // The first spawn, Graveyard_rework_Spawn_Skeleton_2 at 2200 ms, 3500 left of the point.
+    Scene lasting = new Scene(life(longer, 2200)).graveyard(0, 6000, 12000).step(PLACED + 80);
+    assertThat(lasting.spawns).containsExactly("44 Graveyard_rework_Skeleton 2500 12000");
 
-    Scene ending = new Scene(life(shorter, 2200)).graveyard(0, 3500, 12000).step(PLACED + 80);
+    Scene ending = new Scene(life(shorter, 2150)).graveyard(0, 6000, 12000).step(PLACED + 80);
     assertThat(ending.areas).hasSize(1);
     assertThat(ending.spawns).isEmpty();
   }
@@ -117,10 +119,10 @@ class BattleGraveyardTest {
       "a point on water is refused, so the skeleton is made one unit right of it, still on the"
           + " water")
   void aPointOnWaterGoesOneUnitRight() {
-    // Graveyard_rework_Spawn_Skeleton_4, the fourth sub-action, puts the bottom side's skeleton
-    // 3500 behind the point: (6000, 16000), in the river.
+    // Graveyard_rework_Spawn_Skeleton_4, the third sub-action at 3300 ms, puts the bottom side's
+    // skeleton 3500 behind the point: (6000, 16000), in the river.
     Scene river = new Scene(GameData.tables()).graveyard(0, 6000, 19500).step(PLACED + 80);
-    assertThat(river.spawns).element(3).isEqualTo("76 Graveyard_rework_Skeleton 6001 16000");
+    assertThat(river.spawns).element(2).isEqualTo("66 Graveyard_rework_Skeleton 6001 16000");
   }
 
   @Test

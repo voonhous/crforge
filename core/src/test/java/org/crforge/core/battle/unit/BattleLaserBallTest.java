@@ -130,7 +130,7 @@ class BattleLaserBallTest {
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "first");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "second");
     scene.steps(33);
-    assertThat(scene.hits).containsExactly("knight 340", "knight 340");
+    assertThat(scene.hits).containsExactly("knight 696", "knight 696");
   }
 
   @Test
@@ -149,7 +149,7 @@ class BattleLaserBallTest {
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "first");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "second");
     scene.steps(33);
-    assertThat(scene.hits).containsExactly("knight 340");
+    assertThat(scene.hits).containsExactly("knight 696");
   }
 
   @Test

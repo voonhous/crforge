@@ -22,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the start, the four phases, their pushes and FORCE_IS_GROUND,"
             + " the re-trigger and the finish; held by vines_group and vines_tower. The climb's one"
             + " step is held by BattleAirToGroundTest and the re-trigger of a hold on the ground by"
-            + " BattleShapeSelectorTest; the re-trigger of a hold in the air or of a climb by"
+            + " BattleShapeSelectorTest, by a selector written in Vines' form; the re-trigger of a"
+            + " hold in the air or of a climb by"
             + " nothing. Refused: the path reset of an air unit at the end.")
 final class AirToGroundRun extends ActionInstance {
 

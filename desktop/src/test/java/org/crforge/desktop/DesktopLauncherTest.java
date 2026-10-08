@@ -184,6 +184,24 @@ class DesktopLauncherTest {
   }
 
   @Test
+  @DisplayName(
+      "tables of a data version the battle core does not model stop the launcher, naming the"
+          + " version")
+  void anUnmodelledDataVersionStops(@TempDir Path root) throws IOException {
+    Path folder = TableCopies.labelled(root, "1.0.0", "14.593.1");
+    DataVersions versions =
+        new DataVersions(root, List.of("1.0.0"), folder, GameTables.load(folder));
+
+    BattleSession session = DesktopLauncher.firstSession(versions, err);
+
+    assertThat(session).isNull();
+    assertThat(errBytes.toString(StandardCharsets.UTF_8))
+        .contains("The battle core refuses a battle on data version 14.593.1")
+        .contains("does not play tables of data version 14.593.1")
+        .contains("--data-version");
+  }
+
+  @Test
   @DisplayName("tables the battle core starts a battle on give the screen its first session")
   void aFirstBattle() {
     Path folder = GameTables.configuredDirectory().orElseThrow();

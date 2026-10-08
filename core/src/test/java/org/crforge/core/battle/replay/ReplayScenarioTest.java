@@ -110,16 +110,6 @@ class ReplayScenarioTest {
   }
 
   @Test
-  void refusesAPlayersDataWhoseChoicesAreNotEstablished() {
-    ObjectNode scenario = Scenarios.knight();
-    ((ObjectNode) scenario.path("battle").path("hbd").get(1).path("em")).putArray("de").add(1);
-
-    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
-        .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("battle.hbd=");
-  }
-
-  @Test
   void namesTheSideOfAPlayByItsAccount() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("cmd").get(0).path("c")).put("idLo", 2);
@@ -190,7 +180,7 @@ class ReplayScenarioTest {
   }
 
   @Test
-  void buildsEachKingTowerAtTheAvatarsLevelWhateverTheSelectionLevel() {
+  void buildsEachKingTowerAtItsPlayerDatasKingLevelWhateverTheSelectionLevel() {
     ObjectNode scenario = Scenarios.knight();
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 2);
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0))
@@ -199,8 +189,8 @@ class ReplayScenarioTest {
 
     ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
 
-    // The king row's level comes from the avatar's exp level, not from the tower selection: the
-    // first level at exp level 1, the only exp level the adapter accepts.
+    // The king row's level comes from the side's player data, its kt 1, not from the tower
+    // selection.
     assertThat(plan.towers())
         .containsExactly(
             new Standard1v1Battle.Towers("King_PrincessTowers", 1, 3),
@@ -237,11 +227,11 @@ class ReplayScenarioTest {
   @Test
   void refusesACommandOfAnotherType() {
     ObjectNode scenario = Scenarios.knight();
-    ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 153);
+    ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
 
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)
-        .hasMessageContaining("the command type 153");
+        .hasMessageContaining("the command type 124");
   }
 
   @Test
@@ -330,8 +320,11 @@ class ReplayScenarioTest {
   }
 
   @Test
-  void refusesAPlayWhoseItemSetsAnOptionOrCosmeticBit() {
-    for (int bits : new int[] {0x10, 0x20000}) {
+  void refusesAPlayWhoseItemSetsAnOptionBit() {
+    // The option field (bits 4..5) 1 or 2 on a card that is no variant. The cosmetic field (bits
+    // 17..18) is carried by the configured version's replays.
+    for (int option : new int[] {1, 2}) {
+      int bits = option << 4;
       ObjectNode scenario = Scenarios.knight();
       ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30400000 | bits);
 
@@ -487,7 +480,7 @@ class ReplayScenarioTest {
             () -> new ReplayScenario(tables, (CommandTypes) null).translate(Scenarios.knight()))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessage(
-            "the command type 124 of data version "
+            "the command type 153 of data version "
                 + tables.version()
                 + ", whose command types are not established: cmd[0].ct");
   }
@@ -511,21 +504,21 @@ class ReplayScenarioTest {
   @Test
   void surveyListsEveryRefusalWhereTranslateStopsAtTheFirst() {
     ObjectNode scenario = Scenarios.knight();
-    scenario.putArray("srq");
-    ((ObjectNode) scenario.path("battle")).put("rrb", false);
-    ((ObjectNode) scenario.path("battle").path("avatar1")).put("expLevel", 14);
+    scenario.putArray("srq").add(1);
+    ((ObjectNode) scenario.path("battle")).put("rrb", true);
+    ((ObjectNode) scenario.path("battle").path("avatar1")).put("npc", true);
     ArrayNode commands = (ArrayNode) scenario.path("cmd");
     commands.add(commands.get(0).deepCopy());
-    ((ObjectNode) commands.get(0)).put("ct", 153);
-    ((ObjectNode) commands.get(1)).put("ct", 153);
+    ((ObjectNode) commands.get(0)).put("ct", 124);
+    ((ObjectNode) commands.get(1)).put("ct", 124);
 
     ReplayScenario surveyed = new ReplayScenario(tables);
     List<ReplayScenario.Refusal> refusals = surveyed.survey(scenario);
 
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
-        .containsExactly("$.srq", "battle.rrb", "expLevel=14", "cmd[0].ct", "cmd[1].ct");
-    assertThat(refusals.get(3).feature()).isEqualTo("the command type 153");
+        .containsExactly("srq=[1]", "rrb=true", "npc=true", "cmd[0].ct", "cmd[1].ct");
+    assertThat(refusals.get(3).feature()).isEqualTo("the command type 124");
     // Translating the same scenario stops at the first refusal the survey lists.
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
         .isInstanceOf(UnsupportedScenarioException.class)

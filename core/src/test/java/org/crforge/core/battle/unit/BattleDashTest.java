@@ -56,14 +56,16 @@ class BattleDashTest {
 
   @Test
   @DisplayName(
-      "a Bandit is untouchable while it dashes and for its immunity after, 100 ms, then not")
+      "a Bandit is untouchable while it dashes and for its immunity after, 150 ms, then not")
   void theBanditIsImmuneWhileItDashesAndJustAfter() {
     Scene scene = new Scene("Assassin");
     scene.stepUntil(GridEntityState.DASHING);
     assertThat(scene.dasher.untouchable()).isTrue();
 
     scene.stepUntil(GridEntityState.MOVING);
-    // The immunity was topped up to 100 on its last dashing visit and counts down 50 a visit.
+    // The immunity was topped up to 150 on its last dashing visit and counts down 50 a visit.
+    assertThat(scene.dasher.untouchable()).isTrue();
+    scene.match.getBattle().step();
     assertThat(scene.dasher.untouchable()).isTrue();
     scene.match.getBattle().step();
     assertThat(scene.dasher.untouchable()).isFalse();
@@ -212,17 +214,18 @@ class BattleDashTest {
   }
 
   @Test
-  @DisplayName("a chained dash's ability left pending is refused as it is requested")
-  void pendingChainIsRefused() {
+  @DisplayName("a dash ability left pending under its pending buff is refused as it is requested")
+  void aPendingDashAbilityIsRefused() {
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
-    CharacterEntity knight =
-        match.deploy(0, GameData.unit("GoldenKnight"), 11, 0, 3500, 10000, "GoldenKnight");
+    // The one configured ability with a pending buff is SuperHogJump's.
+    CharacterEntity hog =
+        match.deploy(0, GameData.unit("SuperHogRider_Terry"), 11, 0, 3500, 10000, "Hog");
     // Deploying, it has no reference: its gate is shut, and the request would wait under its
     // pending buff, which no reference holds.
-    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
-    assertThatThrownBy(knight::requestAbility)
+    assertThat(hog.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThatThrownBy(hog::requestAbility)
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("GoldenKnightCharge");
+        .hasMessageContaining("SuperHogJumpCharge");
   }
 }

@@ -3,14 +3,19 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** What a unit that tunnels to its placement is while it tunnels, and what is refused of it. */
 class BattleTunnelTest {
@@ -121,11 +126,37 @@ class BattleTunnelTest {
   }
 
   @Test
-  @DisplayName("an area effect that reaches hidden units reaching a tunnelling one is refused")
-  void anAreaReachingHiddenUnitsIsRefused() {
-    Standard1v1Battle match = passiveTowers();
-    CharacterEntity miner = playMiner(match);
-    // A Freeze of the top side cast where the Miner walks: it reaches hidden units.
+  @DisplayName(
+      "an area effect of the hit-switch form that reaches hidden units reaching a tunnelling one is"
+          + " refused")
+  void anAreaReachingHiddenUnitsIsRefused(@TempDir Path folder) throws IOException {
+    // The configured Freeze chooses by a filter that leaves out underground units; written with
+    // its hit switches and AffectsHidden, it reaches them.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "Freeze");
+              columns.remove("Filter");
+              columns.put("Damage", 58);
+              columns.put("AffectsHidden", true);
+              columns.put("HitsAir", true);
+              columns.put("HitsGround", true);
+              columns.put("OnlyEnemies", true);
+            });
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    match.play(
+        0,
+        match.getWorld().getRecords().card("Miner"),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        3500,
+        25500,
+        "Miner");
+    match.getBattle().step();
+    CharacterEntity miner = match.getPlays().get(0).units().get(0);
+    // A Freeze of the top side cast where the Miner walks.
     match.placeAreaEffect(
         1,
         "Freeze",
@@ -147,8 +178,8 @@ class BattleTunnelTest {
 
   @Test
   @DisplayName(
-      "a dig that surfaces morphs into its building, deploying, with the dig's share of hit points,"
-          + " whose entry makes its area object at once")
+      "a dig that surfaces morphs into its building, deploying, with the dig's share of hit"
+          + " points")
   void theDigMorphsIntoItsBuilding() {
     Standard1v1Battle match = passiveTowers();
     List<String> made = new ArrayList<>();
@@ -190,11 +221,10 @@ class BattleTunnelTest {
       }
     }
 
-    // The area object is made inside the entry, before the morph is told; the building's
-    // registration visit took one LifeTime step off its 1313 before it was set deploying.
+    // The building's registration visit took one LifeTime step off its 1313 before it was set
+    // deploying. Its row makes its damage area by its starting action, not in the entry.
     assertThat(made)
         .containsExactly(
-            "spawn_area_object Drill_0_GoblinDrill",
             // The building's registration visit attacks the princess tower it surfaced beside, and
             // an attack tick turns it toward its reference: (2500, -500) scaled to 256.
             "Drill_0 Drill_0_GoblinDrill 4 1000 1307 facing 251 -50");
@@ -223,10 +253,10 @@ class BattleTunnelTest {
       drill = BattleGoblinDrillEvoTest.drill(match);
     }
     assertThat(drill).as("the dig surfaced").isNotNull();
-    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamage")).isZero();
+    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamageArea")).isZero();
 
     match.getBattle().step();
 
-    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamage")).isEqualTo(1);
+    assertThat(BattleGoblinDrillEvoTest.areas(match, "GoblinDrillDamageArea")).isEqualTo(1);
   }
 }

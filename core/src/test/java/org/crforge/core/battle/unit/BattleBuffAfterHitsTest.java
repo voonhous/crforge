@@ -268,8 +268,8 @@ class BattleBuffAfterHitsTest {
   }
 
   @Test
-  @DisplayName("a buff's remove action is scheduled by the stun cleanse and not by a death")
-  void theRemoveActionRunsOnACleanseAndNotAtADeath(@TempDir Path folder) throws IOException {
+  @DisplayName("a buff's remove action is not scheduled by a death")
+  void theRemoveActionDoesNotRunAtADeath(@TempDir Path folder) throws IOException {
     GameTables tables =
         GameData.altered(
             folder,
@@ -277,18 +277,15 @@ class BattleBuffAfterHitsTest {
             rows ->
                 GameData.columns(rows, "ZapFreeze").put("OnRemoveAction", "Bats_EV1_HelingVFX"));
     Scene scene = new Scene(tables);
-    CharacterEntity cleansed = scene.still(0, GameData.unit("Knight"), 3500, 10000, "c");
     CharacterEntity killed = scene.still(0, GameData.unit("Knight"), 5500, 10000, "d");
     scene.step(1);
     BuffData freeze = scene.match.getWorld().buffData("ZapFreeze");
-    cleansed.getBuffs().apply(freeze, 1000, LEVEL, null, 1);
     killed.getBuffs().apply(freeze, 1000, LEVEL, null, 1);
 
-    assertThat(cleansed.getBuffs().cleanseStuns()).containsExactly("ZapFreeze");
     scene.match.getWorld().kill(killed, null);
     scene.step(3);
 
-    assertThat(scene.hooks).containsExactly("0 c Bats_EV1_HelingVFX remove");
+    assertThat(scene.hooks).isEmpty();
   }
 
   @Test

@@ -2,7 +2,7 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -27,7 +27,7 @@ class InstantCastRouteTest {
       "a walking Ice Golemite hero that casts holds no route until its next movement visit, which"
           + " routes it around its princess tower's footprint")
   void theRouteWaitsForTheMovementVisit() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity hero =

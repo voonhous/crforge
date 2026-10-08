@@ -3,6 +3,9 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -10,6 +13,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * An area effect an action's spawn row makes, where the reference runs do not reach: a spawn with
@@ -41,9 +45,25 @@ class BattleAreaEffectSpawnTest {
 
   @Test
   @DisplayName(
-      "an area effect with a hit action that does not clone, placed by no action, is refused")
-  void aPlacedHitAction() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+      "an area effect of the hit-switch form with a hit action that does not clone, placed by no"
+          + " action, is refused")
+  void aPlacedHitAction(@TempDir Path folder) throws IOException {
+    // The configured GoblinCurseBase is in the filter form, whose hit pass schedules its hit
+    // action whatever made it; rewritten in the hit-switch form, no configured row is.
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            GameData.altered(
+                folder,
+                "area_effect_objects",
+                rows -> {
+                  ObjectNode columns = GameData.columns(rows, "GoblinCurseBase");
+                  columns.remove("Filter");
+                  columns.put("HitsAir", true);
+                  columns.put("HitsGround", true);
+                  columns.put("OnlyEnemies", true);
+                }),
+            LEVEL,
+            false);
     match.placeAreaEffect(0, "GoblinCurseBase", LEVEL, 0, X, Y, "base");
 
     assertThatThrownBy(() -> match.getBattle().step())

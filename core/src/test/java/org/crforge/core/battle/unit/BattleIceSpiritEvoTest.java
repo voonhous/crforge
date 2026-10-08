@@ -38,13 +38,14 @@ class BattleIceSpiritEvoTest {
               }
 
               @Override
-              public void areaEffectHit(
+              public void typedHitDealt(
                   int t,
-                  AreaEffectEntity areaEffect,
-                  WorldEntity victim,
-                  int damage,
+                  WorldEntity source,
+                  WorldEntity target,
+                  int amount,
+                  int damageId,
                   DamageResult result) {
-                hits.add(tick[0] + " " + victim.name() + " " + damage);
+                hits.add(tick[0] + " " + target.name() + " " + amount);
               }
             });
     match.deploy(0, GameData.unit("IceSpirits_EV1"), LEVEL, 0, 3500, 14000, "I");
@@ -79,6 +80,8 @@ class BattleIceSpiritEvoTest {
       assertThat(area.getY()).isEqualTo(y);
     }
 
-    assertThat(hits).containsExactly((impact + 60) + " B1 110");
+    // The filter form's one hit falls on the update its HitSpeedOffset of 3000 ms starts, the
+    // 61st, kept by the countdown below 0; its typed hit is dealt at that step's damage drain.
+    assertThat(hits).containsExactly((impact + 61) + " B1 110");
   }
 }

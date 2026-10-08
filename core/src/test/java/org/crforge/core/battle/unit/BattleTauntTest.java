@@ -20,9 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The Goblin Demolisher's cancelling area effect where the reference run does not reach: an own
- * unit beside the Demolisher, one that attacks only buildings, the Demolisher leaving while it is
- * taunted, an area effect that moves with the object it follows or outlives it, and the refusals.
+ * The Goblin Demolisher's cancelling area effect where the reference run does not reach. Its
+ * filter, OnlyGoblinDemolisher, reaches the Demolisher alone; written to reach its whole side, it
+ * holds an own unit beside the Demolisher, one that attacks only buildings, the Demolisher leaving
+ * while a unit is taunted onto it, and a taunted building. Also an area effect that moves with the
+ * object it follows or outlives it, a longer taunt, and the refusals.
  */
 class BattleTauntTest {
 
@@ -82,6 +84,23 @@ class BattleTauntTest {
     }
   }
 
+  /**
+   * The configured tables with the cancelling area effect's filter, OnlyGoblinDemolisher, widened
+   * to every character and building of its own side, so its filter-form hit pass reaches the units
+   * beside the Demolisher too.
+   */
+  private static GameTables ownSide(Path folder) throws IOException {
+    Files.createDirectories(folder);
+    return GameData.altered(
+        folder,
+        "game_object_filters",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "OnlyGoblinDemolisher");
+          columns.remove("IncludeCharactersWithData");
+          columns.put("MatchTypeBuildings", true);
+        });
+  }
+
   private static String reference(WorldEntity unit) {
     TargetView reference = unit.getTargeting().getReference();
     return reference == null ? null : reference.name();
@@ -91,8 +110,8 @@ class BattleTauntTest {
   @DisplayName(
       "an own unit whose circle holds the Demolisher's point is taunted onto it too, with the buff that"
           + " locks its reference, which its next step ends")
-  void anOwnUnitBesideIt() {
-    Scene scene = new Scene(GameData.tables());
+  void anOwnUnitBesideIt(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(ownSide(folder));
     CharacterEntity pekka = scene.match.deploy(0, GameData.unit("Pekka"), LEVEL, 0, X, Y, "pekka");
     scene.match.getBattle().step();
     scene.cancel();
@@ -150,8 +169,8 @@ class BattleTauntTest {
   @DisplayName(
       "an own unit that attacks only buildings cannot attack the Demolisher: no reference, no buff,"
           + " and its run finishes at once")
-  void aBuildingAttackerBesideIt() {
-    Scene scene = new Scene(GameData.tables());
+  void aBuildingAttackerBesideIt(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(ownSide(folder));
     CharacterEntity giant = scene.match.deploy(0, GameData.unit("Giant"), LEVEL, 0, X, Y, "giant");
     scene.match.getBattle().step();
     scene.cancel();
@@ -167,19 +186,31 @@ class BattleTauntTest {
   @DisplayName(
       "the Demolisher leaving while a unit is taunted onto it ends that unit's run: no reference"
           + " and no buff")
-  void theForcedObjectLeaves() {
-    Scene scene = new Scene(GameData.tables());
+  void theForcedObjectLeaves(@TempDir Path folder) throws IOException {
+    // The taunt lasts 100 ms, so the run is still on when the kill lands at the damage drain of
+    // the step after the cancel's.
+    ownSide(folder);
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows ->
+            ((ObjectNode) rows.get("ResetTauntEffect").get("fields")).put("ValidDuration", 100));
+    Scene scene = new Scene(GameTables.load(folder));
     CharacterEntity pekka = scene.match.deploy(0, GameData.unit("Pekka"), LEVEL, 0, X, Y, "pekka");
     scene.match.getBattle().step();
     scene.cancel();
     scene.match.getBattle().step();
     assertThat(reference(pekka)).isEqualTo("demolisher");
 
+    // Both runs step first, the Demolisher's own too; the kill lands at the damage drain after
+    // them, and the Pekka's run, its forced object gone, ends in the same step.
     scene.taunts.clear();
     scene.demolisher.killBy(null);
     scene.match.getBattle().step();
     assertThat(scene.taunts)
         .containsExactly(
+            "demolisher [raise LOCK_TARGET]",
+            "pekka [raise LOCK_TARGET]",
             "pekka [remaining 0, set_target null 0 0 0, finish, remove_buff " + BUFF + "]");
     assertThat(pekka.getBuffs().carries(BUFF)).isFalse();
   }
@@ -271,9 +302,11 @@ class BattleTauntTest {
         .as("a hit on each update, but one hit per target")
         .containsOnlyOnce("demolisher performed onto demolisher");
 
+    // The kill lands at the next step's damage drain; the cleanup that removes the Demolisher ends
+    // the area effect, its countdown below 0, and removes it too.
     scene.demolisher.killBy(null);
     scene.match.getBattle().step();
-    assertThat(removed).containsExactly("demolisher", "CancelTauntAEO 0");
+    assertThat(removed).containsExactly("demolisher", "CancelTauntAEO -1");
   }
 
   @Test
@@ -330,7 +363,7 @@ class BattleTauntTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("follows its parent and was not made by an action");
 
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(ownSide(folder.resolve("own_side")));
     scene.match.deploy(0, GameData.unit("Cannon"), LEVEL, 0, X, Y, "cannon");
     scene.match.getBattle().step();
     scene.cancel();

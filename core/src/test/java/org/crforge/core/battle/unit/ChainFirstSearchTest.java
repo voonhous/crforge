@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
-import org.crforge.core.battle.Version16Tables;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ChainProjectileAttack;
@@ -17,12 +17,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The evolved Electro Dragon's chain of data version 16.402.18 (electro_dragon_ev1_attack, an
- * ActionChainProjectileAttack): a run's hop timer starts stopped, so its first next-target search
- * waits, like every later one, until the first hop's projectile has gone. The run then searches on
- * the step it finds that projectile gone, and the second hop flies from where the first target
- * stood. The game of 14.593.1 starts the timer at 0 and searches on the step after the first hop,
- * while its projectile still flies (BattleElectroDragonEvoTest).
+ * The evolved Electro Dragon's chain (electro_dragon_ev1_attack, an ActionChainProjectileAttack): a
+ * run's hop timer starts stopped, so its first next-target search waits, like every later one,
+ * until the first hop's projectile has gone. The run then searches on the step it finds that
+ * projectile gone, and the second hop flies from where the first target stood.
  */
 class ChainFirstSearchTest {
 
@@ -36,7 +34,7 @@ class ChainFirstSearchTest {
       "the second hop is launched on the step after the first hop's projectile has gone, never"
           + " while it flies")
   void theFirstSearchWaitsForTheFirstHopToLand() {
-    GameTables tables = Version16Tables.load();
+    GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     Battle battle = match.getBattle();

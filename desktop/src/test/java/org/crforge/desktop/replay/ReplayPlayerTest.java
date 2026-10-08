@@ -220,7 +220,7 @@ class ReplayPlayerTest {
     // (bits 7..9), where the battle builds its first play with the count field 1.
     ((ObjectNode) document.path("battle").path("deck1").path("sp").get(1)).put("el", 1);
     ObjectNode play = ((ArrayNode) document.path("cmd")).insertObject(1);
-    play.put("ct", 124);
+    play.put("ct", Replays.PLAY);
     ObjectNode body = play.putObject("c");
     body.put("t", 210).put("t2", 230).put("idHi", 0).put("idLo", 2);
     body.put("px", 3500).put("py", 18000).put("sid", -1);
@@ -246,7 +246,8 @@ class ReplayPlayerTest {
   @DisplayName("a refused replay has no battle, and stepping it does nothing")
   void aRefusedReplayHasNoBattle() {
     ObjectNode document = Replays.archerQueen();
-    ((ObjectNode) document.path("cmd").get(0)).put("ct", 153);
+    // The play's command type of another data version, 14.593.1.
+    ((ObjectNode) document.path("cmd").get(0)).put("ct", 124);
 
     ReplayPlayer player = player(document);
 

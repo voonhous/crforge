@@ -91,7 +91,7 @@ class BattleGoblinHutTest {
 
   @Test
   @DisplayName(
-      "a target in reach as the run starts is spawned at once, then every 42 run passes, the"
+      "a target in reach as the run starts is spawned at once, then every 44 run passes, the"
           + " start's own counting, turned each way in turn")
   void aTargetAtTheStart() {
     Scene scene = new Scene(GameData.tables());
@@ -100,8 +100,8 @@ class BattleGoblinHutTest {
     assertThat(scene.spawns)
         .containsExactly(
             "20 " + DUMMY + " 9347 12171",
-            "61 " + DUMMY + " 9405 12988",
-            "103 " + DUMMY + " 9347 12171");
+            "63 " + DUMMY + " 9405 12988",
+            "107 " + DUMMY + " 9347 12171");
   }
 
   @Test
@@ -146,8 +146,8 @@ class BattleGoblinHutTest {
     assertThat(scene.spawns)
         .containsExactly(
             "20 " + DUMMY + " 9347 12171",
-            "61 " + DUMMY + " 9405 12988",
-            "103 " + DUMMY + " 9347 12171");
+            "63 " + DUMMY + " 9405 12988",
+            "107 " + DUMMY + " 9347 12171");
   }
 
   @Test
@@ -160,9 +160,11 @@ class BattleGoblinHutTest {
     CharacterEntity other = scene.still(1, "Knight", 3500, 20000, "K2");
     scene.stepThrough(40);
     scene.match.getWorld().kill(knight, null);
-    scene.stepThrough(41);
-    assertThat(scene.words.get(41).lost()).isTrue();
-    assertThat(scene.words.get(41).target()).as("its id kept").isEqualTo(knight.getId());
+    // The kill lands at the next step's damage drain, and the target leaves at that step's
+    // cleanup; the run's step after it marks it lost.
+    scene.stepThrough(42);
+    assertThat(scene.words.get(42).lost()).isTrue();
+    assertThat(scene.words.get(42).target()).as("its id kept").isEqualTo(knight.getId());
     scene.stepThrough(59);
     other.getView().setX(3600);
     other.getView().setY(12000);
@@ -171,8 +173,8 @@ class BattleGoblinHutTest {
         .filteredOn(line -> line.contains(DUMMY))
         .containsExactly(
             "20 " + DUMMY + " 9347 12171",
-            "61 " + DUMMY + " 9348 12827",
-            "103 " + DUMMY + " 9406 12011");
+            "63 " + DUMMY + " 9348 12827",
+            "107 " + DUMMY + " 9406 12011");
   }
 
   @Test
@@ -185,17 +187,25 @@ class BattleGoblinHutTest {
     scene.stepThrough(0);
     scene.hut.spawnBuff("rage", "Rage", 100_000, scene.hut);
     scene.stepThrough(90);
-    // Worked from the record: 33 steps of 65 reach the interval of 2100 with 45 over, and 32 more
-    // reach it again.
+    // Worked from the record: 34 steps of 65 reach the interval of 2200 with 10 over, the spawn's
+    // own step among them, and 34 more reach it again.
     assertThat(scene.spawns)
         .extracting(line -> line.split(" ")[0])
-        .containsExactly("20", "52", "84");
+        .containsExactly("20", "53", "87");
   }
 
   @Test
   @DisplayName("a hut whose life state spawns a unit with a starting action of its own is refused")
-  void aChildWithAStartingActionIsRefused() {
-    Scene scene = new Scene(GameData.tables(), "GoblinHut_crazy_1");
+  void aChildWithAStartingActionIsRefused(@TempDir Path folder) throws IOException {
+    // The hut's life state spawning a Goblin Demolisher, whose row has a starting action.
+    GameTables demolishers =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode) rows.get("goblin_hut_life_time_controller").get("fields"))
+                    .put("SpawnData", "GoblinDemolisher"));
+    Scene scene = new Scene(demolishers);
     scene.still(1, "Knight", 3500, 13000, "K");
     assertThatThrownBy(() -> scene.stepThrough(30))
         .isInstanceOf(UnsupportedOperationException.class)
@@ -211,8 +221,8 @@ class BattleGoblinHutTest {
     assertThat(scene.spawns)
         .containsExactly(
             "20 " + DUMMY + " 11627 12090",
-            "61 " + DUMMY + " 11627 12910",
-            "103 " + DUMMY + " 11627 12090");
+            "63 " + DUMMY + " 11627 12910",
+            "107 " + DUMMY + " 11627 12090");
   }
 
   @Test
@@ -230,7 +240,7 @@ class BattleGoblinHutTest {
     scene.stepThrough(64);
     List<String> round = List.of("9594 11714", "9303 12585", "9714 13406");
     List<String> expected = new ArrayList<>();
-    for (int tick : new int[] {20, 61}) {
+    for (int tick : new int[] {20, 63}) {
       round.forEach(point -> expected.add(tick + " " + DUMMY + " " + point));
     }
     assertThat(scene.spawns).containsExactlyElementsOf(expected);
@@ -269,7 +279,7 @@ class BattleGoblinHutTest {
     scene.stepThrough(80);
     assertThat(scene.spawns)
         .filteredOn(line -> line.contains(DUMMY))
-        .containsExactly("20 " + DUMMY + " 10910 13627", "71 " + DUMMY + " 10090 13627");
+        .containsExactly("20 " + DUMMY + " 10910 13627", "73 " + DUMMY + " 10090 13627");
     assertThat(scene.words.get(50).timerMs()).as("held through the stun").isEqualTo(1050);
   }
 
@@ -279,13 +289,13 @@ class BattleGoblinHutTest {
   void aSpawnDueAsTheHutDies() {
     Scene scene = new Scene(GameData.tables());
     scene.still(1, "Knight", 3500, 13000, "K");
-    scene.stepThrough(60);
+    scene.stepThrough(62);
     scene.hut.getHitPoints().setHitPoints(2);
-    scene.stepThrough(66);
+    scene.stepThrough(68);
     assertThat(scene.spawns)
         .containsExactly(
             "20 " + DUMMY + " 9347 12171",
-            "61 SpearGoblin 10500 12500",
-            "61 " + DUMMY + " 9405 12988");
+            "63 SpearGoblin 10500 12500",
+            "63 " + DUMMY + " 9405 12988");
   }
 }

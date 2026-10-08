@@ -45,23 +45,23 @@ class BattleRowRefusalTest {
   @DisplayName("a spawner whose child limits its spawn group is refused as it spawns")
   void aGroupLimitIsRefusedOnASpawner() {
     Standard1v1Battle match = passiveTowers();
-    assertThat(GameData.unit("Witch_crazy_1").groupMaxSize()).isEqualTo(8);
-    UnitData witch = GameData.unit("Witch").toBuilder().spawnCharacter("Witch_crazy_1").build();
+    assertThat(GameData.unit("Skeleton_EV1").groupMaxSize()).isEqualTo(8);
+    UnitData witch = GameData.unit("Witch").toBuilder().spawnCharacter("Skeleton_EV1").build();
     match.deploy(0, witch, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Witch");
 
     assertThatThrownBy(() -> run(match, 400))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("spawning Witch_crazy_1 asks for a limit on its group");
+        .hasMessageContaining("spawning Skeleton_EV1 asks for a limit on its group");
   }
 
   @Test
   @DisplayName("an action spawning a group-limited row from a character of that row is refused")
   void aGroupLimitIsRefusedOnAnActionFromItsOwnRow() {
     Standard1v1Battle match = passiveTowers();
-    UnitData row = GameData.unit("Witch_crazy_1");
+    UnitData row = GameData.unit("Skeleton_EV1");
     CharacterEntity host =
-        match.deploy(0, row, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Witch");
-    // Its starting action is refused first on this path, so the child's row goes without it.
+        match.deploy(0, row, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Skeleton");
+    // A starting action would be refused first on this path, so the child's row goes without one.
     UnitData child = row.toBuilder().onStartingAction(null).build();
     SpawnArguments arguments =
         new SpawnArguments(
@@ -70,7 +70,7 @@ class BattleRowRefusalTest {
 
     assertThatThrownBy(() -> host.spawnCharacters(arguments))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("spawning Witch_crazy_1 asks for a limit on its group");
+        .hasMessageContaining("spawning Skeleton_EV1 asks for a limit on its group");
   }
 
   @Test

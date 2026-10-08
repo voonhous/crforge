@@ -66,6 +66,8 @@ class BattleElixirTest {
     List<String> paid = deathPayouts(battle);
     battle.getBattle().step();
     battle.getWorld().kill(golem, null);
+    // The kill lands at the damage drain of the next step.
+    battle.getBattle().step();
     assertThat(HitPoints.alive(golem.getHitPoints())).isFalse();
     assertThat(paid).isEmpty();
   }
