@@ -18,7 +18,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Replays the reference trajectories through the targeting pass.
+ * Replays two reference trajectories through the targeting pass: the Knight deployed inside the
+ * left lane near the middle and the one deployed behind the right princess tower, the two walks no
+ * reference battle holds yet. They are model output, not recordings of the game; the other walks
+ * were deleted once reference battles held them.
  *
  * <p>The trajectories hold one line per tick with the unit's position, its state and the target it
  * held. Movement belongs to another pass, so the unit is put at the position of the previous tick
@@ -223,17 +226,6 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName("a unit deployed on the left keeps the left princess tower and locks on at tick 235")
-  void leftDeployment() throws IOException {
-    Replay replay = load("knight_left");
-
-    replay.replay();
-
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_1");
-    assertThat(firstAttackingTick(replay)).isEqualTo(235);
-  }
-
-  @Test
   @DisplayName(
       "a unit deployed inside the left lane near the middle takes its lane's princess tower and"
           + " keeps it")
@@ -249,31 +241,6 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName(
-      "a unit deployed on the right keeps the right princess tower and locks on at tick 235")
-  void rightDeployment() throws IOException {
-    Replay replay = load("knight_right");
-
-    replay.replay();
-
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(235);
-  }
-
-  @Test
-  @DisplayName(
-      "a unit deployed in the middle takes its lane's princess tower at once and locks on at 245")
-  void centreDeployment() throws IOException {
-    Replay replay = load("knight_centre");
-
-    replay.replay();
-
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(replay.records.get(82).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(245);
-  }
-
-  @Test
   @DisplayName("a unit deployed behind the right tower keeps it in sight and locks on at tick 326")
   void rightRearDeployment() throws IOException {
     Replay replay = load("knight_right_rear");
@@ -285,32 +252,20 @@ class TargetingReplayTest {
   }
 
   @Test
-  @DisplayName(
-      "a unit deployed behind its king tower takes its lane's princess tower at once and locks on"
-          + " at 369")
-  void behindKingDeployment() throws IOException {
-    Replay replay = load("knight_behind_king");
-
-    replay.replay();
-
-    assertThat(replay.records.get(FIRST_MOVING_TICK).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(replay.records.get(85).reference()).isEqualTo("PrincessTower_1_2");
-    assertThat(firstAttackingTick(replay)).isEqualTo(369);
-  }
-
-  @Test
   @DisplayName("the first hit lands 9 ticks after the unit locks on: the load is credited at once")
   void firstHitFollowsTheLock() throws IOException {
-    Replay replay = load("knight_left");
+    Replay replay = load("knight_right_rear");
     replay.replay();
 
     assertThat(replay.hitTicks).isEmpty();
 
-    // Lock at 235 with a 700 ms load run down: the attack time starts at 700 and reaches the
-    // 1200 ms hit speed on the tenth attack tick, the reference run's tick 244.
-    replay.keepAttacking(244);
+    // With its load run down the attack time starts at the load and reaches the hit speed on the
+    // tenth attack tick, the lock's own tick counted first.
+    int firstHit =
+        firstAttackingTick(replay) + (KNIGHT_HIT_SPEED_MS - KNIGHT_LOAD_TIME_MS) / 50 - 1;
+    replay.keepAttacking(firstHit);
 
-    assertThat(replay.hitTicks).containsExactly(244);
+    assertThat(replay.hitTicks).containsExactly(firstHit);
   }
 
   private static int firstAttackingTick(Replay replay) {

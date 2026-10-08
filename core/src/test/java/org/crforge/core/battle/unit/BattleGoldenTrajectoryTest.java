@@ -21,8 +21,12 @@ import org.junit.jupiter.api.Test;
  * the character's components, with nothing else in the loop - and compares every tick with a
  * reference trajectory.
  *
- * <p>The reference trajectories are the same five the grid pathfinding mode is held to; see {@code
- * core/src/test/resources/pathfinding/README.md} for what they are and are not.
+ * <p>Two of the Knight trajectories the grid pathfinding mode is held to are played here, the two
+ * no reference battle holds yet: a Knight deployed behind its right princess tower, steered around
+ * it, and one deployed inside the left lane near the middle, which holds the lane rule of the first
+ * ten walking ticks. They are model output, not recordings of the game; see {@code
+ * core/src/test/resources/pathfinding/README.md}. The other walks were deleted once reference
+ * battles held them.
  *
  * <p>Tick alignment: the placement is a command due on tick 0. Commands run at the head of a step,
  * before the entity tick, whose opening cleanup admits the Knight, so it is first visited on tick
@@ -35,25 +39,6 @@ import org.junit.jupiter.api.Test;
 class BattleGoldenTrajectoryTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
-
-  @Test
-  @DisplayName("a Knight deployed on the left walks the left lane and locks on at tick 235")
-  void leftDeployment() {
-    replay("knight_left", "PrincessTower_1_1", 235);
-  }
-
-  @Test
-  @DisplayName("a Knight deployed on the right walks the right lane and locks on at tick 235")
-  void rightDeployment() {
-    replay("knight_right", "PrincessTower_1_2", 235);
-  }
-
-  @Test
-  @DisplayName(
-      "a Knight deployed in the centre walks at its lane's princess tower and locks on at tick 245")
-  void centreDeployment() {
-    replay("knight_centre", "PrincessTower_1_2", 245);
-  }
 
   @Test
   @DisplayName(
