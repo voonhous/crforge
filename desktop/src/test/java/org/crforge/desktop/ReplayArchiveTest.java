@@ -24,6 +24,7 @@ import org.crforge.desktop.battle.TableCopies;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
+import org.crforge.desktop.replay.ReplayItems;
 import org.crforge.desktop.replay.ReplayPlayer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,12 +74,14 @@ class ReplayArchiveTest {
 
   /**
    * The synthetic Archer Queen replay with every field its version writes, as the server sends it:
-   * one line of compact JSON.
+   * one line of compact JSON. Its plays' items are fitted to the configured tables, whose rows the
+   * root's two versions copy: their costs and levels.
    */
   private static String replayText() throws IOException {
     try (InputStream in =
         ReplayArchiveTest.class.getResourceAsStream("/replays/archer_queen_every_field.json")) {
-      return MAPPER.writeValueAsString(MAPPER.readTree(in));
+      return MAPPER.writeValueAsString(
+          ReplayItems.fitted((ObjectNode) MAPPER.readTree(in), GameTables.loadConfigured()));
     }
   }
 

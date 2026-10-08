@@ -14,10 +14,17 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,6 +36,7 @@ class ReplaySmokeRunTest {
   @TempDir Path folder;
 
   private Path tablesFolder;
+  private GameTables tables;
   private Path identity;
 
   private Path terminalIdentity;
@@ -36,6 +44,7 @@ class ReplaySmokeRunTest {
   @BeforeEach
   void writeTheIdentities() throws IOException {
     tablesFolder = GameTables.configuredDirectory().orElseThrow();
+    tables = GameTables.load(tablesFolder);
     identity = identity("identity.json", SmokeSchema.V1.id(), SmokeSchema.V1.observationScope());
     terminalIdentity =
         identity("identity-v2.json", SmokeSchema.V2.id(), SmokeSchema.V2.observationScope());
@@ -53,11 +62,120 @@ class ReplaySmokeRunTest {
     return file;
   }
 
+  /** A scenario with its plays' items fitted to the tables: the costs and levels of their rows. */
+  private ObjectNode fit(ObjectNode scenario) {
+    return ScenarioItems.fitted(scenario, tables);
+  }
+
+  /** A unit's row as the tables write it: a character's, else a building's. */
+  private GameRow unitRow(String name) {
+    return tables.table("characters").has(name)
+        ? tables.table("characters").row(name)
+        : tables.table("buildings").row(name);
+  }
+
+  /** The published rarity of a row's Rarity column, Common when it names none. */
+  private static RarityTable rarity(GameRow row) {
+    JsonNode name = row.columns().get("Rarity");
+    String rarity = name == null || name.isNull() ? "Common" : name.asText();
+    return RarityTable.PUBLISHED.stream()
+        .filter(table -> table.name().equals(rarity))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private static boolean flag(GameRow row, String column) {
+    JsonNode value = row.columns().get(column);
+    return value != null && value.asBoolean();
+  }
+
+  /**
+   * A unit row's Hitpoints at a level counted from 1, scaled by the level scaling's published rule
+   * for the row's mode: the king tower's for a summoner, a princess tower's for a summoner tower,
+   * else a card's.
+   */
+  private int hitpointsAt(String unit, int level) {
+    GameRow row = unitRow(unit);
+    return LevelScaling.hitpoints(
+        ScalingGlobals.standard(),
+        ScenarioItems.number(row, "Hitpoints"),
+        PackedLevel.fromLevel(level, rarity(row)),
+        rarity(row),
+        flag(row, "IsSummoner"),
+        flag(row, "IsSummonerTower"));
+  }
+
+  /**
+   * The damage of a unit's Projectile fired at a level counted from 1: the projectile row's Damage
+   * at the launcher's level re-based on the projectile's own rarity, by its DamageScalingMode.
+   */
+  private int projectileDamageAt(String unit, int level) {
+    GameRow launcher = unitRow(unit);
+    GameRow projectile =
+        tables.table("projectiles").row(launcher.columns().get("Projectile").asText());
+    JsonNode mode = projectile.columns().get("DamageScalingMode");
+    ScalingMode scaling =
+        mode == null || mode.isNull()
+            ? ScalingMode.CARD_DAMAGE
+            : switch (mode.asText()) {
+              case "KingTower" -> ScalingMode.KING_DAMAGE;
+              case "PrincessTower" -> ScalingMode.TOWER_DAMAGE;
+              default -> ScalingMode.CARD_DAMAGE;
+            };
+    return LevelScaling.scale(
+        ScalingGlobals.standard(),
+        ScenarioItems.number(projectile, "Damage"),
+        PackedLevel.pack(PackedLevel.fromLevel(level, rarity(launcher)), rarity(projectile)),
+        scaling,
+        rarity(projectile));
+  }
+
+  /** A card's level counted from 1 at a level index: plus its rarity's RelativeLevel plus 1. */
+  private int cardLevel(String card, int levelIndex) {
+    return ScenarioItems.levelField(tables, ScenarioItems.card(tables, card), levelIndex) + 1;
+  }
+
+  /** A tower selection's princess level at a level index: plus its RelativeLevel plus 1. */
+  private int towerLevel(String selection, int levelIndex) {
+    String name = tables.table("support_cards").row(selection).columns().get("Rarity").asText();
+    return levelIndex + ScenarioItems.relativeLevel(tables, "support_rarities", name) + 1;
+  }
+
+  /** A card's cost in ten-thousandths of an elixir, as the elixir bar counts it. */
+  private int costOf(String card) {
+    return ScenarioItems.cost(tables, card) * 10000;
+  }
+
+  /** The packed item a scenario's command carries. */
+  private static int item(ObjectNode scenario, int command) {
+    return scenario.path("cmd").get(command).path("c").path("sel").path("pd").asInt();
+  }
+
+  /** A packed item's fields, by name, as a refusal names them. */
+  private static String describe(int packed) {
+    return "evolution field "
+        + (packed & 0xf)
+        + ", option field "
+        + ((packed >>> 4) & 0x7)
+        + ", count field "
+        + ((packed >>> 7) & 0x7)
+        + ", level field "
+        + ((packed >>> 10) & 0x7f)
+        + ", cosmetic field "
+        + ((packed >>> 17) & 0x3)
+        + ", slot flags field "
+        + ((packed >>> 19) & 0x7)
+        + ", deck index field "
+        + ((packed >>> 22) & 0x3f)
+        + ", cost "
+        + (packed >>> 28);
+  }
+
   @Test
   void aCompletedRunWritesItsObservationsItsManifestAndItsMarker() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knight(), out, identity, 30);
+    int exit = run(fit(Scenarios.knight()), out, identity, 30);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -85,10 +203,17 @@ class ReplaySmokeRunTest {
     // The towers in creation order, side 0's king first, at the towers' level.
     assertThat(first.path("entities").get(0).path("id").asInt()).isEqualTo(5000000);
     assertThat(first.path("entities").get(0).path("row").asText()).isEqualTo("KingTower");
-    assertThat(first.path("entities").get(0).path("hp").asInt()).isEqualTo(2400);
+    assertThat(first.path("entities").get(0).path("hp").asInt())
+        .isEqualTo(hitpointsAt("KingTower", 1));
     assertThat(first.path("entities").get(4).path("row").asText()).isEqualTo("PrincessTower");
     assertThat(first.path("entities").get(4).path("side").asInt()).isEqualTo(1);
-    assertThat(first.path("sides").get(0).path("elixir").asInt()).isEqualTo(60000);
+    // The Ladder timeline's StartingElixir, in ten-thousandths.
+    GameRow timeline =
+        tables
+            .table("battle_timelines")
+            .row(tables.table("game_modes").row("Ladder").columns().get("BattleTimeline").asText());
+    assertThat(first.path("sides").get(0).path("elixir").asInt())
+        .isEqualTo(ScenarioItems.number(timeline, "StartingElixir") * 10000);
     // The recorded battle's opening hand and random state: the players' data draw first.
     assertThat(first.path("sides").get(0).path("hand").toString()).isEqualTo("[7,1,0,2]");
     assertThat(first.path("sides").get(1).path("queue").toString()).isEqualTo("[0,1,4,2]");
@@ -99,7 +224,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aCannoneerTowerSelectionBuildsItsSidesTowersAndTheyFireAtTheirLevel() throws IOException {
-    ObjectNode scenario = Scenarios.knight();
+    ObjectNode scenario = fit(Scenarios.knight());
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000001);
     Path out = folder.resolve("run");
 
@@ -109,28 +234,34 @@ class ReplaySmokeRunTest {
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
     // Side 0 keeps the princess towers; side 1 stands its king and two Cannoneer rows in the
-    // princess slots, five levels above their first.
+    // princess slots, the Epic selection's RelativeLevel above their first.
+    int cannoneerLevel = towerLevel("King_CannonTowers", 0);
+    assertThat(cannoneerLevel).isGreaterThan(1);
     assertThat(first.get(1).path("row").asText()).isEqualTo("PrincessTower");
-    assertThat(first.get(1).path("hp").asInt()).isEqualTo(1400);
+    assertThat(first.get(1).path("hp").asInt()).isEqualTo(hitpointsAt("PrincessTower", 1));
     assertThat(first.get(3).path("row").asText()).isEqualTo("KingTower");
-    assertThat(first.get(3).path("hp").asInt()).isEqualTo(2400);
+    assertThat(first.get(3).path("hp").asInt()).isEqualTo(hitpointsAt("KingTower", 1));
+    JsonNode slots = tables.table("spawn_groups").row("King_CannonTowers").columns().get("Objects");
     for (int i = 4; i <= 5; i++) {
       JsonNode cannoneer = first.get(i);
+      // The spawn group's slot, in cells of 500, mirrored along the arena's 64 cells for side 1.
+      JsonNode slot = slots.get(i - 3);
       assertThat(cannoneer.path("row").asText()).isEqualTo("Cannoneer");
       assertThat(cannoneer.path("side").asInt()).isEqualTo(1);
-      assertThat(cannoneer.path("y").asInt()).isEqualTo(25500);
-      assertThat(cannoneer.path("hp").asInt()).isEqualTo(1740);
+      assertThat(cannoneer.path("x").asInt()).isEqualTo(slot.path("x").asInt() * 500);
+      assertThat(cannoneer.path("y").asInt()).isEqualTo((64 - slot.path("y").asInt()) * 500);
+      assertThat(cannoneer.path("hp").asInt()).isEqualTo(hitpointsAt("Cannoneer", cannoneerLevel));
     }
-    assertThat(first.get(4).path("x").asInt()).isEqualTo(3500);
-    assertThat(first.get(5).path("x").asInt()).isEqualTo(14500);
     // Side 0's Knight walks up the left lane into the low Cannoneer's range: its first shot takes
-    // 200, the projectile's 125 at the tower's level, on tick 299.
+    // the projectile's damage at the tower's level.
+    int knightHp = hitpointsAt("Knight", cardLevel("Knight", 0));
     int firstHit = -1;
     for (String line : lines) {
       JsonNode observation = MAPPER.readTree(line);
       for (JsonNode entity : observation.path("entities")) {
-        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < 690) {
-          assertThat(entity.path("hp").asInt()).isEqualTo(490);
+        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < knightHp) {
+          assertThat(entity.path("hp").asInt())
+              .isEqualTo(knightHp - projectileDamageAt("Cannoneer", cannoneerLevel));
           firstHit = observation.path("tick").asInt();
           break;
         }
@@ -144,7 +275,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aTowerSelectionLevelRaisesItsSidesPrincessTowersButNotItsKing() throws IOException {
-    ObjectNode scenario = Scenarios.knight();
+    ObjectNode scenario = fit(Scenarios.knight());
     // Side 0 selects the princess towers one level up, side 1 eight levels up.
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("l", 1);
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("l", 8);
@@ -157,24 +288,27 @@ class ReplaySmokeRunTest {
     JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
     // Each king stands at the avatar's level (exp level 1: the first level), whatever its side's
     // selection level is; the princess towers stand at their own side's selection level.
+    int low = towerLevel("King_PrincessTowers", 1);
+    int high = towerLevel("King_PrincessTowers", 8);
     for (int i : new int[] {0, 3}) {
       assertThat(first.get(i).path("row").asText()).isEqualTo("KingTower");
-      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2400);
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(hitpointsAt("KingTower", 1));
     }
     for (int i : new int[] {1, 2}) {
       assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
-      assertThat(first.get(i).path("hp").asInt()).isEqualTo(1512);
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(hitpointsAt("PrincessTower", low));
     }
     for (int i : new int[] {4, 5}) {
       assertThat(first.get(i).path("row").asText()).isEqualTo("PrincessTower");
-      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2534);
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(hitpointsAt("PrincessTower", high));
     }
     // Side 0's Knight walks up the left lane into side 1's low princess tower's range: its first
-    // arrow takes 90, the projectile's 50 at the tower's level.
+    // arrow takes the projectile's damage at the tower's level.
+    int knightHp = hitpointsAt("Knight", cardLevel("Knight", 0));
     int firstHp = -1;
     for (String line : lines) {
       for (JsonNode entity : MAPPER.readTree(line).path("entities")) {
-        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < 690) {
+        if (entity.path("row").asText().equals("Knight") && entity.path("hp").asInt() < knightHp) {
           firstHp = entity.path("hp").asInt();
           break;
         }
@@ -183,30 +317,36 @@ class ReplaySmokeRunTest {
         break;
       }
     }
-    assertThat(firstHp).isEqualTo(600);
+    assertThat(firstHp).isEqualTo(knightHp - projectileDamageAt("PrincessTower", high));
   }
 
   @Test
   void aRoyalChefTowerSelectionCooksAPancakeThatRaisesAFriendlyTroopsLevel() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knightAgainstTheRoyalChef(), out, identity, 700);
+    int exit = run(fit(Scenarios.knightAgainstTheRoyalChef()), out, identity, 700);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
-    // Side 1 stands the Royal Chef's king row and two ChefTower rows, eight levels above their
-    // first.
+    // Side 1 stands the Royal Chef's king row and two ChefTower rows, the Legendary selection's
+    // RelativeLevel above their first.
+    int chefLevel = towerLevel("King_ChefTowers", 0);
     assertThat(first.get(3).path("row").asText()).isEqualTo("ChefTowerKing");
-    assertThat(first.get(3).path("hp").asInt()).isEqualTo(2400);
+    assertThat(first.get(3).path("hp").asInt()).isEqualTo(hitpointsAt("ChefTowerKing", 1));
     for (int i = 4; i <= 5; i++) {
       assertThat(first.get(i).path("row").asText()).isEqualTo("ChefTower");
-      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2244);
+      assertThat(first.get(i).path("hp").asInt()).isEqualTo(hitpointsAt("ChefTower", chefLevel));
     }
+    // The Giant, a Rare at level index 0, and one level above it once the pancake lands.
+    int giantLevel = cardLevel("Giant", 0);
+    int giantHp = hitpointsAt("Giant", giantLevel);
+    int raisedHp = hitpointsAt("Giant", giantLevel + 1);
+    assertThat(raisedHp).isGreaterThan(giantHp);
     // The cooking starts 7 s in and fills at 40 a step while the low tower shoots side 0's Knight
     // and 50 a step while both towers idle; the full bar throws a pancake from the tower nearer
     // side 1's Giant, 200 toward it, on tick 638. Its landing raises the Giant one level: its hit
-    // points and its maximum from 1875 to 2061 on tick 644.
+    // points and its maximum to the next level's on tick 644.
     JsonNode pancake = null;
     int pancakeTick = -1;
     int levelUpTick = -1;
@@ -223,9 +363,9 @@ class ReplaySmokeRunTest {
         }
         if (levelUpTick < 0
             && entity.path("row").asText().equals("Giant")
-            && entity.path("max_hp").asInt() != 1875) {
-          assertThat(entity.path("max_hp").asInt()).isEqualTo(2061);
-          assertThat(entity.path("hp").asInt()).isEqualTo(2061);
+            && entity.path("max_hp").asInt() != giantHp) {
+          assertThat(entity.path("max_hp").asInt()).isEqualTo(raisedHp);
+          assertThat(entity.path("hp").asInt()).isEqualTo(raisedHp);
           levelUpTick = tick;
         }
       }
@@ -240,16 +380,20 @@ class ReplaySmokeRunTest {
   void aDaggerDuchessSpendsItsEightChargesThenAttacksOnlyAsItRecharges() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.giantVsDuchessTower(), out, identity, 820);
+    int exit = run(fit(Scenarios.giantVsDuchessTower()), out, identity, 820);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     JsonNode first = MAPPER.readTree(lines.get(0)).path("entities");
+    int duchessLevel = towerLevel("King_KnifeTowers", 0);
     for (int i = 4; i <= 5; i++) {
       assertThat(first.get(i).path("row").asText()).isEqualTo("DaggerDuchess");
-      assertThat(first.get(i).path("hp").asInt()).isEqualTo(2298);
+      assertThat(first.get(i).path("hp").asInt())
+          .isEqualTo(hitpointsAt("DaggerDuchess", duchessLevel));
     }
-    // The low Duchess's knives take 89 off the Giant. Its first seven hits come at the full pace,
+    int knife = projectileDamageAt("DaggerDuchess", duchessLevel);
+    // The low Duchess's knives take their damage at its level off the Giant. Its first seven hits
+    // come at the full pace,
     // every nine or ten ticks; the eighth, its last charge's, at the slower pace of its entry 2;
     // with no charge left it cannot attack until a charge comes back, 900 ms later, and then
     // throws it at the depleted entry's pace: one hit every 31 ticks until the Giant dies.
@@ -261,7 +405,7 @@ class ReplaySmokeRunTest {
         if (entity.path("row").asText().equals("Giant")) {
           int now = entity.path("hp").asInt();
           if (hp >= 0 && now != hp) {
-            assertThat(hp - now).isEqualTo(89);
+            assertThat(hp - now).isEqualTo(knife);
             hits.add(observation.path("tick").asInt());
           }
           hp = now;
@@ -279,9 +423,9 @@ class ReplaySmokeRunTest {
     Path unknown = identity("unknown.json", "test-schema", SmokeSchema.V1.observationScope());
     Path crossed = identity("crossed.json", SmokeSchema.V2.id(), SmokeSchema.V1.observationScope());
 
-    assertThat(run(Scenarios.knight(), folder.resolve("unknown"), unknown, 30))
+    assertThat(run(fit(Scenarios.knight()), folder.resolve("unknown"), unknown, 30))
         .isEqualTo(ReplaySmokeRun.INVALID);
-    assertThat(run(Scenarios.knight(), folder.resolve("crossed"), crossed, 30))
+    assertThat(run(fit(Scenarios.knight()), folder.resolve("crossed"), crossed, 30))
         .isEqualTo(ReplaySmokeRun.INVALID);
     assertThat(folder.resolve("unknown").resolve("COMPLETE")).doesNotExist();
     assertThat(folder.resolve("crossed").resolve("COMPLETE")).doesNotExist();
@@ -291,7 +435,7 @@ class ReplaySmokeRunTest {
   void aTerminalRunThatReachesItsHorizonStepsEveryTickAndSaysSo() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knight(), out, terminalIdentity, 30);
+    int exit = run(fit(Scenarios.knight()), out, terminalIdentity, 30);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -309,7 +453,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aTerminalRunStopsAtTheBattlesOwnStopAndKeepsTheEndDelay() throws IOException {
-    ObjectNode idle = Scenarios.knight();
+    ObjectNode idle = fit(Scenarios.knight());
     idle.putArray("cmd");
     Path out = folder.resolve("run");
 
@@ -343,10 +487,10 @@ class ReplaySmokeRunTest {
   @Test
   void anInProcessRunGivesTheTraceAndTheOutcomeOfARunFromTheCommandLine() throws IOException {
     GameTables tables = GameTables.load(tablesFolder);
-    ObjectNode idle = Scenarios.knight();
+    ObjectNode idle = fit(Scenarios.knight());
     idle.putArray("cmd");
     run(idle, folder.resolve("terminal"), terminalIdentity, 6600);
-    ObjectNode unsupported = Scenarios.knight();
+    ObjectNode unsupported = fit(Scenarios.knight());
     ((ObjectNode) unsupported.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
     run(unsupported, folder.resolve("unsupported"), identity, 30);
     run(idle, folder.resolve("invalid"), identity, 6600);
@@ -391,7 +535,7 @@ class ReplaySmokeRunTest {
   @Test
   void aGeneratedCaseRunsWhenTheRunNamesItsShape() throws IOException {
     GameTables tables = GameTables.loadConfigured();
-    byte[] scenario = MAPPER.writeValueAsBytes(Scenarios.generatedKnight());
+    byte[] scenario = MAPPER.writeValueAsBytes(fit(Scenarios.generatedKnight()));
 
     ReplaySmokeRun.InProcessRun generated =
         ReplaySmokeRun.runInProcess(SmokeSchema.V2, 260, scenario, tables, ScenarioShape.GENERATED);
@@ -423,13 +567,13 @@ class ReplaySmokeRunTest {
     Path generated = folder.resolve("generated");
     Path unknown = folder.resolve("unknown");
 
-    int exit = run(Scenarios.generatedKnight(), generated, identity, 30, "generated");
-    int refused = run(Scenarios.knight(), unknown, identity, 30, "recorded");
+    int exit = run(fit(Scenarios.generatedKnight()), generated, identity, 30, "generated");
+    int refused = run(fit(Scenarios.knight()), unknown, identity, 30, "recorded");
 
     // The case generated for the version leaves out what its replays add beyond it, each king's
     // level 1 among them: generated, it runs the same battle as the replay.
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
-    run(Scenarios.knight(), folder.resolve("replay"), identity, 30);
+    run(fit(Scenarios.knight()), folder.resolve("replay"), identity, 30);
     assertThat(Files.readAllBytes(generated.resolve("observations.jsonl")))
         .isEqualTo(Files.readAllBytes(folder.resolve("replay/observations.jsonl")));
     JsonNode manifest = MAPPER.readTree(generated.resolve("manifest.json").toFile());
@@ -443,8 +587,8 @@ class ReplaySmokeRunTest {
 
   @Test
   void aRunRepeatsByteForByteFromAFreshBattle() throws IOException {
-    run(Scenarios.knight(), folder.resolve("one"), identity, 260);
-    run(Scenarios.knight(), folder.resolve("two"), identity, 260);
+    run(fit(Scenarios.knight()), folder.resolve("one"), identity, 260);
+    run(fit(Scenarios.knight()), folder.resolve("two"), identity, 260);
 
     assertThat(Files.readAllBytes(folder.resolve("one").resolve("observations.jsonl")))
         .isEqualTo(Files.readAllBytes(folder.resolve("two").resolve("observations.jsonl")));
@@ -454,7 +598,7 @@ class ReplaySmokeRunTest {
   void thePlayRunsOnItsRunTickAndItsUnitIsInTheNextObservation() throws IOException {
     Path out = folder.resolve("run");
 
-    run(Scenarios.knight(), out, identity, 230);
+    run(fit(Scenarios.knight()), out, identity, 230);
 
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     assertThat(MAPPER.readTree(lines.get(220)).path("entities")).hasSize(6);
@@ -473,7 +617,7 @@ class ReplaySmokeRunTest {
   void anEvolutionSlotsCardIsPlayedPlainTwiceAndEvolvedOnItsThirdPlay() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knightEvolvedThirdPlay(), out, terminalIdentity, 1430);
+    int exit = run(fit(Scenarios.knightEvolvedThirdPlay()), out, terminalIdentity, 1430);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -481,22 +625,30 @@ class ReplaySmokeRunTest {
     for (JsonNode play : manifest.path("plays_run")) {
       assertThat(play.path("placed").asBoolean()).as(play.toString()).isTrue();
     }
-    // Each Knight play's unit is in the observation after its run tick, as the row its item casts.
+    // Each Knight play's unit is in the observation after its run tick, as the row its item casts:
+    // the evolved row once the count (0, 1, 2) has reached the evolved row's DarkElixirCost.
+    int cost =
+        ScenarioItems.number(
+            ScenarioItems.evolvedRow(tables, ScenarioItems.card(tables, "Knight")),
+            "DarkElixirCost");
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
-    assertThat(rowOfNewestUnit(lines.get(221))).isEqualTo("Knight");
-    assertThat(rowOfNewestUnit(lines.get(631))).isEqualTo("Knight");
-    assertThat(rowOfNewestUnit(lines.get(1417))).isEqualTo("Knight_EV1");
+    int[] runTicks = {220, 630, 1416};
+    for (int count = 0; count < runTicks.length; count++) {
+      assertThat(rowOfNewestUnit(lines.get(runTicks[count] + 1)))
+          .as("the Knight play of count %d", count)
+          .isEqualTo(count >= cost ? "Knight_EV1" : "Knight");
+    }
     assertThat(manifest.has("items_not_built")).isFalse();
   }
 
   @Test
   void anAbilityCommandRunsOnItsRunTickPaysAndCastsTheNamedChampionsAbility() throws IOException {
-    ObjectNode without = Scenarios.archerQueenAbility();
+    ObjectNode without = fit(Scenarios.archerQueenAbility());
     ((ArrayNode) without.path("cmd")).remove(1);
     run(without, folder.resolve("without"), terminalIdentity, 360);
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.archerQueenAbility(), out, terminalIdentity, 360);
+    int exit = run(fit(Scenarios.archerQueenAbility()), out, terminalIdentity, 360);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
@@ -504,12 +656,18 @@ class ReplaySmokeRunTest {
         Files.readAllLines(folder.resolve("without").resolve("observations.jsonl"));
     // Nothing differs before the command's run tick, 350.
     assertThat(lines.subList(0, 351)).isEqualTo(plain.subList(0, 351));
-    // In the observation after it the Archer Queen's ability cost, 1 elixir, is spent and she
-    // casts (state 10) where she shot (state 2).
+    // In the observation after it the Archer Queen's ability cost, its ability row's ManaCost, is
+    // spent and she casts (state 10) where she shot (state 2).
+    GameRow ability =
+        tables
+            .table("character_abilities")
+            .row(unitRow("ArcherQueen").columns().get("Ability").asText());
     JsonNode after = MAPPER.readTree(lines.get(351));
     JsonNode plainAfter = MAPPER.readTree(plain.get(351));
     assertThat(after.path("sides").get(0).path("elixir").asInt())
-        .isEqualTo(plainAfter.path("sides").get(0).path("elixir").asInt() - 10000);
+        .isEqualTo(
+            plainAfter.path("sides").get(0).path("elixir").asInt()
+                - ScenarioItems.number(ability, "ManaCost") * 10000);
     assertThat(entity(after, 5000006).path("state").asInt()).isEqualTo(10);
     assertThat(entity(plainAfter, 5000006).path("state").asInt()).isEqualTo(2);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -521,10 +679,10 @@ class ReplaySmokeRunTest {
 
   @Test
   void anAbilityCommandNamingNoLiveUnitIsRefusedAndChangesNothing() throws IOException {
-    ObjectNode without = Scenarios.archerQueenAbility();
+    ObjectNode without = fit(Scenarios.archerQueenAbility());
     ((ArrayNode) without.path("cmd")).remove(1);
     run(without, folder.resolve("without"), terminalIdentity, 360);
-    ObjectNode scenario = Scenarios.archerQueenAbility();
+    ObjectNode scenario = fit(Scenarios.archerQueenAbility());
     ((ObjectNode) scenario.path("cmd").get(1).path("c")).put("cgid", 5000099);
     Path out = folder.resolve("run");
 
@@ -543,7 +701,7 @@ class ReplaySmokeRunTest {
     Path out = folder.resolve("run");
 
     // The horizon ends before the third Knight play's run tick, 1416.
-    int exit = run(Scenarios.knightEvolvedThirdPlay(), out, terminalIdentity, 1400);
+    int exit = run(fit(Scenarios.knightEvolvedThirdPlay()), out, terminalIdentity, 1400);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -553,9 +711,10 @@ class ReplaySmokeRunTest {
 
   @Test
   void aPlayWhoseItemIsNotTheItemTheSimulatorBuildsIsUnsupported() throws IOException {
-    ObjectNode scenario = Scenarios.knightEvolvedThirdPlay();
-    // The first play claims the evolved item of the third: field 1 at the count plus 1 of 3.
-    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", 0x30480181);
+    ObjectNode scenario = fit(Scenarios.knightEvolvedThirdPlay());
+    // The first play claims the item of the third: the count plus 1 of 3.
+    int third = item(scenario, 10);
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", third);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, terminalIdentity, 1430);
@@ -565,15 +724,16 @@ class ReplaySmokeRunTest {
     assertThat(manifest.path("status").asText()).isEqualTo("unsupported");
     assertThat(manifest.path("unsupported").path("feature").asText()).contains("packed item");
     assertThat(manifest.path("unsupported").path("input").asText())
-        .startsWith("cmd[0].c.sel.pd=" + 0x30480181);
+        .startsWith("cmd[0].c.sel.pd=" + third);
     assertThat(out.resolve("COMPLETE")).doesNotExist();
   }
 
   @Test
   void aPlayWhoseCountIsNotTheSimulatorsIsUnsupported() throws IOException {
-    ObjectNode scenario = Scenarios.knightEvolvedThirdPlay();
+    ObjectNode scenario = fit(Scenarios.knightEvolvedThirdPlay());
     // The second Knight play repeats the first's count plus 1, 1, where the simulator counts 2.
-    ((ObjectNode) scenario.path("cmd").get(5).path("c").path("sel")).put("pd", 0x30480080);
+    int firstItem = item(scenario, 0);
+    ((ObjectNode) scenario.path("cmd").get(5).path("c").path("sel")).put("pd", firstItem);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, terminalIdentity, 1430);
@@ -581,7 +741,7 @@ class ReplaySmokeRunTest {
     assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
     assertThat(manifest.path("unsupported").path("input").asText())
-        .startsWith("cmd[5].c.sel.pd=" + 0x30480080);
+        .startsWith("cmd[5].c.sel.pd=" + firstItem);
     assertThat(out.resolve("COMPLETE")).doesNotExist();
   }
 
@@ -589,7 +749,7 @@ class ReplaySmokeRunTest {
   void aMirrorPlayRepeatsItsSidesLastCardOneLevelAboveTheMirrorsForItsItem() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knightThenMirror(), out, terminalIdentity, 420);
+    int exit = run(fit(Scenarios.knightThenMirror()), out, terminalIdentity, 420);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -599,21 +759,24 @@ class ReplaySmokeRunTest {
     assertThat(mirror.path("placed").asBoolean()).isTrue();
     assertThat(mirror.path("units").asInt()).isEqualTo(1);
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
-    // The Knight again, at the Mirror's level field plus 1, field 6: 1214 hit points, where the
-    // Knight played at its own level index 0 has 690.
+    // The Knight again, at the Mirror's level field plus MIRROR_LEVEL_OFFSET: that level's hit
+    // points, where the Knight played at its own level index 0 has its first level's.
+    int level = cardLevel("Mirror", 0) + ScenarioItems.global(tables, "MIRROR_LEVEL_OFFSET");
+    assertThat(level).isGreaterThan(cardLevel("Knight", 0));
     JsonNode repeated = newestUnit(MAPPER.readTree(lines.get(411)));
     assertThat(repeated.path("row").asText()).isEqualTo("Knight");
     assertThat(repeated.path("side").asInt()).isZero();
-    assertThat(repeated.path("hp").asInt()).isEqualTo(1214);
-    // The Mirror costs 1 more than the Knight: 4 elixir, less one step's regeneration.
+    assertThat(repeated.path("hp").asInt()).isEqualTo(hitpointsAt("Knight", level));
+    // The Mirror costs its own cost more than the Knight, less one step's regeneration.
+    int cost = costOf("Mirror") + costOf("Knight");
     int before = MAPPER.readTree(lines.get(410)).path("sides").get(0).path("elixir").asInt();
     int after = MAPPER.readTree(lines.get(411)).path("sides").get(0).path("elixir").asInt();
-    assertThat(before - after).isBetween(40000 - 200, 40000);
+    assertThat(before - after).isBetween(cost - 200, cost);
   }
 
   @Test
   void aMirrorPlayNamingAnotherRepeatedCardThanTheSimulatorsIsUnsupported() throws IOException {
-    ObjectNode scenario = Scenarios.knightThenMirror();
+    ObjectNode scenario = fit(Scenarios.knightThenMirror());
     // The Archer was played before the Knight: the Mirror repeats the Knight, the last card.
     ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("fs", Scenarios.ARCHER);
     Path out = folder.resolve("run");
@@ -635,9 +798,17 @@ class ReplaySmokeRunTest {
 
   @Test
   void aMirrorPlayWhoseCostOrLevelIsNotTheSimulatorsIsUnsupported() throws IOException {
-    // The Mirror's own cost, 1, and its own level field, 5, where it repeats the Knight.
-    for (int item : new int[] {0x11801800, 0x41801400}) {
-      ObjectNode scenario = Scenarios.knightThenMirror();
+    // The Mirror's own cost and its own level field, where it repeats the Knight.
+    int built = item(fit(Scenarios.knightThenMirror()), 4);
+    int ownLevelField = cardLevel("Mirror", 0) - 1;
+    assertThat(ScenarioItems.costOf(built)).isNotEqualTo(ScenarioItems.cost(tables, "Mirror"));
+    assertThat(ScenarioItems.levelFieldOf(built)).isNotEqualTo(ownLevelField);
+    for (int item :
+        new int[] {
+          ScenarioItems.withCost(built, ScenarioItems.cost(tables, "Mirror")),
+          ScenarioItems.withLevelField(built, ownLevelField)
+        }) {
+      ObjectNode scenario = fit(Scenarios.knightThenMirror());
       ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("pd", item);
       Path out = folder.resolve("run-" + Integer.toHexString(item));
 
@@ -646,14 +817,11 @@ class ReplaySmokeRunTest {
       assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
       JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
       assertThat(manifest.path("unsupported").path("feature").asText()).contains("packed item");
-      // The item the simulator builds: level field 6, deck index field 6, cost 4.
+      // The item the simulator builds: the Mirror's level field plus the offset, its deck index
+      // field and its cost plus the Knight's.
       assertThat(manifest.path("unsupported").path("input").asText())
           .startsWith("cmd[4].c.sel.pd=" + item)
-          .endsWith(
-              "where the simulator builds "
-                  + 0x41801800
-                  + " (evolution field 0, option field 0, count field 0, level field 6, cosmetic"
-                  + " field 0, slot flags field 0, deck index field 6, cost 4)");
+          .endsWith("where the simulator builds " + built + " (" + describe(built) + ")");
     }
   }
 
@@ -661,7 +829,7 @@ class ReplaySmokeRunTest {
   void aVariantPlayFromAFullBarRunsAsTheMountedMaidenForItsCost() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.mergeMaidenMounted(), out, terminalIdentity, 250);
+    int exit = run(fit(Scenarios.mergeMaidenMounted()), out, terminalIdentity, 250);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -674,33 +842,37 @@ class ReplaySmokeRunTest {
     JsonNode unit = newestUnit(MAPPER.readTree(lines.get(241)));
     assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Mounted");
     assertThat(unit.path("side").asInt()).isZero();
-    // The mounted maiden's cost, 6 elixir, less one step's regeneration.
+    // The mounted maiden's cost, less one step's regeneration.
+    int cost = costOf("MergeMaiden_Mounted");
     int before = MAPPER.readTree(lines.get(240)).path("sides").get(0).path("elixir").asInt();
     int after = MAPPER.readTree(lines.get(241)).path("sides").get(0).path("elixir").asInt();
-    assertThat(before - after).isBetween(60000 - 200, 60000);
+    assertThat(before - after).isBetween(cost - 200, cost);
   }
 
   @Test
   void aVariantPlayBelowTheMountedTriggerRunsAsTheMaidenOnFootForItsCost() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.mergeMaidenOnFoot(), out, terminalIdentity, 280);
+    int exit = run(fit(Scenarios.mergeMaidenOnFoot()), out, terminalIdentity, 280);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
     JsonNode unit = newestUnit(MAPPER.readTree(lines.get(271)));
     assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Normal");
+    int cost = costOf("MergeMaiden_Normal");
     int before = MAPPER.readTree(lines.get(270)).path("sides").get(0).path("elixir").asInt();
     int after = MAPPER.readTree(lines.get(271)).path("sides").get(0).path("elixir").asInt();
-    assertThat(before - after).isBetween(30000 - 200, 30000);
+    assertThat(before - after).isBetween(cost - 200, cost);
   }
 
   @Test
   void aVariantPlayGivenAsAnotherOptionThanTheSimulatorPicksIsUnsupported() throws IOException {
-    ObjectNode scenario = Scenarios.mergeMaidenMounted();
-    // The maiden on foot, where the client picks the mounted maiden from a full bar.
-    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel"))
-        .put("pd", Scenarios.MAIDEN_ON_FOOT_ITEM);
+    ObjectNode scenario = fit(Scenarios.mergeMaidenMounted());
+    int mounted = item(scenario, 0);
+    // The maiden on foot, where the client picks the mounted maiden from a full bar: the on-foot
+    // play's item, the Merge Maiden at the same deck index.
+    int onFoot = item(fit(Scenarios.mergeMaidenOnFoot()), 1);
+    ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", onFoot);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, terminalIdentity, 250);
@@ -712,13 +884,16 @@ class ReplaySmokeRunTest {
     assertThat(manifest.path("unsupported").path("input").asText())
         .isEqualTo(
             "cmd[0].c.sel.pd="
-                + Scenarios.MAIDEN_ON_FOOT_ITEM
-                + " (evolution field 0, option field 2, count field 0, level field 8, cosmetic"
-                + " field 0, slot flags field 0, deck index field 1, cost 3) for MergeMaiden, where"
-                + " the simulator builds "
-                + Scenarios.MOUNTED_MAIDEN_ITEM
-                + " (evolution field 0, option field 1, count field 0, level field 8, cosmetic"
-                + " field 0, slot flags field 0, deck index field 1, cost 6)");
+                + onFoot
+                + " ("
+                + describe(onFoot)
+                + ") for MergeMaiden, where the simulator builds "
+                + mounted
+                + " ("
+                + describe(mounted)
+                + ")");
+    assertThat(describe(onFoot)).contains("option field 2");
+    assertThat(describe(mounted)).contains("option field 1");
     assertThat(out.resolve("COMPLETE")).doesNotExist();
   }
 
@@ -726,7 +901,7 @@ class ReplaySmokeRunTest {
   void aMirrorOfAVariantPlayIsRefusedByTheBattle() throws IOException {
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.mergeMaidenThenMirror(), out, terminalIdentity, 700);
+    int exit = run(fit(Scenarios.mergeMaidenThenMirror()), out, terminalIdentity, 700);
 
     // The maiden's play runs; the Mirror, which would repeat the option it was played as, is
     // refused as it runs.
@@ -741,7 +916,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void anUnsupportedScenarioWritesNoObservationAndNoMarker() throws IOException {
-    ObjectNode scenario = Scenarios.knight();
+    ObjectNode scenario = fit(Scenarios.knight());
     ((ObjectNode) scenario.path("battle").path("deck0").path("sc").get(0)).put("d", 159000003);
     Path out = folder.resolve("run");
 
@@ -764,7 +939,7 @@ class ReplaySmokeRunTest {
     MAPPER.writeValue(other.toFile(), fields);
     Path out = folder.resolve("run");
 
-    int exit = run(Scenarios.knight(), out, other, 30);
+    int exit = run(fit(Scenarios.knight()), out, other, 30);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.INVALID);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
@@ -777,7 +952,7 @@ class ReplaySmokeRunTest {
     Path out = folder.resolve("run");
     Files.createDirectory(out);
 
-    int exit = run(Scenarios.knight(), out, identity, 30);
+    int exit = run(fit(Scenarios.knight()), out, identity, 30);
 
     assertThat(exit).isEqualTo(ReplaySmokeRun.INVALID);
     assertThat(out.resolve("manifest.json")).doesNotExist();

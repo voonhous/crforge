@@ -167,9 +167,12 @@ class BattleAdapterTest {
   void everyEntityIsDrawn() {
     BattleSession session = only("Witch");
     assertThat(session.play(0, 0, 9500, 8500)).isTrue();
-    for (int i = 0; i < 200; i++) {
-      assertThat(session.step()).isTrue();
-    }
+    // Until the Witch has spawned her first skeletons.
+    await(
+        session,
+        e -> e.kind() == EntityView.Kind.TROOP && !e.name().equals("Witch"),
+        "the Witch's first spawn");
+    int steps = session.tick();
     BattleFrame frame = BattleAdapter.frame(session);
     List<Integer> live =
         session.getBattle().getBattle().getHolder().entities().stream()
@@ -180,7 +183,7 @@ class BattleAdapterTest {
     assertThat(frame.entities())
         .filteredOn(e -> e.kind() == EntityView.Kind.TROOP)
         .hasSizeGreaterThan(1);
-    assertThat(frame.tick()).isEqualTo(200);
+    assertThat(frame.tick()).isEqualTo(steps);
   }
 
   @Test
@@ -237,7 +240,16 @@ class BattleAdapterTest {
     ActionMeter full = duchess.meter();
     assertThat(full).isNotNull();
     assertThat(full.kind()).isEqualTo(ActionMeter.Kind.CHARGES);
-    assertThat(full.segments()).isEqualTo(8);
+    // The charge counter's MaxChargeCount, from the Duchess row's OnStartingAction.
+    int charges =
+        Tables.get()
+            .table("buildings")
+            .row("DaggerDuchess")
+            .columns()
+            .get("OnStartingAction")
+            .path("MaxChargeCount")
+            .asInt();
+    assertThat(full.segments()).isEqualTo(charges);
     assertThat(full.share()).isEqualTo(1f);
     assertThat(king(towers(BattleAdapter.frame(session)), 1).meter()).as("its king").isNull();
     assertThat(princess(BattleAdapter.frame(session), 0).meter()).as("a plain tower").isNull();
@@ -246,7 +258,7 @@ class BattleAdapterTest {
     boolean drained = false;
     boolean recharged = false;
     for (int i = 0; i < 1500 && !recharged; i++) {
-      assertThat(session.step()).isTrue();
+      assertThat(session.step()).as("step %d: %s", i, session.messages()).isTrue();
       ActionMeter meter = princess(BattleAdapter.frame(session), 1).meter();
       if (meter.value() < lowest) {
         lowest = meter.value();

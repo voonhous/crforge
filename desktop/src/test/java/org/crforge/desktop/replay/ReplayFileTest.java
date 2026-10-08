@@ -34,10 +34,15 @@ class ReplayFileTest {
     refusedTables = Replays.refusedTables(refusedFolder);
   }
 
+  /** A replay document with its plays' items fitted to the tables: their rows' costs and levels. */
+  private static ObjectNode fit(ObjectNode document) {
+    return ReplayItems.fitted(document, Replays.tables());
+  }
+
   @Test
   @DisplayName("a replay the mapping reads is playable, its header named from the tables")
   void aPlayableReplay() throws IOException {
-    Path file = Replays.write(folder, "replay.json", Replays.archerQueen());
+    Path file = Replays.write(folder, "replay.json", fit(Replays.archerQueen()));
 
     ReplayFile replay = ReplayFile.read(file, Replays.tables());
 
@@ -82,7 +87,7 @@ class ReplayFileTest {
   @Test
   @DisplayName("command types the data version does not map are refused, with their counts")
   void unmappedCommandTypes() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     ArrayNode commands = (ArrayNode) document.path("cmd");
     commands.add(commands.get(0).deepCopy());
     // The play and the ability command of another data version, 14.593.1.
@@ -112,7 +117,7 @@ class ReplayFileTest {
   @Test
   @DisplayName("every field the mapping refuses is listed, not only the first")
   void everyRefusedField() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     document.putArray("srq").add(1);
     ((ObjectNode) document.path("battle")).put("hm", true);
     ((ObjectNode) document.path("battle").path("avatar0")).put("clan", "Test Clan");
@@ -129,7 +134,7 @@ class ReplayFileTest {
   @Test
   @DisplayName("tables the battle core refuses are listed beside the mapping's refusals")
   void refusedTablesAndMapping() {
-    ObjectNode document = Replays.archerQueen();
+    ObjectNode document = fit(Replays.archerQueen());
     ((ObjectNode) document.path("cmd").get(0)).put("ct", 124);
 
     ReplayFile replay = ReplayFile.parse(folder.resolve("x.json"), document, refusedTables);
@@ -149,7 +154,7 @@ class ReplayFileTest {
   @DisplayName("a replay the mapping reads is refused when the battle core refuses its battle")
   void refusedBattle() {
     ReplayFile replay =
-        ReplayFile.parse(folder.resolve("x.json"), Replays.archerQueen(), refusedTables);
+        ReplayFile.parse(folder.resolve("x.json"), fit(Replays.archerQueen()), refusedTables);
 
     assertThat(replay.playable()).isFalse();
     assertThat(replay.refusals())
@@ -162,7 +167,7 @@ class ReplayFileTest {
   @Test
   @DisplayName("a replay with every field its version writes is read and playable")
   void replayWithEveryField() throws IOException {
-    Path file = Replays.write(folder, "replay.json", Replays.archerQueenWithEveryField());
+    Path file = Replays.write(folder, "replay.json", fit(Replays.archerQueenWithEveryField()));
 
     ReplayFile replay = ReplayFile.read(file, Replays.tables());
 

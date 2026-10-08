@@ -3,11 +3,19 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
+import org.assertj.core.groups.Tuple;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BurstAttack;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,10 +24,56 @@ import org.junit.jupiter.api.Test;
  */
 class Standard1v1BattleTowersTest {
 
+  /**
+   * A side's towers as its spawn group's objects place them, in creation order: each object's row,
+   * at its cell (500 units each; the top side mirrored along the 64 cells of the arena's length),
+   * the king's level for the king row and the selection's for the rest, and the row's Hitpoints at
+   * that level.
+   */
+  private static List<Tuple> spawnGroup(String group, int side, int kingLevel, int level) {
+    List<Tuple> towers = new ArrayList<>();
+    for (JsonNode object : Shipped.column(Shipped.row("spawn_groups", group), "Objects")) {
+      GameRow row = Shipped.unitRow(object.path("Data").asText());
+      boolean king = Shipped.flag(row, "IsSummoner");
+      int rowLevel = king ? kingLevel : level;
+      int cell = object.path("y").asInt();
+      towers.add(
+          tuple(
+              row.name(),
+              side,
+              object.path("x").asInt() * 500,
+              (side == 1 ? 64 - cell : cell) * 500,
+              rowLevel,
+              hitpointsAt(row, rowLevel)));
+    }
+    return towers;
+  }
+
+  /**
+   * A row's Hitpoints at a level, scaled by the level scaling's published rule for its mode: the
+   * king tower's for a summoner, a princess tower's for a summoner tower.
+   */
+  private static int hitpointsAt(GameRow row, int level) {
+    RarityTable rarity =
+        RarityTable.PUBLISHED.stream()
+            .filter(table -> table.name().equals(Shipped.text(row, "Rarity")))
+            .findFirst()
+            .orElseThrow();
+    return LevelScaling.hitpoints(
+        ScalingGlobals.standard(),
+        Shipped.number(row, "Hitpoints"),
+        PackedLevel.fromLevel(level, rarity),
+        rarity,
+        Shipped.flag(row, "IsSummoner"),
+        Shipped.flag(row, "IsSummonerTower"));
+  }
+
   @Test
   void buildsEachSidesTowersFromItsOwnSpawnGroup() {
     // Side 0 the princess towers at level 1, side 1 the cannoneer towers: its king at level 1 and
     // its Cannoneer rows at level 6, five steps above the first.
+    List<Tuple> expected = new ArrayList<>(spawnGroup("King_PrincessTowers", 0, 1, 1));
+    expected.addAll(spawnGroup("King_CannonTowers", 1, 1, 6));
     Standard1v1Battle battle =
         new Standard1v1Battle(
             GameData.tables(),
@@ -38,13 +92,7 @@ class Standard1v1BattleTowersTest {
             WorldEntity::y,
             WorldEntity::level,
             tower -> tower.getHitPoints().getHitPoints())
-        .containsExactly(
-            tuple("KingTower", 0, 9000, 3000, 1, 2400),
-            tuple("PrincessTower", 0, 3500, 6500, 1, 1400),
-            tuple("PrincessTower", 0, 14500, 6500, 1, 1400),
-            tuple("KingTower", 1, 9000, 29000, 1, 2400),
-            tuple("Cannoneer", 1, 3500, 25500, 6, 1740),
-            tuple("Cannoneer", 1, 14500, 25500, 6, 1740));
+        .containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -74,7 +122,10 @@ class Standard1v1BattleTowersTest {
     battle.getBattle().step();
 
     // Each Duchess's placement queued its row's charge counter, which the first step starts with
-    // all eight charges; at eight the counter sets the index the list gives last, entry 0.
+    // all its MaxChargeCount charges; full, the counter sets the index the list gives last.
+    JsonNode counter = Shipped.column(Shipped.unitRow("DaggerDuchess"), "OnStartingAction");
+    int charges = counter.path("MaxChargeCount").asInt();
+    JsonNode indices = counter.path("AttackSequenceIndices");
     List<WorldEntity> duchesses =
         towers(battle).stream()
             .filter(tower -> tower.getData().name().equals("DaggerDuchess"))
@@ -87,9 +138,9 @@ class Standard1v1BattleTowersTest {
               .map(BurstAttack.Run.class::cast)
               .toList();
       assertThat(runs).hasSize(1);
-      assertThat(runs.get(0).charges()).isEqualTo(8);
+      assertThat(runs.get(0).charges()).isEqualTo(charges);
       assertThat(runs.get(0).depleted()).isFalse();
-      assertThat(duchess.attackSequenceIndex()).isZero();
+      assertThat(duchess.attackSequenceIndex()).isEqualTo(indices.get(indices.size() - 1).asInt());
     }
   }
 

@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
@@ -27,6 +29,18 @@ class LadderMatchTest {
           "Valkyrie",
           "Barbarians",
           "Minions");
+
+  /**
+   * The tick the Ladder timeline's time is up on with the crowns equal: the end of its sections,
+   * the regular one and overtime, each SectionLength seconds of 20 ticks.
+   */
+  private static int timeUpTick() {
+    GameRow timeline =
+        Shipped.row(
+            "battle_timelines",
+            Shipped.text(Shipped.row("game_modes", "Ladder"), "BattleTimeline"));
+    return Shipped.numbers(timeline, "SectionLength").stream().mapToInt(s -> s * 20).sum();
+  }
 
   @Test
   @DisplayName("a card in the queue is refused with 9, one the elixir does not cover with 0xd")
@@ -111,7 +125,8 @@ class LadderMatchTest {
   void theClearingKillsEveryUnit() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
-    CharacterEntity knight = battle.deploy(5990, GameData.unit("Knight"), 11, 0, 3500, 5000);
+    int timeUp = timeUpTick();
+    CharacterEntity knight = battle.deploy(timeUp - 10, GameData.unit("Knight"), 11, 0, 3500, 5000);
     List<String> kills = new ArrayList<>();
     battle
         .getWorld()
@@ -123,8 +138,9 @@ class LadderMatchTest {
                 kills.add(battle.getBattle().getTick() + " " + target.name());
               }
             });
-    // The time is up on 6000 with the crowns equal; the tiebreaker's first step is 6001.
-    while (battle.getBattle().getTick() < 6001) {
+    // The time is up at the end of overtime with the crowns equal; the tiebreaker's first step is
+    // the one after.
+    while (battle.getBattle().getTick() < timeUp + 1) {
       battle.getBattle().step();
     }
     assertThat(match.getTiebreakMs()).isZero();
@@ -132,7 +148,7 @@ class LadderMatchTest {
     assertThat(kills).isEmpty();
 
     battle.getBattle().step();
-    assertThat(kills).containsExactly("6001 Knight");
+    assertThat(kills).containsExactly((timeUp + 1) + " Knight");
     assertThat(match.getTiebreakMs()).isEqualTo(50);
     assertThat(match.isLastTicked()).as("the update ran").isTrue();
     assertThat(battle.getWorld().getHolder().entities()).doesNotContain(knight);
@@ -156,7 +172,7 @@ class LadderMatchTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.addActionOwner("owner", 0, 9000, 5000, 0);
-    while (battle.getBattle().getTick() < 6001) {
+    while (battle.getBattle().getTick() < timeUpTick() + 1) {
       battle.getBattle().step();
     }
     assertThatThrownBy(() -> battle.getBattle().step())

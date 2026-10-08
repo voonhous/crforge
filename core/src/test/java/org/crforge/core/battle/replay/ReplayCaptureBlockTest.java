@@ -24,9 +24,14 @@ class ReplayCaptureBlockTest {
     tables = GameTables.loadConfigured();
   }
 
+  /** The knight scenario, its play's item fitted to the tables: the Knight's cost and level. */
+  private static ObjectNode knight() {
+    return ScenarioItems.fitted(Scenarios.knight(), tables);
+  }
+
   /** The knight scenario with a capture block naming the given data. */
   private static ObjectNode recordedOn(String contentVersion, String contentSha) {
-    ObjectNode scenario = Scenarios.knight();
+    ObjectNode scenario = knight();
     ObjectNode capture = scenario.putObject("capture");
     capture.put("client_version", GameVersions.CLIENT_16_402_17);
     if (contentVersion != null) {
@@ -46,7 +51,7 @@ class ReplayCaptureBlockTest {
 
     assertThat(plan)
         .usingRecursiveComparison()
-        .isEqualTo(new ReplayScenario(tables).translate(Scenarios.knight()));
+        .isEqualTo(new ReplayScenario(tables).translate(knight()));
     assertThat(mapping.mapping()).containsKey("capture");
     assertThat(mapping.mapping().get("capture")).startsWith("checked:");
     assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
@@ -128,7 +133,7 @@ class ReplayCaptureBlockTest {
             new ReplayScenario.Refusal(
                 "a capture block that names no content_sha", "capture.content_sha"));
 
-    ObjectNode notAnObject = Scenarios.knight();
+    ObjectNode notAnObject = knight();
     notAnObject.put("capture", GameVersions.CLIENT_16_402_17);
     assertThat(new ReplayScenario(tables).survey(notAnObject))
         .containsExactly(
@@ -140,10 +145,10 @@ class ReplayCaptureBlockTest {
   void aReplayWithoutACaptureBlockIsReadAsBefore() {
     ReplayScenario mapping = new ReplayScenario(tables);
 
-    mapping.translate(Scenarios.knight());
+    mapping.translate(knight());
 
     assertThat(mapping.mapping()).doesNotContainKey("capture");
-    assertThat(ReplayCapture.of(Scenarios.knight())).isEmpty();
+    assertThat(ReplayCapture.of(knight())).isEmpty();
   }
 
   @Test
