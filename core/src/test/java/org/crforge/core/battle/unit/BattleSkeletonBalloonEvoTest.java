@@ -3,12 +3,19 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Skeleton Balloon: its starting group runs a health trigger and the singleton pop.
@@ -16,8 +23,57 @@ import org.junit.jupiter.api.Test;
  * its offsets; its death action re-triggers it again, dropping the last. Each container's life end
  * spawns seven Skeletons on a ring turned over by the lane, pushed out from its point. A balloon
  * killed with both balloons left is refused.
+ *
+ * <p>The scene writes the pop's two balloons and the hit-point share that drops the first; the
+ * offsets, the containers' life and the Skeletons' count are read from the rows.
  */
 class BattleSkeletonBalloonEvoTest {
+
+  private static final String POP = "skeleton_balloon_evo_pop_balloon";
+
+  /** The balloons the pop holds, and the hit-point share that drops the first, as written. */
+  private static final int BALLOONS = 2;
+
+  private static final int DROP_AT_PERCENT = 75;
+
+  @TempDir static Path folder;
+
+  /** The configured tables with the scene's columns written. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> {
+              ObjectNode pop = (ObjectNode) rows.get(POP).get("fields");
+              pop.put("TotalBalloons", BALLOONS);
+              pop.putArray("DropBalloonAtHpList").add(DROP_AT_PERCENT);
+              ((ObjectNode) rows.get("SkeletonBalloon_trigger_at_health").get("fields"))
+                  .putArray("HealthPercentages")
+                  .add(DROP_AT_PERCENT);
+            });
+  }
+
+  /**
+   * A container's point: the balloon's moved by the container's offset, along the length turned for
+   * the top side.
+   */
+  private static String point(int container, int side, int x, int y) {
+    int dx = Shipped.numbers(POP, "OffsetXList").get(container);
+    int dy = Shipped.numbers(POP, "OffsetYList").get(container);
+    return "(%d, %d)".formatted(x + dx, side == 0 ? y + dy : y - dy);
+  }
+
+  /** The steps from a container's making to its life-end spawn: its life, and one past it. */
+  private static int lifeSteps(String container) {
+    return Shipped.number(Shipped.row("area_effect_objects", container), "LifeDuration") / 50 + 1;
+  }
+
+  /** The Skeletons one container spawns. */
+  private static final int SKELETONS = Shipped.number("SkeletonBalloonDeathSpawn", "Count");
 
   /** A Common card at its first level, as the evolved play in the reference case stands. */
   private static final int LEVEL = 1;
@@ -26,7 +82,7 @@ class BattleSkeletonBalloonEvoTest {
 
   /** A battle with the towers passive, and every area effect and every spawn logged. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     final List<String> containers = new ArrayList<>();
     final List<Integer> containerTicks = new ArrayList<>();
     final List<Boolean> balloonAlive = new ArrayList<>();
@@ -65,7 +121,8 @@ class BattleSkeletonBalloonEvoTest {
 
     /** A unit placed on tick 0 that never moves. */
     CharacterEntity still(int side, String row, int level, int x, int y, String name) {
-      CharacterEntity unit = match.deploy(0, GameData.unit(row), level, side, x, y, name);
+      CharacterEntity unit =
+          match.deploy(0, match.getWorld().getRecords().unit(row), level, side, x, y, name);
       unit.setActive(CharacterEntity.MOVEMENT_SLOT, false);
       return unit;
     }
@@ -79,8 +136,8 @@ class BattleSkeletonBalloonEvoTest {
 
   @Test
   @DisplayName(
-      "the bottom side's balloon drops its first container at (-350, +450) once it falls to 75%,"
-          + " its last at (+350, 0) as it dies, and each spawns seven Skeletons 13 ticks later")
+      "the bottom side's balloon drops its first container at its first offset once it falls to"
+          + " 75%, its last at its second as it dies, and each spawns its Skeletons a life later")
   void twoContainersDrop() {
     Scene scene = new Scene();
     scene.balloon = scene.still(0, BALLOON, LEVEL, 9000, 14000, "balloon");
@@ -92,14 +149,16 @@ class BattleSkeletonBalloonEvoTest {
     assertThat(scene.balloon.getHitPoints().getHitPoints()).isLessThanOrEqualTo(0);
     assertThat(scene.containers)
         .containsExactly(
-            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_EXTRA (8650, 14450)",
-            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH (9350, 14000)");
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_EXTRA " + point(0, 0, 9000, 14000),
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH " + point(1, 0, 9000, 14000));
     assertThat(scene.balloonAlive).containsExactly(true, false);
-    assertThat(scene.spawns).hasSize(14).containsOnly("Skeleton");
-    // LifeDuration 600: the life-end spawn runs on the update that takes the countdown below 0,
-    // the thirteenth after the tick it was made on.
-    assertThat(scene.spawnTicks.get(0)).isEqualTo(scene.containerTicks.get(0) + 13);
-    assertThat(scene.spawnTicks.get(7)).isEqualTo(scene.containerTicks.get(1) + 13);
+    assertThat(scene.spawns).hasSize(2 * SKELETONS).containsOnly("Skeleton");
+    // The life-end spawn runs on the update that takes the countdown below 0, the one after its
+    // LifeDuration's steps (600 ms: the thirteenth after the tick it was made on).
+    assertThat(scene.spawnTicks.get(0))
+        .isEqualTo(scene.containerTicks.get(0) + lifeSteps("SkeletonBalloonEvoDummyAeO_EXTRA"));
+    assertThat(scene.spawnTicks.get(SKELETONS))
+        .isEqualTo(scene.containerTicks.get(1) + lifeSteps("SkeletonBalloonEvoDummyAeO_DEATH"));
   }
 
   @Test
@@ -114,8 +173,8 @@ class BattleSkeletonBalloonEvoTest {
 
     assertThat(scene.containers)
         .containsExactly(
-            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_EXTRA (8650, 17550)",
-            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH (9350, 18000)");
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_EXTRA " + point(0, 1, 9000, 18000),
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH " + point(1, 1, 9000, 18000));
   }
 
   @Test
@@ -131,7 +190,8 @@ class BattleSkeletonBalloonEvoTest {
     assertThatThrownBy(() -> scene.step(200))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "skeleton_balloon_evo_pop_balloon is re-triggered with 2 balloons left as its owner"
+            POP
+                + " is re-triggered with %d balloons left as its owner".formatted(BALLOONS)
                 + " is dead, which drops every container left; not modelled");
     assertThat(scene.containers).isEmpty();
   }

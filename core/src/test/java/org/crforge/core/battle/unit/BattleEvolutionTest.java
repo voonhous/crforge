@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.EvolutionItem;
@@ -17,6 +18,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -47,6 +49,58 @@ class BattleEvolutionTest {
   private static final List<String> CHEAP_DECK =
       List.of("Zap", "Cannon", "Skeletons", "IceSpirits", "Goblins", "Bats", "Knight", "Archer");
 
+  /** A card's ManaCost, from its row in a cards table. */
+  private static int cost(String table, String card) {
+    return Shipped.number(Shipped.row(table, card), "ManaCost");
+  }
+
+  /**
+   * The evolved rows' DarkElixirCost, the plays a count needs before its card evolves, as the
+   * scenes of the Zap, the Cannon and the Goblin Barrel write it: the plays through the first
+   * evolved one and one after it fit in a match.
+   */
+  private static final int EVOLUTION_COST = 2;
+
+  @TempDir static Path evolutionFolder;
+
+  /** The configured tables with the evolved rows' DarkElixirCost written. */
+  private static GameTables evolving;
+
+  @BeforeAll
+  static void writeTheEvolutionCosts() throws IOException {
+    evolving =
+        GameData.altered(
+            evolutionFolder,
+            "spells_evolved",
+            rows -> {
+              for (String evolved : List.of("Zap_EV1", "Cannon_EV1", "GoblinBarrel_EV1")) {
+                GameData.columns(rows, evolved).put("DarkElixirCost", EVOLUTION_COST);
+              }
+            });
+  }
+
+  /**
+   * The evolution field of each of the given plays of an evolution slot's card whose evolved row
+   * costs the given count: the count rises a play, and the play it reaches the cost is evolved and
+   * resets it.
+   */
+  private static List<Integer> fields(int plays, int cost) {
+    List<Integer> out = new ArrayList<>();
+    for (int play = 0; play < plays; play++) {
+      out.add(play % (cost + 1) == cost ? 1 : 0);
+    }
+    return out;
+  }
+
+  /** The count each of the given plays is made with, as {@link #fields} counts it. */
+  private static List<Integer> counts(int plays, int cost) {
+    List<Integer> out = new ArrayList<>();
+    for (int play = 0; play < plays; play++) {
+      out.add(play % (cost + 1));
+    }
+    return out;
+  }
+
   /** Slot flags with the first card's set to the given flags. */
   private static int[] first(int flags) {
     int[] slots = new int[8];
@@ -71,9 +125,10 @@ class BattleEvolutionTest {
     EvolutionItem item = play.evolution();
     assertThat(item.field()).isEqualTo(EvolutionItem.HERO);
     assertThat(item.spell().name()).isEqualTo("Giant_hero");
-    assertThat(item.cost()).isEqualTo(5);
+    int heroCost = cost("spells_hero_form", "Giant_hero");
+    assertThat(item.cost()).isEqualTo(heroCost);
     assertThat(play.units()).extracting(unit -> unit.getData().name()).containsExactly("GiantHero");
-    assertThat(match.side(0).getSpent()).isEqualTo(5 * MatchSide.SCALE);
+    assertThat(match.side(0).getSpent()).isEqualTo(heroCost * MatchSide.SCALE);
     // The hand cycles the deck card, and the last card kept is the Giant.
     assertThat(match.side(0).lastPlayed().name()).isEqualTo("Giant");
   }
@@ -116,9 +171,11 @@ class BattleEvolutionTest {
 
     MirrorItem item = match.mirrorItem(0, match.deckIndex(0, "Mirror"), LEVEL);
     assertThat(item.repeats().name()).isEqualTo("Giant_hero");
-    assertThat(item.cost()).isEqualTo(1 + 5);
-    battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    assertThatThrownBy(() -> run(battle, 300))
+    assertThat(item.cost())
+        .isEqualTo(cost("spells_other", "Mirror") + cost("spells_hero_form", "Giant_hero"));
+    // Played once the elixir has had time to fill up, whatever the two costs.
+    battle.playMirror(700, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    assertThatThrownBy(() -> run(battle, 700))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a Mirror of the champion Giant_hero");
   }
@@ -153,27 +210,33 @@ class BattleEvolutionTest {
   @Test
   @DisplayName(
       "an evolution slot's spell and building cards count their plays as a troop card does and are"
-          + " cast as their evolved rows once the count reaches the evolved row's DarkElixirCost:"
-          + " Zap and Cannon plain twice, evolved on the third play, plain again on the fourth")
+          + " cast as their evolved rows once the count reaches the evolved row's DarkElixirCost (two,"
+          + " as written): Zap and Cannon plain twice, evolved on the third play, plain again on the"
+          + " fourth")
   void anEvolutionSlotsSpellAndBuildingEvolve() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    Standard1v1Battle battle = new Standard1v1Battle(evolving);
     int[] slots = new int[8];
     slots[0] = MatchSide.EVOLUTION_SLOT;
     slots[1] = MatchSide.EVOLUTION_SLOT;
     LadderMatch match = battle.startLadderMatch(CHEAP_DECK, KNIGHTS, 0, 0, slots, NO_SLOTS);
     List<Standard1v1Battle.Play> zaps = new ArrayList<>();
     List<Standard1v1Battle.Play> cannons = new ArrayList<>();
-    playThrough(battle, match, 4, zaps, cannons);
+    // Each card through its first evolved play and one plain play after it.
+    int plays = EVOLUTION_COST + 2;
+    playThrough(battle, match, plays, zaps, cannons);
 
-    assertThat(zaps).extracting(play -> play.evolution().field()).containsExactly(0, 0, 1, 0);
+    List<Integer> evolved = fields(plays, EVOLUTION_COST);
+    assertThat(zaps).extracting(play -> play.evolution().field()).isEqualTo(evolved);
     assertThat(zaps)
         .extracting(play -> play.evolution().spell().name())
-        .containsExactly("Zap", "Zap", "Zap_EV1", "Zap");
-    assertThat(zaps).extracting(play -> play.evolution().count()).containsExactly(0, 1, 2, 0);
-    assertThat(cannons).extracting(play -> play.evolution().field()).containsExactly(0, 0, 1, 0);
+        .isEqualTo(evolved.stream().map(f -> f == 1 ? "Zap_EV1" : "Zap").toList());
+    assertThat(zaps)
+        .extracting(play -> play.evolution().count())
+        .isEqualTo(counts(plays, EVOLUTION_COST));
+    assertThat(cannons).extracting(play -> play.evolution().field()).isEqualTo(evolved);
     assertThat(cannons)
         .extracting(play -> play.units().get(0).getData().name())
-        .containsExactly("Cannon", "Cannon", "Cannon_EV1", "Cannon");
+        .isEqualTo(evolved.stream().map(f -> f == 1 ? "Cannon_EV1" : "Cannon").toList());
     // Every play was placed: none was turned away by a gate.
     assertThat(battle.getPlays()).allSatisfy(play -> assertThat(play.matchCode()).isZero());
   }
@@ -182,17 +245,19 @@ class BattleEvolutionTest {
   @DisplayName(
       "the evolved Goblin Barrel's cast runs its mirrored extra spell on the king at once: a decoy"
           + " barrel from the barrel's start to the barrel's aim turned over across the arena's"
-          + " width, made right after it, whose impact makes three GoblinDummy in that lane")
+          + " width, made right after it, whose impact makes its count of GoblinDummy in that lane")
   void anEvolvedGoblinBarrelCastsItsDecoy() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    Standard1v1Battle battle = new Standard1v1Battle(evolving);
     List<String> deck = new ArrayList<>(CHEAP_DECK);
     deck.set(0, "GoblinBarrel");
     LadderMatch match =
         battle.startLadderMatch(deck, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
     MatchSide side = match.side(0);
+    // The plain plays the count needs, then the evolved one.
+    int evolvedPlay = EVOLUTION_COST;
     int barrels = 0;
     int tick = 20;
-    while (barrels < 3) {
+    while (barrels <= evolvedPlay) {
       tick += 200;
       run(battle, tick - 1);
       int pick = -1;
@@ -214,10 +279,12 @@ class BattleEvolutionTest {
         barrels++;
       }
     }
+    List<String> spells = new ArrayList<>(Collections.nCopies(evolvedPlay, "GoblinBarrel"));
+    spells.add("GoblinBarrel_EV1");
     assertThat(battle.getPlays())
         .filteredOn(play -> play.name().startsWith("GoblinBarrel"))
         .extracting(play -> play.evolution().spell().name())
-        .containsExactly("GoblinBarrel", "GoblinBarrel", "GoblinBarrel_EV1");
+        .isEqualTo(spells);
 
     List<ProjectileEntity> barrelsInFlight = new ArrayList<>();
     for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
@@ -240,16 +307,22 @@ class BattleEvolutionTest {
         .containsExactly(real.getStartX(), real.getStartY(), real.getStartZ());
     assertThat(decoy.getDelayMs()).isZero();
 
-    run(battle, tick + 56);
+    // The decoy's impact, found by running the battle until the dummies stand.
     List<int[]> dummies = new ArrayList<>();
-    for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
-      if (entity instanceof CharacterEntity unit
-          && unit.getData().name().equals("GoblinDummy")
-          && unit.side() == 0) {
-        dummies.add(new int[] {unit.getView().getX(), unit.getView().getY()});
+    for (int step = 0; step < 200 && dummies.isEmpty(); step++) {
+      battle.getBattle().step();
+      for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+        if (entity instanceof CharacterEntity unit
+            && unit.getData().name().equals("GoblinDummy")
+            && unit.side() == 0) {
+          dummies.add(new int[] {unit.getView().getX(), unit.getView().getY()});
+        }
       }
     }
-    assertThat(dummies).hasSize(3);
+    assertThat(dummies)
+        .hasSize(
+            Shipped.number(
+                Shipped.row("projectiles", "GoblinBarrelSpell_EV1_Decoy"), "SpawnCharacterCount"));
     assertThat(dummies).allSatisfy(at -> assertThat(at[0]).isBetween(2000, 5000));
   }
 

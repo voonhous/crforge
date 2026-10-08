@@ -2,22 +2,95 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Bomber's bouncing bomb: BombSkeletonProjectile_EV1 lands, and its spawn chain of two
- * launches BombSkeletonProjectile_2_EV1 on 2500 beyond each impact. The three bombs of one throw
- * share one group id, so an entity one bomb of the throw has damaged takes nothing from the others.
+ * launches BombSkeletonProjectile_2_EV1 on its ProjectileRange beyond each impact. The three bombs
+ * of one throw share one group id, so an entity one bomb of the throw has damaged takes nothing
+ * from the others.
+ *
+ * <p>The scene writes every column the bombs' points and ticks are read from: the Bomber's timing,
+ * reach and throw, the bombs' flight, radius, range and chain, the Musketeer's size and the towers'
+ * places and size, so they are its own and not a version's.
  */
 class BattleBomberEvoTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /** The Bomber's hit speed, as the scene writes it: a throw every 36 steps. */
+  private static final int HIT_SPEED = 1800;
+
+  @TempDir static Path folder;
+
+  /** The configured tables with the scene's columns written, and their records. */
+  private static GameTables tables;
+
+  private static BattleRecords records;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Bomber_EV1")
+              .put("HitSpeed", HIT_SPEED)
+              .put("LoadTime", 1600)
+              .put("DeployTime", 1000)
+              .put("Range", 4500)
+              .put("SightRange", 5500)
+              .put("Speed", 60)
+              .put("CollisionRadius", 500)
+              .put("ProjectileStartRadius", 350)
+              .put("ProjectileStartZ", 4800);
+          GameData.columns(rows, "Musketeer").put("CollisionRadius", 500).put("DeployTime", 1000);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "BombSkeletonProjectile_EV1")
+              .put("Speed", 400)
+              .put("Gravity", 200)
+              .put("Radius", 1500)
+              .put("SpawnChain", 2);
+          GameData.columns(rows, "BombSkeletonProjectile_2_EV1")
+              .put("Speed", 400)
+              .put("Gravity", 200)
+              .put("Radius", 1500)
+              .put("ProjectileRange", 3000)
+              .put("SpawnChain", 2);
+        });
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> GameData.columns(rows, "PrincessTower").put("CollisionRadius", 1000));
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+    tables = GameTables.load(folder);
+    records = new BattleRecords(tables);
+  }
 
   /** Side 1's right princess tower, at (14500, 25500). */
   private static final String TOWER = "PrincessTower_1_2";
@@ -31,7 +104,7 @@ class BattleBomberEvoTest {
    * beside the tower and its second bounce on the tower.
    */
   private static List<Impact> bombTheMusketeer(int ticks) {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     List<Impact> impacts = new ArrayList<>();
     match
         .getWorld()
@@ -53,8 +126,8 @@ class BattleBomberEvoTest {
                         result.landed()));
               }
             });
-    match.deploy(0, GameData.unit("Musketeer"), LEVEL, 1, 14500, 21500);
-    match.deploy(0, GameData.unit("Bomber_EV1"), LEVEL, 0, 14500, 16000);
+    match.deploy(0, records.unit("Musketeer"), LEVEL, 1, 14500, 21500);
+    match.deploy(0, records.unit("Bomber_EV1"), LEVEL, 0, 14500, 16000);
     for (int tick = 0; tick < ticks; tick++) {
       match.getBattle().step();
     }
@@ -104,9 +177,9 @@ class BattleBomberEvoTest {
             .filter(Impact::landed)
             .toList();
     assertThat(landed).hasSizeGreaterThanOrEqualTo(2);
-    // One hit per throw, a throw HitSpeed 1800 apart: never two within the same throw.
+    // One hit per throw, the throws HitSpeed apart: never two within the same throw.
     for (int k = 1; k < landed.size(); k++) {
-      assertThat(landed.get(k).tick() - landed.get(k - 1).tick()).isGreaterThanOrEqualTo(30);
+      assertThat(landed.get(k).tick() - landed.get(k - 1).tick()).isEqualTo(HIT_SPEED / 50);
     }
   }
 }

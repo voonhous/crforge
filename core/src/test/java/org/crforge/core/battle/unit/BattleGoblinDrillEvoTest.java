@@ -3,19 +3,99 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Goblin Drill's relocation: it hides at each hit-point threshold and comes up five
  * ring steps further around the enemy tower it stands by.
+ *
+ * <p>The scene writes every column its points and steps are read from: the towers' places and size,
+ * the relocation's thresholds (66 and 33 percent) and hide time (1000 ms), the hide group's spawns
+ * and delays, and the drill's size, life and hit points, so they are its own and not a version's.
  */
 class BattleGoblinDrillEvoTest {
+
+  @TempDir static Path folder;
+
+  /** The configured tables with the scene's columns written, and their records. */
+  private static GameTables tables;
+
+  private static BattleRecords records;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode relocate = fields(rows, "GoblinDrill_EV1_relocate").put("HideTime", 1000);
+          relocate.putArray("HideHpThresholds").add(66).add(33);
+          fields(rows, "GoblinDrill_EV1_Hide_Group")
+              .putArray("SubActionsDelay")
+              .add(0)
+              .add(50)
+              .add(50);
+          fields(rows, "GoblinDrill_EV1_Hide_Group2").putArray("SubActionsDelay").add(0).add(50);
+          fields(rows, "GoblinDrill_EV1_Disable_Physics").put("ActionDuration", 1000);
+          for (String spawn :
+              List.of("GoblinDrill_EV1_Spawn_Goblin1", "GoblinDrill_EV1_Spawn_Goblin3")) {
+            fields(rows, spawn).put("RelativeX", -1).put("RelativeY", 0).put("DeployTime", 500);
+          }
+          fields(rows, "GoblinDrill_EV1_Spawn_Goblin2")
+              .put("RelativeX", 1)
+              .put("RelativeY", 0)
+              .put("DeployTime", 500);
+        });
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "GoblinDrill_EV1")
+              .put("CollisionRadius", 500)
+              .put("LifeTime", 10000)
+              .put("Hitpoints", 513)
+              .put("DeployTime", 1000);
+          GameData.columns(rows, "PrincessTower").put("CollisionRadius", 1000);
+          GameData.columns(rows, "KingTower").put("CollisionRadius", 1400);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "GoblinDrill_EV1_Dig")
+                .put("SpawnPathfindSpeed", 300)
+                .put("DeployTime", 1000));
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+    tables = GameTables.load(folder);
+    records = new BattleRecords(tables);
+  }
+
+  /** The fields of an action row in the actions table, to alter. */
+  private static ObjectNode fields(ObjectNode rows, String action) {
+    return (ObjectNode) rows.get(action).get("fields");
+  }
 
   /** The evolved drill standing on the ring of the top side's right princess tower. */
   private static final int RING_X = 14000;
@@ -23,7 +103,7 @@ class BattleGoblinDrillEvoTest {
   private static final int RING_Y = 23000;
 
   private static Standard1v1Battle passiveTowers() {
-    return new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+    return new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
   }
 
   /** The evolved drill building, once the dig has surfaced; null before. */
@@ -64,7 +144,7 @@ class BattleGoblinDrillEvoTest {
   private static CharacterEntity surfacedAndDeployed(Standard1v1Battle match) {
     match.play(
         0,
-        GameData.card("GoblinDrill_EV1"),
+        records.card("GoblinDrill_EV1"),
         Standard1v1Battle.DEFAULT_LEVEL,
         0,
         RING_X,
@@ -169,7 +249,7 @@ class BattleGoblinDrillEvoTest {
   void offTheRingItIsRefused() {
     Standard1v1Battle match = passiveTowers();
     match.play(
-        0, GameData.card("GoblinDrill_EV1"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 20000, "D");
+        0, records.card("GoblinDrill_EV1"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 20000, "D");
 
     assertThatThrownBy(
             () -> {

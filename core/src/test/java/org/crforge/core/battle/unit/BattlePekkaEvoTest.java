@@ -2,20 +2,64 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Pekka: each unit it kills runs its killed-done action, which picks one of three heal
  * buffs by the killed unit's hit points at card level 11 (below 990, below 1990, or more), and the
  * heal may lift it above its maximum, up to half as much again. Its resurrect columns only show the
  * kill (a soul flying to it), so the unit is built with them.
+ *
+ * <p>The scene writes the level the killed unit's hit points are read at (card level 11) and the
+ * killed units' hit points, so each stands on its side of the bounds whatever a version gives it.
  */
 class BattlePekkaEvoTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /** The level index the kill reads the killed unit's hit points at: card level 11. */
+  private static final int VICTIM_LEVEL_INDEX = 10;
+
+  /** The killed units' hit points as the scene writes them: 1766, 81 and 3968 at level 11. */
+  private static final int KNIGHT_HIT_POINTS = 690;
+
+  private static final int SKELETON_HIT_POINTS = 32;
+
+  private static final int GIANT_HIT_POINTS = 1550;
+
+  @TempDir static Path folder;
+
+  /** The configured tables with the scene's columns written. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    GameData.altered(
+        folder,
+        "actions",
+        rows ->
+            ((ObjectNode) rows.get("PekkaEV1_WriteVictimHp").get("fields"))
+                .put("HitpointsLevelIndex", VICTIM_LEVEL_INDEX));
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight").put("Hitpoints", KNIGHT_HIT_POINTS);
+          GameData.columns(rows, "Skeleton").put("Hitpoints", SKELETON_HIT_POINTS);
+          GameData.columns(rows, "Giant").put("Hitpoints", GIANT_HIT_POINTS);
+        });
+    tables = GameTables.load(folder);
+  }
 
   /** An evolved Pekka of side 0 at (9000, 10000) facing a still unit of side 1 just ahead. */
   private static CharacterEntity[] facing(Standard1v1Battle match, String row) {
@@ -44,10 +88,11 @@ class BattlePekkaEvoTest {
 
   /**
    * The steps from the one that kills to the one whose end finds the heal buff on the Pekka: the
-   * kill sends a soul to it (PekkaEV1_SoulDrain), whose flight of 700 ms is 14 steps of 50 ms, and
-   * its arrival lists the heal buff for 50 ms.
+   * kill sends a soul to it (PekkaEV1_SoulDrain), whose flight of ConstantFlightDuration is that
+   * many steps of 50 ms, and its arrival lists the heal buff for 50 ms.
    */
-  private static final int SOUL_STEPS = 14;
+  private static final int SOUL_STEPS =
+      Shipped.number("PekkaEV1_SoulDrain", "ConstantFlightDuration") / 50;
 
   /**
    * Steps until the unit carries the buff, at most the given ticks; answers the steps taken, or -1
@@ -64,9 +109,10 @@ class BattlePekkaEvoTest {
   }
 
   @Test
-  @DisplayName("a kill of a Knight (1766 at level 11) gives the middle heal")
+  @DisplayName(
+      "a kill of a Knight (1766 at level 11, as the scene writes it) gives the middle heal")
   void aKnightGivesTheMiddleHeal() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity[] units = facing(match, "Knight");
     stepUntilDead(match, units[1], 400);
 
@@ -77,9 +123,9 @@ class BattlePekkaEvoTest {
   }
 
   @Test
-  @DisplayName("a kill of a Skeleton (81 at level 11) gives the least heal")
+  @DisplayName("a kill of a Skeleton (81 at level 11, as the scene writes it) gives the least heal")
   void aSkeletonGivesTheLeastHeal() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity[] units = facing(match, "Skeleton");
     stepUntilDead(match, units[1], 400);
 
@@ -90,10 +136,10 @@ class BattlePekkaEvoTest {
 
   @Test
   @DisplayName(
-      "a kill of a weakened Giant (above 1990 at level 11, whatever it has left) gives the most heal,"
-          + " which lifts a Pekka at full hit points above its maximum but not past half again")
+      "a kill of a weakened Giant (3968 at level 11 as written, whatever it has left) gives the most"
+          + " heal, which lifts a Pekka at full hit points above its maximum but not past half again")
   void aGiantGivesTheMostHealAndAnOverheal() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity[] units = facing(match, "Giant");
     CharacterEntity giant = units[1];
     // Leave the Giant one hit from death, so the Pekka is untouched when it kills it.

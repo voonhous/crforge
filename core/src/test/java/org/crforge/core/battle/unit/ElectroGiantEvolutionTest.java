@@ -2,29 +2,38 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.CountingRun;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The evolved Electro Giant's pulse timer (ElectroGiant_EV1 of data version 16.402.18): its
- * starting group lists ElectroGiant_EV1_Pulse_Attack_Interval, an interval of 6000 ms whose counter
- * starts at 2500 and which follows its owner's hit speed. Each step the counter loses half of what
- * the owner's buffs make of a hit speed of 100, read afresh on that step: 50 with no buff, 65 under
- * Rage.
+ * The evolved Electro Giant's pulse timer: its starting group lists
+ * ElectroGiant_EV1_Pulse_Attack_Interval, an interval (6000 ms) whose counter starts at its
+ * StartCounterAt (2500) and which follows its owner's hit speed. Each step the counter loses half
+ * of what the owner's buffs make of a hit speed of 100, read afresh on that step: 50 with no buff,
+ * half of Rage's HitSpeedMultiplier under Rage (65).
  *
  * <p>Each pulse puts ElectroGiant_EV1_Pulse_Debuff on every object it hits that is not a crown
  * tower (`!is_crown_tower`): listed, its start action lowers the carrier's level by one; refreshed
  * by the next pulse, its stacked action lowers it once more. A level that falls takes the hit
  * points down to their share of the new maximum.
+ *
+ * <p>The tower scene writes the towers' places, so side 1's right princess tower stands at (14500,
+ * 25500), 5500 above the giant.
  */
 class ElectroGiantEvolutionTest {
 
@@ -33,12 +42,35 @@ class ElectroGiantEvolutionTest {
   private static final String INTERVAL = "ElectroGiant_EV1_Pulse_Attack_Interval";
 
   /** The interval's StartCounterAt. */
-  private static final int START_COUNTER = 2500;
+  private static final int START_COUNTER = Shipped.number(INTERVAL, "StartCounterAt");
+
+  /** The hit speed a unit under Rage has for a hit speed of 100: Rage's multiplier. */
+  private static final int RAGED =
+      Shipped.number(Shipped.row("character_buffs", "Rage"), "HitSpeedMultiplier");
+
+  @TempDir static Path folder;
+
+  /** The configured tables with the towers' places written. */
+  private static GameTables placed;
+
+  @BeforeAll
+  static void placeTheTowers() throws IOException {
+    placed =
+        GameData.altered(
+            folder,
+            "spawn_groups",
+            rows -> {
+              ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+              towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+              towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+              towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+            });
+  }
 
   @Test
   @DisplayName(
-      "the pulse interval loses 50 a step with no buff and 65 a step under Rage, the rate read on"
-          + " each step")
+      "the pulse interval loses 50 a step with no buff and half of Rage's hit speed a step under"
+          + " Rage, the rate read on each step")
   void thePulseIntervalFollowsTheHitSpeed() {
     GameTables tables = GameData.tables();
     BattleRecords records = new BattleRecords(tables);
@@ -52,7 +84,7 @@ class ElectroGiantEvolutionTest {
       battle.getBattle().step();
       giant.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     }
-    assertThat(counter(giant)).as("the counter after its first step").isLessThan(START_COUNTER);
+    assertThat(counter(giant)).as("the counter after its first step").isEqualTo(START_COUNTER - 50);
 
     List<Integer> plain = deltas(battle, giant, 5);
     assertThat(plain).as("no buff: half of 100").containsOnly(50);
@@ -61,9 +93,9 @@ class ElectroGiantEvolutionTest {
     // The step that lists the buff and the one after it are left out: only the steps that read
     // the listed buff from start to end are asserted.
     deltas(battle, giant, 2);
-    assertThat(giant.getBuffs().hitSpeed(100)).isEqualTo(130);
+    assertThat(giant.getBuffs().hitSpeed(100)).isEqualTo(RAGED);
     List<Integer> raged = deltas(battle, giant, 10);
-    assertThat(raged).as("Rage: half of 130").containsOnly(65);
+    assertThat(raged).as("Rage: half of its hit speed").containsOnly(RAGED / 2);
   }
 
   @Test
@@ -71,7 +103,7 @@ class ElectroGiantEvolutionTest {
       "each pulse lowers an enemy Musketeer's level by one, the second through the debuff's stacked"
           + " action, its full hit points falling with the maximum, and leaves a crown tower's level")
   void thePulseDebuffLowersTheLevelOncePerPulse() {
-    GameTables tables = GameData.tables();
+    GameTables tables = placed;
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     // The giant 5500 below side 1's right princess tower, within its pulse's reach; the Musketeer
@@ -95,6 +127,9 @@ class ElectroGiantEvolutionTest {
     stepUntilLevel(battle, giant, musketeer, level - 1, 200);
     int lowered = musketeer.getHitPoints().getMaximum();
     assertThat(lowered).isLessThan(maximumAt(records, level));
+    assertThat(lowered)
+        .as("the maximum at the lowered level")
+        .isEqualTo(maximumAt(records, level - 1));
     assertThat(musketeer.getHitPoints().getHitPoints())
         .as("full hit points fall to the new maximum")
         .isEqualTo(lowered);
@@ -102,6 +137,7 @@ class ElectroGiantEvolutionTest {
     // The next pulse refreshes it: its stacked action lowers the level once more.
     stepUntilLevel(battle, giant, musketeer, level - 2, 200);
     assertThat(musketeer.getHitPoints().getMaximum()).isLessThan(lowered);
+    assertThat(musketeer.getHitPoints().getMaximum()).isEqualTo(maximumAt(records, level - 2));
     assertThat(musketeer.getHitPoints().getHitPoints())
         .isEqualTo(musketeer.getHitPoints().getMaximum());
 
