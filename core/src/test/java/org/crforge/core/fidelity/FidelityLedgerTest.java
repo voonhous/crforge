@@ -51,10 +51,10 @@ class FidelityLedgerTest {
 
     assertThat(scanned)
         .contains(
-            "org.crforge.core.util.FormationHelper",
-            "org.crforge.core.util.Vector2",
-            "org.crforge.core.component.Position",
-            "org.crforge.core.engine.AreaEffectFactory")
+            "org.crforge.core.battle.Battle",
+            "org.crforge.core.pathfinding.GridEntityState",
+            "org.crforge.core.pathfinding.GridStateSetter",
+            "org.crforge.core.util.GameUnits")
         .doesNotHaveDuplicates();
   }
 
@@ -69,29 +69,29 @@ class FidelityLedgerTest {
   /** No "not looked at yet" state: code with nothing to point to is simply a guess. */
   @Test
   void unannotatedClassesReadAsGuesses() {
-    Entry vector2 =
+    Entry gameUnits =
         FidelityLedger.scan().stream()
-            .filter(e -> e.className().equals("org.crforge.core.util.Vector2"))
+            .filter(e -> e.className().equals("org.crforge.core.util.GameUnits"))
             .findFirst()
             .orElseThrow();
 
-    assertThat(vector2.status()).isEqualTo(GUESS);
-    assertThat(vector2.isNoteworthy()).isFalse();
+    assertThat(gameUnits.status()).isEqualTo(GUESS);
+    assertThat(gameUnits.isNoteworthy()).isFalse();
   }
 
   @Test
   void annotatedClassesCarryTheirStatusAndNote() {
-    Entry formationHelper =
+    Entry gridEntityState =
         FidelityLedger.scan().stream()
-            .filter(e -> e.className().equals("org.crforge.core.util.FormationHelper"))
+            .filter(e -> e.className().equals("org.crforge.core.pathfinding.GridEntityState"))
             .findFirst()
             .orElseThrow();
 
     // Assert the annotation round-trips, not its wording: notes get reworded as understanding
     // improves, and a test that pins the prose only ever fails for the wrong reason.
-    assertThat(formationHelper.status()).isEqualTo(PARTIAL);
-    assertThat(formationHelper.note()).isNotBlank();
-    assertThat(formationHelper.isNoteworthy()).isTrue();
+    assertThat(gridEntityState.status()).isEqualTo(PARTIAL);
+    assertThat(gridEntityState.note()).isNotBlank();
+    assertThat(gridEntityState.isNoteworthy()).isTrue();
   }
 
   /** A bare guess adds nothing to the default, so it is a count unless the caller asks for all. */
@@ -100,12 +100,12 @@ class FidelityLedgerTest {
     List<Entry> entries =
         List.of(
             entry("Traced", TRACED, "pinned"),
-            entry("util.Vector2", GUESS, ""),
-            entry("engine.AreaEffectFactory", GUESS, "buff precedence inferred"));
+            entry("util.BareGuess", GUESS, ""),
+            entry("battle.NotedGuess", GUESS, "buff precedence inferred"));
 
     String terse = FidelityLedger.render(entries, false);
-    assertThat(terse).doesNotContain("Vector2").contains("AreaEffectFactory");
-    assertThat(FidelityLedger.render(entries, true)).contains("Vector2");
+    assertThat(terse).doesNotContain("BareGuess").contains("NotedGuess");
+    assertThat(FidelityLedger.render(entries, true)).contains("BareGuess");
   }
 
   @Test

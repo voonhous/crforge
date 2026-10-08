@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
-import org.crforge.core.arena.Arena;
+import org.crforge.core.pathfinding.grid.TileMap;
 import org.junit.jupiter.api.Test;
 
 class GameUnitsTest {
@@ -75,10 +75,11 @@ class GameUnitsTest {
 
   @Test
   void arenaExtent_isEighteenByThirtyTwoTilesInGameUnits() {
-    assertThat(Arena.WIDTH_UNITS).isEqualTo(18_000);
-    assertThat(Arena.HEIGHT_UNITS).isEqualTo(32_000);
-    assertThat(GameUnits.tileIndex(Arena.WIDTH_UNITS - 1)).isEqualTo(Arena.WIDTH - 1);
-    assertThat(GameUnits.tileIndex(Arena.HEIGHT_UNITS - 1)).isEqualTo(Arena.HEIGHT - 1);
+    TileMap arena = TileMap.standard1v1();
+    assertThat(arena.widthUnits()).isEqualTo(18_000);
+    assertThat(arena.heightUnits()).isEqualTo(32_000);
+    assertThat(GameUnits.tileIndex(arena.widthUnits() - 1)).isEqualTo(17);
+    assertThat(GameUnits.tileIndex(arena.heightUnits() - 1)).isEqualTo(31);
   }
 
   @Test
@@ -93,7 +94,8 @@ class GameUnitsTest {
   @Test
   void distanceSquared_usesLongArithmetic_withoutOverflow() {
     // Arena diagonal: 18000^2 + 32000^2 = 1,348,000,000 (exceeds float precision)
-    assertThat(GameUnits.distanceSquared(0, 0, Arena.WIDTH_UNITS, Arena.HEIGHT_UNITS))
+    TileMap arena = TileMap.standard1v1();
+    assertThat(GameUnits.distanceSquared(0, 0, arena.widthUnits(), arena.heightUnits()))
         .isEqualTo(1_348_000_000L);
 
     // Per-axis separations up to Integer.MAX_VALUE: an int product would overflow, the long
