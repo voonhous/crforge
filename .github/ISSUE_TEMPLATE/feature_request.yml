@@ -29,7 +29,6 @@ body:
         - core
         - data
         - desktop
-        - gym-bridge
     validations:
       required: false
 

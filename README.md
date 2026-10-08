@@ -4,9 +4,7 @@
 [![Build](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml)
 [![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://adoptium.net/)
 
-A headless Clash Royale battle simulator built in Java, designed for reinforcement learning and AI
-research. Deterministic tick-based engine with data-driven cards, a LibGDX debug visualizer,
-and a Python Gymnasium integration via ZMQ bridge.
+A headless Clash Royale battle simulator built in Java, designed for reinforcement learning and AI research. Deterministic tick-based engine with data-driven cards and a LibGDX debug visualizer. The Python Gymnasium environment was removed; it will be rebuilt on the battle core.
 
 <p align="center">
   <img src="docs/assets/debug-visualizer.gif" alt="Debug visualizer showing a simulated battle" width="320">
@@ -34,12 +32,6 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 # Run debug visualizer
 ./gradlew :desktop:run
-
-# Run gym bridge server (default port 9876)
-./gradlew :gym-bridge:run
-
-# Run visualizer in AI mode (Python controls the game via ZMQ)
-./gradlew :desktop:run --args="--ai-port 9876"
 ```
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
@@ -48,30 +40,6 @@ The debug visualizer runs the battle core, which needs the game tables: set `crf
 [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing
 overlays (`G`, `N`).
 
-### Python / RL Training
-
-**Requirements:** Python 3.10+, Java bridge server running
-
-```bash
-pip install -e python/
-python python/examples/run_episodes.py
-```
-
-```python
-from crforge_gym import CRForgeEnv
-
-env = CRForgeEnv()
-obs, info = env.reset(seed=42)
-
-while True:
-    action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
-    if terminated or truncated:
-        break
-
-env.close()
-```
-
 ## Modules
 
 | Module        | Description                                                                                 |
@@ -79,11 +47,9 @@ env.close()
 | `core`        | Headless simulation engine -- entities, systems, match logic                                |
 | `data`        | Card/unit/projectile config loading from JSON into typed objects                            |
 | `desktop`     | LibGDX debug visualizer for watching and interacting with matches                           |
-| `gym-bridge`  | ZMQ server + Python Gymnasium environment for RL training                                   |
 | `conformance` | Checks the battle core against recorded reference battles ([README](conformance/README.md)) |
 
-`core` has no GUI dependencies. `data` depends on `core`. `desktop` and `gym-bridge` depend on
-both. `conformance` depends on `core` only.
+`core` has no GUI dependencies. `data` depends on `core`. `desktop` and `conformance` depend on `core` only.
 
 ## Docs
 
@@ -93,7 +59,6 @@ both. `conformance` depends on `core` only.
 | [Arena, Match & Economy](docs/arena-and-match.md)          | Arena layout, placement, win conditions, elixir, hand    |
 | [Targeting, Combat & Abilities](docs/combat.md)            | Target locking, attack pipeline, 10 ability types        |
 | [Card Data Schema](docs/schema.md)                         | JSON schema, loading pipeline, reference resolution      |
-| [Python Gymnasium Bridge](python/README.md)                | ZMQ transport, observation/action spaces, rewards        |
 
 See [docs/architecture.md](docs/architecture.md) for the full documentation index.
 

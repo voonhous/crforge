@@ -240,7 +240,7 @@ class DataSelectionTest {
     assertThat(DataSelection.versionArgument(new String[] {"--data-version=16.402.18"}))
         .isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(DataSelection.versionArgument(new String[] {"--data-version"})).isNull();
-    assertThat(DataSelection.versionArgument(new String[] {"--ai-port", "9876"})).isNull();
+    assertThat(DataSelection.versionArgument(new String[] {"--replay", "battle.json"})).isNull();
   }
 
   @Test

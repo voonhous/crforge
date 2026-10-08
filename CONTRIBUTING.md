@@ -28,23 +28,6 @@ CI will reject PRs that don't pass `spotlessCheck`.
 - For bug fixes, follow TDD: write a failing test first, then fix the bug and confirm the test passes.
 - Tests should exercise the real code path, not just call the fix function in isolation.
 
-## Python Bridge
-
-The `gym-bridge` module exposes a Gymnasium-compatible environment for RL training.
-
-To set up:
-
-```bash
-cd python
-pip install -e ".[dev]"
-```
-
-Run bridge tests:
-
-```bash
-./gradlew :gym-bridge:test
-```
-
 ## Pull Requests
 
 1. Fork the repo and create a feature branch from `main`.

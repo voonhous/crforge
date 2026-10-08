@@ -32,14 +32,9 @@ Thumbs.db
 # Logs
 *.log
 
-# Python
+# Python (tools/formation_visualizer and a local virtual environment)
 __pycache__/
 *.py[cod]
-*$py.class
-.Python
-*.egg-info/
-.eggs/
-dist/
 venv/
 .venv/
 
