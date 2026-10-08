@@ -13,6 +13,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.Disabled;
@@ -287,22 +288,32 @@ class BattleElectroGiantTest {
   @Test
   @DisplayName(
       "a Spear Goblin's shot is struck back at the Goblin Giant it rides on, not at the rider, and"
-          + " the Giant hands the buff to both its riders")
+          + " the Giant hands the buff to each of its riders")
   void aRidersShot() {
     Scene scene = new Scene();
     // Played for the top side, it walks down onto the Giant; its riders shoot from farther out.
     scene.match.play(0, GameData.card("GoblinGiant"), LEVEL, 1, X, Y + 2500, "goblin");
 
     // Until a shot is struck back with the buff: the first ones may be out of the reflect's reach.
+    // The loop guard is a battle's whole length, which the scene's walk and first shots never near.
+    int guard = battleTicks();
     while (scene.reflections.stream()
             .noneMatch(r -> r.attacker() instanceof ProjectileEntity && r.buff() != null)
-        && scene.tick < 160) {
+        && scene.tick < guard) {
       scene.step(1);
     }
-    CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
+    Reflection buffed =
+        scene.reflections.stream()
+            .filter(r -> r.attacker() instanceof ProjectileEntity && r.buff() != null)
+            .findFirst()
+            .orElseThrow();
+    // The Giant struck back for its rider's shot, one of the play's units.
+    assertThat(scene.match.getPlays().get(0).units()).contains((CharacterEntity) buffed.struck());
+    CharacterEntity giant = (CharacterEntity) buffed.struck();
     assertThat(giant.getBuffs().carries(BUFF)).isTrue();
+    // Every rider it carries, its row's SpawnNumber.
     assertThat(giant.riders())
-        .hasSize(2)
+        .hasSize(Shipped.number(Shipped.unitRow("GoblinGiant"), "SpawnNumber"))
         .allSatisfy(rider -> assertThat(rider.getBuffs().carries(BUFF)).isTrue());
     List<Reflection> shots =
         scene.reflections.stream().filter(r -> r.attacker() instanceof ProjectileEntity).toList();
@@ -313,6 +324,20 @@ class BattleElectroGiantTest {
               assertThat(r.source().getData().name()).isEqualTo("SpearGoblinGiant");
               assertThat(r.struck().getData().name()).isEqualTo("GoblinGiant");
             });
+  }
+
+  /**
+   * A battle's whole length in ticks: the sections of the Ladder mode's battle timeline, in seconds
+   * of 20 ticks, summed.
+   */
+  private static int battleTicks() {
+    String timeline =
+        Shipped.text(Shipped.row("game_modes", LadderMatch.GAME_MODE), "BattleTimeline");
+    int seconds = 0;
+    for (int length : Shipped.numbers(Shipped.row("battle_timelines", timeline), "SectionLength")) {
+      seconds += length;
+    }
+    return seconds * 1000 / 50;
   }
 
   @Test

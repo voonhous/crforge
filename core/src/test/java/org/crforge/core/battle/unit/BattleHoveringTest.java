@@ -6,8 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +35,9 @@ class BattleHoveringTest {
 
   /** The Knight's collision radius, set on its row. */
   private static final int KNIGHT_RADIUS = 500;
+
+  /** The heal buff the heal tests apply. */
+  private static final GameRow HEALER = Shipped.row("character_buffs", "BattleHealerAll");
 
   private static Standard1v1Battle passiveTowers() {
     return new Standard1v1Battle(GameData.tables(), LEVEL, false);
@@ -92,8 +100,8 @@ class BattleHoveringTest {
   }
 
   /**
-   * The hit points a Ghost that stands still and attacks nothing, so stays invisible, loses beside
-   * a Knight a Valkyrie fights.
+   * The hit points a Ghost that stands still and sees nothing, so attacks nothing and stays
+   * invisible, loses beside a Knight to the Valkyrie's first swing at it.
    */
   private static int ghostHitPointsLostBesideAKnight(boolean allowAreaDamage) {
     Standard1v1Battle match = passiveTowers();
@@ -104,12 +112,22 @@ class BattleHoveringTest {
             .speed(1)
             .attacksGround(false)
             .attacksAir(false)
+            // Seeing nothing, it takes no target, which a Valkyrie within its attack range would
+            // otherwise be, and never starts an attack that takes its buff off.
+            .sightRange(0)
             .allowAreaDamageWhenInvisible(allowAreaDamage)
             .build();
     CharacterEntity ghost = match.deploy(0, still, LEVEL, 0, 9000, 10200, "Ghost");
-    match.deploy(0, GameData.unit("Knight"), LEVEL, 0, 9000, 11000, "Knight");
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), LEVEL, 0, 9000, 11000, "Knight");
     match.deploy(0, GameData.unit("Valkyrie"), LEVEL, 1, 9000, 12500, "Valkyrie");
-    for (int step = 0; step < 120; step++) {
+    // Until the Valkyrie's first swing lands on the Knight; the loop guard is a battle's whole
+    // length.
+    int guard = battleTicks();
+    for (int step = 0;
+        knight.getHitPoints().getHitPoints() == knight.getHitPoints().getMaximum();
+        step++) {
+      assertThat(step).isLessThan(guard);
       match.getBattle().step();
       assertThat(ghost.invisible()).isTrue();
     }
@@ -316,14 +334,54 @@ class BattleHoveringTest {
             });
     BuffData buff = GameData.records().buff("BattleHealerAll");
     king.getBuffs().apply(buff, 1000, king.getPackedLevel(), king, 0);
-    for (int step = 0; step < 5; step++) {
+    for (int visit = 0; visit < visitsToTheFirstHit(); visit++) {
       match.getBattle().step();
     }
 
-    // 40 a second at the king's level; a troop takes a quarter of it every 250 ms.
-    int perSecond = BuffComponent.crownTowerHeal(buff, king.getPackedLevel());
+    // The row's heal per second at the king's level, raised by its crown-tower percent and rounded
+    // up; a troop takes only the hit's share of it, HitFrequency ms of the second, at each hit.
+    int percent = Math.max(Shipped.number(HEALER, "CrownTowerDamagePercent"), -100) + 100;
+    int perSecond =
+        (percent * scaled(Shipped.number(HEALER, "HealPerSecond"), king.getPackedLevel()) + 99)
+            / 100;
     assertThat(heals).containsExactly(perSecond);
-    assertThat(perSecond).isGreaterThan(40);
+  }
+
+  /**
+   * A battle's whole length in ticks: the sections of the Ladder mode's battle timeline, in seconds
+   * of 20 ticks, summed.
+   */
+  private static int battleTicks() {
+    String timeline =
+        Shipped.text(Shipped.row("game_modes", LadderMatch.GAME_MODE), "BattleTimeline");
+    int seconds = 0;
+    for (int length : Shipped.numbers(Shipped.row("battle_timelines", timeline), "SectionLength")) {
+      seconds += length;
+    }
+    return seconds * 1000 / 50;
+  }
+
+  /**
+   * The visits of 50 ms a heal buff's instance counts to its first hit: its row's HitFrequency in
+   * whole visits, the hit landing on the visit that reaches them.
+   */
+  private static int visitsToTheFirstHit() {
+    return Shipped.number(HEALER, "HitFrequency") / 50;
+  }
+
+  /**
+   * A heal buff's value at a packed level: its row's rarity's multiplier, in hundredths, at the
+   * level's step, truncated.
+   */
+  private static int scaled(int value, int packedLevel) {
+    String name = Shipped.text(HEALER, "Rarity");
+    RarityTable rarity =
+        RarityTable.PUBLISHED.stream()
+            .filter(table -> table.name().equals(name))
+            .findFirst()
+            .orElseThrow();
+    int steps = PackedLevel.steps(packedLevel);
+    return steps == 0 ? value : value * rarity.multiplier(steps - 1) / 100;
   }
 
   @Test
@@ -342,12 +400,20 @@ class BattleHoveringTest {
             .allowedOverHealPercent(150)
             .build();
     knight.getBuffs().apply(overHeal, 1000, knight.getPackedLevel(), knight, 0);
-    for (int step = 0; step < 5; step++) {
+    for (int visit = 0; visit < visitsToTheFirstHit(); visit++) {
       match.getBattle().step();
     }
 
-    assertThat(knight.getHitPoints().getHitPoints())
-        .isGreaterThan(knight.getHitPoints().getMaximum());
+    // The hit's share of the heal per second at the Knight's level, truncated, on its full hit
+    // points, held at 150 percent of its maximum.
+    int maximum = knight.getHitPoints().getMaximum();
+    int heal =
+        scaled(Shipped.number(HEALER, "HealPerSecond"), knight.getPackedLevel())
+            * Shipped.number(HEALER, "HitFrequency")
+            / 1000;
+    int expected = Math.min(maximum * 150 / 100, maximum + heal);
+    assertThat(expected).as("past the maximum").isGreaterThan(maximum);
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(expected);
   }
 
   @Test
