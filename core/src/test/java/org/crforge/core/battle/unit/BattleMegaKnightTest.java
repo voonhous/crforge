@@ -14,8 +14,6 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.combat.PackedLevel;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -384,10 +382,12 @@ class BattleMegaKnightTest {
     return step;
   }
 
-  /** A damage of the Mega Knight's card at the level of the unit its play made. */
+  /**
+   * A damage of the Mega Knight's card at the level of the unit its play made, scaled by the rarity
+   * the card row names: the unit's own row names another.
+   */
   private static int scaled(int damage, CharacterEntity megaKnight) {
-    int steps = PackedLevel.steps(megaKnight.getPackedLevel());
-    return steps == 0 ? damage : damage * RarityTable.LEGENDARY.multiplier(steps - 1) / 100;
+    return Shipped.scaledAtPackedLevel(damage, CARD, megaKnight.getPackedLevel());
   }
 
   @Test

@@ -181,7 +181,7 @@ class BattleBuildingEvoTest {
     }
 
     assertThat(first).containsExactly(Map.entry(tower.name(), 20));
-    // The buff's CrownTowerDamagePerHit at the level (21 is 53), dealt on its first visit.
+    // The buff's CrownTowerDamagePerHit at the level, dealt on its first visit.
     GameRow buff = Shipped.row("character_buffs", "Tesla_EV1_WithDamage");
     assertThat(damage)
         .containsExactly(

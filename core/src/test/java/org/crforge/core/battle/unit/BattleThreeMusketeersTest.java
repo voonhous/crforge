@@ -23,11 +23,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Three Musketeers' attack choice: the filter each runs as an attack starts and at every hit
- * picks the entry the next hit reads, the bayonet for a ground target inside 1600 of both radii and
- * a shot otherwise; the bayonet's action deals a typed hit on the target in the drain of the hit's
- * own tick, at the musketeer's level and with no crown-tower share. What the references do not
- * reach is held here: the buff on damage after a bayonet, target_is_ground with the targeting off
- * and on a target whose layer a tag forces, and the refusals around an entry's action.
+ * picks the entry the next hit reads, the bayonet for a ground target inside the filter's range of
+ * both radii and a shot otherwise; the bayonet's action deals a typed hit on the target in the
+ * drain of the hit's own tick, at the musketeer's level and with no crown-tower share. What the
+ * references do not reach is held here: the buff on damage after a bayonet, target_is_ground with
+ * the targeting off and on a target whose layer a tag forces, and the refusals around an entry's
+ * action.
  */
 class BattleThreeMusketeersTest {
 
@@ -95,14 +96,14 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "a Knight inside the bayonet's reach takes 314 typed hits and no shot; a Minion as close"
-          + " takes shots")
+      "a Knight inside the bayonet's reach takes typed hits of the bayonet's damage and no shot; a"
+          + " Minion as close takes shots")
   void groundTakesTheBayonetAirTheShot() {
     Scene ground = new Scene(GameData.tables());
     ground.still(1, "Knight", X, Y + 2000, "K");
     ground.step(80);
     assertThat(ground.launches).isEmpty();
-    // The bayonet's BaseDamage at the musketeer's level and rarity (123 is 314).
+    // The bayonet's BaseDamage at the musketeer's level and rarity.
     int bayonet =
         Shipped.scaled(
             Shipped.fields("ThreeMusketeer_Rework_Bayonet_Attack_Deal_Damage")

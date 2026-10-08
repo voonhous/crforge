@@ -95,8 +95,7 @@ class BattleRecordsTest {
           + " times, so its pauses cost it nothing")
   void aWalkAndWaitUnitsSpeedIsRaisedAsItLoads() {
     // (WaitMS + StopMovementAfterMS) * 1000 / StopMovementAfterMS, truncated, times Speed, over
-    // 1000, truncated: a speed of 45 at 640 / 100, a ratio of 1156, is loaded at 52; 60 at 640 /
-    // 100, 69.36, at 69.
+    // 1000, truncated.
     for (String name : List.of("Giant", "Golem", "IceGolemite", "GoblinGiant")) {
       GameRow row = unitRow(name);
       int walk = number(row, "StopMovementAfterMS");
@@ -751,8 +750,8 @@ class BattleRecordsTest {
     assertThat(slow.damage()).isZero();
     assertThat(slow.damageType()).isNull();
     assertThat(slow.hitSpeedMs()).isEqualTo(number(slowRow, "HitSpeed"));
-    // A circle whose damage names a damage type row, hitting every 1500 ms, as the Ice Golemite
-    // hero form's ability has; where its looping effect is shown is the view's.
+    // A circle whose damage names a damage type row, hitting at its row's hit speed, as the Ice
+    // Golemite hero form's ability has; where its looping effect is shown is the view's.
     AreaEffectData storm = records.areaEffect("IceGolemiteHero_Damage_AEO");
     GameRow stormRow = row("area_effect_objects", "IceGolemiteHero_Damage_AEO");
     assertThat(storm.unmodelledColumns()).isEmpty();

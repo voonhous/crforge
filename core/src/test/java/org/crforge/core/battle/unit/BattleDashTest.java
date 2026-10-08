@@ -56,8 +56,7 @@ class BattleDashTest {
   }
 
   @Test
-  @DisplayName(
-      "a Bandit is untouchable while it dashes and for its immunity after, 150 ms, then not")
+  @DisplayName("a Bandit is untouchable while it dashes and for its immunity after, then not")
   void theBanditIsImmuneWhileItDashesAndJustAfter() {
     Scene scene = new Scene("Assassin");
     scene.stepUntil(GridEntityState.DASHING);
@@ -66,7 +65,7 @@ class BattleDashTest {
     scene.stepUntil(GridEntityState.MOVING);
     // The immunity was topped up to the row's DashImmuneToDamageTime on its last dashing visit and
     // counts down 50 a visit: it holds on the visits that leave some of it, the walking visit's
-    // among them (two for 150), and is gone on the next.
+    // among them, and is gone on the next.
     int immunity = Shipped.number(Shipped.unitRow("Assassin"), "DashImmuneToDamageTime");
     int held = (immunity + 49) / 50 - 1;
     for (int visit = 0; visit < held; visit++) {
@@ -144,8 +143,7 @@ class BattleDashTest {
       scene.match.getBattle().step();
     }
     // The landing's own state visit takes the hold from 50 to 100; the visits after stand still
-    // while the hold is short of the row's landing time and the one that reaches it walks on: for
-    // 300, three stand at 150, 200 and 250 and the fourth walks.
+    // while the hold is short of the row's landing time and the one that reaches it walks on.
     int landing = Shipped.number(Shipped.unitRow("MegaKnight"), "DashLandingTime");
     int held = 0;
     while (true) {

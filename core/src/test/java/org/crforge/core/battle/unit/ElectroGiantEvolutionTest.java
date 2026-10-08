@@ -21,10 +21,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Electro Giant's pulse timer: its starting group lists
- * ElectroGiant_EV1_Pulse_Attack_Interval, an interval (6000 ms) whose counter starts at its
- * StartCounterAt (2500) and which follows its owner's hit speed. Each step the counter loses half
- * of what the owner's buffs make of a hit speed of 100, read afresh on that step: 50 with no buff,
- * half of Rage's HitSpeedMultiplier under Rage (65).
+ * ElectroGiant_EV1_Pulse_Attack_Interval, an interval whose counter starts at its StartCounterAt
+ * and which follows its owner's hit speed. Each step the counter loses half of what the owner's
+ * buffs make of a hit speed of 100, read afresh on that step: 50 with no buff, half of Rage's
+ * HitSpeedMultiplier under Rage.
  *
  * <p>Each pulse puts ElectroGiant_EV1_Pulse_Debuff on every object it hits that is not a crown
  * tower (`!is_crown_tower`): listed, its start action lowers the carrier's level by one; refreshed

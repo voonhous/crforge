@@ -107,7 +107,7 @@ class DamageTypeTest {
   }
 
   @Test
-  @DisplayName("the shipped deal-damage rows at level 11 from a Common source")
+  @DisplayName("deal-damage amounts at level 11 from a source on the published Common row")
   void shippedRowsAtLevelEleven() {
     int[][] cases = {{170, 435}, {340, 870}, {123, 314}, {76, 194}, {25, 64}};
     DamageType type = DamageType.builder().name("D").build();

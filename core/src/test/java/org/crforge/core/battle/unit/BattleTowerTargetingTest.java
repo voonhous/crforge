@@ -201,8 +201,7 @@ class BattleTowerTargetingTest {
           + " is first visited four ticks after it from the tick that saw the condition")
   void aDestroyedPrincessTowerWakesTheKingAfterTheActivation() {
     JsonNode reference = BattleMusketeerRunTest.load(BattleTowerRunTest.LEVEL_ONE_REFERENCE);
-    // The activating run's ticks, a part tick counted whole: 66 of its 3300 ms in the configured
-    // tables.
+    // The activating run's ticks, a part tick counted whole.
     int run = (Shipped.number(ACTIVATING, "ActionDuration") + 49) / 50;
 
     Standard1v1Battle match =

@@ -93,9 +93,9 @@ class BattleRageBarbarianEvoTest {
         dead = step;
       }
     }
-    // The buff's time in whole steps, a part step counting as one (5500 ms is 110 steps): the
-    // instance applied in the first runs out in the last of them, whose run pass finds it missing
-    // and schedules the kill, run in the same step's later pending pass.
+    // The buff's time in whole steps, a part step counting as one: the instance applied in the
+    // first runs out in the last of them, whose run pass finds it missing and schedules the kill,
+    // run in the same step's later pending pass.
     int lifeTime = Shipped.number("add_buff_for_count_lifetime", "SpawnTime");
     int lastStep = (lifeTime + 49) / 50 - 1;
     assertThat(buffGone).isEqualTo(lastStep);

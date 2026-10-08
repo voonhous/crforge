@@ -44,10 +44,7 @@ class BattleMirrorTest {
   /** The Knight's row. */
   private static final GameRow KNIGHT = Shipped.unitRow("Knight");
 
-  /**
-   * A Knight's hit points at level 11, and at the level a Mirror at 11 plays it at, 12 (1766 and
-   * 1938).
-   */
+  /** A Knight's hit points at level 11, and at the level a Mirror at 11 plays it at, 12. */
   private static final int KNIGHT_HP_11 =
       Shipped.scaled(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL);
 

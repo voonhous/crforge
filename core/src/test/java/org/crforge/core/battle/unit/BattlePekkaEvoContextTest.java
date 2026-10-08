@@ -147,8 +147,8 @@ class BattlePekkaEvoContextTest {
 
   @Test
   @DisplayName(
-      "a kill of a Knight (1766 at level 11) gives the middle heal once the soul has flown its"
-          + " 700 ms, not at the kill")
+      "a kill of a Knight gives the middle heal once the soul has flown its 700 ms, not at the"
+          + " kill")
   void aKnightGivesTheMiddleHealAfterTheFlight(@TempDir Path folder) throws IOException {
     int steps = healDelay(folder, "Knight", "PekkaEV1_HealMed", "PekkaEV1_HealMin");
 
@@ -156,7 +156,7 @@ class BattlePekkaEvoContextTest {
   }
 
   @Test
-  @DisplayName("a kill of a Skeleton (81 at level 11) gives the least heal")
+  @DisplayName("a kill of a Skeleton gives the least heal")
   void aSkeletonGivesTheLeastHeal(@TempDir Path folder) throws IOException {
     assertThat(healDelay(folder, "Skeleton", "PekkaEV1_HealMin", "PekkaEV1_HealMed"))
         .isGreaterThanOrEqualTo(14);

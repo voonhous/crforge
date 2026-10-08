@@ -59,10 +59,9 @@ class BattleChargeTest {
 
   /**
    * The configured tables with the evolved Battle Ram's charge and push, and the Knight it pushes,
-   * as the test writes them (the values of data version 16.402.18): the ram walks 60 and charges at
-   * 200 percent of it, its push waits 825 ms, is centred 800 ahead of it with a radius of 1000,
-   * pushes 2000 and deals 83 at the first level; the Knight has a radius of 500 and a mass of 6,
-   * deploys for 1000 ms and walks 60.
+   * as the test writes them: the ram walks 60 and charges at 200 percent of it, its push waits 825
+   * ms, is centred 800 ahead of it with a radius of 1000, pushes 2000 and deals 83 at the first
+   * level; the Knight has a radius of 500 and a mass of 6, deploys for 1000 ms and walks 60.
    */
   private static GameTables pushTables(Path folder) throws IOException {
     GameData.altered(

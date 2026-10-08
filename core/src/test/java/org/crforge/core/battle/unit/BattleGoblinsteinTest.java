@@ -121,7 +121,7 @@ class BattleGoblinsteinTest {
   @Test
   @DisplayName(
       "the tether hits each enemy within its width of the segment from the doctor to the monster"
-          + " for 94 at every pass, and spares one farther off")
+          + " for its tether damage at every pass, and spares one farther off")
   void theTetherHitsTheEnemiesAlongIt() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     List<String> passes = new ArrayList<>();
@@ -167,7 +167,7 @@ class BattleGoblinsteinTest {
     int bx = monster.getView().getX();
     int by = monster.getView().getY();
     // Two Golems, which walk only for buildings: one on the segment's middle, one off it by the
-    // tether's width, its own radius and 1250 more (4000).
+    // tether's width, its own radius and 1250 more.
     String ability = "goblinstein_ability_action";
     int off =
         Shipped.number(ability, "TetherWidth")
@@ -186,8 +186,7 @@ class BattleGoblinsteinTest {
     run(battle, 200);
 
     // A pass every TetherHitInterval from the tether's start for as long as its TetherDuration
-    // lasts, the end excluded: 7 for 3500 at 500 ms. Each hit is the TetherDamage at the doctor's
-    // level and rarity (37 is 94).
+    // lasts, the end excluded. Each hit is the TetherDamage at the doctor's level and rarity.
     int duration = Shipped.number(ability, "TetherDuration");
     int interval = Shipped.number(ability, "TetherHitInterval");
     int count = (duration + interval - 1) / interval;

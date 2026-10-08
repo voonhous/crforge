@@ -43,7 +43,7 @@ class BattleElectroGiantTest {
   /** The buff the reflect hands the attacker. */
   private static final String BUFF = Shipped.text(GIANT, "ReflectedAttackBuff");
 
-  /** The reflect's radius plus the Electro Giant's radius and a Musketeer's (3250). */
+  /** The reflect's radius plus the Electro Giant's radius and a Musketeer's. */
   private static final int MUSKETEER_REACH =
       Shipped.number(GIANT, "ReflectedAttackRadius")
           + Shipped.number(GIANT, "CollisionRadius")
@@ -394,7 +394,7 @@ class BattleElectroGiantTest {
         .hasMessageContaining("reflects and takes a kill");
   }
 
-  /** The reflect's damage at the Giant's level: the row's ReflectedAttackDamage (75 is 192). */
+  /** The reflect's damage at the Giant's level: the row's ReflectedAttackDamage. */
   private static int reflectedDamage() {
     return Shipped.scaled(Shipped.number(GIANT, "ReflectedAttackDamage"), GIANT, LEVEL);
   }
