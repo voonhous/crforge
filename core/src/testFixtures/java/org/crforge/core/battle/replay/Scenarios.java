@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.function.Function;
 
 /** A replay scenario of the shape the adapter reads, built for the tests. */
 public final class Scenarios {
@@ -412,6 +413,61 @@ public final class Scenarios {
     ArrayNode commands = scenario.putArray("cmd");
     addPlay(commands, 220, 26000003, 0x50400800, 3500, 14000);
     return scenario;
+  }
+
+  /**
+   * Writes into a copy of the tables the columns the play ticks of {@link
+   * #knightEvolvedThirdPlay()}, {@link #knightThenMirror()}, {@link #mergeMaidenMounted()}, {@link
+   * #mergeMaidenOnFoot()} and {@link #mergeMaidenThenMirror()} were planned against, so that each
+   * play is given when its side's elixir holds its cost and a variant play is picked as the option
+   * its item names, whatever the configured tables' costs and elixir rate are: the Ladder
+   * timeline's starting elixir, 6, and full bar at the first rate, 28000 ms; the most elixir there
+   * can be, 10; each played card's cost; the evolved Knight's DarkElixirCost, 2, so the Knight is
+   * evolved on its third play; and the Merge Maiden's options, mounted from 6 elixir and on foot
+   * from 3, each with 1200 ms of projected time.
+   *
+   * <p>A test that runs one of those scenarios through the battle writes these before it fits the
+   * items, which then read the written costs.
+   *
+   * @param rows a table's rows by the table's name, to write into
+   */
+  public static void writePlannedColumns(Function<String, ObjectNode> rows) {
+    ObjectNode timeline = columns(rows, "battle_timelines", "Default");
+    timeline.put("StartingElixir", 6);
+    ((ArrayNode) timeline.get("ElixirFullBarMS")).set(0, 28000);
+    columns(rows, "globals", "MAX_MANA").put("NumberValue", 10);
+    String[][] costs = {
+      {"spells_characters", "Knight", "3"},
+      {"spells_characters", "Archer", "3"},
+      {"spells_characters", "Goblins", "2"},
+      {"spells_characters", "Giant", "5"},
+      {"spells_characters", "Minions", "3"},
+      {"spells_characters", "Skeletons", "1"},
+      {"spells_characters", "MergeMaiden_Mounted", "6"},
+      {"spells_characters", "MergeMaiden_Normal", "3"},
+      {"spells_other", "Arrows", "3"},
+      {"spells_other", "Mirror", "1"},
+      {"spells_other", "Zap", "2"},
+      {"spells_other", "MergeMaiden", "6"},
+      {"spells_evolved", "Knight_EV1", "3"}
+    };
+    for (String[] cost : costs) {
+      columns(rows, cost[0], cost[1]).put("ManaCost", Integer.parseInt(cost[2]));
+    }
+    columns(rows, "spells_evolved", "Knight_EV1").put("DarkElixirCost", 2);
+    ObjectNode maiden = columns(rows, "spells_other", "MergeMaiden");
+    maiden.put("UseProjectedTimeSummon", true);
+    int[] triggers = {6000, 3000};
+    for (int option = 0; option < triggers.length; option++) {
+      ((ObjectNode) maiden.get("Options").get(option))
+          .put("AvailableManaTrigger", triggers[option])
+          .put("PrecastPendingTime", 1200);
+    }
+  }
+
+  /** The columns of a row of a table, to write into. */
+  private static ObjectNode columns(Function<String, ObjectNode> rows, String table, String row) {
+    return (ObjectNode) rows.apply(table).get(row).get("columns");
   }
 
   /** Adds side 0's play of a card, given 20 ticks before the tick it runs on. */

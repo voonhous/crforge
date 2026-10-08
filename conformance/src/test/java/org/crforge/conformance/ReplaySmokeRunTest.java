@@ -13,7 +13,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
@@ -41,9 +44,17 @@ class ReplaySmokeRunTest {
 
   private Path terminalIdentity;
 
+  /** The tables' documents a test has written columns into, by table name. */
+  private final Map<String, ObjectNode> written = new LinkedHashMap<>();
+
   @BeforeEach
   void writeTheIdentities() throws IOException {
-    tablesFolder = GameTables.configuredDirectory().orElseThrow();
+    useTables(GameTables.configuredDirectory().orElseThrow());
+  }
+
+  /** Runs the test on a folder of tables: reads them and writes the identities of their content. */
+  private void useTables(Path tablesIn) throws IOException {
+    tablesFolder = tablesIn;
     tables = GameTables.load(tablesFolder);
     identity = identity("identity.json", SmokeSchema.V1.id(), SmokeSchema.V1.observationScope());
     terminalIdentity =
@@ -60,6 +71,74 @@ class ReplaySmokeRunTest {
     fields.put(ContentFields.CONTENT_SHA, tables.contentSha());
     MAPPER.writeValue(file.toFile(), fields);
     return file;
+  }
+
+  /** A table's document, read once from the tables in use, for a test to write columns into. */
+  private ObjectNode document(String table) {
+    return written.computeIfAbsent(
+        table,
+        name -> {
+          try {
+            return (ObjectNode) MAPPER.readTree(tablesFolder.resolve(name + ".json").toFile());
+          } catch (IOException e) {
+            throw new IllegalStateException(e);
+          }
+        });
+  }
+
+  /** A table's rows by name, to write into. */
+  private ObjectNode rowsOf(String table) {
+    return (ObjectNode) document(table).get("rows");
+  }
+
+  /** The columns of a table's row, to write into. */
+  private ObjectNode columns(String table, String row) {
+    return (ObjectNode) rowsOf(table).get(row).get("columns");
+  }
+
+  /** The fields of an action, to write into. */
+  private ObjectNode fields(String action) {
+    return (ObjectNode) document("actions").get("actions").get(action).get("fields");
+  }
+
+  /** Writes the place of each of a spawn group's objects, in cells of 500: x, then y, in turn. */
+  private void place(String group, int... cells) {
+    JsonNode objects = columns("spawn_groups", group).get("Objects");
+    for (int i = 0; i < cells.length / 2; i++) {
+      ((ObjectNode) objects.get(i)).put("x", cells[2 * i]).put("y", cells[2 * i + 1]);
+    }
+  }
+
+  /**
+   * Runs the rest of the test on the tables with what it wrote: the tables in use copied into the
+   * test's folder, each written document in place of its file, and the identities written again for
+   * the copy.
+   */
+  private void useWrittenTables() throws IOException {
+    Path copy = folder.resolve("tables");
+    Files.createDirectory(copy);
+    try (Stream<Path> files = Files.list(tablesFolder)) {
+      for (Path file : files.toList()) {
+        String name = file.getFileName().toString();
+        ObjectNode document = written.get(name.replaceFirst("\\.json$", ""));
+        if (document != null) {
+          MAPPER.writeValue(copy.resolve(name).toFile(), document);
+        } else {
+          Files.copy(file, copy.resolve(name));
+        }
+      }
+    }
+    useTables(copy);
+  }
+
+  /**
+   * Runs the rest of the test on the costs and the elixir rate the scenarios' play ticks were
+   * planned against ({@link Scenarios#writePlannedColumns}), so each play is given when its elixir
+   * is there whatever the configured tables hold.
+   */
+  private void usePlannedSchedule() throws IOException {
+    Scenarios.writePlannedColumns(this::rowsOf);
+    useWrittenTables();
   }
 
   /** A scenario with its plays' items fitted to the tables: the costs and levels of their rows. */
@@ -224,6 +303,17 @@ class ReplaySmokeRunTest {
 
   @Test
   void aCannoneerTowerSelectionBuildsItsSidesTowersAndTheyFireAtTheirLevel() throws IOException {
+    // The first hit's tick comes from the whole scene, so the scene writes every column it
+    // depends on: the Knight's walk, the Cannoneer's places, footprint, ranges and attack, and its
+    // shot's flight.
+    ObjectNode knight = columns("characters", "Knight");
+    knight.put("Speed", 60).put("DeployTime", 1000).put("CollisionRadius", 500);
+    ObjectNode tower = columns("buildings", "Cannoneer");
+    tower.put("Range", 7500).put("SightRange", 7500).put("HitSpeed", 2200).put("LoadTime", 1400);
+    tower.put("CollisionRadius", 1000).put("NoDeploySizeW", 11).put("NoDeploySizeH", 21);
+    columns("projectiles", "CannoneerProjectile").put("Speed", 1000);
+    place("King_CannonTowers", 18, 6, 7, 13, 29, 13);
+    useWrittenTables();
     ObjectNode scenario = fit(Scenarios.knight());
     ((ObjectNode) scenario.path("battle").path("deck1").path("sc").get(0)).put("d", 159000001);
     Path out = folder.resolve("run");
@@ -253,7 +343,7 @@ class ReplaySmokeRunTest {
       assertThat(cannoneer.path("hp").asInt()).isEqualTo(hitpointsAt("Cannoneer", cannoneerLevel));
     }
     // Side 0's Knight walks up the left lane into the low Cannoneer's range: its first shot takes
-    // the projectile's damage at the tower's level.
+    // the projectile's damage at the tower's level, on tick 299 with the columns written above.
     int knightHp = hitpointsAt("Knight", cardLevel("Knight", 0));
     int firstHit = -1;
     for (String line : lines) {
@@ -322,6 +412,31 @@ class ReplaySmokeRunTest {
 
   @Test
   void aRoyalChefTowerSelectionCooksAPancakeThatRaisesAFriendlyTroopsLevel() throws IOException {
+    // The pancake's tick and point and the level-up's tick come from the whole scene, so the scene
+    // writes every column they depend on: the cooking's delay, contributions and full bar, the
+    // throw; the Chef towers' places, footprint, ranges and attack, and the levels and hit points
+    // that decide how long the low tower shoots side 0's Knight; the Giant's walk; the flights.
+    ObjectNode cooking = fields("ChefTower_CookingAction");
+    cooking.put("StartCookingDelay", 7000).put("ContributionNeeded", 23000);
+    cooking.put("ContributionBaseline", 600).put("ContributionIdle", 200);
+    cooking.put("ContributionAttacking", 0);
+    cooking.put("PancakeThrowDelay", 250).put("PancakeStartOffset", 200);
+    ObjectNode tower = columns("buildings", "ChefTower");
+    tower.put("Range", 7500).put("SightRange", 7500).put("HitSpeed", 1000).put("LoadTime", 200);
+    tower.put("CollisionRadius", 1000).put("NoDeploySizeW", 11).put("NoDeploySizeH", 21);
+    columns("projectiles", "ChefTower_spatula_projectile").put("Speed", 600).put("Damage", 50);
+    columns("projectiles", "ChefTower_pancake_projectile").put("Speed", 600);
+    columns("support_rarities", "Legendary").put("RelativeLevel", 8);
+    columns("rarities", "Common").put("RelativeLevel", 0);
+    ObjectNode knight = columns("characters", "Knight");
+    knight.put("Speed", 60).put("DeployTime", 1000).put("CollisionRadius", 500);
+    knight.put("Range", 1200).put("Hitpoints", 690);
+    ObjectNode giant = columns("characters", "Giant");
+    giant.put("Speed", 45).put("DeployTime", 1000).put("CollisionRadius", 750).put("Range", 1200);
+    giant.put("StopMovementAfterMS", 640).put("WaitMS", 100);
+    place("King_ChefTowers", 18, 6, 7, 13, 29, 13);
+    place("King_PrincessTowers", 18, 6, 7, 13, 29, 13);
+    useWrittenTables();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.knightAgainstTheRoyalChef()), out, identity, 700);
@@ -343,10 +458,11 @@ class ReplaySmokeRunTest {
     int giantHp = hitpointsAt("Giant", giantLevel);
     int raisedHp = hitpointsAt("Giant", giantLevel + 1);
     assertThat(raisedHp).isGreaterThan(giantHp);
-    // The cooking starts 7 s in and fills at 40 a step while the low tower shoots side 0's Knight
-    // and 50 a step while both towers idle; the full bar throws a pancake from the tower nearer
-    // side 1's Giant, 200 toward it, on tick 638. Its landing raises the Giant one level: its hit
-    // points and its maximum to the next level's on tick 644.
+    // The cooking starts 7 s in; each step adds the baseline, 600, and 200 for each idle tower (0
+    // for one shooting): 800 while the low tower shoots side 0's Knight, 1000 while both idle. The
+    // full bar, 20 times 23000, throws a pancake from the tower nearer side 1's Giant, 200 toward
+    // it, on tick 638. Its landing raises the Giant one level: its hit points and its maximum to
+    // the next level's on tick 644.
     JsonNode pancake = null;
     int pancakeTick = -1;
     int levelUpTick = -1;
@@ -378,6 +494,31 @@ class ReplaySmokeRunTest {
 
   @Test
   void aDaggerDuchessSpendsItsEightChargesThenAttacksOnlyAsItRecharges() throws IOException {
+    // The hit ticks come from the whole scene, so the scene writes every column they depend on: the
+    // burst's charges, recharge and attack entries, the Duchess's places, footprint, ranges, pace
+    // and knife, its level, and the Giant's walk, level and hit points, which end the list.
+    ObjectNode burst = fields("DaggerDuchess_OnStartingAction");
+    burst.put("MaxChargeCount", 8).put("RechargeIncrement", 1).put("RechargeTime", 900);
+    burst.put("DepletedAttackSequenceIndex", 3);
+    burst.putArray("AttackSequenceIndices").add(2).add(0).add(1).add(0).add(1).add(0).add(1).add(0);
+    ObjectNode tower = columns("buildings", "DaggerDuchess");
+    tower.put("Range", 7500).put("SightRange", 7500).put("HitSpeed", 500);
+    tower.put("CollisionRadius", 1000).put("NoDeploySizeW", 11).put("NoDeploySizeH", 21);
+    tower.put("ProjectileStartRadius", 300);
+    tower.putArray("AttackSequence").add(0).add(1).add(2).add(3);
+    int[] multipliers = {100, 100, 70, 90};
+    for (int entry = 0; entry < multipliers.length; entry++) {
+      ((ObjectNode) tower.get("AttackSequenceList").get(entry))
+          .put("HitSpeedMultiplier", multipliers[entry]);
+    }
+    columns("projectiles", "TowerKnifeThrowerProjectile").put("Speed", 1000).put("Damage", 42);
+    columns("support_rarities", "Legendary").put("RelativeLevel", 8);
+    columns("rarities", "Rare").put("RelativeLevel", 2);
+    ObjectNode giant = columns("characters", "Giant");
+    giant.put("Speed", 45).put("DeployTime", 1000).put("CollisionRadius", 750);
+    giant.put("StopMovementAfterMS", 640).put("WaitMS", 100).put("Hitpoints", 1550);
+    place("King_KnifeTowers", 18, 6, 7, 13, 29, 13);
+    useWrittenTables();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.giantVsDuchessTower()), out, identity, 820);
@@ -615,6 +756,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void anEvolutionSlotsCardIsPlayedPlainTwiceAndEvolvedOnItsThirdPlay() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.knightEvolvedThirdPlay()), out, terminalIdentity, 1430);
@@ -698,6 +840,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void anEvolutionSlotsPlayThatNeverRunsIsListedAsNotBuilt() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     // The horizon ends before the third Knight play's run tick, 1416.
@@ -711,6 +854,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aPlayWhoseItemIsNotTheItemTheSimulatorBuildsIsUnsupported() throws IOException {
+    usePlannedSchedule();
     ObjectNode scenario = fit(Scenarios.knightEvolvedThirdPlay());
     // The first play claims the item of the third: the count plus 1 of 3.
     int third = item(scenario, 10);
@@ -730,6 +874,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aPlayWhoseCountIsNotTheSimulatorsIsUnsupported() throws IOException {
+    usePlannedSchedule();
     ObjectNode scenario = fit(Scenarios.knightEvolvedThirdPlay());
     // The second Knight play repeats the first's count plus 1, 1, where the simulator counts 2.
     int firstItem = item(scenario, 0);
@@ -747,6 +892,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aMirrorPlayRepeatsItsSidesLastCardOneLevelAboveTheMirrorsForItsItem() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.knightThenMirror()), out, terminalIdentity, 420);
@@ -776,6 +922,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aMirrorPlayNamingAnotherRepeatedCardThanTheSimulatorsIsUnsupported() throws IOException {
+    usePlannedSchedule();
     ObjectNode scenario = fit(Scenarios.knightThenMirror());
     // The Archer was played before the Knight: the Mirror repeats the Knight, the last card.
     ((ObjectNode) scenario.path("cmd").get(4).path("c").path("sel")).put("fs", Scenarios.ARCHER);
@@ -798,6 +945,9 @@ class ReplaySmokeRunTest {
 
   @Test
   void aMirrorPlayWhoseCostOrLevelIsNotTheSimulatorsIsUnsupported() throws IOException {
+    // A Mirror one level above its own, so its own level field is another item than the built one.
+    columns("globals", "MIRROR_LEVEL_OFFSET").put("NumberValue", 1);
+    usePlannedSchedule();
     // The Mirror's own cost and its own level field, where it repeats the Knight.
     int built = item(fit(Scenarios.knightThenMirror()), 4);
     int ownLevelField = cardLevel("Mirror", 0) - 1;
@@ -827,6 +977,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aVariantPlayFromAFullBarRunsAsTheMountedMaidenForItsCost() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.mergeMaidenMounted()), out, terminalIdentity, 250);
@@ -851,6 +1002,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aVariantPlayBelowTheMountedTriggerRunsAsTheMaidenOnFootForItsCost() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.mergeMaidenOnFoot()), out, terminalIdentity, 280);
@@ -867,6 +1019,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aVariantPlayGivenAsAnotherOptionThanTheSimulatorPicksIsUnsupported() throws IOException {
+    usePlannedSchedule();
     ObjectNode scenario = fit(Scenarios.mergeMaidenMounted());
     int mounted = item(scenario, 0);
     // The maiden on foot, where the client picks the mounted maiden from a full bar: the on-foot
@@ -899,6 +1052,7 @@ class ReplaySmokeRunTest {
 
   @Test
   void aMirrorOfAVariantPlayIsRefusedByTheBattle() throws IOException {
+    usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.mergeMaidenThenMirror()), out, terminalIdentity, 700);
