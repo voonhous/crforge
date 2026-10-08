@@ -25,7 +25,9 @@ import org.junit.jupiter.api.io.TempDir;
  * its search does not snap to the unit; the wizard waits its listed delay before it deploys; and
  * the card's area effect is made at the placed point after the wizard. Each scene plays the Electro
  * Wizard of the configured tables rewritten in that form: listing ElectroWizard with offset 0 and a
- * 50 ms delay, its area effect no longer making the wizard as it starts.
+ * 50 ms delay, its area effect no longer making the wizard as it starts. The wizard's row and the
+ * Knight's it is compared with are written with a deploy time of 1000 ms, and the wizard's with 279
+ * hit points.
  */
 class BattleWizardDeployTest {
 
@@ -34,6 +36,12 @@ class BattleWizardDeployTest {
 
   /** The tick the play runs on. */
   private static final int PLAY_TICK = 221;
+
+  /** The deploy time written into the wizard's and the Knight's rows. */
+  private static final int DEPLOY_TIME = 1000;
+
+  /** The hit points written into the wizard's row. */
+  private static final int WIZARD_HIT_POINTS = 279;
 
   /** The configured tables with the Electro Wizard card in the listed form. */
   private static GameTables listedWizard(Path folder) throws IOException {
@@ -48,6 +56,15 @@ class BattleWizardDeployTest {
           columns.putArray("SummonCharactersOffsetsY").add(0);
           columns.putArray("SummonCharactersDelayList").add(50);
           columns.put("SummonNumber", 1);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "ElectroWizard")
+              .put("DeployTime", DEPLOY_TIME)
+              .put("Hitpoints", WIZARD_HIT_POINTS);
+          GameData.columns(rows, "Knight").put("DeployTime", DEPLOY_TIME);
         });
     Path file = folder.resolve("area_effect_objects.json");
     ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
@@ -89,7 +106,8 @@ class BattleWizardDeployTest {
       "the wizard stands on the tile centre less one, waits 50 ms and then deploys, one tick behind"
           + " a Knight, and the zap is made after it")
   void theWizardWaitsItsDelay(@TempDir Path folder) throws IOException {
-    Standard1v1Battle match = new Standard1v1Battle(listedWizard(folder), LEVEL, false);
+    GameTables tables = listedWizard(folder);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     match.play(
         PLAY_TICK,
         match.getWorld().getRecords().card("ElectroWizard"),
@@ -128,10 +146,14 @@ class BattleWizardDeployTest {
     CharacterEntity wizard = match.getPlays().get(0).units().get(0);
     assertThat(wizard.getView().getX()).isEqualTo(3499);
     assertThat(wizard.getView().getY()).isEqualTo(12500);
-    assertThat(wizard.getHitPoints().getHitPoints()).isEqualTo(279);
+    assertThat(wizard.getHitPoints().getHitPoints())
+        .as("its row's, at the first level")
+        .isEqualTo(WIZARD_HIT_POINTS);
 
-    Standard1v1Battle knights = new Standard1v1Battle(GameData.tables(), LEVEL, false);
-    knights.play(PLAY_TICK, GameData.card("Knight"), LEVEL, 0, 3300, 12100, "knight");
+    // Both deploy the 1000 ms written into their rows, twenty ticks; the wizard one tick later.
+    Standard1v1Battle knights = new Standard1v1Battle(tables, LEVEL, false);
+    knights.play(
+        PLAY_TICK, knights.getWorld().getRecords().card("Knight"), LEVEL, 0, 3300, 12100, "knight");
     while (knights.getBattle().getTick() <= PLAY_TICK) {
       knights.getBattle().step();
     }

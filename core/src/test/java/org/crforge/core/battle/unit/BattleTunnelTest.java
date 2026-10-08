@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntity;
@@ -22,6 +23,33 @@ class BattleTunnelTest {
 
   private static Standard1v1Battle passiveTowers() {
     return new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+  }
+
+  /**
+   * The configured tables with the buildings a dig surfaces beside written as the drill scenes
+   * count on them - a princess tower of collision radius 1000 keeping 11 by 21 tiles closed, a king
+   * tower keeping 18 by 16, the Goblin Drill and its evolved form of radius 500 reaching 2000 - the
+   * buildings' rows then edited.
+   */
+  private static GameTables drillTables(Path folder, Consumer<ObjectNode> buildings)
+      throws IOException {
+    return GameData.altered(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower").put("NoDeploySizeW", 18).put("NoDeploySizeH", 16);
+          for (String drill : List.of("GoblinDrill", "GoblinDrill_EV1")) {
+            GameData.columns(rows, drill)
+                .put("CollisionRadius", 500)
+                .put("Range", 2000)
+                .put("SightRange", 2000);
+          }
+          buildings.accept(rows);
+        });
   }
 
   /** Plays a Miner for the bottom side onto the top side's half and runs its play's step. */
@@ -78,7 +106,9 @@ class BattleTunnelTest {
     assertThat(miner.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
     assertThat(miner.hidden()).isFalse();
     assertThat(miner.getTargetView().acceptsAttacker(new GridEntity(), false)).isTrue();
-    assertThat(miner.getView().getX()).as("on the placed point").isEqualTo(3500);
+    assertThat(miner.getView().getX())
+        .as("on the placed point")
+        .isEqualTo(match.getPlays().get(0).result().x());
   }
 
   @Test
@@ -180,8 +210,20 @@ class BattleTunnelTest {
   @DisplayName(
       "a dig that surfaces morphs into its building, deploying, with the dig's share of hit"
           + " points")
-  void theDigMorphsIntoItsBuilding() {
-    Standard1v1Battle match = passiveTowers();
+  void theDigMorphsIntoItsBuilding(@TempDir Path folder) throws IOException {
+    // The building written as the scene counts on it: 1313 hit points, its own at the first
+    // level, a life of 10000 ms, a deploy time of 1000.
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            drillTables(
+                folder,
+                rows ->
+                    GameData.columns(rows, "GoblinDrill")
+                        .put("Hitpoints", 1313)
+                        .put("LifeTime", 10000)
+                        .put("DeployTime", 1000)),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            false);
     List<String> made = new ArrayList<>();
     match
         .getWorld()
@@ -211,8 +253,7 @@ class BattleTunnelTest {
                 made.add(how + " " + source);
               }
             });
-    match.play(
-        0, GameData.card("GoblinDrill"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 25500, "Drill");
+    match.play(0, match.getWorld().getRecords().card("GoblinDrill"), 1, 0, 3500, 25500, "Drill");
     CharacterEntity dig = null;
     for (int step = 0; step < 100 && made.isEmpty(); step++) {
       match.getBattle().step();
@@ -221,8 +262,9 @@ class BattleTunnelTest {
       }
     }
 
-    // The building's registration visit took one LifeTime step off its 1313 before it was set
-    // deploying. Its row makes its damage area by its starting action, not in the entry.
+    // The building's registration visit took one LifeTime step, 1313 * 50 / 10000, off its 1313
+    // before it was set deploying. Its row makes its damage area by its starting action, not in the
+    // entry.
     assertThat(made)
         .containsExactly(
             // The building's registration visit attacks the princess tower it surfaced beside, and
@@ -237,11 +279,13 @@ class BattleTunnelTest {
   @DisplayName(
       "a dig whose morph's row starts an action, the evolved Goblin Drill's relocation, has it"
           + " started at the fold: its first-appear area is made in the next tick's pending pass")
-  void aMorphStartsItsRowsActionAtTheFold() {
-    Standard1v1Battle match = passiveTowers();
+  void aMorphStartsItsRowsActionAtTheFold(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            drillTables(folder, rows -> {}), Standard1v1Battle.DEFAULT_LEVEL, false);
     match.play(
         0,
-        GameData.card("GoblinDrill_EV1"),
+        match.getWorld().getRecords().card("GoblinDrill_EV1"),
         Standard1v1Battle.DEFAULT_LEVEL,
         0,
         14000,

@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +16,7 @@ import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Little Prince's guard. The guard spawn row names an area effect, ChampionGuardCleave, and the
@@ -29,7 +32,11 @@ import org.junit.jupiter.api.Test;
  */
 class BattleGuardChargeAreaTest {
 
-  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+  /** The first level, whose stats are the rows' own. */
+  private static final int LEVEL = 1;
+
+  /** The base damage the hit scene writes into the charge's area effect. */
+  private static final int CLEAVE_DAMAGE = 320;
 
   /** The tick the guard's area effect is placed on. */
   private static final int PLACED = 30;
@@ -209,13 +216,21 @@ class BattleGuardChargeAreaTest {
   @DisplayName(
       "the guard's run neither pushes nor hits on its own: its area"
           + " effect hits the Knight once and pushes it on every update while it is reached")
-  void theAreaEffectPushesAndHits() {
-    Scene scene = new Scene(GameData.tables());
+  void theAreaEffectPushesAndHits(@TempDir Path folder) throws IOException {
+    Scene scene =
+        new Scene(
+            GameData.altered(
+                folder,
+                "area_effect_objects",
+                rows ->
+                    GameData.columns(rows, CLEAVE)
+                        .putObject("Damage")
+                        .put("BaseDamage", CLEAVE_DAMAGE)));
 
-    // The area effect's 125 at the guard's level.
+    // The area effect's base damage, at the first level its own.
     assertThat(scene.knightTyped).as("one typed hit, the area effect's").hasSize(1);
     int hitTick = Integer.parseInt(scene.knightTyped.get(0).split(" ")[0]);
-    assertThat(scene.knightTyped.get(0)).endsWith(" 320");
+    assertThat(scene.knightTyped.get(0)).endsWith(" " + CLEAVE_DAMAGE);
     assertThat(hitTick).isBetween(scene.cleaveMade, scene.runDone);
     // No hit of the guard's own during the charge: only its attacks once it fights afterwards.
     assertThat(scene.knightDirect).allMatch(tick -> tick > scene.runDone);

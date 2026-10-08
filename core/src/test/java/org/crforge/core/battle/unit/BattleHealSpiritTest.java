@@ -2,27 +2,74 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The area effect a Heal Spirit's projectile makes where it lands, where the reference runs leave
  * it: made at the impact point at the projectile's level, first updated on the next tick, and its
  * one hit buffing the own troops around it, air and deploying ones included, while buildings, crown
  * towers and enemies are left out.
+ *
+ * <p>The scenes play at the first level, whose stats are the rows' own, and write what they count
+ * on: the spirit's projectile deals 110; its area, a circle of 2500 living 1000 ms, gives its buff
+ * for 1000 ms, which heals 400 a second in hits every 250 ms, 100 a hit; a Knight has 1700 hit
+ * points and a Minion 230.
  */
 class BattleHealSpiritTest {
 
-  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+  /** The first level, whose stats are the rows' own. */
+  private static final int LEVEL = 1;
+
+  @TempDir static Path tablesFolder;
+
+  /** The configured tables with the columns the scenes count on written. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheSpirit() throws IOException {
+    GameData.altered(
+        tablesFolder,
+        "projectiles",
+        rows -> GameData.columns(rows, "HealSpiritProjectile").put("Damage", 110));
+    GameData.alterLoaded(
+        tablesFolder,
+        "area_effect_objects",
+        rows ->
+            GameData.columns(rows, "HealSpirit")
+                .put("Radius", 2500)
+                .put("LifeDuration", 1000)
+                .put("BuffTime", 1000));
+    GameData.alterLoaded(
+        tablesFolder,
+        "character_buffs",
+        rows ->
+            GameData.columns(rows, "HealSpiritBuff")
+                .put("HealPerSecond", 400)
+                .put("HitFrequency", 250));
+    GameData.alterLoaded(
+        tablesFolder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight").put("Hitpoints", 1700);
+          GameData.columns(rows, "Minion").put("Hitpoints", 230);
+        });
+    tables = GameTables.load(tablesFolder);
+  }
 
   /** Where the enemy the spirit jumps at stands, 2200 from the own left princess tower. */
   private static final int X = 3500;
@@ -31,7 +78,7 @@ class BattleHealSpiritTest {
 
   /** A battle with the towers passive and one Heal Spirit jumping at a Golem that never moves. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     final List<ProjectileEntity> launched = new ArrayList<>();
     final List<String> impacts = new ArrayList<>();
     final List<String> created = new ArrayList<>();
@@ -103,12 +150,14 @@ class BattleHealSpiritTest {
                 }
               });
       still(0, 1, "Golem", X, Y, "enemy");
-      match.deploy(0, GameData.unit("HealSpirit"), LEVEL, 0, X, Y + 2800, "Spirit");
+      match.deploy(
+          0, match.getWorld().getRecords().unit("HealSpirit"), LEVEL, 0, X, Y + 2800, "Spirit");
     }
 
     /** A unit placed at a tick that never moves, under a name of its own. */
     CharacterEntity still(int at, int side, String row, int x, int y, String name) {
-      CharacterEntity unit = match.deploy(at, GameData.unit(row), LEVEL, side, x, y, name);
+      CharacterEntity unit =
+          match.deploy(at, match.getWorld().getRecords().unit(row), LEVEL, side, x, y, name);
       unit.setActive(CharacterEntity.MOVEMENT_SLOT, false);
       return unit;
     }

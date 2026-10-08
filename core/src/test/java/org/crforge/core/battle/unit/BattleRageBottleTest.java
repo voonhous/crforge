@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
@@ -10,12 +12,14 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A spawned child whose row has no hit points deploys for its row's deploy time even when the spawn
  * does not ask for a deploy: the Lumberjack's death drops RageBarbarianBottle, a building without
  * hit points and with a deploy time of 500, which stands deploying for ten steps, then leaves as
- * its deploy ends and makes its death area, BarbarianRage.
+ * its deploy ends and makes its death area, BarbarianRage. The scene writes the bottle's deploy
+ * time of 500 into its row.
  */
 class BattleRageBottleTest {
 
@@ -23,12 +27,18 @@ class BattleRageBottleTest {
   @DisplayName(
       "the Lumberjack's bottle deploys for its 500 ms, then leaves and makes BarbarianRage where it"
           + " stood")
-  void theBottleDeploysThenBreaks() {
+  void theBottleDeploysThenBreaks(@TempDir Path folder) throws IOException {
     Standard1v1Battle match =
-        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+        new Standard1v1Battle(
+            GameData.altered(
+                folder,
+                "buildings",
+                rows -> GameData.columns(rows, "RageBarbarianBottle").put("DeployTime", 500)),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            false);
     Battle battle = match.getBattle();
     CharacterEntity lumberjack =
-        match.deploy(0, GameData.unit("RageBarbarian"), 11, 0, 9000, 12000);
+        match.deploy(0, match.getWorld().getRecords().unit("RageBarbarian"), 11, 0, 9000, 12000);
     for (int i = 0; i < 40; i++) {
       battle.step();
     }

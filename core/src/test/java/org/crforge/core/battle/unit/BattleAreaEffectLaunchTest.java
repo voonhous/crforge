@@ -30,40 +30,65 @@ import org.junit.jupiter.api.io.TempDir;
  * OnlyEnemies and no filter. No configured row is written so (the configured Lightning is in the
  * filter form, see BattleAreaEffectFilterTargetsTest), so the scenes play a Lightning rewritten in
  * that form: its filter, offset, target limit and one-hit-per-target dropped, the switches set and
- * a hit every 460 ms.
+ * a hit every 460 ms, its circle of 3500 and life of 1500 ms written, its bolt dealing 1057.
+ *
+ * <p>The scenes play at the first level, whose stats are the rows' own, and write the hit points
+ * and shields the chooser sizes its units by: a Knight 1700, a Musketeer 721, a Recruit 547 with a
+ * shield of 240.
  */
 class BattleAreaEffectLaunchTest {
 
-  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+  private static final int LEVEL = 1;
 
   /** A tick after every unit placed on the first one has deployed. */
   private static final int CAST_TICK = 25;
 
-  /** The Lightning's point, on the bottom side's left, away from every tower. */
+  /** The Lightning's point, on the bottom side's left, its circle clear of every tower. */
   private static final int X = 3500;
 
-  private static final int Y = 11000;
+  private static final int Y = 12000;
 
-  /** The configured tables with the Lightning rewritten in the hit-switch form. */
+  /**
+   * The configured tables with the Lightning rewritten in the hit-switch form, the Royal Delivery's
+   * area hitting once at 2000 ms of its 2000 ms life, and the sizes the scenes count on.
+   */
   private static GameTables hitSwitches;
 
   @TempDir static Path tablesFolder;
 
   @BeforeAll
   static void rewriteTheLightning() throws IOException {
-    hitSwitches =
-        GameData.altered(
-            tablesFolder,
-            "area_effect_objects",
-            rows -> {
-              ObjectNode columns = GameData.columns(rows, "Lightning");
-              columns.remove(
-                  List.of("Filter", "HitSpeedOffset", "MaximumTargets", "OneHitPerTarget"));
-              columns.put("HitSpeed", 460);
-              columns.put("HitsAir", true);
-              columns.put("HitsGround", true);
-              columns.put("OnlyEnemies", true);
-            });
+    GameData.altered(
+        tablesFolder,
+        "area_effect_objects",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "Lightning");
+          columns.remove(List.of("Filter", "HitSpeedOffset", "MaximumTargets", "OneHitPerTarget"));
+          columns.put("HitSpeed", 460);
+          columns.put("Radius", 3500);
+          columns.put("LifeDuration", 1500);
+          columns.put("HitsAir", true);
+          columns.put("HitsGround", true);
+          columns.put("OnlyEnemies", true);
+          ObjectNode delivery = GameData.columns(rows, "RoyalDeliveryArea");
+          delivery.put("HitSpeedOffset", 2000);
+          delivery.put("LifeDuration", 2000);
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "projectiles",
+        rows -> GameData.columns(rows, "LighningSpell").put("Damage", 1057));
+    GameData.alterLoaded(
+        tablesFolder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight").put("Hitpoints", 1700);
+          GameData.columns(rows, "Musketeer").put("Hitpoints", 721);
+          GameData.columns(rows, "DeliveryRecruit")
+              .put("Hitpoints", 547)
+              .put("ShieldHitpoints", 240);
+        });
+    hitSwitches = GameTables.load(tablesFolder);
   }
 
   /** A battle with the towers passive that logs every launch of an area effect. */

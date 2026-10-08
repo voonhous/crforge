@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.crforge.core.battle.BattleRandom;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +35,30 @@ class BattleGraveyardTest {
 
   /** The tick the area effect is placed on. */
   private static final int PLACED = 5;
+
+  /** The group the area effect starts with. */
+  private static final String GROUP = "Graveyard_rework_Group";
+
+  /** The ticks after the area effect's placement the group's sub-action at an index runs. */
+  private static int due(int index) {
+    return Shipped.ticks(Shipped.numbers(GROUP, "SubActionsDelay").get(index));
+  }
+
+  /** The name of the group's sub-action at an index. */
+  private static String subAction(int index) {
+    return Shipped.actionNames(GROUP, "SubActions").get(index);
+  }
+
+  /**
+   * The offset a spawn's position expression writes, {@code x + (offset * ...)} or {@code y -
+   * (offset * ...)}: the number its bracket starts with.
+   */
+  private static int offset(String action, String field) {
+    Matcher matcher =
+        Pattern.compile("\\(\\s*(-?\\d+)\\s*\\*").matcher(Shipped.text(action, field));
+    assertThat(matcher.find()).as("%s %s", action, field).isTrue();
+    return Integer.parseInt(matcher.group(1));
+  }
 
   /** A Graveyard placed directly, with the towers passive, logging every skeleton it spawns. */
   private static final class Scene {
@@ -85,13 +112,22 @@ class BattleGraveyardTest {
       "the offsets across the width are turned over only strictly right of the middle: at 9000 the"
           + " -3500 row goes left, at 9500 right")
   void theMiddleMirrorsOnlyStrictlyRightOfIt() {
-    // Graveyard_rework_Spawn_Skeleton_2, x + (-3500 * select(x > (map_width / 2), -1, 1)), is the
-    // group's first sub-action, 2200 ms after the start.
+    // The group's first sub-action, Graveyard_rework_Spawn_Skeleton_2 in the configured tables,
+    // writes x + (-3500 * select(x > (map_width / 2), -1, 1)) and y - (0 * ...).
+    String first = subAction(0);
+    int across = offset(first, "XPositionExpression");
+    int behind = offset(first, "YPositionExpression");
     Scene middle = new Scene(GameData.tables()).graveyard(0, 9000, 12000).step(PLACED + 60);
-    assertThat(middle.spawns).element(0).isEqualTo("44 Graveyard_rework_Skeleton 5500 12000");
+    assertThat(middle.spawns)
+        .element(0)
+        .isEqualTo(
+            due(0) + " Graveyard_rework_Skeleton " + (9000 + across) + " " + (12000 + behind));
 
     Scene right = new Scene(GameData.tables()).graveyard(0, 9500, 12000).step(PLACED + 60);
-    assertThat(right.spawns).element(0).isEqualTo("44 Graveyard_rework_Skeleton 13000 12000");
+    assertThat(right.spawns)
+        .element(0)
+        .isEqualTo(
+            due(0) + " Graveyard_rework_Skeleton " + (9500 - across) + " " + (12000 + behind));
   }
 
   @Test
@@ -105,11 +141,21 @@ class BattleGraveyardTest {
     longer.toFile().mkdirs();
     shorter.toFile().mkdirs();
 
-    // The first spawn, Graveyard_rework_Spawn_Skeleton_2 at 2200 ms, 3500 left of the point.
-    Scene lasting = new Scene(life(longer, 2200)).graveyard(0, 6000, 12000).step(PLACED + 80);
-    assertThat(lasting.spawns).containsExactly("44 Graveyard_rework_Skeleton 2500 12000");
+    // The first spawn, Graveyard_rework_Spawn_Skeleton_2 at 2200 ms in the configured tables, 3500
+    // left of the point: the area effect lives exactly to it, then 50 ms less.
+    int firstDelay = Shipped.numbers(GROUP, "SubActionsDelay").get(0);
+    int across = offset(subAction(0), "XPositionExpression");
+    Scene lasting = new Scene(life(longer, firstDelay)).graveyard(0, 6000, 12000).step(PLACED + 80);
+    assertThat(lasting.spawns)
+        .containsExactly(
+            due(0)
+                + " Graveyard_rework_Skeleton "
+                + (6000 + across)
+                + " "
+                + (12000 + offset(subAction(0), "YPositionExpression")));
 
-    Scene ending = new Scene(life(shorter, 2150)).graveyard(0, 6000, 12000).step(PLACED + 80);
+    Scene ending =
+        new Scene(life(shorter, firstDelay - 50)).graveyard(0, 6000, 12000).step(PLACED + 80);
     assertThat(ending.areas).hasSize(1);
     assertThat(ending.spawns).isEmpty();
   }
@@ -119,10 +165,16 @@ class BattleGraveyardTest {
       "a point on water is refused, so the skeleton is made one unit right of it, still on the"
           + " water")
   void aPointOnWaterGoesOneUnitRight() {
-    // Graveyard_rework_Spawn_Skeleton_4, the third sub-action at 3300 ms, puts the bottom side's
-    // skeleton 3500 behind the point: (6000, 16000), in the river.
+    // Graveyard_rework_Spawn_Skeleton_4, the third sub-action at 3300 ms in the configured tables,
+    // puts the bottom side's skeleton 3500 behind the point, y - (-3500 * team_y_direction), the
+    // direction -1 for the bottom side: (6000, 16000), in the river.
+    String third = subAction(2);
+    int x = 6000 + offset(third, "XPositionExpression");
+    int y = 19500 + offset(third, "YPositionExpression");
     Scene river = new Scene(GameData.tables()).graveyard(0, 6000, 19500).step(PLACED + 80);
-    assertThat(river.spawns).element(2).isEqualTo("66 Graveyard_rework_Skeleton 6001 16000");
+    assertThat(river.spawns)
+        .element(2)
+        .isEqualTo(due(2) + " Graveyard_rework_Skeleton " + (x + 1) + " " + y);
   }
 
   @Test

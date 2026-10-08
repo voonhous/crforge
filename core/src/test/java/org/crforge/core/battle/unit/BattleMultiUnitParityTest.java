@@ -2,12 +2,16 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.card.Card;
+import org.crforge.core.card.TroopStats;
 import org.crforge.core.engine.GameEngine;
 import org.crforge.core.entity.base.AbstractEntity;
 import org.crforge.core.entity.base.Entity;
@@ -21,6 +25,7 @@ import org.crforge.core.player.Team;
 import org.crforge.data.card.CardRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Runs the same multi-unit scenes through the battle and through the older engine's grid mode and
@@ -36,6 +41,10 @@ import org.junit.jupiter.api.Test;
  * diverge for a reason that has nothing to do with movement, because hits do not land in the battle
  * yet. No scene deploys two units within reach of each other's push: the battle pushes a deploying
  * unit and the older engine does not, so such a scene diverges from the first tick.
+ *
+ * <p>The battle's Knight is written from the older engine's own card, so both play the same unit
+ * whatever the configured tables say: its hit points, damage, speed, mass, radius, ranges, hit
+ * speed, load time and deploy time.
  */
 class BattleMultiUnitParityTest {
 
@@ -45,10 +54,11 @@ class BattleMultiUnitParityTest {
 
   @Test
   @DisplayName("three Knights deployed apart in one lane crowd together and push identically")
-  void threeKnightsInOneLane() {
+  void threeKnightsInOneLane(@TempDir Path folder) throws IOException {
     // Deployed beyond the push pass's reach of each other: the older engine does not push a
     // deploying unit, which the battle does, so the scenes compared start once they walk.
     compare(
+        folder,
         200,
         new Placement(Team.BLUE, 3500, 10000),
         new Placement(Team.BLUE, 3500, 11200),
@@ -57,11 +67,31 @@ class BattleMultiUnitParityTest {
 
   @Test
   @DisplayName("two Knights walking at each other meet and stop identically")
-  void twoKnightsMeetHeadOn() {
-    compare(100, new Placement(Team.BLUE, 3500, 12000), new Placement(Team.RED, 3500, 20000));
+  void twoKnightsMeetHeadOn(@TempDir Path folder) throws IOException {
+    compare(
+        folder, 100, new Placement(Team.BLUE, 3500, 12000), new Placement(Team.RED, 3500, 20000));
   }
 
-  private void compare(int ticks, Placement... placements) {
+  /** The configured tables with the Knight's row written from the older engine's Knight. */
+  private static GameTables knightOf(Path folder, TroopStats stats) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("Hitpoints", stats.getHealth())
+                .put("Damage", stats.getDamage())
+                .put("Speed", stats.getRawSpeed())
+                .put("Mass", Math.round(stats.getMass()))
+                .put("CollisionRadius", stats.getCollisionRadius())
+                .put("Range", stats.getRange())
+                .put("SightRange", stats.getSightRange())
+                .put("HitSpeed", Math.round(stats.getAttackCooldown() * 1000))
+                .put("LoadTime", Math.round(stats.getLoadTime() * 1000))
+                .put("DeployTime", Math.round(stats.getDeployTime() * 1000)));
+  }
+
+  private void compare(Path folder, int ticks, Placement... placements) throws IOException {
     Card knight = Objects.requireNonNull(CardRegistry.get("knight"), "knight not found");
 
     // The older engine, in grid mode.
@@ -93,14 +123,15 @@ class BattleMultiUnitParityTest {
 
     // The battle.
     Standard1v1Battle standard =
-        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+        new Standard1v1Battle(
+            knightOf(folder, knight.getUnitStats()), Standard1v1Battle.DEFAULT_LEVEL, false);
     Battle battle = standard.getBattle();
     List<CharacterEntity> units = new ArrayList<>();
     for (Placement placement : placements) {
       units.add(
           standard.deploy(
               0,
-              GameData.unit("Knight"),
+              standard.getWorld().getRecords().unit("Knight"),
               LEVEL,
               placement.team() == Team.BLUE ? WorldEntity.SIDE_BOTTOM : WorldEntity.SIDE_TOP,
               placement.x(),
