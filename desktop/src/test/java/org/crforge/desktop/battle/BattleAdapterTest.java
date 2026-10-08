@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +24,7 @@ class BattleAdapterTest {
   @Test
   @DisplayName("a new Ladder battle shows the six towers, three a side, each whole, one king each")
   void theTowers() {
-    BattleSession session = BattleSession.ladder(Tables.get());
+    BattleSession session = BattleSession.ladder(GameData.tables());
     BattleFrame frame = BattleAdapter.frame(session);
 
     List<EntityView> towers =
@@ -50,7 +51,7 @@ class BattleAdapterTest {
   @Test
   @DisplayName("each tower's view is read from its entity: id, position, row and hit points")
   void aTowersViewIsItsEntity() {
-    BattleSession session = BattleSession.ladder(Tables.get());
+    BattleSession session = BattleSession.ladder(GameData.tables());
     for (BattleEntity entity : session.getBattle().getBattle().getHolder().entities()) {
       TowerEntity tower = (TowerEntity) entity;
       EntityView view = BattleAdapter.entity(tower);
@@ -67,7 +68,7 @@ class BattleAdapterTest {
   @Test
   @DisplayName("both sides' hands, elixir and next card come from the match")
   void theSides() {
-    BattleSession session = BattleSession.ladder(Tables.get());
+    BattleSession session = BattleSession.ladder(GameData.tables());
     BattleFrame frame = BattleAdapter.frame(session);
 
     assertThat(frame.sides()).hasSize(2);
@@ -226,7 +227,7 @@ class BattleAdapterTest {
     int level = Standard1v1Battle.DEFAULT_LEVEL;
     Standard1v1Battle battle =
         new Standard1v1Battle(
-            Tables.get(),
+            GameData.tables(),
             List.of(
                 new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, level, level),
                 new Standard1v1Battle.Towers("King_KnifeTowers", level, level)),
@@ -242,7 +243,7 @@ class BattleAdapterTest {
     assertThat(full.kind()).isEqualTo(ActionMeter.Kind.CHARGES);
     // The charge counter's MaxChargeCount, from the Duchess row's OnStartingAction.
     int charges =
-        Tables.get()
+        GameData.tables()
             .table("buildings")
             .row("DaggerDuchess")
             .columns()
@@ -277,7 +278,7 @@ class BattleAdapterTest {
     int level = Standard1v1Battle.DEFAULT_LEVEL;
     return BattleSession.of(
         new Standard1v1Battle(
-            Tables.get(),
+            GameData.tables(),
             List.of(
                 new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, level, level),
                 new Standard1v1Battle.Towers("King_ChefTowers", level, level)),
@@ -291,7 +292,7 @@ class BattleAdapterTest {
   /** A Ladder battle in which both decks are eight copies of one card, always in slot 0. */
   private static BattleSession only(String card) {
     List<String> deck = Collections.nCopies(8, card);
-    return BattleSession.ladder(Tables.get(), deck, deck);
+    return BattleSession.ladder(GameData.tables(), deck, deck);
   }
 
   private static EntityView king(List<EntityView> towers, int side) {

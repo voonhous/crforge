@@ -37,13 +37,13 @@ class BattleMergeMaidenTest {
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   /** The maiden on foot's cost (3). */
-  private static final int ON_FOOT = cost("MergeMaiden_Normal");
+  private static final int ON_FOOT = Shipped.cost("MergeMaiden_Normal");
 
   /** The mounted maiden's cost (6). */
-  private static final int MOUNTED = cost("MergeMaiden_Mounted");
+  private static final int MOUNTED = Shipped.cost("MergeMaiden_Mounted");
 
   /** The Zap's cost (2). */
-  private static final int ZAP = cost("Zap");
+  private static final int ZAP = Shipped.cost("Zap");
 
   @Test
   @DisplayName(
@@ -163,16 +163,6 @@ class BattleMergeMaidenTest {
         .hasMessage(
             "a Mirror of MergeMaiden, which repeats the option it was played as, which no"
                 + " reference holds");
-  }
-
-  /** A card row's elixir cost. */
-  private static int cost(String card) {
-    for (String table : List.of("spells_characters", "spells_other")) {
-      if (GameData.tables().table(table).has(card)) {
-        return Shipped.number(Shipped.row(table, card), "ManaCost");
-      }
-    }
-    throw new AssertionError("no card row " + card);
   }
 
   /**

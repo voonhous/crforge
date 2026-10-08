@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,7 +17,6 @@ import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -113,37 +113,9 @@ class BattleBlowdartEvoTest {
           GameData.columns(rows, REGULAR).put("Speed", 800);
           GameData.columns(rows, SPECIAL).put("Speed", 800);
         });
-    GameData.alterLoaded(
-        folder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
+    GameData.alterLoaded(folder, "spawn_groups", GameData::placeTowers);
     tables = GameTables.load(folder);
     records = new BattleRecords(tables);
-  }
-
-  /** The fields of an action row in the actions table, to alter. */
-  private static ObjectNode fields(ObjectNode rows, String action) {
-    return (ObjectNode) rows.get(action).get("fields");
-  }
-
-  /**
-   * A damage scaled by a row's rarity at the scene's level: the rarity's multiplier, in hundredths,
-   * at the level's step above the rarity's first level, truncated.
-   */
-  private static int scaled(int damage, GameRow row) {
-    String name = Shipped.text(row, "Rarity");
-    RarityTable rarity =
-        RarityTable.PUBLISHED.stream()
-            .filter(table -> table.name().equals(name))
-            .findFirst()
-            .orElseThrow();
-    int steps = LEVEL - rarity.firstLevel();
-    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
   }
 
   /** A Rare card at its first level, as the evolved play in the reference case stands. */
@@ -246,7 +218,7 @@ class BattleBlowdartEvoTest {
     GameRow dart = Shipped.row("projectiles", SPECIAL);
     assertThat(shots.dartHits().get(0)[1])
         .as("a dart's damage")
-        .isEqualTo(scaled(Shipped.number(dart, "Damage"), dart));
+        .isEqualTo(Shipped.scaled(Shipped.number(dart, "Damage"), dart, LEVEL));
     assertThat(shots.areaTicks()).isNotEmpty();
     assertThat(shots.areaTicks().get(0)).as("the first area, on the first hit").isEqualTo(firstHit);
     for (int i = 1; i < shots.areaTicks().size(); i++) {
@@ -275,7 +247,7 @@ class BattleBlowdartEvoTest {
         .isEqualTo(firstHit + AREA_HIT_OFFSET / 50 + 1 + POISON_HIT_SPEED / 50);
     // The first stack's amount at this level (25 is 30), its crown tower share (a quarter, 7).
     GameRow area = Shipped.row("area_effect_objects", AREAS.get(0));
-    int amount = scaled(Shipped.numbers(POISON, "DamageList").get(0), area);
+    int amount = Shipped.scaled(Shipped.numbers(POISON, "DamageList").get(0), area, LEVEL);
     int share = Shipped.number(POISON, "CrownDamageDamageMultiplier");
     assertThat(poison.get(0)[1])
         .as("the first stack's crown tower share")

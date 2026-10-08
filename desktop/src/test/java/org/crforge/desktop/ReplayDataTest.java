@@ -14,11 +14,11 @@ import java.util.List;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.replay.ReplayCapture;
+import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.TableCopies;
 import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.replay.ReplayFile;
-import org.crforge.desktop.replay.ReplayItems;
 import org.crforge.desktop.replay.ReplayPlayer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -81,7 +81,7 @@ class ReplayDataTest {
   private static ObjectNode fixture() throws IOException {
     try (InputStream in =
         ReplayDataTest.class.getResourceAsStream("/replays/archer_queen_every_field.json")) {
-      return ReplayItems.fitted((ObjectNode) MAPPER.readTree(in), GameTables.loadConfigured());
+      return ScenarioItems.fitted((ObjectNode) MAPPER.readTree(in), GameTables.loadConfigured());
     }
   }
 

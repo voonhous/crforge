@@ -5,6 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.replay.ScenarioItems;
+import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 
 /**
  * The configured tables' columns as the tables write them, for a test whose expected value is a
@@ -30,9 +35,79 @@ public final class Shipped {
 
   /** A unit's row: a character's, else a building's. */
   public static GameRow unitRow(String name) {
-    return tables().table("characters").has(name)
-        ? row("characters", name)
-        : row("buildings", name);
+    return unitRow(tables(), name);
+  }
+
+  /** A unit's row in a set of tables: a character's, else a building's. */
+  public static GameRow unitRow(GameTables tables, String name) {
+    return tables.table("characters").has(name)
+        ? tables.table("characters").row(name)
+        : tables.table("buildings").row(name);
+  }
+
+  /** A card's elixir cost: its row's ManaCost, from whichever card table holds it. */
+  public static int cost(String card) {
+    return number(ScenarioItems.card(tables(), card), "ManaCost");
+  }
+
+  /** The published rarity a row's Rarity column names; Common when the row names none. */
+  public static RarityTable rarity(GameRow row) {
+    String name = text(row, "Rarity");
+    String rarity = name == null ? "Common" : name;
+    return RarityTable.PUBLISHED.stream()
+        .filter(table -> table.name().equals(rarity))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /**
+   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
+   * its row's rarity, in hundredths, for the steps the level stands above the rarity's first,
+   * truncated; the base itself on the first level or below it.
+   */
+  public static int scaled(int base, GameRow row, int level) {
+    return scaledBy(base, rarity(row), Math.max(level - rarity(row).firstLevel(), 0));
+  }
+
+  /**
+   * A stat at a packed level: the base times the multiplier of its row's rarity, in hundredths, at
+   * the packed level's step, truncated; the base itself with no step.
+   */
+  public static int scaledAtPackedLevel(int base, GameRow row, int packedLevel) {
+    return scaledBy(base, rarity(row), PackedLevel.steps(packedLevel));
+  }
+
+  /**
+   * A stat of a unit at its level: the base times the multiplier of its row's rarity, in
+   * hundredths, at the step of the unit's packed level, truncated.
+   */
+  public static int scaled(int base, CharacterEntity unit) {
+    return scaledAtPackedLevel(base, unitRow(unit.getData().name()), unit.getPackedLevel());
+  }
+
+  private static int scaledBy(int base, RarityTable rarity, int steps) {
+    return steps == 0 ? base : base * rarity.multiplier(steps - 1) / 100;
+  }
+
+  /**
+   * A battle's whole length in ticks: the sections of the Ladder mode's battle timeline, in seconds
+   * of 20 ticks, summed.
+   */
+  public static int battleTicks() {
+    return battleTicks(tables());
+  }
+
+  /**
+   * A battle's whole length in ticks on a set of tables: the sections of the Ladder mode's battle
+   * timeline, in seconds of 20 ticks, summed.
+   */
+  public static int battleTicks(GameTables tables) {
+    String timeline = text(tables.table("game_modes").row(LadderMatch.GAME_MODE), "BattleTimeline");
+    int seconds = 0;
+    for (int length : numbers(tables.table("battle_timelines").row(timeline), "SectionLength")) {
+      seconds += length;
+    }
+    return seconds * 1000 / 50;
   }
 
   /** A column as the row writes it, or null when the row leaves it out or leaves it empty. */

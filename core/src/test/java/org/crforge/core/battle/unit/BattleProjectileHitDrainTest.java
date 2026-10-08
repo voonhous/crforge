@@ -2,7 +2,6 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -143,60 +142,8 @@ class BattleProjectileHitDrainTest {
               .put("SightRange", 5500)
               .put("DeployTime", 1000);
         });
-    writeTowers(folder);
+    GameData.writeTowers(folder);
     return GameTables.load(folder);
-  }
-
-  /** Writes the towers' columns, their shots and their places into an altered copy. */
-  private static void writeTowers(Path folder) throws IOException {
-    GameData.alterLoaded(
-        folder,
-        "buildings",
-        rows -> {
-          GameData.columns(rows, "PrincessTower")
-              .put("CollisionRadius", 1000)
-              .put("Range", 7500)
-              .put("SightRange", 7500)
-              .put("HitSpeed", 800)
-              .put("Hitpoints", 1400)
-              .put("ProjectileStartRadius", 300)
-              .put("ProjectileStartZ", 3000)
-              .put("NoDeploySizeW", 11)
-              .put("NoDeploySizeH", 21);
-          GameData.columns(rows, "KingTower")
-              .put("CollisionRadius", 1400)
-              .put("Range", 7000)
-              .put("SightRange", 7000)
-              .put("HitSpeed", 1000)
-              .put("LoadTime", 500)
-              .put("Hitpoints", 2400)
-              .put("ProjectileStartRadius", 750)
-              .put("ProjectileStartZ", 3500)
-              .put("NoDeploySizeW", 18)
-              .put("NoDeploySizeH", 16);
-        });
-    GameData.alterLoaded(
-        folder,
-        "projectiles",
-        rows -> {
-          GameData.columns(rows, "TowerPrincessProjectile")
-              .put("Damage", 50)
-              .put("Speed", 600)
-              .put("Gravity", 60);
-          GameData.columns(rows, "KingProjectile")
-              .put("Damage", 50)
-              .put("Speed", 1000)
-              .put("Gravity", 50);
-        });
-    GameData.alterLoaded(
-        folder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
   }
 
   @Test

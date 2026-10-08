@@ -1,6 +1,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -234,11 +235,6 @@ class TombstoneHeroTest {
 
   /** The length a step's averaged push is clamped to. */
   private static final int PUSH_CLAMP = 150;
-
-  /** The fields of an action row, to alter. */
-  private static ObjectNode fields(ObjectNode rows, String action) {
-    return (ObjectNode) rows.get(action).get("fields");
-  }
 
   /** True when side 0's hand holds the card. */
   private static boolean inHand(LadderMatch match, String card) {

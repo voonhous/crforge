@@ -11,8 +11,6 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
-import org.crforge.core.pathfinding.combat.PackedLevel;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
@@ -108,9 +106,9 @@ class BattleMonkComboTest {
     assertThat(attacks).isEqualTo(within + 1);
     assertThat(attacksAt).containsExactly(withinAt);
     // Its three entries' damages at its level, around and around.
-    int first = scaled(Shipped.number(MONK, "Damage"), monk);
-    int second = scaled(Shipped.number(MONK, "VariableDamage2"), monk);
-    int third = scaled(Shipped.number(MONK, "VariableDamage3"), monk);
+    int first = Shipped.scaled(Shipped.number(MONK, "Damage"), monk);
+    int second = Shipped.scaled(Shipped.number(MONK, "VariableDamage2"), monk);
+    int third = Shipped.scaled(Shipped.number(MONK, "VariableDamage3"), monk);
     assertThat(hits).containsExactly(first, second, third, first, second, third);
   }
 
@@ -176,21 +174,6 @@ class BattleMonkComboTest {
     assertThat(new int[] {push[5], push[6]})
         .containsExactly(push[3] + THIRD_PUSH * dx / length, push[4] + THIRD_PUSH * dy / length);
     assertThat(giant.getUnit().movement().getPushbackInFlight()).isEqualTo(1);
-  }
-
-  /**
-   * A damage scaled by a unit's row's rarity at its level: the rarity's multiplier, in hundredths,
-   * at the level's step, truncated.
-   */
-  private static int scaled(int damage, CharacterEntity unit) {
-    String name = Shipped.text(Shipped.unitRow(unit.getData().name()), "Rarity");
-    RarityTable rarity =
-        RarityTable.PUBLISHED.stream()
-            .filter(table -> table.name().equals(name))
-            .findFirst()
-            .orElseThrow();
-    int steps = PackedLevel.steps(unit.getPackedLevel());
-    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
   }
 
   /** The side's princess tower on the left lane, the one the Monk placed there walks to. */

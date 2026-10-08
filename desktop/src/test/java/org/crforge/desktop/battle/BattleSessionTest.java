@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +26,7 @@ class BattleSessionTest {
   @Test
   @DisplayName("the default decks deal, and every card of them plays without halting the battle")
   void theDefaultDecksPlay() {
-    BattleSession session = BattleSession.ladder(Tables.get());
+    BattleSession session = BattleSession.ladder(GameData.tables());
     // Each side plays whatever its first slot holds whenever it can, for two minutes of battle.
     for (int step = 0; step < 2400; step++) {
       for (int side = 0; side < 2; side++) {
@@ -41,15 +43,10 @@ class BattleSessionTest {
         .hasSizeGreaterThan(16);
   }
 
-  /** A card's cost: its row's ManaCost, as the characters' card table writes it. */
-  private static int cost(String card) {
-    return Tables.get().table("spells_characters").row(card).columns().get("ManaCost").asInt();
-  }
-
   @Test
   @DisplayName("a note from the screen joins the session's messages")
   void aNoteIsKept() {
-    BattleSession session = BattleSession.ladder(Tables.get());
+    BattleSession session = BattleSession.ladder(GameData.tables());
 
     session.note("data version 2.0.0 refused");
 
@@ -67,7 +64,7 @@ class BattleSessionTest {
         .isEqualTo(session.cardUnavailableReason(0, 0));
     assertThat(session.play(0, 0, 9500, 8500)).isFalse();
 
-    assertThat(elixir).isLessThan(cost("Golem"));
+    assertThat(elixir).isLessThan(Shipped.cost("Golem"));
     assertThat(session.messages()).last().asString().contains("Golem refused, not enough elixir");
     assertThat(session.isPending(0, 0)).isFalse();
   }
@@ -115,7 +112,7 @@ class BattleSessionTest {
     BattleSession session = only("Musketeer");
     int elixir = session.match().side(0).wholeElixir();
     // One Musketeer is covered; a second while the first waits to run is not.
-    assertThat(elixir).isBetween(cost("Musketeer"), 2 * cost("Musketeer") - 1);
+    assertThat(elixir).isBetween(Shipped.cost("Musketeer"), 2 * Shipped.cost("Musketeer") - 1);
     assertThat(session.play(0, 0, 3500, 8500)).isTrue();
     assertThat(session.cardUnavailableReason(0, 1)).contains("not enough elixir");
     assertThat(session.play(0, 1, 14500, 8500)).isFalse();
@@ -139,7 +136,7 @@ class BattleSessionTest {
     List<String> mirrors =
         List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
     BattleSession session =
-        BattleSession.ladder(Tables.get(), mirrors, Collections.nCopies(8, "Knight"));
+        BattleSession.ladder(GameData.tables(), mirrors, Collections.nCopies(8, "Knight"));
     int knight = slot(session, "Knight");
     int mirror = slot(session, "Mirror");
     assertThat(session.play(0, knight, 3500, 8500)).isTrue();
@@ -169,7 +166,7 @@ class BattleSessionTest {
   @Test
   @DisplayName("a battle with no match started on it has no hands, and a play is refused")
   void aBattleWithoutAMatchHasNoHands() {
-    BattleSession session = BattleSession.of(new Standard1v1Battle(Tables.get()));
+    BattleSession session = BattleSession.of(new Standard1v1Battle(GameData.tables()));
 
     assertThat(session.step()).isTrue();
 
@@ -221,7 +218,7 @@ class BattleSessionTest {
   @DisplayName(
       "a battle given its commands elsewhere is stepped and its plays reported as the session's own")
   void aBattleBuiltElsewhere() {
-    Standard1v1Battle battle = new Standard1v1Battle(Tables.get());
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     List<String> knights = Collections.nCopies(8, "Knight");
     battle.startLadderMatch(knights, knights, 0, 0);
     battle.play(
@@ -257,7 +254,7 @@ class BattleSessionTest {
   /** A Ladder battle in which both decks are eight copies of one card. */
   private static BattleSession only(String card) {
     List<String> deck = Collections.nCopies(8, card);
-    return BattleSession.ladder(Tables.get(), deck, deck);
+    return BattleSession.ladder(GameData.tables(), deck, deck);
   }
 
   /** The first slot of side 0's hand holding a card. */

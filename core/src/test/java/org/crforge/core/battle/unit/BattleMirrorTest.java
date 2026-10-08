@@ -12,7 +12,6 @@ import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -50,14 +49,14 @@ class BattleMirrorTest {
    * 1938).
    */
   private static final int KNIGHT_HP_11 =
-      atLevel(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL);
+      Shipped.scaled(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL);
 
   /** How many levels above its own a Mirror plays the card it repeats: the global's (1). */
   private static final int MIRROR_LEVEL_OFFSET =
       Shipped.number(Shipped.row("globals", "MIRROR_LEVEL_OFFSET"), "NumberValue");
 
   private static final int KNIGHT_HP_12 =
-      atLevel(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL + MIRROR_LEVEL_OFFSET);
+      Shipped.scaled(Shipped.number(KNIGHT, "Hitpoints"), KNIGHT, LEVEL + MIRROR_LEVEL_OFFSET);
 
   /** The most elixir there can be, which a Mirror's item cost is held to. */
   private static final int MAX_MANA =
@@ -75,8 +74,8 @@ class BattleMirrorTest {
     LadderMatch match = battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
     // Each Mirror costs the Knight's cost and its own (3 and 1), held to the most elixir there can
     // be, and is played once the elixir covers it.
-    int knightCost = cost("Knight");
-    int mirrorCost = Math.min(knightCost + cost("Mirror"), MAX_MANA);
+    int knightCost = Shipped.cost("Knight");
+    int mirrorCost = Math.min(knightCost + Shipped.cost("Mirror"), MAX_MANA);
     battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
     run(battle, 20);
     int first = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
@@ -120,7 +119,7 @@ class BattleMirrorTest {
     // The item is the Mirror's own: its level and its cost.
     assertThat(play.mirror().repeats()).isNull();
     assertThat(play.mirror().levelField()).isEqualTo(LEVEL - 1);
-    assertThat(play.mirror().cost()).isEqualTo(cost("Mirror"));
+    assertThat(play.mirror().cost()).isEqualTo(Shipped.cost("Mirror"));
     assertThat(match.side(0).getSpent()).isZero();
     assertThat(match.side(0).getHand().slots()).isEqualTo(hand);
     assertThat(match.side(0).lastPlayed()).isNull();
@@ -173,23 +172,16 @@ class BattleMirrorTest {
     run(battle, 20);
     // The Archer Queen's 5 and the Mirror's 1: played once the elixir covers 6.
     int covered =
-        coveredFrom(battle, match, Math.min(cost("ArcherQueen") + cost("Mirror"), MAX_MANA));
+        coveredFrom(
+            battle,
+            match,
+            Math.min(Shipped.cost("ArcherQueen") + Shipped.cost("Mirror"), MAX_MANA));
     int mirror = Math.max(20 + AFTER_A_PLAY, covered);
     battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
 
     assertThatThrownBy(() -> run(battle, mirror))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("m: a Mirror of the champion ArcherQueen, which no reference holds");
-  }
-
-  /** A card's elixir cost, as its row writes it. */
-  private static int cost(String card) {
-    for (String table : List.of("spells_characters", "spells_other")) {
-      if (GameData.tables().table(table).has(card)) {
-        return Shipped.number(Shipped.row(table, card), "ManaCost");
-      }
-    }
-    throw new AssertionError("no card row " + card);
   }
 
   /**
@@ -208,21 +200,5 @@ class BattleMirrorTest {
     while (battle.getBattle().getTick() <= lastTick) {
       battle.getBattle().step();
     }
-  }
-
-  /**
-   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
-   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
-   * base itself on the first level.
-   */
-  private static int atLevel(int base, GameRow row, int level) {
-    String rarity = Shipped.text(row, "Rarity");
-    RarityTable table =
-        RarityTable.PUBLISHED.stream()
-            .filter(candidate -> candidate.name().equals(rarity))
-            .findFirst()
-            .orElseThrow();
-    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
-    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
   }
 }

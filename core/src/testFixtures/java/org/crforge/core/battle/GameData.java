@@ -1,6 +1,7 @@
 package org.crforge.core.battle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -125,8 +126,80 @@ public final class GameData {
     return (ObjectNode) rows.get(row).get("columns");
   }
 
+  /** The fields of an action row in the actions table, to alter. */
+  public static ObjectNode fields(ObjectNode rows, String action) {
+    return (ObjectNode) rows.get(action).get("fields");
+  }
+
+  /**
+   * Writes the towers' columns, their shots and their places into a folder the configured tables
+   * were already copied into by {@link #altered}: {@link #writeTowerColumns}, {@link
+   * #writeTowerShots} and {@link #placeTowers}. Load the folder again to read them.
+   *
+   * @param folder the folder
+   */
+  public static void writeTowers(Path folder) throws IOException {
+    alterLoaded(folder, "buildings", GameData::writeTowerColumns);
+    alterLoaded(folder, "projectiles", GameData::writeTowerShots);
+    alterLoaded(folder, "spawn_groups", GameData::placeTowers);
+  }
+
+  /**
+   * Writes the princess and king towers' radii, ranges, attack pace, hit points, shot start and
+   * footprints into the buildings table's rows.
+   *
+   * @param rows the buildings table's rows
+   */
+  public static void writeTowerColumns(ObjectNode rows) {
+    columns(rows, "PrincessTower")
+        .put("CollisionRadius", 1000)
+        .put("Range", 7500)
+        .put("SightRange", 7500)
+        .put("HitSpeed", 800)
+        .put("Hitpoints", 1400)
+        .put("ProjectileStartRadius", 300)
+        .put("ProjectileStartZ", 3000)
+        .put("NoDeploySizeW", 11)
+        .put("NoDeploySizeH", 21);
+    columns(rows, "KingTower")
+        .put("CollisionRadius", 1400)
+        .put("Range", 7000)
+        .put("SightRange", 7000)
+        .put("HitSpeed", 1000)
+        .put("LoadTime", 500)
+        .put("Hitpoints", 2400)
+        .put("ProjectileStartRadius", 750)
+        .put("ProjectileStartZ", 3500)
+        .put("NoDeploySizeW", 18)
+        .put("NoDeploySizeH", 16);
+  }
+
+  /**
+   * Writes the princess and king towers' shots, their damage, speed and gravity, into the
+   * projectiles table's rows.
+   *
+   * @param rows the projectiles table's rows
+   */
+  public static void writeTowerShots(ObjectNode rows) {
+    columns(rows, "TowerPrincessProjectile").put("Damage", 50).put("Speed", 600).put("Gravity", 60);
+    columns(rows, "KingProjectile").put("Damage", 50).put("Speed", 1000).put("Gravity", 50);
+  }
+
+  /**
+   * Writes the places of the king and the two princess towers, in cells of 500, into the spawn
+   * groups table's rows: the king at (18, 6), the princesses at (7, 13) and (29, 13).
+   *
+   * @param rows the spawn groups table's rows
+   */
+  public static void placeTowers(ObjectNode rows) {
+    ArrayNode towers = columns(rows, "King_PrincessTowers").putArray("Objects");
+    towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+    towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+    towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+  }
+
   /** Copies every file of the configured tables into a folder. */
-  private static void copyConfigured(Path folder) throws IOException {
+  public static void copyConfigured(Path folder) throws IOException {
     Path source = GameTables.configuredDirectory().orElseThrow();
     try (Stream<Path> files = Files.list(source)) {
       for (Path file : files.toList()) {

@@ -9,7 +9,6 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,21 +22,6 @@ class BattleIceSpiritEvoTest {
 
   /** The area the spirit's hit drops. */
   private static final GameRow AREA = Shipped.row("area_effect_objects", "IceSpiritsAOE_EV1");
-
-  /**
-   * A damage scaled by a row's rarity at the scene's level: the rarity's multiplier, in hundredths,
-   * at the level's step above the rarity's first level, truncated.
-   */
-  private static int scaled(int damage, GameRow row) {
-    String name = Shipped.text(row, "Rarity");
-    RarityTable rarity =
-        RarityTable.PUBLISHED.stream()
-            .filter(table -> table.name().equals(name))
-            .findFirst()
-            .orElseThrow();
-    int steps = LEVEL - rarity.firstLevel();
-    return steps == 0 ? damage : damage * rarity.multiplier(steps - 1) / 100;
-  }
 
   @Test
   @DisplayName(
@@ -104,7 +88,8 @@ class BattleIceSpiritEvoTest {
     // The filter form's one hit falls on the update its HitSpeedOffset starts (3000 ms: the 61st),
     // kept by the countdown below 0; its typed hit is dealt at that step's damage drain.
     int hitStep = Shipped.number(AREA, "HitSpeedOffset") / 50 + 1;
-    int damage = scaled(Shipped.column(AREA, "Damage").path("BaseDamage").asInt(), AREA);
+    int damage =
+        Shipped.scaled(Shipped.column(AREA, "Damage").path("BaseDamage").asInt(), AREA, LEVEL);
     assertThat(hits).containsExactly((impact + hitStep) + " B1 " + damage);
   }
 }

@@ -2,7 +2,6 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -89,15 +88,7 @@ class BattleWaitingToDeployHitTest {
         tablesFolder,
         "area_effect_objects",
         rows -> GameData.columns(rows, "Zap").put("Radius", 2500).put("LifeDuration", 1));
-    GameData.alterLoaded(
-        tablesFolder,
-        "spawn_groups",
-        rows -> {
-          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
-          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
-          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
-          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
-        });
+    GameData.alterLoaded(tablesFolder, "spawn_groups", GameData::placeTowers);
     tables = GameTables.load(tablesFolder);
   }
 

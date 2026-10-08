@@ -13,9 +13,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
-import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -296,7 +294,7 @@ class BattleElectroGiantTest {
 
     // Until a shot is struck back with the buff: the first ones may be out of the reflect's reach.
     // The loop guard is a battle's whole length, which the scene's walk and first shots never near.
-    int guard = battleTicks();
+    int guard = Shipped.battleTicks();
     while (scene.reflections.stream()
             .noneMatch(r -> r.attacker() instanceof ProjectileEntity && r.buff() != null)
         && scene.tick < guard) {
@@ -324,20 +322,6 @@ class BattleElectroGiantTest {
               assertThat(r.source().getData().name()).isEqualTo("SpearGoblinGiant");
               assertThat(r.struck().getData().name()).isEqualTo("GoblinGiant");
             });
-  }
-
-  /**
-   * A battle's whole length in ticks: the sections of the Ladder mode's battle timeline, in seconds
-   * of 20 ticks, summed.
-   */
-  private static int battleTicks() {
-    String timeline =
-        Shipped.text(Shipped.row("game_modes", LadderMatch.GAME_MODE), "BattleTimeline");
-    int seconds = 0;
-    for (int length : Shipped.numbers(Shipped.row("battle_timelines", timeline), "SectionLength")) {
-      seconds += length;
-    }
-    return seconds * 1000 / 50;
   }
 
   @Test
@@ -412,22 +396,6 @@ class BattleElectroGiantTest {
 
   /** The reflect's damage at the Giant's level: the row's ReflectedAttackDamage (75 is 192). */
   private static int reflectedDamage() {
-    return atLevel(Shipped.number(GIANT, "ReflectedAttackDamage"), GIANT, LEVEL);
-  }
-
-  /**
-   * A card stat at a level counted from 1, worked out in the test: the base times the multiplier of
-   * its row's rarity for the steps the level stands above the rarity's first, over 100, and the
-   * base itself on the first level.
-   */
-  private static int atLevel(int base, GameRow row, int level) {
-    String rarity = Shipped.text(row, "Rarity");
-    RarityTable table =
-        RarityTable.PUBLISHED.stream()
-            .filter(candidate -> candidate.name().equals(rarity))
-            .findFirst()
-            .orElseThrow();
-    int steps = Math.max(level - 1 - table.relativeLevel(), 0);
-    return steps == 0 ? base : base * table.multiplier(steps - 1) / 100;
+    return Shipped.scaled(Shipped.number(GIANT, "ReflectedAttackDamage"), GIANT, LEVEL);
   }
 }
