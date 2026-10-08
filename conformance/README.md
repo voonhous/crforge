@@ -4,6 +4,42 @@ Checks the battle core against recorded reference battles. Each reference battle
 
 Nothing here simulates the game itself or produces a reference. The references are fixed data in the game data repository, at the commit `crforge-data.lock` pins, under `references/<version>/`.
 
+## How a case is checked
+
+```mermaid
+flowchart LR
+  S["Scenario<br/>decks, levels, seed,<br/>commands and their ticks"]
+  T["Game tables<br/>of one data version"]
+  G["The game"]
+  R["Reference trace<br/>one observation per tick<br/>(references/VERSION/)"]
+  B["Battle core<br/>ReplaySmokeRun"]
+  J["Battle core trace<br/>observations.jsonl"]
+  C["ReferenceComparison<br/>tick by tick,<br/>no tolerance"]
+  O["Outcome<br/>diagnostic_match, mismatch,<br/>unsupported or invalid"]
+  E["reference-expectations/<br/>VERSION.json"]
+  S --> G
+  T --> G
+  S --> B
+  T --> B
+  G -- "recorded once<br/>per data version" --> R
+  B --> J
+  R --> C
+  J --> C
+  C --> O
+  O -- "ReferenceSuite holds it to" --> E
+```
+
+The scenario is the input and the trace is the output. Both sides play the same scenario on the same data version's tables: the reference trace is what the game did, the battle core trace is what crforge does. The first tick on which they differ names the field that differs, for example (illustrative values):
+
+```text
+tick  path                 reference  battle core
+ 765  $.entities[12].x       3717       3717       equal
+ 766  $.entities[12].x       3715       3715       equal
+ 767  $.entities[12].x       3713       3715       first divergence: mismatch at 767, $.entities[12].x
+```
+
+A trace belongs to the tables it was made with. When a new data version changes a column, a unit's damage for example, the game's trace of the same scenario changes too, so each data version has its own references and its own expectations file. The scenarios are reused, and the references are recorded again for the new version.
+
 ## What belongs here
 
 - `ReplaySmokeRun`: runs one scenario on the battle core and writes `observations.jsonl`, `manifest.json` and, for a completed run, `COMPLETE`. Also the module's command line (`build/install/conformance/bin/conformance` after `installDist`).
