@@ -3,6 +3,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -28,12 +29,12 @@ class BattleTunnelTest {
   /**
    * The configured tables with the buildings a dig surfaces beside written as the drill scenes
    * count on them - a princess tower of collision radius 1000 keeping 11 by 21 tiles closed, a king
-   * tower keeping 18 by 16, the Goblin Drill and its evolved form of radius 500 reaching 2000 - the
-   * buildings' rows then edited.
+   * tower keeping 18 by 16, the towers on their tiles, the Goblin Drill and its evolved form of
+   * radius 500 reaching 2000 - the buildings' rows then edited.
    */
   private static GameTables drillTables(Path folder, Consumer<ObjectNode> buildings)
       throws IOException {
-    return GameData.altered(
+    GameData.altered(
         folder,
         "buildings",
         rows -> {
@@ -50,6 +51,16 @@ class BattleTunnelTest {
           }
           buildings.accept(rows);
         });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+    return GameTables.load(folder);
   }
 
   /** Plays a Miner for the bottom side onto the top side's half and runs its play's step. */
