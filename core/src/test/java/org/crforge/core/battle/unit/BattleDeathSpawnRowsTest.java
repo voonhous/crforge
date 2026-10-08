@@ -2,12 +2,16 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A building whose row sets a second death spawn row: the Goblin Party Hut, whose lifetime ends it,
@@ -26,8 +30,22 @@ class BattleDeathSpawnRowsTest {
   @DisplayName(
       "the hut's two death spawn rows share one ring divided by both counts, the second row"
           + " made after the first")
-  void twoRowsShareOneRing() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+  void twoRowsShareOneRing(@TempDir Path folder) throws IOException {
+    // The hut's death spawn columns, and a lifetime that ends it within the scene, written.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "buildings",
+            rows ->
+                GameData.columns(rows, "GoblinPartyHut")
+                    .put("LifeTime", 30000)
+                    .put("DeathSpawnCharacter", "SpearGoblin")
+                    .put("DeathSpawnCount", 3)
+                    .put("DeathSpawnCharacter2", "GoblinBrawler")
+                    .put("DeathSpawnCount2", 1)
+                    .put("DeathSpawnRadius", 1500)
+                    .put("SpawnAngleShift", 0));
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     List<Child> children = new ArrayList<>();
     int[] hut = new int[2];
     battle

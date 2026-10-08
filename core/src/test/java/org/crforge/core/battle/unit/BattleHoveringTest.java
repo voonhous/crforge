@@ -22,6 +22,15 @@ class BattleHoveringTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The time the Ghost's row waits before its buff while it is not attacking, set on the row. */
+  private static final int NOT_ATTACKING_MS = 2000;
+
+  /** The Ghost's sight range, set on its row. */
+  private static final int GHOST_SIGHT_RANGE = 5500;
+
+  /** The Knight's collision radius, set on its row. */
+  private static final int KNIGHT_RADIUS = 500;
+
   private static Standard1v1Battle passiveTowers() {
     return new Standard1v1Battle(GameData.tables(), LEVEL, false);
   }
@@ -116,21 +125,24 @@ class BattleHoveringTest {
     CharacterEntity ghost =
         match.deploy(
             0,
-            GameData.unit("Ghost").toBuilder().startWithBuffWhenNotAttacking(false).build(),
+            GameData.unit("Ghost").toBuilder()
+                .startWithBuffWhenNotAttacking(false)
+                .buffWhenNotAttackingTimeMs(NOT_ATTACKING_MS)
+                .build(),
             LEVEL,
             0,
             9000,
             10000);
 
     assertThat(ghost.invisible()).isFalse();
-    assertThat(ghost.getNotAttackingTimerMs()).isEqualTo(2000);
+    assertThat(ghost.getNotAttackingTimerMs()).isEqualTo(NOT_ATTACKING_MS);
     int visits = 0;
     while (!ghost.invisible() && visits < 100) {
       match.getBattle().step();
       visits++;
     }
     // Its first visit counts too: 2000 ms is 40 steps of 50.
-    assertThat(visits).isEqualTo(40);
+    assertThat(visits).isEqualTo(NOT_ATTACKING_MS / 50);
     assertThat(ghost.getBuffs().items())
         .singleElement()
         .extracting(i -> i.getTotal())
@@ -142,13 +154,17 @@ class BattleHoveringTest {
       "a row without the range gate holds its countdown while the unit touches its reference within"
           + " the reference's radius plus half its own sight range, and counts down beyond it")
   void aRowWithoutTheRangeGateIsHeldByTheTouchTest() {
-    // A Ghost's sight range is 5500 and a Knight's radius 500: the touch bound is 3250.
-    assertThat(visitsUntilInvisible(false, 3000)).as("touching").isEqualTo(-1);
-    assertThat(visitsUntilInvisible(false, 3250)).as("at the bound").isEqualTo(-1);
-    assertThat(visitsUntilInvisible(false, 3500)).as("beyond the touch").isEqualTo(40);
-    assertThat(visitsUntilInvisible(true, 3000))
+    // The Ghost's sight range is 5500 and the Knight's radius 500: the touch bound is 3250.
+    int bound = KNIGHT_RADIUS + GHOST_SIGHT_RANGE / 2;
+    assertThat(visitsUntilInvisible(false, bound - 250)).as("touching").isEqualTo(-1);
+    assertThat(visitsUntilInvisible(false, bound)).as("at the bound").isEqualTo(-1);
+    assertThat(visitsUntilInvisible(false, bound + 250))
+        .as("beyond the touch")
+        .isEqualTo(NOT_ATTACKING_MS / 50);
+    // Its attack range of 1200 and the two radii, 600 and 500, reach 2300.
+    assertThat(visitsUntilInvisible(true, bound - 250))
         .as("with the range gate, out of its attack range")
-        .isEqualTo(40);
+        .isEqualTo(NOT_ATTACKING_MS / 50);
   }
 
   /**
@@ -161,11 +177,20 @@ class BattleHoveringTest {
     UnitData ghostRow =
         GameData.unit("Ghost").toBuilder()
             .speed(0)
+            .sightRange(GHOST_SIGHT_RANGE)
+            .range(1200)
+            .collisionRadius(600)
             .startWithBuffWhenNotAttacking(false)
+            .buffWhenNotAttackingTimeMs(NOT_ATTACKING_MS)
             .buffWhenNotAttackingUseAttackRange(useAttackRange)
             .build();
     UnitData knightRow =
-        GameData.unit("Knight").toBuilder().speed(0).attacksGround(false).attacksAir(false).build();
+        GameData.unit("Knight").toBuilder()
+            .speed(0)
+            .collisionRadius(KNIGHT_RADIUS)
+            .attacksGround(false)
+            .attacksAir(false)
+            .build();
     CharacterEntity ghost = match.deploy(0, ghostRow, LEVEL, 0, 9000, 10000, "Ghost");
     CharacterEntity knight = match.deploy(0, knightRow, LEVEL, 1, 9000, 10000 + distance, "Knight");
     for (int visits = 1; visits <= 200; visits++) {

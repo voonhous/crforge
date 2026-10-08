@@ -27,7 +27,13 @@ class BattleRunOnAttachedTest {
 
   private static final String WRITE = "Test_set_variable";
 
-  /** The configured tables with the Giant's starting action handing a write of 7 to its riders. */
+  /** The riders the Giant's row attaches, written into it; its card plays one Giant. */
+  private static final int RIDERS = 2;
+
+  /**
+   * The configured tables with the Giant's starting action handing a write of 7 to its riders, and
+   * its rider count and its card's count written.
+   */
   private static GameTables handOver(Path folder) throws IOException {
     GameData.altered(
         folder,
@@ -51,8 +57,13 @@ class BattleRunOnAttachedTest {
     Path file = folder.resolve("characters.json");
     ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
     GameData.columns((ObjectNode) document.get("rows"), "GoblinGiant")
-        .put("OnStartingAction", HAND_OVER);
+        .put("OnStartingAction", HAND_OVER)
+        .put("SpawnNumber", RIDERS);
     mapper.writeValue(file.toFile(), document);
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "GoblinGiant").put("SummonNumber", 1));
     GameData.addTestVariable(folder);
     return GameTables.load(folder);
   }
@@ -72,7 +83,7 @@ class BattleRunOnAttachedTest {
     List<CharacterEntity> giants = characters(world, "GoblinGiant");
     List<CharacterEntity> riders = characters(world, "SpearGoblinGiant");
     assertThat(giants).hasSize(1);
-    assertThat(riders).hasSize(2);
+    assertThat(riders).hasSize(RIDERS);
     assertThat(giants.get(0).variable(key)).isZero();
     assertThat(riders).allSatisfy(rider -> assertThat(rider.variable(key)).isEqualTo(7));
   }
@@ -117,7 +128,7 @@ class BattleRunOnAttachedTest {
     BattleWorld world = battle.getWorld();
     int key = world.variableKey("TestVariable");
     List<CharacterEntity> riders = characters(world, "SpearGoblinGiant");
-    assertThat(riders).hasSize(2);
+    assertThat(riders).hasSize(RIDERS);
     assertThat(riders)
         .allSatisfy(
             rider -> {

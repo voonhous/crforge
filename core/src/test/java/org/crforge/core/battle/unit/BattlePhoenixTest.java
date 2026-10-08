@@ -122,7 +122,10 @@ class BattlePhoenixTest {
     }
   }
 
-  /** The Phoenix's row with a ring of three fireballs, 1000 out, turned by 30 degrees. */
+  /**
+   * The Phoenix's row with a ring of three fireballs, 1000 out, turned by 30 degrees, flying at
+   * 3000, where its fireballs start.
+   */
   private static GameTables ringOfThree(Path folder) throws IOException {
     return GameData.altered(
         folder,
@@ -131,7 +134,27 @@ class BattlePhoenixTest {
           GameData.columns(rows, "Phoenix").put("SpawnRadius", 1000);
           GameData.columns(rows, "Phoenix").put("SpawnAngleShift", 30);
           GameData.columns(rows, "Phoenix").put("DeathSpawnCount", 3);
+          GameData.columns(rows, "Phoenix").put("FlyingHeight", 3000);
         });
+  }
+
+  /**
+   * The egg's row with its spawner written: one Phoenix once, 3800 ms after a deploy of 1000 ms,
+   * removed at its limit unless asked to stay.
+   */
+  private static GameTables egg(Path folder, boolean destroyAtLimit) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "PhoenixEgg")
+                .put("SpawnCharacter", "PhoenixNoRespawn")
+                .put("SpawnNumber", 1)
+                .put("SpawnLimit", 1)
+                .put("DeployTime", 1000)
+                .put("SpawnStartTime", 3800)
+                .put("SpawnPauseTime", 4300)
+                .put("DestroyAtLimit", destroyAtLimit));
   }
 
   @Test
@@ -261,7 +284,7 @@ class BattlePhoenixTest {
       "an egg hatches once and leaves the visit after, with no death; one whose row keeps it stays"
           + " and fires no more")
   void aLimitedSpawnerFiresOnce(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(egg(Files.createDirectories(folder.resolve("removed")), true));
     CharacterEntity egg = scene.place(0, "PhoenixEgg", X, Y);
     scene.step(200);
     assertThat(scene.firings).hasSize(1);
@@ -270,11 +293,7 @@ class BattlePhoenixTest {
     assertThat(scene.match.getWorld().liveObject(egg.getId())).isNull();
     assertThat(scene.deaths).doesNotContain(egg.name());
 
-    GameTables kept =
-        GameData.altered(
-            folder,
-            "characters",
-            rows -> GameData.columns(rows, "PhoenixEgg").put("DestroyAtLimit", false));
+    GameTables kept = egg(Files.createDirectories(folder.resolve("kept")), false);
     Scene stays = new Scene(kept);
     CharacterEntity same = stays.place(0, "PhoenixEgg", X, Y);
     stays.step(400);

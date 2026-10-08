@@ -10,11 +10,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -33,6 +35,82 @@ class BattleGoblinHutTest {
   private static final String HUT = "GoblinHut_Rework";
 
   private static final String DUMMY = "SpearGoblin_Dummy";
+
+  /** The life state's row, whose fields the scenes write. */
+  private static final String CONTROLLER = "goblin_hut_life_time_controller";
+
+  @TempDir static Path tablesFolder;
+
+  /** The configured tables with every column the scenes read written, by {@link #hutTables}. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheRows() throws IOException {
+    tables = hutTables(tablesFolder, fields -> {});
+  }
+
+  /**
+   * The configured tables copied into a folder with the columns the scenes read written, then the
+   * life state's fields altered as given. The hut: radius 1000, range 6000 (a reach of 7000), a
+   * deploy of 1000 ms, 461 hit points over a life of 30000 ms, one Spear Goblin at its death. Its
+   * life state: a delay of 1000 ms, one Spear Goblin dummy every 2200 ms, 1200 out, turned 20
+   * degrees. The Knight's and the Minion's radius 500, the Cannon's 600. Rage's spawn speed 130,
+   * ZapFreeze's -100, and the Zap's circle of 2500 listing ZapFreeze for 500 ms.
+   */
+  private static GameTables hutTables(Path folder, Consumer<ObjectNode> controller)
+      throws IOException {
+    GameData.altered(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, HUT)
+              .put("CollisionRadius", 1000)
+              .put("Range", 6000)
+              .put("DeployTime", 1000)
+              .put("Hitpoints", 461)
+              .put("LifeTime", 30000)
+              .put("DeathSpawnCharacter", "SpearGoblin")
+              .put("DeathSpawnCount", 1);
+          GameData.columns(rows, "Cannon").put("CollisionRadius", 600);
+        });
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode fields = (ObjectNode) rows.get(CONTROLLER).get("fields");
+          fields
+              .put("ActionDelay", 1000)
+              .put("SpawnData", DUMMY)
+              .put("SpawnInterval", 2200)
+              .put("SpawnNumber", 1)
+              .put("SpawnOffset", 1200)
+              .put("SingleDeployOffsetAngle", 20);
+          controller.accept(fields);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight").put("CollisionRadius", 500);
+          GameData.columns(rows, "Minion").put("CollisionRadius", 500);
+        });
+    GameData.alterLoaded(
+        folder,
+        "character_buffs",
+        rows -> {
+          GameData.columns(rows, "Rage").put("SpawnSpeedMultiplier", 130);
+          GameData.columns(rows, "ZapFreeze").put("SpawnSpeedMultiplier", -100);
+        });
+    GameData.alterLoaded(
+        folder,
+        "area_effect_objects",
+        rows ->
+            GameData.columns(rows, "Zap")
+                .put("Radius", 2500)
+                .put("Buff", "ZapFreeze")
+                .put("BuffTime", 500));
+    return GameTables.load(folder);
+  }
 
   /** One battle with every spawn and the life state's words after each step logged. */
   private static final class Scene {
@@ -94,7 +172,7 @@ class BattleGoblinHutTest {
       "a target in reach as the run starts is spawned at once, then every 44 run passes, the"
           + " start's own counting, turned each way in turn")
   void aTargetAtTheStart() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Knight", 3500, 13000, "K");
     scene.stepThrough(110);
     assertThat(scene.spawns)
@@ -109,7 +187,7 @@ class BattleGoblinHutTest {
       "of three in reach the nearest is taken, and of two equally near the one the index lists"
           + " first")
   void theNearestIsTaken() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Knight", 4000, 12500, "K");
     scene.still(1, "Knight", 10500, 6500, "K2");
     scene.still(1, "Knight", 10500, 18500, "K3");
@@ -121,7 +199,7 @@ class BattleGoblinHutTest {
   @Test
   @DisplayName("a flying unit in reach is found")
   void aFlyerIsFound() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Minion", 4500, 13500, "M");
     scene.stepThrough(24);
     assertThat(scene.spawns).containsExactly("20 " + DUMMY + " 9322 12281");
@@ -132,7 +210,7 @@ class BattleGoblinHutTest {
       "a target that leaves the keep reach and comes back is taken again without a spawn, and the"
           + " next spawn comes when it would have")
   void outAndBack() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     CharacterEntity knight = scene.still(1, "Knight", 3500, 13000, "K");
     scene.stepThrough(29);
     knight.getView().setX(3000);
@@ -155,7 +233,7 @@ class BattleGoblinHutTest {
       "a target killed between ticks marks the run lost as it leaves; a unit moved into reach is"
           + " taken without a spawn, and the spawns come on time")
   void aTargetThatLeaves() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     CharacterEntity knight = scene.still(1, "Knight", 3500, 13000, "K");
     CharacterEntity other = scene.still(1, "Knight", 3500, 20000, "K2");
     scene.stepThrough(40);
@@ -182,13 +260,13 @@ class BattleGoblinHutTest {
       "a rage on the hut steps its timer by 65, what the buff's spawn speed makes of 50, and a spawn"
           + " carries what is left over the interval")
   void aRageQuickensTheSpawns() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Knight", 3500, 13000, "K");
     scene.stepThrough(0);
     scene.hut.spawnBuff("rage", "Rage", 100_000, scene.hut);
     scene.stepThrough(90);
-    // Worked from the record: 34 steps of 65 reach the interval of 2200 with 10 over, the spawn's
-    // own step among them, and 34 more reach it again.
+    // Worked from the written rows: 34 steps of 65 reach the interval of 2200 with 10 over, the
+    // spawn's own step among them, and 34 more reach it again.
     assertThat(scene.spawns)
         .extracting(line -> line.split(" ")[0])
         .containsExactly("20", "53", "87");
@@ -199,12 +277,7 @@ class BattleGoblinHutTest {
   void aChildWithAStartingActionIsRefused(@TempDir Path folder) throws IOException {
     // The hut's life state spawning a Goblin Demolisher, whose row has a starting action.
     GameTables demolishers =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("goblin_hut_life_time_controller").get("fields"))
-                    .put("SpawnData", "GoblinDemolisher"));
+        hutTables(folder, fields -> fields.put("SpawnData", "GoblinDemolisher"));
     Scene scene = new Scene(demolishers);
     scene.still(1, "Knight", 3500, 13000, "K");
     assertThatThrownBy(() -> scene.stepThrough(30))
@@ -215,7 +288,7 @@ class BattleGoblinHutTest {
   @Test
   @DisplayName("a target east of the hut turns the first child the other way")
   void aTargetToTheEast() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Knight", 16500, 12500, "K");
     scene.stepThrough(110);
     assertThat(scene.spawns)
@@ -228,13 +301,7 @@ class BattleGoblinHutTest {
   @Test
   @DisplayName("a row that spawns three fans them at 45, 0 and -45 degrees, the same every round")
   void aFanOfThree(@TempDir Path folder) throws IOException {
-    GameTables three =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("goblin_hut_life_time_controller").get("fields"))
-                    .put("SpawnNumber", 3));
+    GameTables three = hutTables(folder, fields -> fields.put("SpawnNumber", 3));
     Scene scene = new Scene(three);
     scene.still(1, "Knight", 3500, 13000, "K");
     scene.stepThrough(64);
@@ -251,7 +318,7 @@ class BattleGoblinHutTest {
       "the finder takes a troop strictly within the hut's reach and its own radius, and the keep"
           + " test holds one exactly there and lets one go beyond")
   void theEdgeOfTheReach() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     // 7500 from the hut: its collision radius and range, 7000, and the Knight's 500.
     CharacterEntity knight = scene.still(1, "Knight", 3000, 12500, "K");
     scene.stepThrough(24);
@@ -273,7 +340,7 @@ class BattleGoblinHutTest {
       "a stun holds the timer while it lets the target go, so the next spawn comes as much later"
           + " as the stun lasted")
   void aStunHoldsTheTimer() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Cannon", 10500, 19500, "C");
     scene.match.placeAreaEffect(40, "Zap", LEVEL, 1, 10500, 12500, "Z");
     scene.stepThrough(80);
@@ -287,7 +354,7 @@ class BattleGoblinHutTest {
   @DisplayName(
       "a spawn due on the tick the hut's decay kills it still comes, after its death spawn")
   void aSpawnDueAsTheHutDies() {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(tables);
     scene.still(1, "Knight", 3500, 13000, "K");
     scene.stepThrough(62);
     scene.hut.getHitPoints().setHitPoints(2);

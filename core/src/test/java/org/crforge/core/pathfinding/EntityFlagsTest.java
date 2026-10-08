@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,46 +27,49 @@ class EntityFlagsTest {
   @DisplayName("on the configured tables every flag has its tag row's index as its bit")
   void theConfiguredBitsAreTheRowIndices() {
     EntityFlags bits = EntityFlags.of(GameData.tables());
-    assertThat(bits.dashing()).isEqualTo(1L << 2);
-    assertThat(bits.charging()).isEqualTo(1L << 3);
-    assertThat(bits.attacking()).isEqualTo(1L << 5);
-    assertThat(bits.noMove()).isEqualTo(1L << 6);
-    assertThat(bits.noDash()).isEqualTo(1L << 8);
-    assertThat(bits.noAttack()).isEqualTo(1L << 10);
-    assertThat(bits.lockTarget()).isEqualTo(1L << 12);
-    assertThat(bits.noSpawnTimer()).isEqualTo(1L << 13);
-    assertThat(bits.noCheckCollisions()).isEqualTo(1L << 14);
-    assertThat(bits.noCheckAvoidance()).isEqualTo(1L << 15);
-    assertThat(bits.noBuffs()).isEqualTo(1L << 16);
-    assertThat(bits.noPushedByEnemy()).isEqualTo(1L << 17);
-    assertThat(bits.inactive()).isEqualTo(1L << 20);
-    assertThat(bits.activating()).isEqualTo(1L << 21);
-    assertThat(bits.hasShield()).isEqualTo(1L << 22);
-    assertThat(bits.hidden()).isEqualTo(1L << 24);
-    assertThat(bits.abilityDisabled()).isEqualTo(1L << 25);
-    assertThat(bits.buildingDeathSpawnFindLocation()).isEqualTo(1L << 26);
-    assertThat(bits.abilityPostponed()).isEqualTo(1L << 29);
-    assertThat(bits.noSummon()).isEqualTo(1L << 31);
-    assertThat(bits.noSpecialAttack()).isEqualTo(1L << 35);
-    assertThat(bits.hasCapture()).isEqualTo(1L << 37);
-    assertThat(bits.forceIsGround()).isEqualTo(1L << 39);
-    assertThat(bits.noPushback()).isEqualTo(1L << 40);
-    assertThat(bits.noDamage()).isEqualTo(1L << 41);
-    assertThat(bits.noGiantbufferChefEnchantment()).isEqualTo(1L << 43);
-    assertThat(bits.forceIsAir()).isEqualTo(1L << 44);
-    assertThat(bits.captured()).isEqualTo(1L << 45);
-    assertThat(bits.disablePhysical()).isEqualTo(1L << 46);
-    assertThat(bits.castingAbility()).isEqualTo(1L << 50);
-    assertThat(bits.untargetable()).isEqualTo(1L << 51);
-    assertThat(bits.noPushedByAlly()).isEqualTo(1L << 52);
-    assertThat(bits.avoidanceAsObstacle()).isEqualTo(1L << 53);
-    assertThat(bits.abilityCooldownPaused()).isEqualTo(1L << 54);
-    assertThat(bits.warp()).isEqualTo(1L << 55);
-    assertThat(bits.noClone()).isEqualTo(1L << 56);
-    assertThat(bits.noMoveAllowAttract()).isEqualTo(1L << 57);
-    // The tables hold no NO_REFLECTED_ATTACK row, so the flag has no bit.
-    assertThat(bits.noReflectedAttack()).isZero();
-    assertThat(bits.keepsTargetingOff()).isEqualTo((1L << 20) | (1L << 21));
+    assertThat(bits.dashing()).isEqualTo(tagBit("DASHING"));
+    assertThat(bits.charging()).isEqualTo(tagBit("CHARGING"));
+    assertThat(bits.attacking()).isEqualTo(tagBit("ATTACKING"));
+    assertThat(bits.noMove()).isEqualTo(tagBit("NO_MOVE"));
+    assertThat(bits.noDash()).isEqualTo(tagBit("NO_DASH"));
+    assertThat(bits.noAttack()).isEqualTo(tagBit("NO_ATTACK"));
+    assertThat(bits.lockTarget()).isEqualTo(tagBit("LOCK_TARGET"));
+    assertThat(bits.noSpawnTimer()).isEqualTo(tagBit("NO_SPAWNTIMER"));
+    assertThat(bits.noCheckCollisions()).isEqualTo(tagBit("NO_CHECKCOLLISIONS"));
+    assertThat(bits.noCheckAvoidance()).isEqualTo(tagBit("NO_CHECKAVOIDANCE"));
+    assertThat(bits.noBuffs()).isEqualTo(tagBit("NO_BUFFS"));
+    assertThat(bits.noPushedByEnemy()).isEqualTo(tagBit("NO_PUSHED_BY_ENEMY"));
+    assertThat(bits.inactive()).isEqualTo(tagBit("INACTIVE"));
+    assertThat(bits.activating()).isEqualTo(tagBit("ACTIVATING"));
+    assertThat(bits.hasShield()).isEqualTo(tagBit("HAS_SHIELD"));
+    assertThat(bits.hidden()).isEqualTo(tagBit("HIDDEN"));
+    assertThat(bits.abilityDisabled()).isEqualTo(tagBit("ABILITY_DISABLED"));
+    assertThat(bits.buildingDeathSpawnFindLocation())
+        .isEqualTo(tagBit("BUILDING_DEATH_SPAWN_FIND_LOCATION"));
+    assertThat(bits.abilityPostponed()).isEqualTo(tagBit("ABILITY_POSTPONED"));
+    assertThat(bits.noSummon()).isEqualTo(tagBit("NO_SUMMON"));
+    assertThat(bits.noSpecialAttack()).isEqualTo(tagBit("NO_SPECIAL_ATTACK"));
+    assertThat(bits.hasCapture()).isEqualTo(tagBit("HAS_CAPTURE"));
+    assertThat(bits.forceIsGround()).isEqualTo(tagBit("FORCE_IS_GROUND"));
+    assertThat(bits.noPushback()).isEqualTo(tagBit("NO_PUSHBACK"));
+    assertThat(bits.noDamage()).isEqualTo(tagBit("NO_DAMAGE"));
+    assertThat(bits.noGiantbufferChefEnchantment())
+        .isEqualTo(tagBit("NO_GIANTBUFFER_CHEF_ENCHANTMENT"));
+    assertThat(bits.forceIsAir()).isEqualTo(tagBit("FORCE_IS_AIR"));
+    assertThat(bits.captured()).isEqualTo(tagBit("CAPTURED"));
+    assertThat(bits.disablePhysical())
+        .isEqualTo(tagBit("DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS"));
+    assertThat(bits.castingAbility()).isEqualTo(tagBit("CASTING_ABILITY"));
+    assertThat(bits.untargetable()).isEqualTo(tagBit("UNTARGETABLE"));
+    assertThat(bits.noPushedByAlly()).isEqualTo(tagBit("NO_PUSHED_BY_ALLY"));
+    assertThat(bits.avoidanceAsObstacle()).isEqualTo(tagBit("AVOIDANCE_AS_OBSTACLE"));
+    assertThat(bits.abilityCooldownPaused()).isEqualTo(tagBit("ABILITY_COOLDOWN_PAUSED"));
+    assertThat(bits.warp()).isEqualTo(tagBit("WARP"));
+    assertThat(bits.noClone()).isEqualTo(tagBit("NO_CLONE"));
+    assertThat(bits.noMoveAllowAttract()).isEqualTo(tagBit("NO_MOVE_ALLOW_ATTRACT"));
+    // A tag the tables leave out has no bit: 16.402.18 holds no NO_REFLECTED_ATTACK row.
+    assertThat(bits.noReflectedAttack()).isEqualTo(tagBit("NO_REFLECTED_ATTACK"));
+    assertThat(bits.keepsTargetingOff()).isEqualTo(tagBit("INACTIVE") | tagBit("ACTIVATING"));
   }
 
   @Test
@@ -79,9 +84,10 @@ class EntityFlagsTest {
         .isEqualTo(configured.noSpecialAttack());
     assertThat(shifted.noMove()).isEqualTo(configured.noMove());
     assertThat(shifted.forceIsGround()).isEqualTo(configured.forceIsGround() >>> 1);
-    assertThat(shifted.noDamage()).isEqualTo(1L << 40);
-    assertThat(shifted.untargetable()).isEqualTo(1L << 50);
-    assertThat(shifted.noMoveAllowAttract()).isEqualTo(1L << 56);
+    assertThat(shifted.noDamage()).isEqualTo(bitWithout("NO_DAMAGE", "HAS_CAPTURE"));
+    assertThat(shifted.untargetable()).isEqualTo(bitWithout("UNTARGETABLE", "HAS_CAPTURE"));
+    assertThat(shifted.noMoveAllowAttract())
+        .isEqualTo(bitWithout("NO_MOVE_ALLOW_ATTRACT", "HAS_CAPTURE"));
   }
 
   @Test
@@ -90,6 +96,23 @@ class EntityFlagsTest {
     assertThat(EntityFlags.NONE.untargetable()).isZero();
     assertThat(EntityFlags.NONE.noMove()).isZero();
     assertThat(EntityFlags.NONE.keepsTargetingOff()).isZero();
+  }
+
+  /**
+   * A tag's bit as the configured game tags table numbers it: one shifted by its row's index, read
+   * from the table's own rows; 0 for a tag the table leaves out.
+   */
+  private static long tagBit(String tag) {
+    GameTable tags = GameData.tables().table("game_tags");
+    return tags.has(tag) ? 1L << Shipped.row("game_tags", tag).index() : 0;
+  }
+
+  /**
+   * A tag's bit once another tag is dropped: one index lower when it came after the dropped one.
+   */
+  private static long bitWithout(String tag, String dropped) {
+    int index = Shipped.row("game_tags", tag).index();
+    return 1L << (index > Shipped.row("game_tags", dropped).index() ? index - 1 : index);
   }
 
   /** The configured tables copied into a folder, one game tag dropped and the later ones moved. */

@@ -23,15 +23,29 @@ class BattleExecuteIfTrueTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** Witch_Soul_Drain's ConstantFlightDuration 1000 ms, in ticks. */
-  private static final int FLIGHT_TICKS = 20;
+  /** Witch_Soul_Drain's ConstantFlightDuration, written into its row. */
+  private static final int FLIGHT_MS = 1000;
 
-  /** The tables with the row's ExecuteIfTrue set to the given expression. */
+  /** {@link #FLIGHT_MS} in ticks. */
+  private static final int FLIGHT_TICKS = FLIGHT_MS / 50;
+
+  /** BossBandit_ability_warp's WarpY, written into its row: down the arena for the bottom side. */
+  private static final int WARP_Y = -6000;
+
+  /**
+   * The tables with the row's ExecuteIfTrue set to the given expression, the soul's flight time and
+   * the warp's distance written.
+   */
   private static GameTables gated(Path folder, String row, String gate) throws IOException {
     return GameData.altered(
         folder,
         "actions",
-        rows -> ((ObjectNode) rows.get(row).get("fields")).put("ExecuteIfTrue", gate));
+        rows -> {
+          ((ObjectNode) rows.get("Witch_Soul_Drain").get("fields"))
+              .put("ConstantFlightDuration", FLIGHT_MS);
+          ((ObjectNode) rows.get("BossBandit_ability_warp").get("fields")).put("WarpY", WARP_Y);
+          ((ObjectNode) rows.get(row).get("fields")).put("ExecuteIfTrue", gate);
+        });
   }
 
   @ParameterizedTest(name = "ExecuteIfTrue {0}")
@@ -41,7 +55,8 @@ class BattleExecuteIfTrueTest {
   void aSoulFlightAsksItsGate(String gate, boolean heals, @TempDir Path folder) throws IOException {
     GameTables tables = gated(folder, "Witch_Soul_Drain", gate);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
-    CharacterEntity witch = match.deploy(0, GameData.unit("Witch_EV1"), LEVEL, 0, 14500, 8000);
+    CharacterEntity witch =
+        match.deploy(0, match.getWorld().getRecords().unit("Witch_EV1"), LEVEL, 0, 14500, 8000);
     match.getBattle().step();
     BattleWorld world = match.getWorld();
     int before = witch.getHitPoints().getHitPoints();
@@ -80,7 +95,8 @@ class BattleExecuteIfTrueTest {
               }
             });
     CharacterEntity mk =
-        match.deploy(0, GameData.unit("MegaKnight_EV1"), LEVEL, 0, 3500, 23500, "mk");
+        match.deploy(
+            0, match.getWorld().getRecords().unit("MegaKnight_EV1"), LEVEL, 0, 3500, 23500, "mk");
     for (int i = 0; i < 40; i++) {
       match.getBattle().step();
     }
@@ -99,14 +115,21 @@ class BattleExecuteIfTrueTest {
   }
 
   @ParameterizedTest(name = "ExecuteIfTrue {0}")
-  @CsvSource({"0, 3500, 12000", "1, 3500, 6000"})
+  @CsvSource({"0, false", "1, true"})
   @DisplayName("a relative warp moves its unit only past its gate")
-  void aRelativeWarpAsksItsGate(String gate, int x, int y, @TempDir Path folder)
+  void aRelativeWarpAsksItsGate(String gate, boolean warps, @TempDir Path folder)
       throws IOException {
     GameTables tables = gated(folder, "BossBandit_ability_warp", gate);
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity bandit =
-        match.deploy(0, GameData.unit("BossBandit"), LEVEL, 0, 3500, 12000, "BossBandit");
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit("BossBandit"),
+            LEVEL,
+            0,
+            3500,
+            12000,
+            "BossBandit");
     match.getBattle().step();
     BattleWorld world = match.getWorld();
 
@@ -114,6 +137,7 @@ class BattleExecuteIfTrueTest {
         .actionHolder()
         .start(world.getActions().build("BossBandit_ability_warp", world.binding(bandit)));
 
-    assertThat(new int[] {bandit.getView().getX(), bandit.getView().getY()}).containsExactly(x, y);
+    assertThat(new int[] {bandit.getView().getX(), bandit.getView().getY()})
+        .containsExactly(3500, warps ? 12000 + WARP_Y : 12000);
   }
 }
