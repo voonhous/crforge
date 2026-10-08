@@ -67,8 +67,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * <p>The caller names the kind of scenario ({@link ScenarioShape}). A replay is read as above. A
  * generated case is read by the fields of the version's generated cases ({@link
- * ReplayFormat#generated}), which for 16.402.18 are 14.593.1's, with the version's command types; a
- * version whose generated cases' fields are not established has the whole case refused.
+ * ReplayFormat#generated}), which for a data version of client 16.402.17 are 14.593.1's, with the
+ * version's command types; a version whose generated cases' fields are not established has the
+ * whole case refused.
  *
  * <p>{@link #translate} stops at the first input it cannot map. {@link #survey} reads the same
  * scenario the same way and lists every refusal it meets instead: each field and pinned value it
