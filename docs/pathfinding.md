@@ -177,5 +177,4 @@ The integration requirements this document previously listed are now implemented
 
 - `core/src/test/java/org/crforge/core/pathfinding/GridGoldenTrajectoryTest.java` replays the five Knight cases through `GameEngine` and compares every tick.
 - `core/src/test/java/org/crforge/core/pathfinding/GridSmokeScenariosTest.java` runs several units at once, 600 ticks or a hundred ticks past the first attack lock, and checks the per-tick invariants on every grid-driven troop; the four disabled tests at the bottom hold the anomalies above.
-- The debug visualizer runs the battle core: its `G`, `N` and `E` keys paint the battle's routing cell costs, draw routes and references and export the played units' trajectories. The `M` mode flip belongs to the original engine and is not offered there. See the controls table and the overlays section in [architecture.md](architecture.md).
-- `E` writes one file per unit a card play made to `build/trajectories`, in the layout of the reference trajectories the battle core's `TrajectoryRecorder` writes.
+- The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. The `M` mode flip belongs to the original engine and is not offered there. See the controls table and the overlays section in [architecture.md](architecture.md).

@@ -2,9 +2,6 @@ package org.crforge.desktop.battle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,12 +11,10 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A visualizer session on the battle core: its plays go through the battle's play path, a refused
- * play becomes a message instead of a crash, and its trajectory export runs on the battle core's
- * own objects.
+ * A visualizer session on the battle core: its plays go through the battle's play path, and a
+ * refused play becomes a message instead of a crash.
  */
 class BattleSessionTest {
 
@@ -175,24 +170,6 @@ class BattleSessionTest {
     assertThat(session.cardUnavailableReason(0, 0)).contains("no hand");
     assertThat(session.play(0, 0, 9500, 8500)).isFalse();
     assertThat(session.messages()).last().asString().contains("no hand");
-  }
-
-  @Test
-  @DisplayName("every played unit's run is recorded and exported in the reference layout")
-  void playedUnitsAreRecorded(@TempDir Path folder) throws IOException {
-    BattleSession session = only("Knight");
-    assertThat(session.play(0, 0, 3500, 8500)).isTrue();
-    for (int i = 0; i < 60; i++) {
-      session.step();
-    }
-
-    List<Path> written = session.getTrajectories().export(folder);
-
-    assertThat(written).hasSize(1);
-    String text = Files.readString(written.get(0));
-    assertThat(written.get(0).getFileName().toString()).isEqualTo("b1_0.json");
-    assertThat(text).contains("\"card\": \"Knight\"").contains("\"records\": [");
-    assertThat(text).contains("{\"tick\": 0,");
   }
 
   @Test

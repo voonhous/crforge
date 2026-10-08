@@ -18,7 +18,6 @@ public enum WorkspaceAction {
   ROUTES,
   FLIP,
   SIDEBAR,
-  EXPORT,
   NEXT_VERSION,
   FASTER,
   SLOWER,
@@ -52,7 +51,6 @@ public enum WorkspaceAction {
       case Input.Keys.N -> ROUTES;
       case Input.Keys.F -> FLIP;
       case Input.Keys.T -> SIDEBAR;
-      case Input.Keys.E -> EXPORT;
       case Input.Keys.V -> NEXT_VERSION;
       case Input.Keys.PLUS, Input.Keys.EQUALS -> FASTER;
       case Input.Keys.MINUS -> SLOWER;
