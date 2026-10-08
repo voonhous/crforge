@@ -56,8 +56,8 @@ body:
       description: Which module is affected?
       options:
         - core
-        - data
         - desktop
+        - conformance
     validations:
       required: false
 

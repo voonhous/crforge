@@ -28,7 +28,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew build
 
 # Run tests
-./gradlew :core:test :data:test
+./gradlew test
 
 # Run debug visualizer
 ./gradlew :desktop:run
@@ -61,12 +61,6 @@ overlays (`G`, `N`).
 | [Card Data Schema](docs/schema.md)                         | JSON schema, loading pipeline, reference resolution      |
 
 See [docs/architecture.md](docs/architecture.md) for the full documentation index.
-
-## Tools
-
-| Tool                                                | Description                                                            |
-|-----------------------------------------------------|------------------------------------------------------------------------|
-| [Formation Visualizer](tools/formation_visualizer/) | Tkinter app for viewing and editing multi-unit spawn formation offsets |
 
 ## Code Style
 

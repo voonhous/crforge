@@ -10,10 +10,10 @@
 
 ## Test plan
 <!-- How were the changes verified? -->
-- [ ] Ran `./gradlew :core:test :data:test`
+- [ ] Ran `./gradlew test`
 - [ ] Manual testing in debug visualizer
 
 ## Checklist
-- [ ] Tests pass (`./gradlew :core:test :data:test`)
+- [ ] Tests pass (`./gradlew test`)
 - [ ] Ran `./gradlew spotlessApply`
 - [ ] No secrets or credentials committed
