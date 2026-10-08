@@ -216,7 +216,7 @@ The unit tests read the game tables of the version `crforge-data.lock` names and
 - A test of a shipped row reads the raw column (`Shipped.row`, `unitRow`, `number`, `scaled`, `cost`, `rarity`, `battleTicks`) and works the expected value out with its own arithmetic, never through the production code it tests.
 - A census over the shipped rows asserts an invariant, never a count.
 
-`GameData`, `Shipped` and `Scenarios` (battles and replays a test writes) are in `core/src/testFixtures`, shared by the core, conformance and desktop tests. Recordings of the game belong in the game data repository and are never committed here, and no test of the battle core reads a recording or a model's output: the six Knight walks under `core/src/test/resources/pathfinding`, output of a model made for the early grid port, are read only by the original engine's `GridGoldenTrajectoryTest` and go with that engine (see their `README.md`). Test names and comments follow the same rule: they name the column a value comes from, not the value one version ships.
+`GameData`, `Shipped` and `Scenarios` (battles and replays a test writes) are in `core/src/testFixtures`, shared by the core, conformance and desktop tests. Recordings of the game belong in the game data repository and are never committed here, and no test of the battle core reads a recording or a model's output. Test names and comments follow the same rule: they name the column a value comes from, not the value one version ships.
 
 ## What is covered today
 

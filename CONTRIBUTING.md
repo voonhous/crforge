@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This guide covers the basics.
 
 - **Java 17** is required
 - Build: `export JAVA_HOME=$(/usr/libexec/java_home -v 17) && ./gradlew build`
-- Run tests: `./gradlew :core:test :data:test`
+- Run tests: `./gradlew test`
 - Run the debug visualizer: `./gradlew :desktop:run`
 
 ## Code Style
@@ -24,7 +24,7 @@ CI will reject PRs that don't pass `spotlessCheck`.
 ## Testing
 
 - Tests use JUnit 5 + AssertJ.
-- Run: `./gradlew :core:test :data:test`
+- Run: `./gradlew test`
 - For bug fixes, follow TDD: write a failing test first, then fix the bug and confirm the test passes.
 - Tests should exercise the real code path, not just call the fix function in isolation.
 

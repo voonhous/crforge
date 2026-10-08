@@ -32,7 +32,7 @@ Thumbs.db
 # Logs
 *.log
 
-# Python (tools/formation_visualizer and a local virtual environment)
+# Python (a local virtual environment and its caches)
 __pycache__/
 *.py[cod]
 venv/

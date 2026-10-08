@@ -6,5 +6,4 @@ rootProject.name = "crforge"
 
 include("core")
 include("desktop")
-include("data")
 include("conformance")
