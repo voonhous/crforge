@@ -30,6 +30,35 @@ class BattleProjectileFlightTest {
   /** The reference tick a shot fired on 168 is in the air at. */
   private static final int IN_FLIGHT_TICK = 170;
 
+  /** The id of the run's first shot, the first of the projectile band. */
+  private static final int FIRST_SHOT = 4000000;
+
+  /** The reference's first event of a kind: its first launch or its first impact. */
+  private static JsonNode firstEvent(JsonNode reference, String kind) {
+    for (JsonNode event : reference.get("events")) {
+      if (event.get("event").asText().equals(kind)) {
+        return event;
+      }
+    }
+    throw new AssertionError("the reference lists no " + kind);
+  }
+
+  /** Where the reference has a projectile after the flight step of a tick: x, y and z. */
+  private static int[] position(JsonNode reference, int tick, int id) {
+    for (JsonNode row : reference.get("projectiles")) {
+      if (row.get(0).asInt() == tick && row.get(1).asInt() == id) {
+        return new int[] {row.get(2).asInt(), row.get(3).asInt(), row.get(4).asInt()};
+      }
+    }
+    throw new AssertionError("the reference has no position of " + id + " on " + tick);
+  }
+
+  /** A position as the recording lists it. */
+  private static String positionLine(JsonNode reference, int tick, int id) {
+    int[] at = position(reference, tick, id);
+    return "%d %d %d %d %d".formatted(tick, id, at[0], at[1], at[2]);
+  }
+
   /** One launch, impact or position as the reference lists it, flattened to a comparable line. */
   private static final class Recording implements WorldObserver {
     final List<String> launches = new ArrayList<>();
@@ -214,8 +243,8 @@ class BattleProjectileFlightTest {
     assertThat(entities.get(0)).isInstanceOf(ProjectileEntity.class);
     ProjectileEntity shot = (ProjectileEntity) entities.get(0);
     assertThat(shot.getKind()).isEqualTo(BattleEntity.KIND_PROJECTILE);
-    assertThat(shot.getId()).isEqualTo(4000000);
-    assertThat(shot.name()).isEqualTo("proj_4000000");
+    assertThat(shot.getId()).isEqualTo(FIRST_SHOT);
+    assertThat(shot.name()).isEqualTo("proj_" + FIRST_SHOT);
     assertThat(entities.stream().map(BattleEntity::getId).toList())
         .as("the projectile band precedes the character band")
         .containsExactly(4000000, 5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006);
@@ -224,13 +253,13 @@ class BattleProjectileFlightTest {
     assertThat(shot.getTarget())
         .isSameAs(BattleMusketeerRunTest.towerNamed(battle, BattleMusketeerRunTest.PRINCESS_TOWER));
     assertThat(shot.getSide()).isEqualTo(musketeer.side());
-    assertThat(shot.level()).isEqualTo(11);
-    assertThat(shot.damage()).isEqualTo(217);
+    assertThat(shot.level()).isEqualTo(reference.get("level").asInt());
+    assertThat(shot.damage()).isEqualTo(firstEvent(reference, "impact").get("damage").asInt());
     assertThat(shot.isReleased()).isFalse();
     assertThat(shot.isRemovable()).isFalse();
-    assertThat(shot.getX()).isEqualTo(3656);
-    assertThat(shot.getY()).isEqualTo(20501);
-    assertThat(shot.getZ()).isEqualTo(386);
+    assertThat(new int[] {shot.getX(), shot.getY(), shot.getZ()})
+        .as("where the reference has it")
+        .containsExactly(position(reference, IN_FLIGHT_TICK, FIRST_SHOT));
 
     // The arrival tick: the impact lands in the post-hook pass and the closing cleanup drops the
     // released projectile, before the Musketeer's next shot has even left.
@@ -239,11 +268,12 @@ class BattleProjectileFlightTest {
         tick++) {
       battle.step();
     }
+    JsonNode launch = firstEvent(reference, "launch");
     assertThat(shot.isReleased()).isTrue();
     assertThat(shot.isRemovable()).isTrue();
-    assertThat(shot.getX()).isEqualTo(3500);
-    assertThat(shot.getY()).isEqualTo(25500);
-    assertThat(shot.getZ()).isZero();
+    assertThat(shot.getX()).as("at its aim").isEqualTo(launch.get("aim").get(0).asInt());
+    assertThat(shot.getY()).isEqualTo(launch.get("aim").get(1).asInt());
+    assertThat(shot.getZ()).isEqualTo(launch.get("aim_z").asInt());
     assertThat(battle.getHolder().entities()).doesNotContain(shot);
     assertThat(battle.getHolder().entities())
         .noneMatch(entity -> entity instanceof ProjectileEntity);
@@ -275,9 +305,10 @@ class BattleProjectileFlightTest {
     assertThat(battle.getHolder().entities()).doesNotContain(tower);
     assertThat(shot.getTarget()).as("the target is forgotten").isNull();
     assertThat(shot.getOwner()).as("the owner stands").isSameAs(musketeer);
-    assertThat(shot.getAimX()).isEqualTo(3500);
-    assertThat(shot.getAimY()).isEqualTo(25500);
-    assertThat(shot.getAimZ()).isZero();
+    JsonNode launch = firstEvent(reference, "launch");
+    assertThat(shot.getAimX()).isEqualTo(launch.get("aim").get(0).asInt());
+    assertThat(shot.getAimY()).isEqualTo(launch.get("aim").get(1).asInt());
+    assertThat(shot.getAimZ()).isEqualTo(launch.get("aim_z").asInt());
     assertThat(BattleMusketeerRunTest.referenceName(musketeer)).isNull();
     assertThat(musketeer.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
 
@@ -290,13 +321,13 @@ class BattleProjectileFlightTest {
     }
     assertThat(recording.positions)
         .containsSubsequence(
-            "171 4000000 3625 21500 322",
-            "172 4000000 3594 22499 258",
-            "175 4000000 3501 25498 65");
+            positionLine(reference, IN_FLIGHT_TICK + 1, FIRST_SHOT),
+            positionLine(reference, IN_FLIGHT_TICK + 2, FIRST_SHOT),
+            positionLine(reference, IN_FLIGHT_TICK + 5, FIRST_SHOT));
     assertThat(recording.impacts).isEmpty();
     assertThat(shot.isReleased()).isTrue();
-    assertThat(shot.getX()).isEqualTo(3500);
-    assertThat(shot.getY()).isEqualTo(25500);
+    assertThat(shot.getX()).isEqualTo(launch.get("aim").get(0).asInt());
+    assertThat(shot.getY()).isEqualTo(launch.get("aim").get(1).asInt());
     assertThat(battle.getHolder().entities()).doesNotContain(shot);
   }
 

@@ -1,10 +1,15 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.row;
+import static org.crforge.core.battle.Shipped.text;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,8 +24,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Applied after the tick's buff pass, the buff is whole at the end of the impact's tick. Two
  * scenes: the top side's Electro Dragon hits the bottom side's left princess tower with one bolt (a
- * projectile without a radius, ZapFreeze for 500 ms), and the top side's Ice Spirit lands on a
- * Giant of the bottom side (a projectile with a radius, Freeze for 1100 ms).
+ * projectile without a radius, its target buff for its BuffTime), and the top side's Ice Spirit
+ * lands on a Giant of the bottom side (a projectile with a radius, likewise).
  */
 class BattleProjectileBuffDrainTest {
 
@@ -29,6 +34,11 @@ class BattleProjectileBuffDrainTest {
 
   /** Long enough for every deploy and the first hit. */
   private static final int TICKS = 300;
+
+  /** The projectile a unit's row fires. */
+  private static GameRow projectileOf(String unit) {
+    return row("projectiles", text(unitRow(unit), "Projectile"));
+  }
 
   /** Side 0's left princess tower. */
   private static TowerEntity leftTower(Standard1v1Battle match) {
@@ -80,7 +90,11 @@ class BattleProjectileBuffDrainTest {
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, true);
     TowerEntity tower = leftTower(match);
     match.deploy(0, GameData.unit("ElectroDragon"), LEVEL, 1, 3500, 10500, "Dragon");
-    return record(match, tower, "ZapFreeze", TowerEntity.TARGETING_SLOT);
+    return record(
+        match,
+        tower,
+        text(projectileOf("ElectroDragon"), "TargetBuff"),
+        TowerEntity.TARGETING_SLOT);
   }
 
   /** The top side's Ice Spirit running onto a Giant of the bottom side; the towers do not fight. */
@@ -88,7 +102,11 @@ class BattleProjectileBuffDrainTest {
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity giant = match.deploy(0, GameData.unit("Giant"), LEVEL, 0, 9000, 11000, "Giant");
     match.deploy(0, GameData.unit("IceSpirits"), LEVEL, 1, 9000, 15000, "Spirit");
-    return record(match, giant, "Freeze", CharacterEntity.TARGETING_SLOT);
+    return record(
+        match,
+        giant,
+        text(projectileOf("IceSpirits"), "TargetBuff"),
+        CharacterEntity.TARGETING_SLOT);
   }
 
   @Test
@@ -97,7 +115,9 @@ class BattleProjectileBuffDrainTest {
           + " keeps its targeting through the bolt's tick and loses it on the next")
   void aBoltsStunIsAppliedAtTheDrain() {
     Record record = dragonOnTower(GameData.tables());
-    assertThat(record.left()).containsExactly(500, 450);
+    // Whole at the end of the bolt's tick, one visit less at the end of the next.
+    int time = number(projectileOf("ElectroDragon"), "BuffTime");
+    assertThat(record.left()).containsExactly(time, time - 50);
     assertThat(record.targetingOn()).containsExactly(true, false);
   }
 
@@ -107,7 +127,8 @@ class BattleProjectileBuffDrainTest {
           + " the damage drain: the Giant keeps its targeting through the impact's tick")
   void anAreaStunIsAppliedAtTheDrain() {
     Record record = spiritOnGiant(GameData.tables());
-    assertThat(record.left()).containsExactly(1100, 1050);
+    int time = number(projectileOf("IceSpirits"), "BuffTime");
+    assertThat(record.left()).containsExactly(time, time - 50);
     assertThat(record.targetingOn()).containsExactly(true, false);
   }
 }

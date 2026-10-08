@@ -2,10 +2,14 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * When the damage of a projectile's area impact lands within its tick. The game queues each
@@ -19,7 +23,9 @@ import org.junit.jupiter.api.Test;
  * Dark Prince on the step the Knight's first hit lands on it, with the shield whole. The Knight's
  * hit takes the shield down to 15 and the Fireball breaks it, its excess lost, so the Dark Prince
  * keeps every hit point. The other order would break the shield with the Fireball and take the
- * Knight's whole hit off the hit points.
+ * Knight's whole hit off the hit points. The scene writes every column its outcome is read from -
+ * both units' rows, the Fireball's projectile, the towers' places and the columns of theirs the
+ * walk reads - so its ticks, hit points and points are its own and not a version's.
  */
 class BattleProjectileAreaDrainTest {
 
@@ -40,18 +46,125 @@ class BattleProjectileAreaDrainTest {
   /** The tick of the step that lands the Knight's first hit and the Fireball's impact. */
   private static final int BOTH_HITS = 299;
 
-  /** The Dark Prince's hit points and shield before the step. */
+  /** The Dark Prince's hit points and shield before the step, as the scene writes them. */
   private static final int HIT_POINTS = 469;
 
   private static final int SHIELD = 94;
+
+  /** The configured tables with the scene's columns written. */
+  private static GameTables written(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight")
+              .put("Hitpoints", 690)
+              .put("Damage", 79)
+              .put("HitSpeed", 1200)
+              .put("LoadTime", 700)
+              .put("Speed", 60)
+              .put("Mass", 6)
+              .put("CollisionRadius", 500)
+              .put("Range", 1200)
+              .put("SightRange", 5500)
+              .put("DeployTime", 1000)
+              .put("ProjectileStartRadius", 450)
+              .put("ProjectileStartZ", 450);
+          GameData.columns(rows, "DarkPrince")
+              .put("Hitpoints", HIT_POINTS)
+              .put("ShieldHitpoints", SHIELD)
+              .put("Damage", 104)
+              .put("DamageSpecial", 208)
+              .put("AreaDamageRadius", 1100)
+              .put("ChargeRange", 300)
+              .put("ChargeSpeedMultiplier", 200)
+              .put("JumpHeight", 4000)
+              .put("JumpSpeed", 160)
+              .put("HitSpeed", 1400)
+              .put("LoadTime", 1000)
+              .put("Speed", 60)
+              .put("Mass", 6)
+              .put("CollisionRadius", 600)
+              .put("Range", 1200)
+              .put("SightRange", 5500)
+              .put("DeployTime", 1000)
+              .put("ProjectileStartRadius", 450)
+              .put("ProjectileStartZ", 450);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows ->
+            GameData.columns(rows, "FireballSpell")
+                .put("Damage", 269)
+                .put("Radius", 2500)
+                .put("Speed", 600)
+                .put("Gravity", 50)
+                .put("Pushback", 1000));
+    writeTowers(folder);
+    return GameTables.load(folder);
+  }
+
+  /** Writes the towers' columns, their shots and their places into an altered copy. */
+  private static void writeTowers(Path folder) throws IOException {
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("Range", 7500)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 800)
+              .put("Hitpoints", 1400)
+              .put("ProjectileStartRadius", 300)
+              .put("ProjectileStartZ", 3000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("Range", 7000)
+              .put("SightRange", 7000)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 500)
+              .put("Hitpoints", 2400)
+              .put("ProjectileStartRadius", 750)
+              .put("ProjectileStartZ", 3500)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "TowerPrincessProjectile")
+              .put("Damage", 50)
+              .put("Speed", 600)
+              .put("Gravity", 60);
+          GameData.columns(rows, "KingProjectile")
+              .put("Damage", 50)
+              .put("Speed", 1000)
+              .put("Gravity", 50);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+  }
 
   /** The towers at the first level, holding fire; the Knight, the Dark Prince and the Fireball. */
   private static Standard1v1Battle scene(GameTables tables) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, false);
     match.getWorld().seed(SEED);
-    match.play(220, GameData.card("Knight"), LEVEL, 0, 3500, 14000, "K");
-    match.play(240, GameData.card("DarkPrince"), LEVEL, 1, 3500, 21500, "D");
-    match.play(FIREBALL, GameData.card("Fireball"), LEVEL, 0, AIM_X, AIM_Y, "F");
+    match.play(220, match.getWorld().getRecords().card("Knight"), LEVEL, 0, 3500, 14000, "K");
+    match.play(240, match.getWorld().getRecords().card("DarkPrince"), LEVEL, 1, 3500, 21500, "D");
+    match.play(
+        FIREBALL, match.getWorld().getRecords().card("Fireball"), LEVEL, 0, AIM_X, AIM_Y, "F");
     return match;
   }
 
@@ -87,8 +200,8 @@ class BattleProjectileAreaDrainTest {
   @DisplayName(
       "the Fireball's impact lands at the damage drain after the"
           + " Knight's hit, so the shield takes both and the Dark Prince keeps its hit points")
-  void theImpactLandsAfterTheDirectHit() {
-    CharacterEntity darkPrince = throughBothHits(scene(GameData.tables()));
+  void theImpactLandsAfterTheDirectHit(@TempDir Path folder) throws IOException {
+    CharacterEntity darkPrince = throughBothHits(scene(written(folder)));
     assertThat(darkPrince.getHitPoints().getShield()).as("broken").isZero();
     assertThat(darkPrince.getHitPoints().getHitPoints())
         .as("the Fireball's excess lost with the shield")

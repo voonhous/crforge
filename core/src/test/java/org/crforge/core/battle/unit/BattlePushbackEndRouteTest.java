@@ -2,11 +2,15 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * What a unit walks toward once a pushback's flight has ended. The game drops the route the unit
@@ -16,7 +20,9 @@ import org.junit.jupiter.api.Test;
  * <p>The scene: the bottom side's Monk walks up the left lane, the top side's Giant comes down it,
  * and the Monk's third hit pushes the Giant sideways, the flight starting on tick 417. The flight's
  * budget runs out on tick 428 (the Giant stands) and its last visit on tick 429 steps it 25 units
- * back; tick 430 is its first walking step.
+ * back; tick 430 is its first walking step. The scene writes every column its outcome is read from
+ * - both units' rows, the towers' places, the columns of theirs the walk reads and their shots - so
+ * its ticks, cells and points are its own and not a version's.
  */
 class BattlePushbackEndRouteTest {
 
@@ -37,12 +43,112 @@ class BattlePushbackEndRouteTest {
   /** The routing cell the Giant headed for before the push: column 8, row 36. */
   private static final int HELD_WAYPOINT = 36 * WIDTH + 8;
 
+  /** The configured tables with the scene's columns written. */
+  private static GameTables written(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Monk")
+              .put("Hitpoints", 865)
+              .put("Damage", 55)
+              .put("VariableDamage2", 55)
+              .put("VariableDamage3", 165)
+              .put("MeleePushback3", 1800)
+              .put("HitSpeed", 800)
+              .put("LoadTime", 600)
+              .put("Speed", 60)
+              .put("Mass", 6)
+              .put("CollisionRadius", 500)
+              .put("Range", 1200)
+              .put("SightRange", 5500)
+              .put("DeployTime", 1000)
+              .put("ProjectileStartRadius", 450)
+              .put("ProjectileStartZ", 450)
+              .putArray("AttackSequence")
+              .add(0)
+              .add(1)
+              .add(2);
+          GameData.columns(rows, "Giant")
+              .put("Hitpoints", 1550)
+              .put("Damage", 99)
+              .put("HitSpeed", 1500)
+              .put("LoadTime", 1000)
+              .put("Speed", 45)
+              .put("StopMovementAfterMS", 640)
+              .put("WaitMS", 100)
+              .put("Mass", 18)
+              .put("CollisionRadius", 750)
+              .put("Range", 1200)
+              .put("SightRange", 7500)
+              .put("SightClip", 2000)
+              .put("SightClipSide", 2000)
+              .put("DeployTime", 1000)
+              .put("ProjectileStartRadius", 450)
+              .put("ProjectileStartZ", 450);
+        });
+    writeTowers(folder);
+    return GameTables.load(folder);
+  }
+
+  /** Writes the towers' columns, their shots and their places into an altered copy. */
+  private static void writeTowers(Path folder) throws IOException {
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("Range", 7500)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 800)
+              .put("Hitpoints", 1400)
+              .put("ProjectileStartRadius", 300)
+              .put("ProjectileStartZ", 3000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("Range", 7000)
+              .put("SightRange", 7000)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 500)
+              .put("Hitpoints", 2400)
+              .put("ProjectileStartRadius", 750)
+              .put("ProjectileStartZ", 3500)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "TowerPrincessProjectile")
+              .put("Damage", 50)
+              .put("Speed", 600)
+              .put("Gravity", 60);
+          GameData.columns(rows, "KingProjectile")
+              .put("Damage", 50)
+              .put("Speed", 1000)
+              .put("Gravity", 50);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+  }
+
   /** The towers at the first level, fighting; the Monk and the Giant played. */
   private static Standard1v1Battle scene(GameTables tables) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
     match.getWorld().seed(SEED);
-    match.play(220, GameData.card("Monk"), MONK_LEVEL, 0, 3500, 14000, "M");
-    match.play(300, GameData.card("Giant"), GIANT_LEVEL, 1, 3500, 21500, "G");
+    match.play(220, match.getWorld().getRecords().card("Monk"), MONK_LEVEL, 0, 3500, 14000, "M");
+    match.play(300, match.getWorld().getRecords().card("Giant"), GIANT_LEVEL, 1, 3500, 21500, "G");
     return match;
   }
 
@@ -62,8 +168,8 @@ class BattlePushbackEndRouteTest {
   @DisplayName(
       "a pushback's end drops the Giant's route, and its first step"
           + " follows a fresh route from where the push left it")
-  void theEndOfThePushbackDropsTheRoute() {
-    assertTheRouteIsDropped(scene(GameData.tables()));
+  void theEndOfThePushbackDropsTheRoute(@TempDir Path folder) throws IOException {
+    assertTheRouteIsDropped(scene(written(folder)));
   }
 
   /** The Giant's route dropped as its flight ends, and its next step on a fresh route. */

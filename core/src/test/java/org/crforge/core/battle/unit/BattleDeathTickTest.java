@@ -2,37 +2,132 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * An entity killed during a tick is still visited by the rest of that tick, except that its death
  * switches its movement component off. Two Knights that meet on the left lane hit each other on the
- * same ticks; on tick 271 the first one visited kills the other, whose own hit, due on the same
- * tick, still lands, and both leave the battle in that tick's closing cleanup.
+ * same ticks; on the tick of their last hits the first one visited kills the other, whose own hit,
+ * due on the same tick, still lands, and both leave the battle in that tick's closing cleanup. The
+ * scene writes the Knight's row, the towers' places and the columns of theirs the walk reads, and
+ * plays both at the first level, so its ticks and hit points are its own and not a version's.
  */
 class BattleDeathTickTest {
 
+  /** The level both Knights are played at: the first, whose stats are the row's own. */
+  private static final int LEVEL = 1;
+
+  /** The Knight's hit points and damage, as the scene writes them. */
+  private static final int HIT_POINTS = 690;
+
+  private static final int DAMAGE = 79;
+
+  /** The tick of the last hits: the scene's own, as every column it follows from is written. */
+  private static final int LAST_HITS = 271;
+
+  /** Each Knight's hit points before the last hits: eight of the other's hits taken. */
+  private static final int LEFT = HIT_POINTS - 8 * DAMAGE;
+
+  /** The configured tables with the Knight's row, the towers' places and their columns written. */
+  private static GameTables written(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("Hitpoints", HIT_POINTS)
+                .put("Damage", DAMAGE)
+                .put("HitSpeed", 1200)
+                .put("LoadTime", 700)
+                .put("Speed", 60)
+                .put("Mass", 6)
+                .put("CollisionRadius", 500)
+                .put("Range", 1200)
+                .put("SightRange", 5500)
+                .put("DeployTime", 1000)
+                .put("ProjectileStartRadius", 450)
+                .put("ProjectileStartZ", 450));
+    writeTowers(folder);
+    return GameTables.load(folder);
+  }
+
+  /** Writes the towers' columns, their shots and their places into an altered copy. */
+  private static void writeTowers(Path folder) throws IOException {
+    GameData.alterLoaded(
+        folder,
+        "buildings",
+        rows -> {
+          GameData.columns(rows, "PrincessTower")
+              .put("CollisionRadius", 1000)
+              .put("Range", 7500)
+              .put("SightRange", 7500)
+              .put("HitSpeed", 800)
+              .put("Hitpoints", 1400)
+              .put("ProjectileStartRadius", 300)
+              .put("ProjectileStartZ", 3000)
+              .put("NoDeploySizeW", 11)
+              .put("NoDeploySizeH", 21);
+          GameData.columns(rows, "KingTower")
+              .put("CollisionRadius", 1400)
+              .put("Range", 7000)
+              .put("SightRange", 7000)
+              .put("HitSpeed", 1000)
+              .put("LoadTime", 500)
+              .put("Hitpoints", 2400)
+              .put("ProjectileStartRadius", 750)
+              .put("ProjectileStartZ", 3500)
+              .put("NoDeploySizeW", 18)
+              .put("NoDeploySizeH", 16);
+        });
+    GameData.alterLoaded(
+        folder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "TowerPrincessProjectile")
+              .put("Damage", 50)
+              .put("Speed", 600)
+              .put("Gravity", 60);
+          GameData.columns(rows, "KingProjectile")
+              .put("Damage", 50)
+              .put("Speed", 1000)
+              .put("Gravity", 50);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spawn_groups",
+        rows -> {
+          ArrayNode towers = GameData.columns(rows, "King_PrincessTowers").putArray("Objects");
+          towers.addObject().put("Data", "KingTower").put("x", 18).put("y", 6);
+          towers.addObject().put("Data", "PrincessTower").put("x", 7).put("y", 13);
+          towers.addObject().put("Data", "PrincessTower").put("x", 29).put("y", 13);
+        });
+  }
+
   @Test
   @DisplayName("two Knights that land their last hits on one tick both die, their movement off")
-  void twoKnightsKillEachOtherOnOneTick() {
-    DeployCard knight = GameData.card("Knight");
-    Standard1v1Battle match =
-        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL);
+  void twoKnightsKillEachOtherOnOneTick(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(written(folder), LEVEL);
+    DeployCard knight = match.getWorld().getRecords().card("Knight");
     Battle battle = match.getBattle();
-    match.play(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12000, "Blue");
-    match.play(0, knight, Standard1v1Battle.DEFAULT_LEVEL, 1, 3500, 20000, "Red");
+    match.play(0, knight, LEVEL, 0, 3500, 12000, "Blue");
+    match.play(0, knight, LEVEL, 1, 3500, 20000, "Red");
 
-    for (int tick = 0; tick < 271; tick++) {
+    for (int tick = 0; tick < LAST_HITS; tick++) {
       battle.step();
     }
     CharacterEntity blue = match.getPlays().get(0).units().get(0);
     CharacterEntity red = match.getPlays().get(1).units().get(0);
-    assertThat(blue.getHitPoints().getHitPoints()).isEqualTo(150);
-    assertThat(red.getHitPoints().getHitPoints()).isEqualTo(150);
+    assertThat(blue.getHitPoints().getHitPoints()).isEqualTo(LEFT);
+    assertThat(red.getHitPoints().getHitPoints()).isEqualTo(LEFT);
     assertThat(blue.getView().isMovementActive()).isTrue();
 
     battle.step();

@@ -2,10 +2,13 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,12 +33,16 @@ class BattleContinuousDamageTest {
     assertThat(sequence.mode()).isEqualTo(AttackSequence.MODE_HITTIME);
     assertThat(sequence.order()).containsExactly(0, 1, 2);
 
+    // The first two windows last the row's VariableDamageTime1 and VariableDamageTime2.
+    GameRow row = unitRow("InfernoTower");
+    int first = number(row, "VariableDamageTime1");
+    int second = first + number(row, "VariableDamageTime2");
     assertThat(sequence.windowAt(0)).isZero();
-    assertThat(sequence.windowAt(1999)).isZero();
-    assertThat(sequence.windowAt(2000)).isEqualTo(1);
-    assertThat(sequence.windowAt(3999)).isEqualTo(1);
-    assertThat(sequence.windowAt(4000)).as("the last window has no end").isEqualTo(2);
-    assertThat(sequence.windowAt(60000)).isEqualTo(2);
+    assertThat(sequence.windowAt(first - 1)).isZero();
+    assertThat(sequence.windowAt(first)).isEqualTo(1);
+    assertThat(sequence.windowAt(second - 1)).isEqualTo(1);
+    assertThat(sequence.windowAt(second)).as("the last window has no end").isEqualTo(2);
+    assertThat(sequence.windowAt(second + 56000)).isEqualTo(2);
   }
 
   @Test
@@ -96,8 +103,12 @@ class BattleContinuousDamageTest {
     assertThat(inferno.getTargeting().getReference()).isSameAs(knight.getTargetView());
     assertThat(inferno.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
 
-    // Carried out of the tower's 6000 plus both radii; well inside its sight.
-    knight.getView().setY(17500);
+    // Carried 400 beyond the tower's Range plus both radii.
+    int reach =
+        number(unitRow("InfernoTower"), "Range")
+            + number(unitRow("InfernoTower"), "CollisionRadius")
+            + number(unitRow("Knight"), "CollisionRadius");
+    knight.getView().setY(10000 + reach + 400);
     match.getBattle().step();
 
     assertThat(inferno.getTargeting().getReference()).isNull();

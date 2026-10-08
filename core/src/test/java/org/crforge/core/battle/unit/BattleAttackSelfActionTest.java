@@ -1,6 +1,8 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.column;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,6 +28,10 @@ import org.junit.jupiter.api.io.TempDir;
 class BattleAttackSelfActionTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /** The arrow of the row's first attack sequence entry, the one index 0 selects. */
+  private static final String ARROW =
+      column(unitRow("EliteArcherHero"), "AttackSequenceList").get(0).path("Projectile").asText();
 
   /** One launch of the archer: the tick and the projectile row. */
   private record Launch(int tick, String projectile) {}
@@ -71,9 +77,7 @@ class BattleAttackSelfActionTest {
     }
 
     assertThat(launched).hasSizeGreaterThan(2);
-    assertThat(launched)
-        .extracting(Launch::projectile)
-        .containsOnly("EliteArcherHero_arrow_projectile");
+    assertThat(launched).extracting(Launch::projectile).containsOnly(ARROW);
   }
 
   @Test
@@ -117,10 +121,8 @@ class BattleAttackSelfActionTest {
     assertThat(indexAfter.get(third)).isZero();
     assertThat(launched.subList(3, launched.size()))
         .extracting(Launch::projectile)
-        .containsOnly("EliteArcherHero_arrow_projectile");
-    assertThat(launched.subList(0, 2))
-        .extracting(Launch::projectile)
-        .containsOnly("EliteArcherHero_arrow_projectile");
+        .containsOnly(ARROW);
+    assertThat(launched.subList(0, 2)).extracting(Launch::projectile).containsOnly(ARROW);
   }
 
   @Test

@@ -2,15 +2,22 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.crforge.core.battle.Shipped.column;
+import static org.crforge.core.battle.Shipped.numbers;
+import static org.crforge.core.battle.Shipped.text;
+import static org.crforge.core.battle.Shipped.unitRow;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.SetAttackSequenceIndex;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -28,14 +35,18 @@ class BattleAttackSequenceTest {
   @DisplayName(
       "the evolved Archer's sequence: two in its order, its own arrow then the double-damage one")
   void theArchersSequence() {
+    // The row lists no entries: its Projectile and Projectile2 are the two the order walks.
+    GameRow row = unitRow("Archer_EV1");
+    assertThat(numbers(row, "AttackSequence")).containsExactly(0, 1);
     UnitData archer = GameData.unit("Archer_EV1");
     assertThat(archer.attackSequence().mode()).isZero();
-    assertThat(archer.attackSequence().order()).containsExactly(0, 1);
+    assertThat(archer.attackSequence().order())
+        .containsExactlyElementsOf(numbers(row, "AttackSequence"));
     assertThat(archer.attackSequence().entries().get(0).projectile().name())
-        .isEqualTo("Archer_EV1_Arrow");
+        .isEqualTo(text(row, "Projectile"));
     assertThat(archer.attackSequence().entries().get(1).projectile().name())
-        .isEqualTo("Archer_EV1_ArrowDoubleDamage");
-    assertThat(archer.onStartingAttackAction()).isEqualTo("Archer_EV1_AttackSelect");
+        .isEqualTo(text(row, "Projectile2"));
+    assertThat(archer.onStartingAttackAction()).isEqualTo(text(row, "OnStartingAttackAction"));
     UnitData knight = GameData.unit("Knight");
     assertThat(knight.attackSequence().order()).as("the loader keeps one").containsExactly(0);
   }
@@ -93,16 +104,24 @@ class BattleAttackSequenceTest {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
     match.getBattle().step();
     TowerEntity tower = BattleMusketeerRunTest.towerNamed(match.getBattle(), "PrincessTower_1_1");
+    // Straight below the tower, wherever the tables place it, so the distance is along y alone.
+    int archerY = tower.getView().getY() - 5500;
     CharacterEntity archer =
         new CharacterEntity(
-            match.getWorld(), GameData.unit("Archer_EV1"), "Archer", 0, 3500, 20000, 11);
+            match.getWorld(),
+            GameData.unit("Archer_EV1"),
+            "Archer",
+            0,
+            tower.getView().getX(),
+            archerY,
+            11);
     BattleExpressionEnvironment environment =
         new BattleExpressionEnvironment(archer, match.getWorld());
     assertThat(evaluate("target_in_range(4500)", environment)).as("no target").isZero();
 
     archer.getTargeting().setReference(tower.getTargetView());
     int reach = tower.getView().getCollisionRadius() + archer.getView().getCollisionRadius();
-    int distance = tower.getView().getY() - 20000;
+    int distance = tower.getView().getY() - archerY;
     assertThat(evaluate("target_in_range(" + (distance - reach) + ")", environment)).isEqualTo(1);
     assertThat(evaluate("target_in_range(" + (distance - reach - 1) + ")", environment)).isZero();
   }
@@ -135,9 +154,14 @@ class BattleAttackSequenceTest {
     CharacterEntity wizard =
         new CharacterEntity(
             match.getWorld(), GameData.unit("ElectroWizardHero"), "W", 0, 3500, 10000, 11);
+    // Each entry's own HitSpeedMultiplier; an entry that leaves it out keeps the pace, 100.
+    List<Integer> multipliers = new ArrayList<>();
+    column(unitRow("ElectroWizardHero"), "AttackSequenceList")
+        .forEach(entry -> multipliers.add(entry.path("HitSpeedMultiplier").asInt(100)));
+    assertThat(multipliers).hasSize(3);
     assertThat(wizard.getData().attackSequence().entries())
         .extracting(AttackSequence.Entry::hitSpeedMultiplier)
-        .containsExactly(100, 360, 360);
+        .containsExactlyElementsOf(multipliers);
   }
 
   private static int evaluate(String text, BattleExpressionEnvironment environment) {
