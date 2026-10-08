@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.GameTables;
@@ -31,7 +32,8 @@ import org.junit.jupiter.api.io.TempDir;
  * each. A hit is due on the step its HitSpeedOffset falls in and on every step a whole number of
  * HitSpeed steps after it, and the row stays until its countdown is below 0. Each scene plays a
  * spell of the configured tables in that form, any hit switch dropped and its filter
- * CommonAreaDamageFilter written without the filter's tags.
+ * CommonAreaDamageFilter written without the filter's tags, and with the radius and the timings it
+ * counts on written into its row.
  */
 class BattleAreaEffectFilterFormTest {
 
@@ -95,6 +97,22 @@ class BattleAreaEffectFilterFormTest {
     return GameTables.load(folder);
   }
 
+  /**
+   * Writes the Zap's circle and life the scenes count on: a radius of 2500 and a life of 1 ms, so
+   * its one hit falls on its first update.
+   */
+  private static void zapCircle(ObjectNode columns) {
+    columns.put("Radius", 2500);
+    columns.put("LifeDuration", 1);
+  }
+
+  /** Writes the Poison's circle and timings: a radius of 3500, a hit every 250 ms for 8000 ms. */
+  private static void poisonCircle(ObjectNode columns) {
+    columns.put("Radius", 3500);
+    columns.put("HitSpeed", 250);
+    columns.put("LifeDuration", 8000);
+  }
+
   /** Steps a battle until its counter shows the given tick. */
   private static void stepTo(Standard1v1Battle match, int tick) {
     while (match.getBattle().getTick() < tick) {
@@ -102,12 +120,13 @@ class BattleAreaEffectFilterFormTest {
     }
   }
 
-  /** The princess tower of a side on the right lane. */
+  /** The princess tower of a side on the right lane, right of the arena's middle. */
   private static WorldEntity rightPrincessTower(Standard1v1Battle match, int side) {
-    for (WorldEntity entity : match.getWorld().present()) {
-      if (entity.getData().name().equals("PrincessTower")
+    for (BattleEntity listed : match.getBattle().getHolder().entities()) {
+      if (listed instanceof WorldEntity entity
+          && entity.getData().name().equals("PrincessTower")
           && entity.side() == side
-          && entity.getView().getX() == 14500) {
+          && entity.getView().getX() > 9000) {
         return entity;
       }
     }
@@ -124,6 +143,7 @@ class BattleAreaEffectFilterFormTest {
             folder,
             "Zap",
             columns -> {
+              zapCircle(columns);
               ObjectNode damage = columns.putObject("Damage");
               damage.put("BaseDamage", 75);
               damage.put("TowerDamage", 19);
@@ -145,10 +165,13 @@ class BattleAreaEffectFilterFormTest {
                 hits.add(target.getData().name() + " side " + target.side() + " " + amount);
               }
             });
-    match.play(190, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 14500, 22500, "knight");
-    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, 14500, 23500, "zap");
-    stepTo(match, 200);
+    // The Knight 3000 in front of side 1's right princess tower, the Zap 2000 in front of it.
     WorldEntity tower = rightPrincessTower(match, 1);
+    int x = tower.getView().getX();
+    int y = tower.getView().getY();
+    match.play(190, match.getWorld().getRecords().card("Knight"), LEVEL, 1, x, y - 3000, "knight");
+    match.play(200, match.getWorld().getRecords().card("Zap"), LEVEL, 0, x, y - 2000, "zap");
+    stepTo(match, 200);
     int towerBefore = tower.getHitPoints().getHitPoints();
     assertThat(hits).isEmpty();
     stepTo(match, 300);
@@ -171,6 +194,7 @@ class BattleAreaEffectFilterFormTest {
         folder,
         "Zap",
         columns -> {
+          zapCircle(columns);
           columns.remove("Buff");
           columns.putObject("Damage").put("BaseDamage", 75);
           columns.put("Pushback", PUSHBACK);
@@ -261,15 +285,29 @@ class BattleAreaEffectFilterFormTest {
       "a pushing row in the filter form neither pushes a troop a hook holds with its movement off"
           + " nor switches its movement on, and still deals it its damage")
   void aPushingRowLeavesAHookedTroopAlone(@TempDir Path folder) throws IOException {
-    // The scene of BattleHookedAreaPushTest: side 1's Fisherman hooks side 0's Knight on tick 284
-    // and pulls it, its movement off, until tick 293; the pushing Zap lands on it on tick 287.
-    Standard1v1Battle match = new Standard1v1Battle(pushingZap(folder), 1, true);
-    match.getWorld().seed(1131);
-    match.play(220, match.getWorld().getRecords().card("Knight"), 1, 0, 3500, 14000, "k");
-    match.play(230, match.getWorld().getRecords().card("Fisherman"), 9, 1, 3500, 22000, "f");
+    // The scene of BattleHookedAreaPushTest: side 1's Fisherman hooks side 0's Knight and pulls
+    // it, its movement off; the pushing Zap lands on it on the hold's fourth tick, where the scene
+    // without the Zap shows it then.
+    GameTables tables = pushingZap(folder);
+    Standard1v1Battle dry = hookScene(tables);
+    stepTo(dry, 231);
+    CharacterEntity pulled = dry.getPlays().get(0).units().get(0);
+    while (pulled.getView().getState() != GridEntityState.FOLLOWING_REMOVED
+        && dry.getBattle().getTick() < 600) {
+      dry.getBattle().step();
+    }
+    assertThat(pulled.getView().getState())
+        .as("the hook")
+        .isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    int cast = dry.getBattle().getTick() + 3;
+    stepTo(dry, cast);
+    int x = pulled.getView().getX();
+    int y = pulled.getView().getY();
+
+    Standard1v1Battle match = hookScene(tables);
     List<String> events = pushEvents(match, 0);
-    match.play(287, match.getWorld().getRecords().card("Zap"), LEVEL, 1, 3433, 20820, "zap");
-    stepTo(match, 288);
+    match.play(cast, match.getWorld().getRecords().card("Zap"), LEVEL, 1, x, y, "zap");
+    stepTo(match, cast + 1);
     CharacterEntity knight = match.getPlays().get(0).units().get(0);
     assertThat(knight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
     assertThat(events).containsExactly(knight.getId() + " hit 75 moving false");
@@ -277,12 +315,30 @@ class BattleAreaEffectFilterFormTest {
     assertThat(knight.getUnit().movement().getPushbackInFlight()).isZero();
   }
 
+  /**
+   * The hook scene on the given tables: the towers fighting, the Knight and the Fisherman played.
+   */
+  private static Standard1v1Battle hookScene(GameTables tables) {
+    Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
+    match.getWorld().seed(1131);
+    match.play(220, match.getWorld().getRecords().card("Knight"), 1, 0, 3500, 14000, "k");
+    match.play(230, match.getWorld().getRecords().card("Fisherman"), 9, 1, 3500, 22000, "f");
+    return match;
+  }
+
   @Test
   @DisplayName(
       "a ticking row in the filter form hits on the step of its offset and every HitSpeed after"
           + " it, and stays until its countdown is below 0")
   void aTickingRowHitsOnItsSchedule(@TempDir Path folder) throws IOException {
-    GameTables tables = filterForm(folder, "Poison", columns -> columns.put("HitSpeedOffset", 250));
+    GameTables tables =
+        filterForm(
+            folder,
+            "Poison",
+            columns -> {
+              poisonCircle(columns);
+              columns.put("HitSpeedOffset", 250);
+            });
     Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
     List<Integer> updates = new ArrayList<>();
     List<Integer> buffed = new ArrayList<>();
@@ -402,6 +458,7 @@ class BattleAreaEffectFilterFormTest {
         folder,
         "Poison",
         columns -> {
+          poisonCircle(columns);
           columns.putObject("Damage").put("BaseDamage", 10);
           columns.put("HitSpeedOffset", 250);
           columns.put("OnHitAction", "GoblinCurseCreateBuffs");
@@ -485,6 +542,7 @@ class BattleAreaEffectFilterFormTest {
             folder,
             "Zap",
             columns -> {
+              zapCircle(columns);
               columns.remove("Buff");
               columns.putObject("Damage").put("BaseDamage", 75);
               columns.put("LifeDuration", 10000);
@@ -540,6 +598,7 @@ class BattleAreaEffectFilterFormTest {
             folder,
             "Zap",
             columns -> {
+              zapCircle(columns);
               columns.remove("Buff");
               columns.putObject("Damage").put("BaseDamage", 75);
               columns.put("OnHitSelfAction", "rage_barbarian_spawn_bottle");
@@ -588,13 +647,52 @@ class BattleAreaEffectFilterFormTest {
     return pulls;
   }
 
+  /** The speed the Tornado scenes write into the Knight's row. */
+  private static final int KNIGHT_SPEED = 60;
+
+  /**
+   * The configured tables with the Tornado in the filter form, its circle and timings written - a
+   * radius of 5500, a hit every step from 50 ms for 1050 ms - then edited; its buff pulling by
+   * PushSpeedFactor 100 and AttractPercentage 360 alone, and the Knight's row at {@link
+   * #KNIGHT_SPEED}.
+   */
+  private static GameTables tornadoForm(Path folder, Consumer<ObjectNode> edit) throws IOException {
+    filterForm(
+        folder,
+        "Tornado",
+        columns -> {
+          columns.put("Radius", 5500);
+          columns.put("HitSpeed", 50);
+          columns.put("HitSpeedOffset", 50);
+          columns.put("LifeDuration", 1050);
+          edit.accept(columns);
+        });
+    GameData.alterLoaded(
+        folder,
+        "character_buffs",
+        rows -> {
+          ObjectNode buff = GameData.columns(rows, "Tornado");
+          buff.put("PushSpeedFactor", 100);
+          buff.put("AttractPercentage", 360);
+          buff.remove(List.of("PushMassFactor", "LateralPushPercentage", "AttractMaxAngle"));
+        });
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("Speed", KNIGHT_SPEED));
+    return GameTables.load(folder);
+  }
+
+  /** The Tornado's point, on the top side's left, 4000 in front of its princess tower. */
+  private static final int TORNADO_X = 3500;
+
+  private static final int TORNADO_Y = 21500;
+
   /**
    * Places a Tornado of side 0 on tick 25, once the units of the first tick have deployed, and
    * steps through its first hit: its row's HitSpeedOffset of 50 puts it on the step after its first
    * update.
    */
   private static void tornado(Standard1v1Battle match) {
-    match.placeAreaEffect(25, "Tornado", LEVEL, 0, 3500, 23500, "Tornado");
+    match.placeAreaEffect(25, "Tornado", LEVEL, 0, TORNADO_X, TORNADO_Y, "Tornado");
     stepTo(match, 27);
   }
 
@@ -603,30 +701,33 @@ class BattleAreaEffectFilterFormTest {
       "a filter form row whose buff attracts pulls each enemy troop it lists toward its point on"
           + " every hit, before its buff; a friendly troop and a building are left alone")
   void anAttractingBuffPullsEachListedTroop(@TempDir Path folder) throws IOException {
-    Standard1v1Battle match =
-        new Standard1v1Battle(filterForm(folder, "Tornado", c -> {}), 1, false);
+    Standard1v1Battle match = new Standard1v1Battle(tornadoForm(folder, c -> {}), 1, false);
     UnitData knightRow = match.getWorld().getRecords().unit("Knight");
-    CharacterEntity near = match.deploy(0, knightRow, LEVEL, 1, 5500, 23500, "near");
-    CharacterEntity far = match.deploy(0, knightRow, LEVEL, 1, 7000, 25000, "far");
-    match.deploy(0, knightRow, LEVEL, 0, 2000, 22000, "friend");
+    CharacterEntity near =
+        match.deploy(0, knightRow, LEVEL, 1, TORNADO_X + 2000, TORNADO_Y, "near");
+    CharacterEntity far =
+        match.deploy(0, knightRow, LEVEL, 1, TORNADO_X + 3500, TORNADO_Y + 1500, "far");
+    match.deploy(0, knightRow, LEVEL, 0, TORNADO_X - 1500, TORNADO_Y - 1500, "friend");
     CharacterEntity cannon =
-        match.deploy(0, match.getWorld().getRecords().unit("Cannon"), LEVEL, 1, 3500, 21500);
+        match.deploy(
+            0, match.getWorld().getRecords().unit("Cannon"), LEVEL, 1, TORNADO_X, TORNADO_Y - 2000);
     List<List<AreaEffectEntity.Pull>> pulls = pulls(match);
     tornado(match);
 
     assertThat(pulls).hasSize(1);
     assertThat(pulls.get(0)).extracting(AreaEffectEntity.Pull::target).containsExactly(near, far);
     for (AreaEffectEntity.Pull pull : pulls.get(0)) {
-      // The buff push: PushSpeedFactor 100 and AttractPercentage 360 of the Knight's configured
+      // The buff push: PushSpeedFactor 100 and AttractPercentage 360 of the Knight's written
       // Speed 60 give 216, along the way to the centre, C division; one more sample, the cap
       // lifted.
+      int push = KNIGHT_SPEED * 360 / 100 * 100 / 100;
       int length = FixedMath.isqrt(pull.dx() * pull.dx() + pull.dy() * pull.dy());
-      assertThat(pull.after()[0] - pull.before()[0]).isEqualTo(216 * pull.dx() / length);
-      assertThat(pull.after()[1] - pull.before()[1]).isEqualTo(216 * pull.dy() / length);
+      assertThat(pull.after()[0] - pull.before()[0]).isEqualTo(push * pull.dx() / length);
+      assertThat(pull.after()[1] - pull.before()[1]).isEqualTo(push * pull.dy() / length);
       assertThat(pull.after()[2] - pull.before()[2]).isEqualTo(1);
       assertThat(pull.after()[4]).isEqualTo(1);
-      assertThat(pull.dx()).isEqualTo(3500 - pull.target().getView().getX());
-      assertThat(pull.dy()).isEqualTo(23500 - pull.target().getView().getY());
+      assertThat(pull.dx()).isEqualTo(TORNADO_X - pull.target().getView().getX());
+      assertThat(pull.dy()).isEqualTo(TORNADO_Y - pull.target().getView().getY());
     }
     // The buff is applied after the pull, to the building too, which nothing pulls.
     assertThat(near.getBuffs().carries("Tornado")).isTrue();
@@ -640,10 +741,12 @@ class BattleAreaEffectFilterFormTest {
   void thePullFollowsTheTargetLimit(@TempDir Path folder) throws IOException {
     Standard1v1Battle match =
         new Standard1v1Battle(
-            filterForm(folder, "Tornado", columns -> columns.put("MaximumTargets", 1)), 1, false);
+            tornadoForm(folder, columns -> columns.put("MaximumTargets", 1)), 1, false);
     UnitData knightRow = match.getWorld().getRecords().unit("Knight");
-    CharacterEntity near = match.deploy(0, knightRow, LEVEL, 1, 5500, 23500, "near");
-    CharacterEntity far = match.deploy(0, knightRow, LEVEL, 1, 7000, 25000, "far");
+    CharacterEntity near =
+        match.deploy(0, knightRow, LEVEL, 1, TORNADO_X + 2000, TORNADO_Y, "near");
+    CharacterEntity far =
+        match.deploy(0, knightRow, LEVEL, 1, TORNADO_X + 3500, TORNADO_Y + 1500, "far");
     List<List<AreaEffectEntity.Pull>> pulls = pulls(match);
     tornado(match);
     stepTo(match, 31);
@@ -668,6 +771,7 @@ class BattleAreaEffectFilterFormTest {
         folder,
         "Zap",
         columns -> {
+          zapCircle(columns);
           columns.remove("Buff");
           columns.put("LifeDuration", 500);
           columns.put("HitSpeed", 50);

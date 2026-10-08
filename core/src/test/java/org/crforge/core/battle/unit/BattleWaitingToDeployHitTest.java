@@ -2,12 +2,17 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A spell on a unit that still waits its turn to deploy: the hidden test answers yes for a unit in
@@ -18,6 +23,12 @@ import org.junit.jupiter.api.Test;
  * <p>The scene: the top side's Goblins are played on tick 32 in front of its right princess tower;
  * the four of them start deploying one after another, the last on tick 44. Each spell is cast by
  * the bottom side on them so that it acts on tick 41, while the last Goblin still waits.
+ *
+ * <p>The scene writes what it counts on: the Goblins card summons four Goblin_Stab of 79 hit points
+ * 200 ms apart in a circle of 700, each waiting 400 ms and deploying 1000 ms; the Fireball, the
+ * Snowball and the Arrows fly at 600, 800 and 1100 and hit in circles of 2500, 2500 and 1400, the
+ * Arrows in three waves of ten 200 ms apart over a circle of 3500; the Zap hits once in a circle of
+ * 2500.
  */
 class BattleWaitingToDeployHitTest {
 
@@ -26,17 +37,73 @@ class BattleWaitingToDeployHitTest {
 
   private static final int SPELL_LEVEL = 3;
 
-  /** The Goblins' hit points at their level. */
+  /** The Goblins' hit points written into their row, their own at their level. */
   private static final int GOBLIN_HIT_POINTS = 79;
 
   /** The tick each spell acts on. */
   private static final int HIT_TICK = 41;
 
+  @TempDir static Path tablesFolder;
+
+  /** The configured tables with the columns the scenes count on written. */
+  private static GameTables tables;
+
+  @BeforeAll
+  static void writeTheScene() throws IOException {
+    GameData.altered(
+        tablesFolder,
+        "spells_characters",
+        rows ->
+            GameData.columns(rows, "Goblins")
+                .put("SummonCharacter", "Goblin_Stab")
+                .put("SummonNumber", 4)
+                .put("SummonDeployDelay", 200)
+                .put("SummonRadius", 700));
+    GameData.alterLoaded(
+        tablesFolder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Goblin_Stab")
+                .put("Hitpoints", GOBLIN_HIT_POINTS)
+                .put("DeployDelay", 400)
+                .put("DeployTime", 1000));
+    GameData.alterLoaded(
+        tablesFolder,
+        "projectiles",
+        rows -> {
+          GameData.columns(rows, "FireballSpell").put("Speed", 600).put("Radius", 2500);
+          GameData.columns(rows, "SnowballSpell").put("Speed", 800).put("Radius", 2500);
+          GameData.columns(rows, "ArrowsSpell").put("Speed", 1100).put("Radius", 1400);
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "spells_other",
+        rows ->
+            GameData.columns(rows, "Arrows")
+                .put("ProjectileWaves", 3)
+                .put("ProjectileWaveInterval", 200)
+                .put("MultipleProjectiles", 10)
+                .put("Radius", 3500));
+    GameData.alterLoaded(
+        tablesFolder,
+        "area_effect_objects",
+        rows -> GameData.columns(rows, "Zap").put("Radius", 2500).put("LifeDuration", 1));
+    tables = GameTables.load(tablesFolder);
+  }
+
   /** The Goblins played, then the spell cast so that it acts on {@link #HIT_TICK}. */
   private static List<CharacterEntity> goblinsUnder(String spell, int castTick) {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 1, false);
-    match.play(32, GameData.card("Goblins"), GOBLIN_LEVEL, 1, 13500, 22500, "Goblins");
-    match.play(castTick, GameData.card(spell), SPELL_LEVEL, 0, 14500, 23000, spell);
+    Standard1v1Battle match = new Standard1v1Battle(tables, 1, false);
+    match.play(
+        32,
+        match.getWorld().getRecords().card("Goblins"),
+        GOBLIN_LEVEL,
+        1,
+        13500,
+        22500,
+        "Goblins");
+    match.play(
+        castTick, match.getWorld().getRecords().card(spell), SPELL_LEVEL, 0, 14500, 23000, spell);
     while (match.getBattle().getTick() < HIT_TICK) {
       match.getBattle().step();
     }

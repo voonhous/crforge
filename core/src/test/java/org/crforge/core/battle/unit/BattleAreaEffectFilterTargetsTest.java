@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
@@ -23,19 +24,21 @@ import org.junit.jupiter.api.io.TempDir;
  * shield first, objects as big kept nearest first; and a row with a projectile launches one onto
  * each object it hits, from that object's point at the row's start height, or, with
  * TargetProjectiles off, one a hit onto its own point with no target, whoever it lists. Each scene
- * places a spell's area effect of the configured tables rewritten in that form on still units.
+ * places a spell's area effect of the configured tables rewritten in that form on still units, with
+ * the radius and timings it counts on written into its row.
  */
 class BattleAreaEffectFilterTargetsTest {
 
-  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+  /** The first level, whose stats are the rows' own. */
+  private static final int LEVEL = 1;
 
   /** A tick after every unit placed on the first one has deployed. */
   private static final int CAST_TICK = 25;
 
-  /** The area effect's point, on the bottom side's left, away from every tower. */
+  /** The area effect's point, on the bottom side's left, its circle clear of every tower. */
   private static final int X = 3500;
 
-  private static final int Y = 11000;
+  private static final int Y = 12000;
 
   /** A battle on the given tables with the towers passive that logs launches and typed hits. */
   private static final class Scene {
@@ -93,19 +96,36 @@ class BattleAreaEffectFilterTargetsTest {
 
   /**
    * The configured Lightning in the filter form as the newer data writes it: a hit every 500 ms
-   * from 500 ms, one target a hit, each once, the biggest first.
+   * from 500 ms for 1500 ms in a circle of 3500, one target a hit, each once, the biggest first,
+   * its bolts dropped from a height of 10. The units it chooses from are written with the hit
+   * points and shield the scene sizes them by: a Knight 1700, a Musketeer 721, a Recruit 547 with a
+   * shield of 240.
    */
   private static GameTables lightning(Path folder, Consumer<ObjectNode> edit) throws IOException {
-    return filterForm(
+    filterForm(
         folder,
         "Lightning",
         columns -> {
+          columns.put("Radius", 3500);
+          columns.put("LifeDuration", 1500);
+          columns.put("ProjectileStartHeight", 10);
           columns.put("HitSpeed", 500);
           columns.put("HitSpeedOffset", 500);
           columns.put("MaximumTargets", 1);
           columns.put("OneHitPerTarget", true);
           edit.accept(columns);
         });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight").put("Hitpoints", 1700);
+          GameData.columns(rows, "Musketeer").put("Hitpoints", 721);
+          GameData.columns(rows, "DeliveryRecruit")
+              .put("Hitpoints", 547)
+              .put("ShieldHitpoints", 240);
+        });
+    return GameTables.load(folder);
   }
 
   @Test
@@ -161,6 +181,8 @@ class BattleAreaEffectFilterTargetsTest {
                 folder,
                 "Zap",
                 columns -> {
+                  columns.put("Radius", 2500);
+                  columns.put("LifeDuration", 1);
                   columns.putObject("Damage").put("BaseDamage", 75);
                   columns.put("MaximumTargets", 2);
                 }));
@@ -174,7 +196,7 @@ class BattleAreaEffectFilterTargetsTest {
 
   /**
    * The configured Royal Delivery's area in the filter form as the newer data writes it: one hit at
-   * 2000 ms, its projectile launched by that hit.
+   * 2000 ms in a circle of 3000, its projectile launched by that hit, a life of 2000 ms.
    */
   private static GameTables delivery(Path folder, Consumer<ObjectNode> edit) throws IOException {
     return filterForm(
@@ -183,6 +205,8 @@ class BattleAreaEffectFilterTargetsTest {
         columns -> {
           columns.remove("HitSpeed");
           columns.put("HitSpeedOffset", 2000);
+          columns.put("LifeDuration", 2000);
+          columns.put("Radius", 3000);
           edit.accept(columns);
         });
   }

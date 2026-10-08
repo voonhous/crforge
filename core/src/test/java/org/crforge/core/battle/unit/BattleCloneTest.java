@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
@@ -17,6 +18,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,6 +30,10 @@ import org.junit.jupiter.api.io.TempDir;
  * area effects with a buff over clones where the runs do not take them, written in the hit-switch
  * form: a Rage and a Heal Spirit's area beside a Minion's clone, a Zap, a Tornado's pull, and an
  * Earthquake's air test after the buff test.
+ *
+ * <p>Each scene writes the circles, timings and buff columns it counts on into the rows: the
+ * Clone's circle of 3000 for 1000 ms and its clone buff of 500 ms, and those of the area effects
+ * below.
  */
 class BattleCloneTest {
 
@@ -40,6 +46,39 @@ class BattleCloneTest {
   private static final int X = 3250;
 
   private static final int Y = 11250;
+
+  @TempDir static Path tablesFolder;
+
+  /** The configured tables with the Clone's columns written. */
+  private static GameTables cloneTables;
+
+  @BeforeAll
+  static void writeTheClone() throws IOException {
+    cloneTables = withClone(tablesFolder.resolve("clone"), rows -> {});
+  }
+
+  /**
+   * The configured tables with the Clone written as the scenes count on it - a circle of 3000 for
+   * 1000 ms, and the clone buff its hit spawns for 500 ms - and the area effects' rows then edited.
+   *
+   * @param folder the folder the tables are copied into
+   * @param areas what is done to the area effects' rows once the Clone's are written
+   */
+  private static GameTables withClone(Path folder, Consumer<ObjectNode> areas) throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(
+        folder,
+        "area_effect_objects",
+        rows -> {
+          GameData.columns(rows, "Clone").put("Radius", 3000).put("LifeDuration", 1000);
+          areas.accept(rows);
+        });
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> ((ObjectNode) rows.get("SpawnCloneBufAction").get("fields")).put("SpawnTime", 500));
+    return GameTables.load(folder);
+  }
 
   /** A battle with the towers passive that logs what every Clone does. */
   private static final class Scene {
@@ -54,7 +93,7 @@ class BattleCloneTest {
     int tick;
 
     Scene() {
-      this(GameData.tables());
+      this(cloneTables);
     }
 
     Scene(GameTables tables) {
@@ -323,13 +362,12 @@ class BattleCloneTest {
    * table, one buff a hit, the Earthquake reaching hidden units and starting no area of its own,
    * and the Tornado hitting from its first update. Every 16.402.18 area effect is in the filter
    * form, whose hit pass lists what it reaches through its filter and never asks the clone test;
-   * these hold the hit-switch walk's test, which the battle keeps.
+   * these hold the hit-switch walk's test, which the battle keeps. Their circles and timings, and
+   * their buffs' heal, damage and hit frequency, are written as the scenes count on them.
    */
   private static GameTables hitSwitches(Path folder) throws IOException {
-    Files.createDirectories(folder);
-    return GameData.altered(
+    withClone(
         folder,
-        "area_effect_objects",
         rows -> {
           for (String row : List.of("Rage", "HealSpirit", "Zap", "Tornado", "Earthquake")) {
             ObjectNode columns = GameData.columns(rows, row);
@@ -353,7 +391,38 @@ class BattleCloneTest {
           ObjectNode earthquake = GameData.columns(rows, "Earthquake");
           earthquake.put("AffectsHidden", true);
           earthquake.remove("OnStartingAction");
+          GameData.columns(rows, "Rage")
+              .put("Radius", 3000)
+              .put("HitSpeed", 300)
+              .put("LifeDuration", 4500)
+              .put("BuffTime", 1000);
+          GameData.columns(rows, "HealSpirit")
+              .put("Radius", 2500)
+              .put("LifeDuration", 1000)
+              .put("BuffTime", 1000);
+          GameData.columns(rows, "Zap").put("Radius", 2500).put("LifeDuration", 1);
+          GameData.columns(rows, "Tornado")
+              .put("Radius", 5500)
+              .put("HitSpeed", 50)
+              .put("LifeDuration", 1050)
+              .put("BuffTime", 500);
+          earthquake
+              .put("Radius", 3500)
+              .put("HitSpeed", 100)
+              .put("LifeDuration", 3000)
+              .put("BuffTime", 1000);
         });
+    GameData.alterLoaded(
+        folder,
+        "character_buffs",
+        rows -> {
+          GameData.columns(rows, "HealSpiritBuff")
+              .put("HealPerSecond", 157)
+              .put("HitFrequency", 250);
+          GameData.columns(rows, "Tornado").put("DamagePerSecond", 60).put("HitFrequency", 550);
+          GameData.columns(rows, "Earthquake").put("DamagePerSecond", 32).put("HitFrequency", 1000);
+        });
+    return GameTables.load(folder);
   }
 
   /**

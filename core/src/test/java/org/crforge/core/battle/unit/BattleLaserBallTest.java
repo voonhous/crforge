@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
@@ -22,10 +23,15 @@ import org.junit.jupiter.api.io.TempDir;
  * Dark Magic's laser ball where the reference runs do not reach: a fire that finds nobody, a
  * building found by its square, two Dark Magics striking one unit on the same tick, and a laser
  * ball on a unit.
+ *
+ * <p>The scenes play at the first level, whose stats are the rows' own, and write what they count
+ * on: the laser ball's timings and circle, its strongest list's buff dealing 696 in one hit, a Dark
+ * Magic living 4000 ms, a Cannon of collision radius 600 and a Knight of 1700 hit points.
  */
 class BattleLaserBallTest {
 
-  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+  /** The first level, whose stats are the rows' own. */
+  private static final int LEVEL = 1;
 
   private static final String LASER = "DarkMagicAOE_OnStartingAction_SubActions1";
 
@@ -36,6 +42,53 @@ class BattleLaserBallTest {
   private static final int X = 9000;
 
   private static final int Y = 20000;
+
+  /**
+   * Writes Dark Magic's laser ball into the actions as the scenes count on it: it starts 500 ms
+   * after the area effect, fires 1000 ms after its start and every 1000 ms after, detects in a
+   * circle of 2500, and picks its first list for one unit and its second for up to four.
+   */
+  private static void laserBall(ObjectNode rows) {
+    ((ObjectNode) rows.get("DarkMagicAOE_OnStartingAction").get("fields"))
+        .putArray("SubActionsDelay")
+        .add(0)
+        .add(500);
+    ObjectNode laser = (ObjectNode) rows.get(LASER).get("fields");
+    laser.put("FirstHitDelay", 1000);
+    laser.put("HitFrequency", 1000);
+    laser.put("DetectionRadius", 2500);
+    laser.putArray("MaxUnitPerActionList").add(1).add(4);
+  }
+
+  /**
+   * The configured tables with the columns the scenes count on written, the strongest list's spawn
+   * then edited.
+   */
+  private static GameTables darkMagic(Path folder, Consumer<ObjectNode> strongest)
+      throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(
+        folder,
+        "actions",
+        rows -> {
+          laserBall(rows);
+          ObjectNode spawn = (ObjectNode) rows.get(STRONGEST).get("fields");
+          spawn.put("SpawnTime", 100);
+          ObjectNode buff = (ObjectNode) spawn.get("SpawnData");
+          buff.put("DamagePerSecond", 6960);
+          buff.put("HitFrequency", 100);
+          strongest.accept(buff);
+        });
+    GameData.alterLoaded(
+        folder,
+        "area_effect_objects",
+        rows -> GameData.columns(rows, "DarkMagicAOE").put("LifeDuration", 4000));
+    GameData.alterLoaded(
+        folder, "buildings", rows -> GameData.columns(rows, "Cannon").put("CollisionRadius", 600));
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("Hitpoints", 1700));
+    return GameTables.load(folder);
+  }
 
   /** A battle with the towers holding fire, and every fire and buff hit the observers hear. */
   private static final class Scene {
@@ -82,6 +135,11 @@ class BattleLaserBallTest {
               });
     }
 
+    /** A unit's record in the scene's tables. */
+    UnitData unit(String name) {
+      return match.getWorld().getRecords().unit(name);
+    }
+
     void steps(int count) {
       for (int i = 0; i < count; i++) {
         match.getBattle().step();
@@ -93,8 +151,8 @@ class BattleLaserBallTest {
   @DisplayName(
       "a fire that finds nobody picks the first list and schedules nothing; it fires every twenty"
           + " ticks from the twentieth after its start")
-  void nobodyInReach() {
-    Scene scene = new Scene(GameData.tables());
+  void nobodyInReach(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(darkMagic(folder, buff -> {}));
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "dark");
     // The laser ball starts ten ticks after the area effect, and fires twenty ticks later.
     scene.steps(30);
@@ -109,11 +167,11 @@ class BattleLaserBallTest {
   @DisplayName(
       "a building is found by its square: a Cannon whose corner lies within the radius though its"
           + " centre lies beyond the radius plus its collision radius")
-  void aBuildingByItsSquare() {
-    Scene scene = new Scene(GameData.tables());
+  void aBuildingByItsSquare(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(darkMagic(folder, buff -> {}));
     // 2300 off along both axes: the square's corner is 1700 off along each, 2404 away; the
     // centre is 3252 away, beyond 2500 and the Cannon's 600.
-    scene.match.deploy(0, GameData.unit("Cannon"), LEVEL, 1, X + 2300, Y + 2300, "cannon");
+    scene.match.deploy(0, scene.unit("Cannon"), LEVEL, 1, X + 2300, Y + 2300, "cannon");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "dark");
     scene.steps(31);
     assertThat(scene.fires)
@@ -124,9 +182,9 @@ class BattleLaserBallTest {
   @DisplayName(
       "two Dark Magics striking one Knight on the same tick each list their own buff and deal both"
           + " hits, as their buffs are added as individual ones")
-  void twoDarkMagicsStack() {
-    Scene scene = new Scene(GameData.tables());
-    scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "knight");
+  void twoDarkMagicsStack(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(darkMagic(folder, buff -> {}));
+    scene.match.deploy(0, scene.unit("Knight"), LEVEL, 1, X, Y, "knight");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "first");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "second");
     scene.steps(33);
@@ -136,16 +194,9 @@ class BattleLaserBallTest {
   @Test
   @DisplayName("with the buff not added as an individual one, the second application refreshes")
   void aSharedBuffRefreshes(@TempDir Path folder) throws IOException {
-    Files.createDirectories(folder);
-    GameTables shared =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get(STRONGEST).get("fields").get("SpawnData"))
-                    .put("AddAsIndividualBuff", false));
+    GameTables shared = darkMagic(folder, buff -> buff.put("AddAsIndividualBuff", false));
     Scene scene = new Scene(shared);
-    scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "knight");
+    scene.match.deploy(0, scene.unit("Knight"), LEVEL, 1, X, Y, "knight");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "first");
     scene.match.placeAreaEffect(0, "DarkMagicAOE", LEVEL, 0, X, Y, "second");
     scene.steps(33);

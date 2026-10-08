@@ -29,7 +29,8 @@ import org.junit.jupiter.api.io.TempDir;
  * shield and picks each object once, written with three entries of Vines' air-to-ground group at 0,
  * 50 and 150 ms, Vines' filter and none of the slap's wait, pause tags, tags or actions on its
  * owner. Vines' area effect is written to run it 900 ms after it is placed, for 2000 ms, in place
- * of its filter-form hit pass.
+ * of its filter-form hit pass, and Vines' air-to-ground run to last 2000 ms, its pull down and its
+ * climb 50 ms each. A Guard is written with 30 hit points and a shield of 300, a Minion with 150.
  */
 class BattleShapeSelectorTest {
 
@@ -74,6 +75,9 @@ class BattleShapeSelectorTest {
           f.putArray("Delays").add(0).add(50).add(150);
           f.put("TargetFilter", "enemy_troops_for_vines");
           edit.accept(f);
+          ObjectNode airToGround = (ObjectNode) rows.get("Vines_Air_To_Ground").get("fields");
+          airToGround.put("TotalDuration", 2000);
+          airToGround.put("TransitionDuration", 50);
           ObjectNode start = rows.putObject(START);
           start.put("class", "LogicActionGroupData");
           start.put("ClassType", "ActionGroup");
@@ -100,6 +104,15 @@ class BattleShapeSelectorTest {
           }
           columns.put("LifeDuration", 2000);
           columns.put("OnStartingAction", START);
+        });
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "SkeletonWarrior")
+              .put("Hitpoints", 30)
+              .put("ShieldHitpoints", 300);
+          GameData.columns(rows, "Minion").put("Hitpoints", 150);
         });
     return GameTables.load(folder);
   }
@@ -141,6 +154,11 @@ class BattleShapeSelectorTest {
                           .formatted(tick, unit.name(), phase, counter));
                 }
               });
+    }
+
+    /** A unit's record in the scene's tables. */
+    UnitData unit(String name) {
+      return match.getWorld().getRecords().unit(name);
     }
 
     String named(int id) {
@@ -198,8 +216,8 @@ class BattleShapeSelectorTest {
           + " is picked first")
   void aShieldCounts(@TempDir Path folder) throws IOException {
     Scene shields = new Scene(selectorTables(folder.resolve("shields")));
-    shields.match.deploy(0, GameData.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
-    shields.match.deploy(0, GameData.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
+    shields.match.deploy(0, shields.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
+    shields.match.deploy(0, shields.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
     shields.vines();
     shields.steps(19);
     assertThat(shields.steps)
@@ -211,8 +229,8 @@ class BattleShapeSelectorTest {
             selectorTables(
                 folder.resolve("hit_points"),
                 f -> f.put("TargetSelectionMode", "HighestCurrentHp")));
-    hitPoints.match.deploy(0, GameData.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
-    hitPoints.match.deploy(0, GameData.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
+    hitPoints.match.deploy(0, hitPoints.unit("SkeletonWarrior"), LEVEL, 1, X - 500, Y, "guard");
+    hitPoints.match.deploy(0, hitPoints.unit("Minion"), LEVEL, 1, X + 500, Y, "minion");
     hitPoints.vines();
     hitPoints.steps(19);
     assertThat(hitPoints.steps)

@@ -2,10 +2,13 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * When the damage of a character's area hit lands within its tick. The game queues each victim's
@@ -14,8 +17,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The scene: the bottom side's Valkyrie walks up the left lane and meets the top side's Giant
  * coming down it. The Giant, which targets buildings only, walks on while the Valkyrie's area hits
- * it, with 266 hit points left from tick 385 on, and the area of the hit that lands on tick 415
- * kills it while it walks.
+ * it, and the area of one hit kills it while it walks. The same scene with the Giant's row written
+ * with hit points no hit takes is the control: it shows where the Giant's walking step of each tick
+ * takes it.
  */
 class BattleAreaHitDrainTest {
 
@@ -27,18 +31,8 @@ class BattleAreaHitDrainTest {
 
   private static final int GIANT_LEVEL = 1;
 
-  /** The tick of the killing hit. */
-  private static final int DEATH = 415;
-
-  /** Where the Giant stands after its last walking step before the killing hit's tick. */
-  private static final int LAST_X = 3200;
-
-  private static final int LAST_Y = 14819;
-
-  /** Where its walking step of the killing hit's tick takes it. */
-  private static final int STEP_X = 3202;
-
-  private static final int STEP_Y = 14768;
+  /** The tick the scene gives up looking for the killing hit. */
+  private static final int LAST = 1000;
 
   /** The towers at the first level, fighting; the Valkyrie and the Giant played. */
   private static Standard1v1Battle scene(GameTables tables) {
@@ -65,17 +59,44 @@ class BattleAreaHitDrainTest {
   @DisplayName(
       "an area hit lands at the damage drain, so the Giant it kills"
           + " still takes its walking step of that tick")
-  void theGiantKilledByTheAreaStillWalksItsStep() {
+  void theGiantKilledByTheAreaStillWalksItsStep(@TempDir Path folder) throws IOException {
+    // The tick of the killing hit: the step that leaves the Giant without hit points.
     Standard1v1Battle match = scene(GameData.tables());
-    stepTo(match, DEATH - 1);
+    stepTo(match, 241);
     CharacterEntity giant = giant(match);
-    assertThat(giant.getHitPoints().getHitPoints()).as("alive before the hit").isEqualTo(266);
-    assertThat(giant.getView().getX()).isEqualTo(LAST_X);
-    assertThat(giant.getView().getY()).isEqualTo(LAST_Y);
-
-    stepTo(match, DEATH);
+    int lastX = -1;
+    int lastY = -1;
+    int alive = -1;
+    while (giant.getHitPoints().getHitPoints() > 0 && match.getBattle().getTick() < LAST) {
+      lastX = giant.getView().getX();
+      lastY = giant.getView().getY();
+      alive = giant.getHitPoints().getHitPoints();
+      match.getBattle().step();
+    }
+    int death = match.getBattle().getTick();
+    assertThat(death).as("the Valkyrie kills the Giant").isLessThan(LAST);
+    assertThat(alive).as("alive before the hit").isPositive();
     assertThat(giant.getHitPoints().getHitPoints()).as("killed").isZero();
-    assertThat(giant.getView().getX()).as("one walking step on").isEqualTo(STEP_X);
-    assertThat(giant.getView().getY()).isEqualTo(STEP_Y);
+
+    // The control's Giant takes every hit and lives: where its step of that tick takes it.
+    Standard1v1Battle control =
+        scene(
+            GameData.altered(
+                folder,
+                "characters",
+                rows -> GameData.columns(rows, "Giant").put("Hitpoints", 1_000_000)));
+    stepTo(control, death - 1);
+    CharacterEntity walker = giant(control);
+    assertThat(new int[] {walker.getView().getX(), walker.getView().getY()})
+        .as("the same walk up to the killing hit's tick")
+        .containsExactly(lastX, lastY);
+    stepTo(control, death);
+    assertThat(new int[] {walker.getView().getX(), walker.getView().getY()})
+        .as("the control walks a step on that tick")
+        .isNotEqualTo(new int[] {lastX, lastY});
+
+    assertThat(new int[] {giant.getView().getX(), giant.getView().getY()})
+        .as("one walking step on")
+        .containsExactly(walker.getView().getX(), walker.getView().getY());
   }
 }

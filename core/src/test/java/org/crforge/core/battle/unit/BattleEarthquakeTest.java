@@ -3,13 +3,17 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * An Earthquake's hits where the reference runs leave them: an instance's count toward its next hit
@@ -20,6 +24,25 @@ import org.junit.jupiter.api.Test;
 class BattleEarthquakeTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /**
+   * The configured tables with the Earthquake's buff written to hit once a second from its source's
+   * age, and its area effect to live 3000 ms.
+   */
+  private static GameTables oncePerSecond(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "character_buffs",
+        rows ->
+            GameData.columns(rows, "Earthquake")
+                .put("HitFrequency", 1000)
+                .put("HitTickFromSource", true));
+    GameData.alterLoaded(
+        folder,
+        "area_effect_objects",
+        rows -> GameData.columns(rows, "Earthquake").put("LifeDuration", 3000));
+    return GameTables.load(folder);
+  }
 
   /** A Knight standing on the top side's half, and the towers passive. */
   private static CharacterEntity knight(Standard1v1Battle match) {
@@ -49,15 +72,15 @@ class BattleEarthquakeTest {
   @DisplayName(
       "an instance counts from its area effect's age, however late it was applied, and is hit as"
           + " the age reaches 950 of a second")
-  void theCountFollowsTheAreaEffectsAge() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+  void theCountFollowsTheAreaEffectsAge(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(oncePerSecond(folder), LEVEL, false);
     CharacterEntity knight = knight(match);
     AreaEffectEntity earthquake = earthquake(match, 1);
     for (int step = 0; step < 7; step++) {
       match.getBattle().step();
     }
     BuffComponent buffs = knight.getBuffs();
-    BuffData row = GameData.records().buff("Earthquake");
+    BuffData row = match.getWorld().getRecords().buff("Earthquake");
     buffs.apply(row, 1000, LEVEL, earthquake, 0);
     BuffInstance instance = buffs.items().get(0);
 

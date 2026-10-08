@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,9 @@ import org.junit.jupiter.api.io.TempDir;
  * Vines' air-to-ground run where the reference runs do not reach: an air unit that lives through
  * its hold, whose climb ends in the path reset that is not modelled; the ground tag a held ground
  * unit carries, and none without the row's flag; and a hovering unit refused.
+ *
+ * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
+ * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
  */
 class BattleAirToGroundTest {
 
@@ -28,6 +32,39 @@ class BattleAirToGroundTest {
   private static final int X = 9000;
 
   private static final int Y = 20000;
+
+  /**
+   * The configured tables with Vines' area effect and its air-to-ground run written with the
+   * timings the scenes count on, the run's fields then edited.
+   *
+   * @param folder the folder the tables are copied into
+   * @param airToGround what is set on the run's fields once its timings are written
+   */
+  private static GameTables vines(Path folder, Consumer<ObjectNode> airToGround)
+      throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(
+        folder,
+        "area_effect_objects",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "Vines_AeO");
+          columns.put("HitSpeedOffset", 900);
+          columns.put("HitSpeed", 250);
+          columns.put("LifeDuration", 1400);
+          columns.put("Radius", 2500);
+          columns.put("MaximumTargets", 1);
+        });
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode fields = (ObjectNode) rows.get("Vines_Air_To_Ground").get("fields");
+          fields.put("TotalDuration", 2000);
+          fields.put("TransitionDuration", 50);
+          airToGround.accept(fields);
+        });
+    return GameTables.load(folder);
+  }
 
   /** A battle with the towers holding fire, and every start and phase change of a run. */
   private static final class Scene {
@@ -93,8 +130,8 @@ class BattleAirToGroundTest {
   @DisplayName(
       "a Baby Dragon is pulled down in two steps, is a ground unit at height 0 from the next"
           + " pre-hooks, and climbs back once its hold ends, where its path reset is refused")
-  void anAirUnitIsPulledDown() {
-    Scene scene = new Scene(GameData.tables());
+  void anAirUnitIsPulledDown(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(vines(folder, fields -> {}));
     CharacterEntity dragon =
         scene.match.deploy(0, GameData.unit("BabyDragon"), LEVEL, 1, X, Y, "dragon");
     int height = dragon.getData().flyingHeight();
@@ -128,7 +165,7 @@ class BattleAirToGroundTest {
       "a held Knight carries FORCE_IS_GROUND from the pre-hook after its first step to the one"
           + " after its last, and none when the row does not ask for it")
   void aGroundUnitIsTagged(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(GameData.tables());
+    Scene scene = new Scene(vines(folder.resolve("tagged"), fields -> {}));
     CharacterEntity knight =
         scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "knight");
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
@@ -146,14 +183,8 @@ class BattleAirToGroundTest {
     assertThat(scene.forcedOntoTheGround(knight)).isFalse();
     assertThat(knight.getView().isAir()).isFalse();
 
-    Files.createDirectories(folder);
     GameTables untagged =
-        GameData.altered(
-            folder,
-            "actions",
-            rows ->
-                ((ObjectNode) rows.get("Vines_Air_To_Ground").get("fields"))
-                    .put("AllowIsGroundTagOnIdle", false));
+        vines(folder.resolve("untagged"), fields -> fields.put("AllowIsGroundTagOnIdle", false));
     Scene plain = new Scene(untagged);
     CharacterEntity other =
         plain.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "knight");
@@ -166,8 +197,8 @@ class BattleAirToGroundTest {
 
   @Test
   @DisplayName("an air-to-ground run on a hovering unit is refused")
-  void aHoveringUnitIsRefused() {
-    Scene scene = new Scene(GameData.tables());
+  void aHoveringUnitIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(vines(folder, fields -> {}));
     scene.match.deploy(0, GameData.unit("BattleHealer"), LEVEL, 1, X, Y, "healer");
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
     scene.steps(18);

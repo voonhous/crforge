@@ -2,6 +2,8 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +12,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * When an area effect's life ends. The game keeps every area effect, a row with hit switches as
@@ -17,8 +20,9 @@ import org.junit.jupiter.api.Test;
  * has one more update, and its life-end action waits for that update.
  *
  * <p>The scene: the bottom side's Rage Barbarian walks up the left lane to the top side's princess
- * tower and dies to it on tick 236. Its death area effect, RageBarbarianDummyForSpawn, lives 50 ms
- * and throws the bottle; the bottle's BarbarianRage lives 5500 ms. Both rows have hit switches.
+ * tower and dies to it. Its death area effect, RageBarbarianDummyForSpawn, written to live 50 ms,
+ * throws the bottle; the bottle's BarbarianRage is written to live 5500 ms. Both rows have hit
+ * switches.
  */
 class BattleAreaEffectLifeTest {
 
@@ -28,9 +32,6 @@ class BattleAreaEffectLifeTest {
   /** The level the Rage Barbarian is played at, against towers at their first level. */
   private static final int LEVEL = 1;
 
-  /** The tick the tower kills the Rage Barbarian, which makes its death area effect. */
-  private static final int DEATH = 236;
-
   /** The death area effect's row. */
   private static final String DEATH_AREA = "RageBarbarianDummyForSpawn";
 
@@ -39,6 +40,25 @@ class BattleAreaEffectLifeTest {
 
   /** The tick the scene runs to, after the rage has left on either version. */
   private static final int END = 400;
+
+  /**
+   * The tables with the two area effects' lives written as the scene counts on them, and the card
+   * summoning one Rage Barbarian.
+   */
+  private static GameTables lives(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "area_effect_objects",
+        rows -> {
+          GameData.columns(rows, DEATH_AREA).put("LifeDuration", 50);
+          GameData.columns(rows, RAGE).put("LifeDuration", 5500);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "RageBarbarian").put("SummonNumber", 1));
+    return GameTables.load(folder);
+  }
 
   /** What the scene saw of one area effect. */
   private static final class Life {
@@ -56,12 +76,14 @@ class BattleAreaEffectLifeTest {
   /**
    * Runs the scene: the Rage Barbarian played on tick 20 on the left lane, the towers fighting.
    *
+   * @param removals collects the tick of the step whose cleanup removed the Rage Barbarian, the
+   *     tick it died on
    * @return what it saw of each area effect, by its row's name
    */
-  private static Map<String, Life> scene(GameTables tables) {
+  private static Map<String, Life> scene(GameTables tables, List<Integer> removals) {
     Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
     match.getWorld().seed(SEED);
-    match.play(20, GameData.card("RageBarbarian"), LEVEL, 0, 3500, 20000, "R");
+    match.play(20, match.getWorld().getRecords().card("RageBarbarian"), LEVEL, 0, 3500, 20000, "R");
     Map<String, Life> lives = new LinkedHashMap<>();
     Map<Integer, Life> byId = new LinkedHashMap<>();
     match
@@ -75,6 +97,13 @@ class BattleAreaEffectLifeTest {
                 life.created = tick;
                 lives.put(areaEffect.getData().name(), life);
                 byId.put(areaEffect.getId(), life);
+              }
+
+              @Override
+              public void entityRemoved(int tick, WorldEntity removed) {
+                if (removed.getData().name().equals("RageBarbarian")) {
+                  removals.add(tick);
+                }
               }
 
               @Override
@@ -104,13 +133,16 @@ class BattleAreaEffectLifeTest {
   @DisplayName(
       "an area effect whose countdown reaches 0 has one more update and"
           + " leaves once its countdown is below 0")
-  void anAreaEffectStaysUntilItsCountdownIsBelowZero() {
-    Map<String, Life> lives = scene(GameData.tables());
+  void anAreaEffectStaysUntilItsCountdownIsBelowZero(@TempDir Path folder) throws IOException {
+    List<Integer> removals = new ArrayList<>();
+    Map<String, Life> lives = scene(lives(folder), removals);
+    assertThat(removals).as("the tower kills the Rage Barbarian").isNotEmpty();
+    int died = removals.get(0);
 
     Life death = lives.get(DEATH_AREA);
-    assertThat(death.created).isEqualTo(DEATH);
+    assertThat(death.created).as("made on the tick it dies").isEqualTo(died);
     assertThat(death.countdowns).as("its updates").containsExactly(0, -50);
-    assertThat(death.listed).as("listed after").containsExactly(DEATH + 1, DEATH + 2);
+    assertThat(death.listed).as("listed after").containsExactly(died + 1, died + 2);
 
     Life rage = lives.get(RAGE);
     assertThat(rage.countdowns).as("5500 ms of life: 111 updates").hasSize(111);

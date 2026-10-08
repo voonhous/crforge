@@ -2,13 +2,18 @@ package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The children of a projectile's impact keep the step their registration visit takes: the
@@ -19,16 +24,39 @@ import org.junit.jupiter.api.Test;
  * <p>Each child also takes its lane from where it is made with the impact point as the reference,
  * so a child made just across the centre column from the impact keeps the lane of the impact's
  * side.
+ *
+ * <p>The scenes write the barrel as they count on it: three Goblins of collision radius 500 at the
+ * card's offsets (0, -500), (500, 500) and (-500, 500).
  */
 class BattleImpactSpawnTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The configured tables with the barrel's three Goblins written as the scenes count on them. */
+  private static GameTables barrel(Path folder) throws IOException {
+    GameData.altered(
+        folder,
+        "projectiles",
+        rows -> GameData.columns(rows, "GoblinBarrelSpell").put("SpawnCharacterCount", 3));
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Goblin").put("CollisionRadius", 500));
+    GameData.alterLoaded(
+        folder,
+        "spells_other",
+        rows -> {
+          ArrayNode x = GameData.columns(rows, "GoblinBarrel").putArray("SummonCharactersOffsetsX");
+          x.add(0).add(500).add(-500);
+          ArrayNode y = GameData.columns(rows, "GoblinBarrel").putArray("SummonCharactersOffsetsY");
+          y.add(-500).add(500).add(500);
+        });
+    return GameTables.load(folder);
+  }
+
   @Test
   @DisplayName(
       "the Goblin Barrel's Goblins have taken their first step apart on the impact step itself")
-  void theFirstStepIsKept() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+  void theFirstStepIsKept(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(barrel(folder), LEVEL, false);
     List<CharacterEntity> children = new ArrayList<>();
     List<int[]> made = new ArrayList<>();
     int[] impactTick = {-1};
@@ -44,7 +72,8 @@ class BattleImpactSpawnTest {
                 impactTick[0] = tick;
               }
             });
-    match.play(0, GameData.card("GoblinBarrel"), LEVEL, 0, 3500, 25500, "Barrel");
+    match.play(
+        0, match.getWorld().getRecords().card("GoblinBarrel"), LEVEL, 0, 3500, 25500, "Barrel");
     while (children.isEmpty()) {
       match.getBattle().step();
     }
@@ -73,8 +102,8 @@ class BattleImpactSpawnTest {
   @DisplayName(
       "a Goblin made across the centre column from the Goblin Barrel's impact keeps the impact's"
           + " side")
-  void aChildAcrossTheCentreKeepsTheImpactsLane() {
-    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+  void aChildAcrossTheCentreKeepsTheImpactsLane(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(barrel(folder), LEVEL, false);
     List<CharacterEntity> children = new ArrayList<>();
     List<int[]> made = new ArrayList<>();
     match
@@ -90,7 +119,8 @@ class BattleImpactSpawnTest {
             });
     // The barrel lands at (9500, 9500), right of the centre line x 9000; the formation makes its
     // third Goblin at x 9001, in the centre column 18 whose own nearest road is the right lane.
-    match.play(0, GameData.card("GoblinBarrel"), LEVEL, 0, 9000, 9000, "Barrel");
+    match.play(
+        0, match.getWorld().getRecords().card("GoblinBarrel"), LEVEL, 0, 9000, 9000, "Barrel");
     while (children.isEmpty()) {
       match.getBattle().step();
     }
@@ -106,7 +136,16 @@ class BattleImpactSpawnTest {
     while (third.getUnit().targeting().getReference() == null) {
       match.getBattle().step();
     }
-    assertThat(third.getUnit().targeting().getReference().getEntity().getX()).isEqualTo(3500);
+    WorldEntity leftTower = null;
+    for (WorldEntity entity : match.getWorld().present()) {
+      if (entity.getData().name().equals("PrincessTower")
+          && entity.side() == 1
+          && entity.getView().getX() < 9000) {
+        leftTower = entity;
+      }
+    }
+    assertThat(third.getUnit().targeting().getReference().getEntity().getX())
+        .isEqualTo(leftTower.getView().getX());
     int x = third.getView().getX();
     match.getBattle().step();
     assertThat(third.getView().getX()).isLessThan(x);

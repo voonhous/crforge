@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -190,51 +192,90 @@ class BattleTowerTargetingTest {
     assertThat(referenceName(bottomKing)).isEqualTo("PrincessTower_1_2");
   }
 
+  /** The king's activating run, whose duration the king stays off for after the condition. */
+  private static final String ACTIVATING = "WaitForKingTowerActivation_OnActivateAction";
+
   @Test
   @DisplayName(
-      "a destroyed princess tower wakes its king, which stays off for the activation's 3300 ms and"
-          + " is first visited seventy ticks after the tick that saw the condition")
-  void aDestroyedPrincessTowerWakesTheKingSeventyTicksLater() {
+      "a destroyed princess tower wakes its king, which stays off for the activation's duration and"
+          + " is first visited four ticks after it from the tick that saw the condition")
+  void aDestroyedPrincessTowerWakesTheKingAfterTheActivation() {
     JsonNode reference = BattleMusketeerRunTest.load(BattleTowerRunTest.LEVEL_ONE_REFERENCE);
-    Map<String, Integer> timeline = new HashMap<>();
-    for (JsonNode event : reference.get("tower_events")) {
-      timeline.putIfAbsent(event.get("event").asText(), event.get("tick").asInt());
-    }
-    int condition = timeline.get("activation_condition");
-    assertThat(condition).isEqualTo(389);
-    assertThat(timeline.get("activating_finished")).isEqualTo(condition + 67);
-    assertThat(timeline.get("activating_removed")).isEqualTo(condition + 68);
+    // The activating run's ticks, a part tick counted whole: 66 of its 3300 ms in the configured
+    // tables.
+    int run = (Shipped.number(ACTIVATING, "ActionDuration") + 49) / 50;
 
     Standard1v1Battle match =
         new Standard1v1Battle(GameData.tables(), reference.get("tower_level").asInt());
     Battle battle = match.getBattle();
     BattleTowerRunTest.deploy(match, reference);
     TowerEntity king = BattleMusketeerRunTest.towerNamed(battle, "KingTower_1_0");
-    for (int tick = 0; tick <= condition + 70; tick++) {
+    // The reference tick each step of the top king's activation is first told on.
+    Map<ActivationEvent.Kind, Integer> steps = new EnumMap<>(ActivationEvent.Kind.class);
+    int[] at = {0};
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void activation(int tick, TowerEntity tower, ActivationEvent event) {
+                if (tower == king) {
+                  steps.putIfAbsent(event.kind(), at[0]);
+                }
+              }
+            });
+    // What the king was after each tick, until four ticks past the activating run.
+    List<Boolean> inactive = new ArrayList<>();
+    List<Boolean> targeting = new ArrayList<>();
+    List<String> references = new ArrayList<>();
+    List<Integer> states = new ArrayList<>();
+    for (int tick = 0; tick < LAST_TICK; tick++) {
+      at[0] = tick;
       battle.step();
+      inactive.add(king.isInactive());
+      targeting.add(king.isActive(TowerEntity.TARGETING_SLOT));
+      references.add(referenceName(king));
+      states.add(king.getView().getState());
+      Integer seen = steps.get(ActivationEvent.Kind.CONDITION);
+      if (seen != null && tick == seen + run + 4) {
+        break;
+      }
+    }
+    assertThat(steps)
+        .as("the knight takes a princess tower")
+        .containsKey(ActivationEvent.Kind.CONDITION);
+    int condition = steps.get(ActivationEvent.Kind.CONDITION);
+    assertThat(steps.get(ActivationEvent.Kind.ACTIVATING_FINISHED)).isEqualTo(condition + run + 1);
+    assertThat(steps.get(ActivationEvent.Kind.ACTIVATING_REMOVED)).isEqualTo(condition + run + 2);
+    assertThat(inactive).hasSize(condition + run + 5);
+
+    for (int tick = 0; tick < inactive.size(); tick++) {
       String where = "reference tick " + tick;
       if (tick == 0) {
         // The wait starts in the first tick's first pending pass, after that tick's fold.
-        assertThat(king.isInactive()).as(where).isFalse();
-        assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isTrue();
-      } else if (tick < condition + 69) {
+        assertThat(inactive.get(tick)).as(where).isFalse();
+        assertThat(targeting.get(tick)).as(where).isTrue();
+      } else if (tick < condition + run + 3) {
         // Inactive until the condition, then activating; the finished run's tag still counts at
         // the fold before the run pass that removes it.
-        assertThat(king.isInactive()).as(where).isTrue();
-        assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isFalse();
-        assertThat(referenceName(king)).as(where).isEqualTo("PrincessTower_0_2");
-      } else if (tick == condition + 69) {
-        assertThat(king.isInactive()).as(where).isFalse();
-        assertThat(king.isActive(TowerEntity.TARGETING_SLOT)).as(where).isTrue();
-        assertThat(referenceName(king)).as(where).isEqualTo("PrincessTower_0_2");
+        assertThat(inactive.get(tick)).as(where).isTrue();
+        assertThat(targeting.get(tick)).as(where).isFalse();
+        assertThat(references.get(tick)).as(where).isEqualTo("PrincessTower_0_2");
+      } else if (tick == condition + run + 3) {
+        assertThat(inactive.get(tick)).as(where).isFalse();
+        assertThat(targeting.get(tick)).as(where).isTrue();
+        assertThat(references.get(tick)).as(where).isEqualTo("PrincessTower_0_2");
       } else {
-        assertThat(referenceName(king))
+        assertThat(references.get(tick))
             .as(where + ": the first visit locks on")
             .isEqualTo("Knight");
-        assertThat(king.getView().getState()).as(where).isEqualTo(GridEntityState.ATTACKING);
+        assertThat(states.get(tick)).as(where).isEqualTo(GridEntityState.ATTACKING);
       }
     }
   }
+
+  /** The tick the king scene gives up waiting for the condition. */
+  private static final int LAST_TICK = 1200;
 
   @Test
   @DisplayName(
