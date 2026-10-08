@@ -30,7 +30,10 @@ class BattleAttackActionTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** An evolved Valkyrie and three Barbarians walking into it, as valkyrie_ev1_barbarians. */
+  /**
+   * An evolved Valkyrie and three Barbarians walking into it; the evolved Valkyrie itself is held
+   * by the reference battle evo_valkyrie_vs_musketeer.
+   */
   private static CharacterEntity valkyrieAmongBarbarians(Standard1v1Battle battle) {
     CharacterEntity valkyrie =
         battle.deploy(0, unit(battle, "Valkyrie_EV1"), LEVEL, 0, 3500, 16000, "v");

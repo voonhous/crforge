@@ -31,11 +31,11 @@ import org.junit.jupiter.api.io.TempDir;
  * Runs the same multi-unit scenes through the battle and through the older engine's grid mode and
  * requires the same positions on every tick.
  *
- * <p>Both run the same movement and targeting rules; what differs is what drives them. The golden
- * trajectories only ever hold one unit, where visiting entity by entity and visiting pass by pass
- * cannot be told apart. These scenes put several units in each other's way, so the whole-list pass
- * order, the shared spatial index and the neighbour answers all have to agree for the positions to
- * match.
+ * <p>Both run the same movement and targeting rules; what differs is what drives them. The six
+ * Knight walks GridGoldenTrajectoryTest replays only ever hold one unit, where visiting entity by
+ * entity and visiting pass by pass cannot be told apart. These scenes put several units in each
+ * other's way, so the whole-list pass order, the shared spatial index and the neighbour answers all
+ * have to agree for the positions to match.
  *
  * <p>The comparison stops before the older engine's combat can remove a unit: from then on the two
  * diverge for a reason that has nothing to do with movement, because hits do not land in the battle

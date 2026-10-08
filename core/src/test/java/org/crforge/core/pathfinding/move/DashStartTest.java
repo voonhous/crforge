@@ -47,8 +47,9 @@ class DashStartTest {
   @Test
   @DisplayName("the Bandit dashes to the cell short of the Knight by both radii, facing it")
   void theBanditStopsShortOfTheKnight() {
-    // The Bandit of bandit_knight at tick 46, dashing at the Knight at (3687, 16486), radius 500:
-    // the point pulled back 1100 toward the Bandit is (3683, 15386), in node 1087.
+    // A Bandit dashing at a Knight at (3687, 16486), radius 500: the point pulled back 1100 toward
+    // the Bandit is (3683, 15386), in node 1087. The Bandit's dash is held by the reference battles
+    // grid_clone_over_bandit_dash and grid_log_over_bandit_dash_end.
     GridEntity owner = dasherAt(3665, 10965);
     MovementState movement = MovementState.forSide(0, 3665, 10965);
 

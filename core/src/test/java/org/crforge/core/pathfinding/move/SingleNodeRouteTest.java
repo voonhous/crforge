@@ -27,7 +27,8 @@ class SingleNodeRouteTest {
     component.setRoute(Route.of(1250, 1214, 1178));
     MovementConfig jumper = MovementConfig.forGroundUnit().withJump(true, 4000);
 
-    // The Hog Rider of hog_river, jumping from (10092, 14092) to the centre of node 1250.
+    // A Hog Rider jumping from (10092, 14092) to the centre of node 1250; the Hog Rider's river
+    // jump is held by the reference battle card_HogRider.
     SingleNodeRoute.set(component, ownerAt(10092, 14092), jumper, 13250, 17250, 1, WIDTH, HEIGHT);
 
     assertThat(component.getRoute()).isEqualTo(Route.of(1250));

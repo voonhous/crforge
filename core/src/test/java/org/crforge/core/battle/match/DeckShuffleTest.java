@@ -24,7 +24,9 @@ class DeckShuffleTest {
   }
 
   @Test
-  @DisplayName("the battle-source draws of match_elixir_150s deal its two orders")
+  @DisplayName(
+      "two battle-source draws deal their two orders; the shuffle is held by the opening hands"
+          + " every reference battle observes")
   void theReferenceOrders() {
     // Side 0's draw from the battle source's first state, then side 1's from the next.
     assertThat(DeckShuffle.order(eightPlain(), 270369)).containsExactly(5, 2, 1, 7, 6, 3, 0, 4);

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,16 +17,41 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A newer data version's evolved Pekka: its killed-done action is a group that creates a context,
- * writes the killed unit's hit points and shield hit points at card level 11 into it, and sends a
- * soul flying for 700 ms; the group that runs as the soul arrives inherits the context, and its
- * select picks the heal by the sum the context holds (below 990, below 1990, or more).
+ * writes the killed unit's hit points and shield hit points at a card level into it, and sends a
+ * soul flying; the group that runs as the soul arrives inherits the context, and its select picks
+ * the heal by the sum the context holds: the least below its first band, the middle below its
+ * second, else the most. The test writes the whole chain, the two bands set against the sum it
+ * works out for the killed unit, so each case is chosen by construction.
  */
 class BattlePekkaEvoContextTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** The configured tables with the newer version's killed-done chain of the evolved Pekka. */
-  private static GameTables withContextChain(Path folder) throws IOException {
+  /** The card level index the context writer reads the hit points at, counted from 0. */
+  private static final int CONTEXT_LEVEL_INDEX = 10;
+
+  /** The soul's constant flight time, in milliseconds. */
+  private static final int FLIGHT_MS = 700;
+
+  /** The shield hit points written on the hero Knight's row, at the first level. */
+  private static final int HERO_SHIELD = 300;
+
+  /** The heals the select gives, least to most: buff rows of the configured tables. */
+  private static final String HEAL_MIN = "PekkaEV1_HealMin";
+
+  private static final String HEAL_MED = "PekkaEV1_HealMed";
+  private static final String HEAL_MAX = "PekkaEV1_HealMax";
+
+  /**
+   * The configured tables with the newer version's killed-done chain of the evolved Pekka written
+   * in full, its select's two bands the ones given, and the hero Knight's shield written.
+   *
+   * @param folder the folder the tables are copied into
+   * @param first the sum below which the least heal is given
+   * @param second the sum below which, failing the first, the middle heal is given
+   */
+  private static GameTables withContextChain(Path folder, int first, int second)
+      throws IOException {
     GameData.altered(
         folder,
         "actions",
@@ -46,7 +72,7 @@ class BattlePekkaEvoContextTest {
                   "ActionWriteInstigatorInfoToContext",
                   f -> {
                     f.put("HitpointsKey", "victim_hp");
-                    f.put("HitpointsLevelIndex", 10);
+                    f.put("HitpointsLevelIndex", CONTEXT_LEVEL_INDEX);
                     f.put("ShieldHitpointsKey", "victim_shield_hp");
                   }));
           rows.set(
@@ -56,7 +82,7 @@ class BattlePekkaEvoContextTest {
                   "ActionSoulDrain",
                   f -> {
                     f.putObject("ActionOnTargetReached").put("action", "PekkaEV1_SoulArrived");
-                    f.put("ConstantFlightDuration", 700);
+                    f.put("ConstantFlightDuration", FLIGHT_MS);
                   }));
           rows.set(
               "PekkaEV1_SoulArrived",
@@ -67,18 +93,61 @@ class BattlePekkaEvoContextTest {
                     f.put("ContextMode", "Inherit");
                     parts(f, "PekkaEV1_Heal");
                   }));
-          ObjectNode heal = (ObjectNode) rows.get("PekkaEV1_Heal").get("fields");
-          ArrayNode conditions = heal.putArray("PerActionConditions");
-          conditions.add("as_int(#victim_hp, 0) + as_int(#victim_shield_hp, 0) < 990");
-          conditions.add("as_int(#victim_hp, 0) + as_int(#victim_shield_hp, 0) < 1990");
+          rows.set(
+              "PekkaEV1_Heal",
+              action(
+                  "LogicActionSelectData",
+                  "ActionSelect",
+                  f -> {
+                    ArrayNode conditions = f.putArray("PerActionConditions");
+                    conditions.add(
+                        "as_int(#victim_hp, 0) + as_int(#victim_shield_hp, 0) < " + first);
+                    conditions.add(
+                        "as_int(#victim_hp, 0) + as_int(#victim_shield_hp, 0) < " + second);
+                    ArrayNode heals = f.putArray("SubActions");
+                    for (String heal : new String[] {HEAL_MIN, HEAL_MED, HEAL_MAX}) {
+                      heals.addObject().put("action", "Give_" + heal);
+                    }
+                  }));
+          for (String heal : new String[] {HEAL_MIN, HEAL_MED, HEAL_MAX}) {
+            rows.set(
+                "Give_" + heal,
+                action(
+                    "LogicActionSpawnData",
+                    "ActionSpawn",
+                    f -> {
+                      f.put("ParentGOAsSource", true);
+                      f.put("SpawnData", heal);
+                      f.put("SpawnTime", 50);
+                      f.put("SpawnType", "BuffType");
+                    }));
+          }
         });
     ObjectMapper mapper = new ObjectMapper();
     Path file = folder.resolve("characters.json");
     ObjectNode document = (ObjectNode) mapper.readTree(file.toFile());
-    GameData.columns((ObjectNode) document.get("rows"), "Pekka_EV1")
-        .put("OnKilledDoneAction", "PekkaEV1_OnKill");
+    ObjectNode rows = (ObjectNode) document.get("rows");
+    GameData.columns(rows, "Pekka_EV1").put("OnKilledDoneAction", "PekkaEV1_OnKill");
+    GameData.columns(rows, "KnightHero").put("ShieldHitpoints", HERO_SHIELD);
     mapper.writeValue(file.toFile(), document);
     return GameTables.load(folder);
+  }
+
+  /**
+   * A first-level column of a unit's row scaled to the context writer's card level, worked out in
+   * the test.
+   */
+  private static int atContextLevel(String row, int base) {
+    return Shipped.scaled(base, Shipped.unitRow(row), CONTEXT_LEVEL_INDEX + 1);
+  }
+
+  /**
+   * The sum the context holds for a kill of a row: its hit points and its shield hit points, each
+   * at the context writer's card level.
+   */
+  private static int contextSum(String row) {
+    return atContextLevel(row, Shipped.number(Shipped.unitRow(row), "Hitpoints"))
+        + atContextLevel(row, Shipped.number(Shipped.unitRow(row), "ShieldHitpoints"));
   }
 
   /** An action row of a class with its fields. */
@@ -132,49 +201,62 @@ class BattlePekkaEvoContextTest {
     return -1;
   }
 
-  /** The heal the evolved Pekka is given for a kill of the row, after the soul's flight. */
-  private static int healDelay(Path folder, String row, String heal, String... others)
+  /**
+   * The steps after a kill of the row until the evolved Pekka carries the heal, with neither other
+   * heal carried then.
+   */
+  private static int healDelay(Path folder, int first, int second, String row, String heal)
       throws IOException {
-    Standard1v1Battle match = new Standard1v1Battle(withContextChain(folder), LEVEL, false);
+    Standard1v1Battle match =
+        new Standard1v1Battle(withContextChain(folder, first, second), LEVEL, false);
     CharacterEntity[] units = facing(match, row);
     stepUntilDead(match, units[1]);
     int steps = stepsUntilCarried(match, units[0], heal);
-    for (String other : others) {
-      assertThat(units[0].getBuffs().carries(other)).as(other).isFalse();
+    for (String other : new String[] {HEAL_MIN, HEAL_MED, HEAL_MAX}) {
+      if (!other.equals(heal)) {
+        assertThat(units[0].getBuffs().carries(other)).as(other).isFalse();
+      }
     }
     return steps;
   }
 
   @Test
   @DisplayName(
-      "a kill of a Knight gives the middle heal once the soul has flown its 700 ms, not at the"
-          + " kill")
+      "a kill of a Knight whose sum stands on the first band and below the second gives the middle"
+          + " heal once the soul has flown its flight time, not at the kill")
   void aKnightGivesTheMiddleHealAfterTheFlight(@TempDir Path folder) throws IOException {
-    int steps = healDelay(folder, "Knight", "PekkaEV1_HealMed", "PekkaEV1_HealMin");
+    int sum = contextSum("Knight");
 
-    assertThat(steps).isGreaterThanOrEqualTo(14).isLessThan(20);
+    assertThat(healDelay(folder, sum, sum + 1, "Knight", HEAL_MED))
+        .isEqualTo(Shipped.ticks(FLIGHT_MS));
   }
 
   @Test
-  @DisplayName("a kill of a Skeleton gives the least heal")
+  @DisplayName("a kill of a Skeleton whose sum stands below the first band gives the least heal")
   void aSkeletonGivesTheLeastHeal(@TempDir Path folder) throws IOException {
-    assertThat(healDelay(folder, "Skeleton", "PekkaEV1_HealMin", "PekkaEV1_HealMed"))
-        .isGreaterThanOrEqualTo(14);
+    int sum = contextSum("Skeleton");
+
+    assertThat(healDelay(folder, sum + 1, sum + 2, "Skeleton", HEAL_MIN))
+        .isEqualTo(Shipped.ticks(FLIGHT_MS));
   }
 
   @Test
   @DisplayName(
-      "a kill of the hero Knight counts its shield: its hit points alone at level 11 are below"
-          + " 1990, with its shield they are not, and the most heal follows")
+      "a kill of the hero Knight counts its shield: its hit points alone at the writer's level are"
+          + " below the second band, with its shield they are not, and the most heal follows")
   void theShieldCounts(@TempDir Path folder) throws IOException {
-    Standard1v1Battle match = new Standard1v1Battle(withContextChain(folder), LEVEL, false);
+    int hitpoints =
+        atContextLevel("KnightHero", Shipped.number(Shipped.unitRow("KnightHero"), "Hitpoints"));
+    int shield = atContextLevel("KnightHero", HERO_SHIELD);
+    Standard1v1Battle match =
+        new Standard1v1Battle(
+            withContextChain(folder, hitpoints, hitpoints + shield), LEVEL, false);
     CharacterEntity[] units = facing(match, "KnightHero");
-    int[] values = units[1].contextHitpoints(10);
-    assertThat(values[0]).isLessThan(1990);
-    assertThat(values[0] + values[1]).isGreaterThanOrEqualTo(1990);
+    assertThat(units[1].contextHitpoints(CONTEXT_LEVEL_INDEX)).containsExactly(hitpoints, shield);
     stepUntilDead(match, units[1]);
 
-    assertThat(stepsUntilCarried(match, units[0], "PekkaEV1_HealMax")).isGreaterThanOrEqualTo(14);
-    assertThat(units[0].getBuffs().carries("PekkaEV1_HealMed")).isFalse();
+    assertThat(stepsUntilCarried(match, units[0], HEAL_MAX)).isEqualTo(Shipped.ticks(FLIGHT_MS));
+    assertThat(units[0].getBuffs().carries(HEAL_MED)).isFalse();
+    assertThat(units[0].getBuffs().carries(HEAL_MIN)).isFalse();
   }
 }

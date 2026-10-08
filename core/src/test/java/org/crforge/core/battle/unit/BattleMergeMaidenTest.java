@@ -23,7 +23,10 @@ class BattleMergeMaidenTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** The deck of {@code merge_maiden_normal}: the opening hand is a Zap and three Merge Maidens. */
+  /**
+   * A deck of Zaps and Merge Maidens in turn, whose opening hand is a Zap and three Merge Maidens;
+   * a Merge Maiden's play is held by the reference battle card_item_merge_maiden_on_foot.
+   */
   private static final List<String> ZAP_MAIDENS =
       List.of(
           "Zap", "MergeMaiden", "Zap", "MergeMaiden", "Zap", "MergeMaiden", "Zap", "MergeMaiden");
