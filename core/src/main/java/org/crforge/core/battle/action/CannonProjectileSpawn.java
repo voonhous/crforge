@@ -17,10 +17,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the cause's point and side, the height, the aim at the same point,"
-            + " the speed from the height and the cause's lifetime, and the cause as the"
-            + " launcher; held by building_evolutions_barbarians. Refused: a homing projectile, a"
-            + " cause other than an area effect, and the shared columns but the next action.")
+        "Settled line for line: the cause's point and side, the height, the aim at the same"
+            + " point, the speed from the height and the cause's lifetime, and the cause as the"
+            + " launcher; held by the reference battle evo_cannon_vs_giant. Refused: a homing"
+            + " projectile, a cause other than an area effect, and the shared columns but the"
+            + " next action.")
 public final class CannonProjectileSpawn extends RowAction {
 
   /** The projectile row's name. */

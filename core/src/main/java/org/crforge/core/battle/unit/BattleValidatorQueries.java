@@ -23,7 +23,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
     note =
         "Settled: the lethal test with its shield and untouchable gates, the dash test, the"
             + " healing test and the full hit points at the target's level. Held by the"
-            + " references' selections and drops, and the shield gate by pending_shield_guards;"
+            + " references' selections and drops, and the shield gate by the reference battles"
+            + " status_guards_shields_vs_valkyrie_and_archers and card_SkeletonWarriors;"
             + " the dash and healing tests by no run; the damage reduction of the target's buffs"
             + " on the amount by BattleMonkTest alone, since no damage on its way to a Monk"
             + " under its ability is lethal in the references. An unkillable target spared the"

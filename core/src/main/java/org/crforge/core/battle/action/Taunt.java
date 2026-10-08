@@ -32,17 +32,17 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the perform's gates, the forced object the area effect's parent,"
             + " the arming's valid branch, the buff with the forced object as its source, the one"
-            + " step that ends it and the buff removed as it finishes; held by"
-            + " goblin_demolisher_knight, where the Goblin Demolisher's cancelling area effect"
-            + " taunts it onto itself for one tick. The crown tower branch, the building's reach"
-            + " test, its steps with the building retargeting, and the expiry with the reference"
-            + " kept by an attacking tower and given up by a standing one, held by"
-            + " ability_hero_knight, where the hero Knight's ability taunts both towers before it."
-            + " The arming's invalid branch, the falloff on a lost reach, the re-arm and the run"
-            + " ending as its forced object leaves are translated but held by no run. Refused: the"
-            + " end by a stun, the visual effect, a taunted building other than a crown tower, a"
-            + " unit's taunt past its first step, a taunted rider, carrier or pathfinding unit,"
-            + " and a flying forced object.")
+            + " step that ends it and the buff removed as it finishes; held by the reference"
+            + " battle card_GoblinDemolisher, where the Goblin Demolisher's cancelling area"
+            + " effect taunts it onto itself for one tick. The crown tower branch, the building's"
+            + " reach test, its steps with the building retargeting, and the expiry with the"
+            + " reference kept by an attacking tower and given up by a standing one, held by"
+            + " ability_hero_knight, where the hero Knight's ability taunts both towers before"
+            + " it. The arming's invalid branch, the falloff on a lost reach, the re-arm and the"
+            + " run ending as its forced object leaves are translated but held by no run."
+            + " Refused: the end by a stun, the visual effect, a taunted building other than a"
+            + " crown tower, a unit's taunt past its first step, a taunted rider, carrier or"
+            + " pathfinding unit, and a flying forced object.")
 @Getter
 public final class Taunt extends RowAction {
 

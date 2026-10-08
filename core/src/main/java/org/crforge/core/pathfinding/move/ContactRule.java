@@ -32,18 +32,20 @@ import org.crforge.core.pathfinding.GridEntityState;
     note =
         "Settled: the no-check-collisions and no-check-avoidance flags, the three states without"
             + " collision, the two following-removed states the avoidance answer drops, and 1 for"
-            + " every other entity, crown towers included; held by the tower-contact run, the"
-            + " regenerated walks past a unit's own tower and the placement runs. An attached entity"
-            + " taking no part rests on the translation and a unit test; no run has a unit meet a"
-            + " rider. A dashing unit taking no part, neither pushed nor pushing, is held by"
-            + " golden_knight_chain, golden_knight_ladder_chain and bandit_dash_past; the standard"
-            + " game exempts a row with DashingDamage, which no row sets and the battle refuses."
-            + " A clone deploying taking no part, neither pushed nor pushing, is held by"
-            + " skeleton_king_ability_no_souls and skeleton_king_ability_souls; an entity byte"
-            + " that would keep such a clone in collision, unnamed, is supplied clear, as for"
-            + " every unit the standard game makes. Supplied: no building is of the"
-            + " placeable-building kind whose answer depends on the entities near it, which is"
-            + " not reachable from the units the grid drives.")
+            + " every other entity, crown towers included; held by the six Knight walks"
+            + " GridGoldenTrajectoryTest replays, two of which deploy beside the unit's own"
+            + " tower, by golden-gaps-v1/walk_knight_right_rear and by the placements of the"
+            + " reference battles. An attached entity taking no part rests on the translation and"
+            + " a unit test; no run has a unit meet a rider. A dashing unit taking no part,"
+            + " neither pushed nor pushing, is held by the reference battles"
+            + " ability_golden_knight, grid_clone_over_bandit_dash and"
+            + " grid_log_over_bandit_dash_end; the standard game exempts a row with"
+            + " DashingDamage, which no row sets and the battle refuses. A clone deploying taking"
+            + " no part, neither pushed nor pushing, is held by ability_skeleton_king and"
+            + " card_SkeletonKing; an entity byte that would keep such a clone in collision,"
+            + " unnamed, is supplied clear, as for every unit the standard game makes. Supplied:"
+            + " no building is of the placeable-building kind whose answer depends on the"
+            + " entities near it, which is not reachable from the units the grid drives.")
 public final class ContactRule {
 
   /** The states in which an entity takes no part in collision: dashing, jumping, hooked away. */

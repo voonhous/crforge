@@ -18,10 +18,11 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's 0, the flip on the notice of every landed attack, the"
-            + " store with the component's bit ignored and the step that does nothing; held by"
-            + " berserker_knight and berserker_tower, which list the index before and after every"
-            + " start and notice. Refused: a row that sets any column besides its class, and a run"
-            + " started beside an enchanting buff, whose own count sets the Berserker's index.")
+            + " store with the component's bit ignored and the step that does nothing; held,"
+            + " through the attacks the index picks, by the reference battles card_Berserker and"
+            + " random_battle16_s0007. Refused: a row that sets any column besides its class, and"
+            + " a run started beside an enchanting buff, whose own count sets the Berserker's"
+            + " index.")
 public final class Berserk extends RowAction {
 
   /** What the run did to the index, as the battle's observers are told. */

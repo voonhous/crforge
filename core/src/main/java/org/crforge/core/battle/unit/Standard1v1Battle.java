@@ -45,34 +45,39 @@ import org.crforge.core.pathfinding.grid.TileMap;
     note =
         "Settled: tower positions, each side's from the spawn group of its tower selection, its"
             + " king row at the king's level and its other rows at the selection's level, the top"
-            + " side mirrored along the arena's length, the creation"
-            + " order, and the towers standing at their hit points at the level they are"
-            + " created at and fighting from the first tick; a card play run as a command at the"
-            + " head of its step, stamped with the battle's tick counter and run 20 ticks later,"
-            + " its placement worked out against every character, live or queued, and its units"
-            + " created in formation order, each deploying at once or waiting its turn; played as a"
-            + " Ladder match, the players' hands, elixir, the match clock, its end and its"
-            + " tiebreaker, held by match_elixir_150s, match_knights_king, match_overtime_tiebreak"
-            + " and match_overtime_draw; a Mirror's play, its item built as it runs, held by"
-            + " mirror_knight and mirror_fireball; a variant card's play, its option picked from"
-            + " the elixir after the step 21 before its run, held by merge_maiden_mounted and"
-            + " merge_maiden_normal; a play of a deck card with slots, its item built as it runs"
-            + " and its evolved or hero row placed, held by evolution_knight and"
-            + " evolution_hero_mirror; the draw each player's data takes of the battle's random"
-            + " source before the decks are dealt, bounded by the number of its choices, held by"
-            + " the recorded Knight battle's opening hands. Not established: what the choices of"
-            + " a player's data are. Not modelled, and refused: a Mirror outside a match, and one"
-            + " given while another play of its side is pending, which the player's client may"
-            + " repeat in its place; a variant card outside a match, run before tick 21, or given"
-            + " while another play of its side is pending, whose cost the pick would set aside;"
-            + " a play of an evolution slot's card given while another play of it is due, whose"
-            + " item the client builds from the count before that play."
+            + " side mirrored along the arena's length, the creation order, and the towers"
+            + " standing at their hit points at the level they are created at and fighting from"
+            + " the first tick; a card play run as a command at the head of its step, stamped"
+            + " with the battle's tick counter and run 20 ticks later, its placement worked out"
+            + " against every character, live or queued, and its units created in formation"
+            + " order, each deploying at once or waiting its turn; played as a Ladder match, the"
+            + " players' hands, elixir, the match clock, its end and its tiebreaker, held by"
+            + " every reference battle's hands and elixir and by timeline_spells_through_rates,"
+            + " card_Pekka_until_stop, timeline_tiebreak_tower_hp, timeline_tiebreak_equal_arrows"
+            + " and timeline_overtime_crown; a Mirror's play, its item built as it runs, held by"
+            + " golden-gaps-v1/mirror_after_troop and mirror_after_spell; a variant card's play,"
+            + " its option picked from the elixir after the step 21 before its run, held by"
+            + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot; a play of a"
+            + " deck card with slots, its item built as it runs and its evolved or hero row"
+            + " placed, held by knight_evolved_third_play and the hero reference battles"
+            + " (hero_giant, deck_hero_and_champion); the draw each player's data takes of the"
+            + " battle's random source before the decks are dealt, bounded by the number of its"
+            + " choices, held by the recorded Knight battle's opening hands. Not established:"
+            + " what the choices of a player's data are. Not modelled, and refused: a Mirror"
+            + " outside a match, and one given while another play of its side is pending, which"
+            + " the player's client may repeat in its place; a variant card outside a match, run"
+            + " before tick 21, or given while another play of its side is pending, whose cost"
+            + " the pick would set aside; a play of an evolution slot's card given while another"
+            + " play of it is due, whose item the client builds from the count before that play."
             + " Supplied: the step a variant's option is picked after, the last the client can"
             + " have seen before it gives the play; the level of the option's units, the level"
             + " the play is given, as for every card.")
 public class Standard1v1Battle {
 
-  /** The level the reference runs are played at, and the towers' level when none is given. */
+  /**
+   * The towers' level when none is given, and the level the mechanic tests and the visualizer play
+   * their units at.
+   */
   public static final int DEFAULT_LEVEL = 11;
 
   /** The spawn group of the default tower selection: the king tower and two princess towers. */
@@ -124,7 +129,7 @@ public class Standard1v1Battle {
    *     declared, and its records and action rows are kept for the entities
    * @param towerLevel the level all six towers are created at, counted from 1
    * @param towersAttack false to keep every tower passive for the whole battle: none selects a
-   *     target or fires, as in the reference runs made without the towers fighting
+   *     target or fires, as the mechanic tests that keep the towers out of a fight play it
    */
   public Standard1v1Battle(GameTables tables, int towerLevel, boolean towersAttack) {
     this(
@@ -147,7 +152,7 @@ public class Standard1v1Battle {
    *     the towers
    * @param sides the towers of side 0 and side 1
    * @param towersAttack false to keep every tower passive for the whole battle: none selects a
-   *     target or fires, as in the reference runs made without the towers fighting
+   *     target or fires, as the mechanic tests that keep the towers out of a fight play it
    */
   public Standard1v1Battle(GameTables tables, List<Towers> sides, boolean towersAttack) {
     checkArgument(sides.size() == 2, () -> "two sides' towers, got " + sides.size());

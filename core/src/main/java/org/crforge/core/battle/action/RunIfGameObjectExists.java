@@ -27,10 +27,10 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled and held by the native cases of its perform and by bandit_greeting: the live"
-            + " list through the filter for the owner's team and name, the veto, the count after"
-            + " every object, the count without names, the empty list, the missing filter, and the"
-            + " branch scheduled on the owner as its own cause.")
+        "Settled and held by the recorded cases of its perform and by BattleRunIfExistsTest: the"
+            + " live list through the filter for the owner's team and name, the veto, the count"
+            + " after every object, the count without names, the empty list, the missing filter,"
+            + " and the branch scheduled on the owner as its own cause.")
 public final class RunIfGameObjectExists extends RowAction {
 
   private final GameObjectFilter filter;

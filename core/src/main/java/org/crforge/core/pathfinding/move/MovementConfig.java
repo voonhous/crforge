@@ -51,8 +51,7 @@ public record MovementConfig(
 
   /**
    * The configuration of a plain ground unit: no attachment, no flight, no charge, no jump, no dash
-   * and no movement pause. Every value is zero or absent, which is what a Knight carries in the
-   * recorded trajectories.
+   * and no movement pause. Every value is zero or absent, which is what a Knight carries.
    */
   public static MovementConfig forGroundUnit() {
     return forGroundUnit(0, 0);

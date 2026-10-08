@@ -18,8 +18,8 @@ import org.crforge.core.pathfinding.combat.HitPoints;
     note =
         "Settled and held by the recorded cases: the start conditions, the threshold at or below"
             + " its share, several fired in one step, the index that never goes back and the end"
-            + " when the last has fired. Held by goblin_demolisher_knight: the owner as the cause"
-            + " of what it runs.")
+            + " when the last has fired. Held by the reference battle card_GoblinDemolisher: the"
+            + " owner as the cause of what it runs.")
 public final class RunActionAtHealth extends RowAction {
 
   private final List<Integer> healthPercentages;

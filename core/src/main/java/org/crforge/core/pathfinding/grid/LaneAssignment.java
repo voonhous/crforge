@@ -22,8 +22,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against the lane of all 53 reference walks, deployed at random points"
-            + " on both sides.")
+        "Settled against the walks of the reference battles, with units deployed on both sides,"
+            + " at arbitrary points in the random battles, and the six Knight walks"
+            + " GridGoldenTrajectoryTest replays.")
 public final class LaneAssignment {
 
   private LaneAssignment() {

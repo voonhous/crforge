@@ -15,10 +15,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: every bomb in the first update, x from the absolute offset, y from"
-            + " the owner's y and the vertical offset negated for side 1, and the finish; held by"
-            + " building_evolutions_barbarians. Refused: a bomb off the arena, which ends the"
-            + " barrage, and a mode of four players, whose team rule is not modelled.")
+        "Settled line for line: every bomb in the first update, x from the absolute offset, y"
+            + " from the owner's y and the vertical offset negated for side 1, and the finish;"
+            + " held by the reference battle evo_cannon_vs_giant. Refused: a bomb off the arena,"
+            + " which ends the barrage, and a mode of four players, whose team rule is not"
+            + " modelled.")
 final class CannonBarrageRun extends ActionInstance {
 
   /** Game units per offset tile. */

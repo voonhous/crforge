@@ -13,9 +13,9 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Every value is the published one for the current data. The six routing costs"
-            + " and the default-target switches are held by the 53 reference walks; the rest"
-            + " by the value tests.")
+        "Every value is the published one for the current data. The six routing costs and the"
+            + " default-target switches are held by the walks of the reference battles and the"
+            + " six Knight walks GridGoldenTrajectoryTest replays; the rest by the value tests.")
 public final class PathfindingGlobals {
 
   private PathfindingGlobals() {

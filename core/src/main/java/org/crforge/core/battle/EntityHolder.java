@@ -50,20 +50,20 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "The order of hooks, component passes and action passes within a tick is settled, and so"
-            + " are the snapshot, the ids as the kind's band plus a per-kind counter taken when the"
-            + " entity is handed over, the live list sorted by id, and that every remaining entity"
-            + " is told of a removal inside the cleanup that removes it, the entities handed over"
-            + " that tick before the live list, so a reference to a dead entity is dropped before"
-            + " the next visit; that the cleanup's removals repeat until a round removes nothing,"
-            + " so a rider let go by its parent leaves in the same cleanup, and walk the live list"
-            + " alone, so an entity handed over spent is admitted and leaves at the next, held by"
-            + " goblin_drill_princess; that the leaving entity's own running actions hear of its"
-            + " leaving before every notice, held by goblinstein_tower, and are stopped"
-            + " after every notice, held by goblin_machine_tower; and that an entity"
-            + " killed during a tick is visited by the rest of it, less the components its death"
-            + " switches off. Not settled: whether the removed entity is"
-            + " told of its own removal, and whether anything reorders the live list between"
-            + " ticks.")
+            + " are the snapshot, the ids as the kind's band plus a per-kind counter taken when"
+            + " the entity is handed over, the live list sorted by id, and that every remaining"
+            + " entity is told of a removal inside the cleanup that removes it, the entities"
+            + " handed over that tick before the live list, so a reference to a dead entity is"
+            + " dropped before the next visit; that the cleanup's removals repeat until a round"
+            + " removes nothing, so a rider let go by its parent leaves in the same cleanup, and"
+            + " walk the live list alone, so an entity handed over spent is admitted and leaves"
+            + " at the next, held by the reference battle card_GoblinDrill; that the leaving"
+            + " entity's own running actions hear of its leaving before every notice, held by"
+            + " ability_goblinstein, and are stopped after every notice, held by"
+            + " card_GoblinMachine; and that an entity killed during a tick is visited by the"
+            + " rest of it, less the components its death switches off. Not settled: whether the"
+            + " removed entity is told of its own removal, and whether anything reorders the live"
+            + " list between ticks.")
 public class EntityHolder {
 
   private final HolderPasses passes;

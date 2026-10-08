@@ -24,9 +24,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line, including the uneven bounds tests and"
-            + " the unconditional snap to the cell edge, which also applies to a unit standing"
-            + " off the grid. Held by its own tests; no reference walk is ever clamped.")
+        "Agrees with the reference line for line, including the uneven bounds tests and the"
+            + " unconditional snap to the cell edge, which also applies to a unit standing off"
+            + " the grid. Held by its own tests; whether a reference battle clamps a walk is not"
+            + " checked.")
 public final class GridMove {
 
   private GridMove() {

@@ -21,9 +21,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the area effect made at the offset point and following with the"
             + " offsets, the lifetime given back by a second start, the run's end after the area"
-            + " effect leaves, and the life cut to the stay as the owner leaves; held by"
-            + " baby_dragon_ev1_wind. Refused: the destruction while the owner's combat is"
-            + " disabled.")
+            + " effect leaves, and the life cut to the stay as the owner leaves; held by the"
+            + " reference battle evo_babydragon_vs_musketeer. Refused: the destruction while the"
+            + " owner's combat is disabled.")
 public final class SpawnResetableAreaEffect extends RowAction {
 
   /** The area effect row it makes. */

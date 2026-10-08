@@ -16,9 +16,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the step, the zero-state rule, a range below one drawing nothing, and the"
-            + " unsigned magnitude and remainder. Held by recorded draws from seven states over six"
-            + " ranges. The draws of an expression fall where the expression is evaluated, in the"
-            + " battle's own call order: held by gift_select. Not settled: the battle's seed.")
+            + " unsigned magnitude and remainder. Held by recorded draws from seven states over"
+            + " six ranges. The draws of an expression fall where the expression is evaluated, in"
+            + " the battle's own call order: held by BattleSelectDrawTest and by the random state"
+            + " every reference battle observes on every tick. Not settled: the battle's seed.")
 public final class BattleRandom {
 
   /** The state the next draw steps. */

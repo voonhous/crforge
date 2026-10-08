@@ -30,14 +30,15 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " pick by the wrapped squared distance with the first of equals kept, the priority"
             + " by the guarded distance, the drag's eased step from the angle of its share of the"
             + " drag time, and the put on the point once the drag time has passed or the unit is"
-            + " within the hide distance; held by firecracker_snowball_goblins and"
-            + " snowball_ev1_goblins. On a character, as the evolved Goblin Cage: the claims only"
-            + " while its targeting component is on, the grants and the capture distances from the"
-            + " pull centre, the drag delay and the pause before the drag, the cooldown after a"
-            + " capture leaves, the action on each completed capture, the hit per hit frequency at"
-            + " the owner's level with its hit-speed scaled timer, and the hold tags without a"
-            + " capture buff; held by evo_goblincage_vs_giant. Held by no run: a capture that leaves the battle or dies, and"
-            + " the distances it leaves behind, a claim whose lock another holds, two units equally"
+            + " within the hide distance; held by the reference battle evo_snowball_on_musketeer."
+            + " On a character, as the evolved Goblin Cage: the claims only while its targeting"
+            + " component is on, the grants and the capture distances from the pull centre, the"
+            + " drag delay and the pause before the drag, the cooldown after a capture leaves,"
+            + " the action on each completed capture, the hit per hit frequency at the owner's"
+            + " level with its hit-speed scaled timer, and the hold tags without a capture buff;"
+            + " not held by a recorded battle (no 16.402.18 reference plays the evolved Goblin"
+            + " Cage). Held by no run: a capture that leaves the battle or dies, and the"
+            + " distances it leaves behind, a claim whose lock another holds, two units equally"
             + " near, and a unit within the hide distance before the drag time has passed.")
 public final class CaptureRun extends ActionInstance {
 

@@ -51,18 +51,19 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the due ticks, the one query a step, the pick by hit points and"
             + " shield with ties to the lower id, each object picked once, an entry with nobody"
-            + " left, the schedules and the finish; held by vines_group, three picks among four,"
-            + " and vines_tower, the third entry picking nobody. An empty circle, which ends the"
-            + " step before the finish, is held by BattleShapeSelectorTest alone, which runs the"
-            + " slap selector written in Vines' form from Vines' area effect, as are the ties, the"
-            + " shield, a row that picks again and an underground object. Waiting for a"
-            + " target, the pause tags, the side actions on the owner and the row's tags on a"
-            + " character, held by ability_hero_giant_slap. The action on the owner whatever the"
-            + " side, the owner as the cause of the actions on itself, the Closest mode, the run's"
-            + " context on every schedule and the finishing action, held by hero_balloon and"
-            + " BattleBalloonHeroTest. Refused: a longest wait, the modes by maximum, a singleton,"
-            + " a next action, a missing filter, a shape other than a circle and a finishing"
-            + " action on an owner that leaves before the run finishes.")
+            + " left, the schedules and the finish; held by the reference battles"
+            + " spell_vines_into_push and cg_vines_king_giant_minipekka, picks among several, and"
+            + " card_Vines, a princess tower alone, the later entries picking nobody. An empty"
+            + " circle, which ends the step before the finish, is held by BattleShapeSelectorTest"
+            + " alone, which runs the slap selector written in Vines' form from Vines' area"
+            + " effect, as are the ties, the shield, a row that picks again and an underground"
+            + " object. Waiting for a target, the pause tags, the side actions on the owner and"
+            + " the row's tags on a character, held by ability_hero_giant_slap. The action on the"
+            + " owner whatever the side, the owner as the cause of the actions on itself, the"
+            + " Closest mode, the run's context on every schedule and the finishing action, held"
+            + " by hero_balloon and BattleBalloonHeroTest. Refused: a longest wait, the modes by"
+            + " maximum, a singleton, a next action, a missing filter, a shape other than a"
+            + " circle and a finishing action on an owner that leaves before the run finishes.")
 public final class ShapeSelector extends RowAction {
 
   /** The mode that scores an object by its hit points. */

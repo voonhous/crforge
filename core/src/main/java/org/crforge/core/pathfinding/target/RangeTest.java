@@ -15,10 +15,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "The range test, the squared distance, the minimum range and the"
-            + " reference-in-range answer agree with the reference line for line and decide"
-            + " the lock tick of all 53 reference walks. The touch test agrees with its record;"
-            + " no reference run turns on its answer.")
+        "The range test, the squared distance, the minimum range and the reference-in-range"
+            + " answer agree with the reference line for line and decide the lock tick of every"
+            + " walk of the reference battles and of the six Knight walks"
+            + " GridGoldenTrajectoryTest replays. The touch test agrees with its record; whether"
+            + " a reference battle turns on its answer is not checked.")
 public final class RangeTest {
 
   private RangeTest() {

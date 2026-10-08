@@ -24,17 +24,18 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the crown-tower damage from the plain damage, the hit id counted before the"
-            + " target is read, the direction from the owner to the reference's last position, the"
-            + " choice between the two damages by the target's own answer, and that a cancelled"
-            + " hit touches nothing, and the area of a unit with a radius in place of the target,"
-            + " centred on the unit or on the reference's last position, and the owner's recoil"
-            + " by its attack pushback after the damage, away from the reference's last position."
-            + " Held by every hit of the kill run, every area of the Valkyrie runs and the evolved"
-            + " Battle Ram's tower hits. Not modelled: the damage"
-            + " effect and the fallback, the attacker's buffs changing either"
-            + " damage, the attack sequence step's pushback on a target that moves (refused),"
-            + " the elixir a drainer moves and the"
-            + " area-effect entity a hit may create.")
+            + " target is read, the direction from the owner to the reference's last position,"
+            + " the choice between the two damages by the target's own answer, and that a"
+            + " cancelled hit touches nothing, and the area of a unit with a radius in place of"
+            + " the target, centred on the unit or on the reference's last position, and the"
+            + " owner's recoil by its attack pushback after the damage, away from the reference's"
+            + " last position. Held by every direct hit of the reference battles, card_Knight and"
+            + " card_Pekka_until_stop among them, every area of card_Valkyrie,"
+            + " troops_knight_vs_valkyrie and troops_left_bridge_crowd, and the evolved Battle"
+            + " Ram's tower hits. Not modelled: the damage effect and the fallback, the"
+            + " attacker's buffs changing either damage, the attack sequence step's pushback on a"
+            + " target that moves (refused), the elixir a drainer moves and the area-effect"
+            + " entity a hit may create.")
 public final class DirectHit {
 
   private DirectHit() {

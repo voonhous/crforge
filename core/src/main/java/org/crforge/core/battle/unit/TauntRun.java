@@ -32,12 +32,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
     note =
         "Settled line for line: the arming's crown tower, valid and invalid branches, the reach"
             + " test, the step that ends a one-step taunt, a building's steps with the building"
-            + " retargeting and the expiry with and without an attacking owner, and the finish that"
-            + " removes its buffs; held by goblin_demolisher_knight and ability_hero_knight. The"
-            + " falloff on a lost reach, the re-arm and the end as its forced object leaves are"
-            + " translated but held by no run. A unit's steps: the reference kept while it stays"
-            + " on the forced object, or marked in the targeting queue and forced back onto it,"
-            + " nothing while the targeting component is off.")
+            + " retargeting and the expiry with and without an attacking owner, and the finish"
+            + " that removes its buffs; held by the reference battles card_GoblinDemolisher and"
+            + " ability_hero_knight. The falloff on a lost reach, the re-arm and the end as its"
+            + " forced object leaves are translated but held by no run. A unit's steps: the"
+            + " reference kept while it stays on the forced object, or marked in the targeting"
+            + " queue and forced back onto it, nothing while the targeting component is off.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */

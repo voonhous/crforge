@@ -12,8 +12,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the two teams compared, the action chosen and scheduled on the"
-            + " owner with the owner as its cause; held by baby_dragon_ev1_wind. Refused: a start"
-            + " with no cause.")
+            + " owner with the owner as its cause; held by the reference battle"
+            + " evo_babydragon_vs_musketeer. Refused: a start with no cause.")
 public final class FilterByEnemy extends RowAction {
 
   private final BattleAction sameTeamAction;

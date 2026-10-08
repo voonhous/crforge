@@ -18,10 +18,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the level and rarity at the start, the damage by the distance from"
-            + " the start copy less the radius, both amounts at the level, the strong hit's action"
-            + " on the target and its push on the way out; held by ice_axe_barbarians. Refused:"
-            + " the plain hit's action, a push below 1 and the shared columns.")
+        "Settled line for line: the level and rarity at the start, the damage by the distance"
+            + " from the start copy less the radius, both amounts at the level, the strong hit's"
+            + " action on the target and its push on the way out; held by the reference battle"
+            + " evo_axeman_vs_musketeer. Refused: the plain hit's action, a push below 1 and the"
+            + " shared columns.")
 public final class ExecutionerEvoProjectile extends RowAction {
 
   /** The plain damage, at the first level. */

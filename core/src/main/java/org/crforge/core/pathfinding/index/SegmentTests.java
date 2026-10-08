@@ -17,9 +17,8 @@ import org.crforge.core.pathfinding.GridEntity;
     note =
         "Settled line for line: a building's square against the segment widened by the width,"
             + " anything else its circle within the width and its radius of the segment, its ends"
-            + " clamped, and the nearest point in thousandths of the segment; held by"
-            + " goblinstein_ability_tower, whose tether finds a princess tower by its square, and"
-            + " by unit tests of each case.")
+            + " clamped, and the nearest point in thousandths of the segment; held by the"
+            + " reference battle ability_goblinstein and by unit tests of each case.")
 public final class SegmentTests {
 
   /** The segment's length is cut into this many parts when a point is projected onto it. */

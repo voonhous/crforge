@@ -23,11 +23,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " time while blocked; each step's query, tested by the square for a building, and"
             + " its buff once per id; the step of speed times the offset over the unguarded"
             + " distance, truncated, and the arrival's put, last buff, release and finish; held"
-            + " by firecracker_snowball_goblins and snowball_ev1_goblins, the side and the walk"
-            + " back by BattleSnowballEvoTest. Held by no run: the distance across, the arrival's"
-            + " last buff on what the step before missed, and the square test of a building."
-            + " Refused: a deflection, which the run's deflection pass and a deflected roll would"
-            + " need.")
+            + " by the reference battle evo_snowball_on_musketeer, the side and the walk back by"
+            + " BattleSnowballEvoTest. Held by no run: the distance across, the arrival's last"
+            + " buff on what the step before missed, and the square test of a building. Refused:"
+            + " a deflection, which the run's deflection pass and a deflected roll would need.")
 final class RollingRun extends ActionInstance {
 
   /** How far each walk back from a blocked destination goes. */

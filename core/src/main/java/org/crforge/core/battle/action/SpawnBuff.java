@@ -13,18 +13,21 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Held by clone_golem_group: the Clone's buff on the unit it clones, from the Clone; and by"
-            + " goblin_curse_knights: the curse and its damage over time on every enemy the base's"
-            + " hit reaches, from the base, refreshed every tick; and by dark_magic_knight and"
-            + " dark_magic_group: a buff written inline, from the area effect whose laser ball"
-            + " scheduled it on each target, at its level; and by little_prince_giant and"
-            + " little_prince_retarget: the Little Prince's speed-ups on itself, from itself, the"
-            + " unit whose attack start ran the row; and by shield_lost_recruits: a row that takes"
-            + " its owner as the source, from the Recruit whose shield broke, not the arrow that"
-            + " broke it; and by ability_hero_mega_minion_vs_musketeer: the hero's bot buff on the"
-            + " troop it marks, from the hero, the hero its parent. Refused as the row is built: a"
-            + " buff its parent controls without the source as its parent, a source taken from the"
-            + " owner's parent, and a spawn time below 1.")
+        "Held by the reference battles card_Clone and spell_clone_into_push: the Clone's buff on"
+            + " the unit it clones, from the Clone; and by card_GoblinCurse and"
+            + " spell_goblincurse_into_push: the curse and its damage over time on every enemy"
+            + " the base's hit reaches, from the base, refreshed every tick; and by the random"
+            + " battles that play Dark Magic (random_battle16_s0010, random_battle16_s0013,"
+            + " random_battle16_s0014, random_battle16_s0024): a buff written inline, from the"
+            + " area effect whose laser ball scheduled it on each target, at its level; and by"
+            + " ability_little_prince, card_LittlePrince and random_battle16_s0047: the Little"
+            + " Prince's speed-ups on itself, from itself, the unit whose attack start ran the"
+            + " row; and by evo_royalrecruits_vs_musketeer: a row that takes its owner as the"
+            + " source, from the Recruit whose shield broke, not the arrow that broke it; and by"
+            + " ability_hero_mega_minion_vs_musketeer: the hero's bot buff on the troop it marks,"
+            + " from the hero, the hero its parent. Refused as the row is built: a buff its"
+            + " parent controls without the source as its parent, a source taken from the owner's"
+            + " parent, and a spawn time below 1.")
 public final class SpawnBuff extends RowAction {
 
   private final String buff;

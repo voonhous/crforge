@@ -47,11 +47,12 @@ import org.crforge.core.pathfinding.GridEntityState;
     note =
         "Settled line for line: the live copies, the state, the step's cooldown and its pauses,"
             + " the refund window and the refund, the activation, the deck pass, the follow of a"
-            + " play; held by archer_queen_ability and archer_queen_ability_refused. The state"
-            + " override an action writes, cleared each step, the charges refill and the follow of"
-            + " a spawned champion, held by hero_goblins. The state worked out again as a followed"
-            + " copy takes another row, held by ability_hero_wizard. Not carried: the limited"
-            + " availability and the reservation, which nothing in a battle here sets.")
+            + " play; held by the reference battles ability_archer_queen and"
+            + " ability_archer_queen_missing_unit. The state override an action writes, cleared"
+            + " each step, the charges refill and the follow of a spawned champion, held by"
+            + " hero_goblins. The state worked out again as a followed copy takes another row,"
+            + " held by ability_hero_wizard. Not carried: the limited availability and the"
+            + " reservation, which nothing in a battle here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */

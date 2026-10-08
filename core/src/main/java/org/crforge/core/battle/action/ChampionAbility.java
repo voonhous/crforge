@@ -16,7 +16,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled: the row the globals name, its runs made by the king and listed after its own;"
-            + " held by archer_queen_ability and archer_queen_ability_refused.")
+            + " held by the reference battles ability_archer_queen and"
+            + " ability_archer_queen_missing_unit.")
 public final class ChampionAbility extends RowAction {
 
   /**

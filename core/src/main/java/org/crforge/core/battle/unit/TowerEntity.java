@@ -303,7 +303,7 @@ public class TowerEntity extends WorldEntity {
 
   /**
    * Keeps the tower passive for the rest of the battle: its targeting component is switched off and
-   * the gate never switches it back on. The reference runs made without the towers fighting are
+   * the gate never switches it back on. The mechanic tests that keep the towers out of a fight are
    * played this way.
    */
   public void holdFire() {

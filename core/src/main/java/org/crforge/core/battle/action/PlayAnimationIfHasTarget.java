@@ -16,9 +16,9 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled for the plain row, whose run is stepped doing nothing, held by goblin_cage_knight"
-            + " and goblin_cage_lifetime. Not modelled: tags, a stop gate, a singleton or a"
-            + " chained action on such a row, refused as the row is built.")
+        "Settled for the plain row, whose run is stepped doing nothing, held by the reference"
+            + " battles card_GoblinCage and random_battle16_s0012. Not modelled: tags, a stop"
+            + " gate, a singleton or a chained action on such a row, refused as the row is built.")
 public final class PlayAnimationIfHasTarget extends RowAction {
 
   /**

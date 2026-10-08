@@ -30,10 +30,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "All five paths agree with the reference line for line. Held by prince_tower and"
-            + " dark_prince_tower: the growth to a full charge, the strike-now byte from the next"
-            + " step and the reset of a unit that stops to attack. Not held: the charge range a"
-            + " buff gives an entity without one, whose buffs are refused.")
+        "All five paths agree with the reference line for line. Held by the reference battles"
+            + " card_Prince, card_DarkPrince and status_zap_stuns_prince_charge: the growth to a"
+            + " full charge, the strike-now byte from the next step and the reset of a unit that"
+            + " stops to attack. Not held: the charge range a buff gives an entity without one,"
+            + " whose buffs are refused.")
 public final class ChargeBookkeeping {
 
   /** Scale the charge progress is expressed in relative to the configured charge range. */

@@ -21,8 +21,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Agrees with the reference line for line; held by its own tests and by the"
-            + " facing of every reference walk's first step.")
+        "Agrees with the reference line for line; held by its own tests and by the facing of the"
+            + " first step of each of the six Knight walks GridGoldenTrajectoryTest replays.")
 public final class DirectionInitializer {
 
   private DirectionInitializer() {

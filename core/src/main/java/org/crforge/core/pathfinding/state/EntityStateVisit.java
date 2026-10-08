@@ -67,18 +67,19 @@ import org.crforge.core.pathfinding.move.MovementState;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "What is ported agrees with the reference line for line: arrival from the"
-            + " pathfind states, the delay accumulators, staggered placement, the dash landing"
-            + " delay, pending damage, dash immunity, the ability countdowns, the follow"
-            + " states, the deploy countdown and the morph countdown. Held by a fixture: the"
-            + " deploy countdown ending in the moving state, and the dash landing delay and the"
-            + " dash immunity, by bandit_knight; the not-attacking section's place, by"
-            + " ghost_river_wizard_tower; the pending-damage countdown, by the battle references'"
-            + " re-locks and drops; a hiding row's deploy-end targeting visit and hide handler,"
-            + " by tesla_giant_passing; a Kamikaze row's drain right after the not-attacking"
-            + " section, by skeleton_barrel_tower; the ability's follow-up countdown and the"
-            + " ability's tags while it lasts, by both Monk ability runs. Not modelled: growth. A removal is requested by"
-            + " name and read by nothing.")
+        "What is ported agrees with the reference line for line: arrival from the pathfind"
+            + " states, the delay accumulators, staggered placement, the dash landing delay,"
+            + " pending damage, dash immunity, the ability countdowns, the follow states, the"
+            + " deploy countdown and the morph countdown. Held by a fixture: the deploy countdown"
+            + " ending in the moving state, and the dash landing delay and the dash immunity, by"
+            + " the reference battles card_Assassin, grid_clone_over_bandit_dash and"
+            + " grid_log_over_bandit_dash_end; the not-attacking section's place, by card_Ghost"
+            + " and evo_ghost_vs_musketeer; the pending-damage countdown, by the battle"
+            + " references' re-locks and drops; a hiding row's deploy-end targeting visit and"
+            + " hide handler, by card_Tesla and evo_tesla_vs_giant; a Kamikaze row's drain right"
+            + " after the not-attacking section, by card_SkeletonBalloon; the ability's follow-up"
+            + " countdown and the ability's tags while it lasts, by ability_monk. Not modelled:"
+            + " growth. A removal is requested by name and read by nothing.")
 public final class EntityStateVisit {
 
   /** Milliseconds one tick advances every countdown by. */

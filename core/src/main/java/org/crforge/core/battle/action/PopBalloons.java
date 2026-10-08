@@ -31,12 +31,12 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled for the plain row, whose run is stepped doing nothing, held by"
-            + " skeleton_barrel_tower and skeleton_barrel_shot_down. Settled for a singleton"
-            + " row's re-trigger with balloons left while the owner lives and with one left as it"
-            + " is dead, each dropping one container at its offsets, held by"
-            + " evo_skeletonballoon_vs_musketeer. Refused: a re-trigger with none left while the"
-            + " owner lives and one with two or more left as it is dead.")
+        "Settled for the plain row, whose run is stepped doing nothing, held by the reference"
+            + " battle card_SkeletonBalloon. Settled for a singleton row's re-trigger with"
+            + " balloons left while the owner lives and with one left as it is dead, each"
+            + " dropping one container at its offsets, held by evo_skeletonballoon_vs_musketeer."
+            + " Refused: a re-trigger with none left while the owner lives and one with two or"
+            + " more left as it is dead.")
 public final class PopBalloons extends RowAction {
 
   /** The area effects it drops, one per balloon, in the order they drop. */

@@ -27,9 +27,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled: the connection on the first step, the wait for the cast and for its end, the"
             + " tether's activation rows, damage passes, hits and hit actions, the death area on"
-            + " the connected unit's leaving and its end as the owner leaves; held by"
-            + " goblinstein_tower, goblinstein_doctor_first and goblinstein_ability_tower. The"
-            + " tether's tags, which no battle code reads, are not set.")
+            + " the connected unit's leaving and its end as the owner leaves; held by the"
+            + " reference battles ability_goblinstein, card_Goblinstein and"
+            + " random_battle16_s0009. The tether's tags, which no battle code reads, are not"
+            + " set.")
 public final class GoblinsteinAbility extends RowAction {
 
   /**

@@ -24,10 +24,11 @@ import org.crforge.core.pathfinding.state.StateSetter;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line for a dash with no fixed distance, no chained"
-            + " dash and no contact damage; held by bandit_knight and mega_knight_group. Not"
-            + " carried: the chained dash's counter, first direction and hit list, a fixed dash"
-            + " distance and the hit list a contact-damage dash empties, whose columns are refused"
-            + " with their rows.")
+            + " dash and no contact damage; held by the reference battles card_Assassin,"
+            + " grid_clone_over_bandit_dash, card_MegaKnight and grid_log_under_megaknight_jump."
+            + " Not carried: the chained dash's counter, first direction and hit list, a fixed"
+            + " dash distance and the hit list a contact-damage dash empties, whose columns are"
+            + " refused with their rows.")
 public final class DashStart {
 
   private DashStart() {

@@ -38,10 +38,10 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled against the endpoint of every route preparation of the 53 reference"
-            + " walks, for attack ranges from 500 to 9000 and both scan directions. Which"
-            + " cells are acceptable at all is asked of the caller, and the caller accepts"
-            + " every cell on the map.")
+        "Settled against the endpoint of every route preparation of the six Knight walks"
+            + " GridGoldenTrajectoryTest replays and, through the positions they observe, the"
+            + " walks of the reference battles. Which cells are acceptable at all is asked of the"
+            + " caller, and the caller accepts every cell on the map.")
 public final class ReferenceEndpoint {
 
   /** The preferred rank: a cell with nothing against it. */

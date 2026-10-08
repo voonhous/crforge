@@ -21,9 +21,10 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start, the update's end, the re-trigger, the release and"
-            + " the leave notice; held by baby_dragon_ev1_wind. The release as the run pass"
-            + " removes the finished run finds no area effect, which has left by then.")
+        "Settled line for line: the start, the update's end, the re-trigger, the release and the"
+            + " leave notice; held by the reference battle evo_babydragon_vs_musketeer. The"
+            + " release as the run pass removes the finished run finds no area effect, which has"
+            + " left by then.")
 final class ResetableAreaEffectRun extends ActionInstance {
 
   /** The id of no area effect. */

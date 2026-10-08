@@ -42,11 +42,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Settled line for line: the start's walk back to the giver, the damage hook on the"
             + " completing hit, the count and its action, the end after the giver leaves and the"
-            + " finished action; held by giant_buffer_knights for the hook and the count, and by"
-            + " giant_buffer_musketeer for a projectile's copy. Not"
-            + " modelled: the enemy-target visual it hands a landed hit to, which is presentation."
-            + " Refused: a unit with attached children, which would get copies, a unit whose"
-            + " attack sequence replaces its attack, and the Berserker's attack sequence step.")
+            + " finished action; held by the reference battle cg_giantbuffer_buffs_friends, a"
+            + " Knight's hits for the hook and the count and an Archer's for a projectile's copy."
+            + " Not modelled: the enemy-target visual it hands a landed hit to, which is"
+            + " presentation. Refused: a unit with attached children, which would get copies, a"
+            + " unit whose attack sequence replaces its attack, and the Berserker's attack"
+            + " sequence step.")
 public final class GiantBufferBuff extends RowAction {
 
   /**

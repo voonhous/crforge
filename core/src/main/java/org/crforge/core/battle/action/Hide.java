@@ -22,9 +22,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the hidden tag set every step, the hider's id at the start, the"
-            + " duration's end and the end as the hider leaves; held by"
-            + " firecracker_snowball_goblins, where four captured Goblins are hidden until the"
-            + " snowball leaves, and the hidden answer it gives by BattleSnowballEvoTest. Held by"
+            + " duration's end and the end as the hider leaves; held by the reference battle"
+            + " evo_snowball_on_musketeer, where a captured unit is hidden until the evolved"
+            + " Snowball leaves, and the hidden answer it gives by BattleSnowballEvoTest. Held by"
             + " no run: a duration. Refused: a run with no cause.")
 public final class Hide extends RowAction {
 

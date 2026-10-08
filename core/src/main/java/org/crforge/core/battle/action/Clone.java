@@ -14,9 +14,10 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled and held by clone_golem_group: the perform's tests, the cloned action scheduled"
-            + " first and the creator after it. Presentation only: the deploy animation it names and"
-            + " the card its statistics count.")
+        "Settled and held by the reference battles card_Clone, spell_clone_into_push and"
+            + " card_item_clone_goblins_minions: the perform's tests, the cloned action scheduled"
+            + " first and the creator after it. Presentation only: the deploy animation it names"
+            + " and the card its statistics count.")
 public final class Clone extends RowAction {
 
   /** The clone duration the loader stores for a row without one. */

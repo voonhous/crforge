@@ -31,9 +31,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the timer's start, the query on every step, the fire at the hit"
             + " frequency, the pick by count and the schedules on every listed object; held by"
-            + " dark_magic_knight, a single target, and dark_magic_group, counts of six, four and"
-            + " three. Refused: a kept detection, its reset after a hit, a cooldown after it, an"
-            + " action list on the owner, a singleton, a next action, tags and a missing filter.")
+            + " the random reference battles random_battle16_s0010, random_battle16_s0013,"
+            + " random_battle16_s0014 and random_battle16_s0024, which play Dark Magic. Refused:"
+            + " a kept detection, its reset after a hit, a cooldown after it, an action list on"
+            + " the owner, a singleton, a next action, tags and a missing filter.")
 public final class LaserBall extends RowAction {
 
   /** The step every timer takes, in milliseconds. */

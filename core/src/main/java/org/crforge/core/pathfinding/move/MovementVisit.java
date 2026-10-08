@@ -29,14 +29,16 @@ import org.crforge.core.pathfinding.math.FixedMath;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Agrees with the reference line for line. Held: the ordinary visit of a walking"
-            + " ground unit, and the pushback visit of a unit's own recoil with its relocation off"
-            + " the river, by the Sparky run; the attached placement of a rider without a rotation"
-            + " limit, by the Goblin Giant's run. Not held by any fixture: the limited rotation of an"
+        "Agrees with the reference line for line. Held: the ordinary visit of a walking ground"
+            + " unit, by the walks of the reference battles; the pushback visit of a unit's own"
+            + " recoil, by the reference battles zap_machine_launch_recoil and"
+            + " zap_machine_fireballed_on_launch, its relocation off the river not checked"
+            + " against a recorded battle; the attached placement of a rider without a rotation"
+            + " limit, by card_GoblinGiant. Not held by any fixture: the limited rotation of an"
             + " attacking rider, the pushback visit's end action, the block countdown. Collision"
             + " checks are always on. The route dropped at a flight's end, which the battle core"
-            + " always sets, is held by the reference battles of a Monk's push on a Giant, the Zap"
-            + " Machine's recoil and two death explosions' pushes.")
+            + " always sets, is held by the reference battles of a Monk's push on a Giant, the"
+            + " Zap Machine's recoil and two death explosions' pushes.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */
@@ -115,8 +117,8 @@ public final class MovementVisit {
    * while attacking it turns toward the parent's facing by at most the configured rotation per
    * visit, taking whichever of the three unwrapped candidate angles is closest.
    *
-   * <p>Held by the Goblin Giant's run, whose riders have no rotation limit; the limited rotation is
-   * not held.
+   * <p>Held by the reference battle card_GoblinGiant, whose riders have no rotation limit; the
+   * limited rotation is not held.
    */
   static void attachedPlacement(
       GridEntity owner,
@@ -167,8 +169,9 @@ public final class MovementVisit {
    * budget falls below 0 ends the flight; when the match-wide settings say so, that end also drops
    * the route the entity held.
    *
-   * <p>Held by the Sparky run: its recoil after each launch flies here, and on the tick it stands
-   * on the river the relocation moves it off before the displacement.
+   * <p>Held by the reference battle zap_machine_launch_recoil: the Sparky's recoil after each
+   * launch flies here. The relocation off the river before the displacement, on a tick the recoil
+   * leaves it on the river, is not checked against a recorded battle.
    */
   static void pushbackVisit(
       MovementState component,

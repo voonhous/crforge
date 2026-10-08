@@ -22,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line: the refill, the cycle and the slot lookup. Held"
-            + " by match_elixir_150s, both hands on every tick.")
+            + " by the hands every reference battle observes on both sides every tick, among them"
+            + " timeline_spells_through_rates.")
 public final class Hand {
 
   /** The number of slots. */

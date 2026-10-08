@@ -47,10 +47,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled line for line: the start, the step's branches, the finder, the keep test, the"
-            + " notice of a leaving target, the spawn point and the one-child spawn; held by"
-            + " goblin_hut_passing and goblin_hut_lifetime. Not modelled: the turn of the owner"
-            + " toward its target before each spawn, which only changes its facing, and the effect"
-            + " tag, which only the owner's own effect rows read.")
+            + " notice of a leaving target, the spawn point and the one-child spawn; held by the"
+            + " reference battle card_GoblinHut. Not modelled: the turn of the owner toward its"
+            + " target before each spawn, which only changes its facing, and the effect tag,"
+            + " which only the owner's own effect rows read.")
 public final class GoblinHutLifeState extends RowAction {
 
   /** The step the timer advances by, before the owner's buffs scale it. */

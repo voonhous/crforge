@@ -24,13 +24,12 @@ import org.crforge.core.fidelity.FidelityStatus;
     note =
         "Settled line for line: the run listed from the owner's pending pass, after the play that"
             + " made it, so that play is not heard; the side test, the card tested, the group's"
-            + " playable cards, the elixir count and the activation action; held by"
-            + " goblinstein_tower and goblinstein_later_plays. A count below the cost, which no"
-            + " listener of a modelled card reaches, is held by a unit test only; a Mirror's"
+            + " playable cards, the elixir count and the activation action; held by the reference"
+            + " battles ability_goblinstein and card_Goblinstein. A count below the cost, which"
+            + " no listener of a modelled card reaches, is held by a unit test only; a Mirror's"
             + " repeated card tested in place of the Mirror, and an evolved or hero play's row in"
-            + " place of its deck card, are translated but held by no run."
-            + " Refused: a"
-            + " variant card's play heard by a listener of its side.")
+            + " place of its deck card, are translated but held by no run. Refused: a variant"
+            + " card's play heard by a listener of its side.")
 public final class CardDeployListener extends RowAction {
 
   /** The card group whose plays the listener answers, empty for every card. */

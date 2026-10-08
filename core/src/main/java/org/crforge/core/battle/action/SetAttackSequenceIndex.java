@@ -14,11 +14,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled and held by the native cases of its store and by the evolved Archer's runs: the"
-            + " owner, the one-sided bound, the component gate and the next hit reading it. The"
-            + " clearing of the hit-in-progress flag after the store, by recorded runs of the"
-            + " evolved Angry Barbarians switching to melee in a ranged wind-up as a Bandit dashes"
-            + " in.")
+        "Settled and held by the recorded cases of its store and by the reference battle"
+            + " evo_archer_vs_musketeer: the owner, the one-sided bound, the component gate and"
+            + " the next hit reading it. The clearing of the hit-in-progress flag after the"
+            + " store, by recorded runs of the evolved Angry Barbarians switching to melee in a"
+            + " ranged wind-up as a Bandit dashes in.")
 public final class SetAttackSequenceIndex extends RowAction {
 
   private final int index;

@@ -37,11 +37,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.PARTIAL,
     note =
         "Agrees with the reference line for line: the hold, the step and its halving, the load"
-            + " credit and reload in all three load-time cases, the round-up, the burst"
-            + " timer and the animation freeze. Held by the kill run's hit ticks for a unit with"
-            + " one sequence step and no bursts, and the round-up under the charge's strike-now"
-            + " byte by prince_tower and dark_prince_tower, and the hold from a match's end by"
-            + " BattleKingKillTest and the native card_Pekka run's end delay. Supplied: no status"
+            + " credit and reload in all three load-time cases, the round-up, the burst timer and"
+            + " the animation freeze. Held by the hit ticks of the reference battles, card_Knight"
+            + " and card_Pekka_until_stop among them, for a unit with one sequence step and no"
+            + " bursts, and the round-up under the charge's strike-now byte by card_Prince and"
+            + " card_DarkPrince, and the hold from a match's end by BattleKingKillTest and the"
+            + " end delay of the reference battle card_Pekka. Supplied: no status"
             + " effect scales the step.")
 public final class AttackTimerAdvance {
 

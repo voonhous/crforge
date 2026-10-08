@@ -42,11 +42,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled line for line: the four states, the search and the buff distances, the"
-            + " requests with their priorities, the claims, the releases, the launches and the"
-            + " hooks; held by giant_buffer_knights. A row with no filter (a name the tables do"
-            + " not hold) finds no friend. Refused: a row that unbuffs a friend beyond a"
-            + " distance by ending its buff action, whose end is not modelled.")
+        "Settled line for line: the four states, the search and the buff distances, the requests"
+            + " with their priorities, the claims, the releases, the launches and the hooks; held"
+            + " by the reference battle cg_giantbuffer_buffs_friends. A row with no filter (a"
+            + " name the tables do not hold) finds no friend. Refused: a row that unbuffs a"
+            + " friend beyond a distance by ending its buff action, whose end is not modelled.")
 public final class CollectFriends extends RowAction {
 
   /** The lock channel of the collectors. */

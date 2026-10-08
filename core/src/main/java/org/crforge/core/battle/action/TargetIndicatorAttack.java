@@ -50,18 +50,18 @@ import org.crforge.core.pathfinding.math.FixedMath;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the load with the component on, the abort and its cooldown, the"
-            + " finder once a step with its ring and nearest, the signal at the target's point, the"
-            + " shot from behind the facing at AttackDelay, the cooldown from the shot, the end"
-            + " once the projectile has gone, the stop tags and the stop as the owner leaves; held"
-            + " by goblin_machine_knight, a Musketeer marked beyond a Knight inside the ring, and"
-            + " goblin_machine_tower, a princess tower marked and shot while the machine walks,"
-            + " then hit from inside the ring, the run stopped at its death; the king marked by"
-            + " its square beyond the outer circle, by the native card_GoblinMachine run. Held by"
-            + " the tests alone: the ring's inner edge, an abort by a stun, and a signal whose"
-            + " target has walked off. Not held by a reference: the step under a hit-speed buff. Refused: an"
-            + " indication delay, a negative attack delay, a minimum range below 1, a following"
-            + " signal, a homing projectile, a singleton, a next action, tags, the gates, an"
-            + " owner other than a character and a clone.")
+            + " finder once a step with its ring and nearest, the signal at the target's point,"
+            + " the shot from behind the facing at AttackDelay, the cooldown from the shot, the"
+            + " end once the projectile has gone, the stop tags and the stop as the owner leaves;"
+            + " held by the reference battles card_GoblinMachine,"
+            + " terminal-handoff-v2/card_GoblinMachine and random_battle16_s0025, a princess"
+            + " tower marked and shot while the machine walks and the king marked by its square"
+            + " beyond the outer circle. Held by the tests alone: the ring's inner edge, an abort"
+            + " by a stun, and a signal whose target has walked off. Not held by a reference: the"
+            + " step under a hit-speed buff. Refused: an indication delay, a negative attack"
+            + " delay, a minimum range below 1, a following signal, a homing projectile, a"
+            + " singleton, a next action, tags, the gates, an owner other than a character and a"
+            + " clone.")
 public final class TargetIndicatorAttack extends RowAction {
 
   /** The step every time takes, before the owner's buffs scale it, in milliseconds. */

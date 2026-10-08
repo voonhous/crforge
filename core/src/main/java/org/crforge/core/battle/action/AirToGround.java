@@ -24,17 +24,17 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's phase from the owner's height and layer, the four"
-            + " phases, the pushes, FORCE_IS_GROUND raised, the re-trigger and the finish; held by"
-            + " vines_group, a Giant and a Knight held and a Minion pulled down until a Knight"
-            + " kills it, and vines_tower, a princess tower held. Held by the tests alone: the"
-            + " re-trigger of a hold on the ground (BattleShapeSelectorTest, by a selector written"
-            + " in Vines' form) and the climb's one"
-            + " step (BattleAirToGroundTest); the re-trigger of a hold in the air or of a climb is"
-            + " translated but held by nothing. The action once on the ground at the end of a"
-            + " descent, and the row's tags, held by evo_royalhogs_vs_musketeer. Refused: the"
-            + " landing and landing end actions, a path reset at landing or at the end, a next"
-            + " action, the action once on the ground at the start, and a clone, hovering, riding"
-            + " or carrying owner.")
+            + " phases, the pushes, FORCE_IS_GROUND raised, the re-trigger and the finish; held"
+            + " by the reference battles spell_vines_into_push and cg_vines_king_giant_minipekka,"
+            + " units held, and card_Vines, a princess tower held. Held"
+            + " by the tests alone: the re-trigger of a hold on the ground"
+            + " (BattleShapeSelectorTest, by a selector written in Vines' form) and the climb's"
+            + " one step (BattleAirToGroundTest); the re-trigger of a hold in the air or of a"
+            + " climb is translated but held by nothing. The action once on the ground at the end"
+            + " of a descent, and the row's tags, held by evo_royalhogs_vs_musketeer. Refused:"
+            + " the landing and landing end actions, a path reset at landing or at the end, a"
+            + " next action, the action once on the ground at the start, and a clone, hovering,"
+            + " riding or carrying owner.")
 public final class AirToGround extends RowAction {
 
   /** How long the descent and the climb each take, in milliseconds. */

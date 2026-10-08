@@ -28,10 +28,11 @@ import org.crforge.core.pathfinding.combat.HitPoints;
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the gates in order, the payment and the broadcast to the king's"
-            + " runs; held by archer_queen_ability and archer_queen_ability_refused. Not reached:"
-            + " the frozen gate, open in the standard game, the tutorial's, and the gates of an"
-            + " avatar with no king or a sender other than its owner. Not modelled: the issuing"
-            + " client's reserving pass, which only its own button reads.")
+            + " runs; held by the reference battles ability_archer_queen and"
+            + " ability_archer_queen_missing_unit. Not reached: the frozen gate, open in the"
+            + " standard game, the tutorial's, and the gates of an avatar with no king or a"
+            + " sender other than its owner. Not modelled: the issuing client's reserving pass,"
+            + " which only its own button reads.")
 public final class AbilityCommand {
 
   /** The command passed and paid. */

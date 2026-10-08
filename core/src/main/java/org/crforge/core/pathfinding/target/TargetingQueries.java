@@ -13,9 +13,9 @@ import org.crforge.core.pathfinding.state.StateSetter;
  * attacking state but runs none of the actions a state change carries; a driver that holds the
  * unit's movement component gives the visit the unit's own setter.
  *
- * <p>The two supplied time answers are the ones the reference trajectories were produced with: a
- * unit without status effects steps every timer by the unscaled amount, and the battle never holds
- * the attack timers.
+ * <p>The two supplied time answers are the ones a lone unit walking to a tower gets, as in the
+ * Knight walks GridGoldenTrajectoryTest replays: a unit without status effects steps every timer by
+ * the unscaled amount, and the battle never holds the attack timers.
  */
 public interface TargetingQueries {
 
