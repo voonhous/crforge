@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
  * Drives a whole Knight deployment through {@link GameEngine} in grid mode and compares every tick
  * with a reference trajectory.
  *
- * <p>The reference trajectories are five deployments of a Knight on the standard arena with nothing
+ * <p>The reference trajectories are six deployments of a Knight on the standard arena with nothing
  * on it but the six crown towers, produced by a model of the game's movement and targeting rules.
  * Each record holds the unit's position, its state, the tower it was heading for and how many nodes
  * of its route were left, at the point in the tick where the reference recorded it.
