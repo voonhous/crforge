@@ -20,6 +20,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * candidate with the smallest difference in x wins and is then checked against the seed's own
  * distance; otherwise the candidates are ranked by an approximate squared distance with an optional
  * bonus for a matching lane. The published values select the x-position rule.
+ *
+ * <p>The two measures differ: a candidate is scored by the square of its approximate distance,
+ * which overestimates a separation off the axes by up to about eight per cent, while the seed's
+ * threshold is the square of its true distance. A candidate that is nearer only by the
+ * approximation therefore does not beat the seed.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -30,11 +35,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the walks of the reference battles hold them, the Knight walks smoke-c1/knight,"
             + " knight_centre_s0, knight_behind_king_s0 and golden-gaps-v1/walk_knight_right_rear"
             + " with the princess towers as the only candidates and the king as the seed; the lane"
-            + " rule's first ten visits by golden-gaps-v1/walk_knight_left_inner. Not settled: the"
-            + " seed threshold is the squared approximate distance where the standard game appears"
-            + " to use the true one, and whether a reference battle tells the two apart is not"
-            + " checked. The alternate seed, the goal mode and the six-object branch are not held"
-            + " by any fixture.")
+            + " rule's first ten visits by golden-gaps-v1/walk_knight_left_inner; the seed's"
+            + " threshold, its true squared distance against a candidate's squared approximate"
+            + " one, by random-battles-16-v1/random_battle16_s0049 (a Mighty Miner across in the"
+            + " other lane, its lane's princess tower gone, keeps walking at the king). The"
+            + " alternate seed, the goal mode and the six-object branch are not held by any"
+            + " fixture.")
 public final class DefaultTargetSelection {
 
   /** Score no candidate can reach, used as the starting threshold. */
@@ -290,15 +296,15 @@ public final class DefaultTargetSelection {
   }
 
   /**
-   * The seed's own approximate squared distance to the unit, which is the score every candidate has
-   * to beat.
+   * The seed's own squared distance to the unit, the true one rather than the approximation the
+   * candidates are scored by, which is the score every candidate has to beat; it saturates at the
+   * largest int as the guarded sum of squares does.
    */
   private static int seedDistanceScore(TargetView seed, int unitX, int unitY) {
     if (seed == null) {
       return NO_SCORE;
     }
-    int distance = approxDistance(seed.x() - unitX, seed.y() - unitY);
-    return distance * distance;
+    return FixedMath.squaredDistance(unitX, unitY, seed.x(), seed.y());
   }
 
   /** True when the candidate's configuration is the row the mode excludes. */
