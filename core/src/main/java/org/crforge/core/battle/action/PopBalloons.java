@@ -18,15 +18,16 @@ import org.crforge.core.fidelity.FidelityStatus;
  * its parent; then one balloon fewer is left. The evolved Skeleton Balloon's health trigger
  * re-triggers it while it lives, and its death action as it dies.
  *
- * <p>With its owner alive a container drops whatever is left. With its owner dead, one balloon left
- * drops the last container, and none left drops nothing.
+ * <p>With its owner alive a container drops whatever is left. With its owner dead every balloon
+ * left drops in turn, each the container of the balloons then left at its offsets, so two left drop
+ * the first container and then the last in the one re-trigger; none left drops nothing.
  *
  * <p>Refused as the run is re-triggered, not reached by a measured case: a re-trigger with no
  * balloon left while the owner lives, whose index the run turns to the list's last and whose count
- * goes below zero, and one with two or more left as the owner is dead, which drops the row's double
- * container when it names one, and else every container left in turn. Refused as the row is built:
- * a singleton with more balloons than containers or offsets, whose index would fall outside the
- * lists.
+ * goes below zero, and one with two or more left as the owner is dead when the row names a double
+ * container, which drops that one instead at another point of the owner's and leaves the count.
+ * Refused as the row is built: a singleton with more balloons than containers or offsets, whose
+ * index would fall outside the lists.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -34,9 +35,10 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled for the plain row, whose run is stepped doing nothing, held by the reference"
             + " battle card_SkeletonBalloon. Settled for a singleton row's re-trigger with"
             + " balloons left while the owner lives and with one left as it is dead, each"
-            + " dropping one container at its offsets, held by evo_skeletonballoon_vs_musketeer."
+            + " dropping one container at its offsets, held by evo_skeletonballoon_vs_musketeer;"
+            + " with two left as it is dead, dropping both in turn, held by tv_replay_008."
             + " Refused: a re-trigger with none left while the owner lives and one with two or"
-            + " more left as it is dead.")
+            + " more left as it is dead when the row names a double container.")
 public final class PopBalloons extends RowAction {
 
   /** The area effects it drops, one per balloon, in the order they drop. */
@@ -129,18 +131,18 @@ public final class PopBalloons extends RowAction {
           drop(owner);
           return;
         }
-        if (left >= 2) {
+        if (left >= 2 && doubleContainer != null) {
           throw new UnsupportedOperationException(
               name()
                   + " is re-triggered with "
                   + left
-                  + " balloons left as its owner is dead, which drops "
-                  + (doubleContainer != null
-                      ? "the double container " + doubleContainer
-                      : "every container left")
+                  + " balloons left as its owner is dead, which drops the double container "
+                  + doubleContainer
                   + "; not modelled");
         }
-        if (left == 1) {
+        // As its owner is dead every balloon left drops in turn, each its container at its
+        // offsets, the first left first; none left drops nothing.
+        for (int rounds = left; rounds > 0; rounds--) {
           drop(owner);
         }
       }
