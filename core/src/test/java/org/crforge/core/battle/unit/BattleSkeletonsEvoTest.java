@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -22,7 +21,7 @@ import org.junit.jupiter.api.io.TempDir;
  * The evolved Skeletons: each hit lists the buff SkeletonDuplication_EV1 on the attacker for half a
  * second, whose spawner makes one more evolved Skeleton in front of it on the instance's first
  * visit, linked into the chain of a Skeleton in a group right after it; a firing with the chain at
- * the row's group size is refused.
+ * the row's group size makes nothing and is spent all the same.
  *
  * <p>The scene writes the hit count that lists the buff (one) and its time (500 ms), and the buff's
  * spawner (one Skeleton on its first visit), so each hit makes one Skeleton; the group size and the
@@ -35,7 +34,7 @@ class BattleSkeletonsEvoTest {
 
   private static final String SKELETON = "Skeleton_EV1";
 
-  /** The row's GroupMaxSize: the chain length at which a firing is refused. */
+  /** The row's GroupMaxSize: the chain length at which a firing makes nothing. */
   private static final int GROUP_MAX_SIZE =
       Shipped.number(Shipped.unitRow(SKELETON), "GroupMaxSize");
 
@@ -140,28 +139,44 @@ class BattleSkeletonsEvoTest {
 
   @Test
   @DisplayName(
-      "a Skeleton whose chain holds its row's GroupMaxSize of units is refused as it fires: the held"
-          + " spawn is not modelled")
-  void aFullChainIsRefused() {
+      "a Skeleton whose chain holds its row's GroupMaxSize of units makes nothing as it fires, and"
+          + " the firing is spent: a member dying before the next hit brings no child")
+  void aFullChainMakesNothingAndSpendsTheFiring() {
     Scene scene = new Scene();
     CharacterEntity first = scene.still(0, SKELETON, 9000, 12000, "skeleton");
     CharacterEntity previous = first;
     first.linkAfter(null);
+    CharacterEntity last = first;
     for (int i = 1; i < GROUP_MAX_SIZE; i++) {
       CharacterEntity member = scene.still(0, SKELETON, 3000 + 600 * i, 9000, "member" + i);
       member.linkAfter(previous);
       previous = member;
+      last = member;
     }
     scene.target = scene.still(1, "Giant", 9600, 13200, "giant");
 
-    assertThatThrownBy(() -> scene.step(60))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "skeleton's SkeletonDuplication_EV1 fires with its group chain at the limit of %d,"
-                    .formatted(GROUP_MAX_SIZE)
-                + " which holds the spawn and is not modelled");
+    // Up to the visit after the first hit, where the buff's one firing finds the chain full.
+    for (int i = 0; i < 60 && scene.hitTicks.isEmpty(); i++) {
+      scene.step(1);
+    }
+    scene.step(1);
     assertThat(scene.hitTicks).hasSize(1);
     assertThat(scene.spawns).isEmpty();
+    assertThat(first.chainSize()).isEqualTo(GROUP_MAX_SIZE);
+
+    // A member dies and leaves the chain; the instance has no firing left, so nothing is made
+    // until the next hit lists a new one.
+    scene.match.getWorld().kill(last, null);
+    for (int i = 0; i < 60 && scene.hitTicks.size() < 2; i++) {
+      scene.step(1);
+    }
+    assertThat(first.chainSize()).isEqualTo(GROUP_MAX_SIZE - 1);
+    assertThat(scene.spawns).isEmpty();
+    scene.step(1);
+
+    assertThat(scene.spawnTicks).containsExactly(scene.hitTicks.get(1) + 1);
+    assertThat(first.chainNext()).isSameAs(scene.children.get(0));
+    assertThat(first.chainSize()).isEqualTo(GROUP_MAX_SIZE);
   }
 
   @Test

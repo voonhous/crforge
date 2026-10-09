@@ -3175,10 +3175,12 @@ public class BattleWorld implements HolderPasses {
    * files the carrier's id with the child: the fold admits it only while the carrier is listed and
    * not removable.
    *
+   * <p>A firing with the carrier's chain already at the group's limit makes nothing; the visit
+   * still counts it as one of the instance's firings.
+   *
    * <p>Refused rather than guessed: a carrier that is a tower or a building; a child without hit
-   * points, a building, one that paths to its point or one with a starting action of its own; a
-   * firing with the chain already at the group's limit, where the game makes nothing; and, at the
-   * fold, a child whose carrier has left or is leaving, which the game releases.
+   * points, a building, one that paths to its point or one with a starting action of its own; and,
+   * at the fold, a child whose carrier has left or is leaving, which the game releases.
    *
    * @param carrier the entity that carries the buff
    * @param instance the instance whose spawner fires
@@ -3205,20 +3207,14 @@ public class BattleWorld implements HolderPasses {
               + ", without hit points, a building, pathing to its point or starting an action,"
               + " which is not modelled");
     }
-    // The group: a carrier of the child's own row that is in a group counts its chain, and the call
-    // ends once the chain holds the limit.
+    // The group: a carrier of the child's own row that is in a group counts its chain, from its
+    // first unit to its last, and the call ends once the chain holds the limit. Nothing is made
+    // then, and no one hears of it; the visit spends the firing all the same. A unit that died
+    // still counts until it is released, as it leaves the chain only then.
     boolean grouped =
         child.groupMaxSize() >= 1 && spawner.inChain() && data.name().equals(child.name());
     if (grouped && spawner.chainSize() >= child.groupMaxSize()) {
-      // The spawner makes nothing then and the firing still counts, but whether a unit that died
-      // has left the chain it is counted in is not established.
-      throw new UnsupportedOperationException(
-          spawner.name()
-              + "'s "
-              + buff.name()
-              + " fires with its group chain at the limit of "
-              + child.groupMaxSize()
-              + ", which holds the spawn and is not modelled");
+      return;
     }
     int[] at =
         SpawnPlacement.position(

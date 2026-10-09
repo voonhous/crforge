@@ -439,7 +439,7 @@
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "proj_4000297 (Cannon_EV1_barrage_projectile) flies within Deflect_3000056 (Deflect), whose deflection of it is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "cmd70_0_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "the object 5000272 needs the object 5000265 listed as it is admitted, which has left or is leaving; its release is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_013": {"outcome": "mismatch", "first_divergent_tick": 3447, "path": "$.entities.length"},
   "tv-replays-v3/tv_replay_014": {"outcome": "diagnostic_match"},
@@ -451,6 +451,6 @@
   "tv-replays-v3/tv_replay_020": {"outcome": "mismatch", "first_divergent_tick": 2977, "path": "$.entities[0].x"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "cmd32_1_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"}
+  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"}
  }
 }
