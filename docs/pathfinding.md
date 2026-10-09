@@ -71,7 +71,7 @@ The speed column of the unit data is game units per tick (`SpeedConfig`). A Knig
 
 The Knight walks named at the top cover a whole deployment on the standard arena with nothing on it but the six crown towers: a Knight in the left lane, one deployed at the centre, one inside the left lane near the middle, and two deployed right beside one of their own towers - behind the right princess tower and behind the king tower - so that the two passes which look at a unit's neighbours, the push pass and the avoidance handler, are covered with a tower as the neighbour. A unit deployed behind its king is pushed by it while it deploys, because a deploying unit is visited by the movement pass with a speed of zero.
 
-The default target is chosen among the other side's princess towers, with the king as the seed and never a candidate itself (`DefaultTargetSelection`). For its first ten walking ticks a unit only considers the towers of its own lane; with both princess towers standing, a unit in its own half always finds its lane's tower the closer in x.
+The default target is chosen among the other side's princess towers, with the king as the seed and never a candidate itself (`DefaultTargetSelection`). The chosen candidate has to beat the seed: its squared approximate distance is compared with the seed's true squared distance, so a tower nearer only by the approximation leaves the unit walking at the king. For its first ten walking ticks a unit only considers the towers of its own lane; with both princess towers standing, a unit in its own half always finds its lane's tower the closer in x.
 
 ## Assumptions
 

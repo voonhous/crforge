@@ -7,10 +7,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,15 @@ class BattleMightyMinerTest {
 
   /** Long enough for a placed Mighty Miner to deploy, walk and cast. */
   private static final int TICKS = 200;
+
+  /** The top side's king tower, as the arena names it. */
+  private static final String KING_TOWER = "KingTower_1_0";
+
+  /** The top side's princess tower in the left lane, as the arena names it. */
+  private static final String LEFT_TOWER = "PrincessTower_1_1";
+
+  /** The top side's princess tower in the right lane, as the arena names it. */
+  private static final String RIGHT_TOWER = "PrincessTower_1_2";
 
   /** A Mighty Miner placed for the bottom side, with each lane switch it made. */
   private static final class Scene {
@@ -124,6 +135,41 @@ class BattleMightyMinerTest {
       assertThat(scene.tick).as("the Mighty Miner lands").isLessThan(TICKS);
     }
     assertThat(vines.matches(scene.miner.filterSubject(), 1, "Vines")).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "landed in the other lane with that lane's princess tower gone, the Mighty Miner walks at the"
+          + " king, which is the nearer by its true distance")
+  void aMinerAcrossWalksAtTheTrulyNearerKing() {
+    // Created in the right lane, which it keeps across the switch, so the right princess tower
+    // stays a candidate of its own lane.
+    Scene scene = new Scene(GameData.tables(), 14500, 10000);
+    scene.match.getWorld().kill(BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER), null);
+    scene.switchLanes();
+    while (scene.miner.getView().getState() != GridEntityState.MOVING) {
+      scene.step();
+      assertThat(scene.tick).as("the Mighty Miner walks again").isLessThan(TICKS);
+    }
+    scene.step();
+
+    // From the left lane the king is the nearer of the two by the true distance, the right
+    // princess tower by the approximate one: the king's own distance is the true one.
+    TowerEntity king = BattleTowers.towerNamed(scene.match.getBattle(), KING_TOWER);
+    TowerEntity right = BattleTowers.towerNamed(scene.match.getBattle(), RIGHT_TOWER);
+    int x = scene.miner.getView().getX();
+    int y = scene.miner.getView().getY();
+    int kingDx = king.getView().getX() - x;
+    int kingDy = king.getView().getY() - y;
+    int rightApprox =
+        FixedMath.approxDistance(right.getView().getX() - x, right.getView().getY() - y);
+    assertThat(FixedMath.approxDistance(kingDx, kingDy))
+        .as("the king is the farther by the approximate distance")
+        .isGreaterThan(rightApprox);
+    assertThat(FixedMath.guardedSumOfSquares(kingDx, kingDy))
+        .as("and the nearer by the true one")
+        .isLessThan(rightApprox * rightApprox);
+    assertThat(scene.miner.getUnit().targeting().getReference()).isSameAs(king.getTargetView());
   }
 
   @Test
