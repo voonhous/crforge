@@ -20,9 +20,10 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * The evolved Skeleton Balloon: its starting group runs a health trigger and the singleton pop.
  * Falling to 75% re-triggers the pop while the balloon lives, which drops the first container at
- * its offsets; its death action re-triggers it again, dropping the last. Each container's life end
- * spawns seven Skeletons on a ring turned over by the lane, pushed out from its point. A balloon
- * killed with both balloons left is refused.
+ * its offsets; its death action re-triggers it again, dropping the last, or both in turn when it
+ * dies with both left. Each container's life end spawns seven Skeletons on a ring turned over by
+ * the lane, pushed out from its point. A row that names a double container for a death with both
+ * left is refused.
  *
  * <p>The scene writes the pop's two balloons and the hit-point share that drops the first; the
  * offsets, the containers' life and the Skeletons' count are read from the rows.
@@ -82,7 +83,7 @@ class BattleSkeletonBalloonEvoTest {
 
   /** A battle with the towers passive, and every area effect and every spawn logged. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    final Standard1v1Battle match;
     final List<String> containers = new ArrayList<>();
     final List<Integer> containerTicks = new ArrayList<>();
     final List<Boolean> balloonAlive = new ArrayList<>();
@@ -91,6 +92,12 @@ class BattleSkeletonBalloonEvoTest {
     CharacterEntity balloon;
 
     Scene() {
+      this(tables);
+    }
+
+    /** A scene on other tables. */
+    Scene(GameTables sceneTables) {
+      match = new Standard1v1Battle(sceneTables, LEVEL, false);
       match
           .getWorld()
           .addObserver(
@@ -179,12 +186,46 @@ class BattleSkeletonBalloonEvoTest {
 
   @Test
   @DisplayName(
-      "a balloon killed with both balloons left is refused as its pop is re-triggered: the double"
-          + " container or both containers are not modelled")
-  void aDeathWithBothBalloonsIsRefused() {
+      "a balloon killed with both balloons left drops both containers as it dies, the first at its"
+          + " first offset, then the last at its second")
+  void aDeathWithBothBalloonsDropsBoth() {
     Scene scene = new Scene();
     scene.balloon = scene.still(0, BALLOON, LEVEL, 9000, 14000, "balloon");
     // A Musketeer at level 15 takes all of its hit points in one shot.
+    scene.still(1, "Musketeer", 15, 9000, 19500, "musketeer");
+
+    scene.step(200);
+
+    assertThat(scene.balloon.getHitPoints().getHitPoints()).isLessThanOrEqualTo(0);
+    assertThat(scene.containers)
+        .containsExactly(
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_EXTRA " + point(0, 0, 9000, 14000),
+            "pop_balloon balloon SkeletonBalloonEvoDummyAeO_DEATH " + point(1, 0, 9000, 14000));
+    // Both drop in the one re-trigger of its death action, on the tick it dies.
+    assertThat(scene.balloonAlive).containsExactly(false, false);
+    assertThat(scene.containerTicks.get(1)).isEqualTo(scene.containerTicks.get(0));
+    assertThat(scene.spawns).hasSize(2 * SKELETONS).containsOnly("Skeleton");
+  }
+
+  @Test
+  @DisplayName(
+      "a balloon killed with both balloons left is refused when its row names a double container")
+  void aDoubleContainerIsRefused(@TempDir Path doubled) throws IOException {
+    GameTables doubleTables =
+        GameData.altered(
+            doubled,
+            "actions",
+            rows -> {
+              ObjectNode pop = (ObjectNode) rows.get(POP).get("fields");
+              pop.put("TotalBalloons", BALLOONS);
+              pop.putArray("DropBalloonAtHpList").add(DROP_AT_PERCENT);
+              pop.put("OverrideKamikazeDoubleContainer", "SkeletonBalloonEvoDummyAeO_DEATH");
+              ((ObjectNode) rows.get("SkeletonBalloon_trigger_at_health").get("fields"))
+                  .putArray("HealthPercentages")
+                  .add(DROP_AT_PERCENT);
+            });
+    Scene scene = new Scene(doubleTables);
+    scene.balloon = scene.still(0, BALLOON, LEVEL, 9000, 14000, "balloon");
     scene.still(1, "Musketeer", 15, 9000, 19500, "musketeer");
 
     assertThatThrownBy(() -> scene.step(200))
@@ -192,7 +233,8 @@ class BattleSkeletonBalloonEvoTest {
         .hasMessage(
             POP
                 + " is re-triggered with %d balloons left as its owner".formatted(BALLOONS)
-                + " is dead, which drops every container left; not modelled");
+                + " is dead, which drops the double container SkeletonBalloonEvoDummyAeO_DEATH;"
+                + " not modelled");
     assertThat(scene.containers).isEmpty();
   }
 }

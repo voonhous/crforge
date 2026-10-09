@@ -433,7 +433,7 @@
   "tv-replays-v3/tv_replay_003": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_006": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_007": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_008": {"outcome": "unsupported", "feature": "skeleton_balloon_evo_pop_balloon is re-triggered with 2 balloons left as its owner is dead, which drops every container left; not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_013": {"outcome": "unsupported", "feature": "the tiebreaker's clearing of ProjectileEntity 4000586, which the holder removes at once, is not modelled", "input": "the run"},
