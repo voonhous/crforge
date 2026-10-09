@@ -2,9 +2,9 @@ package org.crforge.core.battle.unit;
 
 /**
  * The kings' elixir in a match, which the battle's units pay into and its abilities draw on: an
- * elixir collector's payout, the elixir a unit's death gives the side that killed it, the cost of a
- * champion's ability and its refund. Each king is found by its side, as the tower slot of that
- * side's player.
+ * elixir collector's payout, the elixir a unit's death gives the side that killed it and the elixir
+ * it gives its own side, the cost of a champion's ability and its refund. Each king is found by its
+ * side, as the tower slot of that side's player.
  */
 public interface KingElixir {
 

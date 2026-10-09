@@ -245,9 +245,9 @@ public final class BattleRecords {
   /**
    * The columns of what a unit does as it dies that the battle does not model: a unit whose row
    * sets one is refused when it dies. The elixir a death gives is not among them: the death handler
-   * pays a player's unit's ManaOnDeathForOpponent to the side that killed it in a match, and pays
-   * ManaOnDeath only for a neutral object, which the battle has none of. Nor is StartingBuff, whose
-   * instances the death slot takes off where the dying unit is their parent.
+   * pays a player's unit's ManaOnDeathForOpponent to the side that killed it in a match, and the
+   * death slot pays its ManaOnDeath to its own side's king. Nor is StartingBuff, whose instances
+   * the death slot takes off where the dying unit is their parent.
    */
   private static final List<String> UNMODELLED_DEATH_COLUMNS =
       List.of("DeathSpawnCharacter3", "DeathSpawnIsSameUnit");
@@ -494,8 +494,6 @@ public final class BattleRecords {
           "DashFilter",
           // Resolved when the tables are derived: the row already carries what it inherits.
           "Base",
-          // Paid only for an entity of side 100, which a battle of two players never has.
-          "ManaOnDeath",
           // Gates only the statistics calls of the buff add.
           "AvoidCountingForBuffAmountStats",
           // A later entry's columns load into no entry without an order or VariableDamageTime1; a
@@ -826,6 +824,7 @@ public final class BattleRecords {
             .manaCollectAmount(row.intValue("ManaCollectAmount"))
             .manaGenerateTimeMs(row.intValue("ManaGenerateTimeMs"))
             .manaOnDeathForOpponent(row.intValue("ManaOnDeathForOpponent"))
+            .manaOnDeath(row.intValue("ManaOnDeath"))
             .ignoreBuffs(namesOf(row, "IgnoreBuff"))
             .shieldHitpoints(row.intValue("ShieldHitpoints"))
             .stopMovementAfterMs(row.intValue("StopMovementAfterMS"))
@@ -2349,6 +2348,12 @@ public final class BattleRecords {
         .buff(set(ability, "Buff") ? ability.string("Buff") : null)
         .buffTimeMs(ability.intValue("BuffTime"))
         .manaCost(ability.intValue("ManaCost"))
+        // A row whose RefundWindow is not positive takes its trigger delay instead, as the game's
+        // ability loader sets it once the row is read.
+        .refundWindowMs(
+            ability.intValue("RefundWindow") > 0
+                ? ability.intValue("RefundWindow")
+                : ability.intValue("TriggerDelay"))
         .cooldownMs(ability.intValue("Cooldown"))
         .maxCharges(ability.intValue("MaxCharges"))
         .dashRange(ability.intValue("DashRange"))

@@ -1329,6 +1329,16 @@ public interface WorldObserver {
   default void deathElixirPaid(int tick, WorldEntity dying, int side, int amount) {}
 
   /**
+   * A unit's death slot paid its own side's king the row's ManaOnDeath.
+   *
+   * @param tick the battle tick
+   * @param dying the unit
+   * @param side its own side
+   * @param amount the elixir paid, in ten-thousandths
+   */
+  default void deathManaPaid(int tick, WorldEntity dying, int side, int amount) {}
+
+  /**
    * A tiebreaker's drain took a step off a tower.
    *
    * @param tick the battle tick

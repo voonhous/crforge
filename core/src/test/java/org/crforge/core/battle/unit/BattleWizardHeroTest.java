@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -198,10 +199,10 @@ class BattleWizardHeroTest {
 
   @Test
   @DisplayName(
-      "the swap onto the flying row has the champion slot work its state out at once: the hero is"
-          + " no live copy of the row it follows any more, the slot finds none, and the state is"
-          + " the override the action at the height wrote")
-  void theSwapLeavesTheChampionSlot(@TempDir Path folder) throws IOException {
+      "the swap onto the flying row has the champion slot work its state out at once: the hero"
+          + " stays a live copy while its new row names the same ability row as the one it follows,"
+          + " and the state is the override the action at the height wrote")
+  void theSwapKeepsTheChampionSlot(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(pinned(folder));
     CharacterEntity hero = scene.abilityUsed();
     int turn = scene.stepUntilCasting(hero) + 7;
@@ -218,16 +219,27 @@ class BattleWizardHeroTest {
     // The slot's own step ran before the swap, in the king's run pass; the swap's pass worked the
     // state out again, the slot's copies rebuilt from the live list. The group at the height runs
     // its parts from the last to the first, so its button override, its last part, was written
-    // before the swap and wins that working out.
-    assertThat(slot.champions()).isEmpty();
+    // before the swap and wins that working out. A copy is a unit whose row names the champion's
+    // ability row, which the flying row may share.
+    assertThat(slot.champions()).isEqualTo(copiesOnTheFlyingRow(hero));
     assertThat(slot.getOverride()).isEqualTo(ChampionController.ON_COOLDOWN);
     assertThat(slot.getState()).isEqualTo(ChampionController.ON_COOLDOWN);
     // The ability counts charges and sets no cooldown; the swap leaves it at 0.
     assertThat(cooldown).isZero();
     assertThat(slot.getCooldownMs()).as("the swap leaves the cooldown").isZero();
-    // The slot's next step finds no live copy either.
+    // The slot's next step finds the same copies.
     scene.steps(1);
-    assertThat(slot.champions()).isEmpty();
+    assertThat(slot.champions()).isEqualTo(copiesOnTheFlyingRow(hero));
+  }
+
+  /**
+   * The live copies a champion slot following the ground row finds while the hero is on its flying
+   * row: the hero when that row names the ground row's ability row, else none.
+   */
+  private static List<CharacterEntity> copiesOnTheFlyingRow(CharacterEntity hero) {
+    String ground = Shipped.text(Shipped.unitRow(HERO), "Ability");
+    String flying = Shipped.text(Shipped.unitRow("WizardHero_air"), "Ability");
+    return ground.equals(flying) ? List.of(hero) : List.of();
   }
 
   @Test
@@ -334,7 +346,7 @@ class BattleWizardHeroTest {
       scene.steps(1);
     }
     assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
-    assertThat(slot.champions()).as("not followed on the flying row").isEmpty();
+    assertThat(slot.champions()).isEqualTo(copiesOnTheFlyingRow(hero));
     // The hold's last step: its counter is out, the descent starts, and the action at its start
     // runs in the same step: the swap back to the ground row.
     scene.steps(1);
