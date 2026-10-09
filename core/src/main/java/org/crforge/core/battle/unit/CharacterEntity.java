@@ -2847,6 +2847,13 @@ public class CharacterEntity extends WorldEntity {
    * comes a whole hit speed later; a character that stopped on a cell it may not stand on is moved
    * to the nearest cell off the water, at height 0. Then the moving state is asked for, or, for a
    * row with a landing time, the landing hold starts.
+   *
+   * <p>The single-target hit goes to the same damage entry as a direct hit, which queues it for the
+   * holder's damage drain (see {@link BattleWorld#dealDirectHit}): its damage lands after every
+   * post-hook, so a unit the landing kills keeps its movement visit of that tick, and a unit
+   * visited after the dasher still finds it moving. Whether the drain gives a dash's hit the
+   * dasher's buff on damage, as it gives a direct hit's, is not traced, and no row has a dash and a
+   * buff on damage; such a row is refused.
    */
   private void landDash() {
     UnitData data = getData();
@@ -2876,8 +2883,14 @@ public class CharacterEntity extends WorldEntity {
               false,
               ValidatorQueries.standard1v1())
           && RangeTest.referenceInRange(t, reference, DASH_HIT_EXTENSION)) {
+        if (data.buffOnDamage() != null) {
+          throw new UnsupportedOperationException(
+              name()
+                  + " landed its dash's hit with a buff on damage, whose drain for a dash's hit"
+                  + " no run holds");
+        }
         hit = world.entityOf(reference.getEntity());
-        world.dealDamage(this, reference, damage, view.getDirX(), view.getDirY());
+        world.dealDirectHit(this, reference, damage, view.getDirX(), view.getDirY());
         t.clearAttack();
         t.setLoadTimerMs(data.loadTimeMs());
       }
