@@ -64,9 +64,14 @@ jobs:
           ssh-key: ${{ secrets.GAME_TABLES_KEY }}
           path: game-tables
 
+      # The table decoder's test builds the tables of every compatible data version from the
+      # repository's copy of the game's asset files (cdn/), never from the game's CDN, and holds
+      # them to the repository's tables byte for byte.
       - name: Point the tests at the game tables
         if: steps.lock.outputs.available == 'true'
-        run: echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
+        run: |
+          echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
+          echo "CRFORGE_DATA_ARGS=-Pcrforge.dataRoot=${{ github.workspace }}/game-tables" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -80,7 +85,7 @@ jobs:
           gradle-version: wrapper
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build $CRFORGE_DATA_ARGS
 
       - name: Run Tests
         run: ./gradlew test

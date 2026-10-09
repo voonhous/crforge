@@ -27,7 +27,7 @@ crforge/
   core/           The battle core: headless, no GUI dependencies
   desktop/        LibGDX debug visualizer and replay viewer, on the battle core
   conformance/    Checks the battle core against recorded reference battles
-  tables/         The client schema: what the game client's data loaders do, per client version
+  tables/         The table decoder: builds the game tables of a data version from the game's files
 ```
 
 `desktop` and `conformance` depend on `core` only, and nothing depends on them. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).

@@ -36,3 +36,4 @@ The data version in this table is the game client's label: the `version` of the 
 - Add a row the first time a client version or a data version is seen, before any game tables or reference battles of it are made.
 - Write "not known" for a value that was not recorded, never a guess.
 - Take the data version from the client's copy of the fingerprint, never from the asset CDN's; put the CDN's label in its own column.
+- For a data version the table decoder is to build, add it with its client version and content sha to `tables/src/main/resources/org/crforge/tables/data-versions.json` (see [Building the game tables](game-tables.md#building-the-game-tables)).

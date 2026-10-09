@@ -1,0 +1,45 @@
+{
+ "format": 1,
+ "client_version": "test-1",
+ "ext_link": "deferred",
+ "type_tokens": {
+  "CHARACTER": 34,
+  "BUILDING": 35,
+  "BUFF": 9,
+  "ACTION": 133
+ },
+ "registrations": [
+  {"kind": "manifest files", "id": -1, "files": []},
+  {"kind": "global ids (old format)", "id": 0, "files": ["csv_logic/global_ids_oldformat.csv"]},
+  {"kind": "table", "id": 34, "files": ["csv_logic/characters.csv"]},
+  {"kind": "table", "id": 35, "files": ["csv_logic/buildings.csv"]},
+  {"kind": "table", "id": 9, "files": ["csv_logic/character_buffs.toml"]},
+  {"kind": "table", "id": 133, "files": ["csv_logic/actions.toml"]},
+  {"kind": "table", "id": 144, "files": ["csv_logic/characters_evo.toml"]}
+ ],
+ "patch_targets": {"144": 34},
+ "spell_tables": [],
+ "combined_characters": [34, 35],
+ "reference_tables": {"ChainedBuff": 9},
+ "array_read_csv_columns": {"34": ["Tribe"]},
+ "export_tables": {"characters": "34", "buildings": "35", "character_buffs": "9"},
+ "global_id_types": {"characters": "Character", "buildings": "Character"},
+ "table_classes": {
+  "9": ["logic.data.LogicCharacterBuffData"],
+  "34": ["logic.data.LogicCharacterData"],
+  "35": ["logic.data.LogicBuildingData"],
+  "133": ["logic.data.LogicActionData", "logic.data.LogicActionSpawnData"]
+ },
+ "classes": {
+  "logic.data.LogicData": {"parent": null, "key": null, "classtype": null, "tables": [], "refs": {}},
+  "logic.data.LogicCharacterData": {"parent": "logic.data.LogicData", "key": null, "classtype": null, "tables": [34], "refs": {"OnDeathAction": "logic.data.LogicActionData", "Buff": "logic.data.LogicCharacterBuffData"}},
+  "logic.data.LogicBuildingData": {"parent": "logic.data.LogicCharacterData", "key": null, "classtype": null, "tables": [35], "refs": {}},
+  "logic.data.LogicCharacterBuffData": {"parent": "logic.data.LogicData", "key": null, "classtype": null, "tables": [9], "refs": {}},
+  "logic.data.LogicActionData": {"parent": "logic.data.LogicData", "key": "ClassType", "classtype": null, "tables": [133], "refs": {"NextAction": "logic.data.LogicActionData"}},
+  "logic.data.LogicActionSpawnData": {"parent": "logic.data.LogicActionData", "key": "ClassType", "classtype": "ActionSpawn", "tables": [], "refs": {}}
+ },
+ "loader_kinds": {
+  "logic.data.LogicCharacterBuffData": {"9": {"DamagePerSecond": "int", "SpeedMultiplier": "float"}},
+  "logic.data.LogicActionSpawnData": {"133": {"Count": "int"}}
+ }
+}

@@ -36,7 +36,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
 
-The debug visualizer runs the battle core, which needs the game tables: set `crforge.gameTables=<folder>` in `~/.gradle/gradle.properties` (or pass `-Pcrforge.gameTables=<folder>`, or set `CRFORGE_GAME_TABLES`). It prints the tables folder, data version and content sha at startup, and its key map; see [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
+The debug visualizer and the tests run the battle core, which needs the game tables. This repository does not ship them: `./gradlew -q :tables:gameTables` builds them on your machine from the game's own files and prints their folder ([Building the game tables](docs/game-tables.md#building-the-game-tables)). Name that folder as `crforge.gameTables=<folder>` in `~/.gradle/gradle.properties` (or pass `-Pcrforge.gameTables=<folder>`, or set `CRFORGE_GAME_TABLES`). It prints the tables folder, data version and content sha at startup, and its key map; see [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
 
 ## Modules
 
@@ -45,8 +45,9 @@ The debug visualizer runs the battle core, which needs the game tables: set `crf
 | `core`        | The battle core: a headless battle simulator on the game's tables                           |
 | `desktop`     | LibGDX debug visualizer for watching and interacting with matches                           |
 | `conformance` | Checks the battle core against recorded reference battles ([README](conformance/README.md)) |
+| `tables`      | The table decoder: builds the game tables of a data version from the game's files           |
 
-`core` has no GUI dependencies. `desktop` and `conformance` depend on `core` only. The game tables and the recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
+`core` has no GUI dependencies. `desktop` and `conformance` depend on `core` only, and `tables` on nothing in the project. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
 
 ## Docs
 

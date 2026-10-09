@@ -1,12 +1,12 @@
 # Game tables and reference battles
 
-The battle core reads the game's own tables, which this repository does not ship, and is held to recorded reference battles kept beside them in the game data repository.
+The battle core reads the game's own tables, which this repository does not ship: they are built on your machine from the game's files (see [Building the game tables](#building-the-game-tables)). The battle core is held to recorded reference battles kept in the game data repository.
 
 ## The game tables
 
 A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables, `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_tags` - and `actions.json`, all of one data version. A table file is a header (`table`, `id`, `version`, `content_sha`) and its `rows` by name in creation order, each with its `index`, its `class` and its `columns` under the game's own names. Values are as the game reads them: integer milliseconds, game units (1000 per tile), the published speed column, references as row names. A game tag's `index` is its bit in an object's tag word.
 
-`org.crforge.core.battle.data.GameTables`, in the core module beside the battle it serves, reads such a folder. It is named by the Gradle property `crforge.gameTables` (`./gradlew test -Pcrforge.gameTables=<dir>`, or a line in `~/.gradle/gradle.properties`) or the environment variable `CRFORGE_GAME_TABLES`; the tests that need the real tables fail when neither is set, naming the two settings. In CI a private repository of them is checked out when the repository variable `GAME_TABLES_REPOSITORY` and the secret `GAME_TABLES_KEY` - the private half of a read-only deploy key on that repository - are set. It is checked out at the commit `crforge-data.lock` (repository root) names, so a change and the data it was built against always agree; move the lock in the change that needs newer data. The lock names version folders in that commit: `version`, the data version under work, which the debug visualizer opens by default, and `compatible`, every data version CI tests: the data versions served to the client range the battle follows ([Compatibility](compatibility.md)), `version` among them. They share the client's battle rules, so CI runs the unit tests (`./gradlew test`) on the tables of each one and the reference battles (below) of each one that has them. The unit tests hard-code no game data, so they pass on each compatible version unchanged; run them locally with `-Pcrforge.gameTables=<data checkout>/<version>`. A pull request from a fork gets no secrets, so those tests fail in its run.
+`org.crforge.core.battle.data.GameTables`, in the core module beside the battle it serves, reads such a folder. It is named by the Gradle property `crforge.gameTables` (`./gradlew test -Pcrforge.gameTables=<dir>`, or a line in `~/.gradle/gradle.properties`) or the environment variable `CRFORGE_GAME_TABLES`; the tests that need the real tables fail when neither is set, naming the two settings. In CI a private repository of them (the game data repository) is checked out when the repository variable `GAME_TABLES_REPOSITORY` and the secret `GAME_TABLES_KEY` - the private half of a read-only deploy key on that repository - are set. It is checked out at the commit `crforge-data.lock` (repository root) names, so a change and the data it was built against always agree; move the lock in the change that needs newer data. The lock names version folders in that commit: `version`, the data version under work, which the debug visualizer opens by default, and `compatible`, every data version CI tests: the data versions served to the client range the battle follows ([Compatibility](compatibility.md)), `version` among them. They share the client's battle rules, so CI runs the unit tests (`./gradlew test`) on the tables of each one and the reference battles (below) of each one that has them. The unit tests hard-code no game data, so they pass on each compatible version unchanged; run them locally with `-Pcrforge.gameTables=<data checkout>/<version>`. A pull request from a fork gets no secrets, so those tests fail in its run.
 
 ## The client schema
 
@@ -24,7 +24,24 @@ The game tables are the game's own files read the way the game client reads them
 | `spell_tables`, `combined_characters`, `reference_tables`, `array_read_csv_columns` | the spell tables, the characters-then-buildings lookup of an EXT base, the reference columns with a fixed target table, and the CSV columns read with the array reader |
 | `export_tables`, `global_id_types` | the tables written as game tables, by file name, and the ones whose rows carry a global id |
 
-A schema is enough to build the game tables: from it and the game's files of a data version, the tables of 16.402.18, 16.402.19 and 16.402.21 come out byte for byte as the folders in the game data repository. That is the input of the table decoder, which builds a folder of game tables on the user's machine from the game's files on the game's asset CDN, so that this project never ships the game's data. Until the decoder lands, the tables come from the game data repository as above.
+A schema and the game's files of a data version are all the table decoder (below) reads.
+
+## Building the game tables
+
+The `tables` module builds a folder of game tables on your machine from the game's own files, so that this project never ships the game's data:
+
+```
+./gradlew -q :tables:gameTables
+```
+
+prints the folder of the tables of the data version under work (`version=` of `crforge-data.lock`); name it as `crforge.gameTables`. `-Pcrforge.dataVersion=<version>` builds another data version the decoder knows.
+
+- **Where the files come from.** The game's asset CDN serves a data version's files under its content sha: `<content sha>/fingerprint.json`, the list of every file with its SHA-1, and `<content sha>/<path>`. By default they are fetched from there. `-Pcrforge.assetSource=<URI>` (or `CRFORGE_ASSET_SOURCE`) names another source laid out the same way; a `file:` URI names a local copy, such as the `cdn/` folder of the game data repository. Only the files the client's table loaders read are fetched: those under `csv_logic/` and `csv_client/`, and `data_manifest.toml`.
+- **The cache.** `~/.crforge`, or the folder `crforge.cache` (`CRFORGE_CACHE`) names. A fetched file is kept under `assets/` by its SHA-1, so it is fetched once, and a file shared by several data versions is kept once. A file that does not match the SHA-1 its fingerprint lists is refused, naming it. The tables of a data version go to `tables/<data version>/`, with a `build.properties` naming the content sha, the client schema and the decoder they were built with; a folder built the same way is used again as it is.
+- **The data versions.** The decoder names a data version by the game client's label, never the CDN's (one content sha has both, see [Game Versions](game-versions.md)): `tables/src/main/resources/org/crforge/tables/data-versions.json` pairs each data version with its client version, whose schema reads it, and its content sha.
+- **How the files are read.** A file as served is 5 bytes of LZMA properties, the 4-byte little-endian size of the text, then an LZMA1 stream. The decoder (`org.crforge.tables.TableBuild`) stacks each row's layers in the client's load order (`LoadModel`), resolves them as the client does (`TableResolver`: EXT inheritance at the schema's link points, operators, the patch tables, inline rows) and writes the tables (`TableExport`), each JSON file as these tables have always been written.
+
+The decoder is held to the game data repository: for each data version it knows, the tables it builds from the repository's copy of the asset files (`cdn/`) are the repository's tables, byte for byte (`TableBuildReferenceTest`, given `-Pcrforge.dataRoot=<data checkout>` or `CRFORGE_DATA_ROOT`; CI runs it on every build, reading only that copy, never the game's CDN).
 
 ## Reference battles
 
