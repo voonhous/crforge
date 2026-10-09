@@ -56,7 +56,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " evo_minionhorde. The attacker's percents from the buffs the hit's source carries,"
             + " and an unkillable target held at 1 hit point by a hit that does not pierce"
             + " immunity, held by hero_berserker; the crown tower percent by"
-            + " BattleBuffDamagePercentTest alone. A drain on an unkillable object is refused.")
+            + " BattleBuffDamagePercentTest alone. A drain on an unkillable object is refused. A"
+            + " hit after the battle's end takes nothing and is accepted, so the drain still"
+            + " applies a projectile's target buff, held by random_battle16_s0038.")
 public final class DamageApplication {
 
   private DamageApplication() {
@@ -232,7 +234,7 @@ public final class DamageApplication {
         shieldBefore > 0
             ? shieldBefore - hitPoints.getShield()
             : hitPointsBefore - hitPoints.getHitPoints();
-    return new DamageResult(result.landed(), lost, result.died());
+    return new DamageResult(result.landed(), lost, result.died(), result.accepted());
   }
 
   /**
@@ -279,7 +281,9 @@ public final class DamageApplication {
   /**
    * The shield, then the hit points; a kill ignores the battle's hold. A hit that does not pierce
    * immunity leaves an unkillable target at 1 hit point at least, after the overkill is taken out
-   * of what it lost: such a target does not die of it.
+   * of what it lost: such a target does not die of it. Once the battle has ended the subtraction
+   * takes nothing and answers not landed, yet accepted: the bookkeeping that called it accepts
+   * every event that reaches it, whatever it answers.
    */
   private static DamageResult subtract(
       HitPoints hitPoints,
@@ -290,7 +294,9 @@ public final class DamageApplication {
       boolean ignoreHolds,
       boolean piercesImmunity) {
     if (!ignoreHolds && queries.battleEnded()) {
-      return DamageResult.NOTHING;
+      // Nothing is taken and nothing the subtraction runs follows, but the bookkeeping that called
+      // it accepts the event all the same: the drain applies a hit's buffs after the end.
+      return DamageResult.ENDED;
     }
     if (hitPoints.getHitPoints() < 1) {
       // Already dead: the event is accepted, but there is nothing left to take. The whole amount
