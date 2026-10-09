@@ -225,13 +225,26 @@ public class Standard1v1Battle {
       VariantItem variant,
       EvolutionItem evolution) {}
 
-  /** A card play queued: the tick it runs on, its side and its card. */
-  private record QueuedPlay(int tick, int side, String card) {}
+  /** What a queued play plays: a deck card, a Mirror or a variant card. */
+  private enum PlayKind {
+    CARD,
+    MIRROR,
+    VARIANT
+  }
+
+  /** A card play queued: the tick it runs on, its side, its card and what it plays. */
+  private record QueuedPlay(int tick, int side, String card, PlayKind kind) {}
+
+  /** An ability command queued: the tick it runs on and its side. */
+  private record QueuedAbility(int tick, int side) {}
 
   /**
    * Every card play queued so far, which a Mirror's and a variant card's item are built against.
    */
   private final List<QueuedPlay> queuedPlays = new ArrayList<>();
+
+  /** Every ability command queued so far, which a variant card's pick is checked against. */
+  private final List<QueuedAbility> queuedAbilities = new ArrayList<>();
 
   /**
    * How many ticks before a Mirror's own run another play of its side would be pending as the
@@ -245,6 +258,13 @@ public class Standard1v1Battle {
    * its side that runs from the next tick on is pending at the pick.
    */
   private static final int VARIANT_PICK_TICKS = PLAY_DELAY_TICKS + 1;
+
+  /**
+   * How many ticks after a command is given the player's client holds back the cost it promised,
+   * unless the command's run releases it first: a play that passes its gates and is placed releases
+   * it as it pays, one refused at its run keeps it until then.
+   */
+  private static final int PROMISE_TICKS = 60;
 
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
@@ -398,6 +418,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
+    queuedAbilities.add(new QueuedAbility(tick, side));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -435,6 +456,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
+    queuedAbilities.add(new QueuedAbility(tick, side));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -500,7 +522,7 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
-    queuedPlays.add(new QueuedPlay(tick, side, card.name()));
+    queuedPlays.add(new QueuedPlay(tick, side, card.name(), PlayKind.CARD));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -541,7 +563,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           "the Mirror outside a match, which keeps no last card to play again");
     }
-    QueuedPlay queued = new QueuedPlay(tick, side, card);
+    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.MIRROR);
     queuedPlays.add(queued);
     battle.queue(
         new BattleCommand() {
@@ -619,10 +641,15 @@ public class Standard1v1Battle {
    * troop card, its units named after the play.
    *
    * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, the
-   * last the client can have seen before it gives the play. The client sets aside the cost of any
-   * play of its side it has given and not yet seen run; a variant play with one due then is
-   * refused, and so is one outside a match, which has no king's elixir, and one run before tick 21,
-   * given before the first step.
+   * last the client can have seen before it gives the play, from the king's elixir less the costs
+   * its client has promised: each play of its side given and not yet run holds back its item's cost
+   * from the step after it is given until its run pays it. A variant play given in the tick of
+   * another play of its side or the tick after, where the client's moment decides whether that
+   * play's cost is held back yet, is refused, and so is one with a Mirror's play of its side
+   * pending, one given within {@value #PROMISE_TICKS} ticks after a play of its side the match
+   * refused at its run, which may still hold its cost back, one with an ability command of its side
+   * given in the {@value #PROMISE_TICKS} ticks up to it, one outside a match, which has no king's
+   * elixir, and one run before tick 21, given before the first step.
    *
    * @param tick the tick the play runs on
    * @param card the variant card's row name
@@ -643,7 +670,7 @@ public class Standard1v1Battle {
             name
                 + ": a variant play runs on tick 21 or later, its option picked after the step 21"
                 + " ticks before");
-    QueuedPlay queued = new QueuedPlay(tick, side, card);
+    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT);
     queuedPlays.add(queued);
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before
@@ -657,7 +684,7 @@ public class Standard1v1Battle {
 
           @Override
           public void execute(Battle target) {
-            option[0] = match.pickOption(side, card);
+            option[0] = match.pickOption(side, card, promised(queued, name));
           }
         });
     battle.queue(
@@ -684,17 +711,7 @@ public class Standard1v1Battle {
       String name,
       int option) {
     int side = queued.side();
-    for (QueuedPlay other : queuedPlays) {
-      if (other != queued
-          && other.side() == side
-          && other.tick() > queued.tick() - VARIANT_PICK_TICKS
-          && other.tick() <= queued.tick()) {
-        throw new UnsupportedOperationException(
-            name
-                + ": a variant play given while another play of its side is pending, whose cost"
-                + " the pick would set aside, is not modelled");
-      }
-    }
+    checkPromisesKnown(queued, name);
     int deckIndex = match.deckIndex(side, card);
     VariantItem item = match.variantItem(side, deckIndex, option);
     // The gates read the variant card's own hand slot and the option's cost; a refused play
@@ -717,6 +734,86 @@ public class Standard1v1Battle {
         null,
         item,
         null);
+  }
+
+  /**
+   * The whole elixir a variant play's pick sets aside, as its player's client counts it when it
+   * builds the play's item after the step before the play is given: the item's cost of each play of
+   * its side given at least two ticks before the variant play and not yet run. Each such play is a
+   * deck card's: its item, built here from the side's count, is the one it runs with, a Mirror's or
+   * a variant card's being refused.
+   */
+  private int promised(QueuedPlay queued, String name) {
+    int side = queued.side();
+    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int total = 0;
+    for (QueuedPlay other : queuedPlays) {
+      int otherGiven = other.tick() - PLAY_DELAY_TICKS;
+      if (other == queued
+          || other.side() != side
+          || otherGiven > given - 2
+          || other.tick() < given) {
+        continue;
+      }
+      if (other.kind() != PlayKind.CARD) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given while a Mirror's play of its side is pending, whose"
+                + " item's cost the pick would set aside, is not modelled");
+      }
+      total += match.item(side, match.deckIndex(side, other.card())).cost();
+    }
+    return total;
+  }
+
+  /**
+   * Refuses a variant play whose pick may have counted a promise {@link #promised} does not: a play
+   * of its side given in the tick of the variant play or the tick before, which the client files
+   * apart and counts only from the next step, at a moment of the client's not modelled; a play of
+   * its side refused at its run within {@value #PROMISE_TICKS} ticks of its giving, whose promise
+   * the client keeps until then; and an ability command of its side given in the {@value
+   * #PROMISE_TICKS} ticks up to it, whose promise is not modelled.
+   */
+  private void checkPromisesKnown(QueuedPlay queued, String name) {
+    int side = queued.side();
+    int given = queued.tick() - PLAY_DELAY_TICKS;
+    for (QueuedPlay other : queuedPlays) {
+      if (other != queued
+          && other.side() == side
+          && other.tick() - PLAY_DELAY_TICKS >= given - 1
+          && other.tick() <= queued.tick()) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given in the tick of another play of its side or the tick"
+                + " after, whose cost the player's client may not yet set aside, is not modelled");
+      }
+    }
+    // A refused play's promise is dropped by the first step whose tick reaches PROMISE_TICKS after
+    // its giving; which count of the tick that step reads is not traced, so the window is two
+    // ticks wider than the pick's step.
+    for (Play play : plays) {
+      boolean refused = play.matchCode() != 0 || play.result() == null || !play.result().placed();
+      if (play.side() == side
+          && refused
+          && play.tick() - PLAY_DELAY_TICKS + PROMISE_TICKS >= given - 2
+          && play.tick() < given) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given while a play of its side refused at its run may still"
+                + " hold back its cost, is not modelled");
+      }
+    }
+    for (QueuedAbility ability : queuedAbilities) {
+      int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
+      if (ability.side() == side
+          && abilityGiven >= given - PROMISE_TICKS - 2
+          && abilityGiven <= given) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given while an ability command of its side may hold back its"
+                + " cost, is not modelled");
+      }
+    }
   }
 
   private void runPlay(

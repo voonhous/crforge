@@ -439,7 +439,7 @@
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "proj_4000297 (Cannon_EV1_barrage_projectile) flies within Deflect_3000056 (Deflect), whose deflection of it is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "cmd67: a variant play given while another play of its side is pending, whose cost the pick would set aside, is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "cmd70_0_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_013": {"outcome": "unsupported", "feature": "the tiebreaker's clearing of ProjectileEntity 4000592, which the holder removes at once, is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_014": {"outcome": "unsupported", "feature": "Vines_Air_To_Ground ends on cmd27_2, resetting its path, which is not modelled", "input": "the run"},

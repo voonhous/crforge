@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The Merge Maiden where the reference runs do not take it: the step its option is picked after, a
- * play the elixir does not cover, and the plays it refuses - outside a match, before tick 21, with
- * another play of its side pending, and repeated by a Mirror.
+ * pending play's cost the pick sets aside, a play the elixir does not cover, and the plays it
+ * refuses - outside a match, before tick 21, given in or right after another play's tick, with a
+ * Mirror pending or a refused play's promise held, and repeated by a Mirror.
  */
 class BattleMergeMaidenTest {
 
@@ -129,19 +130,51 @@ class BattleMergeMaidenTest {
 
   @Test
   @DisplayName(
-      "a variant play with another play of its side due in the 20 ticks up to its own is refused,"
-          + " and one 21 ticks after it is played")
-  void aVariantWithAPlayPendingIsRefused() {
-    Standard1v1Battle pending = new Standard1v1Battle(GameData.tables());
-    pending.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    pending.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
-    pending.playVariant(41, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+      "a variant play given while a play of its side given two ticks or more before is pending"
+          + " picks from the elixir less that play's cost: on foot, where the elixir alone would"
+          + " pick it mounted")
+  void aPendingPlaysCostIsSetAsideByThePick() {
+    // The Zap is given on 21 and runs on 41; the Merge Maiden is given on 30, its option picked
+    // after step 29, while the Zap is still pending.
+    int zapRun = 41;
+    int maidenRun = 50;
+    // The elixir after step 29 alone reaches the mounted option's trigger; less the Zap's cost it
+    // does not.
+    int elixir = elixirAfterStep(maidenRun - 21);
+    assertThat(elixir).isGreaterThanOrEqualTo(mountedTrigger());
+    assertThat(elixir - ZAP * MatchSide.SCALE).isLessThan(mountedTrigger());
 
-    assertThatThrownBy(() -> run(pending, 41))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "m: a variant play given while another play of its side is pending, whose cost the"
-                + " pick would set aside, is not modelled");
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
+    battle.play(zapRun, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    battle.playVariant(maidenRun, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(battle, maidenRun);
+
+    Standard1v1Battle.Play maiden = battle.getPlays().get(1);
+    assertThat(maiden.matchCode()).isZero();
+    assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Normal");
+    assertThat(maiden.variant().cost()).isEqualTo(ON_FOOT);
+    assertThat(maiden.units().get(0).getData().name()).isEqualTo("MergeMaiden_Normal");
+    assertThat(match.side(0).getSpent()).isEqualTo((ZAP + ON_FOOT) * MatchSide.SCALE);
+  }
+
+  @Test
+  @DisplayName(
+      "a variant play given in the tick of another play of its side, or the tick after it, is"
+          + " refused; one given after that play has run is picked from the elixir alone")
+  void aVariantGivenWithAnotherPlayIsRefused() {
+    for (int maidenRun : new int[] {41, 42}) {
+      Standard1v1Battle pending = new Standard1v1Battle(GameData.tables());
+      pending.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
+      pending.play(41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+      pending.playVariant(maidenRun, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+
+      assertThatThrownBy(() -> run(pending, maidenRun))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessage(
+              "m: a variant play given in the tick of another play of its side or the tick after,"
+                  + " whose cost the player's client may not yet set aside, is not modelled");
+    }
 
     Standard1v1Battle later = new Standard1v1Battle(GameData.tables());
     later.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
@@ -151,6 +184,50 @@ class BattleMergeMaidenTest {
     Standard1v1Battle.Play maiden = later.getPlays().get(1);
     assertThat(maiden.matchCode()).isZero();
     assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Normal");
+  }
+
+  @Test
+  @DisplayName(
+      "a variant play given while a Mirror of its side is pending, within the 62 ticks after a"
+          + " play of its side the match refused at its run, or with an ability command of its"
+          + " side given in the 62 ticks up to it, is refused")
+  void aVariantWithAnUnmodelledPromiseIsRefused() {
+    Standard1v1Battle mirror = new Standard1v1Battle(GameData.tables());
+    mirror.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
+    mirror.play(21, GameData.card("Archer"), LEVEL, 0, 3500, 10000, "a");
+    mirror.playMirror(60, "Mirror", LEVEL, 0, 14500, 10000, "r");
+    mirror.playVariant(70, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+
+    assertThatThrownBy(() -> run(mirror, 70))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "m: a variant play given while a Mirror's play of its side is pending, whose item's"
+                + " cost the pick would set aside, is not modelled");
+
+    // The first Merge Maiden comes mounted; the second finds less than its cost at its run and is
+    // refused, its promise held by the player's client past its run.
+    Standard1v1Battle refused = new Standard1v1Battle(GameData.tables());
+    refused.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
+    refused.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
+    refused.playVariant(42, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
+    refused.playVariant(84, "MergeMaiden", LEVEL, 0, 14500, 9000, "m3");
+
+    assertThatThrownBy(() -> run(refused, 84))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "m3: a variant play given while a play of its side refused at its run may still hold"
+                + " back its cost, is not modelled");
+
+    Standard1v1Battle ability = new Standard1v1Battle(GameData.tables());
+    ability.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
+    ability.playVariant(50, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    ability.useAbility(50, 0, "m_0", "u");
+
+    assertThatThrownBy(() -> run(ability, 50))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "m: a variant play given while an ability command of its side may hold back its"
+                + " cost, is not modelled");
   }
 
   @Test
@@ -194,6 +271,14 @@ class BattleMergeMaidenTest {
       battle.getBattle().step();
     }
     return battle.getBattle().getTick() - 1;
+  }
+
+  /** Side 0's elixir after the given step, in a match where nothing is played. */
+  private static int elixirAfterStep(int step) {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
+    run(battle, step);
+    return match.side(0).getElixir();
   }
 
   /** Steps the battle until it has run the given tick, and one step more. */

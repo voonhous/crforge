@@ -825,16 +825,19 @@ public final class LadderMatch implements BattleMode {
 
   /**
    * The option a variant card's play is picked as, as the player's client picks it when it gives
-   * the play: from the king's elixir as it stands and the timeline's full bar now.
+   * the play: from the king's elixir as it stands less the whole elixir its client has promised to
+   * the plays of the side it has given and not yet seen run, and the timeline's full bar now.
    *
    * @param side the playing side
    * @param card the variant card's row name
+   * @param promised the whole elixir promised, set aside before the pick
    * @return the option's index
    */
-  public int pickOption(int side, String card) {
+  public int pickOption(int side, String card, int promised) {
     SpellVariant variant = sides.get(side).deck().get(deckIndex(side, card)).variant();
     checkArgument(variant != null, () -> card + " is not a variant card");
-    return variant.pick(sides.get(side).getElixir(), timeline.getFullBarMs(), maxMana);
+    int free = sides.get(side).getElixir() - promised * MatchSide.SCALE;
+    return variant.pick(free, timeline.getFullBarMs(), maxMana);
   }
 
   /**

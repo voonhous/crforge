@@ -6,14 +6,15 @@ import java.util.List;
 
 /**
  * A card played as one of its options, the Merge Maiden's mounted or on-foot maiden: the option is
- * picked from the king's elixir as the player gives the play, and the play then runs as that
- * option's card, for its cost.
+ * picked from the king's elixir, less the costs its pending plays promised, as the player gives the
+ * play, and the play then runs as that option's card, for its cost.
  *
  * <p>The pick goes through the options in their order and takes the first whose trigger the free
- * elixir reaches, else the last. The free elixir is the king's, held to the most there can be and
- * truncated to hundredths, compared in ten-thousandths. A variant that projects its summon adds the
- * option's precast time over the milliseconds an elixir takes, a whole quotient: 0 at 1x and 2x and
- * 1 at 3x, which moves no shipped pick, as the elixir it is added to steps by 100.
+ * elixir reaches, else the last. The free elixir is the king's less the promised costs, held to the
+ * most there can be and truncated to hundredths, compared in ten-thousandths. A variant that
+ * projects its summon adds the option's precast time over the milliseconds an elixir takes, a whole
+ * quotient: 0 at 1x and 2x and 1 at 3x, which moves no shipped pick, as the elixir it is added to
+ * steps by 100.
  *
  * @param useProjectedTimeSummon whether the precast time is added to the elixir the pick reads
  * @param options the options in their order
@@ -43,10 +44,10 @@ public record SpellVariant(boolean useProjectedTimeSummon, List<Option> options)
 
   /**
    * The free elixir in hundredths: the elixir held to {@code MAX_MANA * 10000} and truncated, 0 at
-   * or below 0. The king's pending plays would be set aside first; a variant play with one is
-   * refused, so none is.
+   * or below 0. The elixir is the king's less what its pending plays promised, set aside before the
+   * cap.
    *
-   * @param elixir the king's elixir, in ten-thousandths
+   * @param elixir the king's elixir less the promised costs, in ten-thousandths
    * @param maxMana the published maximum elixir
    */
   public static int freeHundredths(int elixir, int maxMana) {
@@ -59,7 +60,7 @@ public record SpellVariant(boolean useProjectedTimeSummon, List<Option> options)
   /**
    * The option a play is picked as: the first whose trigger the free elixir reaches, else the last.
    *
-   * @param elixir the king's elixir, in ten-thousandths
+   * @param elixir the king's elixir less the promised costs, in ten-thousandths
    * @param fullBarMs the milliseconds a full bar takes now
    * @param maxMana the published maximum elixir
    * @return the option's index
