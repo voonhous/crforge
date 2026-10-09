@@ -384,8 +384,9 @@ final class ProjectileFlight {
    * The arrival: first the deflection pass at the aim and its height, and a projectile it turns
    * around flies on from where it is; otherwise the projectile is released and impacts. One that
    * stops at collisions is only released, where it stands. A pingpong projectile lands back at its
-   * start, on the ground, and lets its launcher's targeting go on; one whose launcher left has only
-   * its death effect, which is presentation.
+   * start, on the ground, and lets its launcher's targeting go on, at once or, for a launcher whose
+   * targeting is off, at its removal; one whose launcher left has only its death effect, which is
+   * presentation.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world) {
     if (world.deflectPass(p, p.getAimX(), p.getAimY(), p.getAimZ())) {
@@ -421,7 +422,7 @@ final class ProjectileFlight {
     } else {
       p.moveTo(p.getStartX(), p.getStartY(), 0);
       if (p.getOwner() != null) {
-        p.getOwner().pingpongReturned(p.name());
+        p.getOwner().pingpongReturned(p);
       }
     }
     impact(p, world);

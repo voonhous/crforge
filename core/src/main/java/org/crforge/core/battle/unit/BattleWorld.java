@@ -1235,7 +1235,7 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
-  /** Tells every observer that a unit's targeting forgot the hooking projectile it was held on. */
+  /** Tells every observer that a unit's targeting forgot the projectile it was held on. */
   void holdLeft(WorldEntity unit, ProjectileEntity projectile) {
     for (WorldObserver observer : observers) {
       observer.holdLeft(tick, unit, projectile);

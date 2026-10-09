@@ -580,10 +580,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Holds the targeting component on a hooking projectile the entity launched: its visit returns
-   * early until the projectile leaves the battle.
+   * Holds the targeting component on a projectile the entity launched: its visit returns early
+   * until the projectile leaves the battle. A hooking projectile holds it so from its launch; a
+   * pingpong projectile that came back while the component was off holds it so from its return.
    *
-   * @param projectile the hooking projectile
+   * @param projectile the hooking projectile, or the pingpong projectile that came back
    */
   public void hold(ProjectileEntity projectile) {
     targeting.setVisitSuspended(true);
@@ -592,7 +593,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * The targeting component's notice: a reference to the entity that left is dropped at once, and a
-   * hooking projectile it was held on is forgotten, which lets its visit go on.
+   * projectile it was held on is forgotten, which lets its visit go on.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
@@ -2665,15 +2666,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Lets the entity's targeting go on after a pingpong projectile it launched came back: the hold
    * the launch set is cleared, so the visit passes its reference check again once the resume delay
-   * has run. The return tells only a targeting component that is on; one that is off would keep the
-   * hold until the projectile's removal cleared it, which is not modelled.
+   * has run. The return tells only a targeting component that is on. One that is off, as a stun
+   * leaves it, keeps the hold, and the projectile's removal at the next cleanup clears it: the
+   * notice of an entity that leaves reaches every component, one that is off too, and forgets a
+   * hold on the projectile that left, as it does a hooking projectile's.
    *
-   * @param projectile the name of the projectile that came back, for the refusal
+   * @param projectile the projectile that came back
    */
-  public void pingpongReturned(String projectile) {
+  public void pingpongReturned(ProjectileEntity projectile) {
     if (!isActive(GATED_SLOT)) {
-      throw new UnsupportedOperationException(
-          projectile + " came back to " + name() + " with its targeting off, not modelled");
+      hold(projectile);
+      return;
     }
     targeting.setVisitSuspended(false);
   }
