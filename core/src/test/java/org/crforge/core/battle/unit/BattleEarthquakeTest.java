@@ -167,8 +167,8 @@ class BattleEarthquakeTest {
   }
 
   @Test
-  @DisplayName("a hidden Tesla takes a hit of damage over time, which no ordinary hit lands on")
-  void aHiddenTeslaTakesDamageOverTime() {
+  @DisplayName("a hidden Tesla takes no hit of damage over time, as no ordinary hit lands on it")
+  void aHiddenTeslaTakesNoDamageOverTime() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     CharacterEntity tesla = match.deploy(0, GameData.unit("Tesla"), LEVEL, 0, 10000, 12000);
     for (int step = 0; step < 40 && !tesla.hidden(); step++) {
@@ -178,8 +178,9 @@ class BattleEarthquakeTest {
 
     assertThat(tesla.hidden()).isTrue();
     assertThat(tesla.takeDamage(100, 0, 0, 1)).isEqualTo(DamageResult.NOTHING);
-    assertThat(tesla.takeDamageOverTime(100, null).landed()).isTrue();
-    assertThat(tesla.getHitPoints().getHitPoints()).isEqualTo(before - 100);
+    // The bookkeeping a buff's hit goes through asks the hidden test of it too.
+    assertThat(tesla.takeDamageOverTime(100, null)).isEqualTo(DamageResult.NOTHING);
+    assertThat(tesla.getHitPoints().getHitPoints()).isEqualTo(before);
   }
 
   @Test

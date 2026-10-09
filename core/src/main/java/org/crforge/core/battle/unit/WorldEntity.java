@@ -1308,8 +1308,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Takes one hit of a buff's damage over time: refused only where damage is forbidden, with no
-   * dedupe id and no heading.
+   * Takes one hit of a buff's damage over time: refused where damage is forbidden and while the
+   * entity is hidden, with no dedupe id and no heading.
    */
   DamageResult takeDamageOverTime(int damage, SpawnHost source) {
     if (hitPoints == null) {

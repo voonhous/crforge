@@ -28,9 +28,8 @@ public interface DamageQueries {
   }
 
   /**
-   * True while the target is hidden from this hit, which the entry alone refuses: the bookkeeping
-   * does not ask, so a buff's damage over time reaches a hidden target. A hit that passes hidden
-   * targets answers no.
+   * True while the target is hidden from this hit, which the entry refuses, and a buff's damage
+   * over time with it. A hit that passes hidden targets answers no.
    */
   default boolean hidden() {
     return false;
