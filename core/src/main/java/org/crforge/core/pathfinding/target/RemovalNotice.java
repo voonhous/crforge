@@ -31,11 +31,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " re-lock on the tick after its arrow's kill in the battle references, and with"
             + " another unit's kill, by card_Cannon, troops_cannon_pulls_hog and"
             + " random_battle_s0012, against the countdown of the towers' retargets in"
-            + " card-deploy-c2 and troops_minipekka_vs_pekka. Not modelled: the forgetting of a"
-            + " held pingpong projectile and the morph back it triggers; the held projectile is"
-            + " read as the suspended flag, and a pingpong projectile's return to an owner whose"
-            + " targeting is off, the one case that would leave the forgetting to this notice, is"
-            + " refused.")
+            + " card-deploy-c2 and troops_minipekka_vs_pekka. The forgetting of a held projectile"
+            + " is the entity's, beside this notice: a hooking projectile's, and a pingpong"
+            + " projectile's that came back to an owner whose targeting was off, held by"
+            + " BattlePingpongReturnStunnedTest. Not modelled: the morph back a forgotten hooking"
+            + " projectile triggers for a row with a morph.")
 public final class RemovalNotice {
 
   private RemovalNotice() {}
