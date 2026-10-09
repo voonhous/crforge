@@ -141,35 +141,22 @@ Freeze and stun appearances use explicit buff-row mappings: `ZapFreeze` is a stu
 
 ### Game tables
 
-The battle core reads the game's tables of one data version. The visualizer finds them in a **data root**, a checkout of the game data repository with one folder of tables per data version (`<root>/<version>/`) beside `references/`:
+The battle core reads the game's tables of one data version. There is one way the visualizer gets them: `./gradlew :desktop:run` builds the tables first (`:tables:gameTables`, which needs the Gradle property `crforge.assetSource`, see [Building the game tables](game-tables.md#building-the-game-tables)) and passes the program, as system properties, the folder they are built in (`crforge.tablesRoot`, `~/.crforge/tables` by default, one folder per data version), the data version to open (`crforge.dataVersion`: `-Pcrforge.dataVersion=<v>`, by default the `version=` of `crforge-data.lock`) and the lock's version (`crforge.lockVersion`, the development target). The tables opened are `<tables root>/<data version>`; the versions built beside them are the ones `V` cycles through. An IDE run of `DesktopLauncher` needs the same three system properties.
 
-- the system property `crforge.dataRoot`, else the environment variable `CRFORGE_DATA_ROOT`;
-- with neither, the `crforge-data` folder beside the project folder, when it exists. The project folder is the system property `crforge.projectDir`, which the `run` task sets to the root project's folder; an IDE run that does not set it uses the nearest folder up from its working folder that holds `crforge-data.lock`.
-
-So a `crforge-data` checkout next to the `crforge` checkout needs no setting at all. The tables are then chosen by the first of these rules that applies:
-
-1. An explicit data version: the argument `--data-version <v>` (`./gradlew :desktop:run --args="--data-version 16.402.18"`), else the property `crforge.dataVersion`. It opens `<root>/<v>`, and needs a data root.
-2. A tables folder named outright, as before data roots: the property `crforge.gameTables`, else the variable `CRFORGE_GAME_TABLES`.
-3. The `version=` of the project's `crforge-data.lock`, in the data root: `<root>/<version>`. That is the data version under work, whose tables the unit tests read too.
-
-The `run` task passes the Gradle properties `crforge.dataRoot`, `crforge.dataVersion` and `crforge.gameTables` (for example from `~/.gradle/gradle.properties`, or `-P<name>=<value>`), or the variables `CRFORGE_DATA_ROOT` and `CRFORGE_GAME_TABLES`, to the program as system properties. A `crforge.gameTables` set for the test tasks therefore also wins over the lock's version here; the data root still gives `V` its versions.
-
-At startup the launcher prints the data root and the setting that named it, the commit the root has checked out (read from its `.git` folder) against the lock's commit, which is informational only, the root's data versions, then the tables folder and the rule that chose it, the data version and the content sha:
+At startup the launcher prints the tables folder, the data version, the content sha and the versions built:
 
 ```
-data root: /path/to/crforge-data (from the crforge-data folder beside the project)
-data root commit: e61b362a... (differs from the lock's 5a2fd481...; informational only)
-data versions: 16.402.18, 16.402.19, 16.402.21 (V switches)
-game tables: /path/to/crforge-data/16.402.19 (from version=16.402.19 of crforge-data.lock in the data root)
+game tables: /home/me/.crforge/tables/16.402.19
 data version: 16.402.19
 content sha: 7e76080b...
+data versions: 16.402.18, 16.402.19, 16.402.21 (V switches)
 ```
 
-With no rule that applies it stops with a message naming `crforge.dataRoot`, `CRFORGE_DATA_ROOT`, `crforge.gameTables` and `CRFORGE_GAME_TABLES`; with a folder it cannot read it stops naming the folder (and the root's versions); and when the battle core refuses a battle on the chosen tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
+Without the properties it stops with a message saying to run `./gradlew :desktop:run` with `crforge.assetSource` set; with a version that was not built it stops naming the folder and the versions built; and when the battle core refuses a battle on the tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
 
-The header always shows the **actually loaded** data version, including in replays and with the sidebar hidden. **Data details** shows its selection source and content hash alongside the development target from `crforge-data.lock`. **Show folder** reveals the local tables directory explicitly; **Copy** always omits that directory. A local `crforge.gameTables` override can select a different version from the lock's development target.
+The header always shows the **actually loaded** data version, including in replays and with the sidebar hidden. **Data details** shows its selection source and content hash alongside the development target from `crforge-data.lock`. **Show folder** reveals the local tables directory explicitly; **Copy** always omits that directory. `-Pcrforge.dataVersion` can open a different version from the lock's development target.
 
-The sidebar's version selector lets you choose an available version, then **Load + restart** starts a new Ladder battle on it. `V` still cycles through the data root's versions in order. Tables are loaded once and cached. If loading or battle construction fails, the existing battle, active version and provenance remain unchanged, and the refusal appears in Recent events. `R` resets on the version still loaded; `V` tries the version after the failed selection.
+The sidebar's version selector lets you choose an available version, then **Load + restart** starts a new Ladder battle on it. `V` still cycles through the versions built, in order. Tables are loaded once and cached. If loading or battle construction fails, the existing battle, active version and provenance remain unchanged, and the refusal appears in Recent events. `R` resets on the version still loaded; `V` tries the version after the failed selection.
 
 ### The battle
 
@@ -197,7 +184,7 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 | `H`           | Toggle HP numbers                                                             |
 | `G`           | Toggle the routing cell cost overlay                                          |
 | `N`           | Toggle the route, reference and state overlay                                 |
-| `V`           | Switch to the data root's next data version (a new Ladder battle on it)       |
+| `V`           | Switch to the next data version built (a new Ladder battle on it)             |
 | `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
 | `T`           | Hide / show the diagnostics sidebar                                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                                            |
@@ -216,7 +203,7 @@ The number keys only *select* a card; playing always goes through a left click o
 
 The replay workspace shares the playback toolbar, inspector, data header and overlay controls. Its progress bar shows the current tick against the recorded end tick, when provided; it is a progress indicator, not a seek control. Both hand panels retain their original side numbers when the view is flipped.
 
-`./gradlew :desktop:run --args="--replay <file>"` (in the IDE, run `DesktopLauncher` with the program arguments `--replay <file>`) opens the replay viewer on a replay file instead of a Ladder battle. The tables are chosen as above, so `--args="--data-version 16.402.18 --replay <file>"` reads it against that version. A replay file dropped on the debug visualizer's or the viewer's window opens the same way.
+`./gradlew :desktop:run --args="--replay <file>"` opens the replay viewer on a replay file instead of a Ladder battle, on the tables of the data the replay names (below). A replay file dropped on the debug visualizer's or the viewer's window opens the same way.
 
 A crawl's output opens the same way, given to `--replay` or dropped: a JSON Lines file (`.jsonl`, or gzip-compressed `.jsonl.gz`; several appended gzip members read as one) with one record a line. A record holds the replay as the server sent it, as a string, with the session and battle it was fetched in (`org.crforge.desktop.replay.ReplayArchive`):
 
@@ -237,9 +224,8 @@ It names the game client version and the data the replay was recorded on: `clien
 The viewer picks the tables from the block, on `--replay` and on a dropped file:
 
 - When the block's content sha is the sha of the tables on screen, the replay opens on them.
-- Otherwise the viewer looks in the data root for the version whose tables have that sha, reading each version's sha from the header of one of its table files (tables already loaded are kept and reused), loads it and opens the replay on it. It prints `the replay names content sha <sha>: switched from data version <a> to <b> (<folder>)`, and the data details name the source "named by the replay's capture block".
-- When no version of the data root has that sha, the replay is not played on other data: it is refused, the first reason saying that no version has the sha, and the mapping's reason naming the client version, data version and sha it was recorded on.
-- A data version fixed at launch (`--data-version` or `crforge.dataVersion`) is not switched: a `--replay` whose block names other data is refused the same way. A dropped file may switch the version on screen.
+- Otherwise the viewer looks among the versions built for the one whose tables have that sha, reading each version's sha from the header of one of its table files (tables already loaded are kept and reused), loads it and opens the replay on it. It prints `the replay names content sha <sha>: switched from data version <a> to <b> (<folder>)`, and the data details name the source "named by the replay's capture block".
+- When no version built has that sha, the replay is not played on other data: it is refused, the first reason saying that no version has the sha, and the mapping's reason naming the client version, data version and sha it was recorded on.
 - A replay without a block is read on the version on screen, as before, and its data version is marked **assumed**, not named by the replay, in the startup print and the data details.
 
 The command type numbers and replay fields (`CommandTypes`, `ReplayFormat`) are still keyed by the data version, although they are the client's: a replay of data 16.402.19 recorded on client 16.402.17 is refused until they are keyed by client version.
@@ -290,7 +276,7 @@ A replay opens **flipped**: the arena is mirrored along its length only, as the 
 
 ### Workspace interaction checks
 
-Run `./gradlew :desktop:uiSmoke -Pcrforge.gameTables=/path/to/<version>`, the lock's `version=`, with a working display/OpenGL context to exercise live deployment, keyboard/button availability, resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from headless `check`; its synthetic replay fixture requires the lock's data version.
+Run `./gradlew :desktop:uiSmoke` (it builds the lock's version's tables first, like `run`) with a working display/OpenGL context to exercise live deployment, keyboard/button availability, resizing, inspection, and replay completion/refusal. It uses a hidden LWJGL window and writes screenshots to `desktop/build/ui-smoke`. This opt-in task is separate from headless `check`; its synthetic replay fixture requires the lock's data version.
 
 Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to the screen. `BattleSession.cardUnavailableReason` owns selection/submission availability, including pending costs; `BattleAdapter` exposes it to the hand view. `WorkspaceTheme`, `HandPanel`, and `UnitInspector` own presentation, while `BattleWorkspace` coordinates layout and arena projection.
 

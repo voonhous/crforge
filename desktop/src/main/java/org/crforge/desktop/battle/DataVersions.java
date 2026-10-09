@@ -8,9 +8,9 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.DataSelection;
 
 /**
- * The data versions the debug screen can switch between: the version folders of a data root, the
- * tables the screen's battles read now, and the switch to the next version that the {@code V} key
- * makes.
+ * The data versions the debug screen can switch between: the version folders of the folder the
+ * build makes the tables in, the tables the screen's battles read now, and the switch to the next
+ * version that the {@code V} key makes.
  *
  * <p>A switch loads the next version's tables (once; they are kept for the next time round) and
  * starts a Ladder battle on them. The battle core refuses tables it does not model as a battle on
@@ -20,7 +20,7 @@ import org.crforge.desktop.DataSelection;
  */
 public final class DataVersions {
 
-  /** The data root, or null when the tables came from outside any root. */
+  /** The folder of built tables, one folder per data version. */
   private final Path root;
 
   /** The root's version folder names, in the order {@code V} visits them. */
@@ -64,15 +64,13 @@ public final class DataVersions {
   /**
    * The versions of a root, starting on the tables already loaded.
    *
-   * @param root the data root, or null when there is none
+   * @param root the folder of built tables
    * @param versions the root's version folder names, in order
    * @param currentFolder the folder the current tables came from
    * @param current the current tables
+   * @param source how the current tables were chosen, for the data details
+   * @param developmentVersion the lock's data version, or "unknown"
    */
-  public DataVersions(Path root, List<String> versions, Path currentFolder, GameTables current) {
-    this(root, versions, currentFolder, current, "configured tables folder", "unknown");
-  }
-
   public DataVersions(
       Path root,
       List<String> versions,
@@ -81,7 +79,7 @@ public final class DataVersions {
       String source,
       String developmentVersion) {
     this.root = root;
-    this.versions = root == null ? List.of() : List.copyOf(versions);
+    this.versions = List.copyOf(versions);
     this.current = current;
     this.currentFolder = currentFolder;
     this.source = source;
@@ -149,13 +147,7 @@ public final class DataVersions {
    */
   public Switched next() {
     if (versions.isEmpty()) {
-      return new Switched(
-          null,
-          null,
-          root == null
-              ? "no data root to switch versions in: set crforge.dataRoot or CRFORGE_DATA_ROOT,"
-                  + " or check out crforge-data beside the project"
-              : "no data versions in " + root.toAbsolutePath().normalize());
+      return new Switched(null, null, "no data versions in " + root.toAbsolutePath().normalize());
     }
     return select(versions.get((cursor + 1) % versions.size()));
   }
@@ -203,7 +195,7 @@ public final class DataVersions {
     }
     current = tables;
     currentFolder = folder;
-    source = "selected from the data root";
+    source = "selected with V";
     return new Switched(version, session, null);
   }
 
@@ -259,15 +251,11 @@ public final class DataVersions {
     return new ContentMatch(
         null,
         null,
-        root == null
-            ? "there is no data root to look for the content sha "
-                + contentSha
-                + " the replay was recorded on in; it is not played on other data"
-            : "no data version of the data root "
-                + root.toAbsolutePath().normalize()
-                + " has the content sha "
-                + contentSha
-                + " the replay was recorded on; it is not played on other data");
+        "no data version built in "
+            + root.toAbsolutePath().normalize()
+            + " has the content sha "
+            + contentSha
+            + " the replay was recorded on; it is not played on other data");
   }
 
   private String stillOn() {
@@ -280,10 +268,7 @@ public final class DataVersions {
 
   /** The status column's line: the current data version and what {@code V} cycles through. */
   public String statusLine() {
-    String cycle =
-        root == null
-            ? "no data root"
-            : versions.size() + (versions.size() == 1 ? " version" : " versions");
+    String cycle = versions.size() + (versions.size() == 1 ? " version" : " versions");
     return "data: " + current.version() + " (V: " + cycle + ")";
   }
 }

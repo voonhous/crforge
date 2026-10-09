@@ -58,16 +58,14 @@ import org.crforge.core.battle.replay.ScenarioShape;
  * shard {@code i % count}), and a shard's cases run in parallel. The tables are shared between the
  * runs and only read; nothing else is.
  *
- * <p>As a program it rewrites the expectations file from a full run: {@code --references DIR
- * --expectations DIR [--threads N]}, with the game tables configured as for the tests.
+ * <p>As a program it rewrites the expectations file from a full run: {@code --expectations DIR
+ * [--threads N]}, with the references folder ({@value #PROPERTY}) and the game tables configured as
+ * for the tests ({@code ./gradlew :conformance:updateReferenceExpectations} sets both).
  */
 public final class ReferenceSuite {
 
   /** The system property naming the references folder of one content version. */
   public static final String PROPERTY = "crforge.references";
-
-  /** The environment variable naming the references folder, when the property is not set. */
-  public static final String ENVIRONMENT = "CRFORGE_REFERENCES";
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final JsonNodeFactory JSON = JsonNodeFactory.instance;
@@ -133,14 +131,9 @@ public final class ReferenceSuite {
     }
   }
 
-  /**
-   * The configured references folder, or empty when neither the property nor the variable is set.
-   */
+  /** The configured references folder, or empty when the property names none. */
   public static Optional<Path> configuredDirectory() {
     String configured = System.getProperty(PROPERTY);
-    if (configured == null || configured.isBlank()) {
-      configured = System.getenv(ENVIRONMENT);
-    }
     return configured == null || configured.isBlank()
         ? Optional.empty()
         : Optional.of(Paths.get(configured));
@@ -491,11 +484,8 @@ public final class ReferenceSuite {
       options.put(args[i].replaceFirst("^--", ""), args[i + 1]);
     }
     Path folder =
-        Optional.ofNullable(options.get("references"))
-            .map(Paths::get)
-            .or(ReferenceSuite::configuredDirectory)
-            .orElseThrow(
-                () -> new IllegalArgumentException("set " + PROPERTY + " or " + ENVIRONMENT));
+        configuredDirectory()
+            .orElseThrow(() -> new IllegalArgumentException("set the property " + PROPERTY));
     Path expectations = Paths.get(options.getOrDefault("expectations", "reference-expectations"));
     int threads =
         Integer.parseInt(

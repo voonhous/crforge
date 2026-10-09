@@ -40,43 +40,31 @@ application {
     }
 }
 
-// The debug visualizer runs the battle core, which reads the game tables of one data version.
-// The run passes the program these system properties, each from the Gradle property of the same
-// name (for example in ~/.gradle/gradle.properties, or -P<name>=<value>) or its environment
-// variable:
-// - crforge.dataRoot (CRFORGE_DATA_ROOT): a checkout of the game data repository, one folder per
-//   data version; without it, the crforge-data folder beside the project folder;
-// - crforge.dataVersion: the data version to open, ahead of everything else;
-// - crforge.gameTables (CRFORGE_GAME_TABLES): a tables folder named outright, the same setting the
-//   test tasks are given; used when no data version is asked for;
-// - crforge.projectDir: this project's folder, whose crforge-data.lock names the default version.
-// See org.crforge.desktop.DataSelection for the order they are taken in.
+// The debug visualizer runs the battle core, which reads the game tables of one data version. The
+// run builds them first (:tables:gameTables, see the root build for crforge.assetSource and the
+// other settings) and passes the program, as system properties, the folder they are built in
+// (crforge.tablesRoot, one folder per data version, the versions the V key cycles through), the
+// data version to open (crforge.dataVersion: -Pcrforge.dataVersion=<v>, by default the lock's) and
+// the lock's version (crforge.lockVersion). See org.crforge.desktop.DataSelection.
 tasks.named<JavaExec>("run") {
-    systemProperty("crforge.projectDir", rootProject.projectDir.absolutePath)
-    val settings =
-        mapOf(
-            "crforge.dataRoot" to "CRFORGE_DATA_ROOT",
-            "crforge.dataVersion" to null,
-            "crforge.gameTables" to "CRFORGE_GAME_TABLES",
-        )
-    for ((name, variable) in settings) {
-        val value = (findProperty(name) as String?) ?: variable?.let { System.getenv(it) }
-        if (value != null) {
-            systemProperty(name, value)
-        }
-    }
+    dependsOn(":tables:gameTables")
+    systemProperty("crforge.tablesRoot", rootProject.extra["crforge.builtTablesRoot"] as String)
+    systemProperty("crforge.dataVersion", rootProject.extra["crforge.dataVersion"] as String)
+    systemProperty("crforge.lockVersion", rootProject.extra["crforge.lockVersion"] as String)
 }
 
 // Opt-in graphics integration checks. Requires a display/OpenGL; never part of headless check.
 tasks.register<JavaExec>("uiSmoke") {
     group = "verification"
-    description = "Exercise workspace input and layout in a hidden LWJGL window (the lock's tables)."
+    description = "Exercise workspace input and layout in a hidden LWJGL window (the built tables)."
     dependsOn(tasks.testClasses)
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("org.crforge.desktop.WorkspaceSmoke")
     if (System.getProperty("os.name").lowercase().contains("mac")) jvmArgs("-XstartOnFirstThread")
-    systemProperty("crforge.projectDir", rootProject.projectDir.absolutePath)
     systemProperty("crforge.uiSmokeOutput", layout.buildDirectory.dir("ui-smoke").get().asFile.absolutePath)
-    val tables = (findProperty("crforge.gameTables") as String?) ?: System.getenv("CRFORGE_GAME_TABLES")
-    if (tables != null) systemProperty("crforge.gameTables", tables)
+    // the tables the build makes, passed as to the run task
+    dependsOn(":tables:gameTables")
+    systemProperty("crforge.tablesRoot", rootProject.extra["crforge.builtTablesRoot"] as String)
+    systemProperty("crforge.dataVersion", rootProject.extra["crforge.dataVersion"] as String)
+    systemProperty("crforge.lockVersion", rootProject.extra["crforge.lockVersion"] as String)
 }

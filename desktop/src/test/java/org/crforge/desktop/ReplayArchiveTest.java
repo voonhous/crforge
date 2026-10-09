@@ -34,7 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A crawl's output: one record a line, gzip-compressed or not, each holding a replay as a string
  * with the session and battle it was fetched in. The records are built from the synthetic Archer
- * Queen replay; the data root's two versions are copies of the configured tables, the second with
+ * Queen replay; the tables root's two versions are copies of the configured tables, the second with
  * another content sha in its headers.
  */
 class ReplayArchiveTest {
@@ -61,7 +61,9 @@ class ReplayArchiveTest {
   void twoVersions() throws IOException {
     first = TableCopies.copy(root, "1.0.0");
     second = TableCopies.withContentSha(root, "2.0.0", OTHER_SHA);
-    versions = new DataVersions(root, List.of("1.0.0", "2.0.0"), first, GameTables.load(first));
+    versions =
+        new DataVersions(
+            root, List.of("1.0.0", "2.0.0"), first, GameTables.load(first), "test", "unknown");
   }
 
   /**
@@ -179,7 +181,7 @@ class ReplayArchiveTest {
     byte[] before = Files.readAllBytes(file);
     ReplayArchive archive = DesktopLauncher.openArchive(file, out, err);
 
-    ReplayFile replay = DesktopLauncher.openFirst(archive, versions, null, out, err);
+    ReplayFile replay = DesktopLauncher.openFirst(archive, versions, out, err);
 
     assertThat(replay.playable()).isTrue();
     assertThat(replay.dataNamed()).isTrue();
@@ -213,17 +215,16 @@ class ReplayArchiveTest {
                 record(replayText(), version(), firstSha)));
     ReplayArchive archive = ReplayArchive.read(file);
 
-    ReplayFile opened = DesktopLauncher.openFirst(archive, versions, null, out, err);
+    ReplayFile opened = DesktopLauncher.openFirst(archive, versions, out, err);
     assertThat(opened.line()).isEqualTo(2);
     assertThat(versions.currentFolder()).isEqualTo(second);
 
     ReplayFile third =
-        DesktopLauncher.openEntry(archive, archive.entries().get(2), versions, null, out, err);
+        DesktopLauncher.openEntry(archive, archive.entries().get(2), versions, out, err);
     assertThat(third.playable()).isTrue();
     assertThat(versions.currentFolder()).isEqualTo(first);
 
-    assertThat(
-            DesktopLauncher.openEntry(archive, archive.entries().get(0), versions, null, out, err))
+    assertThat(DesktopLauncher.openEntry(archive, archive.entries().get(0), versions, out, err))
         .isNull();
     assertThat(errBytes.toString(StandardCharsets.UTF_8))
         .contains("Cannot read line 1 of " + file.toAbsolutePath().normalize() + ": not JSON: ");

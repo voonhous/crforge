@@ -22,21 +22,19 @@ import org.crforge.desktop.replay.ReplayFile;
 /**
  * Desktop launcher for CRForge. Starts the LibGDX application with debug visualization.
  *
- * <p>The debug visualizer runs the battle core, so it first chooses and loads its game tables (see
- * {@link DataSelection}: an explicit {@code --data-version} or {@code crforge.dataVersion} in the
- * data root, else a {@code crforge.gameTables} folder, else the lock's version in the data root),
- * prints the data root, its commit and its versions, where the tables came from and by which rule,
- * their data version and their content hash, and stops with a message naming the settings when none
- * are configured, they cannot be read, or the battle core refuses a battle on them.
+ * <p>The debug visualizer runs the battle core, so it first loads the game tables the build made
+ * (see {@link DataSelection}: the data version's folder in the build's tables folder), prints their
+ * folder, data version and content hash and the versions beside them, and stops with a message
+ * naming the settings when none are given, they cannot be read, or the battle core refuses a battle
+ * on them.
  *
  * <p>{@code --replay <file>} opens the replay viewer on a replay file instead of a Ladder battle:
  * the launcher reads the replay against the tables of the data it was recorded on ({@link
- * #openReplay}: the data root's version whose content sha the replay's capture block names, else
- * the tables chosen, marked assumed for a replay without a block) and prints its battle header and
+ * #openReplay}: the built version whose content sha the replay's capture block names, else the
+ * tables chosen, marked assumed for a replay without a block) and prints its battle header and
  * every reason the replay is refused, if it is (see {@link ReplayFile}), the battle core's refusal
  * of the tables among them, and opens the window on that list rather than stopping. A replay file
- * dropped on the debug visualizer's window opens the same way, except that the version is never
- * fixed for it.
+ * dropped on the debug visualizer's window opens the same way.
  *
  * <p>A crawl's output ({@code .jsonl} or {@code .jsonl.gz}, see {@link ReplayArchive}) opens the
  * same way, given to {@code --replay} or dropped: the viewer lists its replays and opens the first
@@ -56,7 +54,7 @@ public class DesktopLauncher {
   static final String REPLAY_ARGUMENT = "--replay";
 
   public static void main(String[] args) {
-    DataSelection.Choice choice = DataSelection.choose(DataSelection.Settings.ofProcess(args));
+    DataSelection.Choice choice = DataSelection.ofProcess();
     GameTables tables = loadTables(choice, System.out, System.err);
     if (tables == null) {
       System.exit(NO_TABLES);
@@ -66,7 +64,6 @@ public class DesktopLauncher {
     BattleSession first = null;
     ReplayFile replay = null;
     ReplayArchive archive = null;
-    String fixedBy = null;
     Optional<Path> replayFile;
     try {
       replayFile = replayArgument(args);
@@ -78,13 +75,11 @@ public class DesktopLauncher {
     if (replayFile.isPresent()) {
       // A replay lists the battle core's refusal of the tables among its reasons, so no first
       // Ladder battle is built for it.
-      fixedBy = choice.explicitVersion();
       if (ReplayArchive.isArchive(replayFile.get())) {
         archive = openArchive(replayFile.get(), System.out, System.err);
-        replay =
-            archive == null ? null : openFirst(archive, versions, fixedBy, System.out, System.err);
+        replay = archive == null ? null : openFirst(archive, versions, System.out, System.err);
       } else {
-        replay = openReplay(replayFile.get(), versions, fixedBy, System.out, System.err);
+        replay = openReplay(replayFile.get(), versions, System.out, System.err);
       }
       if (replay == null) {
         System.exit(NO_REPLAY);
@@ -106,7 +101,7 @@ public class DesktopLauncher {
     config.useVsync(true);
     config.setForegroundFPS(60);
 
-    CRForgeGame game = new CRForgeGame(versions, first, replay, archive, fixedBy);
+    CRForgeGame game = new CRForgeGame(versions, first, replay, archive);
     // A replay file or a crawl's output dropped on the window opens in the replay viewer.
     config.setWindowListener(
         new Lwjgl3WindowAdapter() {
@@ -127,36 +122,27 @@ public class DesktopLauncher {
    * @return the tables, or null when none are chosen or they cannot be read
    */
   static GameTables loadTables(DataSelection.Choice choice, PrintStream out, PrintStream err) {
-    if (choice.tables() == null) {
+    if (choice.problem() != null) {
       err.println(choice.problem());
       return null;
     }
-    GameTablesSetting.Configured configured = choice.tables();
     GameTables tables;
     try {
-      tables = GameTables.load(configured.folder());
+      tables = GameTables.load(choice.folder());
     } catch (RuntimeException e) {
+      List<String> versions = DataSelection.versions(choice.root());
       err.println(
-          "Cannot read the game tables at "
-              + configured.folder().toAbsolutePath()
-              + " (from "
-              + configured.source()
-              + "): "
-              + e.getMessage());
-      if (choice.root() != null) {
-        List<String> versions = DataSelection.versions(choice.root().folder());
-        err.println(
-            "data versions in "
-                + choice.root().folder().toAbsolutePath().normalize()
-                + ": "
-                + (versions.isEmpty() ? "none" : String.join(", ", versions)));
-      }
+          "Cannot read the game tables of data version "
+              + choice.version()
+              + " at "
+              + choice.folder().toAbsolutePath().normalize()
+              + ": "
+              + e.getMessage()
+              + "; data versions built: "
+              + (versions.isEmpty() ? "none" : String.join(", ", versions)));
       return null;
     }
-    for (String line : DataSelection.describeRoot(choice)) {
-      out.println(line);
-    }
-    for (String line : GameTablesSetting.describe(configured, tables)) {
+    for (String line : DataSelection.describe(choice, tables)) {
       out.println(line);
     }
     return tables;
@@ -165,14 +151,12 @@ public class DesktopLauncher {
   /** The versions the screen's {@code V} key cycles through, starting on the tables loaded. */
   static DataVersions dataVersions(DataSelection.Choice choice, GameTables tables) {
     return new DataVersions(
-        choice.root() == null ? null : choice.root().folder(),
-        choice.root() == null ? List.of() : DataSelection.versions(choice.root().folder()),
-        choice.tables().folder(),
+        choice.root(),
+        DataSelection.versions(choice.root()),
+        choice.folder(),
         tables,
-        choice.tables().source(),
-        choice.lock() == null || choice.lock().version() == null
-            ? "unknown"
-            : choice.lock().version());
+        DataSelection.DATA_VERSION_PROPERTY + "=" + choice.version(),
+        choice.lockVersion() == null ? "unknown" : choice.lockVersion());
   }
 
   /**
@@ -198,9 +182,7 @@ public class DesktopLauncher {
               + e.getClass().getSimpleName()
               + ": "
               + e.getMessage()
-              + ". Pick another with "
-              + DataSelection.DATA_VERSION_ARGUMENT
-              + " <v> or "
+              + ". Pick another with -P"
               + DataSelection.DATA_VERSION_PROPERTY
               + "=<v>.");
       return null;
@@ -229,21 +211,19 @@ public class DesktopLauncher {
    * Opens a replay file on the tables of the data it was recorded on, and prints its description.
    *
    * <p>A replay whose capture block names a content sha other than the current tables' is read on
-   * the data root's version with that sha, which becomes the current version (said in the output
-   * and the data details). When no version of the root has it, or the data version was fixed at
-   * launch ({@code fixedBy}), the current tables stay and the replay is refused, never played on
-   * other data: the first reason says why, and the mapping's names what the replay was recorded on.
-   * A replay without a block is read on the current tables, its data version marked assumed.
+   * the built version with that sha, which becomes the current version (said in the output and the
+   * data details). When no built version has it, the current tables stay and the replay is refused,
+   * never played on other data: the first reason says why, and the mapping's names what the replay
+   * was recorded on. A replay without a block is read on the current tables, its data version
+   * marked assumed.
    *
    * @param file the replay file
    * @param versions the data versions, whose current tables may change
-   * @param fixedBy the rule that fixed the data version at launch, or null when it is not fixed
    * @param out where the description goes
    * @param err where the failure goes
    * @return the replay, refused or playable, or null when the file cannot be read as JSON
    */
-  static ReplayFile openReplay(
-      Path file, DataVersions versions, String fixedBy, PrintStream out, PrintStream err) {
+  static ReplayFile openReplay(Path file, DataVersions versions, PrintStream out, PrintStream err) {
     JsonNode document;
     try {
       document = JSON.readTree(Files.readAllBytes(file));
@@ -252,7 +232,7 @@ public class DesktopLauncher {
           "Cannot read the replay at " + file.toAbsolutePath().normalize() + ": " + e.getMessage());
       return null;
     }
-    return openDocument(file, 0, document, versions, fixedBy, out, err);
+    return openDocument(file, 0, document, versions, out, err);
   }
 
   /**
@@ -292,14 +272,10 @@ public class DesktopLauncher {
    * @return the replay, refused or playable, or null when no record can be read
    */
   static ReplayFile openFirst(
-      ReplayArchive archive,
-      DataVersions versions,
-      String fixedBy,
-      PrintStream out,
-      PrintStream err) {
+      ReplayArchive archive, DataVersions versions, PrintStream out, PrintStream err) {
     for (ReplayArchive.Entry entry : archive.entries()) {
       if (entry.problem() == null) {
-        return openEntry(archive, entry, versions, fixedBy, out, err);
+        return openEntry(archive, entry, versions, out, err);
       }
     }
     err.println("No record of " + archive.file().toAbsolutePath().normalize() + " can be read");
@@ -313,7 +289,6 @@ public class DesktopLauncher {
    * @param archive the crawl's output
    * @param entry the record
    * @param versions the data versions, whose current tables may change
-   * @param fixedBy the rule that fixed the data version at launch, or null when it is not fixed
    * @param out where the description goes
    * @param err where the failure goes
    * @return the replay, refused or playable, or null when the record cannot be read
@@ -322,7 +297,6 @@ public class DesktopLauncher {
       ReplayArchive archive,
       ReplayArchive.Entry entry,
       DataVersions versions,
-      String fixedBy,
       PrintStream out,
       PrintStream err) {
     Path file = archive.file();
@@ -349,7 +323,7 @@ public class DesktopLauncher {
               + e.getMessage());
       return null;
     }
-    return openDocument(file, entry.line(), document, versions, fixedBy, out, err);
+    return openDocument(file, entry.line(), document, versions, out, err);
   }
 
   /**
@@ -365,36 +339,26 @@ public class DesktopLauncher {
       int line,
       JsonNode document,
       DataVersions versions,
-      String fixedBy,
       PrintStream out,
       PrintStream err) {
     String tablesRefusal = null;
     Optional<ReplayCapture> capture = ReplayCapture.of(document);
     if (capture.isPresent()
         && !capture.get().contentSha().equals(versions.current().contentSha())) {
-      if (fixedBy != null) {
-        tablesRefusal =
-            "the data version is fixed by "
-                + fixedBy
-                + ", and the replay was recorded on "
-                + capture.get().recordedOn()
-                + "; it is not played on other data";
-      } else {
-        DataVersions.ContentMatch match = versions.selectContent(capture.get().contentSha());
-        if (match.refusal() != null) {
-          tablesRefusal = match.refusal();
-        } else if (match.from() != null) {
-          out.println(
-              "the replay names content sha "
-                  + capture.get().contentSha()
-                  + ": switched from data version "
-                  + match.from()
-                  + " to "
-                  + match.version()
-                  + " ("
-                  + versions.currentFolder().toAbsolutePath().normalize()
-                  + ")");
-        }
+      DataVersions.ContentMatch match = versions.selectContent(capture.get().contentSha());
+      if (match.refusal() != null) {
+        tablesRefusal = match.refusal();
+      } else if (match.from() != null) {
+        out.println(
+            "the replay names content sha "
+                + capture.get().contentSha()
+                + ": switched from data version "
+                + match.from()
+                + " to "
+                + match.version()
+                + " ("
+                + versions.currentFolder().toAbsolutePath().normalize()
+                + ")");
       }
     }
     ReplayFile replay;

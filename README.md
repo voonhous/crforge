@@ -36,7 +36,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
 
-The debug visualizer and the tests run the battle core, which needs the game tables. This repository does not ship them: `./gradlew -q :tables:gameTables` builds them on your machine from the game's own files and prints their folder ([Building the game tables](docs/game-tables.md#building-the-game-tables)). Name that folder as `crforge.gameTables=<folder>` in `~/.gradle/gradle.properties` (or pass `-Pcrforge.gameTables=<folder>`, or set `CRFORGE_GAME_TABLES`). It prints the tables folder, data version and content sha at startup, and its key map; see [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
+The debug visualizer and the tests run the battle core, which needs the game tables. This repository does not ship them; the build makes them on your machine from the game's own files once you say where those come from, with the Gradle property `crforge.assetSource` (in `~/.gradle/gradle.properties`, or `-Pcrforge.assetSource=...`): `cdn` fetches them from the game's asset CDN (an opt-in, never a default), and a `file:` URI names a local copy ([Building the game tables](docs/game-tables.md#building-the-game-tables)). That is the only way the tables are found. It prints the tables folder, data version and content sha at startup, and its key map; see [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
 
 ## Modules
 

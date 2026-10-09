@@ -45,8 +45,8 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>H: Toggle HP numbers
  *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
- *   <li>V: Switch to the next data version of the data root and start a new Ladder battle on it; a
- *       version the battle core refuses is reported in the messages and the battle stays
+ *   <li>V: Switch to the next data version built and start a new Ladder battle on it; a version the
+ *       battle core refuses is reported in the messages and the battle stays
  *   <li>F: Not offered here: the view flips in the replay viewer only, since this screen's clicks,
  *       hand panels and number keys play for a side as the arena is drawn standing; logs a note
  *   <li>T: Hide or show the text annotations (status column, messages)
@@ -333,9 +333,9 @@ public class DebugGameScreen implements Screen {
   }
 
   /**
-   * Switches to the data root's next data version and starts a Ladder battle on its tables. When
-   * its tables cannot be read or the battle core refuses a battle on them, the battle on screen
-   * stays and the refusal joins its messages; V again tries the version after it.
+   * Switches to the next data version built and starts a Ladder battle on its tables. When its
+   * tables cannot be read or the battle core refuses a battle on them, the battle on screen stays
+   * and the refusal joins its messages; V again tries the version after it.
    */
   private void switchDataVersion() {
     switchDataVersion(versions.next());
@@ -500,7 +500,7 @@ public class DebugGameScreen implements Screen {
           N     - Toggle route / reference / state overlay
 
         Data:
-          V     - Switch to the next data version of the data root (new Ladder battle)
+          V     - Switch to the next data version built (new Ladder battle)
 
         View:
           F     - Not offered here: flips the replay viewer only

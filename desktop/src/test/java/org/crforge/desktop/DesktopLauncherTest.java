@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
@@ -22,9 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The launcher's game tables: which setting names the folder, what it prints about the tables it
- * loaded and the data root they came from, and the message it stops with when there are none or the
- * battle core refuses a battle on them; and the replay it is given to open.
+ * The launcher's game tables: what it prints about the tables it loaded and the versions built
+ * beside them, and the message it stops with when there are none or the battle core refuses a
+ * battle on them; and the replay it is given to open.
  */
 class DesktopLauncherTest {
 
@@ -34,153 +33,64 @@ class DesktopLauncherTest {
   private final PrintStream err = new PrintStream(errBytes, true, StandardCharsets.UTF_8);
 
   @Test
-  @DisplayName("the system property names the folder ahead of the environment variable")
-  void thePropertyWins() {
-    Optional<GameTablesSetting.Configured> configured =
-        GameTablesSetting.resolve("/tables/a", "/tables/b");
-
-    assertThat(configured).isPresent();
-    assertThat(configured.get().folder()).isEqualTo(Path.of("/tables/a"));
-    assertThat(configured.get().source()).isEqualTo(GameTables.PROPERTY);
-  }
-
-  @Test
-  @DisplayName("the environment variable names the folder when the property is missing or blank")
-  void theVariableWhenNoProperty() {
-    for (String property : new String[] {null, "", "  "}) {
-      Optional<GameTablesSetting.Configured> configured =
-          GameTablesSetting.resolve(property, "/tables/b");
-
-      assertThat(configured).isPresent();
-      assertThat(configured.get().folder()).isEqualTo(Path.of("/tables/b"));
-      assertThat(configured.get().source()).isEqualTo(GameTables.ENVIRONMENT);
-    }
-  }
-
-  @Test
-  @DisplayName("neither setting, or both blank, configures nothing")
-  void nothingConfigured() {
-    assertThat(GameTablesSetting.resolve(null, null)).isEmpty();
-    assertThat(GameTablesSetting.resolve("", " ")).isEmpty();
-  }
-
-  @Test
-  @DisplayName("with nothing configured the launcher loads nothing and names all four settings")
+  @DisplayName("with no tables given the launcher loads nothing and says how to run it")
   void missingTablesFailWithAMessage() {
-    DataSelection.Choice nothing =
-        DataSelection.choose(new DataSelection.Settings(null, null, null, null, null, null, null));
-
-    GameTables tables = DesktopLauncher.loadTables(nothing, out, err);
+    GameTables tables =
+        DesktopLauncher.loadTables(DataSelection.choose(null, null, null), out, err);
 
     assertThat(tables).isNull();
-    String message = errBytes.toString(StandardCharsets.UTF_8);
-    assertThat(message)
-        .contains("No game tables configured")
-        .contains(DataSelection.DATA_ROOT_PROPERTY)
-        .contains(DataSelection.DATA_ROOT_ENVIRONMENT)
-        .contains(GameTables.PROPERTY)
-        .contains(GameTables.ENVIRONMENT);
+    assertThat(errBytes.toString(StandardCharsets.UTF_8))
+        .contains("No game tables")
+        .contains(DataSelection.TABLES_ROOT_PROPERTY)
+        .contains(GameTables.ASSET_SOURCE_PROPERTY);
     assertThat(outBytes.size()).isZero();
   }
 
   @Test
-  @DisplayName("a configured folder that holds no tables is refused with a message naming it")
-  void unreadableTablesFailWithAMessage(@TempDir Path empty) {
-    Path missing = empty.resolve("nowhere");
-    GameTables tables =
-        DesktopLauncher.loadTables(
-            choice(null, new GameTablesSetting.Configured(missing, GameTables.PROPERTY)), out, err);
-
-    assertThat(tables).isNull();
-    assertThat(errBytes.toString(StandardCharsets.UTF_8))
-        .contains("Cannot read the game tables at")
-        .contains(missing.toString())
-        .contains(GameTables.PROPERTY);
-  }
-
-  @Test
-  @DisplayName("a version missing from the data root is refused, listing the root's versions")
-  void aMissingVersionListsTheRoot(@TempDir Path root) throws IOException {
+  @DisplayName("a data version that was not built is refused, listing the versions that were")
+  void aMissingVersionListsTheBuiltOnes(@TempDir Path root) throws IOException {
     TableCopies.copy(root, "1.0.0");
-    DataSelection.Choice choice =
-        DataSelection.choose(
-            new DataSelection.Settings("9.9.9", null, root.toString(), null, null, null, null));
 
-    GameTables tables = DesktopLauncher.loadTables(choice, out, err);
+    GameTables tables =
+        DesktopLauncher.loadTables(DataSelection.choose(root.toString(), "9.9.9", null), out, err);
 
     assertThat(tables).isNull();
     assertThat(errBytes.toString(StandardCharsets.UTF_8))
-        .contains("Cannot read the game tables at")
-        .contains(root.resolve("9.9.9").toString())
-        .contains("--data-version 9.9.9 in the data root")
-        .contains("data versions in " + root.toAbsolutePath().normalize() + ": 1.0.0");
+        .contains("Cannot read the game tables of data version 9.9.9 at")
+        .contains(root.resolve("9.9.9").toAbsolutePath().normalize().toString())
+        .contains("data versions built: 1.0.0");
   }
 
   @Test
-  @DisplayName("the configured tables are loaded and their folder, version and content sha printed")
-  void configuredTablesArePrinted() {
-    GameTablesSetting.Configured configured = GameTablesSetting.resolve().orElseThrow();
-
-    GameTables tables = DesktopLauncher.loadTables(choice(null, configured), out, err);
-
-    assertThat(tables).isNotNull();
-    String printed = outBytes.toString(StandardCharsets.UTF_8);
-    assertThat(printed.lines().toList())
-        .containsExactly(
-            "game tables: "
-                + configured.folder().toAbsolutePath().normalize()
-                + " (from "
-                + configured.source()
-                + ")",
-            "data version: " + tables.version(),
-            "content sha: " + tables.contentSha());
-    assertThat(tables.version()).isNotBlank();
-    assertThat(tables.contentSha()).isNotBlank();
-    assertThat(errBytes.size()).isZero();
-  }
-
-  @Test
-  @DisplayName("tables picked from a data root are printed after the root's lines")
-  void rootLinesFirst(@TempDir Path root) throws IOException {
+  @DisplayName("the tables are loaded and their folder, version, content sha and siblings printed")
+  void tablesArePrinted(@TempDir Path root) throws IOException {
     Path folder = TableCopies.copy(root, "1.0.0");
-    DataSelection.Choice choice =
-        DataSelection.choose(
-            new DataSelection.Settings("1.0.0", null, root.toString(), null, null, null, null));
 
-    GameTables tables = DesktopLauncher.loadTables(choice, out, err);
+    GameTables tables =
+        DesktopLauncher.loadTables(DataSelection.choose(root.toString(), "1.0.0", null), out, err);
 
     assertThat(tables).isNotNull();
-    List<String> printed = outBytes.toString(StandardCharsets.UTF_8).lines().toList();
-    assertThat(printed)
+    assertThat(outBytes.toString(StandardCharsets.UTF_8).lines().toList())
         .containsExactly(
-            "data root: "
-                + root.toAbsolutePath().normalize()
-                + " (from "
-                + DataSelection.DATA_ROOT_PROPERTY
-                + ")",
-            "data root commit: unknown (no git checkout read)",
-            "data versions: 1.0.0 (V switches)",
-            "game tables: "
-                + folder.toAbsolutePath().normalize()
-                + " (from --data-version 1.0.0 in the data root)",
+            "game tables: " + folder.toAbsolutePath().normalize(),
             "data version: " + tables.version(),
-            "content sha: " + tables.contentSha());
+            "content sha: " + tables.contentSha(),
+            "data versions: 1.0.0 (V switches)");
+    assertThat(errBytes.size()).isZero();
   }
 
   @Test
   @DisplayName("tables whose battle the battle core refuses stop the launcher with the reason")
   void aRefusedFirstBattleStops(@TempDir Path root) throws IOException {
     Path folder = TableCopies.refused(root, "2.0.0");
-    DataVersions versions =
-        new DataVersions(root, List.of("2.0.0"), folder, GameTables.load(folder));
 
-    BattleSession session = DesktopLauncher.firstSession(versions, err);
+    BattleSession session = DesktopLauncher.firstSession(versions(root, "2.0.0", folder), err);
 
     assertThat(session).isNull();
     assertThat(errBytes.toString(StandardCharsets.UTF_8))
         .contains("The battle core refuses a battle on data version")
         .contains("sets Tid, which is not modelled")
-        .contains("--data-version");
+        .contains("-P" + DataSelection.DATA_VERSION_PROPERTY);
   }
 
   @Test
@@ -189,23 +99,21 @@ class DesktopLauncherTest {
           + " version")
   void anUnmodelledDataVersionStops(@TempDir Path root) throws IOException {
     Path folder = TableCopies.labelled(root, "1.0.0", "14.593.1");
-    DataVersions versions =
-        new DataVersions(root, List.of("1.0.0"), folder, GameTables.load(folder));
 
-    BattleSession session = DesktopLauncher.firstSession(versions, err);
+    BattleSession session = DesktopLauncher.firstSession(versions(root, "1.0.0", folder), err);
 
     assertThat(session).isNull();
     assertThat(errBytes.toString(StandardCharsets.UTF_8))
         .contains("The battle core refuses a battle on data version 14.593.1")
         .contains("does not play tables of data version 14.593.1")
-        .contains("--data-version");
+        .contains("-P" + DataSelection.DATA_VERSION_PROPERTY);
   }
 
   @Test
   @DisplayName("tables the battle core starts a battle on give the screen its first session")
   void aFirstBattle() {
     Path folder = GameTables.configuredDirectory().orElseThrow();
-    DataVersions versions = new DataVersions(null, List.of(), folder, GameTables.load(folder));
+    DataVersions versions = versions(folder.getParent(), folder.getFileName().toString(), folder);
 
     BattleSession session = DesktopLauncher.firstSession(versions, err);
 
@@ -213,9 +121,10 @@ class DesktopLauncherTest {
     assertThat(errBytes.size()).isZero();
   }
 
-  private static DataSelection.Choice choice(
-      DataSelection.DataRoot root, GameTablesSetting.Configured tables) {
-    return new DataSelection.Choice(root, null, tables, null);
+  /** The versions of a root holding one version, on that version's tables. */
+  private static DataVersions versions(Path root, String version, Path folder) {
+    return new DataVersions(
+        root, List.of(version), folder, GameTables.load(folder), "test", "unknown");
   }
 
   @Test

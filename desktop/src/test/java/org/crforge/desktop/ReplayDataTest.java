@@ -27,10 +27,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The tables a replay is opened on: the data version whose content sha the replay's capture block
- * names, looked up in the data root; a refusal when no version has it or the version is fixed by
- * the launch; and the version on screen, marked assumed, for a replay that names none. The data
- * root's two versions are copies of the configured tables, the second with another content sha in
- * its headers.
+ * names, looked up among the versions built; a refusal when no version has it; and the version on
+ * screen, marked assumed, for a replay that names none. The root's two versions are copies of the
+ * configured tables, the second with another content sha in its headers.
  */
 class ReplayDataTest {
 
@@ -57,7 +56,9 @@ class ReplayDataTest {
   void twoVersions() throws IOException {
     first = TableCopies.copy(root, "1.0.0");
     second = TableCopies.withContentSha(root, "2.0.0", OTHER_SHA);
-    versions = new DataVersions(root, List.of("1.0.0", "2.0.0"), first, GameTables.load(first));
+    versions =
+        new DataVersions(
+            root, List.of("1.0.0", "2.0.0"), first, GameTables.load(first), "test", "unknown");
   }
 
   /**
@@ -106,7 +107,7 @@ class ReplayDataTest {
   @Test
   @DisplayName("a replay naming another version's content sha opens on that version")
   void theVersionIsChosenBySha() throws IOException {
-    ReplayFile replay = DesktopLauncher.openReplay(replay(OTHER_SHA), versions, null, out, err);
+    ReplayFile replay = DesktopLauncher.openReplay(replay(OTHER_SHA), versions, out, err);
 
     assertThat(replay).isNotNull();
     assertThat(replay.refusals()).isEmpty();
@@ -145,8 +146,7 @@ class ReplayDataTest {
   @DisplayName("a replay naming the version on screen opens on it")
   void theVersionOnScreen() throws IOException {
     GameTables before = versions.current();
-    ReplayFile replay =
-        DesktopLauncher.openReplay(replay(before.contentSha()), versions, null, out, err);
+    ReplayFile replay = DesktopLauncher.openReplay(replay(before.contentSha()), versions, out, err);
 
     assertThat(replay.playable()).isTrue();
     assertThat(versions.current()).isSameAs(before);
@@ -165,14 +165,14 @@ class ReplayDataTest {
   void noVersionHasTheSha() throws IOException {
     GameTables before = versions.current();
 
-    ReplayFile replay = DesktopLauncher.openReplay(replay(UNKNOWN_SHA), versions, null, out, err);
+    ReplayFile replay = DesktopLauncher.openReplay(replay(UNKNOWN_SHA), versions, out, err);
 
     assertThat(replay.playable()).isFalse();
     assertThat(versions.current()).isSameAs(before);
     assertThat(versions.currentFolder()).isEqualTo(first);
     assertThat(replay.refusals().get(0))
         .isEqualTo(
-            "no data version of the data root "
+            "no data version built in "
                 + root.toAbsolutePath().normalize()
                 + " has the content sha "
                 + UNKNOWN_SHA
@@ -195,32 +195,11 @@ class ReplayDataTest {
   }
 
   @Test
-  @DisplayName("a data version fixed at launch that is not the replay's is refused the same way")
-  void anExplicitVersionThatDisagrees() throws IOException {
-    GameTables before = versions.current();
-
-    ReplayFile replay =
-        DesktopLauncher.openReplay(
-            replay(OTHER_SHA), versions, "--data-version 1.0.0 in the data root", out, err);
-
-    assertThat(replay.playable()).isFalse();
-    assertThat(versions.current()).isSameAs(before);
-    assertThat(replay.refusals().get(0))
-        .isEqualTo(
-            "the data version is fixed by --data-version 1.0.0 in the data root, and the replay was"
-                + " recorded on client 16.402.17, data version "
-                + before.version()
-                + " (content sha "
-                + OTHER_SHA
-                + "); it is not played on other data");
-  }
-
-  @Test
   @DisplayName("a replay with no capture block opens on the version on screen, marked assumed")
   void noBlockIsAssumed() throws IOException {
     GameTables before = versions.current();
 
-    ReplayFile replay = DesktopLauncher.openReplay(write(fixture()), versions, null, out, err);
+    ReplayFile replay = DesktopLauncher.openReplay(write(fixture()), versions, out, err);
 
     assertThat(replay.playable()).isTrue();
     assertThat(versions.current()).isSameAs(before);

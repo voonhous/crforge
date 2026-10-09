@@ -11,7 +11,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 
 /**
- * Version folders for the tests of a data root: copies of the configured tables, and a copy the
+ * Version folders for the tests of a tables root: copies of the configured tables, and a copy the
  * battle core refuses to start a battle on.
  */
 public final class TableCopies {
@@ -23,7 +23,7 @@ public final class TableCopies {
   /**
    * Copies the configured tables into a version folder of a root.
    *
-   * @param root the data root
+   * @param root the tables root
    * @param version the version folder's name
    * @return the folder
    */
@@ -37,7 +37,7 @@ public final class TableCopies {
    * A copy of the configured tables whose every file's header names another content sha: the same
    * rows, as another set of game data would be named.
    *
-   * @param root the data root
+   * @param root the tables root
    * @param version the version folder's name
    * @param contentSha the content sha the copy's headers name
    * @return the folder
@@ -71,7 +71,7 @@ public final class TableCopies {
    * A copy whose first variables row sets Tid, a column the battle core does not model: its tables
    * load, and a battle on them is refused as it is built.
    *
-   * @param root the data root
+   * @param root the tables root
    * @param version the version folder's name
    * @return the folder
    */
@@ -90,7 +90,7 @@ public final class TableCopies {
    * A copy whose every file's header names another data version: the same rows under a version the
    * battle core does not model, so a battle on them is refused as it is built.
    *
-   * @param root the data root
+   * @param root the tables root
    * @param version the version folder's name
    * @param dataVersion the data version the copy's headers name
    * @return the folder

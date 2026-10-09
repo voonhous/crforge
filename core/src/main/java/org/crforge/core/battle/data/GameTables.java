@@ -20,9 +20,10 @@ import java.util.stream.Stream;
 
 /**
  * A folder of game tables: one file per table of the game's data, in the game's own names and
- * units, and the action graph, all of one data version. The repository ships no game data; the
- * folder is configured, by the system property {@value #PROPERTY} or the environment variable
- * {@value #ENVIRONMENT}.
+ * units, and the action graph, all of one data version. The repository ships no game data: the
+ * build makes the tables from the game's files and names their folder to the tests and the
+ * visualizer by the system property {@value #PROPERTY}, the one way they are found
+ * (docs/game-tables.md, Building the game tables).
  *
  * <p>A table file holds a header - the table's name, id, data version and content hash - and its
  * rows by name in creation order, each with its index, its class and its columns. The action graph
@@ -34,11 +35,15 @@ import java.util.stream.Stream;
  */
 public final class GameTables {
 
-  /** The system property naming the folder. */
+  /** The system property naming the folder; the build sets it. */
   public static final String PROPERTY = "crforge.gameTables";
 
-  /** The environment variable naming the folder, when the property is not set. */
-  public static final String ENVIRONMENT = "CRFORGE_GAME_TABLES";
+  /**
+   * The Gradle property the build makes the tables by: where the game's files are read from (a
+   * {@code file:} URI of a copy of them, or {@code cdn} for the game's asset CDN). The battle core
+   * never fetches; the build does, before the tests or the visualizer run.
+   */
+  public static final String ASSET_SOURCE_PROPERTY = "crforge.assetSource";
 
   /** The header field of every table file that names its data version. */
   public static final String VERSION_FIELD = "version";
@@ -71,12 +76,9 @@ public final class GameTables {
     this.inlineBuffs = inlineBuffs(actions);
   }
 
-  /** The configured folder, or empty when neither the property nor the variable names one. */
+  /** The configured folder, or empty when the property names none. */
   public static Optional<Path> configuredDirectory() {
     String configured = System.getProperty(PROPERTY);
-    if (configured == null || configured.isBlank()) {
-      configured = System.getenv(ENVIRONMENT);
-    }
     return configured == null || configured.isBlank()
         ? Optional.empty()
         : Optional.of(Paths.get(configured));
@@ -87,7 +89,13 @@ public final class GameTables {
     Optional<Path> folder = configuredDirectory();
     checkState(
         folder.isPresent(),
-        () -> "no game tables configured: set " + PROPERTY + " or " + ENVIRONMENT);
+        () ->
+            "no game tables configured ("
+                + PROPERTY
+                + "): the build makes them; run through Gradle with the Gradle property "
+                + ASSET_SOURCE_PROPERTY
+                + " set, to a file: URI of a copy of the game's files, or to cdn for the game's"
+                + " asset CDN");
     return load(folder.get());
   }
 
@@ -103,11 +111,11 @@ public final class GameTables {
         () ->
             "no game tables at "
                 + folder
-                + "; set "
+                + " ("
                 + PROPERTY
-                + " or "
-                + ENVIRONMENT
-                + " to a folder of them");
+                + "); the build makes them when the Gradle property "
+                + ASSET_SOURCE_PROPERTY
+                + " is set");
     Map<String, GameTable> tables = new TreeMap<>();
     Map<String, GameAction> actions = new LinkedHashMap<>();
     String version = null;

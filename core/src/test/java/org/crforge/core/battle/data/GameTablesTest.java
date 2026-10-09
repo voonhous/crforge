@@ -158,7 +158,7 @@ class GameTablesTest {
     assertThatThrownBy(() -> GameTables.load(Paths.get("/no/such/game/tables")))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(GameTables.PROPERTY)
-        .hasMessageContaining(GameTables.ENVIRONMENT);
+        .hasMessageContaining(GameTables.ASSET_SOURCE_PROPERTY);
     GameTables tables = GameTables.load(folder("synthetic"));
     assertThatThrownBy(() -> tables.table("buildings")).isInstanceOf(IllegalStateException.class);
   }

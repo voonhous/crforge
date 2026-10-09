@@ -14,11 +14,11 @@ import org.crforge.desktop.screen.ReplayGameScreen;
 
 /**
  * Main LibGDX application for CRForge. Launches into debug visualization mode, which runs the
- * battle core on the given game tables (switching between the data versions of a data root). Given
- * a replay, it opens the replay viewer instead of the debug screen; a replay file dropped on the
- * window opens there too, read against the tables of the data it names, else the current ones. A
- * crawl's output ({@link ReplayArchive}) opens the viewer on its first readable replay, with a list
- * of all of them to pick from.
+ * battle core on the given game tables (switching between the data versions built). Given a replay,
+ * it opens the replay viewer instead of the debug screen; a replay file dropped on the window opens
+ * there too, read against the tables of the data it names, else the current ones. A crawl's output
+ * ({@link ReplayArchive}) opens the viewer on its first readable replay, with a list of all of them
+ * to pick from.
  */
 @Slf4j
 public class CRForgeGame extends Game {
@@ -36,7 +36,6 @@ public class CRForgeGame extends Game {
   private final ReplayArchive archive;
 
   /** The rule that fixed the data version at launch, or null when it is not fixed. */
-  private final String fixedBy;
 
   /**
    * Debug mode: battle core battles on the current tables of the given versions.
@@ -56,7 +55,7 @@ public class CRForgeGame extends Game {
    * @param replay the replay to open, read against those tables, or null for the debug screen
    */
   public CRForgeGame(DataVersions versions, BattleSession first, ReplayFile replay) {
-    this(versions, first, replay, null, null);
+    this(versions, first, replay, null);
   }
 
   /**
@@ -66,25 +65,19 @@ public class CRForgeGame extends Game {
    * @param first the first battle on those tables, or null when a replay is given
    * @param replay the replay to open, or null for the debug screen
    * @param archive the crawl's output the replay is from, or null for a replay file
-   * @param fixedBy the rule that fixed the data version at launch, or null when it is not fixed
    */
   public CRForgeGame(
-      DataVersions versions,
-      BattleSession first,
-      ReplayFile replay,
-      ReplayArchive archive,
-      String fixedBy) {
+      DataVersions versions, BattleSession first, ReplayFile replay, ReplayArchive archive) {
     this.versions = versions;
     this.first = first;
     this.replay = replay;
     this.archive = archive;
-    this.fixedBy = fixedBy;
   }
 
   @Override
   public void create() {
     if (replay != null) {
-      setScreen(new ReplayGameScreen(replay, versions, browser(archive, fixedBy)));
+      setScreen(new ReplayGameScreen(replay, versions, browser(archive)));
     } else {
       setScreen(new DebugGameScreen(versions, first));
     }
@@ -98,7 +91,7 @@ public class CRForgeGame extends Game {
 
   /**
    * Opens the first JSON file or crawl's output dropped on the window. A JSON file is read as a
-   * replay, against the tables of the data its capture block names (the root's version with its
+   * replay, against the tables of the data its capture block names (the built version with its
    * content sha, which becomes current) or else the current tables, and described as {@code
    * --replay} reads one. A crawl's output ({@code .jsonl} or {@code .jsonl.gz}) opens on its first
    * readable replay, with the list of all of them. A file that cannot be read is logged and the
@@ -116,10 +109,10 @@ public class CRForgeGame extends Game {
         dropped =
             archive == null
                 ? null
-                : DesktopLauncher.openFirst(archive, versions, null, System.out, System.err);
-        browser = browser(archive, null);
+                : DesktopLauncher.openFirst(archive, versions, System.out, System.err);
+        browser = browser(archive);
       } else if (file.toLowerCase().endsWith(".json")) {
-        dropped = DesktopLauncher.openReplay(path, versions, null, System.out, System.err);
+        dropped = DesktopLauncher.openReplay(path, versions, System.out, System.err);
       } else {
         continue;
       }
@@ -142,13 +135,12 @@ public class CRForgeGame extends Game {
    *
    * @return the list, or null for no crawl's output
    */
-  private ReplayGameScreen.Browser browser(ReplayArchive archive, String fixedBy) {
+  private ReplayGameScreen.Browser browser(ReplayArchive archive) {
     if (archive == null) {
       return null;
     }
     return new ReplayGameScreen.Browser(
         archive,
-        entry ->
-            DesktopLauncher.openEntry(archive, entry, versions, fixedBy, System.out, System.err));
+        entry -> DesktopLauncher.openEntry(archive, entry, versions, System.out, System.err));
   }
 }
