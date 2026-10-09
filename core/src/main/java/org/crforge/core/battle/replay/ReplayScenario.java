@@ -366,7 +366,7 @@ public final class ReplayScenario {
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
-        levels.add(level(required(entry, "l").asInt(), card));
+        levels.add(level(deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
@@ -382,7 +382,8 @@ public final class ReplayScenario {
         "consumed: the card row, table id times a million plus row index; the deck's order kept");
     mapping.put(
         "battle.deckN.sp[i].l",
-        "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1");
+        "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
+            + " level index 0, as the game reads it");
     mapping.put(
         "battle.deckN.sp[i].el",
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
@@ -609,6 +610,16 @@ public final class ReplayScenario {
         "consumed: the side's king level, counted from 1, 1 to the Common rarity's LevelCount: the"
             + " level its king row is created at");
     return choices;
+  }
+
+  /**
+   * A deck card's level index, its {@code l}, counted from 0 on its rarity's first level. A replay
+   * may leave the field out when the index is 0 (the game's own writer skips an int field of value
+   * 0), and the game reads a deck card without it at level index 0, the same as a written 0.
+   */
+  private static int deckLevelIndex(JsonNode entry) {
+    JsonNode value = entry.get("l");
+    return value == null ? 0 : value.asInt();
   }
 
   /**

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
@@ -100,6 +101,39 @@ class ReplayScenarioTest {
     // No deck item names slot flags: every card is in neither slot.
     assertThat(plan.slotFlags().get(0)).containsOnly(0);
     assertThat(plan.slotFlags().get(1)).containsOnly(0);
+  }
+
+  @Test
+  void readsADeckCardWithoutItsLevelAsLevelIndexZero() {
+    // A replay leaves a deck card's level index out when it is 0: the game reads the missing
+    // level as 0, the rarity's first level, as the written 0 of the same deck.
+    ScenarioPlan written = new ReplayScenario(tables).translate(fit(Scenarios.knight()));
+    ObjectNode scenario = Scenarios.knight();
+    for (int side = 0; side < 2; side++) {
+      for (JsonNode entry : scenario.path("battle").path("deck" + side).path("sp")) {
+        ((ObjectNode) entry).remove("l");
+      }
+    }
+    ScenarioPlan plan = new ReplayScenario(tables).translate(fit(scenario));
+
+    assertThat(plan.deckLevels().get(0)).containsExactly(written.deckLevels().get(0));
+    assertThat(plan.deckLevels().get(1)).containsExactly(written.deckLevels().get(1));
+    assertThat(plan.deckLevels().get(0))
+        .containsExactly(
+            plan.decks().get(0).stream().mapToInt(ReplayScenarioTest::firstLevel).toArray());
+    // The Knight's play, whose item's level field is checked against the deck card's level.
+    assertThat(plan.plays()).isEqualTo(written.plays());
+  }
+
+  @Test
+  void refusesADeckCardWithoutItsCard() {
+    // The level's absence is read as 0; a deck card without its card row is still refused.
+    ObjectNode scenario = fit(Scenarios.knight());
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(1)).remove("d");
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("the scenario has no d");
   }
 
   @Test
