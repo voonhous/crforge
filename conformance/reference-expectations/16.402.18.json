@@ -431,7 +431,7 @@
   "tv-replays-v3/tv_replay_000": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_001": {"outcome": "mismatch", "first_divergent_tick": 2623, "path": "$.entities[13].hp"},
   "tv-replays-v3/tv_replay_002": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_003": {"outcome": "mismatch", "first_divergent_tick": 292, "path": "$.entities[22].state"},
+  "tv-replays-v3/tv_replay_003": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_004": {"outcome": "mismatch", "first_divergent_tick": 3569, "path": "$.sides[1].elixir"},
   "tv-replays-v3/tv_replay_005": {"outcome": "mismatch", "first_divergent_tick": 3586, "path": "$.entities[9].hp"},
   "tv-replays-v3/tv_replay_006": {"outcome": "diagnostic_match"},
