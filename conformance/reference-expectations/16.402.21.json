@@ -444,12 +444,12 @@
   "tv-replays-v3/tv_replay_018": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_020": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "cmd32_0_0_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"},
   "tv-replays-v4/tv_replay_002": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_004": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_005": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_010": {"outcome": "diagnostic_match"},
-  "tv-replays-v4/tv_replay_011": {"outcome": "unsupported", "feature": "cmd70_1_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"},
+  "tv-replays-v4/tv_replay_011": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_019": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_022": {"outcome": "diagnostic_match"}
  }
