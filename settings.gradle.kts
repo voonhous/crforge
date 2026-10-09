@@ -5,5 +5,6 @@ plugins {
 rootProject.name = "crforge"
 
 include("core")
+include("tables")
 include("desktop")
 include("conformance")
