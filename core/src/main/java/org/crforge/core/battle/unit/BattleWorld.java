@@ -4421,12 +4421,13 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The death slot: what a dying object's row does as it dies, in order - its area effect at its
-   * point, for its side and at its level; what its buffs leave; what the object switches off; its
-   * death damage; its death spawn; its death projectiles. The switches come after the buffs: a
-   * child a buff leaves is visited as it is made, and finds the dying object still moving. A death
-   * whose row sets a column of the slot the battle does not model is refused, and so is the death
-   * of one whose area object is still in the battle, which would end it.
+   * The death slot: what a dying object's row does as it dies, in order - its starting buff taken
+   * off; its ManaOnDeath paid to its own side's king; its area effect at its point, for its side
+   * and at its level; what its buffs leave; what the object switches off; its death damage; its
+   * death spawn; its death projectiles. The switches come after the buffs: a child a buff leaves is
+   * visited as it is made, and finds the dying object still moving. A death whose row sets a column
+   * of the slot the battle does not model is refused, and so is the death of one whose area object
+   * is still in the battle, which would end it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -4445,6 +4446,7 @@ public class BattleWorld implements HolderPasses {
         }
       }
     }
+    deathMana(dying, data);
     if (data.spawnAreaObject() != null) {
       for (BattleEntity entity : holder.entities()) {
         if (entity instanceof AreaEffectEntity area
@@ -4474,6 +4476,26 @@ public class BattleWorld implements HolderPasses {
     deathNotice(dying);
     if (data.onDeathAction() != null) {
       slotDeathAction(dying, data);
+    }
+  }
+
+  /**
+   * The death slot's payout: the row's ManaOnDeath, in whole elixir, to the king of the dying
+   * object's own side, whatever killed it and whether or not it is a clone, up to the cap with what
+   * goes above it counted as wasted. Outside a match no king holds elixir and nothing is paid.
+   *
+   * @param dying the object dying
+   * @param data its row
+   */
+  private void deathMana(WorldEntity dying, UnitData data) {
+    int side = dying.side();
+    if (data.manaOnDeath() < 1 || kingElixir == null || side < 0 || side > 1) {
+      return;
+    }
+    int amount = data.manaOnDeath() * KingElixir.SCALE;
+    kingElixir.add(side, amount);
+    for (WorldObserver observer : observers) {
+      observer.deathManaPaid(tick, dying, side, amount);
     }
   }
 

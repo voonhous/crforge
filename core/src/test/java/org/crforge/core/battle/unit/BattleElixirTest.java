@@ -3,19 +3,23 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Elixir the battle's units pay the kings in a match: a death's to the side that killed the unit,
- * and a collector's to its own king, which only a match has.
+ * Elixir the battle's units pay the kings in a match: a death's to the side that killed the unit, a
+ * death's to the unit's own king, and a collector's to its own king, which only a match has.
  */
 class BattleElixirTest {
 
@@ -88,5 +92,72 @@ class BattleElixirTest {
             })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("outside a match");
+  }
+
+  /** The elixir a hand-written row's death pays its own king, in whole elixir. */
+  private static final int MANA_ON_DEATH = 2;
+
+  /** The configured tables with a Knight whose row pays {@link #MANA_ON_DEATH} as it dies. */
+  private static GameTables knightPayingOnDeath(Path folder) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows -> GameData.columns(rows, "Knight").put("ManaOnDeath", MANA_ON_DEATH));
+  }
+
+  /** Lists every own-side death payout as "unit side amount". */
+  private static List<String> ownDeathPayouts(Standard1v1Battle battle) {
+    List<String> paid = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void deathManaPaid(int tick, WorldEntity dying, int side, int amount) {
+                paid.add(dying.name() + " " + side + " " + amount);
+              }
+            });
+    return paid;
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose row sets ManaOnDeath pays its own king that whole elixir as it dies, whatever"
+          + " killed it, and the other king nothing")
+  void aDeathPaysItsOwnKingItsManaOnDeath(@TempDir Path folder) throws IOException {
+    Standard1v1Battle battle = new Standard1v1Battle(knightPayingOnDeath(folder));
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    CharacterEntity knight =
+        battle.deploy(0, battle.getWorld().getRecords().unit("Knight"), 11, 0, 9000, 6000);
+    List<String> paid = ownDeathPayouts(battle);
+    battle.getBattle().step();
+    int[] before = {match.side(0).getElixir(), match.side(1).getElixir()};
+    battle.getWorld().kill(knight, null);
+    // The kill lands at the damage drain of the next step.
+    battle.getBattle().step();
+    assertThat(HitPoints.alive(knight.getHitPoints())).isFalse();
+    int payout = MANA_ON_DEATH * KingElixir.SCALE;
+    assertThat(paid).containsExactly(knight.name() + " 0 " + payout);
+    // Both kings regenerate alike; only the dying unit's own king has the payout on top.
+    assertThat(match.side(0).getElixir() - before[0])
+        .isEqualTo(match.side(1).getElixir() - before[1] + payout);
+  }
+
+  @Test
+  @DisplayName("a unit whose row sets no ManaOnDeath pays its own king nothing as it dies")
+  void aDeathWithoutManaOnDeathPaysNothing(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder, "characters", rows -> GameData.columns(rows, "Knight").remove("ManaOnDeath"));
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    battle.startLadderMatch(DECK, DECK, 0, 0);
+    CharacterEntity knight =
+        battle.deploy(0, battle.getWorld().getRecords().unit("Knight"), 11, 0, 9000, 6000);
+    List<String> paid = ownDeathPayouts(battle);
+    battle.getBattle().step();
+    battle.getWorld().kill(knight, null);
+    battle.getBattle().step();
+    assertThat(HitPoints.alive(knight.getHitPoints())).isFalse();
+    assertThat(paid).isEmpty();
   }
 }

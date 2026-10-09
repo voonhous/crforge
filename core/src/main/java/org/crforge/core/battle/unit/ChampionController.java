@@ -19,18 +19,21 @@ import org.crforge.core.pathfinding.GridEntityState;
  * deploy count. The deck pass at the match's setup gives the slot its champion; a play of a card
  * that summons that champion makes the slot follow the play: its charges refilled, its cooldown
  * cleared, the state deploying. Its live copies are rebuilt each time its state is worked out:
- * every character of the king's side in the live list, from the last to the first, of the
- * champion's row and the followed play, that is not a clone.
+ * every character of the king's side in the live list, from the last to the first, of the followed
+ * play, that is not a clone and whose row names the champion's ability row.
  *
  * <p>Each king run pass steps it: the state worked out, then the cooldown counted down 50 a step,
  * except while a copy waits for its ability's gate or carries the tag that pauses it; it runs on
- * while the champion casts, is frozen with nothing pending, and is dead. The window since the last
- * use counts down while a copy lives; with none left the ability's cost is given back once.
+ * while the champion casts, is frozen with nothing pending, and is dead. The refund window since
+ * the last use counts down 50 a step while a copy casts (in the casting state, or carrying the tag
+ * of a cast) and holds while every live copy does neither; with no copy left while it is open the
+ * ability's cost is given back once. A refund that only a held window lets through is refused: the
+ * hold is read from the game's code but no recorded battle shows one.
  *
  * <p>A paid ability reaches every run of the king, from the last to the first; the slot that
  * follows the unit's row requests the ability of every live copy, opens the refund window for the
- * ability's trigger delay, starts the full cooldown and spends a charge if it counts them. With no
- * live copy it does nothing more.
+ * ability's RefundWindow (its trigger delay for a row without a positive one), starts the full
+ * cooldown and spends a charge if it counts them. With no live copy it does nothing more.
  *
  * <p>An action may write a button state for the step, which wins the next working out outright, and
  * refill the charges; the slot clears that state at the end of each of its own steps. The state is
@@ -51,8 +54,11 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " ability_archer_queen_missing_unit. The state override an action writes, cleared"
             + " each step, the charges refill and the follow of a spawned champion, held by"
             + " hero_goblins. The state worked out again as a followed copy takes another row,"
-            + " held by ability_hero_wizard. Not carried: the limited availability and the"
-            + " reservation, which nothing in a battle here sets.")
+            + " held by ability_hero_wizard. The refund window's length, the RefundWindow or else"
+            + " the trigger delay, held by tv_replay_004 and tv_replay_016; a copy kept on another"
+            + " row of the same ability, held by hero_berserker. Refused: a refund only a held window lets through, which no"
+            + " reference reaches. Not carried: the limited availability and the reservation, which"
+            + " nothing in a battle here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
@@ -156,8 +162,14 @@ public final class ChampionController extends ActionInstance {
   /** A state an action wrote for this step, which wins the next working out; 0 for none. */
   @Getter private int override;
 
-  /** The refund window: the trigger delay left since the last use, in milliseconds. */
+  /** The refund window: what is left of the ability's RefundWindow since the last use, in ms. */
   @Getter private int triggerMs;
+
+  /**
+   * How long the refund window has held since the last use, its copies alive and none casting, in
+   * milliseconds.
+   */
+  @Getter private int heldMs;
 
   /** The cost of the last use, which a refund gives back, in whole elixir. */
   @Getter private int paidMana;
@@ -186,13 +198,20 @@ public final class ChampionController extends ActionInstance {
     return king.side();
   }
 
-  /** Whether a unit is a live copy this slot follows: its side, its row, its play, no clone. */
+  /**
+   * Whether a unit is a live copy this slot follows: its side, its play, no clone, and a row of the
+   * champion's ability row - the champion's own, or another form of it that names the same ability,
+   * as the Berserker hero's bear form does.
+   */
   boolean follows(CharacterEntity unit) {
+    AbilityData ability = unit.getData().ability();
     return champion != null
         && unit.side() == king.side()
-        && unit.getData().name().equals(champion.name())
         && unit.getDeployIndex() == deployIndex
-        && !unit.isClone();
+        && !unit.isClone()
+        && ability != null
+        && champion.ability() != null
+        && ability.name().equals(champion.ability().name());
   }
 
   /** Whether the slot may follow another champion its player plays or spawns. */
@@ -294,12 +313,20 @@ public final class ChampionController extends ActionInstance {
       }
     }
     if (triggerMs >= 1) {
-      if (!champions.isEmpty()) {
+      if (champions.isEmpty()) {
+        if (triggerMs - heldMs < 1) {
+          throw new UnsupportedOperationException(
+              champion.name()
+                  + "'s ability cost is given back only because its refund window held while no"
+                  + " live copy cast, which no recorded battle establishes");
+        }
+        world.championRefund(this, paidMana);
+        triggerMs = 0;
+      } else if (anyCasting()) {
         // Not clamped: a window of 933 ends at -17.
         triggerMs -= STEP_MS;
       } else {
-        world.championRefund(this, paidMana);
-        triggerMs = 0;
+        heldMs += STEP_MS;
       }
     }
     if (before > 0 && cooldownMs == 0) {
@@ -310,6 +337,20 @@ public final class ChampionController extends ActionInstance {
     }
     // A state an action wrote lasts the one step.
     override = 0;
+  }
+
+  /**
+   * Whether a live copy casts, as the refund window reads it: in the casting state, or carrying the
+   * tag of a cast in its tag word.
+   */
+  private boolean anyCasting() {
+    for (CharacterEntity unit : champions) {
+      if ((unit.getView().getFlags() & unit.getView().getFlagBits().castingAbility()) != 0
+          || unit.getView().getState() == GridEntityState.CASTING) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -325,7 +366,8 @@ public final class ChampionController extends ActionInstance {
   /**
    * A character this slot followed took another row: when it is one of the live copies the last
    * working out found, the state is worked out again at once, the copies rebuilt from the live
-   * list, which a unit on a row the slot does not follow has left. Any other unit changes nothing.
+   * list, which a unit on a row that names another ability row has left. Any other unit changes
+   * nothing.
    *
    * @param unit the character, already on its new row
    */
@@ -378,7 +420,8 @@ public final class ChampionController extends ActionInstance {
       copy.requestAbility();
     }
     AbilityData ability = champion.ability();
-    triggerMs = ability.triggerDelayMs();
+    triggerMs = ability.refundWindowMs();
+    heldMs = 0;
     paidMana = ability.manaCost();
     cooldownMs = cooldownFullMs;
     if (charges > 0) {

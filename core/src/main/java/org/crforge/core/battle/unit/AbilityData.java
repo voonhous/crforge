@@ -8,7 +8,7 @@ import lombok.Builder;
  * whether the unit keeps its target while it casts, the action it runs, the buff it gives itself,
  * the lane switch, the character it leaves behind and the area effect it creates as it fires, the
  * state it holds the unit in afterwards, the souls the unit collects for that area effect, and what
- * a champion's controller reads: its cost, its cooldown and its charges.
+ * a champion's controller reads: its cost, its refund window, its cooldown and its charges.
  *
  * <p>A request for the ability takes the unit into the casting state. The cast time and the trigger
  * delay are counted in whole ticks from there, each the column's milliseconds divided by 50; the
@@ -25,6 +25,8 @@ import lombok.Builder;
  * @param buff the buff the ability gives the unit itself as it fires, or null
  * @param buffTimeMs how long that buff lasts
  * @param manaCost the elixir a player pays to use the ability, in whole elixir
+ * @param refundWindowMs how long after a use its controller gives the cost back when no live copy
+ *     is left: the row's RefundWindow, or its trigger delay when that is not positive
  * @param cooldownMs how long after a use its controller refuses the next
  * @param maxCharges how many uses one play of the champion allows; 0 for no limit
  * @param dashRange for an ability that does nothing else as it fires, the reach, centre to centre,
@@ -71,6 +73,7 @@ public record AbilityData(
     String buff,
     int buffTimeMs,
     int manaCost,
+    int refundWindowMs,
     int cooldownMs,
     int maxCharges,
     int dashRange,
