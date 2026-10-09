@@ -2659,6 +2659,22 @@ public final class BattleRecords {
   }
 
   /**
+   * A card as a play whose item names another card places it: the card's units, formation and list,
+   * with the staggers between the units of its two groups that the named card's row sets (0 where
+   * it sets none). The construction reads the two staggers from the card the play's item names and
+   * everything else from the card it resolves to. A Mirror's item names the Mirror, whose row sets
+   * no stagger, so a Mirror's play deploys every unit of the card it repeats at once.
+   *
+   * @param card the card the item resolves to, which the play places
+   * @param named the card row the play's item names
+   */
+  public DeployCard withStaggerOfCard(DeployCard card, String named) {
+    GameRow row = cardRow(named);
+    return card.withStaggers(
+        row.intValue("SummonDeployDelay"), row.intValue("SummonDeployDelaySecond"));
+  }
+
+  /**
    * The champion a champion slot finds for a card: its linked champion character when that is a
    * champion, which only a hero form names - the Goblins' names the banner its last goblin leaves -
    * else the champion the card summons ({@link DeployCard#champion()}); null for none.

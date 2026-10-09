@@ -519,7 +519,8 @@ public class Standard1v1Battle {
    * Queues a Mirror's play to run on the given tick, in a match: it plays its side's last card
    * again, one level above the Mirror's, for the Mirror's cost plus the card's, and the Mirror goes
    * to the back of the queue. The repeated card is placed or cast as itself, its units named after
-   * the play.
+   * the play, and staggered as the Mirror's own row staggers them: the Mirror's rows set no
+   * stagger, so every unit deploys on the tick the play runs.
    *
    * <p>The item the play carries is built from the side's last card as the play runs. The player's
    * client builds it as the play is given, from that card or from a play of its side it has given
@@ -589,7 +590,10 @@ public class Standard1v1Battle {
           new Play(name, side, x, y, target.getTick(), refused, List.of(), 0, item, null, null));
       return;
     }
-    DeployCard repeated = world.getRecords().card(item.repeats().name());
+    // The repeated card is placed as itself, its units staggered as the Mirror's own row staggers
+    // them: the item names the Mirror.
+    DeployCard repeated =
+        world.getRecords().withStaggerOfCard(world.getRecords().card(item.repeats().name()), card);
     if (world.getRecords().cardChampion(repeated.name()) != null) {
       throw new UnsupportedOperationException(
           name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");

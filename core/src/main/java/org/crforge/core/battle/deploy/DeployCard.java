@@ -176,6 +176,18 @@ public record DeployCard(
    * @param deck the card in the deck the play was made from
    */
   public DeployCard withStaggerOf(DeployCard deck) {
+    return withStaggers(deck.summonDeployDelayMs(), deck.summonDeployDelaySecondMs());
+  }
+
+  /**
+   * The card with the given staggers between the units of its two groups in place of its own, and
+   * everything else as it is: the construction reads the two staggers from the card a play's item
+   * names, and the units, the formation and the list from the row that card resolves to.
+   *
+   * @param summonDeployDelayMs the stagger between the first group's units
+   * @param summonDeployDelaySecondMs the stagger between the second group's units
+   */
+  public DeployCard withStaggers(int summonDeployDelayMs, int summonDeployDelaySecondMs) {
     return new DeployCard(
         name,
         unit,
@@ -184,8 +196,8 @@ public record DeployCard(
         secondaryCount,
         summonRadius,
         summonWidth,
-        deck.summonDeployDelayMs(),
-        deck.summonDeployDelaySecondMs(),
+        summonDeployDelayMs,
+        summonDeployDelaySecondMs,
         canDeployOnEnemySide,
         canPlaceOnBuildings,
         canPlaceOnWater,

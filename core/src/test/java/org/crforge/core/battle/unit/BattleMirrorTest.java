@@ -3,12 +3,14 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
@@ -17,8 +19,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The Mirror where the reference runs do not take it: a Mirror after a Mirror, a Mirror with
- * nothing to repeat, and the plays it refuses - outside a match, with another play of its side
- * pending, and of a champion.
+ * nothing to repeat, a Mirror of a card that staggers its units, and the plays it refuses - outside
+ * a match, with another play of its side pending, and of a champion.
  */
 class BattleMirrorTest {
 
@@ -38,6 +40,10 @@ class BattleMirrorTest {
   /** The same with Skeletons, for 1 elixir, in place of the Knight. */
   private static final List<String> SKELETON_MIRRORS =
       List.of("Skeletons", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  /** The same with Goblins, which stagger their units, in place of the Knight. */
+  private static final List<String> GOBLIN_MIRRORS =
+      List.of("Goblins", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
@@ -123,6 +129,42 @@ class BattleMirrorTest {
   }
 
   @Test
+  @DisplayName(
+      "a Mirror of a card that staggers its units deploys them all at once, as the stagger is read"
+          + " from the Mirror's own row, which sets none")
+  void aMirrorOfAStaggeredCardDeploysEveryUnitAtOnce() {
+    // The case this test is about: the repeated card staggers its units, the Mirror does not.
+    GameRow goblins = Shipped.row("spells_characters", "Goblins");
+    assertThat(Shipped.number(goblins, "SummonDeployDelay")).isPositive();
+    assertThat(Shipped.number(goblins, "SummonNumber")).isGreaterThan(1);
+    GameRow mirror = Shipped.row("spells_other", "Mirror");
+    assertThat(Shipped.column(mirror, "SummonDeployDelay")).isNull();
+    assertThat(Shipped.column(mirror, "SummonDeployDelaySecond")).isNull();
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(GOBLIN_MIRRORS, KNIGHTS, 0, 0);
+    battle.play(20, GameData.card("Goblins"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, 20);
+    // The direct play's units' states on the tick it ran.
+    Standard1v1Battle.Play direct = battle.getPlays().get(0);
+    List<Integer> directStates =
+        direct.units().stream().map(unit -> unit.getView().getState()).toList();
+    int mirrorCost = Math.min(Shipped.cost("Goblins") + Shipped.cost("Mirror"), MAX_MANA);
+    int tick = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
+    battle.playMirror(tick, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, tick);
+
+    // The direct play: the first unit deploys at once, each later one waits its turn.
+    assertThat(directStates).containsExactlyElementsOf(staggered(direct.units().size()));
+    // The Mirror's play: as many units, every one deploying on the tick it ran.
+    Standard1v1Battle.Play mirrored = battle.getPlays().get(1);
+    assertThat(mirrored.mirror().repeats().name()).isEqualTo("Goblins");
+    assertThat(mirrored.units()).hasSameSizeAs(direct.units());
+    assertThat(mirrored.units())
+        .extracting(unit -> unit.getView().getState())
+        .containsOnly(InitialDelay.DEPLOYING);
+  }
+
+  @Test
   @DisplayName("a Mirror outside a match, which keeps no last card, is refused")
   void aMirrorOutsideAMatchIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
@@ -190,6 +232,16 @@ class BattleMirrorTest {
       battle.getBattle().step();
     }
     return battle.getBattle().getTick();
+  }
+
+  /**
+   * The states of a staggered play's units on the tick it ran: the first deploys, the rest wait.
+   */
+  private static List<Integer> staggered(int units) {
+    List<Integer> states = new ArrayList<>();
+    states.add(InitialDelay.DEPLOYING);
+    states.addAll(Collections.nCopies(units - 1, InitialDelay.WAITING));
+    return states;
   }
 
   /** Steps the battle until it has run the given tick, and one step more. */
