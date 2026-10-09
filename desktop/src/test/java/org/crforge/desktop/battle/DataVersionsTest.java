@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The screen's switch between the data versions of a data root: the next version's battle, a
+ * The screen's switch between the data versions of the tables root: the next version's battle, a
  * version the battle core refuses at the start of a battle, and a version whose tables cannot be
  * read. Each version folder of the test's root is a copy of the configured tables; the refused one
  * has a variables row that sets a start value, which the battle core does not model.
@@ -41,7 +41,11 @@ class DataVersionsTest {
   }
 
   private DataVersions versions(Path current, List<String> names) {
-    return new DataVersions(root, names, current, GameTables.load(current));
+    return versions(current, names, GameTables.load(current));
+  }
+
+  private DataVersions versions(Path current, List<String> names, GameTables tables) {
+    return new DataVersions(root, names, current, tables, "test", "unknown");
   }
 
   @Test
@@ -63,7 +67,7 @@ class DataVersionsTest {
     assertThat(versions.developmentVersion()).isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(versions.select("3.0.0").session()).isNotNull();
     assertThat(versions.currentFolder()).isEqualTo(other);
-    assertThat(versions.source()).isEqualTo("selected from the data root");
+    assertThat(versions.source()).isEqualTo("selected with V");
     assertThat(versions.developmentVersion()).isEqualTo(GameVersions.DATA_16_402_18);
     assertThat(versions.next().version()).isEqualTo("1.0.0");
   }
@@ -121,7 +125,7 @@ class DataVersionsTest {
     assertThat(next.refusal()).isNull();
     assertThat(next.version()).isEqualTo("3.0.0");
     assertThat(versions.currentFolder()).isEqualTo(other);
-    assertThat(versions.source()).isEqualTo("selected from the data root");
+    assertThat(versions.source()).isEqualTo("selected with V");
   }
 
   @Test
@@ -144,30 +148,15 @@ class DataVersionsTest {
   void outsideTheRootByVersionName() throws IOException {
     GameTables tables = GameTables.load(good);
     Path named = copy(tables.version());
-    DataVersions versions =
-        new DataVersions(root, List.of("1.0.0", tables.version(), "3.0.0"), good, tables);
+    DataVersions versions = versions(good, List.of("1.0.0", tables.version(), "3.0.0"), tables);
 
     // The cursor is on the folder of the same path first, so the next one is the version folder.
     assertThat(versions.next().version()).isEqualTo(tables.version());
     assertThat(versions.currentFolder()).isEqualTo(named);
 
     Path outside = root.resolveSibling(root.getFileName() + "-outside");
-    DataVersions byName =
-        new DataVersions(root, List.of("1.0.0", tables.version(), "3.0.0"), outside, tables);
+    DataVersions byName = versions(outside, List.of("1.0.0", tables.version(), "3.0.0"), tables);
     assertThat(byName.next().version()).isEqualTo("3.0.0");
-  }
-
-  @Test
-  @DisplayName("with no data root V says so and changes nothing")
-  void noRoot() {
-    GameTables tables = GameTables.load(good);
-    DataVersions versions = new DataVersions(null, List.of(), good, tables);
-
-    DataVersions.Switched switched = versions.next();
-
-    assertThat(switched.session()).isNull();
-    assertThat(switched.refusal()).contains("crforge.dataRoot").contains("CRFORGE_DATA_ROOT");
-    assertThat(versions.current()).isSameAs(tables);
   }
 
   @Test
@@ -177,7 +166,5 @@ class DataVersionsTest {
 
     assertThat(versions.statusLine())
         .isEqualTo("data: " + versions.current().version() + " (V: 2 versions)");
-    assertThat(new DataVersions(null, List.of(), good, versions.current()).statusLine())
-        .isEqualTo("data: " + versions.current().version() + " (V: no data root)");
   }
 }

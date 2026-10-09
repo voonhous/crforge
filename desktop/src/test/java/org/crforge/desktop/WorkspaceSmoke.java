@@ -40,8 +40,8 @@ public class WorkspaceSmoke extends CRForgeGame {
   }
 
   public static void main(String[] args) {
-    DataSelection.Choice choice = DataSelection.choose(DataSelection.Settings.ofProcess(args));
-    GameTables tables = GameTables.load(choice.tables().folder());
+    DataSelection.Choice choice = DataSelection.ofProcess();
+    GameTables tables = GameTables.load(choice.folder());
     DataVersions versions = DesktopLauncher.dataVersions(choice, tables);
     Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
     config.setWindowedMode(1120, 1040);
@@ -49,7 +49,7 @@ public class WorkspaceSmoke extends CRForgeGame {
     config.setForegroundFPS(30);
     config.setInitialVisible(false);
     // The synthetic replay fixture is written in the replay shape of the lock's data version.
-    String lockVersion = choice.lock() == null ? null : choice.lock().version();
+    String lockVersion = choice.lockVersion();
     if (!tables.version().equals(lockVersion))
       throw new IllegalArgumentException(
           "UI smoke fixtures require the tables of the lock's data version, "

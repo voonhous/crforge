@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -23,35 +22,16 @@ import java.util.HexFormat;
  * </ul>
  *
  * <p>A file is checked against the SHA-1 its fingerprint lists before it is kept, and again when it
- * is read back; one that does not match is fetched again. The root is named by the system property
- * {@value #PROPERTY}, else the environment variable {@value #ENVIRONMENT}, else it is {@code
- * .crforge} in the user's home.
+ * is read back; one that does not match is fetched again. The build names the root (the Gradle
+ * property {@code crforge.cache}, by default {@code .crforge} in the user's home).
  */
 public final class AssetCache {
-
-  /** The system property naming the cache root. */
-  public static final String PROPERTY = "crforge.cache";
-
-  /** The environment variable naming the cache root, when the property is not set. */
-  public static final String ENVIRONMENT = "CRFORGE_CACHE";
 
   private final Path root;
 
   /** A cache at a root folder. */
   public AssetCache(Path root) {
     this.root = root;
-  }
-
-  /** The configured cache. */
-  public static AssetCache configured() {
-    String configured = System.getProperty(PROPERTY);
-    if (configured == null || configured.isBlank()) {
-      configured = System.getenv(ENVIRONMENT);
-    }
-    if (configured == null || configured.isBlank()) {
-      return new AssetCache(Paths.get(System.getProperty("user.home"), ".crforge"));
-    }
-    return new AssetCache(Paths.get(configured));
   }
 
   /** The cache root. */

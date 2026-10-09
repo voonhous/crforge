@@ -71,14 +71,16 @@ The expectations file records the outcome every case has today, mismatches inclu
 ```bash
 # Every reference battle of one data version (skipped without a references folder)
 ./gradlew :conformance:referenceTest \
-  -Pcrforge.gameTables=<data checkout>/<version> \
+  -Pcrforge.dataVersion=<version> \
   -Pcrforge.references=<data checkout>/references/<version>
 
 # Rewrite the expectations from a full run, then review the diff with the change that moved them
 ./gradlew :conformance:updateReferenceExpectations \
-  -Pcrforge.gameTables=<data checkout>/<version> \
+  -Pcrforge.dataVersion=<version> \
   -Pcrforge.references=<data checkout>/references/<version>
 ```
+
+The tables are the ones the build makes from the asset source (the Gradle property `crforge.assetSource`, for example `file://<data checkout>/cdn/`; see [Building the game tables](../docs/game-tables.md#building-the-game-tables)), for the data version `-Pcrforge.dataVersion` names.
 
 `./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of every data version the lock lists in `compatible` that has them, each version split into shards and held to its own expectations file.
 

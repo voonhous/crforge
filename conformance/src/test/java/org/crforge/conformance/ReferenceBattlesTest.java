@@ -25,10 +25,9 @@ import org.junit.jupiter.api.Test;
  * held to the expected outcome in {@code reference-expectations/<version>.json}.
  *
  * <p>Run with {@code ./gradlew :conformance:referenceTest} and the references folder named by
- * {@code -Pcrforge.references=<dir>} or {@code CRFORGE_REFERENCES} (skipped when neither is set).
- * The game tables must be configured too. {@code CRFORGE_REFERENCES_SHARD} and {@code
- * CRFORGE_REFERENCES_SHARDS} (or the matching properties) run one shard of the cases. Each run
- * writes a scorecard of every case's outcome under {@code build/reference-scorecard}.
+ * {@code -Pcrforge.references=<dir>} (skipped without it); the build makes the game tables. {@code
+ * -Pcrforge.references.shard} and {@code -Pcrforge.references.shards} run one shard of the cases.
+ * Each run writes a scorecard of every case's outcome under {@code build/reference-scorecard}.
  */
 @Tag("reference")
 class ReferenceBattlesTest {
@@ -37,14 +36,10 @@ class ReferenceBattlesTest {
   void everyReferenceBattleHasItsExpectedOutcome() throws IOException {
     Optional<Path> folder = ReferenceSuite.configuredDirectory();
     assumeTrue(
-        folder.isPresent(),
-        "no reference battles configured: set "
-            + ReferenceSuite.PROPERTY
-            + " or "
-            + ReferenceSuite.ENVIRONMENT);
+        folder.isPresent(), "no reference battles configured: set " + ReferenceSuite.PROPERTY);
     Optional<Path> tablesFolder = GameTables.configuredDirectory();
     assertThat(tablesFolder)
-        .as("the reference battles need the game tables: set crforge.gameTables")
+        .as("the reference battles need the game tables the build makes (crforge.assetSource)")
         .isPresent();
 
     References references = ReferenceSuite.load(folder.get());

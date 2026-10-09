@@ -426,7 +426,7 @@ public final class BattleWorkspace implements Disposable {
   public void configureVersions(List<String> versions, String current, Consumer<String> load) {
     versionControls.clearChildren();
     if (versions.isEmpty()) {
-      Label hint = wrapped("No data root configured. See Data details for the loaded folder.");
+      Label hint = wrapped("No other data version built. See Data details for the loaded folder.");
       hint.setColor(MUTED);
       versionControls.add(hint).growX();
       return;

@@ -2,10 +2,10 @@ package org.crforge.tables;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,8 +20,10 @@ import java.util.stream.Stream;
  *
  * <p>A folder already built from the same content set by the same decoder is used as it is; a
  * {@value #STAMP} file beside the tables records what it was built from. Run as a program it builds
- * one data version and prints the folder: {@code TableBuild <data version> [<asset source URI>]},
- * the source by default the game's asset CDN.
+ * data versions and prints each one's folder: {@code TableBuild <cache> <asset source> <data
+ * version>...}, which {@code ./gradlew :tables:gameTables} runs. There is no default source: the
+ * game's asset CDN is used only when it is asked for by name ({@value AssetSource#GAME_CDN_NAME}),
+ * and a missing source stops the run, naming the setting.
  */
 public final class TableBuild {
 
@@ -112,17 +114,26 @@ public final class TableBuild {
     }
   }
 
-  /** Builds one data version's tables and prints their folder. */
+  /** Builds data versions' tables and prints each one's folder, one per line. */
   public static void main(String[] args) {
-    if (args.length < 1 || args.length > 2) {
-      System.err.println("usage: TableBuild <data version> [<asset source URI>]");
+    if (args.length >= 2 && args[1].isBlank()) {
+      System.err.println(
+          "no asset source to build the game tables from: set the Gradle property"
+              + " crforge.assetSource to a file: URI of a copy of the asset files, or to "
+              + AssetSource.GAME_CDN_NAME
+              + " to fetch them from the game's asset CDN");
       System.exit(2);
     }
-    DataVersion version = DataVersion.of(args[0]);
-    AssetSource source =
-        args.length > 1 ? AssetSource.at(URI.create(args[1])) : AssetSource.gameCdn();
+    if (args.length < 3) {
+      System.err.println("usage: TableBuild <cache> <asset source> <data version>...");
+      System.exit(2);
+    }
+    AssetCache cache = new AssetCache(Paths.get(args[0]));
+    AssetSource source = AssetSource.named(args[1]);
     try {
-      System.out.println(build(version, source, AssetCache.configured()));
+      for (int i = 2; i < args.length; i++) {
+        System.out.println(build(DataVersion.of(args[i]), source, cache));
+      }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

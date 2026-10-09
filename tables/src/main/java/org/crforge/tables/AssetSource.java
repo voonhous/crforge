@@ -12,14 +12,18 @@ import java.time.Duration;
 
 /**
  * Where the game's files are read from: a base URI laid out as the game's asset CDN serves them,
- * {@code <base>/<content sha>/fingerprint.json} and {@code <base>/<content sha>/<path>}. By default
- * that is the game's asset CDN itself; a {@code file:} URI names a local copy laid out the same
- * way, such as the {@code cdn/} folder of the game data repository.
+ * {@code <base>/<content sha>/fingerprint.json} and {@code <base>/<content sha>/<path>}. A {@code
+ * file:} URI names a local copy laid out that way, such as the {@code cdn/} folder of the game data
+ * repository. The game's asset CDN itself is never a default: it is used only when it is named, as
+ * {@value #GAME_CDN_NAME} or by its URI.
  */
 public final class AssetSource {
 
   /** The game's asset CDN. */
   public static final URI GAME_CDN = URI.create("https://game-assets.clashroyaleapp.com/");
+
+  /** The name that asks for the game's asset CDN. */
+  public static final String GAME_CDN_NAME = "cdn";
 
   private static final Duration TIMEOUT = Duration.ofMinutes(2);
 
@@ -34,6 +38,12 @@ public final class AssetSource {
   /** The game's asset CDN. */
   public static AssetSource gameCdn() {
     return new AssetSource(GAME_CDN);
+  }
+
+  /** The source a setting names: {@value #GAME_CDN_NAME} for the game's asset CDN, else a URI. */
+  public static AssetSource named(String setting) {
+    String name = setting.strip();
+    return name.equals(GAME_CDN_NAME) ? gameCdn() : at(URI.create(name));
   }
 
   /** A source at a base URI: {@code https:}, {@code http:} or {@code file:}. */
