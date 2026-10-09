@@ -1424,6 +1424,18 @@ public final class BattleRecords {
     return row.intValue("Radius");
   }
 
+  /**
+   * Whether a shape row that is a circle checks its origin (CheckOrigin): the shape's narrowing
+   * then keeps only what its query found whose centre lies within its radius. A shape of any other
+   * class, or none, is refused.
+   *
+   * @param name the shape row's name
+   */
+  public boolean circleChecksOrigin(String name) {
+    circleRadius(name);
+    return tables.table(SHAPES).row(name).bool("CheckOrigin");
+  }
+
   /** The bits of game tags written as names separated by commas; none for an empty text. */
   /** The deflection flags a projectile row names, separated by commas, as their bits. */
   private static int deflectBehaviour(String names) {

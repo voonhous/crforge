@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.data.GameTables;
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A shape selector run by an area effect where the reference runs do not reach: a circle that holds
  * nobody, two objects of equal score, a shield that changes the pick, a row that may pick an object
- * again, an underground object, and a selector on a crown tower.
+ * again, an underground object, a circle that checks its origin, and a selector on a crown tower.
  *
  * <p>The selector is the Giant hero form's slap selector, a row that scores by hit points and
  * shield and picks each object once, written with three entries of Vines' air-to-ground group at 0,
@@ -275,6 +276,44 @@ class BattleShapeSelectorTest {
             "19 chosen [] none [] empty true finished false",
             "21 chosen [] none [] empty true finished false",
             "22 chosen [] none [] empty false finished true");
+  }
+
+  @Test
+  @DisplayName(
+      "a circle that checks its origin drops a Knight whose centre lies beyond its radius though"
+          + " its collision radius reaches in, so the second entry picks nobody; without the check"
+          + " the same Knight is picked")
+  void aCircleThatChecksItsOrigin(@TempDir Path folder) throws IOException {
+    String shape = Shipped.fields(SELECTOR).path("Shape").asText();
+    int radius = Shipped.number(Shipped.row("shapes", shape), "Radius");
+    // Half the Knight's collision radius past the circle: out by its centre, in by its edge.
+    int beyond = radius + Shipped.number(Shipped.unitRow("Knight"), "CollisionRadius") / 2;
+
+    Path checkedFolder = folder.resolve("checked");
+    selectorTables(checkedFolder);
+    GameData.alterLoaded(
+        checkedFolder, "shapes", rows -> GameData.columns(rows, shape).put("CheckOrigin", true));
+    Scene checked = new Scene(GameTables.load(checkedFolder));
+    checked.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y - radius / 2, "inside");
+    checked.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X + beyond, Y, "edge");
+    checked.vines();
+    checked.steps(22);
+    assertThat(checked.steps)
+        .containsExactly(
+            "18 chosen [0=inside] none [] empty false finished false",
+            "19 chosen [] none [1] empty false finished false",
+            "21 chosen [] none [2] empty false finished true");
+
+    Scene plain = new Scene(selectorTables(folder.resolve("plain")));
+    plain.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y - radius / 2, "inside");
+    plain.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X + beyond, Y, "edge");
+    plain.vines();
+    plain.steps(22);
+    assertThat(plain.steps)
+        .containsExactly(
+            "18 chosen [0=inside] none [] empty false finished false",
+            "19 chosen [1=edge] none [] empty false finished false",
+            "21 chosen [] none [2] empty false finished true");
   }
 
   @Test

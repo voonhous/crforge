@@ -19,9 +19,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * circle once, at the area effect's point; an empty circle ends the step there. Each picks, among
  * the objects found that no entry has picked before, the one of the highest score - its hit points,
  * with its shield's for the mode that includes shields - starting from 0, an equal score going to
- * the lower id; with nobody left the entry picks nobody. The entry's action is scheduled on the
- * pick, the area effect as the cause, and the pick is remembered when the row picks each object
- * once. A step at which no entry is due later than its tick finishes the run.
+ * the lower id; with nobody left the entry picks nobody. A circle that checks its origin
+ * (CheckOrigin) narrows what its query found, in order, to the objects whose centre lies within its
+ * radius of the owner's point, so one whose edge alone reaches in is not found; the circle is empty
+ * when none is left. The entry's action is scheduled on the pick, the area effect as the cause, and
+ * the pick is remembered when the row picks each object once. A step at which no entry is due later
+ * than its tick finishes the run.
  *
  * <p>A row that waits for a target, as the Giant hero form's slap does on the character itself,
  * takes every entry due at or before the step's tick instead of exactly on it, and drops an entry
@@ -61,9 +64,12 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the row's tags on a character, held by ability_hero_giant_slap. The action on the"
             + " owner whatever the side, the owner as the cause of the actions on itself, the"
             + " Closest mode, the run's context on every schedule and the finishing action, held"
-            + " by hero_balloon and BattleBalloonHeroTest. Refused: a longest wait, the modes by"
-            + " maximum, a singleton, a next action, a missing filter, a shape other than a"
-            + " circle and a finishing action on an owner that leaves before the run finishes.")
+            + " by hero_balloon and BattleBalloonHeroTest. The circle's CheckOrigin narrowing,"
+            + " held by tv_replay_017 (the Valkyrie hero form's tap with a princess tower whose"
+            + " square alone reaches the circle) and BattleShapeSelectorTest. Refused: a longest"
+            + " wait, the modes by maximum, a singleton, a next action, a missing filter, a shape"
+            + " other than a circle and a finishing action on an owner that leaves before the run"
+            + " finishes.")
 public final class ShapeSelector extends RowAction {
 
   /** The mode that scores an object by its hit points. */
@@ -85,6 +91,7 @@ public final class ShapeSelector extends RowAction {
       int targetSelectionMode,
       GameObjectFilter targetFilter,
       int shapeRadius,
+      boolean checkOrigin,
       List<Integer> delaysMs,
       List<String> actions,
       boolean waitForTarget,
@@ -100,6 +107,8 @@ public final class ShapeSelector extends RowAction {
      * @param targetSelectionMode how an object is scored
      * @param targetFilter the filter its query asks
      * @param shapeRadius the radius of its circle
+     * @param checkOrigin the circle's CheckOrigin: what its query found is narrowed to the objects
+     *     whose centre lies within the radius of the owner's point
      * @param delaysMs when each entry is due after the start, in order
      * @param actions the row of the action each entry runs on its pick, by index
      * @param waitForTarget true when an entry stays due from its tick on until it picks
@@ -242,6 +251,9 @@ public final class ShapeSelector extends RowAction {
         }
         if (found == null) {
           found = host.collect(columns.shapeRadius(), columns.targetFilter());
+          if (columns.checkOrigin()) {
+            found = withinByCentre(found);
+          }
           if (found.isEmpty()) {
             // An empty circle ends the step before the finish's test.
             host.selectorStepped(
@@ -317,6 +329,26 @@ public final class ShapeSelector extends RowAction {
       return side == 0
           ? columns.actionOnSelfLeft()
           : side == 1 ? columns.actionOnSelfRight() : null;
+    }
+
+    /**
+     * The circle's narrowing under CheckOrigin, the shape's own step after its query: the objects
+     * found, in their order, whose centre lies within the radius of the owner's point, the squared
+     * distance in 32 bits at most the squared radius compared without sign. Without the check the
+     * query's test by the collision radius, or a building's square, is all there is, so an object
+     * whose edge alone reaches into the circle is found.
+     */
+    private List<Integer> withinByCentre(List<Integer> found) {
+      int radius = columns.shapeRadius();
+      List<Integer> kept = new ArrayList<>();
+      for (int id : found) {
+        int dx = host.x(id) - host.ownerX();
+        int dy = host.y(id) - host.ownerY();
+        if (Integer.compareUnsigned(dx * dx + dy * dy, radius * radius) <= 0) {
+          kept.add(id);
+        }
+      }
+      return kept;
     }
 
     /**

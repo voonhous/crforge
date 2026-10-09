@@ -65,9 +65,17 @@ public interface ShapeSelectorHost {
     throw new UnsupportedOperationException("a shape selector's side action on this owner");
   }
 
-  /** The owner's x, which the side action compares with the pick's. */
+  /**
+   * The owner's x, which the side action compares with the pick's and a circle that checks its
+   * origin measures from.
+   */
   default int ownerX() {
     throw new UnsupportedOperationException("a shape selector's side action on this owner");
+  }
+
+  /** The owner's y, which a circle that checks its origin measures from. */
+  default int ownerY() {
+    throw new UnsupportedOperationException("a shape selector's origin check on this owner");
   }
 
   /**
@@ -77,6 +85,15 @@ public interface ShapeSelectorHost {
    */
   default int x(int id) {
     throw new UnsupportedOperationException("a shape selector's side action on this owner");
+  }
+
+  /**
+   * An object's y.
+   *
+   * @param id the object's id
+   */
+  default int y(int id) {
+    throw new UnsupportedOperationException("a shape selector's origin check on this owner");
   }
 
   /**

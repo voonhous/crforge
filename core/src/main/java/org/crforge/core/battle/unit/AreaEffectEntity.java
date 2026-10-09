@@ -1597,9 +1597,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   /**
    * What a shape selector's run on the area effect asks of the battle: the battle tick, the circle
    * around its point that tests buildings by their squares, an object's hit points and shield or
-   * its squared distance from the area effect, the holder of a pick, and the actions it schedules,
-   * each built for the object it runs on with the cause and the context the run hands it: on what
-   * it picked, and on the area effect itself.
+   * its squared distance from the area effect, its point and where an object stands, which a circle
+   * that checks its origin measures, the holder of a pick, and the actions it schedules, each built
+   * for the object it runs on with the cause and the context the run hands it: on what it picked,
+   * and on the area effect itself.
    */
   @Override
   public ShapeSelectorHost shapeSelectorHost() {
@@ -1646,6 +1647,27 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         WorldEntity target = (WorldEntity) world.liveObject(targetId);
         BattleAction built = world.getActions().build(action, world.binding(target));
         target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      }
+
+      // The point a circle that checks its origin measures from, and where an object stands.
+      @Override
+      public int ownerX() {
+        return AreaEffectEntity.this.x();
+      }
+
+      @Override
+      public int ownerY() {
+        return AreaEffectEntity.this.y();
+      }
+
+      @Override
+      public int x(int id) {
+        return ((WorldEntity) world.liveObject(id)).x();
+      }
+
+      @Override
+      public int y(int id) {
+        return ((WorldEntity) world.liveObject(id)).y();
       }
 
       @Override
