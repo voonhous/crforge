@@ -3646,6 +3646,11 @@ public class BattleWorld implements HolderPasses {
    * carried. A row that follows its target follows the projectile's target, a unit or a tower, when
    * it still has one; without one it follows nothing and stays on the impact point.
    *
+   * <p>It is created as every game object is, its point kept the creation's inset inside each edge
+   * of the arena: a projectile may land beyond the arena's side (a shrapnel of the evolved
+   * Firecracker flying on past its shell's target), and its area effect then stands at the edge's
+   * inset, not where the projectile ended.
+   *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
    * @param y the impact point along the length
@@ -3654,8 +3659,8 @@ public class BattleWorld implements HolderPasses {
     AreaEffectEntity areaEffect =
         createAreaEffect(
             projectile.getData().spawnAreaEffectObject(),
-            x,
-            y,
+            inset(x, tileMap.width()),
+            inset(y, tileMap.height()),
             projectile.side(),
             projectile.getPackedLevel(),
             null,
