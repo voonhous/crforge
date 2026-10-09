@@ -158,7 +158,7 @@ At startup the launcher prints the data root and the setting that named it, the 
 ```
 data root: /path/to/crforge-data (from the crforge-data folder beside the project)
 data root commit: e61b362a... (differs from the lock's 5a2fd481...; informational only)
-data versions: 16.402.18, 16.402.19 (V switches)
+data versions: 16.402.18, 16.402.19, 16.402.21 (V switches)
 game tables: /path/to/crforge-data/16.402.19 (from version=16.402.19 of crforge-data.lock in the data root)
 data version: 16.402.19
 content sha: 7e76080b...
