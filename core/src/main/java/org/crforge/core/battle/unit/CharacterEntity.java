@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.battle.BattleComponent;
@@ -408,6 +409,7 @@ public class CharacterEntity extends WorldEntity {
   @Getter private CharacterEntity parent;
 
   /** Its angle on its parent's ring as it was made, which gives its share of the arc it sits on. */
+  @Getter(AccessLevel.PACKAGE)
   private int attachAngle;
 
   /** The characters riding on this one, in the order they were made. */
@@ -830,6 +832,30 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           data.name() + " is spawned and would make its riders as it deploys, which is not held");
     }
+    return made(world, data, name, side, x, y, level, lane);
+  }
+
+  /**
+   * Creates a Clone's clone of a unit as a spawn creates a character, a row with riders too: a
+   * clone never enters the deploying state, whose entry makes a row's riders, so a carrier's clone
+   * makes none of its own and rides the clones of its original's riders instead.
+   *
+   * @param world the battle's shared arena state
+   * @param data the clone's row
+   * @param name the clone's unique name within the battle
+   * @param side the side that owns the clone
+   * @param x position in game units, already inside the arena
+   * @param y position in game units, already inside the arena
+   * @param level the clone's level, counted from 1
+   */
+  static CharacterEntity cloned(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level) {
+    return made(world, data, name, side, x, y, level, -1);
+  }
+
+  /** A character made as a spawn makes it: walking with a speed, standing without, deployed. */
+  private static CharacterEntity made(
+      BattleWorld world, UnitData data, String name, int side, int x, int y, int level, int lane) {
     CharacterEntity child = new CharacterEntity(world, data, name, side, x, y, level, lane, -1);
     // The level setter leaves a unit with a speed walking and one without standing.
     child.getView().setState(data.speed() >= 1 ? GridEntityState.MOVING : GridEntityState.STANDING);
@@ -1022,8 +1048,9 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a clone, a dead unit and a
    * rider are refused, and the refusal told. A clone the battle does not model is refused outright:
-   * one made by anything but an area effect, of a row with a cloned version or with riders, of a
-   * unit still deploying or with a run of an action listed, whose clone would take it over.
+   * one made by anything but an area effect, of a row with a cloned version, of a unit still
+   * deploying or with a run of an action listed, whose clone would take it over - for a carrier, of
+   * any of its riders too, each cloned with it.
    */
   @Override
   public boolean mayBeCloned(ActionOwner instigator) {
@@ -1045,15 +1072,22 @@ public class CharacterEntity extends WorldEntity {
       world.cloneRefused(this, reason, cause);
       return false;
     }
-    UnitData data = getData();
-    if (data.clonedVersion() != null
-        || data.spawnAttach()
-        || getView().getDeployCountdown() > 0
-        || !actionHolder().running().isEmpty()) {
-      throw new UnsupportedOperationException(
-          name()
-              + " is cloned with a cloned version, riders, a deploy countdown or a run of an"
-              + " action listed, which is not modelled");
+    // A carrier's riders are cloned with it, each as a clone of its own, so each is held to the
+    // same tests.
+    List<CharacterEntity> cloned = new ArrayList<>();
+    cloned.add(this);
+    if (getData().spawnAttach()) {
+      cloned.addAll(riders);
+    }
+    for (CharacterEntity unit : cloned) {
+      if (unit.getData().clonedVersion() != null
+          || unit.getView().getDeployCountdown() > 0
+          || !unit.actionHolder().running().isEmpty()) {
+        throw new UnsupportedOperationException(
+            unit.name()
+                + " is cloned with a cloned version, a deploy countdown or a run of an action"
+                + " listed, which is not modelled");
+      }
     }
     return true;
   }

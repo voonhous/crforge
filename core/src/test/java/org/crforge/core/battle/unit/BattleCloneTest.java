@@ -14,6 +14,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -353,6 +354,108 @@ class BattleCloneTest {
     assertThatThrownBy(() -> clone.actionHolder().start(spawn, clone.actionHolder()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("from a clone");
+  }
+
+  /**
+   * The configured tables with the Clone written, and a Goblin Giant that carries riders: two Spear
+   * Goblins on a ring of 900, each turned by -22 within an arc of 90, riding at 4000; the Giant
+   * deploys for 1000 ms and its card plays one Giant.
+   */
+  private static GameTables carrierTables(Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "GoblinGiant")
+              .put("SpawnCharacter", "SpearGoblinGiant")
+              .put("SpawnNumber", 2)
+              .put("SpawnRadius", 900)
+              .put("DeployTime", 1000);
+          GameData.columns(rows, "SpearGoblinGiant")
+              .put("SpawnAngleShift", -22)
+              .put("SpawnMaxAngle", 90)
+              .put("FlyingHeight", 4000);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "GoblinGiant").put("SummonNumber", 1));
+    return GameTables.load(folder);
+  }
+
+  @Test
+  @DisplayName(
+      "a carrier's clone takes a clone of each of its riders in their order, each made on its rider"
+          + " as any clone is and then attached to the carrier's clone on its rider's angle; the"
+          + " riders move apart with the carriers and are resumed with them")
+  void aCarrierIsClonedWithItsRiders(@TempDir Path folder) throws IOException {
+    GameTables tables = carrierTables(folder);
+    Scene scene = new Scene(tables);
+    scene.match.play(
+        0, new BattleRecords(tables).card("GoblinGiant"), LEVEL, 0, X, Y, "GoblinGiant");
+    scene.step(1);
+    CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
+    List<CharacterEntity> riders = List.copyOf(giant.riders());
+    assertThat(riders).hasSize(2);
+    scene.clone(CAST_TICK);
+
+    String name = giant.name();
+    assertThat(scene.cloneNames())
+        .containsExactly(
+            name + "_clone0", riders.get(0).name() + "_clone0", riders.get(1).name() + "_clone0");
+    CharacterEntity clone = scene.clones.get(0);
+    List<CharacterEntity> riderClones = scene.clones.subList(1, 3);
+    // The clone makes no riders of its own: it never enters the deploying state.
+    assertThat(clone.riders()).containsExactlyElementsOf(riderClones);
+    long spearGoblins =
+        scene.match.getBattle().getHolder().entities().stream()
+            .filter(e -> e instanceof CharacterEntity c && c.getData() == riders.get(0).getData())
+            .count();
+    assertThat(spearGoblins).isEqualTo(4);
+    for (int i = 0; i < 2; i++) {
+      CharacterEntity rider = riders.get(i);
+      CharacterEntity riderClone = riderClones.get(i);
+      assertThat(riderClone.getParent()).isSameAs(clone);
+      assertThat(riderClone.getId()).isGreaterThan(clone.getId());
+      assertThat(riderClone.isClone()).isTrue();
+      assertThat(riderClone.getHitPoints().getHitPoints()).isEqualTo(1);
+      assertThat(riderClone.getHitPoints().getMaximum()).isEqualTo(1);
+      assertThat(riderClone.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+      assertThat(rider.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+      assertThat(rider.getParent()).isSameAs(giant);
+      assertThat(rider.isClone()).isFalse();
+    }
+    assertThat(giant.riders()).containsExactlyElementsOf(riders);
+
+    // Visited after the carrier's clone, each rider clone rides on its ring around it, on its
+    // rider's angle; each rider, visited before its carrier, rides around the carrier's point as
+    // it stood before the visit. The two carriers move apart.
+    for (int step = 1; step <= 9; step++) {
+      int giantX = giant.getView().getX();
+      int giantY = giant.getView().getY();
+      int cloneY = clone.getView().getY();
+      scene.step(1);
+      assertThat(giant.getView().getY()).isGreaterThan(giantY);
+      assertThat(clone.getView().getY()).isLessThan(cloneY);
+      for (int i = 0; i < 2; i++) {
+        CharacterEntity rider = riders.get(i);
+        CharacterEntity riderClone = riderClones.get(i);
+        assertThat(riderClone.getView().getX() - clone.getView().getX())
+            .as("step %d rider %d", step, i)
+            .isEqualTo(rider.getView().getX() - giantX);
+        assertThat(riderClone.getView().getY() - clone.getView().getY())
+            .as("step %d rider %d", step, i)
+            .isEqualTo(rider.getView().getY() - giantY);
+      }
+    }
+    scene.step(1);
+    for (CharacterEntity unit : List.of(riders.get(0), riders.get(1), clone, giant)) {
+      assertThat(unit.getView().getState()).isNotEqualTo(GridEntityState.CLONE_SETUP);
+    }
+    for (CharacterEntity riderClone : riderClones) {
+      assertThat(riderClone.getView().getState()).isNotEqualTo(GridEntityState.CLONE_SETUP);
+    }
   }
 
   /**
