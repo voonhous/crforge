@@ -159,9 +159,9 @@ At startup the launcher prints the data root and the setting that named it, the 
 data root: /path/to/crforge-data (from the crforge-data folder beside the project)
 data root commit: e61b362a... (differs from the lock's 5a2fd481...; informational only)
 data versions: 16.402.18, 16.402.19 (V switches)
-game tables: /path/to/crforge-data/16.402.18 (from version=16.402.18 of crforge-data.lock in the data root)
-data version: 16.402.18
-content sha: 8aa80152...
+game tables: /path/to/crforge-data/16.402.19 (from version=16.402.19 of crforge-data.lock in the data root)
+data version: 16.402.19
+content sha: 7e76080b...
 ```
 
 With no rule that applies it stops with a message naming `crforge.dataRoot`, `CRFORGE_DATA_ROOT`, `crforge.gameTables` and `CRFORGE_GAME_TABLES`; with a folder it cannot read it stops naming the folder (and the root's versions); and when the battle core refuses a battle on the chosen tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
