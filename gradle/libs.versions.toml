@@ -3,6 +3,7 @@
 jackson = "2.22.2"
 lombok = "1.18.46"
 slf4j = "2.0.18"
+xz = "1.12"
 
 # Test dependencies
 junit = "6.1.3"
@@ -14,6 +15,8 @@ gdx = "1.14.2"
 [libraries]
 # Core
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
