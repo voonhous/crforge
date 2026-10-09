@@ -175,6 +175,7 @@
   "content-gaps-v2/cg_vines_goblingiant_riders": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_vines_king_giant_minipekka": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_wizard_hero_lands": {"outcome": "diagnostic_match"},
+  "dot-hidden-v1/tesla_hidden_poison": {"outcome": "diagnostic_match"},
   "duchess-v2/giant_vs_duchess_tower": {"outcome": "diagnostic_match"},
   "duchess-v2/knight_giant_vs_duchess_tower": {"outcome": "diagnostic_match"},
   "edragon-chain-v2/evo_electrodragon_chain_vs_musketeer_giant": {"outcome": "diagnostic_match"},
@@ -336,6 +337,9 @@
   "random-battles-v2/random_battle_s0017": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0018": {"outcome": "diagnostic_match"},
   "random-battles-v2/random_battle_s0019": {"outcome": "diagnostic_match"},
+  "side-elixir-v1/barblog_hero_refund_window": {"outcome": "diagnostic_match"},
+  "side-elixir-v1/collector_death_pays_own_side": {"outcome": "diagnostic_match"},
+  "skeleton-dup-limit-v1/evo_skeletons_group_limit_knight": {"outcome": "diagnostic_match"},
   "smoke-c1/archer_s0": {"outcome": "diagnostic_match"},
   "smoke-c1/arrows_s0_tower": {"outcome": "diagnostic_match"},
   "smoke-c1/cycle_s0": {"outcome": "diagnostic_match"},
@@ -396,6 +400,7 @@
   "terminal-handoff-v2/card_ZapMachine": {"outcome": "diagnostic_match"},
   "terminal-handoff-v2/idle_full_match": {"outcome": "diagnostic_match"},
   "terminal-handoff-v2/knight": {"outcome": "diagnostic_match"},
+  "tiebreak-clear-v1/tiebreak_clearing_spells": {"outcome": "diagnostic_match"},
   "tower-level-v2/knight_princess_towers_l0_l1": {"outcome": "diagnostic_match"},
   "tower-level-v2/knight_princess_towers_l15_l15": {"outcome": "diagnostic_match"},
   "tower-level-v2/knight_princess_towers_l1_l0": {"outcome": "diagnostic_match"},
@@ -452,6 +457,8 @@
   "tv-replays-v3/tv_replay_020": {"outcome": "mismatch", "first_divergent_tick": 2977, "path": "$.entities[0].x"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"}
+  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"},
+  "vines-end-reset-v1/vines_babydragon_logged_route_reset": {"outcome": "diagnostic_match"},
+  "vines-end-reset-v1/vines_balloon_logged_route_reset": {"outcome": "diagnostic_match"}
  }
 }
