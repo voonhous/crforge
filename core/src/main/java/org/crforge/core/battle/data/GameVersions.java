@@ -32,11 +32,22 @@ public final class GameVersions {
    */
   public static final String DATA_16_402_19 = "16.402.19";
 
+  /**
+   * Data version 16.402.21, served to game client 16.402.14 of client 16.402.17's range from
+   * 2026-10-09 (content sha c99947391d7d95cc51a894935c370e4f4d14014b; the asset CDN labels it
+   * 16.426.24).
+   */
+  public static final String DATA_16_402_21 = "16.402.21";
+
   /** Game client version 16.402.17, as a replay's capture block names it. */
   public static final String CLIENT_16_402_17 = "16.402.17";
 
-  /** The data versions game client 16.402.17 has run: 16.402.18, then 16.402.19 from 2026-10-06. */
-  public static final Set<String> CLIENT_16_402_17_DATA = Set.of(DATA_16_402_18, DATA_16_402_19);
+  /**
+   * The data versions of game client 16.402.17's range (docs/compatibility.md): 16.402.18, then
+   * 16.402.19 from 2026-10-06, then 16.402.21 from 2026-10-09.
+   */
+  public static final Set<String> CLIENT_16_402_17_DATA =
+      Set.of(DATA_16_402_18, DATA_16_402_19, DATA_16_402_21);
 
   private GameVersions() {
     // Constants only

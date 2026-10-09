@@ -17,6 +17,7 @@ Kind: `shipped` is the data set a client version comes with; `update` is a data 
 | 16.402.12 | 16.402.15 | `67d4a2de5d141b69d86536850082a9ba5b937459` | 16.426.18 | update | 2026-09-25 | not known |
 | 16.402.17 | 16.402.18 | `8aa8015226b0062c7e16a793522de91e564ffdaf` | 16.426.20 | update | 2026-10-04 | not known |
 | 16.402.17 | 16.402.19 | `7e76080b5dc3b2cfaf74795093e4ac5e39cb61ec` | 16.426.22 | update | 2026-10-06 | [Season 88 - RoyaleAPI](https://royaleapi.com/blog/season-88-balance-final-october-2026)<br>[Season 88 - riggedroyale](https://riggedroyale.com/blog/clash-royale-balance-changes-october-2026) |
+| 16.402.14 | 16.402.21 | `c99947391d7d95cc51a894935c370e4f4d14014b` | 16.426.24 | update | 2026-10-09 | not known |
 
 ## One data set, two labels
 
