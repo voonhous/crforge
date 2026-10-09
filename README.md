@@ -10,6 +10,16 @@ A deterministic Clash Royale battle simulator in Java. Its battle core plays a b
   <img src="docs/assets/debug-visualizer.gif" alt="Debug visualizer showing a simulated battle" width="320">
 </p>
 
+## Why a tick-accurate simulator
+
+Clash Royale battles turn on small margins: a troop that retargets one step later, a projectile that lands one tick after a tower dies, a spell that catches a unit at the edge of its radius. A simulator that only approximates the game (hand-tuned stats, floating point time, mechanics guessed from videos) drifts from the real battle within seconds, and the drift compounds. An agent trained on such a simulator learns the simulator's quirks rather than the game, and results from different simulators cannot be compared.
+
+The game itself is no substitute: it cannot be run headless, stepped, forked or replayed at the scale machine learning needs. A simulator that gives the same battle as the game, step for step, from the same inputs, can stand in for it: train and evaluate agents offline, label recorded replays, and run experiments anyone can reproduce.
+
+## Goal
+
+crforge aims to be that simulator for AI and ML research on Clash Royale: an open, deterministic and accurate 1v1 battle engine, with evolutions, heroes and champions in scope. Accuracy is measured, not assumed: every recorded reference battle is either matched tick for tick, or its first divergence or refusal is recorded. On top of the battle core, the plan is a reinforcement learning environment and tooling to learn from recorded replays.
+
 ## Features
 
 - **The game's own data**: units, projectiles, buffs, area effects, actions and expressions are read from the game's tables, in their own units and under their own column names; a column or class the battle core does not model is refused, never guessed
