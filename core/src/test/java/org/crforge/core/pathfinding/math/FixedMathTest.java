@@ -107,6 +107,37 @@ class FixedMathTest {
     @Test
     void rejectsNegativeInput() {
       assertThatThrownBy(() -> FixedMath.isqrt(-1)).isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> FixedMath.isqrt(-1L)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "isqrt({0}L) = {1}")
+    @CsvSource({
+      "0, 0",
+      "1, 1",
+      "2, 1",
+      "3, 1",
+      "4, 2",
+      "2147483647, 46340",
+      "2147483648, 46340",
+      "4294967295, 65535",
+      "4294967296, 65536",
+      "9223372030926249000, 3037000498",
+      "9223372030926249001, 3037000499",
+      "9223372036854775807, 3037000499"
+    })
+    void isTheFloorOfTheExactRootOverSixtyFourBits(long n, long expected) {
+      assertThat(FixedMath.isqrt(n)).isEqualTo(expected);
+    }
+
+    @Test
+    void isExactAroundSixtyFourBitPerfectSquares() {
+      // Roots spread over the whole 64-bit range: every square, and its neighbours, must land.
+      for (long root = 46341; root <= 3037000499L; root += 9973) {
+        long square = root * root;
+        assertThat(FixedMath.isqrt(square)).isEqualTo(root);
+        assertThat(FixedMath.isqrt(square - 1)).isEqualTo(root - 1);
+        assertThat(FixedMath.isqrt(square + 1)).isEqualTo(root);
+      }
     }
   }
 

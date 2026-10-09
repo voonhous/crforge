@@ -84,9 +84,7 @@ public final class FixedMath {
   }
 
   /**
-   * Floor of the exact square root of a non-negative value, computed with integer arithmetic. A
-   * plain {@code (int) Math.sqrt(n)} is not a safe substitute near the top of the 32-bit range
-   * because the double conversion can round the root up; the correction loops below remove that.
+   * Floor of the exact square root of a non-negative value, computed with integer arithmetic only.
    *
    * @throws IllegalArgumentException if {@code n} is negative
    */
@@ -94,12 +92,34 @@ public final class FixedMath {
     if (n < 0) {
       throw new IllegalArgumentException("isqrt of a negative value: " + n);
     }
-    int root = (int) Math.sqrt(n);
-    while ((long) root * root > n) {
-      root--;
+    return (int) isqrt((long) n);
+  }
+
+  /**
+   * Floor of the exact square root of a non-negative 64-bit value, computed with integer arithmetic
+   * only, so no floating-point rounding can enter the result.
+   *
+   * <p>Newton's iteration {@code x = (x + n / x) / 2} falls monotonically toward the root when it
+   * starts above it, and stops at the floor of the root the first time a step fails to decrease.
+   * The start is the smallest power of two whose square is at least {@code n}, which bounds every
+   * intermediate value well inside the 64-bit range.
+   *
+   * @throws IllegalArgumentException if {@code n} is negative
+   */
+  public static long isqrt(long n) {
+    if (n < 0) {
+      throw new IllegalArgumentException("isqrt of a negative value: " + n);
     }
-    while ((long) (root + 1) * (root + 1) <= n) {
-      root++;
+    if (n < 2) {
+      return n;
+    }
+    // Half the bit length of n - 1, rounded up: 2^shift is at least the root.
+    int shift = (Long.SIZE - Long.numberOfLeadingZeros(n - 1) + 1) / 2;
+    long root = 1L << shift;
+    long next = (root + n / root) >> 1;
+    while (next < root) {
+      root = next;
+      next = (root + n / root) >> 1;
     }
     return root;
   }

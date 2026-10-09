@@ -859,24 +859,12 @@ public class CharacterEntity extends WorldEntity {
     view.setPrevY(fromY);
     long dx = ringX - fromX;
     long dy = ringY - fromY;
-    movement.setBlockCountdown(isqrt(dx * dx + dy * dy) / DEATH_PUSHBACK_STEP);
+    movement.setBlockCountdown((int) (FixedMath.isqrt(dx * dx + dy * dy) / DEATH_PUSHBACK_STEP));
     movement.setPushbackBudget(DEATH_PUSHBACK_STEP);
   }
 
   /** One step of a death spawn child's flight back to its ring point, in game units. */
   private static final int DEATH_PUSHBACK_STEP = 250;
-
-  /** The integer square root, rounded down. */
-  private static int isqrt(long value) {
-    long root = (long) Math.sqrt((double) value);
-    while (root * root > value) {
-      root--;
-    }
-    while ((root + 1) * (root + 1) <= value) {
-      root++;
-    }
-    return (int) root;
-  }
 
   /**
    * Hands a played unit to its tunnel, as the construction does in place of its start: the level
