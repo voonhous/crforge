@@ -115,7 +115,8 @@ class DamageApplicationTest {
   }
 
   @Test
-  @DisplayName("a held battle and an ended battle both stop the damage")
+  @DisplayName(
+      "a held battle and an ended battle both stop the damage; the ended battle's hit is accepted")
   void aHeldBattleStopsTheDamage() {
     DamageQueries held =
         new DamageQueries() {
@@ -134,8 +135,9 @@ class DamageApplicationTest {
 
     assertThat(DamageApplication.damage(hitPoints, 202, 0, 0, 0, held))
         .isEqualTo(DamageResult.NOTHING);
+    // The subtraction refuses the hit, but the bookkeeping that called it accepts it.
     assertThat(DamageApplication.damage(hitPoints, 202, 0, 0, 0, ended))
-        .isEqualTo(DamageResult.NOTHING);
+        .isEqualTo(DamageResult.ENDED);
     assertThat(hitPoints.getHitPoints()).isEqualTo(1000);
   }
 

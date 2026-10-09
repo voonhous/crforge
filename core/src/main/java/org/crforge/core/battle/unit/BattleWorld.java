@@ -5263,8 +5263,9 @@ public class BattleWorld implements HolderPasses {
         target.die(source);
       }
       // The game applies a buff on damage at the drain, so it applies the source's after a typed
-      // hit it lets through as well; no reference holds a typed hit from such a source.
-      if (result.landed() && source != null && source.getData().buffOnDamage() != null) {
+      // hit it lets through as well, one after the battle's end included; no reference holds a
+      // typed hit from such a source.
+      if (result.accepted() && source != null && source.getData().buffOnDamage() != null) {
         throw new UnsupportedOperationException(
             source.name() + " deals a typed hit with a BuffOnDamage, not modelled");
       }
@@ -5363,7 +5364,7 @@ public class BattleWorld implements HolderPasses {
     if (result.died()) {
       target.die(areaSource != null ? areaSource : source);
     }
-    if (result.landed() && source != null && source.getData().buffOnDamage() != null) {
+    if (result.accepted() && source != null && source.getData().buffOnDamage() != null) {
       throw new UnsupportedOperationException(
           source.name() + " deals a damage-taking action's hit with a BuffOnDamage, not modelled");
     }
@@ -7687,15 +7688,23 @@ public class BattleWorld implements HolderPasses {
    * A queued direct hit's buff on damage, as the drain deals the hit: applied right after the
    * damage, the hit's death and its reflect, when the damage entry let the hit through (the drain
    * applies it only for a record its bookkeeping accepted), a hit that kills included; nothing for
-   * an attacker whose row sets none, or a target that has left the battle.
+   * an attacker whose row sets none, or a target that has left the battle. The bookkeeping accepts
+   * a hit after the battle's end too, which takes nothing; the drain would apply the buff on damage
+   * of such a hit as well, which no reference holds, so it is refused.
    *
    * @param attacker the entity whose hit it is
    * @param target the view the hit resolved against
    * @param result what the hit's damage did
    */
   private void drainBuffOnDamage(WorldEntity attacker, TargetView target, DamageResult result) {
-    if (!result.landed() || attacker.getData().buffOnDamage() == null) {
+    if (!result.accepted() || attacker.getData().buffOnDamage() == null) {
       return;
+    }
+    if (!result.landed()) {
+      throw new UnsupportedOperationException(
+          attacker.name()
+              + " lands a direct hit with a BuffOnDamage after the battle's end, which is not"
+              + " modelled");
     }
     WorldEntity entity = known.get(target.getEntity());
     if (entity != null) {
@@ -7739,7 +7748,8 @@ public class BattleWorld implements HolderPasses {
    * A queued projectile hit's target buff, as the drain deals the hit: right after the damage, the
    * hit's death and its reflect, to the victim of that one hit, for a projectile whose row sets a
    * target buff and does not apply it before the damage, when the damage entry let the hit through
-   * - a hit that kills included. It reaches the victims of an area impact one by one, as the drain
+   * - a hit that kills included, and one after the battle's end, which the bookkeeping accepts
+   * though it takes nothing. It reaches the victims of an area impact one by one, as the drain
    * deals their shares, so only what the area damaged takes it. Applied with the projectile as the
    * source, at its level and for its side, for the row's buff time at that level; the drain asks
    * nothing of the victim's dash immunity, which the damage entry has answered already.
@@ -7755,7 +7765,7 @@ public class BattleWorld implements HolderPasses {
   private void drainProjectileBuff(
       ProjectileEntity projectile, WorldEntity victim, DamageResult result) {
     ProjectileData data = projectile.getData();
-    if (!result.landed() || data.targetBuff() == null || data.applyBuffBeforeDamage()) {
+    if (!result.accepted() || data.targetBuff() == null || data.applyBuffBeforeDamage()) {
       return;
     }
     if (known.get(victim.getView()) != victim) {
