@@ -20,6 +20,8 @@ jobs:
 
     outputs:
       has-game-data: ${{ steps.lock.outputs.available }}
+      compatible: ${{ steps.lock.outputs.compatible }}
+      others: ${{ steps.lock.outputs.others }}
 
     steps:
       - uses: actions/checkout@v7
@@ -34,13 +36,23 @@ jobs:
             exit 1
           fi
 
-      # crforge-data.lock pins the data repository's commit, so a change and its data agree. The
-      # unit tests pin values of the lock's version, so they read that version's tables.
+      # crforge-data.lock pins the data repository's commit, so a change and its data agree. This
+      # job runs the unit tests on the tables of the lock's version; the data-versions job runs
+      # them on the tables of every other compatible version, the reference job runs the
+      # reference battles of each compatible version.
       - name: Read the data lock
         id: lock
         run: |
+          version=$(sed -n 's/^version=//p' crforge-data.lock)
+          compatible=$(sed -n 's/^compatible=//p' crforge-data.lock)
+          if ! printf '%s\n' $compatible | grep -qxF "$version"; then
+            echo "::error::crforge-data.lock: version $version is not in compatible ($compatible)"
+            exit 1
+          fi
           echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
-          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "compatible=$(printf '%s\n' $compatible | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
+          echo "others=$(printf '%s\n' $compatible | grep -vxF "$version" | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Check out the game tables
@@ -73,33 +85,27 @@ jobs:
       - name: Run Tests
         run: ./gradlew test
 
-  # Every recorded reference battle of the lock's data version at the locked data commit, each case
-  # held to conformance/reference-expectations/<version>.json. The cases are split across the shards
-  # of the matrix.
-  reference:
+  # The unit tests on the tables of every compatible data version other than the lock's version,
+  # which the build job covers. The versions share the client's battle rules and the tests pin no
+  # game data, so they pass on each one unchanged.
+  data-versions:
     needs: build
-    if: needs.build.outputs.has-game-data == 'true'
+    if: needs.build.outputs.has-game-data == 'true' && needs.build.outputs.others != '[]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        shard: [ 0, 1 ]
-
-    env:
-      CRFORGE_REFERENCES_SHARD: ${{ matrix.shard }}
-      CRFORGE_REFERENCES_SHARDS: 2
+        version: ${{ fromJson(needs.build.outputs.others) }}
 
     steps:
       - uses: actions/checkout@v7
 
       - name: Read the data lock
         id: lock
-        run: |
-          echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
-          echo "version=$(sed -n 's/^version=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+        run: echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
 
-      - name: Check out the game data
+      - name: Check out the game tables
         uses: actions/checkout@v7
         with:
           repository: ${{ vars.GAME_TABLES_REPOSITORY }}
@@ -107,10 +113,8 @@ jobs:
           ssh-key: ${{ secrets.GAME_TABLES_KEY }}
           path: game-tables
 
-      - name: Point the reference test at the game data
-        run: |
-          echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
-          echo "CRFORGE_REFERENCES=${{ github.workspace }}/game-tables/references/${{ steps.lock.outputs.version }}" >> "$GITHUB_ENV"
+      - name: Point the tests at the game tables
+        run: echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ matrix.version }}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -123,13 +127,75 @@ jobs:
         with:
           gradle-version: wrapper
 
+      - name: Run Tests
+        run: ./gradlew test
+
+  # Every recorded reference battle of each compatible data version at the locked data commit, each
+  # case held to conformance/reference-expectations/<version>.json. A version without recorded
+  # references is skipped. The cases of a version are split across the shards of the matrix.
+  reference:
+    needs: build
+    if: needs.build.outputs.has-game-data == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.build.outputs.compatible) }}
+        shard: [ 0, 1 ]
+
+    env:
+      CRFORGE_REFERENCES_SHARD: ${{ matrix.shard }}
+      CRFORGE_REFERENCES_SHARDS: 2
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the data lock
+        id: lock
+        run: echo "commit=$(sed -n 's/^commit=//p' crforge-data.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the game data
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ref: ${{ steps.lock.outputs.commit }}
+          ssh-key: ${{ secrets.GAME_TABLES_KEY }}
+          path: game-tables
+
+      - name: Point the reference test at the game data
+        id: references
+        run: |
+          if [ ! -d "game-tables/references/${{ matrix.version }}" ]; then
+            echo "::notice::no reference battles of data version ${{ matrix.version }} at the locked commit; skipped"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "present=true" >> "$GITHUB_OUTPUT"
+          echo "CRFORGE_GAME_TABLES=${{ github.workspace }}/game-tables/${{ matrix.version }}" >> "$GITHUB_ENV"
+          echo "CRFORGE_REFERENCES=${{ github.workspace }}/game-tables/references/${{ matrix.version }}" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        if: steps.references.outputs.present == 'true'
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        if: steps.references.outputs.present == 'true'
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+
       - name: Run the reference battles
+        if: steps.references.outputs.present == 'true'
         run: ./gradlew :conformance:referenceTest
 
       - name: Upload the scorecard
-        if: always()
+        if: always() && steps.references.outputs.present == 'true'
         uses: actions/upload-artifact@v7
         with:
-          name: reference-scorecard-${{ steps.lock.outputs.version }}-${{ matrix.shard }}
+          name: reference-scorecard-${{ matrix.version }}-${{ matrix.shard }}
           path: conformance/build/reference-scorecard/
           if-no-files-found: warn

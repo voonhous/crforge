@@ -80,14 +80,14 @@ The expectations file records the outcome every case has today, mismatches inclu
   -Pcrforge.references=<data checkout>/references/<version>
 ```
 
-`./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of the version the lock names (`version`), split into shards.
+`./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of every data version the lock lists in `compatible` that has them, each version split into shards and held to its own expectations file.
 
 ## Moving to a new data version
 
-crforge works on one data version at a time, the lock's `version`.
+crforge works on one data version at a time, the lock's `version`, and tests every data version of the client range it follows, the lock's `compatible`.
 
-1. Add the new version's tables to the game data repository, record the new version's references there (the scenarios are reused), and move `crforge-data.lock` to that commit and version; let the battle core play the new version (`GameVersions`). The unit tests read the lock's tables and hard-code no game data, so they need no edit unless the new version changes a behaviour the battle core must port, which is a change of its own.
+1. Add the new version's tables to the game data repository, record the new version's references there (the scenarios are reused), and move `crforge-data.lock` to that commit and version, adding the version to `compatible`; let the battle core play the new version (`GameVersions`). The unit tests read the lock's tables and hard-code no game data, so they need no edit unless the new version changes a behaviour the battle core must port, which is a change of its own.
 2. If the new version's replays differ, list them in `CommandTypes` and `ReplayFormat` (in `core`); until then its replays are refused as unsupported, never read by another version's rules.
-3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json`, review it with the change, and remove the old version's file.
+3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json` and review it with the change. The older versions of the same client range stay in `compatible` with their files; when a required client update starts a new range, the old range's versions leave `compatible` and their files are removed.
 
 See [Game tables and reference battles](../docs/game-tables.md) for the folder layout and the settings.
