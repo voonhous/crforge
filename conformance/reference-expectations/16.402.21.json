@@ -372,7 +372,7 @@
   "spell-interaction-v2/spell_vines_into_push": {"outcome": "diagnostic_match"},
   "spell-interaction-v2/spell_zap_into_push": {"outcome": "diagnostic_match"},
   "state-grid-v2/grid_clone_over_bandit_dash": {"outcome": "diagnostic_match"},
-  "state-grid-v2/grid_clone_over_goblingiant_riders": {"outcome": "unsupported", "feature": "cmd0_0 is cloned with a cloned version, riders, a deploy countdown or a run of an action listed, which is not modelled", "input": "the run"},
+  "state-grid-v2/grid_clone_over_goblingiant_riders": {"outcome": "diagnostic_match"},
   "state-grid-v2/grid_fireball_on_fisherman_self_pull": {"outcome": "diagnostic_match"},
   "state-grid-v2/grid_log_over_bandit_dash_end": {"outcome": "diagnostic_match"},
   "state-grid-v2/grid_log_under_megaknight_jump": {"outcome": "diagnostic_match"},

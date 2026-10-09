@@ -7983,20 +7983,25 @@ public class BattleWorld implements HolderPasses {
    * and joins the live list at the tick's closing cleanup. It takes a copy of every buff the unit
    * carries, the Clone's own buff, just put on the unit, among them, with the time each has left.
    * Then the two move apart: the clone back toward its own side, and the unit, set up as a clone
-   * too unless it dashes, forward.
+   * too unless it dashes, forward. Last, for a unit that carries riders, each rider in their order
+   * is cloned the same way, through this creator - its clone made on the rider's point, the rider
+   * set up as a clone and moving apart too - and its clone attached to the unit's clone on the
+   * rider's angle. A clone never enters the deploying state, so the unit's clone makes no riders of
+   * its own.
    *
    * @param original the unit
    * @param instigator the Clone's area effect
    * @param action the Clone's action
+   * @return the clone
    */
-  void makeClone(CharacterEntity original, AreaEffectEntity instigator, Clone action) {
+  CharacterEntity makeClone(CharacterEntity original, AreaEffectEntity instigator, Clone action) {
     UnitData row = original.getData();
     GridEntity at = original.getView();
     int fromX = at.getX();
     int fromY = at.getY();
     int made = cloneCounts.merge(original.name(), 1, Integer::sum) - 1;
     CharacterEntity clone =
-        CharacterEntity.spawned(
+        CharacterEntity.cloned(
             this,
             row,
             original.name() + "_clone" + made,
@@ -8026,6 +8031,18 @@ public class BattleWorld implements HolderPasses {
       original.enterCloneSetup();
       original.startCloneMove(fromX, fromY, action);
     }
+    if (row.spawnAttach()) {
+      List<CharacterEntity> riders = List.copyOf(original.riders());
+      for (int i = 0; i < riders.size(); i++) {
+        CharacterEntity rider = riders.get(i);
+        CharacterEntity riderClone = makeClone(rider, instigator, action);
+        riderClone.attachTo(clone, rider.getAttachAngle());
+        for (WorldObserver observer : observers) {
+          observer.riderAttached(tick, clone, riderClone, i, rider.getAttachAngle());
+        }
+      }
+    }
+    return clone;
   }
 
   /**
