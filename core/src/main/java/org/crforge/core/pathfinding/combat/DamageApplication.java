@@ -45,7 +45,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " lower the amount through the battle's damage reduction before the floor at one,"
             + " held by ability_monk, random_battle16_s0048 and knight_evolved_third_play. The"
             + " entry lowers a typed hit and a buff's damage over time by that reduction again"
-            + " after their own stage did, held by DamageEntryReductionTest. Supplied, not"
+            + " after their own stage did, held by DamageEntryReductionTest. A buff's damage"
+            + " over time refused on a hidden target, held by tv-replays-v3/tv_replay_001 (a"
+            + " burning Mighty Miner routing across the arena). Supplied, not"
             + " settled: nothing is untouchable or immune. Not modelled: the death handler, the"
             + " credit to the attacker, an absorber, the shield break, a target both sides may"
             + " damage, the presentation and the actions a hit runs on arrival. The reflected"
@@ -112,18 +114,20 @@ public final class DamageApplication {
   }
 
   /**
-   * Deals a hit of damage over time from a buff: refused only where damage is forbidden; an amount
-   * of at least 1 is lowered by the target's damage reduction once more, as the entry every queued
-   * hit passes lowers it, and floored at 1; then the bookkeeping and the subtraction as for an
-   * ordinary hit, with no dedupe id and no heading. The bookkeeping does not ask whether the target
-   * is hidden, so a hidden target takes it.
+   * Deals a hit of damage over time from a buff: refused where damage is forbidden and when the
+   * target is hidden, since the bookkeeping every queued hit passes asks the hidden test of it, the
+   * hit not being one that reaches hidden objects; an amount of at least 1 is lowered by the
+   * target's damage reduction once more, as that entry lowers it, and floored at 1; then the
+   * bookkeeping and the subtraction as for an ordinary hit, with no dedupe id and no heading. So a
+   * Mighty Miner routing across the arena hidden takes none of the burn it carries, and takes it
+   * again once it lands.
    *
    * @param hitPoints the target's hit points
    * @param damage the amount, after the target's damage reduction the buff's own hit took off
    * @param queries what the chain asks about the target and the battle
    */
   public static DamageResult overTime(HitPoints hitPoints, int damage, DamageQueries queries) {
-    if (queries.damageForbidden()) {
+    if (queries.damageForbidden() || queries.hidden()) {
       return DamageResult.NOTHING;
     }
     return bookkeeping(hitPoints, entryReduction(damage, queries), 0, 0, 0, queries);

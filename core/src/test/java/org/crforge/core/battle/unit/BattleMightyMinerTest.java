@@ -39,6 +39,15 @@ class BattleMightyMinerTest {
   /** The top side's princess tower in the right lane, as the arena names it. */
   private static final String RIGHT_TOWER = "PrincessTower_1_2";
 
+  /** A buff that burns, the evolved Firecracker's fireworks. */
+  private static final String BURN = "FirecrackerFireworks_EV1";
+
+  /** How long the burn is applied for: longer than any walk across and its landing. */
+  private static final int BURN_TIME_MS = 60000;
+
+  /** The milliseconds of one battle step. */
+  private static final int STEP_MS = 50;
+
   /** A Mighty Miner placed for the bottom side, with each lane switch it made. */
   private static final class Scene {
     final Standard1v1Battle match;
@@ -170,6 +179,39 @@ class BattleMightyMinerTest {
         .as("and the nearer by the true one")
         .isLessThan(rightApprox * rightApprox);
     assertThat(scene.miner.getUnit().targeting().getReference()).isSameAs(king.getTargetView());
+  }
+
+  @Test
+  @DisplayName(
+      "a burn the Mighty Miner carries deals nothing while it routes across hidden, and deals"
+          + " again once it lands")
+  void aBurnSkipsTheHiddenMiner() {
+    Scene scene = new Scene(GameData.tables(), 14500, 10000);
+    scene.switchLanes();
+    assertThat(scene.miner.hidden()).isTrue();
+    // A burn with a short hit frequency, on for longer than the walk across and the landing.
+    BuffData burn = scene.match.getWorld().getRecords().buff(BURN);
+    assertThat(burn.damagePerSecond()).as("a burn that deals damage").isPositive();
+    scene.miner.getBuffs().apply(burn, BURN_TIME_MS, scene.miner.getPackedLevel(), null, 1);
+    int full = scene.miner.getHitPoints().getHitPoints();
+
+    int hiddenTicks = 0;
+    while (scene.miner.getView().getState() == GridEntityState.INGAME_PATHFIND) {
+      scene.step();
+      hiddenTicks++;
+      assertThat(scene.tick).as("the Mighty Miner lands").isLessThan(TICKS);
+    }
+    // The walk across outlasts several of the burn's hits, none of which lands.
+    assertThat(hiddenTicks * STEP_MS).isGreaterThan(2 * burn.hitFrequency());
+    assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
+
+    for (int i = 0; i * STEP_MS <= burn.hitFrequency(); i++) {
+      scene.step();
+    }
+    assertThat(scene.miner.hidden()).isFalse();
+    assertThat(scene.miner.getHitPoints().getHitPoints())
+        .as("the burn deals again once the Mighty Miner stands visible")
+        .isLessThan(full);
   }
 
   @Test
