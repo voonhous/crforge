@@ -2271,9 +2271,11 @@ public final class ActionRows {
      * A shape selector's columns: its circle, its filter, how it scores, its delays and their
      * actions, whether it picks each object once, which by default it does, whether it waits for a
      * target, its pause tags, its actions on the owner by the pick's side and whatever the side,
-     * whether those take the owner as their cause, and its finishing action. A row that waits at
-     * most a while, scores by maximum hit points, has fewer actions than delays, is a singleton or
-     * chains a next action is refused; so is one without a filter, or whose shape is not a circle.
+     * whether those take the owner as their cause, and its finishing action. The circle's
+     * CheckOrigin narrows what its query found to the objects whose centre lies within it. A row
+     * that waits at most a while, scores by maximum hit points, has fewer actions than delays, is a
+     * singleton or chains a next action is refused; so is one without a filter, or whose shape is
+     * not a circle.
      */
     private ShapeSelector shapeSelector(String name, ActionRow shared, JsonNode f) {
       for (String column : List.of("MaxWaitTimeForTarget", "Singleton", "NextAction")) {
@@ -2317,6 +2319,7 @@ public final class ActionRows {
               .targetSelectionMode(selection)
               .targetFilter(records.filter(f.get("TargetFilter").asText()))
               .shapeRadius(records.circleRadius(text(f, "Shape", "")))
+              .checkOrigin(records.circleChecksOrigin(text(f, "Shape", "")))
               .delaysMs(delays)
               .actions(actions)
               .waitForTarget(bool(f, "WaitForTarget", false))

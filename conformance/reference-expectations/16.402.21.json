@@ -440,7 +440,7 @@
   "tv-replays-v3/tv_replay_014": {"outcome": "unsupported", "feature": "Vines_Air_To_Ground ends on cmd27_2, resetting its path, which is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_015": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_016": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_017": {"outcome": "mismatch", "first_divergent_tick": 3112, "path": "$.entities[7].hp"},
+  "tv-replays-v3/tv_replay_017": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_018": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_020": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},

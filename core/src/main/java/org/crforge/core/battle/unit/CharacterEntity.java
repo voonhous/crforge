@@ -4625,8 +4625,8 @@ public class CharacterEntity extends WorldEntity {
    * What a shape selector's run on the character asks of the battle, as the Giant hero form's slap
    * selector runs on itself: the battle tick, the circle around its point that tests buildings by
    * their squares, an object's hit points and shield or its squared distance from the character,
-   * its own tag word, side and x and a pick's x, the holder of a pick, and the actions it
-   * schedules, each with the cause and the context the run hands it: on what it picked, and on
+   * its own tag word, side and point and where a pick stands, the holder of a pick, and the actions
+   * it schedules, each with the cause and the context the run hands it: on what it picked, and on
    * itself.
    */
   @Override
@@ -4692,8 +4692,18 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
+      public int ownerY() {
+        return getView().getY();
+      }
+
+      @Override
       public int x(int id) {
         return ((WorldEntity) world.liveObject(id)).x();
+      }
+
+      @Override
+      public int y(int id) {
+        return ((WorldEntity) world.liveObject(id)).y();
       }
 
       @Override
