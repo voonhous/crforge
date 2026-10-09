@@ -441,7 +441,7 @@
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "proj_4000297 (Cannon_EV1_barrage_projectile) flies within Deflect_3000056 (Deflect), whose deflection of it is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "cmd70_0_0_0_0's SkeletonDuplication_EV1 fires with its group chain at the limit of 8, which holds the spawn and is not modelled", "input": "the run"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_013": {"outcome": "unsupported", "feature": "the tiebreaker's clearing of ProjectileEntity 4000592, which the holder removes at once, is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_013": {"outcome": "mismatch", "first_divergent_tick": 3447, "path": "$.entities.length"},
   "tv-replays-v3/tv_replay_014": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_015": {"outcome": "mismatch", "first_divergent_tick": 4555, "path": "$.entities[25].x"},
   "tv-replays-v3/tv_replay_016": {"outcome": "diagnostic_match"},

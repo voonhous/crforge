@@ -1850,6 +1850,21 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Removes an object a tiebreaker's clearing reached at once, outside any cleanup: a projectile,
+   * an area effect, whose life is ended first, or a character without hit points. It leaves the
+   * holder's live list as a cleanup's removal takes it, every listed entity told of it, so the
+   * object listed after it moves into its place.
+   *
+   * @param entity the object
+   */
+  public void clearingRemoval(BattleEntity entity) {
+    if (entity instanceof AreaEffectEntity areaEffect) {
+      areaEffect.end();
+    }
+    holder.removeAtOnce(entity);
+  }
+
+  /**
    * Drains a tower by one step of a tiebreaker, which passes the battle's holds, with no attacker.
    *
    * @param target the tower

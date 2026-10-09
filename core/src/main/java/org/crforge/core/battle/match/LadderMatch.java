@@ -9,6 +9,8 @@ import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.unit.AreaEffectEntity;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.KingElixir;
@@ -71,13 +73,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  *
  * <p>A Ladder match allows no draws: when the time is up with equal crowns, the tiebreaker replaces
  * the step. Each of its steps adds 50 to its time, and from its first the battle refuses every
- * ordinary hit. Its first 30 steps clear the field - every unit and building is killed, the crown
- * towers left standing - and run the update, with its entity tick, only on a step whose clearing
- * killed something; then the battle waits, running only the commands, every play refused, until the
- * step that begins at 3250 ms. From then each step drains every tower of both sides by one step the
- * lowest tower's hit points pick: 1 below 21, 10 below 200, 20 below 500, 40 below 1000, else 50.
- * When a tower reaches 0, or the two sides' lowest towers are equal, the holder is cleaned up, and
- * the next step ends the match by crowns: equal lowest towers end it a draw.
+ * ordinary hit. Its first 30 steps clear the field - every projectile, area effect and character
+ * without hit points is removed at once, every other unit and building is killed, the crown towers
+ * left standing - and run the update, with its entity tick, only on a step whose clearing removed
+ * or killed something; then the battle waits, running only the commands, every play refused, until
+ * the step that begins at 3250 ms. From then each step drains every tower of both sides by one step
+ * the lowest tower's hit points pick: 1 below 21, 10 below 200, 20 below 500, 40 below 1000, else
+ * 50. When a tower reaches 0, or the two sides' lowest towers are equal, the holder is cleaned up,
+ * and the next step ends the match by crowns: equal lowest towers end it a draw.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -93,8 +96,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " timeline_tiebreak_tower_hp, timeline_tiebreak_equal_arrows and"
             + " timeline_overtime_crown: the tiebreaker's steps, its idle window, the drain and"
             + " its steps, its end by a fallen tower and by equal towers, the winner and the"
-            + " draw; by cg_elixir_collector_played and card_ElixirGolem: the kings' elixir a"
-            + " collector and a death pay into; by golden-gaps-v1/mirror_after_troop and"
+            + " draw; by a battle recorded for it, with two volleys, a Fireball, a Poison and a"
+            + " Bomb Tower's bomb listed as the tiebreaker begins: the clearing's removal at once"
+            + " of a projectile, of an area effect and of a character without hit points, each"
+            + " leaving the object after it for the next step; by cg_elixir_collector_played and"
+            + " card_ElixirGolem: the kings' elixir a collector and a death pay into; by"
+            + " golden-gaps-v1/mirror_after_troop and"
             + " mirror_after_spell: the Mirror's item, its gates, its spend and its cycle, the"
             + " card repeated one level up, and the last card kept; by knight_evolved_third_play"
             + " and the hero reference battles (hero_giant, deck_hero_and_champion): the slot"
@@ -109,9 +116,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " alone: the pick at its boundary, the projection that moves no shipped pick, and a"
             + " variant play the elixir does not cover. Not held apart: the last card and the"
             + " copy a Mirror reads, which differ only in a tick a play of its side ran, a play"
-            + " the Mirror refuses. Not modelled, and refused: a projectile, an area effect or an"
-            + " entity without hit points the clearing reaches, which the holder removes at once;"
-            + " a Mirror of a champion, and of a variant card, which repeats the option it was"
+            + " the Mirror refuses. Not modelled, and refused: a character of the neutral side,"
+            + " which the clearing only counts, and the stand-in owner of actions, which stands"
+            + " for an object the battle does not have; a Mirror of a champion, and of a variant card, which repeats the option it was"
             + " played as; slot flags on a spell, a building, the Mirror or a variant card, and"
             + " two copies of an evolution slot's card in a deck, which no reference holds; and a"
             + " play of an evolution slot's card while another play of it is due, whose item the"
@@ -145,6 +152,9 @@ public final class LadderMatch implements BattleMode {
 
   /** The width of a card item's level field, which a Mirror's level must fit in. */
   private static final int LEVEL_FIELD_BITS = 7;
+
+  /** The side of an object that belongs to neither player. */
+  private static final int NEUTRAL_SIDE = 100;
 
   /** The tiebreaker clears the field on a step whose time before it is at most this. */
   private static final int CLEARING_UNTIL_MS = 1450;
@@ -436,25 +446,55 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * The tiebreaker's clearing: every character but a crown tower is resumed and killed, with no
-   * attacker. A projectile, an area effect and a character without hit points would be removed from
-   * the holder at once, which is not modelled.
+   * The tiebreaker's clearing: one walk over the holder's live list in id order, from the first
+   * object of the area-effect kind's band. A projectile is removed from the holder at once; an area
+   * effect has its life ended and is removed at once; a character without hit points is removed at
+   * once; a crown tower is left standing; every other character is resumed and killed, with no
+   * attacker, and leaves at the next cleanup. A removal moves every object after it up one place
+   * while the walk still steps on, so the object right after a removed one is not reached in this
+   * step and waits for the next.
    *
-   * @return how many it killed
+   * <p>A character of the neutral side, which the clearing only counts, and the stand-in owner of
+   * actions, which stands for an object the battle does not have, are refused.
+   *
+   * @return how many it removed or killed
    */
   private int clearField() {
+    List<BattleEntity> live = world.getHolder().entities();
     int count = 0;
-    for (BattleEntity entity : List.copyOf(world.getHolder().entities())) {
+    int index = 0;
+    while (index < live.size()
+        && live.get(index).getId() < BattleEntity.KIND_AREA_EFFECT * BattleEntity.IDS_PER_KIND) {
+      index++;
+    }
+    for (; index < live.size(); index++) {
+      BattleEntity entity = live.get(index);
+      if (entity instanceof ProjectileEntity || entity instanceof AreaEffectEntity) {
+        world.clearingRemoval(entity);
+        count++;
+        continue;
+      }
       if (entity instanceof TowerEntity) {
         continue;
       }
-      if (!(entity instanceof CharacterEntity character) || character.getHitPoints() == null) {
+      if (!(entity instanceof CharacterEntity character)) {
         throw new UnsupportedOperationException(
             "the tiebreaker's clearing of "
                 + entity.getClass().getSimpleName()
                 + " "
                 + entity.getId()
-                + ", which the holder removes at once, is not modelled");
+                + ", which stands in for an object the battle does not have, is not modelled");
+      }
+      if (character.getHitPoints() == null) {
+        world.clearingRemoval(character);
+        count++;
+        continue;
+      }
+      if (character.side() == NEUTRAL_SIDE) {
+        throw new UnsupportedOperationException(
+            "the tiebreaker's clearing of the neutral "
+                + character.name()
+                + ", which it only counts, is not modelled");
       }
       world.clearingKill(character);
       count++;

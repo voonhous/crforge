@@ -285,6 +285,40 @@ public class EntityHolder {
   }
 
   /**
+   * Removes a listed entity at once, outside any cleanup, as the battle holder's immediate removal
+   * does for a tiebreaker's clearing: whether it is removable is not asked. The entity is found in
+   * the live list by its id; one not listed there, a waiting one among them, is left alone. It then
+   * leaves as a cleanup's removal takes one entity: its own running actions hear that it leaves, it
+   * leaves the live list - every entity after it moves up one place - every entity still listed
+   * hears of it, its own running actions are stopped and the side lists are told. Must not be
+   * called while a tick runs.
+   *
+   * @param entity the entity
+   * @return true when it was listed and removed
+   */
+  public boolean removeAtOnce(BattleEntity entity) {
+    checkState(!ticking, "an entity is not removed at once while a tick runs");
+    int index =
+        Collections.binarySearch(live, entity, Comparator.comparingInt(BattleEntity::getId));
+    if (index < 0 || live.get(index) != entity) {
+      return false;
+    }
+    entity.actions().leaving();
+    live.remove(index);
+    List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
+    listed.addAll(live);
+    for (BattleEntity other : listed) {
+      other.entityRemoved(entity);
+      other.actions().objectLeft(entity.getId());
+      other.actions().instigatorLeft(entity.actions());
+      other.parentRemoved(entity);
+    }
+    entity.actions().released();
+    passes.entityRemoved(entity);
+    return true;
+  }
+
+  /**
    * The notice of a waiting entity that leaves before it was admitted: every waiting entity, the
    * leaving one among them, then the live list, hears of it, then the side lists.
    */

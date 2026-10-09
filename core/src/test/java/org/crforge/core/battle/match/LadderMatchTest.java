@@ -5,12 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.unit.AreaEffectEntity;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.battle.unit.WorldObserver;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +33,11 @@ class LadderMatchTest {
           "Valkyrie",
           "Barbarians",
           "Minions");
+
+  /** A deck with the spells the clearing tests cast. */
+  private static final List<String> SPELL_DECK =
+      List.of(
+          "Knight", "Archer", "Giant", "MiniPekka", "Musketeer", "Arrows", "Poison", "Fireball");
 
   /**
    * The tick the Ladder timeline's time is up on with the crowns equal: the end of its sections,
@@ -167,17 +176,127 @@ class LadderMatchTest {
   }
 
   @Test
-  @DisplayName("the clearing refuses an object the holder would remove at once")
-  void theClearingRefusesWhatItRemoves() {
+  @DisplayName(
+      "the clearing removes a projectile at once, and the object after a removed one waits for the"
+          + " next step")
+  void theClearingRemovesProjectilesAtOnce() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(SPELL_DECK, SPELL_DECK, 0, 0);
+    int timeUp = timeUpTick();
+    // A volley thrown from side 0's king across the arena is still in the air when the time is up.
+    battle.play(timeUp - 5, GameData.card("Arrows"), 1, 0, 9000, 22000, "volley");
+    stepTo(battle, timeUp + 1);
+    List<BattleEntity> flying = projectiles(battle);
+    assertThat(flying).as("the volley in the air").hasSizeGreaterThanOrEqualTo(3);
+
+    // Each removal moves the rest up one place while the walk steps on: every other one goes.
+    while (!flying.isEmpty()) {
+      battle.getBattle().step();
+      assertThat(projectiles(battle)).isEqualTo(everyOther(flying));
+      assertThat(match.isLastTicked()).as("the step removed something, so the update ran").isTrue();
+      flying = projectiles(battle);
+    }
+    battle.getBattle().step();
+    assertThat(match.isLastTicked()).as("nothing to clear, no update").isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "the clearing ends an area effect's life and removes it at once, so the projectile after it"
+          + " waits for the next step")
+  void theClearingRemovesAnAreaEffectAtOnce() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(SPELL_DECK, SPELL_DECK, 0, 0);
+    int timeUp = timeUpTick();
+    // Placed directly, as the hand need not hold the card.
+    battle.placeAreaEffect(timeUp - 10, "Poison", 1, 1, 9000, 16000, "poison");
+    battle.play(timeUp - 5, GameData.card("Arrows"), 1, 0, 9000, 22000, "volley");
+    stepTo(battle, timeUp + 1);
+    List<BattleEntity> listed = new ArrayList<>(battle.getWorld().getHolder().entities());
+    AreaEffectEntity poison = (AreaEffectEntity) listed.get(0);
+    List<BattleEntity> flying = projectiles(battle);
+    assertThat(flying).as("the volley in the air").hasSizeGreaterThanOrEqualTo(2);
+
+    battle.getBattle().step();
+    List<BattleEntity> after = battle.getWorld().getHolder().entities();
+    assertThat(after).doesNotContain(poison);
+    assertThat(poison.isRemovable()).as("its life ended").isTrue();
+    // The first projectile moved into the area effect's place as the walk stepped on.
+    assertThat(after).contains(flying.get(0));
+    assertThat(after).doesNotContain(flying.get(1));
+  }
+
+  @Test
+  @DisplayName(
+      "the clearing removes a character without hit points at once, so the unit after it is"
+          + " killed on the next step")
+  void theClearingRemovesACharacterWithoutHitPointsAtOnce() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(DECK, DECK, 0, 0);
+    int timeUp = timeUpTick();
+    UnitData bomb = GameData.unit("BombTowerBomb");
+    CharacterEntity dropped = battle.deploy(timeUp - 5, bomb, 11, 0, 9000, 9000);
+    CharacterEntity knight = battle.deploy(timeUp - 5, GameData.unit("Knight"), 11, 0, 3500, 9000);
+    List<String> kills = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void clearingKilled(int tick, WorldEntity target) {
+                kills.add(battle.getBattle().getTick() + " " + target.name());
+              }
+            });
+    stepTo(battle, timeUp + 1);
+    assertThat(dropped.getHitPoints()).as("a character without hit points").isNull();
+    assertThat(knight.getId()).isGreaterThan(dropped.getId());
+
+    battle.getBattle().step();
+    assertThat(battle.getWorld().getHolder().entities()).doesNotContain(dropped).contains(knight);
+    assertThat(kills).isEmpty();
+    battle.getBattle().step();
+    // The battle's tick counter during a step is the step's own: the second step of the tiebreaker.
+    assertThat(kills).containsExactly((timeUp + 2) + " Knight");
+    assertThat(battle.getWorld().getHolder().entities()).doesNotContain(knight);
+  }
+
+  @Test
+  @DisplayName("the clearing refuses the stand-in owner of actions")
+  void theClearingRefusesAStandIn() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.addActionOwner("owner", 0, 9000, 5000, 0);
-    while (battle.getBattle().getTick() < timeUpTick() + 1) {
-      battle.getBattle().step();
-    }
+    stepTo(battle, timeUpTick() + 1);
     assertThatThrownBy(() -> battle.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("clearing");
+  }
+
+  /** Steps the battle until its tick counter reaches a tick. */
+  private static void stepTo(Standard1v1Battle battle, int tick) {
+    while (battle.getBattle().getTick() < tick) {
+      battle.getBattle().step();
+    }
+  }
+
+  /** The projectiles in the holder's live list, in its order. */
+  private static List<BattleEntity> projectiles(Standard1v1Battle battle) {
+    List<BattleEntity> found = new ArrayList<>();
+    for (BattleEntity entity : battle.getWorld().getHolder().entities()) {
+      if (entity instanceof ProjectileEntity) {
+        found.add(entity);
+      }
+    }
+    return found;
+  }
+
+  /** The entries at the odd places of a list: what a walk that removes as it steps on leaves. */
+  private static List<BattleEntity> everyOther(List<BattleEntity> list) {
+    List<BattleEntity> kept = new ArrayList<>();
+    for (int i = 1; i < list.size(); i += 2) {
+      kept.add(list.get(i));
+    }
+    return kept;
   }
 
   @Test
