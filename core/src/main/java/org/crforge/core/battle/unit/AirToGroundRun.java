@@ -14,7 +14,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * transition, is held on the ground (2) for the whole less two transitions, and climbs (3) for the
  * transition. Each step of a phase pushes the height change of that step, for a unit with a
  * movement component, and every held step raises FORCE_IS_GROUND, on the ground only when the row
- * asks for it. Each start, phase change, finish and re-trigger is told to the battle's observers.
+ * asks for it. The run's finish resets the path of a unit that started at a flying height, when the
+ * row asks for it. Each start, phase change, finish and re-trigger is told to the battle's
+ * observers.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -24,8 +26,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " cg_vines_king_giant_minipekka and card_Vines. The climb's one step is held by"
             + " BattleAirToGroundTest and the re-trigger of a hold on the ground by"
             + " BattleShapeSelectorTest, by a selector written in Vines' form; the re-trigger of"
-            + " a hold in the air or of a climb by nothing. Refused: the path reset of an air"
-            + " unit at the end.")
+            + " a hold in the air or of a climb by nothing. The path reset of an air unit at the"
+            + " end is held by BattleAirToGroundTest and reached by tv_replay_014; a Goblin Giant"
+            + " carrying riders by cg_vines_goblingiant_riders.")
 final class AirToGroundRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -188,12 +191,24 @@ final class AirToGroundRun extends ActionInstance {
     }
   }
 
-  /** The finish; an air unit's path would be reset as it ends, which is not modelled. */
+  /**
+   * The finish and what follows it at once: with ResetPathAtEnd, a unit the run started at a flying
+   * height has its route emptied when it has a movement component, switched on or not. A unit held
+   * on the ground keeps a route a ground search gave it, so an air unit would otherwise fly on
+   * along it; the next route preparation makes it a straight air route again.
+   */
   private void end() {
     finish();
     if (row.isResetPathAtEnd() && height >= 1 && unit.hasMovementComponent()) {
-      throw new UnsupportedOperationException(
-          row.name() + " ends on " + unit.name() + ", resetting its path, which is not modelled");
+      if (!(unit instanceof CharacterEntity character)) {
+        throw new UnsupportedOperationException(
+            row.name()
+                + " ends on "
+                + unit.name()
+                + ", not a character, resetting its path,"
+                + " which is not modelled");
+      }
+      character.resetRoute();
     }
   }
 

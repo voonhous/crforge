@@ -1768,19 +1768,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Starts an air-to-ground run on the entity, listed by the holder. A clone, a hovering unit, and
-   * a unit that rides another or carries riders are refused.
+   * Starts an air-to-ground run on the entity, listed by the holder. A unit carrying riders is held
+   * like any other: the run reads and moves only the unit it is on, and its riders, which nothing
+   * targets, are left to follow it. A clone, a hovering unit and a unit that rides another are
+   * refused.
    */
   @Override
   public ActionInstance airToGround(AirToGround action, int phase) {
     if (data.hovering()
-        || this instanceof CharacterEntity unit
-            && (unit.isClone() || unit.getParent() != null || !unit.riders().isEmpty())) {
+        || this instanceof CharacterEntity unit && (unit.isClone() || unit.getParent() != null)) {
       throw new UnsupportedOperationException(
           action.name()
               + " holds "
               + name()
-              + ", a clone, a hovering unit, a rider or a carrier, which is not modelled");
+              + ", a clone, a hovering unit or a rider, which is not modelled");
     }
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);

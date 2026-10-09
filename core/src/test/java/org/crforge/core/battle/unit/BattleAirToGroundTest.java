@@ -11,15 +11,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.grid.Route;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Vines' air-to-ground run where the reference runs do not reach: an air unit that lives through
- * its hold, whose climb ends in the path reset that is not modelled; the ground tag a held ground
- * unit carries, and none without the row's flag; and a hovering unit refused.
+ * its hold, whose climb ends in the path reset; the ground tag a held ground unit carries, and none
+ * without the row's flag; a Goblin Giant held like any ground unit while its riders are left alone;
+ * and a hovering unit refused.
  *
  * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
  * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
@@ -71,6 +75,9 @@ class BattleAirToGroundTest {
     final Standard1v1Battle match;
     final List<String> runs = new ArrayList<>();
 
+    /** The name of each unit a run started on, in order. */
+    final List<String> held = new ArrayList<>();
+
     Scene(GameTables tables) {
       match = new Standard1v1Battle(tables, LEVEL, false);
       match
@@ -86,6 +93,7 @@ class BattleAirToGroundTest {
                     int runPhase,
                     int counter,
                     int height) {
+                  held.add(unit.name());
                   runs.add(
                       "%d start phase %d counter %d height %d"
                           .formatted(tick, runPhase, counter, height));
@@ -129,7 +137,7 @@ class BattleAirToGroundTest {
   @Test
   @DisplayName(
       "a Baby Dragon is pulled down in two steps, is a ground unit at height 0 from the next"
-          + " pre-hooks, and climbs back once its hold ends, where its path reset is refused")
+          + " pre-hooks, and climbs back once its hold ends, where its path is reset")
   void anAirUnitIsPulledDown(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(vines(folder, fields -> {}));
     CharacterEntity dragon =
@@ -155,9 +163,63 @@ class BattleAirToGroundTest {
     assertThat(scene.runs)
         .last()
         .isEqualTo("59 phase 2 3 counter 0 0 done false pushes [" + -height + "]");
-    assertThatThrownBy(() -> scene.steps(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("resetting its path");
+
+    // A route a ground search would leave, toward the goal it holds, as a push on the ground
+    // makes one: kept as it is by an air unit's route preparation, which keeps a route whose goal
+    // is still its destination.
+    MovementState movement = dragon.getUnit().movement();
+    int goal = movement.getRoute().get(0);
+    Route groundRoute = Route.of(goal, goal + 1, goal + 2);
+    movement.setRoute(groundRoute.copy());
+    scene.steps(1);
+    assertThat(scene.runs).last().isEqualTo("60 phase 3 3 counter 0 0 done true pushes [0]");
+    assertThat(movement.getRoute())
+        .as("the end's path reset empties it; the air route made again goes straight to the goal")
+        .isNotEqualTo(groundRoute);
+    assertThat(movement.getRoute().size()).isLessThanOrEqualTo(1);
+    assertThat(movement.getRouteLeadsAway()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a Goblin Giant carrying riders is held like any ground unit for the whole run, and its"
+          + " riders, which nothing targets, get no run and no ground tag")
+  void aCarrierIsHeld(@TempDir Path folder) throws IOException {
+    vines(folder, fields -> {});
+    // The riders as the rider tests write them: two Spear Goblins riding at 4000.
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "GoblinGiant")
+              .put("SpawnCharacter", "SpearGoblinGiant")
+              .put("SpawnNumber", 2)
+              .put("SpawnRadius", 900);
+          GameData.columns(rows, "SpearGoblinGiant").put("FlyingHeight", 4000);
+        });
+    GameData.alterLoaded(
+        folder,
+        "spells_characters",
+        rows -> GameData.columns(rows, "GoblinGiant").put("SummonNumber", 1));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    scene.match.play(0, new BattleRecords(tables).card("GoblinGiant"), LEVEL, 1, X, Y, "giant");
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(1);
+    CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
+    assertThat(giant.riders()).hasSize(2);
+
+    scene.steps(20);
+    assertThat(scene.forcedOntoTheGround(giant)).isTrue();
+    scene.steps(39);
+    assertThat(scene.held).containsExactly(giant.name());
+    assertThat(scene.runs)
+        .containsExactly(
+            "18 start phase 0 counter 2000 height -1",
+            "59 phase 0 0 counter 0 0 done true pushes []");
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(scene.forcedOntoTheGround(rider)).isFalse();
+    }
   }
 
   @Test
