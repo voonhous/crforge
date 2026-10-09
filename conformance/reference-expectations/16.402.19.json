@@ -244,6 +244,7 @@
   "match-timeline-v2/timeline_spells_through_rates": {"outcome": "diagnostic_match"},
   "match-timeline-v2/timeline_tiebreak_equal_arrows": {"outcome": "diagnostic_match"},
   "match-timeline-v2/timeline_tiebreak_tower_hp": {"outcome": "diagnostic_match"},
+  "mirror-stagger-v1/mirror_of_goblins": {"outcome": "diagnostic_match"},
   "new-content-v2/card_miniongiant": {"outcome": "diagnostic_match"},
   "new-content-v2/card_ronin": {"outcome": "diagnostic_match"},
   "new-content-v2/deck_hero_and_champion": {"outcome": "diagnostic_match"},
