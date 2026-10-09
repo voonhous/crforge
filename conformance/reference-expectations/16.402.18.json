@@ -428,7 +428,7 @@
   "troop-status-v2/status_sparky_charge_reset_by_zap": {"outcome": "diagnostic_match"},
   "troop-status-v2/status_zap_interrupts_megaminion_minipekka": {"outcome": "diagnostic_match"},
   "troop-status-v2/status_zap_stuns_prince_charge": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_000": {"outcome": "mismatch", "first_divergent_tick": 2592, "path": "$.entities[11].x"},
+  "tv-replays-v3/tv_replay_000": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_001": {"outcome": "mismatch", "first_divergent_tick": 2607, "path": "$.entities[4].x"},
   "tv-replays-v3/tv_replay_002": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_003": {"outcome": "mismatch", "first_divergent_tick": 292, "path": "$.entities[22].state"},

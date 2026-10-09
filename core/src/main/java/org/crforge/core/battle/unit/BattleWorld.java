@@ -487,7 +487,10 @@ public class BattleWorld implements HolderPasses {
    * <p>The game lands a direct hit's damage at the holder's damage drain, after every post-hook,
    * instead of inside the attacker's targeting visit: it queues the hit as it queues a typed hit,
    * so a unit the hit kills keeps its movement visit of that tick and dies where that visit left
-   * it.
+   * it. A dash landing's hit on its one target goes to the same entry and is queued as a direct
+   * hit: the dasher lands in its movement visit, so a unit the landing kills keeps its own movement
+   * visit of that tick when it comes after the dasher's, and the units visited after the dasher
+   * find it still moving.
    *
    * <p>The attacker's buff on damage follows its direct hit to the drain: the drain applies it
    * right after the hit's damage, once the damage entry has let the hit through, a hit that kills
@@ -896,7 +899,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Deals the damage of one entity's direct hit, as its targeting visit's hit application hands it
-   * to the damage entry: queued for the damage drain, in the order hits are dealt (see {@link
+   * to the damage entry, or of a dash landing's hit on its one target, which the landing hands to
+   * the same entry: queued for the damage drain, in the order hits are dealt (see {@link
    * #queuedHits}), where it is dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)}
    * deals it. A hit dealt after the tick's drain waits for the next tick's, as a typed hit does.
    *
