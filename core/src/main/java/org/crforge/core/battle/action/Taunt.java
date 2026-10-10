@@ -22,10 +22,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * unless the owner is attacking. Every finish removes the valid and invalid buffs from the owner
  * while the row removes its buff on death; the crown tower buff is never removed by name.
  *
+ * <p>A building that is not a crown tower, as a Cannon, takes the building owner's steps too; its
+ * reference is forced at the arming without the reach test when the forced object is not a
+ * building.
+ *
  * <p>Refused rather than guessed, as the row is built: the end by a stun and the visual effect. As
- * it starts: a taunted building that is not a crown tower, a taunted unit that rides on another or
- * carries riders, or that is in a pathfinding state, and a forced object that flies. As it steps: a
- * unit's taunt past its first step.
+ * it starts: a taunted unit that rides on another or carries riders, or that is in a pathfinding
+ * state, and a forced object that flies.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -38,11 +41,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " reach test, its steps with the building retargeting, and the expiry with the"
             + " reference kept by an attacking tower and given up by a standing one, held by"
             + " ability_hero_knight, where the hero Knight's ability taunts both towers before"
-            + " it. The arming's invalid branch, the falloff on a lost reach, the re-arm and the"
-            + " run ending as its forced object leaves are translated but held by no run."
-            + " Refused: the end by a stun, the visual effect, a taunted building other than a"
-            + " crown tower, a unit's taunt past its first step, a taunted rider, carrier or"
-            + " pathfinding unit, and a flying forced object.")
+            + " it. A building other than a crown tower taunted onto the hero Knight: a Cannon"
+            + " from within its reach and from beyond it (forced at the arming, given up on a"
+            + " step out of reach, forced again within it) and an Inferno Tower from within it,"
+            + " held by recordings of the game. The arming's invalid branch, the falloff"
+            + " on a lost reach, the re-arm and the run ending as its forced object leaves are"
+            + " translated but held by no run. Refused: the end by a stun, the visual effect, a"
+            + " taunted rider, carrier or pathfinding unit, and a flying forced object.")
 @Getter
 public final class Taunt extends RowAction {
 
