@@ -465,7 +465,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * A travelling hit of a projectile flying to a point waiting for the drain: dealt as {@link
    * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
-   * from the direction of the pass's centre, with nothing after it.
+   * from the direction of the pass's centre, with nothing after it. A deflection's hit on the
+   * deflector's parent goes to the same entry, without a direction.
    *
    * @param projectile the projectile whose body covered the entity
    * @param target the entity it covered
@@ -4153,23 +4154,24 @@ public class BattleWorld implements HolderPasses {
    * as the Fireball, whose deflection behaviour sends it at the enemy nearest the area effect
    * without a target, is among them.
    *
-   * <p>A pingpong projectile on its sweep, not deflected before and carrying no run, is modelled,
-   * its round body and its flight to a point with it, as the Executioner's axe is: the pass over
-   * its body's cells turns it around on its way. Refused: one deflected again, one deflected at its
-   * return and one an action runs on (the evolved axe's controller reads its start).
+   * <p>A pingpong projectile on its sweep is modelled, its round body and its flight to a point
+   * with it, as the Executioner's axe is: the pass over its body's cells turns it around on its
+   * way, and, deflected, it flies on as any projectile that flies to a point, which a deflecting
+   * area effect of the other side may turn around again. The runs on it, as the evolved axe's
+   * controller, are left as they are: the deflection asks them only for the damage of its hit on
+   * the deflector's parent. Refused: one not deflected before that is deflected at its return.
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
     if (pingpong
-        && (projectile.getDeflections() != 0
-            || projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()
-            || projectile.carriesRuns())) {
+        && projectile.getDeflections() == 0
+        && projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
               + data.name()
-              + ") is a pingpong projectile deflected again, at its return or with a run on it, by "
+              + ") is a pingpong projectile deflected at its return, by "
               + deflector.name()
               + ", not modelled");
     }
@@ -4203,14 +4205,19 @@ public class BattleWorld implements HolderPasses {
    * The deflection of a projectile by an area effect that touches it: none for a projectile that
    * has arrived or is on the area effect's own team. Otherwise the object the area effect follows,
    * its parent, takes the projectile's damage at its level - not the deflected share - with a fresh
-   * hit id, through the hit-points entry, when it has hit points and the shared validator lets the
-   * projectile reach it; then the projectile is sent back at its root owner, for the parent's side.
+   * hit id, when it has hit points, is not listed among those the projectile has hit and the shared
+   * validator lets the projectile reach it: the listening runs of a projectile with an action
+   * holder change the damage first, as for a travelling hit (the evolved Executioner's controller
+   * hands its own amount, by the parent's distance from the axe's start as it is then), and the hit
+   * is queued for the damage drain, as a travelling hit is, without a direction. Then the
+   * projectile is sent back at its root owner, for the parent's side, so the drain deals the hit,
+   * and the runs hear of it, after the turn-around.
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
-   * a king tower fired, which searches for the nearest enemy instead when it has no target, one
-   * carrying copies that change its damage, and a deflection past the most a projectile takes,
-   * which finishes it.
+   * a king tower fired, which searches for the nearest enemy instead when it has no target, and one
+   * carrying copies that change its damage. A deflection past the most a projectile takes
+   * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -4235,12 +4242,10 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           projectile.name() + " is deflected carrying copies that change its damage, not modelled");
     }
-    if (projectile.getDeflections() + 1 > globalNumber("MAX_DEFLECTION_TIMES")) {
-      throw new UnsupportedOperationException(
-          projectile.name() + " is deflected more often than a projectile may be, not modelled");
-    }
-    // The parent takes the projectile's own damage, through its damage reduction.
+    // The parent takes the projectile's own damage, through its damage reduction, unless the
+    // projectile has hit it already: a pingpong projectile on its way back after hitting it.
     if (parent.getHitPoints() != null
+        && !projectile.getHitIds().contains(parent.getId())
         && ReferenceValidator.sharedValidate(
             projectile.areaOwner(),
             parent.getTargetView(),
@@ -4250,9 +4255,19 @@ public class BattleWorld implements HolderPasses {
             true,
             validatorQueries)) {
       int hitId = nextHitId();
-      dealProjectileDamage(projectile, parent, projectile.undeflectedDamage(), hitId, 0, 0);
+      int damage = projectile.undeflectedDamage();
+      if (projectile.hasActionHolder()) {
+        damage =
+            projectile.listenedDamage(damage, hitId, parent.getTargetView().crownTower(), parent);
+      }
+      queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
     }
     projectile.deflect(parent, source);
+    // A deflection past the most a projectile takes still turns it around, and then ends its
+    // flight, as a release does.
+    if (projectile.getDeflections() > globalNumber("MAX_DEFLECTION_TIMES")) {
+      projectile.finishOverDeflected();
+    }
     for (WorldObserver observer : observers) {
       observer.projectileDeflected(tick, deflector, projectile, parent, source);
     }
