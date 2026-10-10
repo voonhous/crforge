@@ -933,6 +933,16 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Ends the flight of a projectile a deflection turned around once more than the most a projectile
+   * takes, as a release does: it takes no further step and leaves at the next cleanup, without an
+   * impact; its action on reaching its target is scheduled and a damage still registered on its
+   * target is handed back.
+   */
+  public void finishOverDeflected() {
+    release();
+  }
+
+  /**
    * Ends the flight of a projectile that stops at collisions, on the first hit its body lands: it
    * takes no further hit or step and leaves at the next cleanup, without an impact; as a release,
    * its action on reaching its target is scheduled and a damage still registered on its target is
