@@ -1239,6 +1239,11 @@ public class CharacterEntity extends WorldEntity {
    * refuses it, and is then stored again through the setter, which prepares its route; a target
    * given up leaves the attack timing as it was. The new row's starting action does not run.
    *
+   * <p>A unit whose targeting component is switched off, as the hero Wizard's is through its cast,
+   * reads no target and its component hears of no swap: the reference it holds survives as it
+   * stands, whether or not the row resets the target, and the targeting columns are the new row's
+   * all the same. A target that dies while it is held is then given up as any other.
+   *
    * <p>A walking unit may take a building row without a speed that drains over a lifetime, as the
    * Moving Cannon breaks down: its movement component is freed, it counts as a building, and its
    * hit points drain over the new row's lifetime from its next hit-points visit, what the drain
@@ -1278,7 +1283,8 @@ public class CharacterEntity extends WorldEntity {
     // The slot of the side's king that follows the unit, asked on the old row: none for a clone.
     ChampionController slot = followingSlot();
     TargetingState targeting = getTargeting();
-    TargetView target = isActive(TARGETING_SLOT) ? targeting.getReference() : null;
+    boolean targetingOn = isActive(TARGETING_SLOT);
+    TargetView target = targetingOn ? targeting.getReference() : null;
     boolean becomesBuilding = !getData().building() && next.building();
     boolean startsLifetime = getData().lifeTimeMs() == 0 && next.lifeTimeMs() > 0;
     boolean endsLifetime = getData().lifeTimeMs() > 0 && next.lifeTimeMs() == 0;
@@ -1318,9 +1324,13 @@ public class CharacterEntity extends WorldEntity {
       getView().setBuilding(true);
       getView().setOccludes(true);
     }
-    // The targeting component hears of the swap first: its reference is cleared as it stands.
-    targeting.setReference(null);
-    targeting.setKeptByPendingDamageCheck(false);
+    // The targeting component hears of the swap first, when it is switched on: its reference is
+    // cleared as it stands. A component that is off hears of nothing, so the reference survives
+    // the swap, a target the row resets included (none was read above, so none is stored again).
+    if (targetingOn) {
+      targeting.setReference(null);
+      targeting.setKeptByPendingDamageCheck(false);
+    }
     TargetingConfig swapped = targetingConfig(next);
     targeting.setConfig(swapped);
     // What the unit's attackers read of it, its lifetime among them, is the new row's from here on.
