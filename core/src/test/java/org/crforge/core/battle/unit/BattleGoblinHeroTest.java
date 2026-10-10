@@ -37,6 +37,18 @@ class BattleGoblinHeroTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
+  /** The Goblins first, in the hero slot, and seven cheap cards to cycle it back to the hand. */
+  private static final List<String> CYCLE_DECK =
+      List.of(
+          "Goblins",
+          "Skeletons",
+          "IceSpirits",
+          "FireSpirits",
+          "ElectroSpirit",
+          "Bats",
+          "Knight",
+          "Arrows");
+
   /**
    * Steps a banner stands: its timer's interval, then the wait its about-to-disappear group's kill
    * waits, each in whole steps.
@@ -207,6 +219,125 @@ class BattleGoblinHeroTest {
     assertThat(standing[kill - 1]).isTrue();
     assertThat(standing[kill]).isFalse();
     assertThat(wave[span - 1]).isEqualTo(2);
+  }
+
+  @Test
+  @DisplayName(
+      "a new play of the hero Goblins while the banner stands is heard by the banner's listener,"
+          + " the hero form tested against its card group's heroes: the banner goes in the step the"
+          + " new goblins appear")
+  void aNewHeroPlayTakesTheStandingBanner() {
+    LadderMatch[] match = new LadderMatch[1];
+    Standard1v1Battle battle = cycleMatch(match);
+    playAndRun(battle, "Goblins", 3500, 14000, "g");
+    cycleBackToGoblins(battle, match[0]);
+    int limit = battle.getBattle().getTick() + 1000;
+    while (named(battle, BANNER).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    step(battle);
+    assertThat(named(battle, BANNER)).hasSize(1);
+    assertThat(named(battle, "GoblinHero")).isEmpty();
+
+    // The banner stands until the play runs and its goblins are made.
+    playAndRun(battle, "Goblins", 3500, 14000, "h");
+    while (named(battle, "GoblinHero").isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      assertThat(named(battle, BANNER)).hasSize(1);
+      step(battle);
+    }
+    assertThat(named(battle, "GoblinHero")).hasSize(Shipped.number(HERO_FORM, "SummonNumber"));
+    assertThat(named(battle, BANNER)).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a new play of the hero Goblins while goblins of an earlier play live tags them through"
+          + " their own listener: their last fall leaves no banner, and only the new goblins' last"
+          + " fall plants one")
+  void aNewHeroPlayTagsTheGoblinsStillAlive() {
+    LadderMatch[] match = new LadderMatch[1];
+    Standard1v1Battle battle = cycleMatch(match);
+    playAndRun(battle, "Goblins", 3500, 14000, "g");
+    step(battle);
+    List<CharacterEntity> earlier = named(battle, "GoblinHero");
+    assertThat(earlier).hasSize(Shipped.number(HERO_FORM, "SummonNumber"));
+    cycleBackToGoblins(battle, match[0]);
+    assertThat(named(battle, "GoblinHero")).containsAnyElementsOf(earlier);
+    // The new goblins behind the earlier ones, which fall first.
+    playAndRun(battle, "Goblins", 3500, 8000, "h");
+    int limit = battle.getBattle().getTick() + 1000;
+    while (named(battle, "GoblinHero").stream().anyMatch(earlier::contains)) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      assertThat(named(battle, BANNER)).isEmpty();
+      step(battle);
+    }
+    assertThat(named(battle, "GoblinHero")).isNotEmpty();
+    while (!named(battle, "GoblinHero").isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      assertThat(named(battle, BANNER)).isEmpty();
+      step(battle);
+    }
+    assertThat(named(battle, BANNER)).hasSize(1);
+  }
+
+  /**
+   * A match in which side 0 holds the hero Goblins in its hand and a full elixir bar, its other
+   * seven cards cheap ones, so a play of the Goblins can come back to the hand while its goblins or
+   * its banner stand.
+   *
+   * @param match receives the battle's match
+   */
+  private static Standard1v1Battle cycleMatch(LadderMatch[] match) {
+    Standard1v1Battle battle = null;
+    for (int word = 0; match[0] == null || !inHand(match[0], "Goblins"); word++) {
+      battle = new Standard1v1Battle(GameData.tables());
+      match[0] = battle.startLadderMatch(CYCLE_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
+    }
+    int full = 10;
+    while (match[0].side(0).wholeElixir() < full) {
+      step(battle);
+    }
+    return battle;
+  }
+
+  /**
+   * Plays the cheapest other card of side 0's hand at the back of the right lane, as soon as the
+   * hand is full and the elixir is there, until the Goblins are back in the hand.
+   */
+  private static void cycleBackToGoblins(Standard1v1Battle battle, LadderMatch match) {
+    int limit = battle.getBattle().getTick() + 400;
+    int made = 0;
+    while (!inHand(match, "Goblins")) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      List<MatchCard> deck = match.side(0).deck();
+      int[] slots = match.side(0).getHand().slots();
+      MatchCard cheapest = null;
+      boolean full = true;
+      for (int index : slots) {
+        if (index < 0) {
+          full = false;
+        } else if (cheapest == null || deck.get(index).cost() < cheapest.cost()) {
+          cheapest = deck.get(index);
+        }
+      }
+      if (full && cheapest != null && match.side(0).wholeElixir() >= cheapest.cost()) {
+        playAndRun(battle, cheapest.name(), 14500, 4000, "c" + made++);
+      } else {
+        step(battle);
+      }
+    }
+  }
+
+  /** Gives side 0's play of a card and steps until the play has run, which the match passed. */
+  private static void playAndRun(Standard1v1Battle battle, String card, int x, int y, String name) {
+    int before = battle.getPlays().size();
+    battle.play(battle.getBattle().getTick(), GameData.card(card), LEVEL, 0, x, y, name);
+    while (battle.getPlays().size() == before) {
+      step(battle);
+    }
+    assertThat(battle.getPlays().get(before).matchCode()).as(name).isZero();
   }
 
   /**
