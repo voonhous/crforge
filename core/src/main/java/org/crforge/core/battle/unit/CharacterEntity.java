@@ -948,9 +948,6 @@ public class CharacterEntity extends WorldEntity {
     return unit.timers().isSpawnImmune();
   }
 
-  /** Whether a Clone may clone a clone: not in the standard game. */
-  private static final boolean CLONE_CLONED_UNITS = false;
-
   /** Whether a clone keeps a shield its original still has up: so in the standard game. */
   private static final boolean CLONE_PRESERVE_SHIELD = true;
 
@@ -1016,19 +1013,21 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The perform's tests of a Clone's action: a unit a Clone passes by, a clone, a dead unit and a
-   * rider are refused, and the refusal told. A clone the battle does not model is refused outright:
-   * one made by anything but an area effect, of a row with a cloned version, of a unit still
-   * deploying or with a run of an action listed, whose clone would take it over - for a carrier, of
-   * any of its riders too, each cloned with it.
+   * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
+   * refused, and the refusal told. A clone the battle does not model is refused outright: one made
+   * by anything but an area effect, of a row with a cloned version, of a unit still deploying or
+   * with a run of an action listed, whose clone would take it over - for a carrier, of any of its
+   * riders too, each cloned with it.
+   *
+   * <p>The perform does not ask whether the unit is a clone itself: a clone it reaches is cloned
+   * again. A Clone's area never reaches one, its filter dropping clones, so a clone the action
+   * reaches is refused outright too: what the game makes of the clone of a clone is not modelled.
    */
   @Override
   public boolean mayBeCloned(ActionOwner instigator) {
     String reason = null;
     if (getData().ignoreClone()) {
       reason = "ignore clone";
-    } else if (clone && !CLONE_CLONED_UNITS) {
-      reason = "is clone";
     } else if (!HitPoints.alive(getHitPoints())) {
       reason = "dead";
     } else if (parent != null) {
@@ -1037,6 +1036,12 @@ public class CharacterEntity extends WorldEntity {
     if (!(instigator instanceof AreaEffectEntity cause)) {
       throw new UnsupportedOperationException(
           name() + " is cloned by something other than an area effect, which is not modelled");
+    }
+    if (reason == null && clone) {
+      throw new UnsupportedOperationException(
+          name()
+              + " is a clone a Clone's action reaches, which the game clones again; that is not"
+              + " modelled");
     }
     if (reason != null) {
       world.cloneRefused(this, reason, cause);

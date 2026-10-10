@@ -293,8 +293,9 @@ class BattleCloneTest {
 
   @Test
   @DisplayName(
-      "a second Clone clones the units again and passes their clones by; a clone the action reaches"
-          + " directly is refused by its perform")
+      "a second Clone clones the units again and passes their clones by, its area's filter dropping"
+          + " them; a clone the action reaches directly, which the game's perform would clone again,"
+          + " is refused as not modelled")
   void noCloneOfAClone() {
     Scene scene = new Scene();
     scene.still(0, 0, "Knight", X, Y, "knight");
@@ -309,8 +310,14 @@ class BattleCloneTest {
 
     BattleAction row =
         GameData.actions().build("CloneAction", scene.match.getWorld().binding(clone));
-    clone.actionHolder().schedule(row, ActionHolder.OWN_DELAY, true, scene.area.actionHolder());
-    assertThat(scene.refused).containsExactly("knight_clone0 is clone");
+    assertThatThrownBy(
+            () ->
+                clone
+                    .actionHolder()
+                    .schedule(row, ActionHolder.OWN_DELAY, true, scene.area.actionHolder()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("knight_clone0 is a clone a Clone's action reaches");
+    assertThat(scene.refused).isEmpty();
   }
 
   @Test

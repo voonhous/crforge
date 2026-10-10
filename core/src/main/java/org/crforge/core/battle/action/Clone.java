@@ -6,10 +6,11 @@ import org.crforge.core.fidelity.FidelityStatus;
 
 /**
  * A Clone's action on a unit its hit reached: the perform tests the unit again - no unit a Clone
- * passes by, no clone, a living one riding nothing - then schedules its cloned action on the unit,
- * with the action's cause as its own, which inside a pending pass runs at once, and then makes the
- * clone. The clone and the unit move apart for the row's clone duration. It does not last: the
- * moves are runs of their own.
+ * passes by, a living one riding nothing - then schedules its cloned action on the unit, with the
+ * action's cause as its own, which inside a pending pass runs at once, and then makes the clone. It
+ * does not ask whether the unit is a clone: the Clone's area filter has dropped clones already, and
+ * a clone reached otherwise is refused (see {@link ActionOwner#mayBeCloned}). The clone and the
+ * unit move apart for the row's clone duration. It does not last: the moves are runs of their own.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,

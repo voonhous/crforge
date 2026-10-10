@@ -1583,7 +1583,7 @@ public interface WorldObserver {
    *
    * @param tick the battle tick
    * @param original the unit
-   * @param reason why: "ignore clone", "is clone", "dead" or "attached"
+   * @param reason why: "ignore clone", "dead" or "attached"
    * @param instigator what caused the clone
    */
   default void cloneRefused(int tick, WorldEntity original, String reason, SpawnHost instigator) {}
