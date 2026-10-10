@@ -166,6 +166,8 @@ final class ProjectileFlight {
       speed = p.getSpeedOverride();
     }
     boolean dragsOwner = false;
+    // Whether an arrival on this step may hook: not when the target keeps out of the hook.
+    boolean hookable = true;
     if (drags) {
       world.refuseLockedHook(p);
       WorldEntity target = p.getTarget();
@@ -178,26 +180,22 @@ final class ProjectileFlight {
           speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
         }
       }
-      if (target != null
-          && (target.getView().getFlags() & target.getView().getFlagBits().dashing()) != 0) {
-        // A dashing target the dash keeps out of reach would end the hook as an ordinary
-        // arrival; no reference holds a hook on a dashing unit.
-        throw new UnsupportedOperationException(
-            p.name() + " flies at the dashing " + target.name() + ", not modelled");
-      }
+      // A dashing target the untouchable test passes by keeps out of the hook: the projectile
+      // still flies at it, but arriving on this step it does not hook.
+      hookable = !world.hookKeptOff(p);
     }
     if (data.pingpongVisualTimeMs() >= 1 && p.getDeflections() == 0) {
       // A pingpong projectile sweeps on its time, not its speed, and arrives on the step after
       // its time is up. Once deflected it flies on its speed like any other.
       if (p.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
-        arrive(p, world);
+        arrive(p, world, hookable);
       } else {
         sweep(p, world);
       }
       return;
     }
     if (remaining <= speed) {
-      arrive(p, world);
+      arrive(p, world, hookable);
     } else if (dragsOwner) {
       dragOwner(p, world);
     } else {
@@ -388,9 +386,10 @@ final class ProjectileFlight {
    * stops at collisions is only released, where it stands. A pingpong projectile lands back at its
    * start, on the ground, and lets its launcher's targeting go on, at once or, for a launcher whose
    * targeting is off, at its removal; one whose launcher left has only its death effect, which is
-   * presentation.
+   * presentation. A hooking projectile arrives as a hook only when its step let it hook; otherwise,
+   * at a target that kept out of the hook, its arrival is the ordinary one.
    */
-  private static void arrive(ProjectileEntity p, BattleWorld world) {
+  private static void arrive(ProjectileEntity p, BattleWorld world, boolean hookable) {
     if (world.deflectPass(p, p.getAimX(), p.getAimY(), p.getAimZ())) {
       return;
     }
@@ -406,7 +405,7 @@ final class ProjectileFlight {
     if (p.getData().homing() && p.getTarget() != null) {
       p.handBackPending();
     }
-    if (p.getData().dragBackSpeed() >= 1) {
+    if (p.getData().dragBackSpeed() >= 1 && hookable) {
       if (p.isHooked() || p.getTarget() == null) {
         // Back short of its owner, or with nothing hooked: released where it stands, and it
         // impacts again.
