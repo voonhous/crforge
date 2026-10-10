@@ -481,14 +481,19 @@ public class CharacterEntity extends WorldEntity {
       };
 
   /**
-   * The character's dash, for a row with a dash cooldown: its range check and its start. A buff
-   * that pulls, which would hold the dash back, is refused with its row.
+   * The character's dash, for a row with a dash cooldown: its range check and its start. The range
+   * check answers no while any buff the character carries pulls (an attraction or a lateral push,
+   * as a Tornado's), before the running wind-up's yes, so a pull clears a wind-up and holds the
+   * dash back for as long as the buff stays.
    */
   private final SelectionChain.Dasher dasher =
       new SelectionChain.Dasher() {
         @Override
         public boolean inDashRange(TargetView reference) {
           UnitData data = getData();
+          if (getBuffs().pulls()) {
+            return false;
+          }
           if (unit.targeting().getDashWindupMs() > 0) {
             return true;
           }
