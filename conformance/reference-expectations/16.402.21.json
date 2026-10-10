@@ -159,6 +159,8 @@
   "chef-tower-v2/chef_cooks_back_giant": {"outcome": "diagnostic_match"},
   "chef-tower-v2/chef_cooks_damaged_giant": {"outcome": "diagnostic_match"},
   "chef-tower-v2/chef_cooks_giant_or_musketeer": {"outcome": "diagnostic_match"},
+  "clone-carrier-v1/clone_goblingiant_arrowed": {"outcome": "diagnostic_match"},
+  "clone-carrier-v1/clone_goblingiant_zapped": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_barblog_hero_redeploy": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_elixir_collector_played": {"outcome": "diagnostic_match"},
   "content-gaps-v2/cg_ghost_evo_cloned": {"outcome": "diagnostic_match"},
