@@ -1053,21 +1053,24 @@ class ReplaySmokeRunTest {
   }
 
   @Test
-  void aMirrorOfAVariantPlayIsRefusedByTheBattle() throws IOException {
+  void aMirrorOfAVariantPlayRepeatsTheOptionItWasPlayedAs() throws IOException {
     usePlannedSchedule();
     Path out = folder.resolve("run");
 
     int exit = run(fit(Scenarios.mergeMaidenThenMirror()), out, terminalIdentity, 700);
 
-    // The maiden's play runs; the Mirror, which would repeat the option it was played as, is
-    // refused as it runs.
-    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    // The maiden's play runs mounted; the Mirror repeats the mounted maiden, its item as given.
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
-    assertThat(manifest.path("unsupported").path("feature").asText())
-        .isEqualTo(
-            "a Mirror of MergeMaiden, which repeats the option it was played as, which no"
-                + " reference holds");
-    assertThat(manifest.path("unsupported").path("input").asText()).isEqualTo("the run");
+    assertThat(manifest.has("items_not_built")).isFalse();
+    JsonNode mirror = manifest.path("plays_run").get(6);
+    assertThat(mirror.path("name").asText()).isEqualTo("cmd6");
+    assertThat(mirror.path("tick").asInt()).isEqualTo(691);
+    assertThat(mirror.path("placed").asBoolean()).isTrue();
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode unit = newestUnit(MAPPER.readTree(lines.get(692)));
+    assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Mounted");
+    assertThat(unit.path("side").asInt()).isZero();
   }
 
   @Test

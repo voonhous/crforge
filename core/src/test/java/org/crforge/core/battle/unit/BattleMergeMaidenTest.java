@@ -10,21 +10,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.VariantItem;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Merge Maiden where the reference runs do not take it: the step its option is picked after, a
- * pending play's cost the pick sets aside, a play the elixir does not cover, and the plays it
- * refuses - outside a match, before tick 21, given in or right after another play's tick, with a
- * Mirror pending or a refused play's promise held, and repeated by a Mirror.
+ * pending play's cost the pick sets aside, a play the elixir does not cover, a Mirror after it,
+ * which repeats the option it was played as, and the plays it refuses - outside a match, before
+ * tick 21, given in or right after another play's tick, with a Mirror pending or a refused play's
+ * promise held - and a Mirror of a variant card whose row would have it repeat the card itself.
  */
 class BattleMergeMaidenTest {
 
@@ -54,6 +61,14 @@ class BattleMergeMaidenTest {
 
   /** The Zap's cost. */
   private static final int ZAP = Shipped.cost("Zap");
+
+  /** How many levels above its own a Mirror plays the card it repeats: the global's. */
+  private static final int MIRROR_LEVEL_OFFSET =
+      Shipped.number(Shipped.row("globals", "MIRROR_LEVEL_OFFSET"), "NumberValue");
+
+  /** The most elixir there can be, which a Mirror's item cost is held to. */
+  private static final int MAX_MANA =
+      Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
 
   @Test
   @DisplayName(
@@ -237,9 +252,39 @@ class BattleMergeMaidenTest {
   }
 
   @Test
-  @DisplayName("a Mirror after a Merge Maiden, which repeats the option played, is refused")
-  void aMirrorOfAMergeMaidenIsRefused() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+  @DisplayName(
+      "a Mirror after a Merge Maiden repeats the option it was played as, mounted or on foot, one"
+          + " level up, for the Mirror's cost and the option's; the Merge Maiden stays the last card")
+  void aMirrorOfAMergeMaidenRepeatsTheOptionPlayed() {
+    // Mounted: the Merge Maiden on 21, picked from the starting elixir.
+    Standard1v1Battle mounted = new Standard1v1Battle(GameData.tables());
+    LadderMatch mountedMatch = mounted.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
+    mounted.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(mounted, 21);
+    playMirrorOnceCovered(mounted, mountedMatch, "MergeMaiden_Mounted");
+    assertMirrorRepeats(mounted, mountedMatch, "MergeMaiden_Mounted", 0);
+
+    // On foot: an Archer on 21, then the Merge Maiden picked from what is left of the elixir.
+    Standard1v1Battle onFoot = new Standard1v1Battle(GameData.tables());
+    LadderMatch onFootMatch = onFoot.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
+    onFoot.play(21, GameData.card("Archer"), LEVEL, 0, 9000, 10000, "a");
+    onFoot.playVariant(42, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(onFoot, 42);
+    playMirrorOnceCovered(onFoot, onFootMatch, "MergeMaiden_Normal");
+    assertMirrorRepeats(onFoot, onFootMatch, "MergeMaiden_Normal", Shipped.cost("Archer"));
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror after a variant card whose row leaves MirrorUsesRootSpell unset, which would repeat"
+          + " the card itself and cast no option, is refused")
+  void aMirrorOfAVariantCardAsItselfIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "spells_other",
+            rows -> GameData.columns(rows, "MergeMaiden").putNull("MirrorUsesRootSpell"));
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
     battle.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
     battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "r");
@@ -247,8 +292,61 @@ class BattleMergeMaidenTest {
     assertThatThrownBy(() -> run(battle, 300))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "a Mirror of MergeMaiden, which repeats the option it was played as, which no"
-                + " reference holds");
+            "a Mirror of the variant card MergeMaiden as the card itself, whose row casts no"
+                + " option, which no row sets");
+  }
+
+  /**
+   * Plays a Mirror after a battle's last play, once side 0's elixir covers the Mirror's cost and
+   * the option's and no earlier than 22 ticks after that play, past the Mirror's pending window,
+   * and runs it.
+   */
+  private static void playMirrorOnceCovered(
+      Standard1v1Battle battle, LadderMatch match, String option) {
+    int cost = Math.min(Shipped.cost("Mirror") + Shipped.cost(option), MAX_MANA);
+    int earliest = battle.getBattle().getTick() + 21;
+    while (battle.getBattle().getTick() < earliest || match.side(0).wholeElixir() < cost) {
+      battle.getBattle().step();
+    }
+    int tick = battle.getBattle().getTick();
+    battle.playMirror(tick, "Mirror", LEVEL, 0, 14500, 10000, "r");
+    run(battle, tick);
+  }
+
+  /**
+   * Checks a battle's Merge Maiden play and the Mirror after it: the Mirror's item repeats the
+   * option the maiden was played as, at the Mirror's level plus the level offset, for the Mirror's
+   * cost and the option's; its unit is the option's character at that level; and the side spent
+   * what was played before, the option's cost and the item's.
+   *
+   * @param battle the battle, run past the Mirror's play
+   * @param match its match
+   * @param option the option the maiden is played as
+   * @param before the elixir spent on side 0's plays before the maiden's
+   */
+  private static void assertMirrorRepeats(
+      Standard1v1Battle battle, LadderMatch match, String option, int before) {
+    List<Standard1v1Battle.Play> plays = battle.getPlays();
+    Standard1v1Battle.Play maiden = plays.get(plays.size() - 2);
+    Standard1v1Battle.Play mirror = plays.get(plays.size() - 1);
+    assertThat(maiden.variant().spell()).isEqualTo(option);
+
+    MirrorItem item = mirror.mirror();
+    assertThat(mirror.matchCode()).isZero();
+    assertThat(item.repeats().name()).isEqualTo(option);
+    assertThat(item.level()).isEqualTo(LEVEL + MIRROR_LEVEL_OFFSET);
+    int cost = Math.min(Shipped.cost("Mirror") + Shipped.cost(option), MAX_MANA);
+    assertThat(item.cost()).isEqualTo(cost);
+    String character = Shipped.text(Shipped.row("spells_characters", option), "SummonCharacter");
+    GameRow unit = Shipped.unitRow(character);
+    assertThat(mirror.units()).hasSize(1);
+    assertThat(mirror.units().get(0).getData().name()).isEqualTo(character);
+    assertThat(mirror.units().get(0).getHitPoints().getMaximum())
+        .isEqualTo(
+            Shipped.scaled(Shipped.number(unit, "Hitpoints"), unit, LEVEL + MIRROR_LEVEL_OFFSET));
+    MatchSide side = match.side(0);
+    assertThat(side.lastPlayed().name()).isEqualTo("MergeMaiden");
+    assertThat(side.getSpent()).isEqualTo((before + Shipped.cost(option) + cost) * MatchSide.SCALE);
   }
 
   /**
