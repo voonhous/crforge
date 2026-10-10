@@ -6,11 +6,14 @@ import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +27,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The scene: the bottom side's Hunter stands in the left lane, and the top side's Battle Ram
  * walks down that lane at the bottom side's left princess tower; the towers do not fight.
+ *
+ * <p>The ram's queued total also holds the other hits queued for it in the same tick: a
+ * projectile's hit on its one target adds its damage, as the travelling hits do, while a
+ * damage-taking action's hit adds nothing, its amount being worked out only at the drain. The scene
+ * is played again with one such hit queued for the ram just before the tick of its death.
  */
 class BattleTravellingHitDrainTest {
 
@@ -76,6 +84,17 @@ class BattleTravellingHitDrainTest {
   }
 
   private static Death scene(GameTables tables) {
+    return scene(tables, -1, null);
+  }
+
+  /**
+   * Plays the scene.
+   *
+   * @param queueAt the tick before whose step {@code queue} runs, or -1 for none
+   * @param queue what queues a further hit for the ram, handed the world and the recording
+   */
+  private static Death scene(
+      GameTables tables, int queueAt, BiConsumer<BattleWorld, Recording> queue) {
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     Recording recording = new Recording();
@@ -87,6 +106,10 @@ class BattleTravellingHitDrainTest {
     for (int step = 0; step < TICKS && recording.barbarians.isEmpty(); step++) {
       beforeX = recording.ram.getView().getX();
       beforeY = recording.ram.getView().getY();
+      // The step about to run is the world's next tick.
+      if (queue != null && battle.getWorld().tick() + 1 == queueAt) {
+        queue.accept(battle.getWorld(), recording);
+      }
       battle.getBattle().step();
     }
     assertThat(recording.barbarians)
@@ -120,5 +143,72 @@ class BattleTravellingHitDrainTest {
     int pellets = number(unitRow("Hunter"), "MultipleProjectiles");
     assertThat(death.volleyPellets()).isEqualTo(pellets);
     assertThat(death.pelletsFlyingOn()).isBetween(1, pellets - 1);
+  }
+
+  /** The ram's hit points and shield as they stand: a hit this large kills it on its own. */
+  private static int whole(CharacterEntity ram) {
+    HitPoints hitPoints = ram.getHitPoints();
+    return hitPoints.getHitPoints() + hitPoints.getShield();
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile's hit queued for the ram counts in its queued total: the volley's first"
+          + " pellet marks it and every later one passes over it")
+  void aQueuedProjectileHitCounts() {
+    GameTables tables = GameData.tables();
+    Death plain = scene(tables);
+    List<ProjectileEntity> shooter = new ArrayList<>();
+    Death queued =
+        scene(
+            tables,
+            plain.tick(),
+            (world, recording) -> {
+              // A projectile's hit on its one target, the ram, large enough to kill it alone, from
+              // the Hunter's first pellet.
+              assertThat(recording.pellets).as("the Hunter has shot before").isNotEmpty();
+              ProjectileEntity projectile = recording.pellets.get(0);
+              shooter.add(projectile);
+              world.dealProjectileHit(
+                  projectile, recording.ram, whole(recording.ram), world.nextHitId(), 0, 0);
+            });
+    assertThat(shooter).hasSize(1);
+    assertThat(queued.tick()).isEqualTo(plain.tick());
+    int pellets = number(unitRow("Hunter"), "MultipleProjectiles");
+    assertThat(queued.volleyPellets()).isEqualTo(pellets);
+    // Without the queued hit the volley's later pellets hit the ram before one marks it.
+    assertThat(plain.pelletsFlyingOn()).isLessThan(pellets - 1);
+    assertThat(queued.pelletsFlyingOn()).isEqualTo(pellets - 1);
+  }
+
+  @Test
+  @DisplayName(
+      "a damage-taking action's hit queued for the ram adds nothing to its queued total: the"
+          + " volley's pellets hit it as they do without it")
+  void aQueuedActionHitDoesNotCount() {
+    GameTables tables = GameData.tables();
+    Death plain = scene(tables);
+    Death queued =
+        scene(
+            tables,
+            plain.tick(),
+            (world, recording) ->
+                // A damage-taking action's hit on the ram with no source, large enough to kill it
+                // alone.
+                world.queueActionDamage(
+                    null,
+                    recording.ram,
+                    new TakeDamage.Damage(
+                        whole(recording.ram),
+                        TakeDamage.NO_TOWER_DAMAGE,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false),
+                    0));
+    assertThat(queued.tick()).isEqualTo(plain.tick());
+    assertThat(queued.volleyPellets()).isEqualTo(plain.volleyPellets());
+    assertThat(queued.pelletsFlyingOn()).isEqualTo(plain.pelletsFlyingOn());
   }
 }
