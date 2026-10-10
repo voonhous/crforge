@@ -3,6 +3,7 @@ package org.crforge.core.battle.replay;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
@@ -144,6 +145,43 @@ class ReplayScenarioEveryFieldTest {
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
         .containsExactly("evt[0].type=2", "evt[1].xy");
+  }
+
+  @Test
+  void readsAStickerEventAsNoBattleInput() {
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    ObjectNode withoutStickers = scenario.deepCopy();
+    ArrayNode kept = withoutStickers.putArray("evt");
+    for (JsonNode event : scenario.path("evt")) {
+      if (event.path("type").asInt() != 10) {
+        kept.add(event.deepCopy());
+      }
+    }
+    assertThat(kept.size()).isLessThan(scenario.path("evt").size());
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    // A sticker (type 10) is read like the other carried events: the battle plays the same as
+    // without it.
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+    assertThat(plan)
+        .usingRecursiveComparison()
+        .isEqualTo(new ReplayScenario(tables).translate(withoutStickers));
+    assertThat(mapping.mapping().get("evt")).contains("[1, 3, 5, 10]");
+  }
+
+  @Test
+  void refusesTheEventTypesBesideTheCarriedOnes() {
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    ArrayNode events = (ArrayNode) scenario.path("evt");
+    ((ObjectNode) events.get(0)).put("type", 9);
+    ((ObjectNode) events.get(1)).put("type", 11);
+
+    List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
+
+    assertThat(refusals)
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("evt[0].type=9", "evt[1].type=11");
   }
 
   @Test

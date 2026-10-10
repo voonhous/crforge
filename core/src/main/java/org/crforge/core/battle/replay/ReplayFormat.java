@@ -58,8 +58,14 @@ public record ReplayFormat(
     List<String> playerData,
     boolean cosmeticCarried) {
 
-  /** The event types of a version whose events are carried. */
-  public static final Set<Integer> EVENT_TYPES = Set.of(1, 3, 5);
+  /**
+   * The event types of a version whose events are carried, each what a player's client showed. The
+   * battle reads no event: once an event's tick is reached, the step hands it to the listener the
+   * screen sets, after the step's own work. Type 10 is a sticker a player sent (its parameters: the
+   * sticker's kind, the sender's side and the sticker's id), which the screen shows in a bubble.
+   * Any other type is refused until what it is has been established.
+   */
+  public static final Set<Integer> EVENT_TYPES = Set.of(1, 3, 5, 10);
 
   /** The fields of one event. */
   public static final Set<String> EVENT_FIELDS =
