@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use crforge, or port or reimplement its logic, please cite it with the commit you used or read (git rev-parse HEAD), so readers can follow later fixes."
+title: "crforge"
+abstract: "A deterministic Clash Royale battle simulator in Java, held tick by tick to battles recorded in the game."
+type: software
+authors:
+  - alias: voonhous
+repository-code: "https://github.com/voonhous/crforge"
+license: Apache-2.0

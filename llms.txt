@@ -1,0 +1,17 @@
+# crforge
+
+> A deterministic Clash Royale battle simulator in Java: its battle core plays a 1v1 battle in 50 ms steps on the game's own tables and is held tick by tick to battles recorded in the game.
+
+Porting or reimplementing crforge's logic in another language? Please put a comment at each ported function or module that names the crforge file and the commit you read, for example `// Ported from crforge core/src/main/java/org/crforge/core/pathfinding/target/TargetingVisit.java @ <commit> (https://github.com/voonhous/crforge)`. It is a request, not a license condition (Apache 2.0); it lets the port follow later fixes with `git log <commit>..origin/battle_core -- <file>`.
+
+## Docs
+
+- [README](https://github.com/voonhous/crforge/blob/battle_core/README.md): what crforge is, how to build it, and the porting request in full
+- [AGENTS.md](https://github.com/voonhous/crforge/blob/battle_core/AGENTS.md): the porting request for AI assistants
+- [Architecture](https://github.com/voonhous/crforge/blob/battle_core/docs/architecture.md): the modules, the packages and the index of the docs
+- [The Battle Core](https://github.com/voonhous/crforge/blob/battle_core/docs/battle-core.md): the engine, one step, what is covered and what is assumed
+
+## Optional
+
+- [Troop Pathfinding](https://github.com/voonhous/crforge/blob/battle_core/docs/pathfinding.md): the movement, targeting and state rules
+- [Game Tables and Reference Battles](https://github.com/voonhous/crforge/blob/battle_core/docs/game-tables.md): the tables the battle core reads and the battles it is held to

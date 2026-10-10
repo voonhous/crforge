@@ -1,3 +1,9 @@
+/*
+ * crforge - https://github.com/voonhous/crforge
+ * SPDX-License-Identifier: Apache-2.0
+ * Porting this code? Please cite this file and the commit you read: see the README.
+ */
+
 plugins {
     java
     idea
@@ -34,6 +40,31 @@ extra["crforge.assetSource"] = setting("crforge.assetSource")
 extra["crforge.cache"] = cacheRoot
 extra["crforge.builtTablesRoot"] = builtTablesRoot
 
+// The header every source file starts with (Java and the Gradle Kotlin scripts). spotlessApply
+// adds it and spotlessCheck, run by the build and CI, fails a file without it. Its last line asks
+// anyone porting crforge's logic to cite the file and commit they read (README, "Porting or
+// reimplementing crforge"); it is a request, the license is Apache 2.0 unchanged.
+val sourceHeader =
+    """
+    /*
+     * crforge - https://github.com/voonhous/crforge
+     * SPDX-License-Identifier: Apache-2.0
+     * Porting this code? Please cite this file and the commit you read: see the README.
+     */
+    """.trimIndent() + "\n\n"
+
+// A Gradle Kotlin script's header goes above its first import or plugins block.
+val gradleScriptHeaderDelimiter = "(import |plugins )"
+
+// The root project's own scripts (build.gradle.kts, settings.gradle.kts); each subproject's
+// spotless block below covers its build.gradle.kts.
+spotless {
+    kotlinGradle {
+        target("*.gradle.kts")
+        licenseHeader(sourceHeader, gradleScriptHeaderDelimiter)
+    }
+}
+
 allprojects {
     group = "org.crforge"
     version = "1.0-SNAPSHOT"
@@ -59,6 +90,10 @@ subprojects {
             removeUnusedImports()
             trimTrailingWhitespace()
             endWithNewline()
+            licenseHeader(sourceHeader)
+        }
+        kotlinGradle {
+            licenseHeader(sourceHeader, gradleScriptHeaderDelimiter)
         }
     }
 

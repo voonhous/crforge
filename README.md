@@ -10,6 +10,16 @@ A deterministic Clash Royale battle simulator in Java. Its battle core plays a b
   <img src="docs/assets/debug-visualizer.gif" alt="The replay viewer playing a Ladder replay beside the game's own replay of the same battle" width="800">
 </p>
 
+## Porting or reimplementing crforge
+
+Porting crforge's logic to another language, by hand or by asking an AI assistant to rewrite it? Please put a comment at each ported function or module that names the crforge file and the commit you read, for example:
+
+```rust
+// Ported from crforge core/src/main/java/org/crforge/core/pathfinding/target/TargetingVisit.java @ <commit> (https://github.com/voonhous/crforge)
+```
+
+It is a request, not a license condition (crforge is Apache 2.0), and it is mostly for your benefit. crforge is held tick by tick to battles recorded in the game, and its rules get corrected whenever a recording shows them wrong. With the file and commit in your code, `git log <commit>..origin/battle_core -- <file>` lists every change to that logic since you read it (`battle_core` is the development branch), and the repository URL in the comment lets us find your port and tell you when we fix something it carries. To hear about fixes, watch the repository's releases (the release notes list behaviour corrections per mechanic), or open an issue to ask about one.
+
 ## Why a tick-accurate simulator
 
 Clash Royale battles turn on small margins: a troop that retargets one step later, a projectile that lands one tick after a tower dies, a spell that catches a unit at the edge of its radius. A simulator that only approximates the game (hand-tuned stats, floating point time, mechanics guessed from videos) drifts from the real battle within seconds, and the drift compounds. An agent trained on such a simulator learns the simulator's quirks rather than the game, and results from different simulators cannot be compared.
