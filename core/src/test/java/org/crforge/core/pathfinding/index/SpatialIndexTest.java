@@ -385,6 +385,108 @@ class SpatialIndexTest {
     index.release(after);
   }
 
+  /**
+   * An entity standing on the corner of four buckets, whose collision square reaches into all four:
+   * buckets (4, 4), (4, 5), (5, 4) and (5, 5).
+   */
+  private static GridEntity onBucketCorner(int id) {
+    GridEntity e = new GridEntity();
+    e.setName("corner_" + id);
+    e.setId(id);
+    e.setSide(id & 1);
+    e.setX(5 * SpatialIndex.BUCKET_UNITS);
+    e.setY(5 * SpatialIndex.BUCKET_UNITS);
+    e.setCollisionRadius(500);
+    return e;
+  }
+
+  @Test
+  @DisplayName(
+      "with more than 64 entities in the index, each one standing in four buckets, every query"
+          + " answers each once, in the order they were put in")
+  void moreThanSixtyFourEntitiesAreEachAnsweredOnce() {
+    List<GridEntity> many = new ArrayList<>();
+    for (int id = 0; id < 70; id++) {
+      many.add(onBucketCorner(id));
+    }
+    index.rebuild(many);
+    int x = 5 * SpatialIndex.BUCKET_UNITS;
+
+    List<GridEntity> found = index.query(new SpatialQuery(x, x, 2000, 0, false, false, 0, -1));
+    assertThat(found).containsExactlyElementsOf(many);
+    index.release(found);
+    List<GridEntity> centred = index.centreQuery(x, x, 2000, e -> true);
+    assertThat(centred).containsExactlyElementsOf(many);
+    index.release(centred);
+    assertThat(index.boxQuery(x, x, 2000, 2000, e -> true)).containsExactlyElementsOf(many);
+    List<GridEntity> segment = index.segmentQuery(x - 600, x, x + 600, x, 600, e -> true);
+    assertThat(segment).containsExactlyElementsOf(many);
+    index.release(segment);
+    List<GridEntity> listed = index.listQuery(false);
+    assertThat(listed).containsExactlyElementsOf(many);
+    index.release(listed);
+    // Only the entities of one side, the odd slots above 64 among them.
+    List<GridEntity> oneSide = index.query(new SpatialQuery(x, x, 2000, 0, false, false, 0, 0));
+    assertThat(oneSide)
+        .containsExactlyElementsOf(many.stream().filter(e -> e.getSide() == 1).toList());
+    index.release(oneSide);
+  }
+
+  @Test
+  @DisplayName("an entity put in twice before a clear is answered once by every query")
+  void anEntityPutInTwiceIsAnsweredOnce() {
+    index.clear();
+    index.insert(unit);
+    index.insert(princessTopLeft);
+    index.insert(unit);
+
+    List<GridEntity> found = index.query(SpatialQuery.targetCandidates(3500, 10_000, 8000));
+    assertThat(found).containsExactly(princessTopLeft, unit);
+    index.release(found);
+    List<GridEntity> centred = index.centreQuery(3500, 10_000, 8000, e -> true);
+    assertThat(centred).containsExactly(princessTopLeft, unit);
+    index.release(centred);
+    assertThat(index.boxQuery(3500, 10_000, 4000, 4000, e -> true))
+        .containsExactly(princessTopLeft, unit);
+    List<GridEntity> segment = index.segmentQuery(3500, 6500, 3500, 10_000, 2000, e -> true);
+    assertThat(segment).containsExactly(princessTopLeft, unit);
+    index.release(segment);
+    List<GridEntity> listed = index.listQuery(false);
+    assertThat(listed).containsExactly(princessTopLeft, unit);
+    index.release(listed);
+  }
+
+  @Test
+  @DisplayName(
+      "the centre query tests an entity it rejected again in its next bucket, and a query run"
+          + " from within its filter leaves its answer as it was")
+  void theCentreQueryRetestsARejectedEntityAndAllowsAQueryWithinItsFilter() {
+    GridEntity corner = onBucketCorner(1);
+    GridEntity other = onBucketCorner(2);
+    index.rebuild(List.of(corner, other));
+    int x = 5 * SpatialIndex.BUCKET_UNITS;
+
+    List<String> tested = new ArrayList<>();
+    List<GridEntity> found =
+        index.centreQuery(
+            x,
+            x,
+            2000,
+            entity -> {
+              tested.add(entity.getName());
+              // A query inside the filter, over the same buckets, answering both.
+              List<GridEntity> inner =
+                  index.query(new SpatialQuery(x, x, 2000, 0, false, false, 0, -1));
+              assertThat(inner).containsExactly(corner, other);
+              index.release(inner);
+              return entity == corner;
+            });
+
+    assertThat(found).containsExactly(corner);
+    // The accepted entity once; the rejected one in each of its four buckets.
+    assertThat(tested).containsExactly("corner_1", "corner_2", "corner_2", "corner_2", "corner_2");
+  }
+
   @Test
   @DisplayName("an arena of more than 64 bucket rows is refused")
   void moreThanSixtyFourBucketRowsAreRefused() {

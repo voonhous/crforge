@@ -7,10 +7,8 @@
 package org.crforge.core.pathfinding.index;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -30,6 +28,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * creation order at the start of every tick, before any component pass runs, and cleared at the end
  * of the tick. Bucket membership is therefore fixed for the whole tick while the geometric tests
  * read live positions.
+ *
+ * <p>Each entity put in the index is given a slot, its place in the order the entities were put in,
+ * and the buckets hold slots. A query marks the slots it has seen in a word array, one bit a slot,
+ * so it tells an entity it has already met in an earlier bucket from a bit test.
  *
  * <p>Results come from a pool of ten lists. A query takes one and answers null when the pool is
  * empty; the caller returns the list with {@link #release(List)} when it is done with it.
@@ -68,8 +70,34 @@ public final class SpatialIndex {
   private final int width;
   private final int high;
 
-  /** The buckets, entry {@code width * cy + cx}, each in insertion order. */
-  private final ArrayList<GridEntity>[] buckets;
+  /** No slots: every bucket's array until an insert fills the bucket. */
+  private static final int[] NO_SLOTS = new int[0];
+
+  /**
+   * The buckets, entry {@code width * cy + cx}, each the slots of its entities in insertion order:
+   * the first {@code bucketSizes[entry]} of the array are in use.
+   */
+  private final int[][] buckets;
+
+  /** How many slots each bucket holds. */
+  private final int[] bucketSizes;
+
+  /**
+   * The entities put in the index since the last clear, by slot: the first {@code entityCount} are
+   * in use, each entity once.
+   */
+  private GridEntity[] entities = new GridEntity[16];
+
+  private int entityCount;
+
+  /**
+   * The words a query marks the slots it has seen in, one bit a slot, kept between queries; {@code
+   * marksTaken} while a query uses them, so a query run from within another's filter takes words of
+   * its own.
+   */
+  private long[] marks = new long[1];
+
+  private boolean marksTaken;
 
   /**
    * The entries of the buckets that hold an entity, in the order they were first filled, so a clear
@@ -102,18 +130,11 @@ public final class SpatialIndex {
       throw new IllegalArgumentException(
           "an arena of " + high + " bucket rows; the index keeps at most " + Long.SIZE);
     }
-    this.buckets = newBuckets(width * high);
+    this.buckets = new int[width * high][];
+    Arrays.fill(buckets, NO_SLOTS);
+    this.bucketSizes = new int[width * high];
     this.filled = new int[width * high];
     this.occupied = new long[width];
-  }
-
-  @SuppressWarnings("unchecked")
-  private static ArrayList<GridEntity>[] newBuckets(int count) {
-    ArrayList<GridEntity>[] buckets = (ArrayList<GridEntity>[]) new ArrayList<?>[count];
-    for (int i = 0; i < count; i++) {
-      buckets[i] = new ArrayList<>();
-    }
-    return buckets;
   }
 
   /**
@@ -152,13 +173,15 @@ public final class SpatialIndex {
   /**
    * Puts one entity into every bucket its collision square touches. An entity with a collision
    * radius below one is skipped; a moving entity's square is widened by {@link
-   * #MOVING_ENTITY_MARGIN}.
+   * #MOVING_ENTITY_MARGIN}. An entity put in again before a clear keeps its slot, so a query still
+   * answers it once.
    */
   public void insert(GridEntity entity) {
     int radius = entity.getCollisionRadius();
     if (radius < 1) {
       return;
     }
+    int slot = slotOf(entity);
     int margin = entity.isMovementActive() ? radius + MOVING_ENTITY_MARGIN : radius;
     int xLow = (entity.getX() - margin) >> BUCKET_SHIFT;
     int xHigh = (entity.getX() + margin) >> BUCKET_SHIFT;
@@ -174,25 +197,48 @@ public final class SpatialIndex {
             continue;
           }
           int entry = width * cy + cx;
-          ArrayList<GridEntity> bucket = buckets[entry];
-          if (bucket.isEmpty()) {
+          int size = bucketSizes[entry];
+          if (size == 0) {
             filled[filledCount++] = entry;
             occupied[cx] |= 1L << cy;
           }
-          bucket.add(entity);
+          if (size == buckets[entry].length) {
+            buckets[entry] = Arrays.copyOf(buckets[entry], Math.max(4, 2 * size));
+          }
+          buckets[entry][size] = slot;
+          bucketSizes[entry] = size + 1;
         }
       }
     }
     populated = true;
   }
 
-  /** Empties every bucket: only those an insert filled hold anything. */
+  /**
+   * The slot of an entity: the one it was given when it was first put in since the last clear, else
+   * the next. The index holds a few entities, so looking through them is cheaper than a map.
+   */
+  private int slotOf(GridEntity entity) {
+    for (int slot = 0; slot < entityCount; slot++) {
+      if (entities[slot] == entity) {
+        return slot;
+      }
+    }
+    if (entityCount == entities.length) {
+      entities = Arrays.copyOf(entities, 2 * entityCount);
+    }
+    entities[entityCount] = entity;
+    return entityCount++;
+  }
+
+  /** Empties every bucket: only those an insert filled hold anything. Every slot is free again. */
   public void clear() {
     for (int i = 0; i < filledCount; i++) {
-      buckets[filled[i]].clear();
+      bucketSizes[filled[i]] = 0;
       occupied[filled[i] % width] = 0;
     }
     filledCount = 0;
+    Arrays.fill(entities, 0, entityCount, null);
+    entityCount = 0;
     populated = false;
   }
 
@@ -230,31 +276,37 @@ public final class SpatialIndex {
       return result;
     }
     long rowRange = rowRange(yLow, yHigh);
-    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
-      // The column's buckets in range that hold an entity, by ascending row.
-      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
-        int cy = Long.numberOfTrailingZeros(rows);
-        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
-        for (int i = 0, size = bucket.size(); i < size; i++) {
-          GridEntity entity = bucket.get(i);
-          // Only an accepted entity is marked, so a rejected one is tested again in its next
-          // bucket; the tests are position based, so the answer does not change. The accepted
-          // entities are the result's, so the mark is a look through the result.
-          if (holds(result, entity)) {
-            continue;
+    long[] seen = takeMarks();
+    try {
+      for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+        // The column's buckets in range that hold an entity, by ascending row.
+        for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+          int entry = width * Long.numberOfTrailingZeros(rows) + cx;
+          int[] slots = buckets[entry];
+          for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
+            int slot = slots[i];
+            // Only an accepted entity is marked, so a rejected one is tested again in its next
+            // bucket; the tests are position based, so the answer does not change.
+            if (marked(seen, slot)) {
+              continue;
+            }
+            GridEntity entity = entities[slot];
+            if (query.typeMask() >= 1 && ((query.typeMask() >>> entity.getType()) & 1) == 0) {
+              continue;
+            }
+            if (query.excludeTeam() != -1 && team(entity) == query.excludeTeam()) {
+              continue;
+            }
+            if (!accepts(entity, query)) {
+              continue;
+            }
+            mark(seen, slot);
+            result.add(entity);
           }
-          if (query.typeMask() >= 1 && ((query.typeMask() >>> entity.getType()) & 1) == 0) {
-            continue;
-          }
-          if (query.excludeTeam() != -1 && team(entity) == query.excludeTeam()) {
-            continue;
-          }
-          if (!accepts(entity, query)) {
-            continue;
-          }
-          result.add(entity);
         }
       }
+    } finally {
+      returnMarks(seen);
     }
     if (!result.isEmpty() && query.kingsLast()) {
       moveKingsLast(result);
@@ -289,22 +341,32 @@ public final class SpatialIndex {
     if (xLow > xHigh || yLow > yHigh) {
       return result;
     }
-    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     long rowRange = rowRange(yLow, yHigh);
-    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, this.width - 1); cx <= lastCx; cx++) {
-      // The column's buckets in range that hold an entity, by ascending row.
-      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
-        int cy = Long.numberOfTrailingZeros(rows);
-        for (GridEntity entity : buckets[this.width * cy + cx]) {
-          // Unlike the point queries, a rejected entity is marked too and never tested again.
-          if (!seen.add(entity)) {
-            continue;
-          }
-          if (accepts.test(entity)) {
-            result.add(entity);
+    long[] seen = takeMarks();
+    try {
+      for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, this.width - 1);
+          cx <= lastCx;
+          cx++) {
+        // The column's buckets in range that hold an entity, by ascending row.
+        for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+          int entry = this.width * Long.numberOfTrailingZeros(rows) + cx;
+          int[] slots = buckets[entry];
+          for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
+            int slot = slots[i];
+            // Unlike the point queries, a rejected entity is marked too and never tested again.
+            if (marked(seen, slot)) {
+              continue;
+            }
+            mark(seen, slot);
+            GridEntity entity = entities[slot];
+            if (accepts.test(entity)) {
+              result.add(entity);
+            }
           }
         }
       }
+    } finally {
+      returnMarks(seen);
     }
     return result;
   }
@@ -340,22 +402,32 @@ public final class SpatialIndex {
     }
     int reach = radius * radius;
     long rowRange = rowRange(yLow, yHigh);
-    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
-      // The column's buckets in range that hold an entity, by ascending row.
-      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
-        int cy = Long.numberOfTrailingZeros(rows);
-        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
-        for (int i = 0, size = bucket.size(); i < size; i++) {
-          GridEntity entity = bucket.get(i);
-          // The accepted entities, the marked ones, are the result's.
-          if (holds(result, entity) || !passes.test(entity)) {
-            continue;
-          }
-          if (FixedMath.squaredDistance(entity.getX(), entity.getY(), x, y) < reach) {
-            result.add(entity);
+    long[] seen = takeMarks();
+    try {
+      for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+        // The column's buckets in range that hold an entity, by ascending row.
+        for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+          int entry = width * Long.numberOfTrailingZeros(rows) + cx;
+          int[] slots = buckets[entry];
+          for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
+            int slot = slots[i];
+            // Only the accepted entities are marked.
+            if (marked(seen, slot)) {
+              continue;
+            }
+            GridEntity entity = entities[slot];
+            if (!passes.test(entity)) {
+              continue;
+            }
+            if (FixedMath.squaredDistance(entity.getX(), entity.getY(), x, y) < reach) {
+              mark(seen, slot);
+              result.add(entity);
+            }
           }
         }
       }
+    } finally {
+      returnMarks(seen);
     }
     return result;
   }
@@ -388,27 +460,37 @@ public final class SpatialIndex {
       return result;
     }
     long rowRange = rowRange(yLow, yHigh);
-    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
-      // The column's buckets in range that hold an entity, by ascending row.
-      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
-        int cy = Long.numberOfTrailingZeros(rows);
-        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
-        for (int i = 0, size = bucket.size(); i < size; i++) {
-          GridEntity entity = bucket.get(i);
-          // The accepted entities, the marked ones, are the result's.
-          if (holds(result, entity) || !passes.test(entity)) {
-            continue;
-          }
-          boolean inside =
-              entity.isBuilding()
-                  ? ShapeTests.boxOverlap(entity, x, y, halfWidth, halfHeight)
-                  : ShapeTests.withinBox(
-                      entity, x - halfWidth, y - halfHeight, 2 * halfWidth, 2 * halfHeight);
-          if (inside) {
-            result.add(entity);
+    long[] seen = takeMarks();
+    try {
+      for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+        // The column's buckets in range that hold an entity, by ascending row.
+        for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+          int entry = width * Long.numberOfTrailingZeros(rows) + cx;
+          int[] slots = buckets[entry];
+          for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
+            int slot = slots[i];
+            // Only the accepted entities are marked.
+            if (marked(seen, slot)) {
+              continue;
+            }
+            GridEntity entity = entities[slot];
+            if (!passes.test(entity)) {
+              continue;
+            }
+            boolean inside =
+                entity.isBuilding()
+                    ? ShapeTests.boxOverlap(entity, x, y, halfWidth, halfHeight)
+                    : ShapeTests.withinBox(
+                        entity, x - halfWidth, y - halfHeight, 2 * halfWidth, 2 * halfHeight);
+            if (inside) {
+              mark(seen, slot);
+              result.add(entity);
+            }
           }
         }
       }
+    } finally {
+      returnMarks(seen);
     }
     return result;
   }
@@ -424,17 +506,23 @@ public final class SpatialIndex {
     }
     freeResultLists--;
     List<GridEntity> result = new ArrayList<>();
-    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-    if (width >= 1 && high >= 1) {
+    long[] seen = takeMarks();
+    try {
       for (int cx = 0; cx < width; cx++) {
         for (int cy = 0; cy < high; cy++) {
-          for (GridEntity entity : buckets[width * cy + cx]) {
-            if (seen.add(entity)) {
-              result.add(entity);
+          int entry = width * cy + cx;
+          int[] slots = buckets[entry];
+          for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
+            int slot = slots[i];
+            if (!marked(seen, slot)) {
+              mark(seen, slot);
+              result.add(entities[slot]);
             }
           }
         }
       }
+    } finally {
+      returnMarks(seen);
     }
     if (kingsLast) {
       List<GridEntity> partitioned = new ArrayList<>(result.size());
@@ -467,16 +555,40 @@ public final class SpatialIndex {
   }
 
   /**
-   * Whether a list holds this very entity. A query's result holds the entities it has accepted, a
-   * few at most, so looking through it is cheaper than keeping a set of them.
+   * Cleared words for a query to mark the slots it has seen in, one bit a slot: the index's own,
+   * unless a query running further out is using them, as when a query is run from within another
+   * query's filter; that query gets words of its own. Give them back with {@link
+   * #returnMarks(long[])}.
    */
-  private static boolean holds(List<GridEntity> list, GridEntity entity) {
-    for (int i = 0, size = list.size(); i < size; i++) {
-      if (list.get(i) == entity) {
-        return true;
-      }
+  private long[] takeMarks() {
+    int words = (entityCount + Long.SIZE - 1) >>> 6;
+    if (marksTaken) {
+      return new long[words];
     }
-    return false;
+    marksTaken = true;
+    if (marks.length < words) {
+      marks = new long[words];
+    } else {
+      Arrays.fill(marks, 0, words, 0L);
+    }
+    return marks;
+  }
+
+  /** Gives back the words {@link #takeMarks()} answered. */
+  private void returnMarks(long[] taken) {
+    if (taken == marks) {
+      marksTaken = false;
+    }
+  }
+
+  /** Whether a slot is marked in the words. */
+  private static boolean marked(long[] seen, int slot) {
+    return (seen[slot >>> 6] & (1L << slot)) != 0;
+  }
+
+  /** Marks a slot in the words. */
+  private static void mark(long[] seen, int slot) {
+    seen[slot >>> 6] |= 1L << slot;
   }
 
   /** The geometric test selected by the query's half height and building-aware flag. */

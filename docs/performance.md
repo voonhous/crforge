@@ -45,9 +45,48 @@ jfrconv --cpu "$J" conformance/build/profile/cpu.html
 jfrconv --alloc "$J" conformance/build/profile/alloc.html
 ```
 
-## Baseline (2026-10-10, 2afbb93d)
+## Baseline (2026-10-11)
 
-The baseline to measure the next change against. Source `battle_core` 2afbb93d, data version 16.402.19 with the references at the commit `crforge-data.lock` names (459 of 459 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 2.3 to 4.1 during the run.
+The baseline to measure the next change against. Source `battle_core` 8c51ccfb with the slot marks of the spatial index (the second optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (544 of 544 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 4.1 to 8.0 during the run, the four-thread workload's own threads included.
+
+| Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
+|----------|---------|---------|-----------|----------------------|--------------------|
+| `replays` | 1 | 88,286 +- 1,451 | 19.48 +- 0.46 | 81.9 MB | about 18 KB |
+| `allCases` | 1 | 155,654 +- 4,408 | 106.68 +- 3.55 | 16.9 MB | about 12 KB |
+| `allCasesFourThreads` | 4 | 606,776 +- 9,557 | 411.33 +- 9.46 | 17.5 MB | about 12 KB |
+
+Read as:
+
+- A real battle runs at about 88,000 steps a second on one thread, about 4,400 times the game's own 20 steps a second: a battle of about 4,540 steps in about 51 ms.
+- Four threads give 3.9 times one thread.
+
+What the profile of the replays showed at 8c51ccfb, just before the second optimisations (async-profiler, as above, about 20,000 CPU samples inside the steps, on a busy machine: the shares hold, the speed does not):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 31% | choosing targets (`TargetingVisit.reselect`, `SelectionChain`) |
+| 17% | `SpatialIndex.query` (inside the above, and the push and avoidance passes): 7% of it the look through its result for an entity already accepted, the walk over the buckets cheap since #482 |
+| 22% | preparing routes (`RoutePreparation`): the route search 9%, the cost field priced for the whole arena before each search 5%, the scan for the cell to walk to (`ReferenceEndpoint`) 7% |
+| 10% | following routes |
+
+The bytes allocated are spread as at 2afbb93d: no site above 8%.
+
+## The second optimisations (2026-10-11)
+
+The changes the profile at 8c51ccfb pointed to, measured back to back against 8c51ccfb on the same references (544 cases): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 2.4 to 8.0, the four-thread workload's own threads included.
+
+| Source | `replays` ticks/s | `replays` again | `allCases` ticks/s | `allCasesFourThreads` ticks/s | Allocated per battle, `replays` | `allCases` |
+|--------|-------------------|-----------------|--------------------|-------------------------------|---------------------------------|------------|
+| before (8c51ccfb) | 81,692 +- 1,362 | 83,219 +- 1,069 | 145,533 +- 8,347 | 559,708 +- 15,915 | 78.3 MB | 17.0 MB |
+| slot marks in the spatial index | 88,286 +- 1,451 (+8.1%) | 90,217 +- 923 (+8.4%) | 155,654 +- 4,408 (+7.0%) | 606,776 +- 9,557 (+8.4%) | 81.9 MB | 16.9 MB |
+
+- Slot marks in the spatial index: each entity put in the index takes a slot and the buckets hold slots; a query marks the slots it has accepted in a word per 64 slots instead of looking through its result for every entry it meets.
+
+The bytes allocated did not move beyond the spread from run to run (about 4%): the change saves time, not objects.
+
+## Baseline at 2afbb93d (2026-10-10)
+
+The baseline after the first optimisations, kept with its profile. Source `battle_core` 2afbb93d, data version 16.402.19 with the references at the commit `crforge-data.lock` names (459 of 459 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 2.3 to 4.1 during the run.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
