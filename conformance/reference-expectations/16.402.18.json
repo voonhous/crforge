@@ -527,7 +527,7 @@
   "tv-replays-v3/tv_replay_007": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "proj_4000297 (Cannon_EV1_barrage_projectile) flies within Deflect_3000056 (Deflect), whose deflection of it is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_010": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_011": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_013": {"outcome": "diagnostic_match"},

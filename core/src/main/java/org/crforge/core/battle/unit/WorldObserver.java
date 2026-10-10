@@ -630,14 +630,16 @@ public interface WorldObserver {
       TargetView reference) {}
 
   /**
-   * A deflecting area effect turned a projectile around, sending it back at its source.
+   * A deflecting area effect turned a projectile around, sending it back at its source, or at a
+   * point.
    *
    * @param tick the battle tick
    * @param deflector the area effect
    * @param projectile the projectile
    * @param parent the object the area effect follows, which took the projectile's damage and is the
    *     projectile's launcher now
-   * @param source the projectile's root owner, which it is sent back at
+   * @param source the projectile's root owner, which it is sent back at; null when it is sent at a
+   *     point: a spell-like projectile's enemy crown tower, or a bomb's area effect
    */
   default void projectileDeflected(
       int tick,

@@ -834,6 +834,27 @@ public class ProjectileEntity extends BattleEntity
    * @param source the projectile's root owner, which it is sent back at
    */
   public void deflect(WorldEntity deflector, WorldEntity source) {
+    GridEntity at = source.getView();
+    turnAround(deflector, source, at.getX(), at.getY());
+  }
+
+  /**
+   * The redirect of a deflection at a point, as {@link #deflect} sends a projectile back at its
+   * source, but with no target: launched again from where it stands, at its height, at the point,
+   * the deflector its launcher, owner and root, at its own level. A spell-like projectile is sent
+   * at the enemy crown tower the deflection picked this way, and a bomb at the area effect it was
+   * dropped onto, which stays what it was dropped onto.
+   *
+   * @param deflector the deflecting area effect's parent, which sends it on
+   * @param px the point along the width
+   * @param py the point along the length
+   */
+  public void deflectAt(WorldEntity deflector, int px, int py) {
+    turnAround(deflector, null, px, py);
+  }
+
+  /** The redirect both deflections share, at a target and its point or at a point alone. */
+  private void turnAround(WorldEntity deflector, WorldEntity source, int px, int py) {
     if (data.customDeflectAction() != null) {
       throw new UnsupportedOperationException(
           name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
@@ -849,20 +870,8 @@ public class ProjectileEntity extends BattleEntity
     deflections++;
     pingpongTimeMs = 0;
     side = deflector.side();
-    GridEntity at = source.getView();
     GridEntity from = deflector.getView();
-    place(
-        deflector,
-        deflector,
-        source,
-        packedLevel,
-        x,
-        y,
-        z,
-        at.getX(),
-        at.getY(),
-        from.getX(),
-        from.getY());
+    place(deflector, deflector, source, packedLevel, x, y, z, px, py, from.getX(), from.getY());
     registerPending();
   }
 

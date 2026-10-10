@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
  * included, and only an enemy deflecting area effect the index lists would turn it around. Away
  * from the Deflect it hits as without one. A spell projectile such as the Fireball is measured
  * against the Deflect's radius widened by its own deflect radius; one that passes outside it lands
- * as without one.
+ * as without one. One that passes inside it is turned around: see {@link SpellDeflectTest}.
  */
 class DeflectPassTest {
 
@@ -56,9 +56,6 @@ class DeflectPassTest {
 
   /** The Magic Archer's arrow. */
   private static final String ARROW = text(unitRow("EliteArcher"), "Projectile");
-
-  /** The Fireball card's projectile. */
-  private static final String FIREBALL = text(row("spells_other", "Fireball"), "Projectile");
 
   /** A battle with side 0's Monk standing at (3500, 10000), its Deflect cast and alive. */
   private record Scene(
@@ -207,30 +204,5 @@ class DeflectPassTest {
     }
     // Cast after the Deflect came, the Fireball flew and landed while it lived.
     assertThat(deflectAlive(scene.match())).as("the Deflect still lives").isTrue();
-  }
-
-  @Test
-  @DisplayName("a Fireball cast onto the Monk would be deflected, refused")
-  void fireballOntoTheDeflectIsRefused() {
-    Scene scene = scene();
-    scene
-        .match()
-        .play(
-            scene.tick() + 1,
-            scene.records().card("Fireball"),
-            LEVEL,
-            ENEMY_SIDE,
-            3500,
-            10000,
-            "fireball");
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < TICKS; i++) {
-                scene.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(FIREBALL)
-        .hasMessageContaining(DEFLECT);
   }
 }
