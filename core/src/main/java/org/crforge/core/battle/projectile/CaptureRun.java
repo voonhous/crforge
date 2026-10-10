@@ -35,9 +35,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " component is on, the grants and the capture distances from the pull centre, the"
             + " drag delay and the pause before the drag, the cooldown after a capture leaves,"
             + " the action on each completed capture, the hit per hit frequency at the owner's"
-            + " level with its hit-speed scaled timer, and the hold tags without a capture buff;"
-            + " not held by a recorded battle (no 16.402.18 reference plays the evolved Goblin"
-            + " Cage). Held by no run: a capture that leaves the battle or dies, and the"
+            + " level with its hit-speed scaled timer, and the capture buff with the character as"
+            + " parent and source in place of the hold tags; no locked reference plays the evolved"
+            + " Goblin Cage, three recorded cases of it match. Held by no run: the hold tags of a"
+            + " character's capture without a buff, a capture that leaves the battle or dies, and the"
             + " distances it leaves behind, a claim whose lock another holds, two units equally"
             + " near, and a unit within the hide distance before the drag time has passed.")
 public final class CaptureRun extends ActionInstance {

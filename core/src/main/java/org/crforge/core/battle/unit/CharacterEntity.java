@@ -4556,8 +4556,9 @@ public class CharacterEntity extends WorldEntity {
    * which a deploy or a stun switches off; it queries around its point and is asked its own side by
    * the filter; its hit timer steps at its hit speed; each hit is its damage per hit at its level
    * and rarity through the damage entry, the character the attacker, passing a hidden unit; a
-   * completed drag raises HAS_CAPTURE in its tag word for one step. Refused as it runs: a capture
-   * buff, which no character's row gives.
+   * completed drag raises HAS_CAPTURE in its tag word for one step; the capture buff, as the
+   * evolved Goblin Cage's row gives it, goes on each capture with the character its parent and
+   * source at its level and side, as on a projectile.
    */
   private CaptureHost captureHost() {
     CharacterEntity owner = this;
@@ -4615,8 +4616,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void buff(WorldEntity unit, String buff, int timeMs) {
-        throw new UnsupportedOperationException(
-            owner.name() + " captures with the buff " + buff + ", not modelled");
+        world.captureBuff(owner, unit, buff, timeMs);
       }
 
       @Override

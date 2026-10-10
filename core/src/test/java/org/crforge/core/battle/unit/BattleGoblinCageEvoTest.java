@@ -1,6 +1,8 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,29 +11,32 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The evolved Goblin Cage's capture: a character that claims the enemy nearest it, waits the drag
- * delay and the pause, drags it onto its point, hides it there and hits it once per hit frequency
- * at its level, until the cage leaves and the unit walks on.
+ * The evolved Goblin Cage's capture: a character that claims the enemy nearest it, gives it the
+ * capture buff, the cage its parent and source, waits the drag delay and the pause, drags it onto
+ * its point, hides it there and hits it once per hit frequency at its level, until the cage leaves,
+ * its buff with it, and the unit walks on.
  */
 class BattleGoblinCageEvoTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
-  /** HitFrequency 1000 ms, in ticks. */
-  private static final int HIT_TICKS = 20;
+  /** The capture row the cage starts. */
+  private static final String CAPTURE = "GoblinCage_EV1_CaptureUnit";
+
+  /** Its hit frequency, in ticks. */
+  private static final int HIT_TICKS = number(CAPTURE, "HitFrequency") / 50;
+
+  /** The buff it gives each capture. */
+  private static final String BUFF = text(CAPTURE, "BuffDuringCapture");
 
   @Test
   @DisplayName(
       "the evolved cage captures a Giant, puts it on its point hidden, hits it every second at its"
           + " level and lets it walk on once it leaves")
-  @Disabled(
-      "the capture row sets a buff, GoblinCage_EV1_incapacitate_target, which the battle does not"
-          + " model yet and refuses")
   void theCageCapturesAndHitsAGiant() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     Battle battle = match.getBattle();
@@ -39,12 +44,12 @@ class BattleGoblinCageEvoTest {
         match.deploy(0, GameData.unit("GoblinCage_EV1_TEMPNAME"), LEVEL, 0, 3500, 14500);
     // Late in the cage's life, so the Giant outlives the hits it takes before the cage leaves.
     CharacterEntity giant = match.deploy(200, GameData.unit("Giant"), LEVEL, 1, 3500, 19000);
-    // GoblinCage_EV1_CaptureUnit's DamagePerHit 132 at the cage's level, scaled as a card's damage
-    // by the cage's own row's rarity.
+    // The capture's damage per hit at the cage's level, scaled as a card's damage by the cage's own
+    // row's rarity.
     int hit =
         LevelScaling.scale(
             ScalingGlobals.standard(),
-            132,
+            number(CAPTURE, "DamagePerHit"),
             cage.packedLevel(),
             ScalingMode.CARD_DAMAGE,
             cage.getData().rarity());
@@ -59,6 +64,9 @@ class BattleGoblinCageEvoTest {
       }
     }
     assertThat(snapped).as("the Giant is put on the cage's point").isNotNegative();
+    // The capture buff, the cage its parent and source, at the cage's level.
+    assertThat(captureBuffs(giant, cage)).as("the capture buff from the cage").hasSize(1);
+    assertThat(captureBuffs(giant, cage).get(0).getPackedLevel()).isEqualTo(cage.packedLevel());
 
     // Once hidden only the cage's hits reach it: each the damage per hit at the cage's level, one
     // hit frequency apart.
@@ -95,6 +103,20 @@ class BattleGoblinCageEvoTest {
     }
     assertThat(giant.getHitPoints().getHitPoints()).as("the Giant outlived the hits").isPositive();
     assertThat(giant.hidden()).as("no longer hidden").isFalse();
+    assertThat(captureBuffs(giant, cage)).as("the buff left with its parent").isEmpty();
     assertThat(giant.getView().getY()).as("walking again").isNotEqualTo(cageY);
+  }
+
+  /** The unit's instances of the capture buff whose parent and source are the cage. */
+  private static List<BuffInstance> captureBuffs(CharacterEntity unit, CharacterEntity cage) {
+    List<BuffInstance> out = new ArrayList<>();
+    for (BuffInstance instance : unit.getBuffs().items()) {
+      if (instance.getBuff().name().equals(BUFF)
+          && instance.getParent() == cage
+          && instance.getSource() == cage) {
+        out.add(instance);
+      }
+    }
+    return out;
   }
 }
