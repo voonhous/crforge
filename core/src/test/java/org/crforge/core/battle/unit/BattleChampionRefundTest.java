@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -31,7 +30,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A champion slot's refund window, on an Archer Queen whose ability row is written by hand: the
  * window is the row's RefundWindow, or its trigger delay for a row without one; it counts down
- * while a copy casts; and a refund only a held window lets through is refused.
+ * while a copy casts and holds while none does; and the cost is given back whenever the last copy
+ * leaves while the window is open, however long it held.
  */
 class BattleChampionRefundTest {
 
@@ -229,20 +229,23 @@ class BattleChampionRefundTest {
 
   @Test
   @DisplayName(
-      "a refund window that holds while she waits to cast, her death past its length, is refused"
-          + " as she dies rather than refunded")
-  void aRefundOnlyAHeldWindowAllowsIsRefused(@TempDir Path folder) throws IOException {
+      "a refund window that holds while she waits to cast gives her cost back at her death, long"
+          + " past the window's length")
+  void aHeldWindowStillRefunds(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(folder, ability -> ability.put("RefundWindow", 100));
+    int cost = scene.battle.getWorld().getRecords().unit(QUEEN).ability().manaCost();
     // With her ability's cost left over, to use it at once.
-    CharacterEntity queen =
-        scene.playQueen(scene.battle.getWorld().getRecords().unit(QUEEN).ability().manaCost());
-    // Used while she deploys: the ability waits, and the window holds.
+    CharacterEntity queen = scene.playQueen(cost);
+    // Used while she deploys: the ability waits, and the window holds, not counted down.
     scene.useAbility();
     scene.step(3);
     assertThat(queen.getView().getState()).isNotEqualTo(ChampionController.CASTING);
-    scene.battle.getWorld().kill(queen, null);
-    assertThatThrownBy(() -> scene.step(4))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("refund window held");
+    // Killed after the window would have run out, had it counted down every step.
+    scene.kill(queen);
+    assertThat(scene.refunds).hasSize(1);
+    String[] refund = scene.refunds.get(0).split(" ");
+    assertThat(Integer.parseInt(refund[0])).isEqualTo(cost);
+    assertThat(Integer.parseInt(refund[2]) - Integer.parseInt(refund[1]))
+        .isEqualTo(cost * KingElixir.SCALE);
   }
 }
