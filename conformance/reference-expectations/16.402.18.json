@@ -454,7 +454,7 @@
   "tv-replays-v3/tv_replay_017": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_018": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_019": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_020": {"outcome": "mismatch", "first_divergent_tick": 2977, "path": "$.entities[0].x"},
+  "tv-replays-v3/tv_replay_020": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_023": {"outcome": "diagnostic_match"},

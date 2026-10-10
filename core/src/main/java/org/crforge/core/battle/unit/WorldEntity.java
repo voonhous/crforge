@@ -1927,6 +1927,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Schedules a row a run on the instigator hands back to the entity, built for it, so its
+   * expressions read the entity, with the handing holder as its cause.
+   */
+  @Override
+  public void runFromInstigated(
+      BattleAction action, String actionToExecute, ActionHolder instigated) {
+    BattleAction built = world.getActions().build(actionToExecute, world.binding(this));
+    actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, instigated);
+  }
+
+  /**
    * The entity's action holder, made on first use as the standard game makes it. Its pending passes
    * are the battle's, so it reads the battle's in-pass flag.
    */

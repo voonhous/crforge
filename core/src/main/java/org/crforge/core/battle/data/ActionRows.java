@@ -1401,7 +1401,7 @@ public final class ActionRows {
                     action(f.get("OnTrueAction")),
                     action(f.get("OnFalseAction")));
             case "ActionRunOnInstigator" ->
-                new RunOnInstigator(shared, action(f.get("ActionToExecute")));
+                new RunOnInstigator(shared, rowName(f.get("ActionToExecute")));
             case "ActionRunActionOnShooter" ->
                 new RunActionOnShooter(shared, rowName(f.get("ActionToExecute")));
             case "ActionWaitToActivate" ->

@@ -320,6 +320,25 @@ public interface ActionOwner {
   }
 
   /**
+   * Schedules a row on the owner, built for it, that a run on the instigator of another holder
+   * hands back to it as that holder's cause: with that holder as its cause, its own delay, not at
+   * once and with no context. Its expressions read the owner.
+   *
+   * @param action the row that hands the action over
+   * @param actionToExecute the name of the row scheduled on the owner
+   * @param instigated the holder of the run that hands it over, the action's cause
+   */
+  default void runFromInstigated(
+      BattleAction action, String actionToExecute, ActionHolder instigated) {
+    throw new UnsupportedOperationException(
+        action.name()
+            + " hands "
+            + actionToExecute
+            + " to a cause that is not an arena entity, an area effect or a projectile, not"
+            + " modelled");
+  }
+
+  /**
    * Schedules a row on the entity that launched the owner, built for it, with the owner as its
    * cause, its own delay, not at once and with no context. Only a projectile has a shooter; any
    * other owner schedules nothing.
