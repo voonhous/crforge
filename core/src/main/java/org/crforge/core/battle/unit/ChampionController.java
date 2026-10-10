@@ -27,8 +27,8 @@ import org.crforge.core.pathfinding.GridEntityState;
  * while the champion casts, is frozen with nothing pending, and is dead. The refund window since
  * the last use counts down 50 a step while a copy casts (in the casting state, or carrying the tag
  * of a cast) and holds while every live copy does neither; with no copy left while it is open the
- * ability's cost is given back once. A refund that only a held window lets through is refused: the
- * hold is read from the game's code but no recorded battle shows one.
+ * ability's cost is given back once, however long it held: a copy that never casts, its ability
+ * left waiting, keeps it open until it dies.
  *
  * <p>A paid ability reaches every run of the king, from the last to the first; the slot that
  * follows the unit's row requests the ability of every live copy, opens the refund window for the
@@ -56,9 +56,11 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " hero_goblins. The state worked out again as a followed copy takes another row,"
             + " held by ability_hero_wizard. The refund window's length, the RefundWindow or else"
             + " the trigger delay, held by tv_replay_004 and tv_replay_016; a copy kept on another"
-            + " row of the same ability, held by hero_berserker. Refused: a refund only a held window lets through, which no"
-            + " reference reaches. Not carried: the limited availability and the reservation, which"
-            + " nothing in a battle here sets.")
+            + " row of the same ability, held by hero_berserker. The window held while no copy"
+            + " casts and the refund it lets through at a death long after, held by"
+            + " monk_refund_y14000_t310_arrows520 and monk_refund_y12000_t306_arrows560. Not"
+            + " carried: the limited availability and the reservation, which nothing in a battle"
+            + " here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
@@ -164,12 +166,6 @@ public final class ChampionController extends ActionInstance {
 
   /** The refund window: what is left of the ability's RefundWindow since the last use, in ms. */
   @Getter private int triggerMs;
-
-  /**
-   * How long the refund window has held since the last use, its copies alive and none casting, in
-   * milliseconds.
-   */
-  @Getter private int heldMs;
 
   /** The cost of the last use, which a refund gives back, in whole elixir. */
   @Getter private int paidMana;
@@ -314,20 +310,13 @@ public final class ChampionController extends ActionInstance {
     }
     if (triggerMs >= 1) {
       if (champions.isEmpty()) {
-        if (triggerMs - heldMs < 1) {
-          throw new UnsupportedOperationException(
-              champion.name()
-                  + "'s ability cost is given back only because its refund window held while no"
-                  + " live copy cast, which no recorded battle establishes");
-        }
         world.championRefund(this, paidMana);
         triggerMs = 0;
       } else if (anyCasting()) {
         // Not clamped: a window of 933 ends at -17.
         triggerMs -= STEP_MS;
-      } else {
-        heldMs += STEP_MS;
       }
+      // Otherwise it holds: no copy casts.
     }
     if (before > 0 && cooldownMs == 0) {
       world.championCooldownOut(this);
@@ -421,7 +410,6 @@ public final class ChampionController extends ActionInstance {
     }
     AbilityData ability = champion.ability();
     triggerMs = ability.refundWindowMs();
-    heldMs = 0;
     paidMana = ability.manaCost();
     cooldownMs = cooldownFullMs;
     if (charges > 0) {
