@@ -417,14 +417,30 @@ public final class BuffComponent implements BattleComponent {
 
   /**
    * Lists a copy of each instance another entity's component lists, in its order, as a clone takes
-   * its original's buffs: each with the time it has left. The component must list nothing yet.
+   * its original's buffs: each with the time it has left. The copy is the original's list read back
+   * into this one, so an instance this component already lists - a row's buff while not attacking
+   * that its level setter put on, as a Ghost's clone carries - is written over by the copy at its
+   * index or dropped past the copy's end: the component lists the copies alone.
    *
    * @param original the original's component
    */
   void copyFrom(BuffComponent original) {
-    if (!items.isEmpty()) {
-      throw new UnsupportedOperationException(
-          entity.name() + " takes a copy of buffs while it carries some, which is not modelled");
+    for (BuffInstance held : items) {
+      // Written over or dropped with no remove action run: an instance whose removal would run
+      // one, give a charge range or hold a spawner is not modelled.
+      if (held.getBuff().onRemoveAction() != null
+          || held.getBuff().overrideChargeRange() != 0
+          || held.getBuff().spawnObject() != null) {
+        throw new UnsupportedOperationException(
+            entity.name()
+                + " takes a copy of buffs while it carries "
+                + held.getBuff().name()
+                + ", whose removal is not modelled");
+      }
+    }
+    for (BuffInstance held : List.copyOf(items)) {
+      items.remove(held);
+      onRemoved(held);
     }
     // The clone creator leaves a buff that is not cloned off the clone, which no reference holds,
     // and whether a copy runs a buff's start action is not established.

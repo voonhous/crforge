@@ -8047,19 +8047,20 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A Clone's creator: makes a clone of a unit on the unit's point, kept inside the arena, of the
-   * unit's row and side, at the Clone's level re-based on the row's rarity, named after the unit
-   * and how many clones of it came before. The clone setter gives it 1 hit point of 1; it is set up
-   * as a clone through its setter, which with the combat gate after it leaves its movement
-   * component on and its targeting component off, faces as the unit faces, and is handed to the
-   * holder with its registration visit - in the clone state with no route, which moves nothing -
-   * and joins the live list at the tick's closing cleanup. It takes a copy of every buff the unit
-   * carries, the Clone's own buff, just put on the unit, among them, with the time each has left.
-   * Then the two move apart: the clone back toward its own side, and the unit, set up as a clone
-   * too unless it dashes, forward. Last, for a unit that carries riders, each rider in their order
-   * is cloned the same way, through this creator - its clone made on the rider's point, the rider
-   * set up as a clone and moving apart too - and its clone attached to the unit's clone on the
-   * rider's angle. A clone never enters the deploying state, so the unit's clone makes no riders of
-   * its own.
+   * unit's side and of its row, or of the row its row names as its cloned version, at the Clone's
+   * level re-based on that row's rarity, named after the unit and how many clones of it came
+   * before. The clone setter gives it 1 hit point of 1; it is set up as a clone through its setter,
+   * which with the combat gate after it leaves its movement component on and its targeting
+   * component off, faces as the unit faces, and is handed to the holder with its registration visit
+   * - in the clone state with no route, which moves nothing - and joins the live list at the tick's
+   * closing cleanup, whose fold starts it as any spawn: its own row's starting action is scheduled
+   * then. The unit's runs stay the unit's. It takes a copy of every buff the unit carries, the
+   * Clone's own buff, just put on the unit, among them, with the time each has left. Then the two
+   * move apart: the clone back toward its own side, and the unit, set up as a clone too unless it
+   * dashes, forward. Last, for a unit that carries riders, each rider in their order is cloned the
+   * same way, through this creator - its clone made on the rider's point, the rider set up as a
+   * clone and moving apart too - and its clone attached to the unit's clone on the rider's angle. A
+   * clone never enters the deploying state, so the unit's clone makes no riders of its own.
    *
    * @param original the unit
    * @param instigator the Clone's area effect
@@ -8068,6 +8069,8 @@ public class BattleWorld implements HolderPasses {
    */
   CharacterEntity makeClone(CharacterEntity original, AreaEffectEntity instigator, Clone action) {
     UnitData row = original.getData();
+    // The clone's row: the unit's own, or the row its row names as its cloned version.
+    UnitData cloneRow = row.clonedVersion() != null ? records.unit(row.clonedVersion()) : row;
     GridEntity at = original.getView();
     int fromX = at.getX();
     int fromY = at.getY();
@@ -8075,12 +8078,12 @@ public class BattleWorld implements HolderPasses {
     CharacterEntity clone =
         CharacterEntity.cloned(
             this,
-            row,
+            cloneRow,
             original.name() + "_clone" + made,
             original.side(),
             inset(fromX, tileMap.width()),
             inset(fromY, tileMap.height()),
-            PackedLevel.level(PackedLevel.pack(instigator.packedLevel(), row.rarity())));
+            PackedLevel.level(PackedLevel.pack(instigator.packedLevel(), cloneRow.rarity())));
     clone.markClone(original);
     clone.enterCloneSetup();
     clone.getView().setDirX(at.getDirX());
@@ -8091,6 +8094,9 @@ public class BattleWorld implements HolderPasses {
         visits.add(slot);
       }
     }
+    // Handed over as a spawn is: the fold that takes it in at the tick's closing cleanup starts
+    // it, scheduling its row's starting action.
+    clone.startOnAdmission();
     holder.addRegistered(clone);
     for (WorldObserver observer : observers) {
       observer.cloned(tick, original, clone, instigator, visits);
