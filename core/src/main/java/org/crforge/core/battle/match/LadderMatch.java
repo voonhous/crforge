@@ -7,6 +7,7 @@
 package org.crforge.core.battle.match;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
+import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -124,13 +125,15 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
             + " and the update it runs; by BattleMirrorTest alone: a Mirror after a Mirror and a"
             + " Mirror with nothing to repeat; by SpellVariantTest and BattleMergeMaidenTest"
-            + " alone: the pick at its boundary, the projection that moves no shipped pick, and a"
-            + " variant play the elixir does not cover. Not held apart: the last card and the"
+            + " alone: the pick at its boundary, the projection that moves no shipped pick, a"
+            + " variant play the elixir does not cover, and a Mirror after a Merge Maiden, which"
+            + " repeats the option it was played as. Not held apart: the last card and the"
             + " copy a Mirror reads, which differ only in a tick a play of its side ran, a play"
             + " the Mirror refuses. Not modelled, and refused: a character of the neutral side,"
             + " which the clearing only counts, and the stand-in owner of actions, which stands"
-            + " for an object the battle does not have; a Mirror of a champion, and of a variant card, which repeats the option it was"
-            + " played as; slot flags on a spell, a building, the Mirror or a variant card, and"
+            + " for an object the battle does not have; a Mirror of a champion; a Mirror of a"
+            + " variant card as the card itself, and of an evolved play as its evolved row, which"
+            + " no row sets; slot flags on a spell, a building, the Mirror or a variant card, and"
             + " two copies of an evolution slot's card in a deck, which no reference holds; and a"
             + " play of an evolution slot's card while another play of it is due, whose item the"
             + " client builds from the count before that play runs. Unreachable: an item's cost"
@@ -838,6 +841,11 @@ public final class LadderMatch implements BattleMode {
    * for the Mirror's cost plus the card's, at most the most elixir there can be. With nothing to
    * repeat the item is the Mirror's own, at its level and its cost.
    *
+   * <p>The card repeated is the last card itself, unless it was a hero play or its row sets
+   * MirrorUsesRootSpell false: then it is the row the play was cast as, its hero row, or for a
+   * variant card the option it was played as, whose cost the item adds. A variant card repeated as
+   * itself, and an evolved play repeated as its evolved row, are in no shipped row and are refused.
+   *
    * @param side the playing side
    * @param index the Mirror's deck index
    * @param level the level the Mirror is played at, counted from 1
@@ -847,21 +855,11 @@ public final class LadderMatch implements BattleMode {
     MatchCard mirror = matchSide.deck().get(index);
     checkArgument(mirror.mirror(), () -> mirror.name() + " is not a Mirror");
     int mirrorLevelField = level - 1;
-    MatchCard source = matchSide.lastPlayedCopy();
-    // After a hero play the Mirror repeats the hero row; after an evolved play, the card itself.
-    if (source != null && matchSide.lastPlayedCopyField() == EvolutionItem.HERO) {
-      source = source.formRow(MatchCard.HERO_FORM);
-    }
-    if (source == null) {
+    MatchCard last = matchSide.lastPlayedCopy();
+    if (last == null) {
       return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
     }
-    // The item would repeat the option the variant was played as, for 1 more than its cost.
-    if (source.variant() != null) {
-      throw new UnsupportedOperationException(
-          "a Mirror of "
-              + source.name()
-              + ", which repeats the option it was played as, which no reference holds");
-    }
+    MatchCard source = repeatedCard(last, matchSide);
     // The level is not capped at the card's last: a level past it reads past its level tables.
     int levelField = Math.max(mirrorLevelField + mirrorLevelOffset, 0);
     checkArgument(
@@ -873,6 +871,49 @@ public final class LadderMatch implements BattleMode {
         mirrorLevelField,
         levelField,
         Math.min(mirror.cost() + source.cost(), maxMana));
+  }
+
+  /**
+   * The card a Mirror repeats of its side's last card: the card itself, unless the last play was a
+   * hero play or the card's row sets MirrorUsesRootSpell false, when it is the row the play was
+   * cast as. After a hero play that is the hero row; after an evolved play, the card itself; after
+   * a variant card's play, the option it was played as.
+   *
+   * @param last the copy of the side's last card
+   * @param matchSide the side, which keeps the field and the option it was played with
+   */
+  private static MatchCard repeatedCard(MatchCard last, MatchSide matchSide) {
+    int field = matchSide.lastPlayedCopyField();
+    if (field == EvolutionItem.HERO) {
+      return last.formRow(MatchCard.HERO_FORM);
+    }
+    if (last.variant() != null) {
+      if (last.mirrorUsesRootSpell()) {
+        throw new UnsupportedOperationException(
+            "a Mirror of the variant card "
+                + last.name()
+                + " as the card itself, whose row casts no option, which no row sets");
+      }
+      // The option's row, which the item casts and whose cost it adds.
+      int played = matchSide.lastPlayedCopyOption();
+      checkState(played >= 0, () -> last.name() + " was played as no option");
+      SpellVariant.Option option = last.variant().options().get(played);
+      return new MatchCard(
+          option.spell(),
+          option.cost(),
+          false,
+          false,
+          option.elixirProductionStopTimeMs(),
+          false,
+          null);
+    }
+    if (!last.mirrorUsesRootSpell() && field != 0) {
+      throw new UnsupportedOperationException(
+          "a Mirror of the evolved play of "
+              + last.name()
+              + " as its evolved row, which no row sets");
+    }
+    return last;
   }
 
   /**

@@ -23,6 +23,9 @@ import java.util.List;
  * @param elixirProductionStopTimeMs how long a play of it stops the player's elixir; 0 for none
  * @param mirror true for the Mirror, which plays the last card again
  * @param variant the options a variant card is played as, or null for any other card
+ * @param mirrorUsesRootSpell false for a card a Mirror repeats as the row its play was cast as,
+ *     true for one it repeats as the card itself (an evolved play's included); a hero play is
+ *     repeated as its hero row either way
  * @param darkElixirCost the plays of a card its evolved row waits for, 0 for none
  * @param form the row's form: {@link #BASIC_FORM}, {@link #EVO_FORM} or {@link #HERO_FORM}
  * @param evolvedSpells the rows the card is played as in other forms, in the row's order
@@ -35,6 +38,7 @@ public record MatchCard(
     int elixirProductionStopTimeMs,
     boolean mirror,
     SpellVariant variant,
+    boolean mirrorUsesRootSpell,
     int darkElixirCost,
     int form,
     List<MatchCard> evolvedSpells)
@@ -53,7 +57,7 @@ public record MatchCard(
     evolvedSpells = List.copyOf(evolvedSpells);
   }
 
-  /** A card in the basic form that lists no other form. */
+  /** A card in the basic form that lists no other form, which a Mirror repeats as itself. */
   public MatchCard(
       String name,
       int cost,
@@ -70,6 +74,7 @@ public record MatchCard(
         elixirProductionStopTimeMs,
         mirror,
         variant,
+        true,
         0,
         BASIC_FORM,
         List.of());

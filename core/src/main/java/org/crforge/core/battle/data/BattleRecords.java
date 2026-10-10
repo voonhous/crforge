@@ -2997,10 +2997,11 @@ public final class BattleRecords {
 
   /**
    * What the match reads of a card: its cost, its two opening-hand columns, its production stop,
-   * whether it is the Mirror, the options a variant card is played as, and the rows it is played as
-   * in other forms: each its own match card, with its form and DarkElixirCost. A row's form is its
-   * card form column, else the evolved form for a row of the evolved cards, the hero form for a row
-   * of the hero forms, else the basic form. The card is looked up in the card tables in turn.
+   * whether it is the Mirror, the options a variant card is played as, whether a Mirror repeats it
+   * as the card itself or as the row its play was cast as, and the rows it is played as in other
+   * forms: each its own match card, with its form and DarkElixirCost. A row's form is its card form
+   * column, else the evolved form for a row of the evolved cards, the hero form for a row of the
+   * hero forms, else the basic form. The card is looked up in the card tables in turn.
    *
    * @param name the card row's name
    */
@@ -3037,6 +3038,8 @@ public final class BattleRecords {
         row.intValue("ElixirProductionStopTime"),
         row.bool("Mirror"),
         variant(row),
+        // Unset, a Mirror repeats the card itself.
+        !row.has("MirrorUsesRootSpell") || row.bool("MirrorUsesRootSpell"),
         row.intValue("DarkElixirCost"),
         form,
         evolved);

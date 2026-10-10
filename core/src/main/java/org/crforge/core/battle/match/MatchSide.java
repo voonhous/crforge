@@ -91,11 +91,17 @@ public final class MatchSide {
   /** The evolution field the last card was played with. */
   private int lastPlayedField;
 
+  /** The option the last card was played as, for a variant card; -1 for any other card. */
+  private int lastPlayedOption = -1;
+
   /** The copy of the last card the visit makes, which a Mirror repeats; null before any. */
   private MatchCard lastPlayedCopy;
 
   /** The evolution field of the copy of the last card. */
   private int lastPlayedCopyField;
+
+  /** The option of the copy of the last card; -1 for none. */
+  private int lastPlayedCopyOption = -1;
 
   /** Each deck card's slot flags, by deck index. */
   private final int[] slotFlags;
@@ -200,6 +206,14 @@ public final class MatchSide {
   }
 
   /**
+   * The option the copy of the last card was played as, for a variant card, which a Mirror repeats
+   * it as; -1 for any other card.
+   */
+  public int lastPlayedCopyOption() {
+    return lastPlayedCopyOption;
+  }
+
+  /**
    * The king's visit: the hand refill, then the regeneration, then the copy of the last card.
    *
    * @param timeline the battle's timeline, whose rate and cooldown apply now
@@ -211,6 +225,7 @@ public final class MatchSide {
     regenerate(timeline.getFullBarMs(), maxMana);
     lastPlayedCopy = lastPlayed;
     lastPlayedCopyField = lastPlayedField;
+    lastPlayedCopyOption = lastPlayedOption;
     return refilled;
   }
 
@@ -276,11 +291,13 @@ public final class MatchSide {
     }
     lastPlayed = deck.get(index);
     lastPlayedField = item.field();
+    lastPlayedOption = -1;
   }
 
   /**
    * A play of a variant card: the picked option's cost taken and its production stop started, the
-   * variant card moved from its slot to the back of the queue and kept as the last played.
+   * variant card moved from its slot to the back of the queue and kept as the last played, with the
+   * option it was played as.
    *
    * @param item the variant card's item
    */
@@ -288,6 +305,7 @@ public final class MatchSide {
     play(item.index(), item.cost(), item.elixirProductionStopTimeMs());
     lastPlayed = deck.get(item.index());
     lastPlayedField = 0;
+    lastPlayedOption = item.option();
   }
 
   /**
