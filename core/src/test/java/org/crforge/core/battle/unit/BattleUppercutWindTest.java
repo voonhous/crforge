@@ -14,6 +14,7 @@ import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -333,6 +334,54 @@ class BattleUppercutWindTest {
                     .start(scene.row("MegaKnight_EV1_uppercut_send_flying", buffer), null))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("while it casts its ability");
+  }
+
+  @Test
+  @DisplayName(
+      "a knock resets the charge of the unit it throws on each of its updates: the progress back"
+          + " to 0 and the charged strike dropped, so the unit lands with no charge built")
+  void aKnockResetsTheCharge() {
+    Scene scene = new Scene();
+    // A Prince walking up its lane, alone, until its charge is complete.
+    CharacterEntity prince = scene.unit(0, "Prince", 3500, 6000, "p");
+    int steps = 0;
+    while (prince.getUnit().movement().getChargeProgress() < MovementState.CHARGE_COMPLETE) {
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("charged at last").isLessThan(200);
+    }
+    scene.step(2);
+    assertThat(prince.getUnit().targeting().isChargeStrike()).as("strike armed").isTrue();
+    List<Integer> progress = new ArrayList<>();
+    scene
+        .world()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void knockbackStepped(
+                  int tick,
+                  CharacterEntity unit,
+                  int before,
+                  int after,
+                  int height,
+                  long tags,
+                  boolean finished) {
+                progress.add(unit.getUnit().movement().getChargeProgress());
+                assertThat(unit.getUnit().targeting().isChargeStrike()).isFalse();
+              }
+            });
+
+    prince.actionHolder().start(scene.row(KNOCK, prince), null);
+    scene.step(KNOCK_UPDATES);
+
+    // Each update, the landing one too, leaves the charge reset; the unit walks on in the air, and
+    // once it has landed its charge builds again from 0.
+    assertThat(progress).hasSize(KNOCK_UPDATES).containsOnly(0);
+    assertThat(prince.getUnit().movement().getChargeProgress()).isZero();
+    scene.step(1);
+    assertThat(prince.getUnit().movement().getChargeProgress())
+        .isPositive()
+        .isLessThan(MovementState.CHARGE_COMPLETE);
   }
 
   @Test
