@@ -10,7 +10,7 @@ import org.crforge.core.pathfinding.GridEntity;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Answered from the entity: its kind, team, tag word, crown tower, building, alive, flying,"
+        "Answered from the entity: its kind, team, tag word, crown tower, building, alive, its layer,"
             + " whether it is a clone,"
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
             + " pushback, whether its row sets Kamikaze or IgnoreResurrect, its buffs' invisible count, and whether it is hidden, which asks the"
@@ -89,9 +89,15 @@ final class EntityFilterSubject implements FilterSubject {
     return entity.getData().king();
   }
 
+  /**
+   * The filter's flying flag asks the entity's layer as its tag word and its live height give it,
+   * at the time of the test: a row with a flying height held on the ground by FORCE_IS_GROUND, as
+   * the evolved Royal Hog's grounded row after its fall, is not flying; a unit with neither force
+   * tag flies when its row does.
+   */
   @Override
   public boolean flying() {
-    return entity.getData().air();
+    return entity.layerAir();
   }
 
   @Override
