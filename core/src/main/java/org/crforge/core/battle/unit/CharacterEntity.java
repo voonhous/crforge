@@ -662,6 +662,9 @@ public class CharacterEntity extends WorldEntity {
     }
     // Going underground or across the arena, the unit is dropped by every projectile aimed at it.
     setter.setPathfindEntry(() -> world.pathfindEntered(this));
+    // Every other change of state ends with the combat gate on the targeting component's own
+    // switch, wherever it is asked for.
+    setter.setTailGate(() -> combatGate(isActive(TARGETING_SLOT), setter::prepareRoute));
     // An ability that switches lanes sends the unit into the in-game pathfinding state, whose
     // arrival ends with the combat gate on the targeting component's own switch.
     if (data.ability() != null && data.ability().switchLanes()) {

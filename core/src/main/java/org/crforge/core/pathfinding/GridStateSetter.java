@@ -59,15 +59,23 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * back to any other state it is a change of its own, running its own exit, entry and combat gate in
  * place of the casting change's gate. Entering the ability's follow-up state seeds the cast's
  * countdown with the follow-up's duration in whole ticks. Leaving it before the effect fired leaves
- * the ability pending again, and a unit with a movement component has its charge reset. A change
- * into or out of the casting state ends with the unit's combat gate.
+ * the ability pending again, and a unit with a movement component has its charge reset.
+ *
+ * <p>Every change that stores a new state ends with the unit's combat gate, wherever it is asked
+ * for: a change into or out of the casting state with the casting's gate, one into or out of a
+ * hook's states with the hook's, an arrival out of the in-game pathfinding state with that
+ * arrival's, and any other with the setter's tail gate. So a gate that drops the reference and
+ * resumes the unit does so inside the change, at the point of the tick the change was asked at: a
+ * unit held standing under NO_MOVE whose targeting visit resumes it as a stun lands has its
+ * reference dropped and is resumed there, before its movement visit puts it back to standing, and
+ * is not left moving by the state visit's gate after that visit.
  *
  * <p><b>Not carried here.</b> The standard game also switches components on and off as states
  * change, seeds the morph countdown on entering the morphing state, chains a further dash on
  * leaving the dashing state and runs the row's closing action, resets the charge on leaving the
  * follow-up states, relocates a unit leaving a following state to a free cell, makes a building
- * asked to follow stand instead, and ends every other change with two notifications. None of that
- * is reachable from a plain ground unit, which is all the grid drives.
+ * asked to follow stand instead, and ends every change with a notification after its combat gate.
+ * None of that is reachable from a plain ground unit, which is all the grid drives.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -86,7 +94,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " on leaving the"
             + " in-game pathfinding state, held by ability_mighty_miner,"
             + " filter_freeze_over_mightyminer_lane_switch and"
-            + " grid_rage_over_miner_tunnel_and_lane_switch; the follow-up state's countdown"
+            + " grid_rage_over_miner_tunnel_and_lane_switch; the combat gate at the end of every"
+            + " other change, held by recorded battles of an evolved Mega Knight held by its"
+            + " uppercut and stunned by Mini Sparkys; the follow-up state's countdown"
             + " seeded on its entry, held by ability_monk and random_battle16_s0048; the clone"
             + " setup's entry and exit, held by card_Clone and spell_clone_into_push. Held by the"
             + " walks of the reference battles, whose route empties at the lock, and the staggered"
@@ -94,7 +104,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " place_skeleton_army_edge among them. Not modelled: switching components, the"
             + " countdown seeded on entering the morphing state, the chained dash and closing"
             + " action on leaving the dashing state, whose columns are refused, the"
-            + " following-state rewrites and the two notifications every change ends with. A cast"
+            + " following-state rewrites and the notification every change ends with. A cast"
             + " with no countdowns at all fires in the casting state's entry and goes back to the"
             + " state it came from, held by ability_hero_giant_slap; back to walking by a bare"
             + " store of the state, held by random_battle16_s0012, whose Ice Golemite hero casts"
@@ -234,6 +244,12 @@ public final class GridStateSetter implements StateSetter {
   @Setter private Runnable ingamePathfindExitGate;
 
   /**
+   * The combat gate every change ends with that none of the gates above ends, on the targeting
+   * component's own switch, or null for a setter that runs none.
+   */
+  @Setter private Runnable tailGate;
+
+  /**
    * Creates the setter of one unit.
    *
    * @param owner the unit whose state this sets
@@ -363,19 +379,30 @@ public final class GridStateSetter implements StateSetter {
       // whose own change ran the combat gate: this change ends without its own.
       return;
     }
-    // A change into or out of the casting state, or the hook's states, ends with the combat gate;
-    // every other change leaves the gate to the state visit's tail.
+    // Every change ends with one combat gate: the casting's for a change into or out of the casting
+    // state, the hook's for one into or out of the hook's states, the arrival's for one out of the
+    // in-game pathfinding state, and the tail gate for any other.
+    boolean gated = false;
     if ((oldState == GridEntityState.CASTING || newState == GridEntityState.CASTING)
         && casting != null) {
       casting.combatGate().run();
+      gated = true;
     }
     if (hook) {
       following.tailGate();
+      gated = true;
     }
     // An arrival out of the in-game pathfinding state ends with the combat gate too: a unit that
     // deploys again there drops its reference.
     if (oldState == GridEntityState.INGAME_PATHFIND && ingamePathfindExitGate != null) {
       ingamePathfindExitGate.run();
+      gated = true;
+    }
+    // Any other change ends with the tail gate, as the change is made, not at the state visit's
+    // tail: a stun found there drops the reference and resumes the unit before the rest of the
+    // tick, its movement visit included, runs.
+    if (!gated && tailGate != null) {
+      tailGate.run();
     }
   }
 
