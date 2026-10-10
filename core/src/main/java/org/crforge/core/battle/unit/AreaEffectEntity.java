@@ -1499,6 +1499,17 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         world.ghostSummon(AreaEffectEntity.this, row, (WorldEntity) reference, x, y);
   }
 
+  /**
+   * Schedules a row a run on the instigator hands back to the area effect, built for it, so its
+   * expressions read the area effect, with the handing holder as its cause.
+   */
+  @Override
+  public void runFromInstigated(
+      BattleAction action, String actionToExecute, ActionHolder instigated) {
+    BattleAction built = world.getActions().build(actionToExecute, binding());
+    actionHolder.schedule(built, ActionHolder.OWN_DELAY, false, instigated);
+  }
+
   @Override
   public ActionHolder actionHolder() {
     return actionHolder;

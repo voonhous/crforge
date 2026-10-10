@@ -280,21 +280,55 @@ class ActionCompositesTest {
     assertThat(queue(h2)).as("a missing branch schedules nothing").isEmpty();
   }
 
+  /**
+   * A cause whose holder takes what a run on the instigator hands it: the row named, built for it
+   * as a leaf of that name, scheduled with the handing holder as its cause.
+   */
+  private final class HandedOwner implements ActionOwner {
+    private final ActionHolder holder = new ActionHolder(this);
+
+    @Override
+    public HitPoints actionHitPoints() {
+      return null;
+    }
+
+    @Override
+    public int variable(int key) {
+      return 0;
+    }
+
+    @Override
+    public void setVariable(int key, int value) {}
+
+    @Override
+    public void killBy(ActionOwner killer) {}
+
+    @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {}
+
+    @Override
+    public void runFromInstigated(
+        BattleAction action, String actionToExecute, ActionHolder instigated) {
+      holder.schedule(new Leaf(actionToExecute), ActionHolder.OWN_DELAY, false, instigated);
+    }
+  }
+
   @Test
   @DisplayName(
-      "a run on the instigator schedules its action on the instigator, the owner its instigator")
+      "a run on the instigator hands its action to the instigator, which builds it for itself, the"
+          + " owner its instigator")
   void runOnInstigator() {
-    Leaf target = new Leaf("t1");
     ActionHolder owner = new ActionHolder();
-    ActionHolder instigator = new ActionHolder();
+    HandedOwner cause = new HandedOwner();
+    ActionHolder instigator = cause.holder;
 
-    owner.schedule(new RunOnInstigator(row("run"), target), 0, true, instigator);
+    owner.schedule(new RunOnInstigator(row("run"), "t1"), 0, true, instigator);
     assertThat(queue(owner)).as("nothing on the owner").isEmpty();
     assertThat(queue(instigator)).containsExactly("t1 0");
     assertThat(instigator.queuedInstigators()).containsExactly(owner);
 
     ActionHolder alone = new ActionHolder();
-    alone.schedule(new RunOnInstigator(row("run"), target), 0, true);
+    alone.schedule(new RunOnInstigator(row("run"), "t1"), 0, true);
     assertThat(queue(alone)).as("with no instigator nothing is scheduled").isEmpty();
   }
 

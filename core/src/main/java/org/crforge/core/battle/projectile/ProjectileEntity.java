@@ -966,6 +966,18 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Schedules a row a run on the instigator hands back to the projectile, built for it, so its
+   * expressions read the projectile, with the handing holder as its cause.
+   */
+  @Override
+  public void runFromInstigated(
+      BattleAction action, String actionToExecute, ActionHolder instigated) {
+    BattleAction built =
+        world.getActions().build(actionToExecute, new ProjectileBinding(world, this));
+    actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, instigated);
+  }
+
+  /**
    * Creates the area effect an action's spawn row names at the projectile's point, moved by the
    * row's offsets, as the hero Wizard's air projectile does from its action on reaching its target.
    */
