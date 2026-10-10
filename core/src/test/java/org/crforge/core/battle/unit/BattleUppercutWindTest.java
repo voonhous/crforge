@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Test;
 /**
  * The evolved Mega Knight's uppercut, the knock it gives, and the evolved Baby Dragon's wind where
  * the reference runs do not take them: the ends of the uppercut, its refusals, the knock's arc, its
- * postponing of an ability and its refusal, the wind on the other side, its re-trigger and a new
- * wind after one has ended, a choice by team without a cause, and the actions run at an area
- * effect's ages.
+ * postponing of an ability and a cast or follow-up it leaves going, the wind on the other side, its
+ * re-trigger and a new wind after one has ended, a choice by team without a cause, and the actions
+ * run at an area effect's ages.
  */
 class BattleUppercutWindTest {
 
@@ -319,21 +319,67 @@ class BattleUppercutWindTest {
   }
 
   @Test
-  @DisplayName("a knock on a unit casting its ability is refused")
-  void aKnockOnACastingUnitIsRefused() {
-    Scene scene = new Scene();
-    CharacterEntity buffer = scene.unit(0, "GiantBuffer", 3500, 9500, "gb");
-    scene.step(40);
-    buffer.requestAbility();
-    assertThat(buffer.getView().getState()).isEqualTo(GridEntityState.CASTING);
+  @DisplayName(
+      "a knock on a unit casting its ability leaves the cast alone: the unit is lifted, and its"
+          + " cast fires and ends on the same steps as without the knock")
+  void aKnockLeavesACastGoing() {
+    // A Giant Buffer alone: its collector finds no friend, so only this request casts.
+    List<String> plain = castStates("GiantBuffer", false, 0);
+    List<String> knocked = castStates("GiantBuffer", true, 0);
 
-    assertThatThrownBy(
-            () ->
-                buffer
-                    .actionHolder()
-                    .start(scene.row("MegaKnight_EV1_uppercut_send_flying", buffer), null))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("while it casts its ability");
+    assertThat(plain).as("the cast without a knock").contains("10 ground", "0 ground");
+    assertThat(knocked).as("lifted while casting").contains("10 air");
+    assertThat(states(knocked)).isEqualTo(states(plain));
+  }
+
+  @Test
+  @DisplayName(
+      "a knock on a unit holding its ability's follow-up state leaves that state alone: it ends on"
+          + " the same step as without the knock")
+  void aKnockLeavesAFollowUpGoing() {
+    // The Monk's deflect: a cast, then the follow-up state for the ability's state duration.
+    List<String> plain = castStates("Monk", false, -1);
+    List<String> knocked = castStates("Monk", true, -1);
+
+    assertThat(plain).as("the follow-up without a knock").contains("16 ground");
+    assertThat(knocked).as("lifted in the follow-up").contains("16 air");
+    assertThat(states(knocked)).isEqualTo(states(plain));
+  }
+
+  /**
+   * The state and layer of a lone unit of the row, a step at a time, from its ability request until
+   * it has left both the cast and the follow-up, with the knock started on it, when asked, the
+   * given steps after the request, or on the first step of the follow-up for a negative delay.
+   */
+  private static List<String> castStates(String rowName, boolean knock, int knockAfter) {
+    Scene scene = new Scene();
+    CharacterEntity unit = scene.unit(0, rowName, 3500, 9500, "u");
+    scene.step(40);
+    unit.requestAbility();
+    assertThat(unit.getView().getState()).isEqualTo(GridEntityState.CASTING);
+    List<String> out = new ArrayList<>();
+    boolean knocked = false;
+    for (int steps = 0; steps < 400; steps++) {
+      int state = unit.getView().getState();
+      boolean due =
+          knockAfter >= 0 ? steps == knockAfter : state == GridEntityState.ABILITY_FOLLOW_UP;
+      if (knock && !knocked && due) {
+        unit.actionHolder().start(scene.row(KNOCK, unit), null);
+        knocked = true;
+      }
+      scene.step(1);
+      state = unit.getView().getState();
+      out.add(state + (unit.getView().isAir() ? " air" : " ground"));
+      if (state != GridEntityState.CASTING && state != GridEntityState.ABILITY_FOLLOW_UP) {
+        return out;
+      }
+    }
+    throw new AssertionError(rowName + " never left its cast");
+  }
+
+  /** The states alone of a list of state and layer lines. */
+  private static List<String> states(List<String> lines) {
+    return lines.stream().map(line -> line.substring(0, line.indexOf(' '))).toList();
   }
 
   @Test

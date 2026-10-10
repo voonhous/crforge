@@ -2456,20 +2456,13 @@ public class CharacterEntity extends WorldEntity {
    * <p>A unit with an ability is knocked as any other: the run postpones the ability while it is
    * listed, which the ability gate alone reads, so a request in the air is left pending and cast
    * once the run has left. A unit knocked while it casts its ability or holds its follow-up state
-   * is refused: the postponing does not reach a cast already begun, and no reference holds a cast
-   * going on through a knock.
+   * carries on with it: the postponing reaches only the gate, which a cast already begun does not
+   * ask again, and the knock neither reads nor changes the state, so the cast's countdowns, its
+   * activation and the follow-up go on in the air as on the ground.
    */
   @Override
   public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
     refuseRun(action.name());
-    int state = getView().getState();
-    if (state == GridEntityState.CASTING || state == GridEntityState.ABILITY_FOLLOW_UP) {
-      throw new UnsupportedOperationException(
-          action.name()
-              + " knocks "
-              + name()
-              + " while it casts its ability, which no reference holds");
-    }
     return new KnockbackRun(action, this, phase, instigator(instigator));
   }
 

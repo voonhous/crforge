@@ -35,9 +35,11 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " hero whose ability is idle held by random_battle16_s0019 and tv_replay_015; the"
             + " ability postponed while the run is listed, a request in the air cast once it has"
             + " left, held by a recorded witness outside the locked references. The charge reset"
-            + " on each update, held by a recorded witness outside the locked references. Refused:"
+            + " on each update, held by a recorded witness outside the locked references. A cast"
+            + " or an ability's follow-up state going on through the knock, the activation in the"
+            + " air included, held by recorded witnesses outside the locked references. Refused:"
             + " a unit jumping, dashing or following a removed building, a clone, a rider or"
-            + " carrier, and one casting its ability.")
+            + " carrier.")
 final class KnockbackRun extends ActionInstance {
 
   /** Milliseconds one update takes off the counter. */
