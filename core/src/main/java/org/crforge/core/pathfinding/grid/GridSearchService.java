@@ -112,9 +112,18 @@ public final class GridSearchService {
     if (nodes == null) {
       return new RouteSearchResult(new Route(), new int[4], UNLIMITED_BUDGET);
     }
+    // The grid's own working arrays: a search clears them first, and nothing it answers refers to
+    // them, so every search of the battle reuses them.
+    RouteSearch.Buffers buffers = grid.getSearchBuffers();
     int[] field =
         CellCostField.costField(
-            grid, costs, state, lane, waterPermission, alternateWaterPermission);
+            grid,
+            costs,
+            state,
+            lane,
+            waterPermission,
+            alternateWaterPermission,
+            buffers.costField(grid.getWidth() * grid.getHeight()));
     return RouteSearch.search(
         grid.getWidth(),
         grid.getHeight(),
@@ -126,7 +135,8 @@ public final class GridSearchService {
         !PathfindingGlobals.NEW_PATHFINDING_CODE,
         PathfindingGlobals.PATHFINDING_REFRESH_OPENNODES,
         PathfindingGlobals.PATHFINDING_REOPEN_CLOSEDNODES,
-        UNLIMITED_BUDGET);
+        UNLIMITED_BUDGET,
+        buffers);
   }
 
   /** The budget route preparation passes: none, so the search expands as many nodes as it needs. */

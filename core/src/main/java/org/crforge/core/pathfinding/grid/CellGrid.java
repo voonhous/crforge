@@ -82,6 +82,12 @@ public final class CellGrid {
   @Getter @Setter private int active;
 
   /**
+   * The route search's working arrays for this arena, reused by every search the battle runs, one
+   * at a time.
+   */
+  @Getter private final RouteSearch.Buffers searchBuffers = new RouteSearch.Buffers();
+
+  /**
    * Creates a grid over the given cell map with zeroed overlays, no footprints and an inactive
    * build.
    *

@@ -151,7 +151,8 @@ public final class CellCostField {
 
   /**
    * The whole cost array for one unit, row-major with one entry per cell, which is what the route
-   * search consumes. A fresh array is built on every call, as the search does one per query.
+   * search consumes. A fresh array is built on every call; the battle's route search writes the
+   * field into an array it keeps instead (the overload below).
    *
    * @see #costLookup(CellGrid, CellCosts, int, int, boolean, boolean)
    */
@@ -162,10 +163,38 @@ public final class CellCostField {
       int lane,
       boolean waterPermission,
       boolean alternateWaterPermission) {
+    return costField(
+        grid,
+        costs,
+        state,
+        lane,
+        waterPermission,
+        alternateWaterPermission,
+        new int[grid.getWidth() * grid.getHeight()]);
+  }
+
+  /**
+   * The same cost array, written into an array of the caller's, one entry per cell, every entry
+   * overwritten.
+   *
+   * @param field where the costs go, {@code width * height} entries
+   * @return {@code field}
+   */
+  public static int[] costField(
+      CellGrid grid,
+      CellCosts costs,
+      int state,
+      int lane,
+      boolean waterPermission,
+      boolean alternateWaterPermission,
+      int[] field) {
     CellCostLookup lookup =
         costLookup(grid, costs, state, lane, waterPermission, alternateWaterPermission);
     int width = grid.getWidth();
-    int[] field = new int[width * grid.getHeight()];
+    if (field.length != width * grid.getHeight()) {
+      throw new IllegalArgumentException(
+          "a cost field of " + field.length + " entries for a grid of " + width * grid.getHeight());
+    }
     for (int i = 0; i < field.length; i++) {
       field[i] = lookup.cost(i % width, i / width);
     }
