@@ -862,6 +862,19 @@ public final class BuffComponent implements BattleComponent {
     return FixedMath.divOrZero(down * up, PERCENT);
   }
 
+  /**
+   * Whether a listed buff pulls its carrier: a row with an attraction or a lateral push, as a
+   * Tornado's. A dashing unit is never in its dash range while one is listed.
+   */
+  public boolean pulls() {
+    for (BuffInstance instance : items) {
+      if (instance.getBuff().attracts()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Whether a listed buff keeps its carrier from being pushed back. */
   public boolean ignoresPushBack() {
     for (BuffInstance instance : items) {
