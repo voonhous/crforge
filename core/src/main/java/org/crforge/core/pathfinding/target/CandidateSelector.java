@@ -23,10 +23,12 @@ import org.crforge.core.pathfinding.index.SpatialIndex;
     note =
         "The loop, the ranking, the tie-breaks, the clips and the fallbacks agree with"
             + " the reference. Held with towers as the only candidates. Not held by any"
-            + " fixture: enemy troops as candidates, lowest hit points, sight clipping,"
-            + " minimum range and the touchdown rule. A hidden candidate is skipped on its"
-            + " countdown alone, without asking whether it carries the component the reference"
-            + " also requires.")
+            + " fixture: enemy troops as candidates, lowest hit points, sight clipping"
+            + " and the touchdown rule. The minimum range, with the owner's collision radius"
+            + " counted once, agrees with recorded battles of a Mortar and an evolved Mortar"
+            + " shooting into a Skeleton Army or Royal Recruits; no reference battle holds it."
+            + " A hidden candidate is skipped on its countdown alone, without asking whether it"
+            + " carries the component the reference also requires.")
 public final class CandidateSelector {
 
   /** The entity state of a unit that is dashing. */
@@ -106,14 +108,12 @@ public final class CandidateSelector {
       if (candidate.getHiddenCountdownMs() > 0) {
         continue;
       }
+      // The minimum range already holds the owner's collision radius (AttackRange.minRange), and
+      // the test adds the candidate's: a candidate closer than both radii plus MinimumRange is
+      // passed over. The owner's radius is counted once, as the reference keeps a target in range.
       if (minimum >= 1
           && !RangeTest.rangeTest(
-              candidate,
-              t.getOwner().getX(),
-              t.getOwner().getY(),
-              0,
-              cfg.collisionRadius() + minimum,
-              true)) {
+              candidate, t.getOwner().getX(), t.getOwner().getY(), 0, minimum, true)) {
         continue;
       }
       int squared =
