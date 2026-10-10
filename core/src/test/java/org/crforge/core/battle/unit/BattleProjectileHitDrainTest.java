@@ -29,6 +29,11 @@ import org.junit.jupiter.api.io.TempDir;
  * give it 100 ms. The scene writes every column its outcome is read from - both units' rows, the
  * towers' places, the columns of theirs the walk reads and their shots - so the arrows it sees are
  * its own and not a version's.
+ *
+ * <p>A shot with an area is tested earlier. Its area collects its victims as it lands, and the
+ * collection passes by a unit the untouchable test refuses with the immunity left after a dash
+ * counted, before the Bandit's visit of that step has counted its immunity down. So the same arrows
+ * given an area collect the Bandit neither while it dashes nor on the step after its landing.
  */
 class BattleProjectileHitDrainTest {
 
@@ -109,6 +114,14 @@ class BattleProjectileHitDrainTest {
 
   /** The configured tables with the scene's columns written, the Bandit's immunity given. */
   private static GameTables written(Path folder, int immunity) throws IOException {
+    return written(folder, immunity, 0);
+  }
+
+  /**
+   * The configured tables with the scene's columns written, the Bandit's immunity given, and the
+   * princess towers' shots given an area of the radius, reaching air and ground; 0 for none.
+   */
+  private static GameTables written(Path folder, int immunity, int shotRadius) throws IOException {
     GameData.altered(
         folder,
         "characters",
@@ -143,6 +156,16 @@ class BattleProjectileHitDrainTest {
               .put("DeployTime", 1000);
         });
     GameData.writeTowers(folder);
+    if (shotRadius > 0) {
+      GameData.alterLoaded(
+          folder,
+          "projectiles",
+          rows ->
+              GameData.columns(rows, "TowerPrincessProjectile")
+                  .put("Radius", shotRadius)
+                  .put("AoeToAir", true)
+                  .put("AoeToGround", true));
+    }
     return GameTables.load(folder);
   }
 
@@ -158,5 +181,17 @@ class BattleProjectileHitDrainTest {
     assertThat(record.arrows).hasSize(2);
     assertThat(record.arrows.get(0)).as("an arrow during the dash").endsWith(" false 100");
     assertThat(record.arrows.get(1)).isEqualTo((record.landing + 1) + " true 0");
+  }
+
+  @Test
+  @DisplayName(
+      "an arrow with an area one step after the Bandit's dash lands passes it by, its immunity"
+          + " still counted as the area collects")
+  void theAreaPassesTheBanditBy(@TempDir Path folder) throws IOException {
+    // The same arrows as above, each with an area around its impact: the first lands while the
+    // Bandit dashes and the second on the step after its landing, with 50 ms of its immunity left
+    // as the area collects. Neither collects it, so no share of either is dealt to it.
+    Record record = run(written(folder, 100, 500));
+    assertThat(record.arrows).isEmpty();
   }
 }
