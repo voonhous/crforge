@@ -175,6 +175,10 @@ public final class Scenarios {
     ObjectNode drawn = event(0, 1, 245).put("type", 5);
     drawn.putArray("coords").add(-100).add(87);
     events.add(drawn);
+    // A sticker side 1 sent: its kind, its sender's side and its id.
+    ObjectNode sticker = event(0, 2, 300).put("type", 10);
+    ((ArrayNode) sticker.path("params")).add(1).add(46);
+    events.add(sticker);
     ObjectNode command = (ObjectNode) scenario.path("cmd").get(0);
     ((ObjectNode) command.path("c").path("sel")).put("pd", 0x30400000 | (2 << 17));
     return scenario;
