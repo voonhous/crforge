@@ -16,6 +16,7 @@ This page is the index of the docs, the module and package layout, and the debug
 | [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, moving to a new data version |
 | [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
+| [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures and the recorded baseline |
 | [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 
 ---
