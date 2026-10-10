@@ -439,7 +439,7 @@
   "tv-replays-v3/tv_replay_002": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_003": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_004": {"outcome": "unsupported", "feature": "cmd113_0 fans its projectiles without a target, not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_005": {"outcome": "mismatch", "first_divergent_tick": 3586, "path": "$.entities[9].hp"},
+  "tv-replays-v3/tv_replay_005": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_006": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_007": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
