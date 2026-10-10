@@ -176,6 +176,70 @@ class RouteSearchTest {
     assertThat(result.counters()).containsExactly(121, 0, 0, 66);
   }
 
+  @Test
+  void aSearchInKeptBuffersAnswersAsOneInFreshBuffers() {
+    RouteSearch.Buffers buffers = new RouteSearch.Buffers();
+    // Refresh, reopen and budget of each search, run one after another in the same buffers. A
+    // search cut short by its budget leaves open nodes on the heap and visited cells behind; the
+    // searches after it must not see them.
+    int[][] runs = {{0, 0, 3}, {1, 0, 0}, {1, 1, 0}, {0, 1, 2}, {1, 0, 0}};
+    for (int[] run : runs) {
+      boolean refresh = run[0] == 1;
+      boolean reopen = run[1] == 1;
+      RouteSearchResult kept =
+          RouteSearch.search(4, 6, TIE_FIELD, 0, 23, 1, 5, false, refresh, reopen, run[2], buffers);
+      assertSameAnswer(kept, tieSearch(refresh, reopen, run[2]));
+    }
+
+    // On the standard arena, along both lanes and back, the cost field in the buffers' array too.
+    CellGrid grid = new CellGrid(TileMap.standard1v1(), true, 100);
+    FootprintOverlay.buildOverlay(grid, StandardTowers.entities());
+    int[][] trips = {
+      {20 * 36 + 7, 48 * 36 + 6}, {48 * 36 + 6, 20 * 36 + 7}, {20 * 36 + 28, 48 * 36 + 29}
+    };
+    for (int[] trip : trips) {
+      int[] fresh =
+          CellCostField.costField(
+              grid, CellCosts.standard(), GridEntityState.MOVING, 1, false, false);
+      int[] keptField =
+          CellCostField.costField(
+              grid,
+              CellCosts.standard(),
+              GridEntityState.MOVING,
+              1,
+              false,
+              false,
+              buffers.costField(36 * 64));
+      assertThat(keptField).isEqualTo(fresh);
+      assertSameAnswer(
+          standardSearch(keptField, trip[0], trip[1], buffers),
+          standardSearch(fresh, trip[0], trip[1], new RouteSearch.Buffers()));
+    }
+  }
+
+  private static RouteSearchResult standardSearch(
+      int[] field, int start, int goal, RouteSearch.Buffers buffers) {
+    return RouteSearch.search(
+        36,
+        64,
+        field,
+        start,
+        goal,
+        PathfindingGlobals.PATHFINDING_HEURISTIC_METHOD,
+        PathfindingGlobals.PATHFINDING_DEFAULTHEURISTIC_COST,
+        !PathfindingGlobals.NEW_PATHFINDING_CODE,
+        PathfindingGlobals.PATHFINDING_REFRESH_OPENNODES,
+        PathfindingGlobals.PATHFINDING_REOPEN_CLOSEDNODES,
+        0,
+        buffers);
+  }
+
+  private static void assertSameAnswer(RouteSearchResult actual, RouteSearchResult expected) {
+    assertThat(actual.route().toArray()).isEqualTo(expected.route().toArray());
+    assertThat(actual.counters()).isEqualTo(expected.counters());
+    assertThat(actual.remainingBudget()).isEqualTo(expected.remainingBudget());
+  }
+
   private static String[] cells(RouteSearchResult result, int width) {
     String[] cells = new String[result.route().size()];
     for (int i = 0; i < cells.length; i++) {

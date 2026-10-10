@@ -1,5 +1,6 @@
 package org.crforge.core.pathfinding.grid;
 
+import java.util.Arrays;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.math.FixedMath;
@@ -59,6 +60,53 @@ public final class RouteSearch {
   }
 
   /**
+   * The working arrays of a search, kept to serve the next one: the state, parent, carried cost and
+   * priority of every cell, the heap of open cells, and room for the cost field. A search clears
+   * them before it starts, so one set serves every search of a battle, one search at a time; a
+   * battle's grid holds its own ({@link CellGrid#getSearchBuffers()}). Nothing of a search's answer
+   * refers to them.
+   */
+  public static final class Buffers {
+
+    private int cells = -1;
+    private int[] states;
+    private int[] parents;
+    private int[] carried;
+    private int[] priority;
+    private RouteSearchHeap heap;
+    private int[] costField;
+
+    /** Makes the per-cell arrays ready for a search over this many cells: sized and cleared. */
+    private void prepare(int cells) {
+      if (this.cells != cells) {
+        this.cells = cells;
+        states = new int[cells];
+        parents = new int[cells];
+        carried = new int[cells];
+        priority = new int[cells];
+        heap = new RouteSearchHeap(priority, 16);
+        return;
+      }
+      Arrays.fill(states, 0);
+      Arrays.fill(parents, 0);
+      Arrays.fill(carried, 0);
+      Arrays.fill(priority, 0);
+      heap.clear();
+    }
+
+    /**
+     * An array of this many cells for the cost field the next search reads; the same array each
+     * time while the size stays the same.
+     */
+    public int[] costField(int cells) {
+      if (costField == null || costField.length != cells) {
+        costField = new int[cells];
+      }
+      return costField;
+    }
+  }
+
+  /**
    * The estimated remaining cost from a cell to the goal, scaled the same way step costs are.
    *
    * <p>Method 3 is ten times the straight-line cell distance. Methods 1 and 2 are ten times the
@@ -115,6 +163,41 @@ public final class RouteSearch {
       boolean refresh,
       boolean reopen,
       int budget) {
+    return search(
+        width,
+        height,
+        costs,
+        start,
+        goal,
+        method,
+        weight,
+        accumulatedHeuristic,
+        refresh,
+        reopen,
+        budget,
+        new Buffers());
+  }
+
+  /**
+   * The same search, in working arrays kept from an earlier one, which it clears first; the answer
+   * is the same as with fresh ones.
+   *
+   * @param buffers the working arrays, used by one search at a time
+   * @see #search(int, int, int[], int, int, int, int, boolean, boolean, boolean, int)
+   */
+  public static RouteSearchResult search(
+      int width,
+      int height,
+      int[] costs,
+      int start,
+      int goal,
+      int method,
+      int weight,
+      boolean accumulatedHeuristic,
+      boolean refresh,
+      boolean reopen,
+      int budget,
+      Buffers buffers) {
     return new Run(
             width,
             height,
@@ -125,11 +208,14 @@ public final class RouteSearch {
             weight,
             accumulatedHeuristic,
             refresh,
-            reopen)
+            reopen,
+            buffers)
         .run(budget);
   }
 
-  /** One search in progress: the four per-cell arrays, the heap and the configuration. */
+  /**
+   * One search in progress: the four per-cell arrays and the heap, cleared, and the configuration.
+   */
   private static final class Run {
 
     private final int width;
@@ -162,7 +248,8 @@ public final class RouteSearch {
         int weight,
         boolean accumulatedHeuristic,
         boolean refresh,
-        boolean reopen) {
+        boolean reopen,
+        Buffers buffers) {
       int cells = width * height;
       if (width <= 0 || height <= 0 || costs.length != cells) {
         throw new IllegalArgumentException(
@@ -184,13 +271,14 @@ public final class RouteSearch {
       this.accumulatedHeuristic = accumulatedHeuristic;
       this.refresh = refresh;
       this.reopen = reopen;
-      this.states = new int[cells];
-      this.parents = new int[cells];
-      this.carried = new int[cells];
-      this.priority = new int[cells];
+      buffers.prepare(cells);
+      this.states = buffers.states;
+      this.parents = buffers.parents;
+      this.carried = buffers.carried;
+      this.priority = buffers.priority;
       this.parents[start] = -1;
       this.parents[goal] = -1;
-      this.heap = new RouteSearchHeap(priority, 16);
+      this.heap = buffers.heap;
     }
 
     RouteSearchResult run(int budget) {

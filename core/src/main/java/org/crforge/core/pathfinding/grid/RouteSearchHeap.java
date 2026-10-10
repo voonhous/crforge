@@ -50,6 +50,11 @@ final class RouteSearchHeap {
     this.size = 0;
   }
 
+  /** Empties the heap for another search, keeping the room its backing array has grown to. */
+  void clear() {
+    size = 0;
+  }
+
   /** Number of nodes currently in the heap. */
   int size() {
     return size;
