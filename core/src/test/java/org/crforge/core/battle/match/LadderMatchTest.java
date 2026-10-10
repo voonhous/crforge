@@ -177,6 +177,42 @@ class LadderMatchTest {
 
   @Test
   @DisplayName(
+      "the clearing's kill lands at the damage drain of the update it runs, so the unit it kills"
+          + " takes that update's step first")
+  void theClearingKillLandsAtTheDrain() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(DECK, DECK, 0, 0);
+    int timeUp = timeUpTick();
+    // Side 0's Knight walks up its lane, out of every tower's reach, as the time is up.
+    CharacterEntity knight =
+        battle.deploy(timeUp - 40, GameData.unit("Knight"), 11, 0, 3500, 12000);
+    List<String> kills = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void clearingKilled(int tick, WorldEntity target) {
+                kills.add(
+                    target.name() + " " + target.getView().getX() + "," + target.getView().getY());
+              }
+            });
+    stepTo(battle, timeUp + 1);
+    int y = knight.getView().getY();
+    assertThat(knight.getView().getState()).as("the Knight walks").isEqualTo(1);
+
+    battle.getBattle().step();
+    // The clearing queued the kill; the update the clearing runs moved the Knight on, and its
+    // drain then killed it where the step left it.
+    assertThat(knight.getView().getY()).as("the Knight stepped on").isNotEqualTo(y);
+    assertThat(kills)
+        .containsExactly("Knight " + knight.getView().getX() + "," + knight.getView().getY());
+    assertThat(knight.getHitPoints().getHitPoints()).isZero();
+    assertThat(battle.getWorld().getHolder().entities()).doesNotContain(knight);
+  }
+
+  @Test
+  @DisplayName(
       "the clearing removes a projectile at once, and the object after a removed one waits for the"
           + " next step")
   void theClearingRemovesProjectilesAtOnce() {
