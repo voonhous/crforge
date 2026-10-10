@@ -2061,6 +2061,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     left = true;
   }
 
+  /** Let go by the fold instead of admitted, the entity is gone from the battle. */
+  @Override
+  protected void releasedAtFold() {
+    leave();
+  }
+
   /** The entity as a game object filter asks about it. */
   public FilterSubject filterSubject() {
     return new EntityFilterSubject(this);

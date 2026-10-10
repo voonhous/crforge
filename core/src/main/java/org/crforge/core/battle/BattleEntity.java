@@ -144,6 +144,14 @@ public abstract class BattleEntity {
   protected void onRegistered() {}
 
   /**
+   * Runs once, when the holder's fold lets go of the entity instead of admitting it: it was handed
+   * over with the id of an object that must still be listed and not removable, and that object has
+   * left or is leaving. The entity's own leave reset is all that runs - no other entity, action or
+   * side list hears of it - and it is never visited again.
+   */
+  protected void releasedAtFold() {}
+
+  /**
    * Runs when the holder removes another entity, inside the cleanup that removes it and before the
    * cleanup admits any waiting entity, so nothing here ever holds on to an entity that has left.
    * The removed entity keeps its id.

@@ -2285,9 +2285,7 @@ public class BattleWorld implements HolderPasses {
         }
       }
       if (child.leaveChain()) {
-        for (WorldObserver observer : observers) {
-          observer.chainUnlinked(tick, child);
-        }
+        chainUnlinked(child);
       }
     }
   }
@@ -2503,6 +2501,13 @@ public class BattleWorld implements HolderPasses {
   void chainLinked(CharacterEntity unit, CharacterEntity after) {
     for (WorldObserver observer : observers) {
       observer.chainLinked(tick, unit, after);
+    }
+  }
+
+  /** Tells the observers a unit left its card's group chain. */
+  void chainUnlinked(CharacterEntity unit) {
+    for (WorldObserver observer : observers) {
+      observer.chainUnlinked(tick, unit);
     }
   }
 
@@ -3197,9 +3202,11 @@ public class BattleWorld implements HolderPasses {
    * <p>A firing with the carrier's chain already at the group's limit makes nothing; the visit
    * still counts it as one of the instance's firings.
    *
-   * <p>Refused rather than guessed: a carrier that is a tower or a building; a child without hit
-   * points, a building, one that paths to its point or one with a starting action of its own; and,
-   * at the fold, a child whose carrier has left or is leaving, which the game releases.
+   * <p>A child whose carrier has left or is leaving by the fold is released there instead of
+   * admitted: it leaves the chain and never joins the battle.
+   *
+   * <p>Refused rather than guessed: a carrier that is a tower or a building; and a child without
+   * hit points, a building, one that paths to its point or one with a starting action of its own.
    *
    * @param carrier the entity that carries the buff
    * @param instance the instance whose spawner fires

@@ -445,7 +445,7 @@
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_010": {"outcome": "unsupported", "feature": "proj_4000297 (Cannon_EV1_barrage_projectile) flies within Deflect_3000056 (Deflect), whose deflection of it is not modelled", "input": "the run"},
-  "tv-replays-v3/tv_replay_011": {"outcome": "unsupported", "feature": "the object 5000272 needs the object 5000265 listed as it is admitted, which has left or is leaving; its release is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_011": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_013": {"outcome": "mismatch", "first_divergent_tick": 5651, "path": "$.entities[15].state"},
   "tv-replays-v3/tv_replay_014": {"outcome": "diagnostic_match"},
