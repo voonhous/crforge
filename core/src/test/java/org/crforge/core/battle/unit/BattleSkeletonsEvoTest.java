@@ -24,8 +24,8 @@ import org.junit.jupiter.api.io.TempDir;
  * the row's group size makes nothing and is spent all the same.
  *
  * <p>The scene writes the hit count that lists the buff (one) and its time (500 ms), and the buff's
- * spawner (one Skeleton on its first visit), so each hit makes one Skeleton; the group size and the
- * radius are read from the row.
+ * spawner (one Skeleton on its first visit, needing its carrier alive), so each hit makes one
+ * Skeleton; the group size and the radius are read from the row.
  */
 class BattleSkeletonsEvoTest {
 
@@ -60,7 +60,8 @@ class BattleSkeletonsEvoTest {
             GameData.columns(rows, "SkeletonDuplication_EV1")
                 .put("SpawnInterval", 50)
                 .put("SpawnLimit", 1)
-                .put("SpawnNumber", 1));
+                .put("SpawnNumber", 1)
+                .put("SpawnerAliveRequired", true));
     tables = GameTables.load(folder);
   }
 
@@ -72,6 +73,9 @@ class BattleSkeletonsEvoTest {
     final List<Integer> hitTicks = new ArrayList<>();
     final List<CharacterEntity> children = new ArrayList<>();
     WorldEntity target;
+
+    /** Runs as a child is made, inside the buff visit that makes it. */
+    Runnable onSpawn = () -> {};
 
     Scene() {
       match
@@ -85,6 +89,7 @@ class BattleSkeletonsEvoTest {
                       "%s %s (%d, %d)".formatted(source.name(), child.getData().name(), x, y));
                   spawnTicks.add(tick);
                   children.add(child);
+                  onSpawn.run();
                 }
 
                 @Override
@@ -206,5 +211,40 @@ class BattleSkeletonsEvoTest {
     assertThat(first.chainNext()).isSameAs(child);
     assertThat(child.chainNext()).isSameAs(second);
     assertThat(first.chainSize()).isEqualTo(GROUP_MAX_SIZE);
+  }
+
+  @Test
+  @DisplayName(
+      "a Skeleton killed in the tick its duplication makes a child loses the child: the fold"
+          + " releases it, so it never joins the battle and leaves the chain it was linked into")
+  void aChildWhoseCarrierDiesInItsTickIsReleased() {
+    Scene scene = new Scene();
+    CharacterEntity first = scene.still(0, SKELETON, 3000, 9000, "first");
+    first.linkAfter(null);
+    CharacterEntity carrier = scene.still(0, SKELETON, 9000, 12000, "skeleton");
+    carrier.linkAfter(first);
+    scene.target = scene.still(1, "Giant", 9600, 13200, "giant");
+    // The carrier is killed in the buff visit that makes its first child, so it dies at that
+    // tick's damage drain and leaves in the closing cleanup, ahead of the fold.
+    scene.onSpawn =
+        () -> {
+          scene.match.getWorld().kill(carrier, null);
+          scene.onSpawn = () -> {};
+        };
+
+    for (int i = 0; i < 60 && scene.children.isEmpty(); i++) {
+      scene.step(1);
+    }
+
+    assertThat(scene.children).hasSize(1);
+    CharacterEntity child = scene.children.get(0);
+    // The carrier left the chain as it was removed, and the child as the fold released it.
+    assertThat(first.chainNext()).isNull();
+    assertThat(first.chainSize()).isEqualTo(1);
+    // The next ticks' snapshots hold neither.
+    for (int i = 0; i < 5; i++) {
+      scene.step(1);
+      assertThat(scene.match.getWorld().present()).contains(first).doesNotContain(carrier, child);
+    }
   }
 }

@@ -92,6 +92,11 @@ class EntityHolderTest {
     }
 
     @Override
+    protected void releasedAtFold() {
+      log.add(name + " released");
+    }
+
+    @Override
     protected void preHook() {
       log.add(name + " preHook");
     }
@@ -285,22 +290,43 @@ class EntityHolderTest {
 
   @Test
   @DisplayName(
-      "an entity filed with the id of an object that leaves in the same cleanup is refused at the"
-          + " fold, whose release is not modelled")
-  void anEntityNeedingASpawnerThatLeftIsRefused() {
+      "an entity filed with the id of an object that leaves in the same cleanup is released at the"
+          + " fold: it is never admitted, nothing else hears of it, and the entities beside it are"
+          + " admitted")
+  void anEntityNeedingASpawnerThatLeftIsReleased() {
     EntityHolder holder = new EntityHolder(HolderPasses.NONE);
     RecordingEntity spawner = new RecordingEntity("spawner");
+    RecordingEntity witness = new RecordingEntity("witness");
     RecordingEntity child = new RecordingEntity("child");
+    RecordingEntity other = new RecordingEntity("other");
+    holder.add(spawner);
+    holder.add(witness);
+    holder.tick(0);
+    log.clear();
     spawner.duringPostHook =
         () -> {
           holder.addRegistered(child, spawner.getId());
+          holder.add(other);
           spawner.removable = true;
         };
-    holder.add(spawner);
 
-    assertThatThrownBy(() -> holder.tick(0))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("needs the object 5000000 listed as it is admitted");
+    holder.tick(1);
+
+    // The spawner leaves in the cleanup's removals, which the waiting child hears of; the fold
+    // then finds no spawner listed and releases the child instead of admitting it.
+    assertThat(holder.entities()).containsExactly(witness, other);
+    assertThat(log)
+        .containsSubsequence(
+            "child told spawner left", "witness told spawner left", "child released")
+        .contains("other registered as 5000003")
+        .doesNotContain("child registered as 5000002", "witness told child left")
+        .doesNotContain("other told child left");
+
+    log.clear();
+    holder.tick(2);
+
+    assertThat(holder.entities()).containsExactly(witness, other);
+    assertThat(log).doesNotContain("child preHook");
   }
 
   @Test

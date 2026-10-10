@@ -1760,6 +1760,19 @@ public class CharacterEntity extends WorldEntity {
     world.chainLinked(child, this);
   }
 
+  /**
+   * The leave reset of a character the fold lets go of instead of admitting, as a buff's child
+   * whose carrier left before it: it leaves the card group chain it was linked into, joining the
+   * units on either side of it, and nothing else hears of it.
+   */
+  @Override
+  protected void releasedAtFold() {
+    super.releasedAtFold();
+    if (leaveChain()) {
+      world.chainUnlinked(this);
+    }
+  }
+
   /** The unit after the character in its card group chain, or null for none. */
   CharacterEntity chainNext() {
     return chainNext;

@@ -60,10 +60,12 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " at the next, held by the reference battle card_GoblinDrill; that the leaving"
             + " entity's own running actions hear of its leaving before every notice, held by"
             + " ability_goblinstein, and are stopped after every notice, held by"
-            + " card_GoblinMachine; and that an entity killed during a tick is visited by the"
-            + " rest of it, less the components its death switches off. Not settled: whether the"
-            + " removed entity is told of its own removal, and whether anything reorders the live"
-            + " list between ticks.")
+            + " card_GoblinMachine; that an entity killed during a tick is visited by the rest of"
+            + " it, less the components its death switches off; and that a waiting entity filed"
+            + " with the id of an object that has left by the fold is released there, leaving its"
+            + " group chain with no notice to anyone, held by tv_replay_011 of 16.402.18. Not"
+            + " settled: whether the removed entity is told of its own removal, and whether"
+            + " anything reorders the live list between ticks.")
 public class EntityHolder {
 
   private final HolderPasses passes;
@@ -134,8 +136,8 @@ public class EntityHolder {
   /**
    * Hands an entity to the holder and registers it on the spot, with the id of another object filed
    * beside it, as a buff's spawner hands over a child that needs its spawner alive: the fold admits
-   * it only while an object with that id is listed and not removable. Releasing it otherwise is not
-   * modelled: that fold is refused.
+   * it only while an object with that id is listed and not removable, and otherwise releases it
+   * ({@link BattleEntity#releasedAtFold()}).
    *
    * @param entity the entity
    * @param requiredId the id of the object it needs, or 0 for none
@@ -178,7 +180,9 @@ public class EntityHolder {
    * ahead of every entity of a higher one however late it arrived. The admitted entities are told
    * of their registration in ascending id. One handed over already removable, such as an area
    * object spent in the update that made it, is never admitted (the cleanup walks its queue before
-   * its live list, and folds only after both).
+   * its live list, and folds only after both). Nor is one filed with the id of an object that is no
+   * longer listed or is removable by then, such as a child whose spawner left in this cleanup: the
+   * fold releases it, and only its own leave reset runs.
    */
   public void cleanup() {
     // A removal can make another entity removable - a rider let go by its parent - so the rounds
@@ -189,27 +193,22 @@ public class EntityHolder {
     if (pendingAdditions.isEmpty()) {
       return;
     }
-    // An entity filed with another object's id is admitted only while that object is listed and
-    // not removable; the release of one that fails the test is refused.
+    // The fold walks the waiting entities in the order they arrived. One filed with another
+    // object's id is admitted only while that object is listed and not removable; otherwise the
+    // fold releases it on the spot: its own leave reset runs and it is dropped, never admitted,
+    // with no notice to anyone. Every other one is handed to the battle holder's add again, which
+    // recomputes its tag word before it joins the live list and is started.
+    List<BattleEntity> admitted = new ArrayList<>(pendingAdditions.size());
     for (BattleEntity entity : pendingAdditions) {
       Integer required = requiredIds.get(entity);
       if (required != null && !listedAndNotRemovable(required)) {
-        throw new UnsupportedOperationException(
-            "the object "
-                + entity.getId()
-                + " needs the object "
-                + required
-                + " listed as it is admitted, which has left or is leaving; its release is not"
-                + " modelled");
+        entity.releasedAtFold();
+        continue;
       }
+      entity.addTagFold();
+      admitted.add(entity);
     }
     requiredIds.clear();
-    // The fold hands each waiting entity to the battle holder's add again, in the order they
-    // arrived, which recomputes its tag word before it joins the live list and is started.
-    for (BattleEntity entity : pendingAdditions) {
-      entity.addTagFold();
-    }
-    List<BattleEntity> admitted = new ArrayList<>(pendingAdditions);
     pendingAdditions.clear();
     live.addAll(admitted);
     live.sort(Comparator.comparingInt(BattleEntity::getId));
