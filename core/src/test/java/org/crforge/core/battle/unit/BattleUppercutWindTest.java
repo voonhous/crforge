@@ -23,6 +23,7 @@ import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
+import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -505,6 +506,138 @@ class BattleUppercutWindTest {
   /** The states alone of a list of state and layer lines. */
   private static List<String> states(List<String> lines) {
     return lines.stream().map(line -> line.substring(0, line.indexOf(' '))).toList();
+  }
+
+  @Test
+  @DisplayName(
+      "a knock started on a unit already switching lanes is refused: the standard game finishes"
+          + " it as it starts, which no reference holds")
+  void aKnockOnALaneSwitchIsRefused() {
+    Scene scene = new Scene();
+    CharacterEntity miner = scene.unit(0, "MightyMiner", 3500, 9500, "mm");
+    scene.step(40);
+    miner.requestAbility();
+    int steps = 0;
+    while (miner.getView().getState() != GridEntityState.INGAME_PATHFIND) {
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("switching lanes at last").isLessThan(40);
+    }
+
+    assertThatThrownBy(() -> miner.actionHolder().start(scene.row(KNOCK, miner), null))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("as it switches lanes");
+  }
+
+  @Test
+  @DisplayName(
+      "a lane switch in the air ends the knock on its next update: the pushback in flight stopped,"
+          + " the counter not run down, no height pushed and no landing")
+  void aLaneSwitchEndsAKnock() {
+    Scene scene = new Scene();
+    CharacterEntity miner = scene.unit(0, "MightyMiner", 3500, 9500, "mm");
+    scene.step(40);
+    List<int[]> updates = new ArrayList<>();
+    scene
+        .world()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void knockbackStepped(
+                  int tick,
+                  CharacterEntity unit,
+                  int before,
+                  int after,
+                  int height,
+                  long tags,
+                  boolean finished) {
+                MovementState movement = unit.getUnit().movement();
+                updates.add(
+                    new int[] {
+                      unit.getView().getState(),
+                      before,
+                      after,
+                      finished ? 1 : 0,
+                      movement.getPushbackInFlight(),
+                      movement.getAttackPushback()
+                    });
+              }
+            });
+    // The cast begun, the knock lifts the unit before its activation switches lanes in the air.
+    miner.requestAbility();
+    assertThat(miner.getView().getState()).isEqualTo(GridEntityState.CASTING);
+    miner.actionHolder().start(scene.row(KNOCK, miner), null);
+    int steps = 0;
+    while (miner.getView().getState() != GridEntityState.INGAME_PATHFIND) {
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("switching lanes at last").isLessThan(KNOCK_UPDATES - 2);
+    }
+    int listed = updates.size();
+    assertThat(updates.get(listed - 1)[3]).as("still running").isZero();
+    // An attack's pushback in flight as the next update comes.
+    MovementState movement = miner.getUnit().movement();
+    movement.setPushbackInFlight(1);
+    movement.setAttackPushback(1);
+    movement.setPushbackBudget(5000);
+    movement.setTargetX(miner.getView().getX());
+    movement.setTargetY(miner.getView().getY());
+    int height = miner.getView().getHeightOffset();
+
+    scene.step(3);
+
+    assertThat(updates).as("one more update, the last").hasSize(listed + 1);
+    int[] last = updates.get(listed);
+    assertThat(last[0]).isEqualTo(GridEntityState.INGAME_PATHFIND);
+    assertThat(last[2]).as("the counter kept").isEqualTo(last[1]).isPositive();
+    assertThat(last[3]).as("finished").isEqualTo(1);
+    assertThat(new int[] {last[4], last[5]}).as("the pushback stopped").containsExactly(0, 0);
+    assertThat(miner.getView().getHeightOffset()).as("no height pushed").isLessThan(height);
+  }
+
+  @Test
+  @DisplayName(
+      "a lane switch stops the pushback in flight on the unit as it enters the in-game"
+          + " pathfinding state")
+  void aLaneSwitchStopsAPushback() {
+    Scene scene = new Scene();
+    CharacterEntity miner = scene.unit(0, "MightyMiner", 3500, 9500, "mm");
+    scene.step(40);
+    List<int[]> atSwitch = new ArrayList<>();
+    scene
+        .world()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void lanesSwitched(
+                  int tick,
+                  CharacterEntity unit,
+                  int mirroredX,
+                  int mirroredY,
+                  int toX,
+                  int toY,
+                  TargetView reference) {
+                MovementState movement = unit.getUnit().movement();
+                atSwitch.add(
+                    new int[] {movement.getPushbackInFlight(), movement.getAttackPushback()});
+              }
+            });
+    miner.requestAbility();
+    assertThat(miner.getView().getState()).isEqualTo(GridEntityState.CASTING);
+    // A long push past every gate, as an uppercut's, still in flight when the activation comes.
+    assertThat(
+            miner.pushEntry(
+                miner.getView().getX(), miner.getView().getY() + 1000, 20000, true, false, false))
+        .isEqualTo(1);
+    int steps = 0;
+    while (atSwitch.isEmpty()) {
+      assertThat(miner.getUnit().movement().getPushbackInFlight()).as("in flight").isEqualTo(1);
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("switching lanes at last").isLessThan(40);
+    }
+
+    assertThat(atSwitch.get(0)).containsExactly(0, 0);
   }
 
   @Test

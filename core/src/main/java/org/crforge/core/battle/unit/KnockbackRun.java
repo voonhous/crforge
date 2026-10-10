@@ -24,11 +24,13 @@ import org.crforge.core.pathfinding.move.MovementState;
  * as the state setter resets it: the progress to 0 for a unit with a charge range of its own or
  * from a buff, else to no charge, and the targeting component's charged strike dropped. So a
  * charging unit loses its charge, and with it the charge's speed and its charged hit, for as long
- * as it is in the air. For a unit with a movement component and a height it pushes the arc's next
- * height, with that height as the push's floor: half the duration rising to the top and half
- * falling. Once the counter is at 0 or below the unit lands - its route reset and, on the ground,
- * the row's landing action scheduled on it - and the run finishes, the counter still taken down by
- * 50 ms.
+ * as it is in the air. A unit that has begun switching lanes since the last update - its ability's
+ * cast going on through the knock, the activation in the air - ends the run there: its pushback in
+ * flight stopped and the run finished, with no height pushed, no landing and the counter left as it
+ * is. For a unit with a movement component and a height it pushes the arc's next height, with that
+ * height as the push's floor: half the duration rising to the top and half falling. Once the
+ * counter is at 0 or below the unit lands - its route reset and, on the ground, the row's landing
+ * action scheduled on it - and the run finishes, the counter still taken down by 50 ms.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -43,9 +45,14 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " left, held by a recorded witness outside the locked references. The charge reset"
             + " on each update, held by a recorded witness outside the locked references. A cast"
             + " or an ability's follow-up state going on through the knock, the activation in the"
-            + " air included, held by recorded witnesses outside the locked references. Refused:"
-            + " a unit jumping, dashing or following a removed building, a clone, a rider or"
-            + " carrier.")
+            + " air included, held by recorded witnesses outside the locked references. A lane"
+            + " switch in the air ending the run on the next update, the pushback in flight"
+            + " stopped, held by recorded witnesses outside the locked references. Refused: a"
+            + " unit already switching lanes as the run starts, which the standard game finishes"
+            + " at once but no recorded battle reaches; a unit jumping or dashing, whose jump or"
+            + " dash the start stops, which no reference holds; a unit following a removed"
+            + " building, which the knock's own code does not test but whose pulled state under"
+            + " the knock no reference holds; a clone, a rider or carrier.")
 final class KnockbackRun extends ActionInstance {
 
   /** Milliseconds one update takes off the counter. */
@@ -92,6 +99,18 @@ final class KnockbackRun extends ActionInstance {
       throw new UnsupportedOperationException(
           row.name() + " passes its cause on to its landing action but has none, not modelled");
     }
+    // A unit already switching lanes, routing across in the in-game pathfinding state, is not
+    // knocked in the standard game: the run finishes as it starts, with no tag raised, no counter
+    // and the ability not postponed. No recorded battle reaches it - the uppercut does not push a
+    // unit in that state, so it schedules no knock on it - so it is refused rather than taken on
+    // the trace alone.
+    if (state == GridEntityState.INGAME_PATHFIND) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " knocks "
+              + unit.name()
+              + " as it switches lanes, which no reference holds");
+    }
     addTags(unit.getView().getFlagBits().abilityPostponed());
     counter = row.getDurationMs();
     unit.startLayering();
@@ -112,6 +131,18 @@ final class KnockbackRun extends ActionInstance {
     // back to 0 (or to no charge) and the charged strike dropped, before the arc's height.
     if (moving && unit.getUnit().movement().getChargeProgress() != MovementState.CHARGE_INACTIVE) {
       unit.resetCharge();
+    }
+    // A unit that has begun switching lanes in the air, its ability's cast going on through the
+    // knock, ends the run here: its pushback in flight stopped, as the lane switch's own entry
+    // stops it, and the run finished with no height pushed, no landing and its counter left as it
+    // is.
+    if (unit.getView().getState() == GridEntityState.INGAME_PATHFIND) {
+      if (moving) {
+        unit.getUnit().movement().stopPushback();
+      }
+      finish();
+      unit.world().knockbackStepped(unit, before, counter, height, tags, true);
+      return;
     }
     if (unit.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
       throw new UnsupportedOperationException(
