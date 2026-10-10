@@ -1,7 +1,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -23,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Vines' air-to-ground run where the reference runs do not reach: an air unit that lives through
  * its hold, whose climb ends in the path reset; the ground tag a held ground unit carries, and none
  * without the row's flag; a Goblin Giant held like any ground unit while its riders are left alone;
- * and a hovering unit refused.
+ * and a hovering unit, held from the start for the whole run.
  *
  * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
  * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
@@ -258,14 +257,41 @@ class BattleAirToGroundTest {
   }
 
   @Test
-  @DisplayName("an air-to-ground run on a hovering unit is refused")
-  void aHoveringUnitIsRefused(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(vines(folder, fields -> {}));
-    scene.match.deploy(0, GameData.unit("BattleHealer"), LEVEL, 1, X, Y, "healer");
+  @DisplayName(
+      "a hovering unit is held from its run's start for the whole duration, carrying"
+          + " FORCE_IS_GROUND through its last step, and finishes there without a climb")
+  void aHoveringUnitIsHeld(@TempDir Path folder) throws IOException {
+    vines(folder, fields -> {});
+    // A Knight written as a hovering row: on the ground (no flying height), hovering.
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("Hovering", true));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(
+            0, new BattleRecords(tables).unit("Knight"), LEVEL, 1, X, Y, "hovering knight");
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
-    scene.steps(18);
-    assertThatThrownBy(() -> scene.steps(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a hovering unit");
+    scene.steps(20);
+    assertThat(scene.forcedOntoTheGround(knight)).isFalse();
+    for (int i = 0; i < 40; i++) {
+      scene.steps(1);
+      assertThat(scene.forcedOntoTheGround(knight)).isTrue();
+      // The hold pushes the height it has none of, 1 up, which the fold clamps away.
+      assertThat(knight.getTargetView().z()).as("its live height").isZero();
+    }
+    // A hovering unit starts held, for the whole duration, with no height; its last step raises
+    // the tag and pushes once more, then finishes without a climb or a path reset.
+    assertThat(scene.runs)
+        .containsExactly(
+            "18 start phase 2 counter 2000 height -1",
+            "59 phase 2 2 counter 0 0 done true pushes [1]");
+    scene.steps(1);
+    assertThat(scene.forcedOntoTheGround(knight))
+        .as("the last step's tag, in the word until the next pre-hook")
+        .isTrue();
+    scene.steps(1);
+    assertThat(scene.forcedOntoTheGround(knight)).isFalse();
+    assertThat(knight.getView().isAir()).isFalse();
+    assertThat(scene.runs).hasSize(2);
   }
 }
