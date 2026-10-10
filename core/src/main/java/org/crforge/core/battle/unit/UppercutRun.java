@@ -7,6 +7,7 @@ import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.RangeTest;
@@ -23,11 +24,14 @@ import org.crforge.core.pathfinding.target.RangeTest;
  * the cause, a push the entry took clears the target's avoidance blend unless the row turns that
  * off, and the unit carries NO_ATTACK, NO_MOVE and LOCK_TARGET for one step and is held for the
  * follow-up delay. A target with no movement component switched on, or one following a removed
- * building, is not pushed and ends the run. Each later update ends the run when the unit has no
- * target or attacks another one in range; with another target out of range it marks the uppercut's
- * target in its targeting queue, at a priority the queue's flush never takes; then the delay runs
- * down by 50 ms, the unit held for one more step while any is left, and the run ends when none is.
- * A target that leaves the battle is forgotten, and the next update ends the run.
+ * building, is not pushed and ends the run. So does a target whose tag word holds NO_PUSHBACK,
+ * which the uppercut's push entry refuses (no other push asks the entry that): nothing is scheduled
+ * on it unless the row's OnlyRunActionOnPushback is off, and the unit is not held. Each later
+ * update ends the run when the unit has no target or attacks another one in range; with another
+ * target out of range it marks the uppercut's target in its targeting queue, at a priority the
+ * queue's flush never takes; then the delay runs down by 50 ms, the unit held for one more step
+ * while any is left, and the run ends when none is. A target that leaves the battle is forgotten,
+ * and the next update ends the run.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -36,8 +40,10 @@ import org.crforge.core.pathfinding.target.RangeTest;
             + " entry, the action on the target, the hold for the delay, the ends, the mark and"
             + " the leave notice; held by the reference battles cg_megaknight_evo_uppercut_giant"
             + " and evo_megaknight_vs_musketeer. The blend cleared after a push the entry took,"
-            + " on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. Refused: the start"
-            + " without a current target, which reads the targeting component's previous"
+            + " on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. The entry's refusal of"
+            + " a NO_PUSHBACK target, the run ended without the hold and no action on the target"
+            + " while OnlyRunActionOnPushback is set; held by BattleUppercutWindTest. Refused:"
+            + " the start without a current target, which reads the targeting component's previous"
             + " reference, a push point with no tower or king found, which turns to the facing,"
             + " and a target other than a character with a movement component.")
 final class UppercutRun extends ActionInstance {
@@ -210,7 +216,9 @@ final class UppercutRun extends ActionInstance {
 
   /**
    * The push through the entry, past the request's gates, then the row's action on the target with
-   * the unit as the cause. A target whose movement component is off is not pushed.
+   * the unit as the cause: answers whether the entry took the push. A target whose movement
+   * component is off is not pushed and nothing is scheduled on it; a push the entry refuses
+   * schedules the action only when the row's OnlyRunActionOnPushback is off.
    */
   private boolean push(int x, int y) {
     if (!(target instanceof CharacterEntity pushedUnit)) {
@@ -220,14 +228,24 @@ final class UppercutRun extends ActionInstance {
     if (!pushedUnit.isActive(CharacterEntity.MOVEMENT_SLOT)) {
       return false;
     }
+    // The uppercut asks the entry to refuse a target whose tag word holds NO_PUSHBACK, as a
+    // counter's parry of the hit leaves it for the next step; no other push asks that. The entry
+    // tests it after its pushback-in-flight refusal, and both refuse with nothing changed, so the
+    // order does not show.
+    GridEntity view = pushedUnit.getView();
     int entered =
-        pushedUnit.pushEntry(
-            x,
-            y,
-            row.getPushBackStrength(),
-            true,
-            row.isDistanceProportionalPush(),
-            row.isResetPushbackIfStronger());
+        (view.getFlags() & view.getFlagBits().noPushback()) != 0
+            ? 0
+            : pushedUnit.pushEntry(
+                x,
+                y,
+                row.getPushBackStrength(),
+                true,
+                row.isDistanceProportionalPush(),
+                row.isResetPushbackIfStronger());
+    if (entered == 0 && row.isOnlyRunActionOnPushback()) {
+      return false;
+    }
     BattleAction onTargets = row.getActionOnTargets();
     if (onTargets != null) {
       BattleAction built =
@@ -240,7 +258,7 @@ final class UppercutRun extends ActionInstance {
     if (entered == 1 && row.isResetAvoidanceAtPushback()) {
       pushedUnit.getUnit().movement().setAvoidanceBlend(0);
     }
-    return true;
+    return entered == 1;
   }
 
   /** The target leaving the battle is forgotten. */

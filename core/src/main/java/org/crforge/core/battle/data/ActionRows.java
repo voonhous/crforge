@@ -2454,9 +2454,10 @@ public final class ActionRows {
 
     /**
      * An uppercut's columns, a column it leaves out taking the loader's default: an offset of 50, a
-     * longer pushback kept, no proportional push, the follow-up dash, a delay of 1000 and the
-     * target's avoidance blend cleared after the push. A row that pushes through the request's
-     * gates or dashes after the delay is refused.
+     * longer pushback kept, no proportional push, the follow-up dash, a delay of 1000, the target's
+     * avoidance blend cleared after the push and the action on the target only after a push that
+     * went through. A row that pushes through the request's gates or dashes after the delay is
+     * refused.
      */
     private MegaKnightUppercut uppercut(String name, ActionRow shared, JsonNode f) {
       // The start gate is the runtime's: asked as the uppercut starts, before its hold and target.
@@ -2477,6 +2478,7 @@ public final class ActionRows {
           bool(f, "ResetPushbackIfStronger", true),
           integer(f, "DashFollowUpDelay", 1000),
           bool(f, "ResetAvoidanceAtPushback", true),
+          bool(f, "OnlyRunActionOnPushback", true),
           action(f.get("ActionOnTargets")));
     }
 

@@ -11,7 +11,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * with the unit as the cause, and then holds the unit for its follow-up delay, neither moving nor
  * attacking. A push that went through also clears the target's avoidance blend unless the row turns
  * that off, so the target flies straight. A target without a movement component ends the run at
- * once.
+ * once. A target carrying NO_PUSHBACK, as a counter's parry leaves it, is not pushed: the run ends
+ * without the hold, and the action on the target is scheduled only when the row asks for it on a
+ * refused push too.
  *
  * <p>Refused as the row is built: a push through the request's gates, the follow-up dash, and the
  * shared columns its run does not read.
@@ -25,7 +27,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " through, the hold for the follow-up delay, the end with another target in range"
             + " or none, the mark of the target in the targeting queue and the target forgotten"
             + " as it leaves; held by the reference battles cg_megaknight_evo_uppercut_giant and"
-            + " evo_megaknight_vs_musketeer. Refused: the push through the request's gates, the"
+            + " evo_megaknight_vs_musketeer. The push refused on a NO_PUSHBACK target, with no"
+            + " action on it while OnlyRunActionOnPushback is set; held by"
+            + " BattleUppercutWindTest. Refused: the push through the request's gates, the"
             + " follow-up dash, the start without a current target and the facing's push point"
             + " with no tower or king.")
 public final class MegaKnightUppercut extends RowAction {
@@ -48,6 +52,12 @@ public final class MegaKnightUppercut extends RowAction {
   /** True when a push that went through clears the target's avoidance blend. */
   @Getter private final boolean resetAvoidanceAtPushback;
 
+  /**
+   * True when the action on the target is scheduled only after a push the entry took; false when a
+   * refused push schedules it too.
+   */
+  @Getter private final boolean onlyRunActionOnPushback;
+
   /** The action scheduled on the target after the push, or null for none. */
   @Getter private final BattleAction actionOnTargets;
 
@@ -60,6 +70,8 @@ public final class MegaKnightUppercut extends RowAction {
    * @param dashFollowUpDelayMs how long the unit is held after the push
    * @param resetAvoidanceAtPushback true to clear the target's avoidance blend after a push that
    *     went through
+   * @param onlyRunActionOnPushback true to schedule the action on the target only after a push the
+   *     entry took
    * @param actionOnTargets the action scheduled on the target after the push, or null
    */
   public MegaKnightUppercut(
@@ -70,6 +82,7 @@ public final class MegaKnightUppercut extends RowAction {
       boolean resetPushbackIfStronger,
       int dashFollowUpDelayMs,
       boolean resetAvoidanceAtPushback,
+      boolean onlyRunActionOnPushback,
       BattleAction actionOnTargets) {
     super(row);
     this.pushBackStrength = pushBackStrength;
@@ -78,6 +91,7 @@ public final class MegaKnightUppercut extends RowAction {
     this.resetPushbackIfStronger = resetPushbackIfStronger;
     this.dashFollowUpDelayMs = dashFollowUpDelayMs;
     this.resetAvoidanceAtPushback = resetAvoidanceAtPushback;
+    this.onlyRunActionOnPushback = onlyRunActionOnPushback;
     this.actionOnTargets = actionOnTargets;
   }
 
