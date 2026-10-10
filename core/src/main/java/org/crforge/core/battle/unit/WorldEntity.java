@@ -1186,6 +1186,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
     if (!on) {
+      // Every gate that switches the component off raises COMBAT_DISABLED for one step, whatever
+      // the reason, so the tag lasts from the step after the first such gate to the step after the
+      // last; an expression, a pause tag or a filter that reads it sees a stun, a deploy or a cast.
+      getView()
+          .setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().combatDisabled());
       targetingSwitchedOff();
     }
   }
