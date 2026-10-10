@@ -4,6 +4,14 @@ plugins {
     application
 }
 
+// The JMH benchmarks (src/jmh): their own source set on the main classes, run by tickBenchmark.
+val jmh: SourceSet by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().output
+}
+configurations[jmh.implementationConfigurationName].extendsFrom(configurations.implementation.get())
+configurations[jmh.runtimeOnlyConfigurationName].extendsFrom(configurations.runtimeOnly.get())
+
 dependencies {
     implementation(project(":core"))
 
@@ -12,6 +20,10 @@ dependencies {
 
     // The synthetic replay scenarios of the core's test fixtures
     testImplementation(testFixtures(project(":core")))
+
+    // The tick benchmark: JMH and its annotation processor, which generates the benchmark harness
+    "jmhImplementation"(libs.jmh.core)
+    "jmhAnnotationProcessor"(libs.jmh.generator.annprocess)
 }
 
 application {
@@ -82,4 +94,31 @@ tasks.register<JavaExec>("updateReferenceExpectations") {
     )
     setting("crforge.references")?.let { systemProperty("crforge.references", it) }
     args("--expectations", expectationsFolder.asFile.absolutePath)
+}
+
+// The benchmarks are compiled with every check, so they keep compiling as the battle core moves.
+tasks.check { dependsOn(tasks.named(jmh.classesTaskName)) }
+
+tasks.register<JavaExec>("tickBenchmark") {
+    description =
+        "Measures how many battle steps a second the battle core runs, headless, on the " +
+            "scenarios of the recorded reference battles, with JMH (docs/performance.md)."
+    group = "verification"
+    classpath = jmh.runtimeClasspath
+    mainClass.set("org.openjdk.jmh.Main")
+    maxHeapSize = "3g"
+    // the tables the build makes for the data version, as the test tasks read them (root build)
+    dependsOn(":tables:gameTables")
+    // JMH's forks are started with this JVM's arguments, the two folders included.
+    systemProperty(
+        "crforge.gameTables",
+        "${rootProject.extra["crforge.builtTablesRoot"]}/${rootProject.extra["crforge.dataVersion"]}",
+    )
+    setting("crforge.references")?.let { systemProperty("crforge.references", it) }
+    // By default every benchmark with the allocation profiler and a JSON result file; --args gives
+    // JMH's own options instead (for example --args="TickBenchmark.replays -f 1").
+    val results = layout.buildDirectory.file("jmh/results.json").get().asFile
+    args("-prof", "gc", "-rf", "json", "-rff", results.absolutePath)
+    doFirst { results.parentFile.mkdirs() }
+    outputs.upToDateWhen { false }
 }
