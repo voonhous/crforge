@@ -19,6 +19,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.move.ContactRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -327,6 +328,70 @@ class BattleCloneTest {
       CharacterEntity golemite = scene.named(child);
       assertThat(golemite.isClone()).as(child).isTrue();
       assertThat(golemite.getHitPoints().getMaximum()).as(child).isEqualTo(1);
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a clone's death spawn with a deploy time is a clone made deploying: 1 hit point of 1, its"
+          + " countdown run as any unit's, out of collision until it ends, then in it again")
+  void aCloneDeathSpawnThatDeploys(@TempDir Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    // Two children on the one in-front point, so that they overlap, each deploying for 700 ms.
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("DeathSpawnCharacter", "Skeleton")
+                .put("DeathSpawnCount", 2)
+                .put("DeathSpawnDeployTime", 700));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("knight_clone0");
+    // Past the move apart, the clone resumed.
+    scene.step(15);
+    scene.match.getWorld().kill(clone, null);
+    // Taken into the holder at the step's end, before any visit of its own.
+    scene.step(1);
+
+    List<CharacterEntity> children =
+        List.of(scene.named("knight_clone0_0"), scene.named("knight_clone0_1"));
+    List<int[]> made = new ArrayList<>();
+    for (CharacterEntity child : children) {
+      assertThat(child.isClone()).as(child.name()).isTrue();
+      assertThat(child.getHitPoints().getHitPoints()).as(child.name()).isEqualTo(1);
+      assertThat(child.getHitPoints().getMaximum()).as(child.name()).isEqualTo(1);
+      assertThat(child.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+      assertThat(child.getView().getDeployCountdown()).isEqualTo(700);
+      made.add(new int[] {child.getView().getX(), child.getView().getY()});
+    }
+    int apart =
+        Math.abs(made.get(0)[0] - made.get(1)[0]) + Math.abs(made.get(0)[1] - made.get(1)[1]);
+    assertThat(apart).isLessThan(2 * children.get(0).getData().collisionRadius());
+
+    // 50 ms a visit: deploying for 14 visits, neither pushed nor pushing while it does.
+    for (int visit = 1; visit <= 13; visit++) {
+      scene.step(1);
+      for (int i = 0; i < 2; i++) {
+        CharacterEntity child = children.get(i);
+        assertThat(child.getView().getState())
+            .as("visit %d child %d", visit, i)
+            .isEqualTo(GridEntityState.DEPLOYING);
+        assertThat(child.getView().getDeployCountdown()).isEqualTo(700 - 50 * visit);
+        assertThat(ContactRule.collides(child.getView())).isZero();
+        assertThat(child.getView().getX()).isEqualTo(made.get(i)[0]);
+        assertThat(child.getView().getY()).isEqualTo(made.get(i)[1]);
+      }
+    }
+    scene.step(1);
+    for (CharacterEntity child : children) {
+      assertThat(child.getView().getState()).isNotEqualTo(GridEntityState.DEPLOYING);
+      assertThat(ContactRule.collides(child.getView())).isEqualTo(1);
     }
   }
 
