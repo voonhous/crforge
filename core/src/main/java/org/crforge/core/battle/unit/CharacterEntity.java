@@ -1359,20 +1359,19 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Taunts the unit onto an object, as a taunt's perform does: the run, armed at once, which the
-   * holder lists. The perform is told to the observers first.
+   * Taunts the character onto an object, as a taunt's perform does: the run, armed at once, which
+   * the holder lists. The perform is told to the observers first. A building that is not a crown
+   * tower, as a Cannon, takes the same run as a crown tower past the arming's crown tower branch:
+   * the reach tested and the reference forced again on each step, as for every building owner.
    *
-   * <p>Refused rather than guessed: a building, which no reference holds, a unit that rides on
-   * another or carries riders, whose riders the perform would taunt too, a unit in a pathfinding
-   * state, and an object to force onto that is not in the battle or flies, which a tag may count as
-   * on the ground.
+   * <p>Refused rather than guessed: a unit that rides on another or carries riders, whose riders
+   * the perform would taunt too, a unit in a pathfinding state, and an object to force onto that is
+   * not in the battle or flies, which a tag may count as on the ground.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
     String refused = null;
-    if (getData().building()) {
-      refused = "a building that is not a crown tower, which";
-    } else if (parent != null || !riders().isEmpty()) {
+    if (parent != null || !riders().isEmpty()) {
       refused = "a rider or a carrier, whose riders it would taunt too, which";
     } else if (getView().getState() == GridEntityState.SPAWN_PATHFIND
         || getView().getState() == GridEntityState.INGAME_PATHFIND) {

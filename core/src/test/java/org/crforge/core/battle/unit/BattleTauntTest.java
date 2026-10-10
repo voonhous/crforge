@@ -23,8 +23,8 @@ import org.junit.jupiter.api.io.TempDir;
  * The Goblin Demolisher's cancelling area effect where the reference run does not reach. Its
  * filter, OnlyGoblinDemolisher, reaches the Demolisher alone; written to reach its whole side, it
  * holds an own unit beside the Demolisher, one that attacks only buildings, the Demolisher leaving
- * while a unit is taunted onto it, and a taunted building. Also an area effect that moves with the
- * object it follows or outlives it, a longer taunt, and the refusals.
+ * while a unit is taunted onto it. Also an area effect that moves with the object it follows or
+ * outlives it, a longer taunt, and the refusal.
  */
 class BattleTauntTest {
 
@@ -365,9 +365,7 @@ class BattleTauntTest {
   }
 
   @Test
-  @DisplayName(
-      "an area effect that follows its parent, placed by no action, and a taunted building are"
-          + " refused")
+  @DisplayName("an area effect that follows its parent and was placed by no action is refused")
   void refusals(@TempDir Path folder) throws IOException {
     Files.createDirectories(folder);
     GameTables noHit =
@@ -384,13 +382,5 @@ class BattleTauntTest {
     assertThatThrownBy(() -> placed.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("follows its parent and was not made by an action");
-
-    Scene scene = new Scene(ownSide(folder.resolve("own_side")));
-    scene.match.deploy(0, GameData.unit("Cannon"), LEVEL, 0, X, Y, "cannon");
-    scene.match.getBattle().step();
-    scene.cancel();
-    assertThatThrownBy(() -> scene.match.getBattle().step())
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("taunts cannon onto a building");
   }
 }

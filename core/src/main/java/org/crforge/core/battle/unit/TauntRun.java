@@ -18,9 +18,10 @@ import org.crforge.core.pathfinding.target.TargetingConfig;
 import org.crforge.core.pathfinding.target.TargetingState;
 
 /**
- * One run of a taunt on a character, a unit or a crown tower: the arming as it starts, one step
- * from the holder's run pass, and the finish that removes the taunt's buffs from it. Each arming
- * and step is told to the battle's observers with the calls it made, in order.
+ * One run of a taunt on a character, a unit or a building (a crown tower or any other, as a
+ * Cannon): the arming as it starts, one step from the holder's run pass, and the finish that
+ * removes the taunt's buffs from it. Each arming and step is told to the battle's observers with
+ * the calls it made, in order.
  *
  * <p>The reach is tested only for a building owner (a taunted rider, the other owner the test
  * applies to, is refused as the taunt starts): the forced object must lie within the owner's sight
@@ -37,7 +38,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " ability_hero_knight. The falloff on a lost reach, the re-arm and the end as its"
             + " forced object leaves are translated but held by no run. A unit's steps: the"
             + " reference kept while it stays on the forced object, or marked in the targeting"
-            + " queue and forced back onto it, nothing while the targeting component is off.")
+            + " queue and forced back onto it, nothing while the targeting component is off. A"
+            + " building other than a crown tower takes the building steps: held by the hero"
+            + " Knight's taunt on a Cannon and an Inferno Tower within and beyond their reach.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
