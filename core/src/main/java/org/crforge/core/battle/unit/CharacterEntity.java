@@ -69,7 +69,6 @@ import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
-import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -1014,39 +1013,6 @@ public class CharacterEntity extends WorldEntity {
     boolean kept = hp.getShield() != 0 && CLONE_PRESERVE_SHIELD;
     hp.setShield(kept ? 1 : 0);
     hp.setShieldMaximum(kept ? 1 : 0);
-  }
-
-  /**
-   * A character's hit points and shield at a level, as a context writer reads them: its row's hit
-   * points and shield hit points at that many steps above the Common first level re-based on its
-   * rarity, each by the card hit-points rule - the level and the rule target_max_hp with an
-   * argument reads. The level left out (-1), which reads the maximum and the shield as they stand,
-   * is refused: no row leaves it out.
-   */
-  @Override
-  public int[] contextHitpoints(int levelIndex) {
-    if (levelIndex < 0) {
-      throw new UnsupportedOperationException(
-          "a context writer with no level, which reads "
-              + name()
-              + "'s hit points as they"
-              + " stand, is not modelled");
-    }
-    UnitData row = getData();
-    int packed =
-        PackedLevel.pack(
-            (RarityTable.COMMON.relativeLevel() << 8) | (levelIndex & 0xff), row.rarity());
-    int hitpoints =
-        LevelScaling.hitpoints(
-            ScalingGlobals.standard(), row.hitpoints(), packed, row.rarity(), false, false);
-    int shield =
-        LevelScaling.scale(
-            ScalingGlobals.standard(),
-            row.shieldHitpoints(),
-            packed,
-            ScalingMode.CARD_HITPOINTS,
-            row.rarity());
-    return new int[] {hitpoints, shield};
   }
 
   /**

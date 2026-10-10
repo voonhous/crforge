@@ -10,7 +10,13 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.combat.LevelScaling;
+import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
+import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.crforge.core.pathfinding.combat.ScalingMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -21,7 +27,8 @@ import org.junit.jupiter.api.io.TempDir;
  * soul flying; the group that runs as the soul arrives inherits the context, and its select picks
  * the heal by the sum the context holds: the least below its first band, the middle below its
  * second, else the most. The test writes the whole chain, the two bands set against the sum it
- * works out for the killed unit, so each case is chosen by construction.
+ * works out for the killed unit, so each case is chosen by construction. A princess tower it kills
+ * is written the same way, its row's hit points at the level by the princess tower's rule.
  */
 class BattlePekkaEvoContextTest {
 
@@ -258,5 +265,54 @@ class BattlePekkaEvoContextTest {
     assertThat(stepsUntilCarried(match, units[0], HEAL_MAX)).isEqualTo(Shipped.ticks(FLIGHT_MS));
     assertThat(units[0].getBuffs().carries(HEAL_MED)).isFalse();
     assertThat(units[0].getBuffs().carries(HEAL_MIN)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a kill of a princess tower writes the tower row's hit points at the writer's level by the"
+          + " princess tower's rule, and its shield, and the heal follows the sum")
+  void aPrincessTowerIsWrittenByItsRow(@TempDir Path folder) throws IOException {
+    GameRow towerRow = Shipped.unitRow("PrincessTower");
+    RarityTable rarity = Shipped.rarity(towerRow);
+    int packed =
+        PackedLevel.pack((RarityTable.COMMON.relativeLevel() << 8) | CONTEXT_LEVEL_INDEX, rarity);
+    int hitpoints =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            Shipped.number(towerRow, "Hitpoints"),
+            packed,
+            ScalingMode.TOWER_HITPOINTS,
+            rarity);
+    int shield =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            Shipped.number(towerRow, "ShieldHitpoints", 0),
+            packed,
+            ScalingMode.CARD_HITPOINTS,
+            rarity);
+    int sum = hitpoints + shield;
+    Standard1v1Battle match =
+        new Standard1v1Battle(withContextChain(folder, sum, sum + 1), LEVEL, false);
+    TowerEntity tower = match.getWorld().princessTowers(1).get(0);
+    // One hit kills it: the writer reads the row, not what the tower has left.
+    tower.getHitPoints().setHitPoints(1);
+    CharacterEntity pekka =
+        match.deploy(
+            0,
+            match.getWorld().getRecords().unit("Pekka_EV1"),
+            LEVEL,
+            0,
+            tower.x(),
+            tower.y() - 3000,
+            "pekka");
+    for (int i = 0; i < 400 && tower.getHitPoints().getHitPoints() > 0; i++) {
+      match.getBattle().step();
+    }
+    assertThat(tower.getHitPoints().getHitPoints()).as("the tower killed").isZero();
+
+    assertThat(stepsUntilCarried(match, pekka, HEAL_MED)).isEqualTo(Shipped.ticks(FLIGHT_MS));
+    assertThat(pekka.getBuffs().carries(HEAL_MAX)).isFalse();
+    assertThat(pekka.getBuffs().carries(HEAL_MIN)).isFalse();
+    assertThat(tower.contextHitpoints(CONTEXT_LEVEL_INDEX)).containsExactly(hitpoints, shield);
   }
 }

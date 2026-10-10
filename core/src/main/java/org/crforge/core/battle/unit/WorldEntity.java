@@ -1371,6 +1371,47 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return result;
   }
 
+  /**
+   * The entity's hit points and shield at a level, as a context writer reads them: its row's hit
+   * points and shield hit points at that many steps above the Common first level re-based on its
+   * rarity - the level target_max_hp with an argument reads. The hit points go by the row's own
+   * rule, as the entity's maximum does at its creation: the king tower's for a summoner, a princess
+   * tower's for a summoner tower, else the card rule, which is every character's; the shield by the
+   * card rule. A character and a crown tower are the one kind of object the game reads this way, so
+   * a princess tower an evolved Pekka kills is written by its row like any unit. The level left out
+   * (-1), which reads the maximum and the shield as they stand, is refused: no row leaves it out.
+   */
+  @Override
+  public int[] contextHitpoints(int levelIndex) {
+    if (levelIndex < 0) {
+      throw new UnsupportedOperationException(
+          "a context writer with no level, which reads "
+              + name()
+              + "'s hit points as they"
+              + " stand, is not modelled");
+    }
+    UnitData row = getData();
+    int packed =
+        PackedLevel.pack(
+            (RarityTable.COMMON.relativeLevel() << 8) | (levelIndex & 0xff), row.rarity());
+    int hitpoints =
+        LevelScaling.hitpoints(
+            ScalingGlobals.standard(),
+            row.hitpoints(),
+            packed,
+            row.rarity(),
+            row.king(),
+            row.summonerTower());
+    int shield =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            row.shieldHitpoints(),
+            packed,
+            ScalingMode.CARD_HITPOINTS,
+            row.rarity());
+    return new int[] {hitpoints, shield};
+  }
+
   /** A shield's value at a level: its row's ShieldHitpoints by the card hit-points rule. */
   private static int shieldAt(UnitData row, int packedLevel) {
     if (row.shieldHitpoints() <= 0) {
