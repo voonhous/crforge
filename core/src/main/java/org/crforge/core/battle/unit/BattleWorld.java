@@ -1265,13 +1265,21 @@ public class BattleWorld implements HolderPasses {
     if (!(target instanceof CharacterEntity character) || !character.hasMovementComponent()) {
       return;
     }
-    int state = target.getView().getState();
-    if (state == GridEntityState.JUMPING
-        || (state == GridEntityState.DASHING && target.getData().jumpHeight() >= 1)) {
+    if (inTheAir(target)) {
       target.getView().setZ(0);
       hookRequest(projectile, target, GridEntityState.STANDING);
       character.resetRoute();
     }
+  }
+
+  /**
+   * Whether a unit is in a jump or dashing under a row with a jump height (a jumping Mega Knight),
+   * the units the put-down of a hook or of a capture's completed drag sets on the ground.
+   */
+  private static boolean inTheAir(WorldEntity unit) {
+    int state = unit.getView().getState();
+    return state == GridEntityState.JUMPING
+        || (state == GridEntityState.DASHING && unit.getData().jumpHeight() >= 1);
   }
 
   /**
@@ -7586,10 +7594,10 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A completed drag: the unit put on the owner's point and, with a movement component, its jump
-   * ended, its route reset and, with a height change, the change pushed with its floor, which the
-   * next pre-hook folds. A unit in a jump, or a dash with a height, would be put down first, which
-   * is refused.
+   * A completed drag: the unit put on the owner's point and, with a movement component, put down
+   * when it is in a jump or dashing under a row with a jump height (on the ground and asked to
+   * stand, which ends the jump or the dash, as a hook puts down the unit it hooks), its route reset
+   * and, with a height change, the change pushed with its floor, which the next pre-hook folds.
    *
    * @param owner the capturing owner's row name
    * @param heightModifier the capture's height change, 0 for none
@@ -7600,12 +7608,11 @@ public class BattleWorld implements HolderPasses {
     CharacterEntity character = captured(owner, unit);
     character.warpTo(x, y);
     if (character.hasMovementComponent()) {
-      int state = unit.getView().getState();
-      if (state == GridEntityState.JUMPING
-          || (state == GridEntityState.DASHING && unit.getData().jumpHeight() >= 1)) {
-        throw new UnsupportedOperationException(
-            owner + " captures " + unit.name() + " in the air, not modelled");
+      if (inTheAir(unit)) {
+        unit.getView().setZ(0);
+        character.requestState(GridEntityState.STANDING);
       }
+      // The put-down's route reset and the drag's own are the same reset.
       character.resetRoute();
       if (heightModifier != 0) {
         character.startLayering();

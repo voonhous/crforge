@@ -43,7 +43,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the action on each completed capture, the hit per hit frequency at the owner's"
             + " level with its hit-speed scaled timer, and the capture buff with the character as"
             + " parent and source in place of the hold tags; no locked reference plays the evolved"
-            + " Goblin Cage, three recorded cases of it match. Held by no run: the hold tags of a"
+            + " Goblin Cage, three recorded cases of it match. The put-down of a unit caught in a"
+            + " jump or a dash with a height as its drag completes, as the hook's, on the ground"
+            + " and asked to stand: held by recorded cases of the evolved Snowball on a jumping"
+            + " Mega Knight and on a Hog Rider jumping the river, put on the bank and over the"
+            + " water; the cage's filter leaves such a unit out. Held by no run: the hold tags of a"
             + " character's capture without a buff, a capture that leaves the battle or dies, and the"
             + " distances it leaves behind, a claim whose lock another holds, two units equally"
             + " near, and a unit within the hide distance before the drag time has passed.")
