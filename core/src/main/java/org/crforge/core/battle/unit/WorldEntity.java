@@ -1780,6 +1780,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return data.flyingHeight() == 0;
   }
 
+  /**
+   * Whether the entity hovers, as its tag word gives it: never while either force tag is in it,
+   * else when its row hovers.
+   */
+  boolean layerHovering() {
+    long forced = world.forceIsAir() | world.forceIsGround();
+    return (getView().getFlags() & forced) == 0 && data.hovering();
+  }
+
   /** Whether the entity has a movement component, switched on or not. */
   boolean hasMovementComponent() {
     return component(CharacterEntity.MOVEMENT_SLOT) != null;
@@ -1855,18 +1864,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Starts an air-to-ground run on the entity, listed by the holder. A unit carrying riders is held
    * like any other: the run reads and moves only the unit it is on, and its riders, which nothing
-   * targets, are left to follow it. A clone, a hovering unit and a unit that rides another are
-   * refused.
+   * targets, are left to follow it. A hovering unit is held from the start (see {@link
+   * AirToGroundRun}). A clone and a unit that rides another are refused, and so is a hovering row a
+   * force tag already holds, which the run would take for a plain ground unit: no reference holds
+   * one.
    */
   @Override
   public ActionInstance airToGround(AirToGround action, int phase) {
-    if (data.hovering()
-        || this instanceof CharacterEntity unit && (unit.isClone() || unit.getParent() != null)) {
+    if (this instanceof CharacterEntity unit && (unit.isClone() || unit.getParent() != null)) {
+      throw new UnsupportedOperationException(
+          action.name() + " holds " + name() + ", a clone or a rider, which is not modelled");
+    }
+    if (data.hovering() && !layerHovering()) {
       throw new UnsupportedOperationException(
           action.name()
               + " holds "
               + name()
-              + ", a clone, a hovering unit or a rider, which is not modelled");
+              + ", a hovering unit a force tag already holds, which no reference holds");
     }
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);

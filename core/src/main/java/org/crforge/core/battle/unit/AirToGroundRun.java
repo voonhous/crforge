@@ -12,7 +12,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * One run of an air-to-ground action on a character or a tower: a phase and its counter. On the
  * ground (phase 0) the unit is held for the whole duration; an air unit descends (1) for the
  * transition, is held on the ground (2) for the whole less two transitions, and climbs (3) for the
- * transition. Each step of a phase pushes the height change of that step, for a unit with a
+ * transition; a hovering unit is held (2) from the start for the whole duration and finishes there,
+ * with no climb. Each step of a phase pushes the height change of that step, for a unit with a
  * movement component, and every held step raises FORCE_IS_GROUND, on the ground only when the row
  * asks for it. The run's finish resets the path of a unit that started at a flying height, when the
  * row asks for it. Each start, phase change, finish and re-trigger is told to the battle's
@@ -28,7 +29,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " BattleShapeSelectorTest, by a selector written in Vines' form; the re-trigger of"
             + " a hold in the air or of a climb by nothing. The path reset of an air unit at the"
             + " end is held by BattleAirToGroundTest and reached by tv_replay_014; a Goblin Giant"
-            + " carrying riders by cg_vines_goblingiant_riders.")
+            + " carrying riders by cg_vines_goblingiant_riders. A hovering unit held from the"
+            + " start by BattleAirToGroundTest and recorded Vines battles on the Ghost and its"
+            + " evolution; its re-trigger by a recorded Mirror of Vines.")
 final class AirToGroundRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -45,6 +48,12 @@ final class AirToGroundRun extends ActionInstance {
   /** The height the unit flies at, or -1 for a ground unit. */
   private int height = -1;
 
+  /**
+   * Whether the run started on a hovering unit, held from the start: its hold finishes the run
+   * where another's turns into the climb.
+   */
+  private boolean hovering;
+
   /** What is left of the phase, in milliseconds. */
   private int counter = -1;
 
@@ -52,7 +61,8 @@ final class AirToGroundRun extends ActionInstance {
 
   /**
    * The start: an air unit descends from its flying height, a unit flying at a height but on the
-   * ground layer is held at once, and a ground unit is held where it is.
+   * ground layer is held at once, a hovering unit (as its tag word gives it) is held at once for
+   * the whole duration with no height, and any other ground unit is held where it is.
    */
   AirToGroundRun(AirToGround row, WorldEntity unit) {
     super(row);
@@ -72,6 +82,11 @@ final class AirToGroundRun extends ActionInstance {
         phase = HELD;
         counter = row.getTotalDurationMs() - row.getTransitionDurationMs();
       }
+    } else if (unit.layerHovering()) {
+      // The held phase with no height: each step pushes 1 up, which the fold clamps away.
+      hovering = true;
+      phase = HELD;
+      counter = row.getTotalDurationMs();
     } else {
       phase = GROUND;
       counter = row.getTotalDurationMs();
@@ -171,12 +186,19 @@ final class AirToGroundRun extends ActionInstance {
     }
   }
 
-  /** The hold: FORCE_IS_GROUND and the height at 0; at its end the climb. */
+  /**
+   * The hold: FORCE_IS_GROUND and the height at 0; at its end the climb, or for a hovering unit the
+   * finish, in the same step.
+   */
   private void hold(List<Integer> pushes) {
     unit.raiseForceIsGround();
     push(-height, pushes);
     if (counter > 0) {
       counter -= STEP_MS;
+      return;
+    }
+    if (hovering) {
+      end();
       return;
     }
     phase = CLIMBING;
