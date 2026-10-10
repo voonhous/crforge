@@ -842,8 +842,9 @@ public class ProjectileEntity extends BattleEntity
    * The redirect of a deflection at a point, as {@link #deflect} sends a projectile back at its
    * source, but with no target: launched again from where it stands, at its height, at the point,
    * the deflector its launcher, owner and root, at its own level. A spell-like projectile is sent
-   * at the enemy crown tower the deflection picked this way, and a bomb at the area effect it was
-   * dropped onto, which stays what it was dropped onto.
+   * at the enemy crown tower the deflection picked this way, a bomb at the area effect it was
+   * dropped onto, which stays what it was dropped onto, and a rolling body, as the Bowler's ball,
+   * back the way it came. Its new start is where it stands.
    *
    * @param deflector the deflecting area effect's parent, which sends it on
    * @param px the point along the width
@@ -1282,6 +1283,11 @@ public class ProjectileEntity extends BattleEntity
   /** The projectile's damage at its level, before any deflection's share. */
   public int undeflectedDamage() {
     return ProjectileAmounts.damage(scalingGlobals(), data, packedLevel);
+  }
+
+  /** What a crown tower takes from the projectile at its level, before any deflection's share. */
+  public int undeflectedTowerDamage() {
+    return ProjectileAmounts.towerDamage(scalingGlobals(), data, packedLevel);
   }
 
   /**
