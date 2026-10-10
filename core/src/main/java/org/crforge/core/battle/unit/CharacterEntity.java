@@ -3276,8 +3276,10 @@ public class CharacterEntity extends WorldEntity {
    * The end of a Kamikaze row's hit, after its direct hit or its launch, landed or not: the unit
    * kills itself with its whole hit points, as its own attacker on its own side, so its death slot
    * runs in the same pass and it leaves at the tick's closing cleanup; a projectile it launched
-   * flies on without it. A death-spawn buff it carries would be deleted without its death spawn,
-   * and a shield of its own would take the kill; neither is modelled.
+   * flies on without it. Before the kill, every buff instance it carries whose row has a death
+   * spawn is deleted, without its death spawn or its remove action (see {@link
+   * BuffComponent#deleteDeathSpawns()}). A shield of its own would take the kill, which is not
+   * modelled.
    *
    * <p>A row with a Kamikaze time only marks its hit ended: it deletes no buff, drains no shield
    * and kills nothing, and its state visit drains its hit points from this tick on, while its hits
@@ -3293,15 +3295,9 @@ public class CharacterEntity extends WorldEntity {
       world.kamikazeHitEnded(this, false);
       return;
     }
-    for (BuffInstance instance : getBuffs().items()) {
-      if (instance.getBuff().deathSpawn() != null) {
-        throw new UnsupportedOperationException(
-            name()
-                + " ends a Kamikaze hit carrying "
-                + instance.getBuff().name()
-                + ", whose deletion without its death spawn is not modelled");
-      }
-    }
+    // A curse it carries (the Witch Mother's, the Goblin Curse's) is deleted first, so its kill
+    // makes no death spawn for it.
+    getBuffs().deleteDeathSpawns();
     if (getHitPoints() == null || getHitPoints().getShield() > 0) {
       throw new UnsupportedOperationException(
           name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");

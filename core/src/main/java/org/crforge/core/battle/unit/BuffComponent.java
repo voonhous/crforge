@@ -521,6 +521,36 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
+   * Deletes every listed instance whose row has a death spawn (a DeathSpawnCount of at least one),
+   * from the last to the first, as the end of a Kamikaze hit does before the unit kills itself: the
+   * instance is taken out of the list and freed, and nothing else of a removal runs. So the kill
+   * that follows makes none of its death spawns, and its remove action is not scheduled.
+   *
+   * <p>The delete does not give back an instance's share of the invisible count or of the locking
+   * count, nor reset the charge for a charge range; a row with a death spawn that is invisible,
+   * locks the target or gives a charge range is refused rather than guessed (no row is).
+   */
+  void deleteDeathSpawns() {
+    for (int i = items.size() - 1; i >= 0; i--) {
+      BuffInstance instance = items.get(i);
+      BuffData buff = instance.getBuff();
+      if (buff.deathSpawnCount() < 1) {
+        continue;
+      }
+      if (buff.invisible() || buff.lockTarget() || buff.overrideChargeRange() != 0) {
+        throw new UnsupportedOperationException(
+            entity.name()
+                + " deletes "
+                + buff.name()
+                + " at the end of a Kamikaze hit, a death spawn buff that is invisible, locks the"
+                + " target or gives a charge range, which is not modelled");
+      }
+      items.remove(i);
+      world.buffRemoved(entity, instance);
+    }
+  }
+
+  /**
    * RemoveOnAttack, as a hit the carrier dealt is counted: from the last listed instance to the
    * first, one whose row sets RemoveOnAttack removes every instance of its row without a parent,
    * from the last to the first, itself included when it has none. A walk whose next index lies past
