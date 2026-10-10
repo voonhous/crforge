@@ -4171,11 +4171,17 @@ public class BattleWorld implements HolderPasses {
    * <p>A spell-like projectile is modelled too: one whose only deflection behaviour is the spells'
    * tower share, with a deflect radius of its own and no body, as the Fireball, the Rocket, the
    * Snowball and the evolved Cannon's bombs are (see {@link #deflect}).
+   *
+   * <p>And a rolling body: one whose only deflection behaviour inverts its direction, with a round
+   * body and no deflect radius, that flies to a point, as the Bowler's ball does (see {@link
+   * #rollingBody}). Refused: such a row with a least distance or a constant height, as the
+   * Firecracker's sparks, which no recording holds.
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
     boolean spellLike = spellLike(data);
+    boolean rolling = rollingBody(data);
     if (pingpong
         && projectile.getDeflections() == 0
         && projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
@@ -4187,13 +4193,13 @@ public class BattleWorld implements HolderPasses {
               + deflector.name()
               + ", not modelled");
     }
-    if ((data.deflectBehaviour() != 0 && !spellLike)
+    if ((data.deflectBehaviour() != 0 && !spellLike && !rolling)
         || (data.deflectRadius() != 0 && !spellLike)
         || data.actionOnDeflector() != null
-        || (data.projectileRadius() != 0 && !pingpong)
+        || (data.projectileRadius() != 0 && !pingpong && !rolling)
         || data.projectileRadiusY() != 0
         || data.chainedHitRadius() >= 1
-        || (data.homingLike() && !pingpong)
+        || (data.homingLike() && !pingpong && !rolling)
         || data.homingTimeMs() >= 1
         || data.randomDelayMs() >= 1
         || data.dragBackSpeed() >= 1
@@ -4235,6 +4241,11 @@ public class BattleWorld implements HolderPasses {
    * battle: it is sent back at it, at its point, which it keeps as what it was dropped onto. The
    * parent takes the projectile's damage either way, before the redirect.
    *
+   * <p>A rolling body (see {@link #rollingBody}) inverts its direction instead, whatever its root:
+   * no gate and no search. The parent takes its damage as above, and it is sent on, with no target,
+   * from where it stands back by its flight from its start to its aim, so it rolls the way it came
+   * by the length it was thrown.
+   *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
    * a king tower fired that is not spell-like, which searches for the nearest enemy instead when it
@@ -4271,7 +4282,9 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           deflector.name() + " deflects without an object it follows, which is not modelled");
     }
-    if ((source == null && areaSource == null) || (!spellLike && source.getData().king())) {
+    boolean rolling = rollingBody(projectile.getData());
+    if (!rolling
+        && ((source == null && areaSource == null) || (!spellLike && source.getData().king()))) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
@@ -4318,7 +4331,13 @@ public class BattleWorld implements HolderPasses {
       queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
     }
     WorldEntity sentAt = null;
-    if (tower != null) {
+    if (rolling) {
+      // From where it stands, back by its flight from its start to its aim.
+      projectile.deflectAt(
+          parent,
+          projectile.getX() + projectile.getStartX() - projectile.getAimX(),
+          projectile.getY() + projectile.getStartY() - projectile.getAimY());
+    } else if (tower != null) {
       projectile.deflectAt(parent, tower.getView().getX(), tower.getView().getY());
     } else if (source == null) {
       projectile.deflectAt(parent, areaSource.getX(), areaSource.getY());
@@ -4345,6 +4364,21 @@ public class BattleWorld implements HolderPasses {
     return data.deflectBehaviour() == ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL
         && data.projectileRadius() == 0
         && data.projectileRadiusY() == 0;
+  }
+
+  /**
+   * Whether a projectile is a rolling body as a deflection reads it: its only deflection behaviour
+   * inverts its direction, it flies to a point with a round body, not sweeping out and back, and it
+   * has no deflect radius, no least distance and no constant height, as the Bowler's ball.
+   */
+  private static boolean rollingBody(ProjectileData data) {
+    return data.deflectBehaviour() == ProjectileData.INVERT_DIRECTION
+        && data.homingLike()
+        && data.pingpongVisualTimeMs() < 1
+        && data.projectileRadiusY() == 0
+        && data.deflectRadius() == 0
+        && data.minDistance() == 0
+        && data.constantHeight() == 0;
   }
 
   /**
@@ -4459,15 +4493,16 @@ public class BattleWorld implements HolderPasses {
    * untouchable character is listed as hit and spared; a character on a layer the projectile does
    * not reach, in the air, or, for a projectile that does not reach the air, in a jump or in a dash
    * under a row with a jump height, is spared without being listed. An entity with hit points takes
-   * the projectile's damage at its level, or its crown-tower share, as the listening runs of a
-   * projectile with an action holder change it - the evolved Executioner's controller in place of
-   * it - from the direction of the pass's centre, and is listed as hit, a carrier whose row
-   * attaches its riders with the ids of its riders (held by the Bowler's over a Goblin Giant, whose
-   * riders' Spear Goblins it then passes over); then a character whose movement is still on is
-   * pushed the row's pushback away from the projectile, the row's push-all lifting the gates. A
-   * projectile that stops at collisions is finished by a hit that landed on an entity with hit
-   * points left, and the pass ends; held by the Hunter's pellets in the reference battle
-   * card_Hunter.
+   * the projectile's damage at its level, or its crown-tower share, never a deflected share - a
+   * deflected body hits a crown tower for the whole of it, as the Bowler's ball rolled back into
+   * its own princess tower does - as the listening runs of a projectile with an action holder
+   * change it - the evolved Executioner's controller in place of it - from the direction of the
+   * pass's centre, and is listed as hit, a carrier whose row attaches its riders with the ids of
+   * its riders (held by the Bowler's over a Goblin Giant, whose riders' Spear Goblins it then
+   * passes over); then a character whose movement is still on is pushed the row's pushback away
+   * from the projectile, the row's push-all lifting the gates. A projectile that stops at
+   * collisions is finished by a hit that landed on an entity with hit points left, and the pass
+   * ends; held by the Hunter's pellets in the reference battle card_Hunter.
    *
    * @return true when the hit finished the projectile
    */
@@ -4510,7 +4545,8 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     boolean crownTower = entity.getTargetView().crownTower();
-    int damage = crownTower ? projectile.towerDamage() : projectile.damage();
+    // The travelling hit reads no deflection: the row's amounts at the level.
+    int damage = crownTower ? projectile.undeflectedTowerDamage() : projectile.undeflectedDamage();
     // A projectile with an action holder has its listening runs change the damage.
     if (projectile.hasActionHolder()) {
       damage = projectile.listenedDamage(damage, hitId, crownTower, entity);
