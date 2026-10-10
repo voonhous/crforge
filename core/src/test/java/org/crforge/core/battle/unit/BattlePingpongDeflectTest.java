@@ -36,6 +36,9 @@ import org.junit.jupiter.api.Test;
  * Monk, and the deflection past the most a projectile takes still deals its damage and then ends
  * the flight.
  *
+ * <p>An axe deflected in the step that ends its sweep, its time at its end, is turned around the
+ * same way: the step still ends at its start, from where it flies back at the Executioner.
+ *
  * <p>The scene: the bottom side's Monk stands in the Executioner's reach, both held in place, and
  * the Monk's Deflect is up when the Executioner throws its axe at it.
  */
@@ -50,6 +53,12 @@ class BattlePingpongDeflectTest {
 
   /** Where the Executioner stands: in its reach of the Monk, but not of the Monk's. */
   private static final int EXECUTIONER_Y = 19000;
+
+  /**
+   * Where the Executioner stands when the Monk must be close by: near enough that the axe's last
+   * sweep step, by its start, comes within the Monk's Deflect.
+   */
+  private static final int CLOSE_EXECUTIONER_Y = 15800;
 
   /** Where a second Monk stands, for the Executioner's side, behind the Executioner. */
   private static final int TOP_MONK_Y = 20000;
@@ -249,6 +258,129 @@ class BattlePingpongDeflectTest {
     assertThat(axe.getDeflections()).isEqualTo(1);
     assertThat(hitAfterDeflection).as("the deflection deals the Monk nothing").doesNotContain(monk);
     assertThat(monk.getHitPoints().getHitPoints()).isEqualTo(full);
+    return true;
+  }
+
+  @Test
+  @DisplayName(
+      "an axe whose sweep ends as the Monk's Deflect comes up is turned around on its last step:"
+          + " the Executioner's hold is cleared, its sweep starts over, and it flies back at the"
+          + " Executioner from its start, lands there and hits it once")
+  void axeDeflectedOnItsLastSweepStepFliesBackAtTheExecutioner() {
+    // The Deflect is cast later and later after the first axe's launch, until it comes up in the
+    // axe's last sweep step, when its time reaches its end.
+    for (int wait = 0; wait < TICKS; wait++) {
+      if (deflectedOnTheLastSweepStep(wait)) {
+        return;
+      }
+    }
+    throw new AssertionError("no cast time deflects the axe on its last sweep step");
+  }
+
+  /**
+   * One battle: the Monk, close by the Executioner, casts its Deflect the given ticks after the
+   * Executioner's first axe is launched. When the axe is deflected in the step that ends its sweep,
+   * checks the turn-around and the landing and answers true; otherwise answers false.
+   */
+  private static boolean deflectedOnTheLastSweepStep(int wait) {
+    BattleRecords records = new BattleRecords(GameData.tables());
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    List<ProjectileEntity> deflected = new ArrayList<>();
+    List<String> holdsLeft = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileDeflected(
+                  int tick,
+                  AreaEffectEntity deflector,
+                  ProjectileEntity projectile,
+                  WorldEntity parent,
+                  WorldEntity source) {
+                deflected.add(projectile);
+              }
+
+              @Override
+              public void holdLeft(int tick, WorldEntity unit, ProjectileEntity projectile) {
+                holdsLeft.add(unit.name());
+              }
+            });
+    CharacterEntity monk = match.deploy(0, records.unit("Monk"), LEVEL, 0, MONK_X, MONK_Y, "Monk");
+    CharacterEntity executioner =
+        match.deploy(0, records.unit("AxeMan"), LEVEL, 1, MONK_X, CLOSE_EXECUTIONER_Y, "Axe");
+    int tick = 0;
+    while (monk.getView().getState() == GridEntityState.DEPLOYING
+        || monk.getView().getState() == GridEntityState.WAITING_TO_DEPLOY
+        || monk.getId() == 0) {
+      match.getBattle().step();
+      tick++;
+      assertThat(tick).as("the Monk deploys").isLessThan(TICKS);
+    }
+    monk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    executioner.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    ProjectileEntity axe = null;
+    while (axe == null) {
+      match.getBattle().step();
+      tick++;
+      assertThat(tick).as("the Executioner throws").isLessThan(TICKS);
+      for (BattleEntity entity : match.getWorld().getHolder().entities()) {
+        if (entity instanceof ProjectileEntity projectile) {
+          axe = projectile;
+        }
+      }
+    }
+    for (int i = 0; i < wait; i++) {
+      match.getBattle().step();
+    }
+    if (axe.isReleased() || !deflected.isEmpty()) {
+      return false;
+    }
+    monk.requestAbility();
+    int total = axe.getData().pingpongVisualTimeMs();
+    int timeBefore = 0;
+    int startX = 0;
+    int startY = 0;
+    while (deflected.isEmpty() && !axe.isReleased()) {
+      timeBefore = axe.getPingpongTimeMs();
+      startX = axe.getStartX();
+      startY = axe.getStartY();
+      match.getBattle().step();
+    }
+    if (deflected.isEmpty() || timeBefore + axe.getPingpongStepMs() < total) {
+      return false;
+    }
+    // Turned around in the step that brought its time to its end.
+    assertThat(deflected).containsExactly(axe);
+    assertThat(axe.getDeflections()).isEqualTo(1);
+    assertThat(axe.getPingpongTimeMs()).as("its sweep starts over").isZero();
+    assertThat(axe.side()).as("it flies for the Monk's side").isEqualTo(monk.side());
+    assertThat(executioner.getTargeting().isVisitSuspended())
+        .as("the Executioner's hold is cleared by the deflection")
+        .isFalse();
+    // The step still ends where the sweep ends, at its start; the aim is where the Executioner
+    // stands, not stretched to the row's range.
+    assertThat(axe.getX()).isEqualTo(startX);
+    assertThat(axe.getY()).isEqualTo(startY);
+    GridEntity at = executioner.getView();
+    assertThat(axe.getAimX()).isEqualTo(at.getX());
+    assertThat(axe.getAimY()).isEqualTo(at.getY());
+
+    int full = executioner.getHitPoints().getHitPoints();
+    int damage = axe.damage();
+    int steps = 0;
+    while (!axe.isReleased()) {
+      match.getBattle().step();
+      steps++;
+      assertThat(steps).as("the axe lands").isLessThan(TICKS);
+    }
+    assertThat(axe.getX()).as("it lands at its aim, without coming back").isEqualTo(at.getX());
+    assertThat(axe.getY()).isEqualTo(at.getY());
+    assertThat(executioner.getHitPoints().getHitPoints())
+        .as("the Executioner takes its own axe once")
+        .isEqualTo(full - damage);
+    assertThat(holdsLeft).as("no targeting held the deflected axe").isEmpty();
+    assertThat(monk.getTargeting().isVisitSuspended()).isFalse();
     return true;
   }
 

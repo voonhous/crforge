@@ -4100,7 +4100,8 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
    * on the ground plane, by a box, or only at its target's point (whose arrival is measured at a
-   * stored point, not at the aim); and every deflection {@link #deflect} does not model.
+   * stored point, not at the aim); a pingpong projectile not deflected before, met at its aim on
+   * its arrival (see {@link #refuseAtAim}); and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
    * @param x the point along the width
@@ -4140,11 +4141,37 @@ public class BattleWorld implements HolderPasses {
               FixedMath.s32((long) x - deflector.getX()),
               FixedMath.s32((long) y - deflector.getY()),
               z);
-      if (squared < reach * reach && deflect(deflector, projectile)) {
-        return true;
+      if (squared < reach * reach) {
+        refuseAtAim(deflector, projectile);
+        if (deflect(deflector, projectile)) {
+          return true;
+        }
       }
     }
     return false;
+  }
+
+  /**
+   * Refuses a pingpong projectile not deflected before that a deflecting area effect of the other
+   * team touches in this pass: its sweep runs the pass over its body's cells instead, so it meets
+   * this pass only at its arrival, measured at its aim - the far point - while it is back at its
+   * start. The turn-around would be the one on its sweep, but no recording holds it: at the aim's
+   * height, the row's constant height, the Monk's Deflect does not reach any pingpong row carried
+   * here.
+   */
+  private static void refuseAtAim(AreaEffectEntity deflector, ProjectileEntity projectile) {
+    if (projectile.getData().pingpongVisualTimeMs() >= 1
+        && projectile.getDeflections() == 0
+        && !projectile.isReleased()
+        && (deflector.side() & 1) != (projectile.side() & 1)) {
+      throw new UnsupportedOperationException(
+          projectile.name()
+              + " ("
+              + projectile.getData().name()
+              + ") is a pingpong projectile deflected at its aim on its arrival, by "
+              + deflector.name()
+              + ", not modelled");
+    }
   }
 
   /** The area effects of the live list that deflect projectiles, in its order. */
@@ -4172,7 +4199,10 @@ public class BattleWorld implements HolderPasses {
    * way, and, deflected, it flies on as any projectile that flies to a point, which a deflecting
    * area effect of the other side may turn around again. The runs on it, as the evolved axe's
    * controller, are left as they are: the deflection asks them only for the damage of its hit on
-   * the deflector's parent. Refused: one not deflected before that is deflected at its return.
+   * the deflector's parent. So is one deflected on the step that ends its sweep, its time at its
+   * end: the turn-around reads no sweep time, so it is the one on its way, and the step still ends
+   * at its start, from where it flies back. One met at its aim on its arrival is refused by the
+   * deflection pass (see {@link #deflectPass}).
    *
    * <p>A spell-like projectile is modelled too: one whose only deflection behaviour is the spells'
    * tower share, with a deflect radius of its own and no body, as the Fireball, the Rocket, the
@@ -4188,17 +4218,6 @@ public class BattleWorld implements HolderPasses {
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
     boolean spellLike = spellLike(data);
     boolean rolling = rollingBody(data);
-    if (pingpong
-        && projectile.getDeflections() == 0
-        && projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
-      throw new UnsupportedOperationException(
-          projectile.name()
-              + " ("
-              + data.name()
-              + ") is a pingpong projectile deflected at its return, by "
-              + deflector.name()
-              + ", not modelled");
-    }
     if ((data.deflectBehaviour() != 0 && !spellLike && !rolling)
         || (data.deflectRadius() != 0 && !spellLike)
         || data.actionOnDeflector() != null
