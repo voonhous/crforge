@@ -7,9 +7,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * An action that writes what its cause is like into the context it carries, as the evolved Pekka
  * notes the hit points of what it killed before the soul flies: under the row's hit points key, the
  * cause's hit points, and under its shield key, its shield hit points, both at the row's level -
- * its row's values that many steps above the Common first level. It writes into the main board, or
- * the scratch board when the row says so; a key the row leaves out is not written, and with no
- * context, or no cause, nothing is.
+ * its row's values that many steps above the Common first level. A crown tower it kills is read the
+ * same way, by its own row. It writes into the main board, or the scratch board when the row says
+ * so; a key the row leaves out is not written, and with no context, or no cause, nothing is.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -17,9 +17,11 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the board chosen by UseScratch, a key the row leaves out not written, nothing"
             + " written without a context, and a character's hit points and shield at the row's"
             + " level, read as target_max_hp with an argument reads them; held by"
-            + " pekka-resurrect-v2. Not modelled: the cause's global id and position, refused by"
-            + " the row builder; the level left out (-1), and a cause that is not a character,"
-            + " which read its maximum and its shield as they stand, refused by the owner.")
+            + " pekka-resurrect-v2. A crown tower read the same way by its row, its hit points by"
+            + " the princess tower's rule: held by a recorded battle where an evolved Pekka takes a"
+            + " princess tower (the most heal). Not modelled: the cause's global id and position,"
+            + " refused by the row builder; the level left out (-1), and a cause that is neither a character nor a"
+            + " tower, which read its maximum and its shield as they stand, refused by the owner.")
 public final class WriteInstigatorInfoToContext extends RowAction {
 
   /** The key that stands for none: a key the row leaves out. */
