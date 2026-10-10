@@ -564,6 +564,19 @@ public class ActionHolder implements EntityActions {
     }
   }
 
+  /**
+   * Tells every running instance, from the last to the first, that the entity's reference setter
+   * stored a reference; a run listed meanwhile is not told.
+   *
+   * @param referenceId the id of the reference stored, or -1 for none
+   */
+  public void referenceStored(int referenceId) {
+    List<ActionInstance> instances = new ArrayList<>(running);
+    for (int i = instances.size() - 1; i >= 0; i--) {
+      instances.get(i).referenceStored(referenceId);
+    }
+  }
+
   /** Tells every running instance, in its listed order, of an object that left the battle. */
   @Override
   public void objectLeft(int leftId) {

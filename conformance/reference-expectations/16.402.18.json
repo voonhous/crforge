@@ -457,7 +457,7 @@
   "tv-replays-v3/tv_replay_020": {"outcome": "mismatch", "first_divergent_tick": 2977, "path": "$.entities[0].x"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_022": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_023": {"outcome": "diagnostic_match"},
   "vines-end-reset-v1/vines_babydragon_logged_route_reset": {"outcome": "diagnostic_match"},
   "vines-end-reset-v1/vines_balloon_logged_route_reset": {"outcome": "diagnostic_match"}
  }

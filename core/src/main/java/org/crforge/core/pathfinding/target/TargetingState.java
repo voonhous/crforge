@@ -2,6 +2,7 @@ package org.crforge.core.pathfinding.target;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
 import org.crforge.core.pathfinding.GridEntity;
@@ -66,6 +67,12 @@ public class TargetingState {
 
   /** The target the owner is attacking, or null when it has none. */
   private TargetView reference;
+
+  /**
+   * Told of every reference the setter stores, after the store, null included; the owner's actions
+   * hear of it through this. Null for an owner whose actions do not listen.
+   */
+  private Consumer<TargetView> referenceListener;
 
   /** The target held before the current one. */
   private TargetView previousReference;

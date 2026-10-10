@@ -40,6 +40,7 @@ import org.crforge.core.battle.action.GuardHost;
 import org.crforge.core.battle.action.Knockback;
 import org.crforge.core.battle.action.LumberjackGhostWait;
 import org.crforge.core.battle.action.MegaKnightUppercut;
+import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.NetAttackHost;
 import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ReadyChampionAbility;
@@ -3931,36 +3932,143 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The candidates a snipe's look lists around the character: the box query about where it stands,
-   * less the objects inside the minimum range, nearest first.
+   * What the evolved Musketeer's snipe asks of the battle about the character: its targeting
+   * component, tags and buffs, the box it looks in, the validator, where objects stand, its
+   * reference and the reach of its row; the reference it takes through the setter or drops as it
+   * stands, and LOCK_TARGET it raises.
    */
   @Override
-  public List<Integer> snipeCandidates(
-      int halfWidth, int halfLength, int minimumRange, GameObjectFilter filter) {
-    GridEntity at = getView();
-    long reach = (long) at.getCollisionRadius() + minimumRange;
-    long reachSquared = reach * reach;
-    List<long[]> kept = new ArrayList<>();
-    for (WorldEntity object :
-        world.rectangleQuery(
-            side(), getData().name(), at.getX(), at.getY(), halfWidth, halfLength, filter)) {
-      GridEntity view = object.getView();
-      long dx = view.getX() - at.getX();
-      long dy = view.getY() - at.getY();
-      long radius = view.getCollisionRadius();
-      long beyond = Math.max(0, dx * dx + dy * dy - radius * radius);
-      if (minimumRange >= 1 && reachSquared > beyond) {
-        continue;
+  public MusketeerSnipe.Host snipeHost(MusketeerSnipe action) {
+    return new MusketeerSnipe.Host() {
+      @Override
+      public boolean targetingOn() {
+        // The deploy, and the wait before it, keep the targeting component off.
+        return isActive(TARGETING_SLOT) && !deploying() && !waiting();
       }
-      kept.add(new long[] {dx * dx + dy * dy, object.getId()});
-    }
-    // Nearest first; the sort is stable, so objects at one distance keep the box's order.
-    kept.sort(Comparator.comparingLong(candidate -> candidate[0]));
-    List<Integer> ids = new ArrayList<>();
-    for (long[] candidate : kept) {
-      ids.add((int) candidate[1]);
-    }
-    return ids;
+
+      @Override
+      public boolean lockTargetTagged() {
+        GridEntity view = getView();
+        return (view.getFlags() & view.getFlagBits().lockTarget()) != 0;
+      }
+
+      @Override
+      public boolean referenceLockedByBuff() {
+        TargetingState t = unit.targeting();
+        return t.getReference() != null && t.getTargetLockingBuffs() > 0;
+      }
+
+      @Override
+      public boolean hitsStopped() {
+        return getBuffs().hitSpeed(SNIPE_HIT_STEP) == 0;
+      }
+
+      @Override
+      public List<Integer> candidates(
+          int halfWidth, int halfLength, int minimumRange, GameObjectFilter filter) {
+        GridEntity at = getView();
+        long reach = (long) at.getCollisionRadius() + minimumRange;
+        long reachSquared = reach * reach;
+        List<long[]> kept = new ArrayList<>();
+        for (WorldEntity object :
+            world.rectangleQuery(
+                side(), getData().name(), at.getX(), at.getY(), halfWidth, halfLength, filter)) {
+          GridEntity view = object.getView();
+          long dx = view.getX() - at.getX();
+          long dy = view.getY() - at.getY();
+          long radius = view.getCollisionRadius();
+          long beyond = Math.max(0, dx * dx + dy * dy - radius * radius);
+          if (minimumRange >= 1 && reachSquared > beyond) {
+            continue;
+          }
+          kept.add(new long[] {dx * dx + dy * dy, object.getId()});
+        }
+        // Nearest first; the sort is stable, so objects at one distance keep the box's order.
+        kept.sort(Comparator.comparingLong(candidate -> candidate[0]));
+        List<Integer> ids = new ArrayList<>();
+        for (long[] candidate : kept) {
+          ids.add((int) candidate[1]);
+        }
+        return ids;
+      }
+
+      @Override
+      public boolean validates(int id, boolean takeMode) {
+        return unit.selection()
+            .validate(
+                object(id).getTargetView(),
+                takeMode ? ReferenceValidator.MODE_TAKE : ReferenceValidator.MODE_RECHECK);
+      }
+
+      @Override
+      public int x(int id) {
+        return object(id).getView().getX();
+      }
+
+      @Override
+      public int radius(int id) {
+        return object(id).getView().getCollisionRadius();
+      }
+
+      @Override
+      public int x() {
+        return getView().getX();
+      }
+
+      @Override
+      public int radius() {
+        return getView().getCollisionRadius();
+      }
+
+      @Override
+      public int squaredDistance(int id) {
+        GridEntity view = object(id).getView();
+        return FixedMath.squaredDistance(
+            view.getX(), view.getY(), getView().getX(), getView().getY());
+      }
+
+      @Override
+      public int reference() {
+        TargetView reference = unit.targeting().getReference();
+        return reference == null ? MusketeerSnipe.NONE : reference.id();
+      }
+
+      @Override
+      public boolean inRowReach(int id) {
+        int reach = getData().range() + getData().collisionRadius();
+        return RangeTest.rangeTest(
+            object(id).getTargetView(), getView().getX(), getView().getY(), reach, 0, false);
+      }
+
+      @Override
+      public void take(int id) {
+        SelectionChain selection = unit.selection();
+        ReferenceSetter.setReference(
+            unit.targeting(),
+            object(id).getTargetView(),
+            false,
+            false,
+            false,
+            selection,
+            selection.getOutcome());
+      }
+
+      @Override
+      public void dropReference() {
+        TargetingState t = unit.targeting();
+        t.setReference(null);
+        t.setKeptByPendingDamageCheck(false);
+      }
+
+      @Override
+      public void raiseLockTarget() {
+        CharacterEntity.this.raiseLockTarget();
+      }
+
+      private WorldEntity object(int id) {
+        return (WorldEntity) world.liveObject(id);
+      }
+    };
   }
 
   /**
@@ -4237,6 +4345,9 @@ public class CharacterEntity extends WorldEntity {
   void summonReveal() {
     combatGate(isActive(TARGETING_SLOT) && !deploying() && !waiting(), setter::prepareRoute);
   }
+
+  /** The hit step a snipe asks the character's buffs to scale, which a stun scales to 0. */
+  private static final int SNIPE_HIT_STEP = 100;
 
   /** The step a counter scales by the character's hit speed, which below 1 means a stun. */
   private static final int COUNTER_SCALE_STEP_MS = 50;

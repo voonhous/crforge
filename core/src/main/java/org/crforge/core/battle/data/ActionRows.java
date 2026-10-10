@@ -994,10 +994,9 @@ public final class ActionRows {
                   "IndicatorOffsetYBlue",
                   "IndicatorOffsetYRed",
                   "AIStateName")),
-          // The evolved Musketeer's snipe: its rounds and the box, filter and minimum range its
-          // look lists candidates by. The side clip, the pending-damage flag and the two actions
-          // are read only once a candidate is found, which is refused; the rest only shows
-          // something.
+          // The evolved Musketeer's snipe: its rounds, the box, filter and minimum range its look
+          // lists candidates by, the two side clips, the validator's mode and the two actions a
+          // shot and the last round schedule (refused when set); the rest only shows something.
           Map.entry(
               "ActionMusketeerSnipe",
               Set.of(
@@ -1824,10 +1823,14 @@ public final class ActionRows {
                     shared,
                     MusketeerSnipe.Columns.builder()
                         .ammoCount(integer(f, "AmmoCount"))
+                        .snipeSideClip(integer(f, "SnipeSideClip"))
                         .lockedTargetSnipeSideClip(integer(f, "LockedTargetSnipeSideClip"))
                         .snipeMaxRange(integer(f, "SnipeMaxRange"))
                         .snipeMinRange(integer(f, "SnipeMinRange"))
                         .snipeTargetFilter(records.filter(text(f, "SnipeTargetFilter", "")))
+                        .ignorePendingDamageTargets(bool(f, "IgnorePendingDamageTargets", true))
+                        .actionOnSnipe(action(f.get("ActionOnSnipe")))
+                        .actionOnOutOfAmmo(action(f.get("ActionOnOutOfAmmo")))
                         .build());
             case "ActionBlowdartGoblinEvoDartSelect" -> {
               BattleAction controller = action(f.get("ActionToTakeDataFrom"));

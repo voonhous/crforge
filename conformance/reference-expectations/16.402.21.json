@@ -450,7 +450,7 @@
   "tv-replays-v3/tv_replay_018": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_020": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_021": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_023": {"outcome": "unsupported", "feature": "Musketeer_EV1_snipe_targeting finds a snipe target, object 5000065, whose shot is not modelled", "input": "the run"},
+  "tv-replays-v3/tv_replay_023": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_002": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_004": {"outcome": "diagnostic_match"},
   "tv-replays-v4/tv_replay_005": {"outcome": "diagnostic_match"},

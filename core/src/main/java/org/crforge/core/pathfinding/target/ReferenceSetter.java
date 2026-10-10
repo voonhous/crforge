@@ -17,8 +17,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "The store, the wind-up rebase, the null paths and the route preparation agree with"
-            + " the reference. Not modelled: the two notifications the standard game sends when"
-            + " a reference changes. Only taking a new reference is held by a fixture.")
+            + " the reference. The owner's running actions are told of each store, which only"
+            + " the evolved Musketeer's snipe answers, held by tv_replay_023. Not modelled: the"
+            + " other notification the standard game sends when a reference changes. Only taking"
+            + " a new reference is held by a fixture.")
 public final class ReferenceSetter {
 
   /** The entity state of a unit that is dashing. */
@@ -116,6 +118,10 @@ public final class ReferenceSetter {
     t.setSpecialLoadTimerMs(0);
     if (t.getTargetLostTimerMs() == 0 && t.isMovementComponentActive()) {
       outcome.requestRoutePreparation();
+    }
+    // The owner's running actions hear of the reference stored, from the last listed to the first.
+    if (t.getReferenceListener() != null) {
+      t.getReferenceListener().accept(reference);
     }
     t.storeReferencePosition();
   }
