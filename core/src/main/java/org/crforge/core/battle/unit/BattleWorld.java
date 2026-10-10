@@ -4226,13 +4226,13 @@ public class BattleWorld implements HolderPasses {
    * asks it, with the global V16_PROJECTILE_DAMAGE_BUG set: the hits queued for the entity and not
    * yet dealt, the one just queued among them, add up to at least its hit points and shield. The
    * hits counted are those of the queueing damage entry, which adds each one's damage to the
-   * entity's queued total and the drain empties: travelling hits, direct hits, the shares of a
-   * character's or a projectile's area and the hits of a buff's damage over time.
+   * entity's queued total and the drain empties: travelling hits, direct hits, a projectile's hit
+   * on its one target, the shares of a character's or a projectile's area and the hits of a buff's
+   * damage over time. A damage-taking action's hit is queued by an entry of its own, which adds
+   * nothing to the total: its amount is worked out only at the drain, so it never counts here.
    *
    * <p>Refused rather than guessed: the global clear, where the one hit's damage alone is held
-   * against the entity's hit points, which no data version holds; and a projectile's hit on its one
-   * target or a damage-taking action's hit queued for the entity, whose share of the total is not
-   * established.
+   * against the entity's hit points, which no data version holds.
    *
    * @param entity the entity hit
    */
@@ -4257,13 +4257,10 @@ public class BattleWorld implements HolderPasses {
         queued += share.damage();
       } else if (hit instanceof BuffHitDue buffHit && buffHit.target() == entity) {
         queued += buffHit.damage();
-      } else if ((hit instanceof ProjectileHitDue single && single.target() == entity)
-          || (hit instanceof ActionDamageDue action && action.target() == entity)) {
-        throw new UnsupportedOperationException(
-            entity.name()
-                + " takes a travelling hit with a projectile's or an action's hit queued for it,"
-                + " whose share of its queued damage is not modelled");
+      } else if (hit instanceof ProjectileHitDue single && single.target() == entity) {
+        queued += single.damage();
       }
+      // A damage-taking action's hit adds nothing: its amount is worked out only at the drain.
     }
     return queued >= hitPoints.getHitPoints() + hitPoints.getShield();
   }
