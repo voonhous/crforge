@@ -17,6 +17,7 @@ import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.AttackChain;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.BlowdartDartSelect;
@@ -240,8 +241,13 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and as it rises, scheduled on itself and run in its phase-3 pending pass, held by"
             + " evo_tesla_vs_giant and evo_tesla_ring_giant_musketeer; their cause, itself, which"
             + " the evolved Tesla's ring does not read, by no run. Refused for a clone: a"
-            + " building, a unit whose hit destroys it, a champion, one with a cloned version or"
-            + " riders, and one still deploying or running an action. A clone's death spawn with a"
+            + " building, a unit whose hit destroys it, a champion, and one still deploying or"
+            + " running an air-to-ground action. A clone of a row with a cloned version, of that"
+            + " row at its rarity, its runs left to the unit and the unit's buffs written over its"
+            + " own, is held by four recorded battles not yet in the reference set: the evolved"
+            + " Ghost, the evolved Wizard with its shield up and broken, and the evolved Barbarians;"
+            + " its own row's starting action, scheduled as the fold starts it, by none. A clone's"
+            + " death spawn with a"
             + " deploy time, a clone made deploying - 1 hit point of 1, its countdown as any"
             + " unit's, out of collision until it ends, hit by an area while it deploys - is held"
             + " by two recorded battles not yet in the reference set, a Goblin Giant's clone"
@@ -1017,9 +1023,10 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
-   * by anything but an area effect, of a row with a cloned version, of a unit still deploying or
-   * with a run of an action listed, whose clone would take it over - for a carrier, of any of its
-   * riders too, each cloned with it.
+   * by anything but an area effect, of a unit still deploying, or of a unit running an
+   * air-to-ground action, which the game starts again on the clone - for a carrier, of any of its
+   * riders too, each cloned with it. A row with a cloned version and the runs of every other action
+   * class are modelled: the clone is made of the cloned version, and the runs stay the unit's.
    *
    * <p>The perform does not ask whether the unit is a clone itself: a clone it reaches is cloned
    * again. A Clone's area never reaches one, its filter dropping clones, so a clone the action
@@ -1057,13 +1064,20 @@ public class CharacterEntity extends WorldEntity {
       cloned.addAll(riders);
     }
     for (CharacterEntity unit : cloned) {
-      if (unit.getData().clonedVersion() != null
-          || unit.getView().getDeployCountdown() > 0
-          || !unit.actionHolder().running().isEmpty()) {
+      if (unit.getView().getDeployCountdown() > 0) {
         throw new UnsupportedOperationException(
-            unit.name()
-                + " is cloned with a cloned version, a deploy countdown or a run of an action"
-                + " listed, which is not modelled");
+            unit.name() + " is cloned with a deploy countdown, which is not modelled");
+      }
+      // The creator tells each run the unit has listed of the clone; every class but the
+      // air-to-ground one does nothing with it, so the runs stay the unit's. That one starts its
+      // action again on the clone.
+      for (ActionInstance run : unit.actionHolder().running()) {
+        if (run.getAction() instanceof AirToGround) {
+          throw new UnsupportedOperationException(
+              unit.name()
+                  + " is cloned with an air-to-ground action running, which the game starts again"
+                  + " on the clone; that is not modelled");
+        }
       }
     }
     return true;

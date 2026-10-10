@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
@@ -426,6 +427,127 @@ class BattleCloneTest {
     assertThatThrownBy(() -> clone.actionHolder().start(spawn, clone.actionHolder()))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("from a clone");
+  }
+
+  /**
+   * The configured tables with the Clone written, and a Knight whose row names a Wizard as its
+   * cloned version: the Knight common, running the starting action given, and the Wizard rare, its
+   * starting action a group that puts Invisibility on it for 999999 ms after 50.
+   *
+   * @param knightStarting the Knight's starting action
+   */
+  private static GameTables clonedVersionTables(Path folder, String knightStarting)
+      throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> {
+          GameData.columns(rows, "Knight")
+              .put("ClonedVersion", "Wizard")
+              .put("Rarity", "Common")
+              .put("OnStartingAction", knightStarting);
+          GameData.columns(rows, "Wizard")
+              .put("Rarity", "Rare")
+              .put("OnStartingAction", "Ghost_EV1_Clone_Apply_Invis_Group");
+        });
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode group = GameData.fields(rows, "Ghost_EV1_Clone_Apply_Invis_Group");
+          group.putArray("SubActionsDelay").add(50);
+          GameData.fields(rows, "Ghost_EV1_Clone_Apply_Invis")
+              .put("SpawnData", "Invisibility")
+              .put("SpawnTime", 999999);
+          GameData.fields(rows, "Vines_Air_To_Ground").put("TotalDuration", 5000);
+        });
+    return GameTables.load(folder);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose row names a cloned version is cloned as that row, at the Clone's level re-based"
+          + " on that row's rarity; the clone starts that row's starting action as the holder takes"
+          + " it in at the tick's end, and the runs its unit has listed stay with the unit")
+  void aClonedVersion(@TempDir Path folder) throws IOException {
+    GameTables tables = clonedVersionTables(folder, "skeleton_balloon_pop_balloons");
+    BattleRecords records = new BattleRecords(tables);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(0, records.unit("Knight"), LEVEL, 0, X, Y, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    scene.step(CAST_TICK - 1);
+    List<ActionInstance> runs = List.copyOf(knight.actionHolder().running());
+    assertThat(runs).isNotEmpty();
+    scene.clone(CAST_TICK);
+
+    CharacterEntity clone = scene.named("knight_clone0");
+    assertThat(clone.isClone()).isTrue();
+    assertThat(clone.getData().name()).isEqualTo("Wizard");
+    assertThat(knight.getData().name()).isEqualTo("Knight");
+    // The Clone's level re-based on the cloned version's rarity.
+    assertThat(PackedLevel.level(clone.getPackedLevel()))
+        .isEqualTo(
+            PackedLevel.level(
+                PackedLevel.pack(scene.area.packedLevel(), records.unit("Wizard").rarity())));
+    assertThat(clone.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(clone.getHitPoints().getMaximum()).isEqualTo(1);
+    // The unit's runs go on beside its move apart; the clone takes none of them.
+    assertThat(knight.actionHolder().running()).containsAll(runs);
+    assertThat(clone.actionHolder().running()).doesNotContainAnyElementsOf(runs);
+
+    // The clone's own row's starting action: started at the tick's closing cleanup, so not run in
+    // the tick of the Clone's hit; its group runs in the next tick, its buff put on after 50 ms.
+    assertThat(clone.getBuffs().carries("Invisibility")).isFalse();
+    scene.step(1);
+    assertThat(clone.getBuffs().carries("Invisibility")).isTrue();
+    assertThat(knight.getBuffs().carries("Invisibility")).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a clone whose row puts its buff while not attacking on as it is made lists the copies of its"
+          + " unit's buffs alone: the copy writes over the buff it carried")
+  void theCopyWritesOverTheClonesOwnBuff(@TempDir Path folder) throws IOException {
+    GameTables tables = clonedVersionTables(folder, "skeleton_balloon_pop_balloons");
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Wizard")
+                .put("BuffWhenNotAttacking", "Invisibility")
+                .put("StartWithBuffWhenNotAttacking", true)
+                .remove("OnStartingAction"));
+    tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    scene.clone(CAST_TICK);
+
+    CharacterEntity clone = scene.named("knight_clone0");
+    assertThat(clone.getBuffs().items())
+        .extracting(instance -> instance.getBuff().name())
+        .containsExactly("Clone");
+    assertThat(clone.getBuffs().invisibleCount()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit running an air-to-ground action is refused: the game starts that action again on the"
+          + " clone, which is not modelled")
+  void anAirToGroundRunIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables = clonedVersionTables(folder, "Vines_Air_To_Ground");
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+
+    assertThatThrownBy(() -> scene.clone(CAST_TICK))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("knight")
+        .hasMessageContaining("air-to-ground");
   }
 
   /**
