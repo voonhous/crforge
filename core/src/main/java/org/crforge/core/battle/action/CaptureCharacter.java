@@ -47,8 +47,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>The pull clips and frames, the grab point, the effects and the capture and idle animation
  * labels and priority are read only by the capture's view. Refused as the row is built: a row
  * without a filter, and the shared columns its run does not read. As it starts: an owner other than
- * a projectile or a character. As it runs: a hit on a projectile, a capture buff on a character,
- * and putting down a jumping captured unit.
+ * a projectile or a character. As it runs: a hit on a projectile and putting down a jumping
+ * captured unit.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -62,9 +62,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " capture that leaves or dies, a lock another holds, two units equally near and a"
             + " unit within the hide distance before the drag time has passed. On a character, as"
             + " the evolved Goblin Cage, with the drag delay and pause, the pull centre, the"
-            + " cooldown, the action per completed capture, the damage per hit and no capture"
-            + " buff: not held by a recorded battle (no 16.402.18 reference plays the evolved"
-            + " Goblin Cage). The height change of a completed capture is pushed each step (the"
+            + " cooldown, the action per completed capture, the damage per hit and the capture"
+            + " buff with the character as its parent and source at its level: no locked reference"
+            + " plays the evolved Goblin Cage; three recorded cases of it match: its life running"
+            + " out and its death while it holds a Giant, and a Giant caught while it attacks a"
+            + " tower. Not held by a recording: a captured unit's spawner stopped by the buff. The"
+            + " height change of a completed capture"
+            + " is pushed each step (the"
             + " loader's -15000 with floor 0 on both rows, which folds to no change on a unit"
             + " standing at height 0). Refused: the shared columns, and the capture tags' readers"
             + " it does not model.")

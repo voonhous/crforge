@@ -7179,18 +7179,19 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A capture's buff on a unit it captured: the projectile its parent and source, at its level and
-   * for its side.
+   * A capture's buff on a unit it captured: the capture's owner, the evolved Snowball's rolling
+   * projectile or the evolved Goblin Cage, its parent and source, at the owner's level and for its
+   * side. The buff stacks, so the instance keeps the owner as its parent and leaves with it.
+   *
+   * @param owner the object the capture runs on
+   * @param unit the unit captured
+   * @param buff the capture row's buff
+   * @param timeMs how long it lasts
    */
-  public void captureBuff(ProjectileEntity projectile, WorldEntity unit, String buff, int timeMs) {
+  public <T extends BattleEntity & SpawnHost> void captureBuff(
+      T owner, WorldEntity unit, String buff, int timeMs) {
     unit.getBuffs()
-        .apply(
-            records.buff(buff),
-            timeMs,
-            projectile.getPackedLevel(),
-            projectile,
-            projectile.side(),
-            projectile);
+        .apply(records.buff(buff), timeMs, owner.packedLevel(), owner, owner.side(), owner);
   }
 
   /** Whether a unit's tag word holds the hidden tag. */
