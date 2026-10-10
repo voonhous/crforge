@@ -5482,7 +5482,8 @@ public class BattleWorld implements HolderPasses {
    * Deals a typed hit an area effect queued: the type's pipeline, in which the area effect, which
    * carries no buffs, leaves the source's multiplier out; a damage id when the type takes one; the
    * typed hit's entry, which no source counts and whose shield break names the area effect as its
-   * cause; the death the area effect caused; and the type's action on the target, the area effect
+   * cause; the reflect of a reflecting target, the area effect its attacker, which strikes nothing
+   * back; the death the area effect caused; and the type's action on the target, the area effect
    * its cause. A type that scales by the source's level, whose level an area effect source would
    * give, and one with an action on the source are refused.
    */
@@ -5502,7 +5503,10 @@ public class BattleWorld implements HolderPasses {
     int amount =
         type.pipeline(hit.amount(), noDamage, false, null, 0, target.getBuffs()::damageReduction);
     int damageId = type.acquireDamageId() ? nextHitId() : 0;
+    int before = hitPointsOf(target);
     DamageResult result = target.takeTypedHit(null, source, amount, damageId, 0, 0);
+    // The area effect is the hit's attacker: a reflecting target's reflect strikes nothing back.
+    reflect(target, source, before, result, 0, 0);
     if (result.died()) {
       target.die(source);
     }
@@ -5523,7 +5527,8 @@ public class BattleWorld implements HolderPasses {
    * damage, then lowered by the target's protection and floored at 0. An amount of 0 is dealt as
    * nothing at all; any other, with no damage id, through the typed hit's entry, which lowers it by
    * the target's protection once more and floors it at 1, which no source counts and whose shield
-   * break names the area effect as its cause, and the death the area effect caused.
+   * break names the area effect as its cause; the reflect of a reflecting target, the area effect
+   * its attacker, which strikes nothing back; and the death the area effect caused.
    */
   private void drainAreaDamage(TypedHit hit) {
     WorldEntity target = hit.target();
@@ -5542,8 +5547,11 @@ public class BattleWorld implements HolderPasses {
     if (amount == 0) {
       return;
     }
+    int before = hitPointsOf(target);
     DamageResult result =
         target.takeTypedHit(null, source, amount, 0, hit.directionX(), hit.directionY());
+    // The area effect is the hit's attacker: a reflecting target's reflect strikes nothing back.
+    reflect(target, source, before, result, hit.directionX(), hit.directionY());
     if (result.died()) {
       target.die(source);
     }
