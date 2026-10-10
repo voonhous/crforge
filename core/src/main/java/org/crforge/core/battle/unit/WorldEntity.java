@@ -270,6 +270,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     targeting.setAliveCheckBypass(true);
     // A match's end holds every attack timer at zero.
     selection.setAttackTimersHeld(world::isMatchEnded);
+    // A building with no reference resets its attack, and asks to resume, only when it has hit
+    // points at the first level, as a walking unit always does: a Cannon, an Inferno Tower or a
+    // crown tower does, a bomb or a dummy of the buildings table does not.
+    selection.setBuildingKeepsAttacking(data.hitpoints() != 0);
     // An attack whose reference went in the preloaded windup stops or runs on by the row.
     boolean aoeWithoutTarget = world.getRecords().globalBoolean(ALLOW_AOE_ATTACKS_WITHOUT_TARGET);
     selection.setStopsWithoutTarget(
