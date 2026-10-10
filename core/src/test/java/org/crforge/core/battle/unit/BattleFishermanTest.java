@@ -30,7 +30,9 @@ import org.junit.jupiter.api.io.TempDir;
  * bounds counted from its reference's radius; the load slowed by a buff; the hook on a building,
  * which drags him at the self-drag speed; the pull of a slow troop at no less than 60 of its speed;
  * a hook whose owner leaves, or is stunned, or whose target leaves or dies, before or during the
- * pull; a troop let go on the river; and the hooks and specials the battle refuses.
+ * pull; a troop let go on the river, and the Fisherman dragged onto it; a hook at a dashing troop,
+ * which the untouchable test may keep out of it, and at one in a jump, which is put down; and the
+ * hooks and specials the battle refuses.
  */
 class BattleFishermanTest {
 
@@ -459,21 +461,29 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a troop still followed on the river cannot be let go, and one pulled cannot be cloned")
-  void aPulledTroopAskedElsewhere() {
-    Scene scene = new Scene(GameData.tables(), 6500, 13500);
-    CharacterEntity knight = scene.still(0, 1, "Knight", 6500, 13500 + IN_RING, "K");
+      "a Fisherman a hook on a building drags over the river is moved off the water as he is let"
+          + " go, still following the hook")
+  void draggedOntoTheRiver() {
+    // Away from the bridges, the Cannon just past the river: the drag ends over the water.
+    int cannonY = 17500;
+    Scene scene = new Scene(GameData.tables(), 6500, cannonY - IN_RING);
+    scene.still(0, 1, "Cannon", 6500, cannonY, "C");
     scene.stepToTheHook();
-    while (CellTests.cellBlocked(
-                scene.match.getWorld().getGrid(), knight.getView().getX(), knight.getView().getY())
-            == 0
-        && scene.tick < 200) {
+    GridEntity f = scene.fisherman.getView();
+    while (f.getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING && scene.tick < 200) {
       scene.step(1);
     }
-    assertThatThrownBy(() -> knight.requestState(GridEntityState.STANDING))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("still following");
+    // Let go on the water, and moved off it in the same step.
+    assertThat(scene.states.get(1)).endsWith(" F 13 1");
+    assertThat(scene.relocations).singleElement().asString().startsWith("F ");
+    assertThat(CellTests.cellBlocked(scene.match.getWorld().getGrid(), f.getX(), f.getY()))
+        .isZero();
+    assertThat(f.getState()).isEqualTo(GridEntityState.MOVING);
+  }
 
+  @Test
+  @DisplayName("a troop pulled cannot be cloned")
+  void aPulledTroopAskedElsewhere() {
     Scene other = new Scene();
     CharacterEntity pulled = other.still(0, 1, "Knight", X, Y + IN_RING, "K");
     other.stepToTheHook();
@@ -483,38 +493,72 @@ class BattleFishermanTest {
   }
 
   @Test
-  @DisplayName("a hook flying at a dashing troop is refused")
-  void refusedHooks() {
-    Scene dashing = new Scene();
-    CharacterEntity dasher = dashing.still(0, 1, "Knight", X, Y + IN_RING, "K");
-    stepToTheFlight(dashing);
-    GridEntity dasherView = dasher.getView();
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < 20; i++) {
-                dasherView.setPendingFlags(dasherView.getPendingFlags() | BITS.dashing());
-                dashing.step(1);
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("dashing K");
+  @DisplayName(
+      "a hook arriving at a dashing troop the untouchable test passes by does not hook it: it ends"
+          + " at its aim as an ordinary arrival")
+  void aDashingUntouchableTroop() {
+    Scene scene = new Scene();
+    CharacterEntity dasher = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    stepToTheFlight(scene);
+    GridEntity view = dasher.getView();
+    ProjectileEntity hook = scene.hooks.get(0);
+    while (!hook.isReleased() && scene.tick < 200) {
+      // Dashing, and still immune from it: the untouchable test passes the troop by.
+      view.setPendingFlags(view.getPendingFlags() | BITS.dashing());
+      dasher.getUnit().timers().setDashImmunityRemainingMs(1000);
+      scene.step(1);
+    }
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(hook.isHooked()).isFalse();
+    assertThat(scene.states).isEmpty();
+    // Released at its aim, the troop's point.
+    assertThat(hook.getX()).isEqualTo(view.getX());
+    assertThat(hook.getY()).isEqualTo(view.getY());
+    assertThat(view.getState()).isNotEqualTo(GridEntityState.FOLLOWING_REMOVED);
   }
 
   @Test
-  @DisplayName("a hook arriving at a troop in the air is refused")
+  @DisplayName("a hook arriving at a dashing troop the untouchable test does not pass by hooks it")
+  void aDashingTouchableTroop() {
+    Scene scene = new Scene();
+    CharacterEntity dasher = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    stepToTheFlight(scene);
+    GridEntity view = dasher.getView();
+    ProjectileEntity hook = scene.hooks.get(0);
+    while (!hook.isHooked() && scene.tick < 200) {
+      view.setPendingFlags(view.getPendingFlags() | BITS.dashing());
+      scene.step(1);
+    }
+    assertThat(hook.isHooked()).isTrue();
+    assertThat(view.getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+  }
+
+  @Test
+  @DisplayName(
+      "a hook arriving at a troop in a jump puts it down: on the ground, asked to stand, then"
+          + " pulled")
   void aTroopInTheAir() {
     Scene jumping = new Scene();
     CharacterEntity jumper = jumping.still(0, 1, "Knight", X, Y + IN_RING, "K");
     stepToTheFlight(jumping);
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < 20; i++) {
-                jumper.getView().setState(GridEntityState.JUMPING);
-                jumping.step(1);
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("in the air");
+    GridEntity view = jumper.getView();
+    ProjectileEntity hook = jumping.hooks.get(0);
+    while (!hook.isHooked() && jumping.tick < 200) {
+      view.setState(GridEntityState.JUMPING);
+      view.setZ(1000);
+      jumping.step(1);
+    }
+    assertThat(hook.isHooked()).isTrue();
+    // In the step it hooks (the battle's tick before the scene's count moved on): put down and
+    // asked to stand, pulled, and the Fisherman waits.
+    String at = (jumping.tick - 1) + " ";
+    assertThat(jumping.states)
+        .containsExactly(
+            at + "K " + GridEntityState.JUMPING + " " + GridEntityState.STANDING,
+            at + "K " + GridEntityState.STANDING + " " + GridEntityState.FOLLOWING_REMOVED,
+            at + "F " + GridEntityState.ATTACKING + " " + GridEntityState.COMPONENTS_DISABLED);
+    assertThat(view.getZ()).isZero();
+    assertThat(view.getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
   }
 
   @Test

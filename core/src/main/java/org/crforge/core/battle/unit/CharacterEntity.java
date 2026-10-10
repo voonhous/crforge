@@ -77,6 +77,7 @@ import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.grid.LaneAssignment;
 import org.crforge.core.pathfinding.grid.Relocation;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.AttachedParent;
 import org.crforge.core.pathfinding.move.DashStart;
@@ -1954,8 +1955,11 @@ public class CharacterEntity extends WorldEntity {
     }
 
     /**
-     * A unit let go on a cell it may not stand on is moved to the nearest cell off the water, on
-     * any row: the projectile it followed, whose owner would decide the side, is gone by then.
+     * A unit let go on a cell it may not stand on is moved to the nearest cell off the water. While
+     * it still follows a projectile on a side that has an owner, the owner's y is the reference
+     * that narrows the rows searched; otherwise any row. A pulled target no longer follows the hook
+     * by then, as the hook is gone; an owner the hook dragged to a building still follows it as it
+     * is let go, and the owner is the unit itself.
      */
     @Override
     public void standOrRelocate() {
@@ -1964,13 +1968,15 @@ public class CharacterEntity extends WorldEntity {
       if (CellTests.cellBlocked(grid, view.getX(), view.getY()) == 0) {
         return;
       }
-      if (unit.timers().getFollowTarget() != null) {
-        throw new UnsupportedOperationException(
-            name() + " leaves a pulled state still following, not modelled");
+      int reference = -1;
+      if (unit.timers().getFollowTarget() instanceof ProjectileEntity followed
+          && followed.getSide() != SpatialIndex.NEUTRAL_SIDE
+          && followed.getOwner() != null) {
+        reference = followed.getOwner().getView().getY();
       }
       int packed =
           Relocation.relocate(
-              grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), -1, grid::water);
+              grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), reference, grid::water);
       world.relocated(
           CharacterEntity.this,
           view.getX(),

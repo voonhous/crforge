@@ -1177,6 +1177,22 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Whether a hooking projectile's target keeps out of the hook on this step: a character running a
+   * dash that the untouchable test passes by (a dash under a row with a dash immunity, the immunity
+   * left after a dash, a tunnel or a parent). The projectile flies on at it all the same; an
+   * arrival on such a step does not hook but ends as an ordinary arrival, at the aim, with its
+   * impact. A dasher the test does not pass by, as a jumping Mega Knight, is hooked as any other
+   * target.
+   *
+   * @param projectile the hooking projectile
+   */
+  public boolean hookKeptOff(ProjectileEntity projectile) {
+    return projectile.getTarget() instanceof CharacterEntity target
+        && (target.getView().getFlags() & target.getView().getFlagBits().dashing()) != 0
+        && target.untouchable(true);
+  }
+
+  /**
    * Refuses a hook on a target someone else holds a lock on: the battle's locks, made by a
    * collector's first step, are asked about the owner and the target, and a lock held by another
    * would end the hook as an ordinary arrival, which no reference holds.
@@ -1222,18 +1238,24 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The hook's end of a jump or a dash with a height on the target it pulls, before it is pulled:
-   * such a target would be put down first, which no reference holds; any other is left alone.
+   * The hook's end of a jump or a dash with a height on the target it pulls, before it is pulled: a
+   * target with a movement component in a jump, or dashing under a row with a jump height (a
+   * jumping Mega Knight), is put down on the ground, asked to stand, which ends its dash, and its
+   * route emptied. Any other is left alone.
    *
    * @param projectile the hooking projectile
    * @param target the target it hooked
    */
   public void putDown(ProjectileEntity projectile, WorldEntity target) {
+    if (!(target instanceof CharacterEntity character) || !character.hasMovementComponent()) {
+      return;
+    }
     int state = target.getView().getState();
     if (state == GridEntityState.JUMPING
         || (state == GridEntityState.DASHING && target.getData().jumpHeight() >= 1)) {
-      throw new UnsupportedOperationException(
-          projectile.name() + " hooks " + target.name() + " in the air, not modelled");
+      target.getView().setZ(0);
+      hookRequest(projectile, target, GridEntityState.STANDING);
+      character.resetRoute();
     }
   }
 
