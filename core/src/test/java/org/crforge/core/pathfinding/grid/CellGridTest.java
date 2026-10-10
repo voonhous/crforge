@@ -62,7 +62,7 @@ class CellGridTest {
   }
 
   @Test
-  void swapMovesTheCurrentOverlayIntoPreviousAndStartsAFreshOne() {
+  void swapMovesTheCurrentOverlayIntoPreviousAndStartsAZeroedOne() {
     int[] built = grid.getCurrent();
     built[grid.index(7, 20)] = 100;
 
@@ -74,13 +74,18 @@ class CellGridTest {
   }
 
   @Test
-  void repeatedSwapsKeepOnlyTheLastTwoOverlays() {
+  void repeatedSwapsRotateTheTwoOverlaysAndZeroTheOlderOne() {
     int[] first = grid.getCurrent();
+    first[grid.index(7, 20)] = 100;
     grid.swap();
     int[] second = grid.getCurrent();
+    second[grid.index(8, 21)] = 100;
     grid.swap();
 
+    // Two overlays are kept and rotated, so a step allocates none: the next build reuses the
+    // older one, cleared.
     assertThat(grid.getPrevious()).isSameAs(second);
-    assertThat(grid.getCurrent()).isNotSameAs(first).isNotSameAs(second);
+    assertThat(grid.getPrevious()[grid.index(8, 21)]).isEqualTo(100);
+    assertThat(grid.getCurrent()).isSameAs(first).hasSize(36 * 64).containsOnly(0);
   }
 }

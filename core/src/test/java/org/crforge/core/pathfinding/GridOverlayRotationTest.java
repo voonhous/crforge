@@ -120,7 +120,15 @@ class GridOverlayRotationTest {
 
     match.getBattle().step();
     assertOverlayRotated(grid, built.get(1), copies.get(1), "the second tick");
-    assertThat(built.get(1)).as("each tick builds into a fresh array").isNotSameAs(built.get(0));
+    assertThat(built.get(1))
+        .as("each tick builds into the other of the two overlays")
+        .isNotSameAs(built.get(0));
+
+    match.getBattle().step();
+    assertOverlayRotated(grid, built.get(2), copies.get(2), "the third tick");
+    assertThat(built.get(2))
+        .as("the overlays rotate: the third tick builds into the first tick's, cleared")
+        .isSameAs(built.get(0));
   }
 
   @Test
@@ -177,7 +185,8 @@ class GridOverlayRotationTest {
   /**
    * Holds the rotation after one tick: the overlay the tick built is now the previous one,
    * unchanged, every stamped cell carrying the building cost and every cell of the tick's
-   * footprints stamped; the current overlay is a fresh array the next build will stamp into.
+   * footprints stamped; the current overlay is the other array, cleared, which the next build will
+   * stamp into.
    */
   private static void assertOverlayRotated(CellGrid grid, int[] built, int[] copy, String where) {
     assertThat(grid.getPrevious())

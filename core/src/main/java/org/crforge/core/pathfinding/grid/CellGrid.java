@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.grid;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
@@ -127,10 +128,14 @@ public final class CellGrid {
 
   /**
    * Rotates the overlays at the end of a tick: the overlay just built becomes the previous one and
-   * the current overlay is a fresh, zeroed array ready for the next build.
+   * the older one, zeroed, becomes the current overlay, ready for the next build. The two arrays
+   * are reused tick after tick, so the rotation allocates nothing; a reader that keeps an overlay
+   * past the next rotation sees it cleared.
    */
   public void swap() {
+    int[] older = previous;
     previous = current;
-    current = new int[width * height];
+    Arrays.fill(older, 0);
+    current = older;
   }
 }
