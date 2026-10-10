@@ -2,6 +2,7 @@ package org.crforge.core.battle.action;
 
 import java.util.List;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
 import lombok.Getter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -13,11 +14,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>The listener is made in its owner's pending pass, after the play that made the owner was sent,
  * so it never hears that play. A later card play of the owner's side that it hears tests the card -
  * the card the play put down, a Mirror's repeated card or an evolved or hero play's row, with
- * EvaluateDeployedCard, else the card played - against its card group's playable cards; a listener
- * with no group takes every card. When the elixir the run has counted reaches the row's cost before
- * the play, the activation action is scheduled on the owner, the owner its cause, and the cost
- * taken off the count; below it, the played card's cost is added to the count. The effects it shows
- * are presentation.
+ * EvaluateDeployedCard, else the card played - against its card group: a row in the hero form
+ * against the group's heroes, any other against its playable cards; a listener with no group takes
+ * every card. A row's form is its card form column, else the hero form for a row of the hero forms
+ * (and the evolved form for a row of the evolved cards, else the basic form). When the elixir the
+ * run has counted reaches the row's cost before the play, the activation action is scheduled on the
+ * owner, the owner its cause, and the cost taken off the count; below it, the played card's cost is
+ * added to the count. The effects it shows are presentation.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -25,11 +28,13 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the run listed from the owner's pending pass, after the play that"
             + " made it, so that play is not heard; the side test, the card tested, the group's"
             + " playable cards, the elixir count and the activation action; held by the reference"
-            + " battles ability_goblinstein and card_Goblinstein. A count below the cost, which"
-            + " no listener of a modelled card reaches, is held by a unit test only; a Mirror's"
-            + " repeated card tested in place of the Mirror, and an evolved or hero play's row in"
-            + " place of its deck card, are translated but held by no run. Refused: a variant"
-            + " card's play heard by a listener of its side.")
+            + " battles ability_goblinstein and card_Goblinstein. A hero play's row tested in"
+            + " place of its deck card, and in the group's heroes, is held by the Goblins hero"
+            + " banner going and the earlier hero goblins tagged at a new hero play. A count"
+            + " below the cost, which no listener of a modelled card reaches, is held by a unit"
+            + " test only; a Mirror's repeated card tested in place of the Mirror, and an evolved"
+            + " play's row in place of its deck card, are translated but held by no run. Refused:"
+            + " a variant card's play heard by a listener of its side.")
 public final class CardDeployListener extends RowAction {
 
   /** The card group whose plays the listener answers, empty for every card. */
@@ -37,6 +42,9 @@ public final class CardDeployListener extends RowAction {
 
   /** The group's playable cards, or null for no group. */
   private final List<String> playableCards;
+
+  /** The group's heroes, which a row in the hero form is looked for in, or null for no group. */
+  private final List<String> heroes;
 
   /** True to test the card the play put down rather than the card played. */
   @Getter private final boolean evaluateDeployedCard;
@@ -51,6 +59,7 @@ public final class CardDeployListener extends RowAction {
    * @param row the row's shared columns
    * @param cardGroup the card group whose plays it answers, empty for every card
    * @param playableCards the group's playable cards, or null for no group
+   * @param heroes the group's heroes, or null for no group
    * @param evaluateDeployedCard true to test the card the play put down
    * @param elixirCost the elixir the count must reach before a play activates
    * @param onActivateAction the action an activating play schedules on the owner, or null
@@ -59,12 +68,14 @@ public final class CardDeployListener extends RowAction {
       ActionRow row,
       String cardGroup,
       List<String> playableCards,
+      List<String> heroes,
       boolean evaluateDeployedCard,
       int elixirCost,
       String onActivateAction) {
     super(row);
     this.cardGroup = cardGroup;
     this.playableCards = playableCards == null ? null : List.copyOf(playableCards);
+    this.heroes = heroes == null ? null : List.copyOf(heroes);
     this.evaluateDeployedCard = evaluateDeployedCard;
     this.elixirCost = elixirCost;
     this.onActivateAction = onActivateAction;
@@ -96,15 +107,22 @@ public final class CardDeployListener extends RowAction {
      * @param deployed the card the play put down: a Mirror's repeated card
      * @param played the card played: the Mirror
      * @param deployedCost the cost of the card the play put down, asked only when it is counted
+     * @param heroForm tells whether a card row is in the hero form, asked only with a group
      * @return the action to schedule on the owner, or null for none
      */
     public String hear(
-        int ownerSide, int side, String deployed, String played, IntSupplier deployedCost) {
+        int ownerSide,
+        int side,
+        String deployed,
+        String played,
+        IntSupplier deployedCost,
+        Predicate<String> heroForm) {
       if ((side & 1) != (ownerSide & 1)) {
         return null;
       }
       String card = evaluateDeployedCard ? deployed : played;
-      if (playableCards != null && !playableCards.contains(card)) {
+      // The group's list is picked by the tested row's form: the heroes for the hero form.
+      if (playableCards != null && !(heroForm.test(card) ? heroes : playableCards).contains(card)) {
         return null;
       }
       if (total >= elixirCost) {

@@ -1169,9 +1169,10 @@ public final class BattleRecords {
   }
 
   /**
-   * The cards a card group lists for a plain card's play, from the card groups table: its playable
-   * cards. Its support cards, heroes and augments answer only a play of such a card, which the
-   * battle does not make.
+   * The cards a card group lists for a play of a card in any form but the hero form, from the card
+   * groups table: its playable cards. A row in the hero form is looked for in the group's heroes
+   * instead ({@link #cardGroupHeroes}); its support cards and augments answer only a play of such a
+   * card, which the battle does not make.
    *
    * @param name the row's name
    * @return the playable cards, in the row's order
@@ -1180,6 +1181,19 @@ public final class BattleRecords {
     GameTable table = tables.table(CARD_GROUPS);
     checkArgument(table.has(name), () -> "the game tables have no card group " + name);
     return table.row(name).strings("PlayableCards");
+  }
+
+  /**
+   * The cards a card group lists for a play of a row in the hero form, from the card groups table:
+   * its heroes, empty for a group that lists none.
+   *
+   * @param name the row's name
+   * @return the hero rows, in the row's order
+   */
+  public List<String> cardGroupHeroes(String name) {
+    GameTable table = tables.table(CARD_GROUPS);
+    checkArgument(table.has(name), () -> "the game tables have no card group " + name);
+    return table.row(name).strings("Heroes");
   }
 
   /**

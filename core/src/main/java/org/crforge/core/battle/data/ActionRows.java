@@ -1437,6 +1437,7 @@ public final class ActionRows {
                   shared,
                   group,
                   group.isEmpty() ? null : records.cardGroup(group),
+                  group.isEmpty() ? null : records.cardGroupHeroes(group),
                   bool(f, "EvaluateDeployedCard"),
                   integer(f, "ElixirCost"),
                   rowName(f.get("OnActivateAction")));

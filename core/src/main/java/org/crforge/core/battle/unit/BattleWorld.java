@@ -55,6 +55,7 @@ import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.projectile.ProjectileChain;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
@@ -2517,7 +2518,12 @@ public class BattleWorld implements HolderPasses {
         }
         String scheduled =
             run.hear(
-                owner.side(), side, deployed, played, () -> records.matchCard(deployed).cost());
+                owner.side(),
+                side,
+                deployed,
+                played,
+                () -> records.matchCard(deployed).cost(),
+                card -> records.matchCard(card).form() == MatchCard.HERO_FORM);
         if (scheduled != null) {
           owner
               .actionHolder()
