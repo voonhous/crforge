@@ -14,7 +14,11 @@ import org.crforge.core.pathfinding.move.MovementState;
  * pushed.
  *
  * <p>Each update raises DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS, and FORCE_IS_AIR while more
- * than 149 ms are left. For a unit with a movement component and a height it pushes the arc's next
+ * than 149 ms are left. A unit with a movement component that tracks a charge has its charge reset,
+ * as the state setter resets it: the progress to 0 for a unit with a charge range of its own or
+ * from a buff, else to no charge, and the targeting component's charged strike dropped. So a
+ * charging unit loses its charge, and with it the charge's speed and its charged hit, for as long
+ * as it is in the air. For a unit with a movement component and a height it pushes the arc's next
  * height, with that height as the push's floor: half the duration rising to the top and half
  * falling. Once the counter is at 0 or below the unit lands - its route reset and, on the ground,
  * the row's landing action scheduled on it - and the run finishes, the counter still taken down by
@@ -30,8 +34,9 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " action, with the cause passed on, held by ability_hero_giant_slap. A knock on a"
             + " hero whose ability is idle held by random_battle16_s0019 and tv_replay_015; the"
             + " ability postponed while the run is listed, a request in the air cast once it has"
-            + " left, held by a recorded witness outside the locked references. Refused: a unit"
-            + " jumping, dashing, charging or following a removed building, a clone, a rider or"
+            + " left, held by a recorded witness outside the locked references. The charge reset"
+            + " on each update, held by a recorded witness outside the locked references. Refused:"
+            + " a unit jumping, dashing or following a removed building, a clone, a rider or"
             + " carrier, and one casting its ability.")
 final class KnockbackRun extends ActionInstance {
 
@@ -95,9 +100,10 @@ final class KnockbackRun extends ActionInstance {
     }
     unit.raiseWatched(tags);
     boolean moving = unit.hasMovementComponent();
+    // A unit that tracks a charge has it reset on every update, the landing one too: the progress
+    // back to 0 (or to no charge) and the charged strike dropped, before the arc's height.
     if (moving && unit.getUnit().movement().getChargeProgress() != MovementState.CHARGE_INACTIVE) {
-      throw new UnsupportedOperationException(
-          row.name() + " knocks " + unit.name() + " while it charges, not modelled");
+      unit.resetCharge();
     }
     if (unit.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
       throw new UnsupportedOperationException(
