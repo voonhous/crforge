@@ -610,11 +610,7 @@ public class CharacterEntity extends WorldEntity {
                 .withIngamePathfindSpeed(data.ingamePathfindSpeed())
                 .withEntersWaterWhileSpawnPathfinding(data.spawnPathfindMorph() != null)
                 .withHovering(data.hovering()),
-            SpeedConfig.forGroundUnit(data.speed())
-                .withChargeMultiplier(data.chargeSpeedMultiplier())
-                .withJumpSpeed(data.jumpSpeed())
-                .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
-                .withIngamePathfind(data.ingamePathfindSpeed(), data.ingamePathfindVisible()),
+            speedConfig(data),
             StateVisitConfig.forGroundUnit(data.deployTimeMs())
                 .withDash(data.dashLandingTimeMs(), data.dashImmuneToDamageTimeMs())
                 .withSpawnPathfindMorph(data.spawnPathfindMorph() != null)
@@ -1348,7 +1344,9 @@ public class CharacterEntity extends WorldEntity {
             unit.targeting(),
             unit.timers(),
             movementConfig,
-            SpeedConfig.forGroundUnit(next.speed()),
+            // The speed budget reads every speed column of the row the unit has now on each visit:
+            // a grounded evolved Royal Hog jumps the river at its new row's jump speed.
+            speedConfig(next),
             StateVisitConfig.forGroundUnit(next.deployTimeMs()),
             unit.selection(),
             unit.view());
@@ -1987,6 +1985,20 @@ public class CharacterEntity extends WorldEntity {
     public void tailGate() {
       stateTailGate();
     }
+  }
+
+  /**
+   * The speed columns of a row, as the speed budget reads them: the walking speed, the charge
+   * multiplier, the jump speed (jumping and dashing), the spawn-pathfinding speed and the in-game
+   * pathfinding columns. Built for the row the unit is made with and again for each row it swaps
+   * to, since the budget reads the row the unit has now on every visit.
+   */
+  private static SpeedConfig speedConfig(UnitData data) {
+    return SpeedConfig.forGroundUnit(data.speed())
+        .withChargeMultiplier(data.chargeSpeedMultiplier())
+        .withJumpSpeed(data.jumpSpeed())
+        .withSpawnPathfindSpeed(data.spawnPathfindSpeed())
+        .withIngamePathfind(data.ingamePathfindSpeed(), data.ingamePathfindVisible());
   }
 
   private static TargetingConfig targetingConfig(UnitData data) {
