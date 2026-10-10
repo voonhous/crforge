@@ -11,12 +11,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.InertAction;
+import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -246,6 +248,123 @@ class BattleUppercutWindTest {
             () -> mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), null))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("without a current target");
+  }
+
+  /**
+   * The uppercut's first update on a Knight standing in front of a held Mega Knight, the Knight's
+   * tag word carrying NO_PUSHBACK or not, as a counter's parry of the hit before leaves it: the
+   * scene after that update and one more step.
+   *
+   * @param noPushback true to give the Knight NO_PUSHBACK for the step of the push
+   * @param uppercut a variant of the uppercut row built for the Mega Knight, or null for the row as
+   *     the tables build it
+   */
+  private static Uppercut uppercutOnAKnight(
+      boolean noPushback, Function<Uppercut, BattleAction> uppercut) {
+    Scene scene = new Scene();
+    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 14000, "mk");
+    CharacterEntity knight = scene.unit(1, "Knight", 3500, 15600, "k");
+    // Just deployed, before its first hit; held where it stands.
+    scene.step(22);
+    mk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    mk.getUnit().targeting().setReference(knight.getTargetView());
+    scene.log.clear();
+    Uppercut run = new Uppercut(scene, mk, knight, actionsOn(knight));
+
+    mk.actionHolder()
+        .start(uppercut == null ? run.shippedRow() : uppercut.apply(run), knight.actionHolder());
+    if (noPushback) {
+      // Folded into the Knight's tag word by its pre-hook on the next step, before the push.
+      knight
+          .getView()
+          .setPendingFlags(
+              knight.getView().getPendingFlags() | knight.getView().getFlagBits().noPushback());
+    }
+    scene.step(2);
+    return run;
+  }
+
+  /**
+   * A scene of an uppercut by the Mega Knight on the Knight in front of it, and the actions the
+   * Knight ran or had queued as the uppercut started.
+   */
+  private record Uppercut(
+      Scene scene, CharacterEntity mk, CharacterEntity knight, List<String> knightBefore) {
+
+    /** The uppercut row as the tables build it for the Mega Knight. */
+    MegaKnightUppercut shippedRow() {
+      return (MegaKnightUppercut) scene.row("MegaKnight_EV1_uppercut", mk);
+    }
+
+    /** The update lines of the uppercut's log. */
+    List<String> updates() {
+      return scene.log.stream().filter(line -> line.startsWith("update")).toList();
+    }
+  }
+
+  /** The names of the actions running or queued on an entity. */
+  private static List<String> actionsOn(WorldEntity entity) {
+    List<String> names = new ArrayList<>();
+    entity.actionHolder().running().forEach(run -> names.add(run.getAction().name()));
+    entity.actionHolder().queued().forEach(queued -> names.add(queued.action().name()));
+    return names;
+  }
+
+  @Test
+  @DisplayName(
+      "the uppercut's push on a target carrying NO_PUSHBACK is refused: the target is not pushed,"
+          + " nothing is scheduled on it, and the run ends without holding the unit")
+  void aPushOnANoPushbackTargetIsRefused() {
+    Uppercut pushed = uppercutOnAKnight(false, null);
+    String hold =
+        "tags mk " + Long.toHexString(BITS.noAttack() | BITS.noMove() | BITS.lockTarget());
+    // Without the tag, as the reference battles hold: pushed, the action on the Knight, the hold.
+    assertThat(pushed.updates()).containsExactly("update mk pushed 1000", "update mk waiting 950");
+    assertThat(pushed.knight().getUnit().movement().getAttackPushback()).isEqualTo(1);
+    assertThat(actionsOn(pushed.knight()))
+        .as("the knock the row's action on the target starts")
+        .contains(KNOCK);
+    assertThat(pushed.scene().log).contains(hold);
+
+    Uppercut refused = uppercutOnAKnight(true, null);
+
+    assertThat(refused.updates()).containsExactly("update mk push refused 0");
+    MovementState movement = refused.knight().getUnit().movement();
+    assertThat(movement.getAttackPushback()).as("an attack's push").isZero();
+    assertThat(movement.getPushbackInFlight()).as("a pushback").isZero();
+    assertThat(actionsOn(refused.knight()))
+        .as("nothing scheduled on the target")
+        .isEqualTo(refused.knightBefore());
+    assertThat(refused.scene().log).doesNotContain(hold);
+  }
+
+  @Test
+  @DisplayName(
+      "with OnlyRunActionOnPushback off, a push refused on a NO_PUSHBACK target still schedules"
+          + " the row's action on it; the run ends without the hold all the same")
+  void aRefusedPushRunsTheActionWhenTheRowSaysSo() {
+    Uppercut refused =
+        uppercutOnAKnight(
+            true,
+            run -> {
+              MegaKnightUppercut shipped = run.shippedRow();
+              return new MegaKnightUppercut(
+                  shipped.getRow(),
+                  shipped.getPushBackStrength(),
+                  shipped.getPushRadiusDirectionalOffset(),
+                  shipped.isDistanceProportionalPush(),
+                  shipped.isResetPushbackIfStronger(),
+                  shipped.getDashFollowUpDelayMs(),
+                  shipped.isResetAvoidanceAtPushback(),
+                  false,
+                  shipped.getActionOnTargets());
+            });
+
+    assertThat(refused.updates()).containsExactly("update mk push refused 0");
+    assertThat(refused.knight().getUnit().movement().getAttackPushback()).isZero();
+    assertThat(actionsOn(refused.knight()))
+        .as("the knock the row's action on the target starts")
+        .contains(KNOCK);
   }
 
   @Test
