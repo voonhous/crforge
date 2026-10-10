@@ -133,9 +133,6 @@ public class TowerEntity extends WorldEntity {
     SelectionChain selection = getSelection();
     selection.setStateSetter(setter);
     selection.getOutcome().setRoutePreparer(setter::prepareRoute);
-    // A building with no reference resets its attack only when it has hit points at the first
-    // level; every tower does.
-    selection.setBuildingKeepsAttacking(data.hitpoints() != 0);
     attach(new TargetingComponent());
 
     refuseAttack(data);

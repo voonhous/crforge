@@ -8,6 +8,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.target.SightRange;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.Test;
  * Cannon reaches it (the Knight is not a building), and each step tests the reach as for any
  * building owner: reached, the reference is forced again under building retargeting; out of reach,
  * a reference on the Knight is given up, and forced again once the Knight comes back within reach.
+ * A Cannon whose taunting Knight leaves holds no reference while its selector stays locked, and
+ * like any building with hit points it resets its attack and stands until it may pick again.
  */
 class BattleKnightHeroTauntBuildingTest {
 
@@ -213,5 +216,46 @@ class BattleKnightHeroTauntBuildingTest {
     assertThat(lines).last().isEqualTo(reachedStep(left));
     assertThat(lines.subList(0, lines.size() - 1)).allMatch(line -> line.endsWith(" []"));
     assertThat(reference(scene.cannon)).isEqualTo("knight");
+  }
+
+  @Test
+  @DisplayName(
+      "a Cannon whose taunting Knight leaves stands, with no reference, while the lock the taunt"
+          + " raised holds its selector, then takes the Giant in its range")
+  void aCannonWhoseKnightLeavesStandsWhileLocked() {
+    Scene scene = new Scene(CANNON_X + 4000, CANNON_Y - 3000);
+    scene.match.deploy(0, GameData.unit("Giant"), LEVEL, 0, CANNON_X, CANNON_Y - 3000, "giant");
+    scene.step(30);
+    scene.taunt();
+    for (int i = 0; i < 100 && !attacking(scene.cannon, "knight"); i++) {
+      scene.step(1);
+    }
+    assertThat(attacking(scene.cannon, "knight")).isTrue();
+
+    // The Cannon's own shot kills the Knight. The shot's damage is lethal while it flies, so the
+    // Cannon keeps the Knight for it and the removal starts no attack finish wait: the Cannon is
+    // left with no reference and nothing to finish, and the lock keeps the Giant from it.
+    scene.knight.getHitPoints().setHitPoints(1);
+    List<String> lines = new ArrayList<>();
+    for (int i = 0; i < 60 && !attacking(scene.cannon, "giant"); i++) {
+      scene.step(1);
+      if (reference(scene.cannon) == null || !lines.isEmpty()) {
+        lines.add(scene.cannon.getView().getState() + " " + reference(scene.cannon));
+      }
+    }
+    assertThat(attacking(scene.cannon, "giant")).isTrue();
+    assertThat(scene.cannon.getTargeting().getTargetLostTimerMs()).isZero();
+    // The Knight leaves after the Cannon's visit of that step. On every later step until the
+    // selector is free, the Cannon, a building with hit points, resets its attack and stands.
+    List<String> locked = lines.subList(1, lines.size() - 1);
+    assertThat(locked)
+        .isNotEmpty()
+        .allMatch(line -> line.equals(GridEntityState.STANDING + " null"));
+  }
+
+  /** Whether the entity attacks the named reference. */
+  private static boolean attacking(WorldEntity entity, String name) {
+    return entity.getView().getState() == GridEntityState.ATTACKING
+        && name.equals(reference(entity));
   }
 }
