@@ -410,6 +410,115 @@ class BattleCloneTest {
   }
 
   @Test
+  @DisplayName(
+      "a unit that flies direct paths heads for its route's node as it moves apart, its targeting"
+          + " off: not for the reference it keeps")
+  void aDirectFlyerMovesApartToItsNode(@TempDir Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> GameData.columns(rows, "Balloon").put("FlyDirectPaths", true));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    // Off the centre of its cell along the width, toward the enemy princess tower ahead of it: the
+    // node lies to the left, the reference's ring to the right.
+    int fromX = X + 249;
+    CharacterEntity balloon =
+        scene.match.deploy(
+            0, new BattleRecords(tables).unit("Balloon"), LEVEL, 0, fromX, Y, "balloon");
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("balloon_clone0");
+    assertThat(balloon.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(balloon.getTargeting().getReference()).isNotNull();
+    assertThat(balloon.isActive(CharacterEntity.TARGETING_SLOT)).isFalse();
+    int startX = balloon.getView().getX();
+    int startY = balloon.getView().getY();
+    int nodeX = startX / 500 * 500 + 250;
+    assertThat(nodeX).isLessThan(startX);
+
+    scene.step(9);
+    // Both fly along the length and drift toward the centre of their node's cell.
+    assertThat(balloon.getView().getY()).isGreaterThan(startY);
+    assertThat(balloon.getView().getX()).isLessThan(startX).isGreaterThanOrEqualTo(nodeX);
+    assertThat(clone.getView().getY()).isLessThan(startY);
+    assertThat(clone.getView().getX()).isLessThan(startX).isGreaterThanOrEqualTo(nodeX);
+  }
+
+  @Test
+  @DisplayName(
+      "a Skeleton Balloon, whose hit destroys it and launches nothing, is cloned; its clone's"
+          + " barrel, a building without hit points, is a clone, and so are the Skeletons its death"
+          + " action spawns, of 1 hit point of 1")
+  void aSkeletonBalloonsClone() {
+    Scene scene = new Scene();
+    CharacterEntity balloon = scene.still(0, 0, "SkeletonBalloon", X, Y, "balloon");
+    balloon.setActive(CharacterEntity.MOVEMENT_SLOT, true);
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("balloon_clone0");
+    assertThat(clone.isClone()).isTrue();
+    assertThat(clone.getHitPoints().getMaximum()).isEqualTo(1);
+    scene.step(15);
+    scene.match.getWorld().kill(clone, null);
+    scene.step(1);
+
+    CharacterEntity barrel = scene.named("balloon_clone0_0");
+    assertThat(barrel.getData().building()).isTrue();
+    assertThat(barrel.getHitPoints()).isNull();
+    assertThat(barrel.isClone()).isTrue();
+    // Its deploy ends, it leaves, and its death action spawns the Skeletons around it.
+    scene.step(barrel.getData().deployTimeMs() / 50 + 2);
+    assertThat(present(scene, "balloon_clone0_0")).isFalse();
+    List<CharacterEntity> skeletons =
+        scene.match.getBattle().getHolder().entities().stream()
+            .filter(e -> e instanceof CharacterEntity c && c.name().startsWith("balloon_clone0_0_"))
+            .map(e -> (CharacterEntity) e)
+            .toList();
+    assertThat(skeletons).isNotEmpty();
+    assertThat(skeletons)
+        .allSatisfy(
+            skeleton -> {
+              assertThat(skeleton.isClone()).as(skeleton.name()).isTrue();
+              assertThat(skeleton.getHitPoints().getHitPoints()).isEqualTo(1);
+              assertThat(skeleton.getHitPoints().getMaximum()).isEqualTo(1);
+            });
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose hit destroys it and launches a projectile, and a building with hit points a"
+          + " clone spawns, are refused as clones")
+  void theCloneRefusals(@TempDir Path folder) throws IOException {
+    Scene spirits = new Scene();
+    spirits.still(0, 0, "FireSpirits", X, Y, "spirit");
+    assertThatThrownBy(
+            () -> {
+              spirits.clone(CAST_TICK);
+              spirits.step(3);
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a unit whose hit destroys it and launches a projectile");
+
+    // The Skeleton Balloon's barrel spawning a Cannon as it dies: a clone barrel's Cannon would be
+    // a clone with hit points.
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> GameData.fields(rows, "SkeletonBalloonDeathSpawn").put("SpawnData", "Cannon"));
+    Scene scene = new Scene(GameTables.load(folder));
+    CharacterEntity balloon = scene.still(0, 0, "SkeletonBalloon", X, Y, "balloon");
+    balloon.setActive(CharacterEntity.MOVEMENT_SLOT, true);
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("balloon_clone0");
+    scene.step(15);
+    scene.match.getWorld().kill(clone, null);
+    assertThatThrownBy(() -> scene.step(20))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a building with hit points");
+  }
+
+  @Test
   @DisplayName("a unit still deploying as the Clone reaches it is refused")
   void aDeployingUnitIsRefused() {
     Scene scene = new Scene();

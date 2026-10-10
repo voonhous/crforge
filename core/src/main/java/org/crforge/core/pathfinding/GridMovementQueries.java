@@ -40,6 +40,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * answer asked for after the pass has already moved the troop reflects the new position.
  *
  * <p>One instance serves one visit: the reference point is read once, when the instance is built.
+ * The movement rules read the reference through the unit's targeting component: a unit whose
+ * targeting component is off answers no reference, whatever its component still keeps, as a unit
+ * set up as a clone does while it moves apart.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -84,7 +87,7 @@ public final class GridMovementQueries implements MovementQueries {
   private int lastSpeedBudget;
 
   /**
-   * Creates the answers for one visit of one unit.
+   * Creates the answers for one visit of one unit whose targeting component is on.
    *
    * @param unit the unit whose movement pass is about to run
    * @param grid the routing grid with this tick's building overlay
@@ -97,11 +100,32 @@ public final class GridMovementQueries implements MovementQueries {
       CellGrid grid,
       CellCosts costs,
       Function<GridEntity, GridUnitState> neighbourStates) {
+    this(unit, grid, costs, neighbourStates, true);
+  }
+
+  /**
+   * Creates the answers for one visit of one unit.
+   *
+   * @param unit the unit whose movement pass is about to run
+   * @param grid the routing grid with this tick's building overlay
+   * @param costs the cell costs the route search runs with
+   * @param neighbourStates the grid state of another unit driven by the same rules, or null for an
+   *     entity that is not
+   * @param targetingOn whether the unit's targeting component is on: off, the unit answers no
+   *     reference, as the reference getter the movement rules ask tests the component's bit before
+   *     it reads the reference
+   */
+  public GridMovementQueries(
+      GridUnitState unit,
+      CellGrid grid,
+      CellCosts costs,
+      Function<GridEntity, GridUnitState> neighbourStates,
+      boolean targetingOn) {
     this.unit = unit;
     this.grid = grid;
     this.costs = costs;
     this.neighbourStates = neighbourStates;
-    TargetView target = unit.targeting().getReference();
+    TargetView target = targetingOn ? unit.targeting().getReference() : null;
     this.reference = target == null ? null : new ReferencePoint(target.x(), target.y());
   }
 

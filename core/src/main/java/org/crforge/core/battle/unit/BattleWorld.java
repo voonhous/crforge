@@ -6150,6 +6150,8 @@ public class BattleWorld implements HolderPasses {
           child.getView().setDirY(AreaEffectEntity.yDirection(source.side()));
         }
       }
+      // The spawner's clone setter, last before the hand-over: the child of a clone is a clone.
+      cloneSpawn(source, child);
       // The child is registered now and joins the live list at the next cleanup's fold, which
       // starts it: its row's starting action is scheduled then.
       child.startOnAdmission();
@@ -8340,16 +8342,18 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A clone's spawn is a clone: the clone setter on the child, the spawner as the unit it stands
-   * for. The spawner calls it last, after the child's deploying state and deploy countdown, and it
-   * sets only the clone mark and the hit points, so a child with a deploy time is a clone made
-   * deploying: its countdown runs as any unit's, it takes no part in collision until the countdown
-   * ends (the contact rule's deploying clone), and it resumes as any unit then.
+   * for. Every spawner asks its source whether it is a clone, the one an action's spawn hands its
+   * block to included, so the Skeletons a clone barrel's death action spawns are clones as its
+   * death spawns are. The spawner calls it last, after the child's deploying state and deploy
+   * countdown, and it sets only the clone mark and the hit points, so a child with a deploy time is
+   * a clone made deploying: its countdown runs as any unit's, it takes no part in collision until
+   * the countdown ends (the contact rule's deploying clone), and it resumes as any unit then.
    */
-  private static void cloneSpawn(WorldEntity spawner, CharacterEntity child) {
+  private static void cloneSpawn(SpawnHost spawner, CharacterEntity child) {
     if (!(spawner instanceof CharacterEntity source) || !source.isClone()) {
       return;
     }
-    child.markClone(spawner);
+    child.markClone(source);
   }
 
   void cloneRefused(WorldEntity original, String reason, SpawnHost instigator) {
