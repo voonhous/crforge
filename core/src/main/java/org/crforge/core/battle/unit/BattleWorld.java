@@ -397,6 +397,21 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
+   * One hit of a buff's damage over time waiting for the drain: dealt there as {@link
+   * #dealBuffDamageNow(BuffHitDue)} deals it, with its reflect, its observers and the death it
+   * causes.
+   *
+   * @param target the entity carrying the buff
+   * @param buff the instance whose damage it is
+   * @param damage hit points it deals, after the carrier's own damage reduction
+   * @param source what applied the buff, as the instance holds it when the hit is queued
+   * @param side the side the buff was applied for, the killing side of a death it causes
+   */
+  private record BuffHitDue(
+      WorldEntity target, BuffInstance buff, int damage, SpawnHost source, int side)
+      implements QueuedHit {}
+
+  /**
    * The kill of a fallen king's circle waiting for the drain, where it is dealt.
    *
    * @param target the entity the circle reached
@@ -428,8 +443,9 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
-   * share of a character's or a projectile's area, a projectile's hit on its one target, a circle's
-   * kill, a Kamikaze unit's kill, a kill action's kill or a tiebreaker's clearing's kill.
+   * share of a character's or a projectile's area, a projectile's hit on its one target, a hit of a
+   * buff's damage over time, a circle's kill, a Kamikaze unit's kill, a kill action's kill or a
+   * tiebreaker's clearing's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
@@ -439,6 +455,7 @@ public class BattleWorld implements HolderPasses {
           ProjectileHitDue,
           TravellingHitDue,
           ActionDamageDue,
+          BuffHitDue,
           CircleKillDue,
           KamikazeKillDue,
           ActionKillDue,
@@ -531,6 +548,12 @@ public class BattleWorld implements HolderPasses {
    * action's kill of its owner (see {@link #kill(WorldEntity, WorldEntity)}) goes the same way: its
    * owner's kill action is scheduled at once, and the owner dies at the drain, so a building a
    * pending pass kills still pushes the units around it in that tick's movement pass.
+   *
+   * <p>A buff's damage over time goes the same way (see {@link #dealBuffDamage(WorldEntity,
+   * BuffInstance, int)}): the buff pass queues each hit it finds due, and the carrier takes it, and
+   * dies of it, at the drain. So a carrier the damage kills is still alive for the rest of the buff
+   * pass and for the post-hooks, and what a later carrier's buff makes in that pass - a spawner
+   * buff's child - is made before what the dying carrier's death leaves.
    */
   private final List<QueuedHit> queuedHits = new ArrayList<>();
 
@@ -4203,8 +4226,8 @@ public class BattleWorld implements HolderPasses {
    * asks it, with the global V16_PROJECTILE_DAMAGE_BUG set: the hits queued for the entity and not
    * yet dealt, the one just queued among them, add up to at least its hit points and shield. The
    * hits counted are those of the queueing damage entry, which adds each one's damage to the
-   * entity's queued total and the drain empties: travelling hits, direct hits and the shares of a
-   * character's or a projectile's area.
+   * entity's queued total and the drain empties: travelling hits, direct hits, the shares of a
+   * character's or a projectile's area and the hits of a buff's damage over time.
    *
    * <p>Refused rather than guessed: the global clear, where the one hit's damage alone is held
    * against the entity's hit points, which no data version holds; and a projectile's hit on its one
@@ -4232,6 +4255,8 @@ public class BattleWorld implements HolderPasses {
         queued += area.damage();
       } else if (hit instanceof ProjectileAreaHitDue share && share.victim() == entity) {
         queued += share.damage();
+      } else if (hit instanceof BuffHitDue buffHit && buffHit.target() == entity) {
+        queued += buffHit.damage();
       } else if ((hit instanceof ProjectileHitDue single && single.target() == entity)
           || (hit instanceof ActionDamageDue action && action.target() == entity)) {
         throw new UnsupportedOperationException(
@@ -5237,7 +5262,8 @@ public class BattleWorld implements HolderPasses {
    * the type's action on the source and its action on the target, and the observers are told. A
    * direct hit, a share of a character's or a projectile's area, or a projectile's hit on its one
    * target: the damage dealt, with its reflect, its observers, its death or the reference drop; a
-   * circle's, a Kamikaze unit's, a kill action's or a tiebreaker's clearing's kill.
+   * hit of a buff's damage over time; a circle's, a Kamikaze unit's, a kill action's or a
+   * tiebreaker's clearing's kill.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -5289,6 +5315,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof ActionDamageDue actionDamage) {
         drainActionDamage(actionDamage);
+        continue;
+      }
+      if (queued instanceof BuffHitDue buffHit) {
+        dealBuffDamageNow(buffHit);
         continue;
       }
       if (queued instanceof CircleKillDue kill) {
@@ -8285,26 +8315,47 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals one hit of a buff's damage over time, tells the observers, and runs the death it causes,
-   * with nothing as what killed it.
+   * Queues one hit of a buff's damage over time for the damage drain, as the game's damage entry
+   * queues every hit it is handed, the buff pass's included: the carrier takes it, and dies of it,
+   * at the drain of the tick, after the post-hooks (see {@link #queuedHits}). The source and the
+   * side are the instance's as the hit is queued; no object leaves the battle between the buff pass
+   * and the drain.
+   *
+   * @param target the entity carrying the buff
+   * @param buff the instance whose damage it is
+   * @param damage hit points it deals, after the carrier's own damage reduction
    */
   void dealBuffDamage(WorldEntity target, BuffInstance buff, int damage) {
+    queuedHits.add(new BuffHitDue(target, buff, damage, buff.getSource(), buff.getSide()));
+  }
+
+  /**
+   * Deals one hit of a buff's damage over time at the drain, tells the observers, and runs the
+   * death it causes, with nothing as what killed it.
+   *
+   * @param due the queued hit
+   */
+  private void dealBuffDamageNow(BuffHitDue due) {
+    WorldEntity target = due.target();
+    if (target.getHitPoints() == null) {
+      return;
+    }
     int before = target.getHitPoints().getHitPoints();
     // The damage of a buff comes from its source: an area effect, which is never struck back, or a
     // character, whose buff on a reflecting unit is not modelled.
-    SpawnHost source = buff.getSource();
+    SpawnHost source = due.source();
     if (target.getData().reflectedAttackBuff() != null && source instanceof WorldEntity) {
       throw new UnsupportedOperationException(
           target.name() + " reflects and takes a buff's damage from a character, not modelled");
     }
-    DamageResult result = target.takeDamageOverTime(damage, source);
+    DamageResult result = target.takeDamageOverTime(due.damage(), source);
     reflect(target, (BattleEntity) source, before, result, 0, 0);
     for (WorldObserver observer : observers) {
-      observer.buffDamaged(tick, target, buff, damage, before, result);
+      observer.buffDamaged(tick, target, due.buff(), due.damage(), before, result);
     }
     if (result.died()) {
       // The killing side is the one the buff was applied for.
-      target.die(null, buff.getSide());
+      target.die(null, due.side());
     }
   }
 
