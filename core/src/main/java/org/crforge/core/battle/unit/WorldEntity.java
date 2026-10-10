@@ -2783,6 +2783,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Lets the entity's targeting go on after a pingpong projectile it launched was deflected for the
+   * first time: the hold the launch set is cleared, whether the targeting component is on or off,
+   * so the visit passes its reference check again once the resume delay has run.
+   *
+   * @param projectile the projectile turned around
+   */
+  public void pingpongDeflected(ProjectileEntity projectile) {
+    held = null;
+    targeting.setVisitSuspended(false);
+  }
+
+  /**
    * Stores an attack sequence index, as an index-setting action does: only below the length of the
    * order, a longer one dropped and the old one kept, and, unless the action asks otherwise, only
    * while the targeting component is on.

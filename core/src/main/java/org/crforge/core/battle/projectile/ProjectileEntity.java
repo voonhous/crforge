@@ -87,8 +87,14 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " deflector as launcher and owner, the damage registered on the root owner - and"
             + " the deflected share of its damage at the impact, held by ability_monk, where the"
             + " princess tower's arrows come back, and random_battle16_s0048; the hand-back, the"
-            + " side and the registration by BattleMonkTest. A spell's cast from the king tower,"
-            + " its delay, its chain and ring point, a thrown projectile's aim at its spawned"
+            + " side and the registration by BattleMonkTest. A pingpong projectile's first"
+            + " deflection on its sweep - its launcher's hold cleared whether the targeting is on"
+            + " or off, its sweep time started over, no hold on the deflector, and a relaunch aimed"
+            + " at the root owner's position itself, stretched neither to the range nor to the"
+            + " least distance, as every deflection's relaunch is - by"
+            + " BattlePingpongDeflectTest; that the hold clears at the deflection rather than at"
+            + " the projectile's removal by no run, the sweep's resume delay outlasting both. A"
+            + " spell's cast from the king tower, its delay, its chain and ring point, a thrown projectile's aim at its spawned"
             + " one's body height, and a spawned projectile's launch from its parent are held by"
             + " the spell reference battles (the card_ cases of the spells and the"
             + " spell_*_into_push battles); the limited-time homing by card_EliteArcher. The"
@@ -690,7 +696,14 @@ public class ProjectileEntity extends BattleEntity
     this.ownerId = launcher == null ? 0 : launcher.getId();
     this.root = rootOwner;
     this.spawnChain = data.spawnChain();
-    aim(originX, originY, hx, hy);
+    if (deflections >= 1) {
+      // A deflection's relaunch aims at the hit position itself: neither stretched to the row's
+      // range nor to its least distance, and it keeps its target.
+      aimX = hx;
+      aimY = hy;
+    } else {
+      aim(originX, originY, hx, hy);
+    }
     this.startX = x;
     this.startY = y;
     this.startZ = z;
@@ -703,7 +716,7 @@ public class ProjectileEntity extends BattleEntity
         homingTimeMs = data.homingTimeMs();
       }
     }
-    if (data.minDistance() != 0) {
+    if (data.minDistance() != 0 && deflections < 1) {
       int[] vec = {aimX - startX, aimY - startY};
       if (FixedMath.guardedDistance(vec[0], vec[1]) < data.minDistance()) {
         FixedMath.normalize(vec, data.minDistance());
@@ -813,6 +826,10 @@ public class ProjectileEntity extends BattleEntity
    * stands, at its height, at the source and its position, the deflector its launcher and owner, at
    * its own level, and registers its damage, now the deflected share, on the source.
    *
+   * <p>A pingpong projectile not deflected before first lets its owner's targeting go on, whether
+   * the component is on or off, and its sweep time starts over; the relaunch sets no hold on the
+   * deflector. Deflected, it no longer sweeps (see {@link ProjectileFlight}).
+   *
    * @param deflector the deflecting area effect's parent, which sends it back
    * @param source the projectile's root owner, which it is sent back at
    */
@@ -821,12 +838,16 @@ public class ProjectileEntity extends BattleEntity
       throw new UnsupportedOperationException(
           name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
     }
+    if (data.pingpongVisualTimeMs() >= 1 && deflections == 0 && owner != null) {
+      owner.pingpongDeflected(this);
+    }
     if (data.homing() && target != null) {
       handBackPending();
     }
     target = null;
     root = null;
     deflections++;
+    pingpongTimeMs = 0;
     side = deflector.side();
     GridEntity at = source.getView();
     GridEntity from = deflector.getView();
@@ -1411,6 +1432,11 @@ public class ProjectileEntity extends BattleEntity
   /** Whether the projectile has an action holder, whose runs listen to its hits. */
   public boolean hasActionHolder() {
     return actionHolder != null;
+  }
+
+  /** True when an action runs on the projectile, as the evolved Executioner's axe controller. */
+  public boolean carriesRuns() {
+    return actionHolder != null && !actionHolder.running().isEmpty();
   }
 
   /** Whether the projectile carries an enchanting copy that changes its damage. */
