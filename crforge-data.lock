@@ -8,6 +8,6 @@
 #   client range the battle follows (docs/compatibility.md), which share its rules, version among
 #   them. CI runs the unit tests on each one's tables, and the reference battles of each one that
 #   has references, each case held to conformance/reference-expectations/<version>.json.
-commit=a67727f5f9eab749b7c5551d20af21c47898f4d5
+commit=e347325b58d8b253d8fb888745907f1fad1ba3ef
 version=16.402.19
 compatible=16.402.18 16.402.19 16.402.21
