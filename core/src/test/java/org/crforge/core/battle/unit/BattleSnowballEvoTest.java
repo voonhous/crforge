@@ -10,12 +10,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.crforge.core.battle.GameData.fields;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -157,6 +162,89 @@ class BattleSnowballEvoTest {
     // the Goblin is hidden through the tick after that, 50.
     assertThat(lastRolling).as("the snowball's last rolling step").isEqualTo(48);
     assertThat(hidden).containsExactly(45, 46, 47, 48, 49, 50);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit in a jump when its drag completes is put down: on the ground and asked to stand")
+  void aUnitCapturedInAJumpIsPutDown() {
+    Capture capture = captureInTheAir(tables, GridEntityState.JUMPING);
+    assertThat(capture.z()).as("on the ground").isZero();
+    assertThat(capture.state()).as("asked to stand").isEqualTo(GridEntityState.STANDING);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit dashing under a row with a jump height when its drag completes is put down: on the"
+          + " ground and asked to stand, which ends its dash")
+  void aUnitCapturedInADashWithAHeightIsPutDown(@TempDir Path jumper) throws IOException {
+    copyScene(jumper);
+    GameData.alterLoaded(
+        jumper, "characters", rows -> GameData.columns(rows, "Goblin").put("JumpHeight", 3000));
+    Capture capture = captureInTheAir(GameTables.load(jumper), GridEntityState.DASHING);
+    assertThat(capture.z()).as("on the ground").isZero();
+    assertThat(capture.state()).as("asked to stand").isEqualTo(GridEntityState.STANDING);
+  }
+
+  @Test
+  @DisplayName("a unit dashing under a row with no jump height is left in its dash and its height")
+  void aUnitCapturedInADashWithNoHeightIsLeft() {
+    Capture capture = captureInTheAir(tables, GridEntityState.DASHING);
+    assertThat(capture.z()).as("left in the air").isEqualTo(AIR_Z);
+    assertThat(capture.state()).as("left dashing").isEqualTo(GridEntityState.DASHING);
+  }
+
+  /** The height a captured unit is held at in the air until its drag completes. */
+  private static final int AIR_Z = 1000;
+
+  /** A captured unit's height and state as its drag completes. */
+  private record Capture(int z, int state) {}
+
+  /**
+   * A Goblin of side 1 captured by the rolling snowball and held in a state with a height until the
+   * step its drag completes: its height and state after that step.
+   */
+  private static Capture captureInTheAir(GameTables scene, int state) {
+    Standard1v1Battle match = new Standard1v1Battle(scene, LEVEL, true);
+    CharacterEntity goblin =
+        match.deploy(0, match.getWorld().getRecords().unit("Goblin"), LEVEL, 1, 3500, 22500, "G");
+    List<Integer> complete = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void captureStepped(
+                  int tick,
+                  BattleEntity owner,
+                  List<Integer> captured,
+                  List<Integer> done,
+                  List<Integer> timesMs) {
+                if (done.contains(goblin.getId())) {
+                  complete.add(tick);
+                }
+              }
+            });
+    match.play(14, match.getWorld().getRecords().card("Snowball_EV1"), LEVEL, 0, 3500, 19500, "S");
+    GridEntity view = goblin.getView();
+    for (int tick = 0; complete.isEmpty(); tick++) {
+      assertThat(tick).as("the drag completes").isLessThan(100);
+      if (tick >= 20) {
+        view.setState(state);
+        view.setZ(AIR_Z);
+      }
+      match.getBattle().step();
+    }
+    return new Capture(view.getZ(), view.getState());
+  }
+
+  /** Copies the scene's tables into another folder, to alter one more table there. */
+  private static void copyScene(Path to) throws IOException {
+    try (Stream<Path> files = Files.list(folder)) {
+      for (Path file : files.toList()) {
+        Files.copy(file, to.resolve(file.getFileName()));
+      }
+    }
   }
 
   @Test
