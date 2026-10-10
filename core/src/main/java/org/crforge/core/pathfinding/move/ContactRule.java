@@ -42,7 +42,8 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " grid_log_over_bandit_dash_end; the standard game exempts a row with"
             + " DashingDamage, which no row sets and the battle refuses. A clone deploying taking"
             + " no part, neither pushed nor pushing, is held by ability_skeleton_king and"
-            + " card_SkeletonKing; an entity byte that would keep such a clone in collision,"
+            + " card_SkeletonKing, and a clone's death spawn deploying by a recorded battle not"
+            + " yet in the reference set; an entity byte that would keep such a clone in collision,"
             + " unnamed, is supplied clear, as for every unit the standard game makes. Supplied:"
             + " no building is of the placeable-building kind whose answer depends on the"
             + " entities near it, which is not reachable from the units the grid drives.")

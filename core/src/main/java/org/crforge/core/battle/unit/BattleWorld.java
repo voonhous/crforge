@@ -8067,19 +8067,16 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A clone's spawn is a clone: the clone setter on the child, the spawner as the unit it stands
-   * for. A clone that deploys is refused: it is out of collision while it does, as an area effect's
-   * skeletons are, but no reference holds a clone's spawn that deploys.
+   * for. The spawner calls it last, after the child's deploying state and deploy countdown, and it
+   * sets only the clone mark and the hit points, so a child with a deploy time is a clone made
+   * deploying: its countdown runs as any unit's, it takes no part in collision until the countdown
+   * ends (the contact rule's deploying clone), and it resumes as any unit then.
    */
   private static void cloneSpawn(WorldEntity spawner, CharacterEntity child) {
     if (!(spawner instanceof CharacterEntity source) || !source.isClone()) {
       return;
     }
     child.markClone(spawner);
-    if (child.getView().getState() == GridEntityState.DEPLOYING
-        || child.getView().getDeployCountdown() > 0) {
-      throw new UnsupportedOperationException(
-          child.name() + " is a clone that deploys, which is not modelled");
-    }
   }
 
   void cloneRefused(WorldEntity original, String reason, SpawnHost instigator) {
