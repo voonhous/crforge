@@ -5,15 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.GameData;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
  * The Little Prince where the reference runs do not take it: a stun on a ramped Little Prince. Its
  * row restarts its hit timer without a target, so the stun's loss of the reference clears its
- * attack time, and its fastest speed-up, alive only while attack_count is 6 or more, ends at the
- * buff visit that follows.
+ * attack time. The stun's combat gate switches its targeting off and raises COMBAT_DISABLED, which
+ * its constant ticker reads the step after: LP_AttackCount goes back to 0, and its fastest
+ * speed-up, alive only while the count is 6 or more, ends at the buff visit that follows.
  */
 class BattleLittlePrinceTest {
 
@@ -32,11 +32,8 @@ class BattleLittlePrinceTest {
 
   @Test
   @DisplayName(
-      "a Zap on a ramped Little Prince clears its attack time and ends its fastest speed-up at the"
-          + " next buff visit")
-  @Disabled(
-      "open question: in the battle a stun leaves LP_AttackCount at 8 and LittlePrinceLvlMax on;"
-          + " whether the game ends the ramp on a stun is not established")
+      "a Zap on a ramped Little Prince clears its attack time, resets its count and ends its"
+          + " fastest speed-up")
   void aStunEndsTheRamp() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     List<String> buffs = new ArrayList<>();
@@ -78,11 +75,21 @@ class BattleLittlePrinceTest {
         .containsExactly(
             "applied LittlePrinceLvl1", "applied LittlePrinceLvlMax", "removed LittlePrinceLvl1");
 
+    int count = match.getWorld().variableKey("LP_AttackCount");
+    assertThat(prince.variable(count)).as("the ramp's count").isGreaterThanOrEqualTo(6);
+
     match.placeAreaEffect(tick, "Zap", LEVEL, 1, X, Y, "zap");
-    match.getBattle().step();
-    match.getBattle().step();
+    // The stun's gate raises COMBAT_DISABLED for the next step, whose ticker resets the count;
+    // the buff visit of the step after ends the fastest speed-up.
+    for (int i = 0; i < 3; i++) {
+      match.getBattle().step();
+    }
 
     assertThat(prince.getBuffs().carries("ZapFreeze")).isTrue();
+    assertThat(prince.getView().getFlags() & prince.getView().getFlagBits().combatDisabled())
+        .as("COMBAT_DISABLED while the stun holds it")
+        .isNotZero();
+    assertThat(prince.variable(count)).as("the ramp's count after the stun").isZero();
     assertThat(prince.getTargeting().getAttackTimerMs()).isZero();
     assertThat(prince.getBuffs().carries("LittlePrinceLvlMax")).isFalse();
     assertThat(buffs)

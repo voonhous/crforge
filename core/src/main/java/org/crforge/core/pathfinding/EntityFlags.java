@@ -56,6 +56,7 @@ public final class EntityFlags {
   private final long noSummon;
   private final long noSpecialAttack;
   private final long hasCapture;
+  private final long combatDisabled;
   private final long noReflectedAttack;
   private final long forceIsGround;
   private final long noPushback;
@@ -107,6 +108,7 @@ public final class EntityFlags {
     noSummon = bit(tags, "NO_SUMMON");
     noSpecialAttack = bit(tags, "NO_SPECIAL_ATTACK");
     hasCapture = bit(tags, "HAS_CAPTURE");
+    combatDisabled = bit(tags, "COMBAT_DISABLED");
     noReflectedAttack = bit(tags, "NO_REFLECTED_ATTACK");
     forceIsGround = bit(tags, "FORCE_IS_GROUND");
     noPushback = bit(tags, "NO_PUSHBACK");
@@ -263,6 +265,15 @@ public final class EntityFlags {
    */
   public long hasCapture() {
     return hasCapture;
+  }
+
+  /**
+   * The entity's targeting component is switched off: raised for one step by every combat gate that
+   * switches it off (asleep, waiting to deploy, casting, deploying, dead or stunned), so it is seen
+   * from the step after the first such gate to the step after the last.
+   */
+  public long combatDisabled() {
+    return combatDisabled;
   }
 
   /** A reflecting unit does not reflect the entity's attack. */

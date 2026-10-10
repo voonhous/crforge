@@ -442,7 +442,7 @@
   "tv-replays-v3/tv_replay_008": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_009": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_012": {"outcome": "diagnostic_match"},
-  "tv-replays-v3/tv_replay_013": {"outcome": "mismatch", "first_divergent_tick": 3447, "path": "$.entities.length"},
+  "tv-replays-v3/tv_replay_013": {"outcome": "mismatch", "first_divergent_tick": 5651, "path": "$.entities[15].state"},
   "tv-replays-v3/tv_replay_014": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_015": {"outcome": "diagnostic_match"},
   "tv-replays-v3/tv_replay_016": {"outcome": "diagnostic_match"},
