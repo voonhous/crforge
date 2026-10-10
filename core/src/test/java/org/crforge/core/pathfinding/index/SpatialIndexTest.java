@@ -274,4 +274,35 @@ class SpatialIndexTest {
     }
     assertThat(index.query(SpatialQuery.targetCandidates(3500, 8000, 100))).isNotNull();
   }
+
+  @Test
+  @DisplayName(
+      "a rebuild answers only the entities of the new tick, also where an old one stood, and a"
+          + " clear leaves nothing")
+  void aRebuildForgetsTheTickBefore() {
+    // The tick after setUp's: the unit has gone and another stands far from where it was.
+    GridEntity other = new GridEntity();
+    other.setName("other");
+    other.setId(8);
+    other.setSide(1);
+    other.setX(15_000);
+    other.setY(15_000);
+    other.setCollisionRadius(500);
+    other.setMovementActive(true);
+    index.rebuild(List.of(kingTop, other));
+
+    List<GridEntity> whereItStood =
+        index.query(new SpatialQuery(3500, 10_000, 1000, 0, false, false, 0, -1));
+    assertThat(whereItStood).as("nothing is left where the unit stood").isEmpty();
+    index.release(whereItStood);
+    List<GridEntity> everything = index.listQuery(false);
+    assertThat(everything).containsExactly(kingTop, other);
+    index.release(everything);
+
+    index.clear();
+    assertThat(index.isPopulated()).isFalse();
+    List<GridEntity> none = index.listQuery(false);
+    assertThat(none).isEmpty();
+    index.release(none);
+  }
 }

@@ -61,7 +61,17 @@ public final class SpatialIndex {
 
   private final int width;
   private final int high;
-  private final List<List<GridEntity>> buckets;
+
+  /** The buckets, entry {@code width * cy + cx}, each in insertion order. */
+  private final ArrayList<GridEntity>[] buckets;
+
+  /**
+   * The entries of the buckets that hold an entity, in the order they were first filled, so a clear
+   * empties only those: {@code filledCount} of them are in use.
+   */
+  private final int[] filled;
+
+  private int filledCount;
 
   /** Number of result lists still available to a query. */
   private int freeResultLists = RESULT_LIST_POOL_SIZE;
@@ -76,10 +86,17 @@ public final class SpatialIndex {
     Dimensions dimensions = dimensions(cellsWide, cellsHigh);
     this.width = dimensions.wide();
     this.high = dimensions.high();
-    this.buckets = new ArrayList<>(width * high);
-    for (int i = 0; i < width * high; i++) {
-      buckets.add(new ArrayList<>());
+    this.buckets = newBuckets(width * high);
+    this.filled = new int[width * high];
+  }
+
+  @SuppressWarnings("unchecked")
+  private static ArrayList<GridEntity>[] newBuckets(int count) {
+    ArrayList<GridEntity>[] buckets = (ArrayList<GridEntity>[]) new ArrayList<?>[count];
+    for (int i = 0; i < count; i++) {
+      buckets[i] = new ArrayList<>();
     }
+    return buckets;
   }
 
   /**
@@ -139,18 +156,24 @@ public final class SpatialIndex {
           if (cy < 0 || cy >= high) {
             continue;
           }
-          buckets.get(width * cy + cx).add(entity);
+          int entry = width * cy + cx;
+          ArrayList<GridEntity> bucket = buckets[entry];
+          if (bucket.isEmpty()) {
+            filled[filledCount++] = entry;
+          }
+          bucket.add(entity);
         }
       }
     }
     populated = true;
   }
 
-  /** Empties every bucket. */
+  /** Empties every bucket: only those an insert filled hold anything. */
   public void clear() {
-    for (List<GridEntity> bucket : buckets) {
-      bucket.clear();
+    for (int i = 0; i < filledCount; i++) {
+      buckets[filled[i]].clear();
     }
+    filledCount = 0;
     populated = false;
   }
 
@@ -187,7 +210,6 @@ public final class SpatialIndex {
     if (xLow > xHigh || yLow > yHigh) {
       return result;
     }
-    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     for (int cx = xLow; cx <= xHigh; cx++) {
       if (cx < 0 || cx >= width) {
         continue;
@@ -196,10 +218,13 @@ public final class SpatialIndex {
         if (cy < 0 || cy >= high) {
           continue;
         }
-        for (GridEntity entity : buckets.get(width * cy + cx)) {
+        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
+        for (int i = 0, size = bucket.size(); i < size; i++) {
+          GridEntity entity = bucket.get(i);
           // Only an accepted entity is marked, so a rejected one is tested again in its next
-          // bucket; the tests are position based, so the answer does not change.
-          if (seen.contains(entity)) {
+          // bucket; the tests are position based, so the answer does not change. The accepted
+          // entities are the result's, so the mark is a look through the result.
+          if (holds(result, entity)) {
             continue;
           }
           if (query.typeMask() >= 1 && ((query.typeMask() >>> entity.getType()) & 1) == 0) {
@@ -212,7 +237,6 @@ public final class SpatialIndex {
             continue;
           }
           result.add(entity);
-          seen.add(entity);
         }
       }
     }
@@ -258,7 +282,7 @@ public final class SpatialIndex {
         if (cy < 0 || cy >= high) {
           continue;
         }
-        for (GridEntity entity : buckets.get(this.width * cy + cx)) {
+        for (GridEntity entity : buckets[this.width * cy + cx]) {
           // Unlike the point queries, a rejected entity is marked too and never tested again.
           if (!seen.add(entity)) {
             continue;
@@ -302,7 +326,6 @@ public final class SpatialIndex {
       return result;
     }
     int reach = radius * radius;
-    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     for (int cx = xLow; cx <= xHigh; cx++) {
       if (cx < 0 || cx >= width) {
         continue;
@@ -311,13 +334,15 @@ public final class SpatialIndex {
         if (cy < 0 || cy >= high) {
           continue;
         }
-        for (GridEntity entity : buckets.get(width * cy + cx)) {
-          if (seen.contains(entity) || !passes.test(entity)) {
+        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
+        for (int i = 0, size = bucket.size(); i < size; i++) {
+          GridEntity entity = bucket.get(i);
+          // The accepted entities, the marked ones, are the result's.
+          if (holds(result, entity) || !passes.test(entity)) {
             continue;
           }
           if (FixedMath.squaredDistance(entity.getX(), entity.getY(), x, y) < reach) {
             result.add(entity);
-            seen.add(entity);
           }
         }
       }
@@ -352,7 +377,6 @@ public final class SpatialIndex {
     if (yLow > yHigh) {
       return result;
     }
-    Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
     for (int cx = xLow; cx <= xHigh; cx++) {
       if (cx < 0 || cx >= width) {
         continue;
@@ -361,8 +385,11 @@ public final class SpatialIndex {
         if (cy < 0 || cy >= high) {
           continue;
         }
-        for (GridEntity entity : buckets.get(width * cy + cx)) {
-          if (seen.contains(entity) || !passes.test(entity)) {
+        ArrayList<GridEntity> bucket = buckets[width * cy + cx];
+        for (int i = 0, size = bucket.size(); i < size; i++) {
+          GridEntity entity = bucket.get(i);
+          // The accepted entities, the marked ones, are the result's.
+          if (holds(result, entity) || !passes.test(entity)) {
             continue;
           }
           boolean inside =
@@ -372,7 +399,6 @@ public final class SpatialIndex {
                       entity, x - halfWidth, y - halfHeight, 2 * halfWidth, 2 * halfHeight);
           if (inside) {
             result.add(entity);
-            seen.add(entity);
           }
         }
       }
@@ -395,7 +421,7 @@ public final class SpatialIndex {
     if (width >= 1 && high >= 1) {
       for (int cx = 0; cx < width; cx++) {
         for (int cy = 0; cy < high; cy++) {
-          for (GridEntity entity : buckets.get(width * cy + cx)) {
+          for (GridEntity entity : buckets[width * cy + cx]) {
             if (seen.add(entity)) {
               result.add(entity);
             }
@@ -418,6 +444,19 @@ public final class SpatialIndex {
       return partitioned;
     }
     return result;
+  }
+
+  /**
+   * Whether a list holds this very entity. A query's result holds the entities it has accepted, a
+   * few at most, so looking through it is cheaper than keeping a set of them.
+   */
+  private static boolean holds(List<GridEntity> list, GridEntity entity) {
+    for (int i = 0, size = list.size(); i < size; i++) {
+      if (list.get(i) == entity) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** The geometric test selected by the query's half height and building-aware flag. */
