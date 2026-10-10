@@ -21,6 +21,8 @@ Before committing, run:
 
 CI will reject PRs that don't pass `spotlessCheck`.
 
+`spotlessApply` also gives a new source file (Java or a Gradle Kotlin script) the header every source file starts with: the repository URL, the license and the request to ports (see [Porting or reimplementing crforge](README.md#porting-or-reimplementing-crforge)).
+
 ## Testing
 
 - Tests use JUnit 5 + AssertJ.
@@ -34,6 +36,10 @@ CI will reject PRs that don't pass `spotlessCheck`.
 2. Make your changes, including tests where applicable.
 3. Run `./gradlew spotlessApply` and `./gradlew build` to verify everything passes.
 4. Open a PR -- the template will guide you through the description.
+
+## Release Notes
+
+The release notes list behaviour corrections per mechanic, so anyone who ported a mechanic can see when its rules changed.
 
 ## Project Structure
 
