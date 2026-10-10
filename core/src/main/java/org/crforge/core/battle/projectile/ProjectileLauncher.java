@@ -21,11 +21,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * of the circle. Under a custom first projectile without a radius, its scatter decides instead: the
  * circle turns that point by a battle random share of the circle, and the line throws the point
  * away and fans the further projectiles about the line from the unit to its target, alternately to
- * one side and the other, each step turned by the spread over the count in degrees. Each starts the
- * unit's start radius along the line from the unit to its aim, shifted by the unit's height offset
- * and its lengthwise offset, which the top side mirrors. A hit of a burst or a multi-target attack
- * fans the starts out sideways. Every projectile has its id from this tick and enters the holder's
- * live list at the tick's closing cleanup.
+ * one side and the other, each step turned by the spread over the count in degrees; without a
+ * target that line is the unit's facing, and the step moves the stored reference position to the
+ * unit's range ahead of it. Each starts the unit's start radius along the line from the unit to its
+ * aim, shifted by the unit's height offset and its lengthwise offset, which the top side mirrors. A
+ * hit of a burst or a multi-target attack fans the starts out sideways. Every projectile has its id
+ * from this tick and enters the holder's live list at the tick's closing cleanup.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -44,7 +45,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " projectile of the hit, after the launcher's runs; refused with several"
             + " projectiles, a custom first one or a picked dart. Not modelled: the special"
             + " projectile column, a building target's edge adjustment, a burst that keeps its"
-            + " aim, and a line's fan without a target, which is refused. The pushback a launch"
+            + " aim. The line's fan without a target, along the facing with the stored reference"
+            + " moved to the range ahead, is held by recordings of a Hunter whose target is zapped"
+            + " during its load."
+            + " The pushback a launch"
             + " gives its owner is asked for after each launch.")
 public final class ProjectileLauncher {
 
@@ -139,7 +143,7 @@ public final class ProjectileLauncher {
             FixedMath.rotate1024(offset, world.getRandom().next(step));
           } else if (first.lineScatter()) {
             fan = (k & 1) != 0 ? (k + 1) >> 1 : -((k + 1) >> 1);
-            offset = lineOffset(launcher, targetEntity, fan * spread / count);
+            offset = lineOffset(launcher, t, targetEntity, fan * spread / count);
           }
         }
       }
@@ -278,15 +282,27 @@ public final class ProjectileLauncher {
    * A line's fan step, as the offset from the stored reference position: the line from the launcher
    * to its target where it stands now, turned by the step's angle, from the launcher, less the
    * target's position. With the reference where it was stored, the aim is the turned line's end.
+   *
+   * <p>Without a target the line runs along the launcher's facing: the step first moves the stored
+   * reference position to the launcher's range ahead of it along the facing, and the aim is the
+   * facing, as it is, turned by the step's angle, from the launcher. The reference stays moved
+   * after the hit. The first projectile, launched before any step, flew at the reference where it
+   * was stored.
    */
-  private static int[] lineOffset(WorldEntity launcher, WorldEntity target, int degrees) {
-    if (target == null) {
-      // Without a target the line runs along the launcher's facing and moves the stored
-      // reference position, which is not modelled.
-      throw new UnsupportedOperationException(
-          launcher.name() + " fans its projectiles without a target, not modelled");
-    }
+  private static int[] lineOffset(
+      WorldEntity launcher, TargetingState t, WorldEntity target, int degrees) {
     GridEntity own = launcher.getView();
+    if (target == null) {
+      int[] ahead = {own.getDirX(), own.getDirY()};
+      FixedMath.normalize(ahead, launcher.getData().range());
+      t.setLastReferenceX(own.getX() + ahead[0]);
+      t.setLastReferenceY(own.getY() + ahead[1]);
+      int[] vec = {own.getDirX(), own.getDirY()};
+      FixedMath.rotate1024(vec, degrees);
+      return new int[] {
+        own.getX() - t.getLastReferenceX() + vec[0], own.getY() - t.getLastReferenceY() + vec[1]
+      };
+    }
     GridEntity aimed = target.getView();
     int[] vec = {aimed.getX() - own.getX(), aimed.getY() - own.getY()};
     FixedMath.rotate1024(vec, degrees);
