@@ -19,8 +19,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>The ordinary answer is the centre of the cell named by the route's last node. Two cases
  * differ: a flying unit configured to walk direct paths heads for a point near its reference
- * instead of following a route at all, and a unit with an empty route aims at its own position,
- * which makes the displacement a no-op that still reports arrival.
+ * instead of following a route at all, while it holds one with its targeting component on (set up
+ * as a clone, its targeting off, it follows its route's node), and a unit with an empty route aims
+ * at its own position, which makes the displacement a no-op that still reports arrival.
  *
  * <p>While a touchdown mode restricts a defender to its own side of the arena, a moving unit with
  * no reference keeps its own x and only walks along the arena's length.
@@ -33,8 +34,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "The ordinary waypoint agrees with the reference, and so does the special waypoint of a"
             + " unit that flies direct paths, held by the reference battles card_SkeletonBalloon"
-            + " and evo_skeletonballoon_vs_musketeer. Not modelled: the touchdown override is not"
-            + " held by a fixture.")
+            + " and evo_skeletonballoon_vs_musketeer; with its targeting off, the route's node,"
+            + " held by a cloned Skeleton Balloon's move apart. Not modelled: the touchdown"
+            + " override is not held by a fixture.")
 public final class WaypointSelector {
 
   private WaypointSelector() {

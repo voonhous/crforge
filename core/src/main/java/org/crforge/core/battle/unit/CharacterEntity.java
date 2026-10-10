@@ -997,19 +997,31 @@ public class CharacterEntity extends WorldEntity {
    * row with a shield; otherwise 1 of 1 while its own shield is up, the standard game preserving a
    * clone's shield, and none without one.
    *
-   * <p>Refused rather than guessed: a building, whose lifetime a clone counts differently, a unit
-   * whose hit destroys it, whose projectile's spawns would be clones, and a champion, which the
-   * ability controller leaves out.
+   * <p>The setter asks nothing of the row: a building and a unit whose hit destroys it are set up
+   * as any unit. A building without hit points, as the barrel a Skeleton Balloon drops, keeps none:
+   * only its mark is set, and what it spawns as a clone is a clone too. A unit whose hit destroys
+   * it without a projectile, as the Skeleton Balloon itself, ends its hit as any such unit.
+   *
+   * <p>Refused rather than guessed: a building with hit points, whose lifetime the hit points'
+   * visit counts differently for a clone; a unit whose hit destroys it and launches a projectile,
+   * whose projectile's spawns would be clones; and a champion, which the ability controller leaves
+   * out.
    *
    * @param original the unit it stands for, or null for none
    */
   void markClone(WorldEntity original) {
     UnitData data = getData();
-    if (data.building() || data.kamikaze() || data.champion()) {
+    String refused = null;
+    if (data.building() && getHitPoints() != null) {
+      refused = "a building with hit points";
+    } else if (data.kamikaze() && data.hasProjectile()) {
+      refused = "a unit whose hit destroys it and launches a projectile";
+    } else if (data.champion()) {
+      refused = "a champion";
+    }
+    if (refused != null) {
       throw new UnsupportedOperationException(
-          name()
-              + " would be a clone of a building, a unit whose hit destroys it or a champion,"
-              + " which is not modelled");
+          name() + " would be a clone of " + refused + ", which is not modelled");
     }
     clone = true;
     getView().setClone(true);
@@ -3225,9 +3237,14 @@ public class CharacterEntity extends WorldEntity {
     return movementQueries().speedBudget() > 0 ? 1 : 0;
   }
 
-  /** The movement pass's answers for the character as it stands now, reference included. */
+  /**
+   * The movement pass's answers for the character as it stands now, reference included: none while
+   * its targeting component is off, as while it is set up as a clone and moves apart, when a unit
+   * that flies direct paths heads for its route's node rather than for its reference.
+   */
   private GridMovementQueries movementQueries() {
-    return new GridMovementQueries(unit, world.getGrid(), world.getCosts(), world::unitStateOf)
+    return new GridMovementQueries(
+            unit, world.getGrid(), world.getCosts(), world::unitStateOf, isActive(TARGETING_SLOT))
         .withBuffs(
             getBuffs().speedPercents(),
             getBuffs().speed(FOLLOWER_STEP),
