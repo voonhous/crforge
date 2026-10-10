@@ -232,6 +232,25 @@ class BattleWizardHeroTest {
     assertThat(slot.champions()).isEqualTo(copiesOnTheFlyingRow(hero));
   }
 
+  @Test
+  @DisplayName(
+      "the swap onto the flying row comes while the cast holds the hero's targeting component off,"
+          + " and leaves the target the hero held as it stands: the component hears of no swap")
+  void theSwapLeavesTheTargetOfASwitchedOffComponent(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
+    CharacterEntity hero = scene.abilityUsedAttacking();
+    int turn = scene.stepUntilCasting(hero) + 7;
+    while (scene.tick() < turn) {
+      scene.steps(1);
+    }
+    TargetView target = hero.getTargeting().getReference();
+    assertThat(target).as("the tower it attacked when the ability was used").isNotNull();
+    assertThat(hero.isActive(CharacterEntity.TARGETING_SLOT)).as("off through the cast").isFalse();
+    scene.steps(1);
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+    assertThat(hero.getTargeting().getReference()).isSameAs(target);
+  }
+
   /**
    * The live copies a champion slot following the ground row finds while the hero is on its flying
    * row: the hero when that row names the ground row's ability row, else none.

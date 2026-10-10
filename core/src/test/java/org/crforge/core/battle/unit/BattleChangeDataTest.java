@@ -140,6 +140,31 @@ class BattleChangeDataTest {
 
   @Test
   @DisplayName(
+      "a unit whose targeting component is off keeps its target through a swap, one that resets"
+          + " the target too, and the attack timing with it; its targeting reads the new row")
+  void theTargetOfASwitchedOffComponent() {
+    for (boolean resetTarget : new boolean[] {false, true}) {
+      Scene scene = new Scene("Knight");
+      CharacterEntity knight = scene.knight;
+      TargetView target = knight.getTargeting().getReference();
+      assertThat(target).as("it walks at a tower").isNotNull();
+      knight.getTargeting().setAttackTimerMs(300);
+      knight.getTargeting().setKeptByPendingDamageCheck(true);
+      knight.setActive(CharacterEntity.TARGETING_SLOT, false);
+
+      knight.changeData("Archer", resetTarget);
+
+      assertThat(knight.getTargeting().getReference()).as("reset " + resetTarget).isSameAs(target);
+      assertThat(knight.getTargeting().isKeptByPendingDamageCheck()).isTrue();
+      assertThat(knight.getTargeting().getAttackTimerMs()).isEqualTo(300);
+      assertThat(knight.getTargeting().getConfig().range())
+          .as("the new row's range")
+          .isEqualTo(records.unit("Archer").range());
+    }
+  }
+
+  @Test
+  @DisplayName(
       "a walking unit without a lifetime takes a walking row with one: it keeps its hit points and"
           + " level and its hit points drain over the new row's lifetime; a swap back away from"
           + " the lifetime ends the drain")
