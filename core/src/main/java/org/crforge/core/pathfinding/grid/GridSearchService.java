@@ -18,14 +18,16 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>a cost lookup is built for the unit, from the grid's live cell map and overlay;
  *   <li>the wrapper validates the start and, when asked, moves an unusable goal to the nearest
  *       usable cell. If it gives up, the query answers an empty route and no search runs;
- *   <li>the whole cost field is materialised and the search runs over it with the standard game's
- *       settings: the published heuristic method and weight, the accumulating mode off while the
- *       newer route search is in force, open nodes refreshed, closed nodes not reopened, and no
- *       expansion budget.
+ *   <li>the search runs over the cost field the lookup gives with the standard game's settings: the
+ *       published heuristic method and weight, the accumulating mode off while the newer route
+ *       search is in force, open nodes refreshed, closed nodes not reopened, and no expansion
+ *       budget.
  * </ol>
  *
- * <p>The cost field is rebuilt on every query rather than cached, because the overlay it reads
- * changes from tick to tick.
+ * <p>The search prices each cell from the lookup the first time it reads the cell, so only the
+ * cells around the route are priced; nothing changes the cell map or the overlay while it runs, so
+ * the answer is the one over the whole field. The costs are priced again on every query rather than
+ * cached, because the overlay they read changes from tick to tick.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -121,19 +123,10 @@ public final class GridSearchService {
     // The grid's own working arrays: a search clears them first, and nothing it answers refers to
     // them, so every search of the battle reuses them.
     RouteSearch.Buffers buffers = grid.getSearchBuffers();
-    int[] field =
-        CellCostField.costField(
-            grid,
-            costs,
-            state,
-            lane,
-            waterPermission,
-            alternateWaterPermission,
-            buffers.costField(grid.getWidth() * grid.getHeight()));
     return RouteSearch.search(
         grid.getWidth(),
         grid.getHeight(),
-        field,
+        lookup,
         nodes.startNode(),
         nodes.goalNode(),
         PathfindingGlobals.PATHFINDING_HEURISTIC_METHOD,

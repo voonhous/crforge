@@ -9,6 +9,7 @@ package org.crforge.core.pathfinding.grid;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Arrays;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.Test;
 
@@ -220,6 +221,70 @@ class RouteSearchTest {
       assertSameAnswer(
           standardSearch(keptField, trip[0], trip[1], buffers),
           standardSearch(fresh, trip[0], trip[1], new RouteSearch.Buffers()));
+    }
+  }
+
+  @Test
+  void aSearchPricingCellsOnDemandAnswersAsOneOverTheWholeField() {
+    // Refresh, reopen and budget of each search over the tie field, its costs from a lookup, run
+    // one after another in the same buffers: a search must not take a cost priced by the one
+    // before it.
+    RouteSearch.Buffers buffers = new RouteSearch.Buffers();
+    int[][] runs = {{0, 0, 3}, {1, 0, 0}, {1, 1, 0}, {0, 1, 2}, {1, 0, 0}};
+    for (int[] run : runs) {
+      boolean refresh = run[0] == 1;
+      boolean reopen = run[1] == 1;
+      int[] asked = new int[TIE_FIELD.length];
+      CellCostLookup lookup =
+          (col, row) -> {
+            asked[row * 4 + col]++;
+            return TIE_FIELD[row * 4 + col];
+          };
+      RouteSearchResult priced =
+          RouteSearch.search(4, 6, lookup, 0, 23, 1, 5, false, refresh, reopen, run[2], buffers);
+      assertSameAnswer(priced, tieSearch(refresh, reopen, run[2]));
+      // Each cell is priced at most once.
+      assertThat(Arrays.stream(asked).max().orElse(0)).isLessThanOrEqualTo(1);
+    }
+
+    // On the standard arena, with a building overlay, along both lanes and back, after a search
+    // over a field of other costs in the same buffers; only the cells about the route are priced.
+    CellGrid grid = new CellGrid(TileMap.standard1v1(), true, 100);
+    FootprintOverlay.buildOverlay(grid, StandardTowers.entities());
+    int[] field =
+        CellCostField.costField(
+            grid, CellCosts.standard(), GridEntityState.MOVING, 1, false, false);
+    CellCostLookup live =
+        CellCostField.costLookup(
+            grid, CellCosts.standard(), GridEntityState.MOVING, 1, false, false);
+    int[][] trips = {
+      {20 * 36 + 7, 48 * 36 + 6}, {48 * 36 + 6, 20 * 36 + 7}, {20 * 36 + 28, 48 * 36 + 29}
+    };
+    for (int[] trip : trips) {
+      standardSearch(new int[36 * 64], trip[1], trip[0], buffers);
+      int[] priced = new int[1];
+      CellCostLookup counting =
+          (col, row) -> {
+            priced[0]++;
+            return live.cost(col, row);
+          };
+      RouteSearchResult onDemand =
+          RouteSearch.search(
+              36,
+              64,
+              counting,
+              trip[0],
+              trip[1],
+              PathfindingGlobals.PATHFINDING_HEURISTIC_METHOD,
+              PathfindingGlobals.PATHFINDING_DEFAULTHEURISTIC_COST,
+              !PathfindingGlobals.NEW_PATHFINDING_CODE,
+              PathfindingGlobals.PATHFINDING_REFRESH_OPENNODES,
+              PathfindingGlobals.PATHFINDING_REOPEN_CLOSEDNODES,
+              0,
+              buffers);
+      assertSameAnswer(
+          onDemand, standardSearch(field, trip[0], trip[1], new RouteSearch.Buffers()));
+      assertThat(priced[0]).isPositive().isLessThan(36 * 64);
     }
   }
 

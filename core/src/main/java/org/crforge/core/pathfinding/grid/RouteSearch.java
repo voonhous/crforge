@@ -61,6 +61,12 @@ public final class RouteSearch {
   /** A cell that has been expanded. */
   private static final int CLOSED = 2;
 
+  /**
+   * The cost-array entry of a cell a search pricing cells on demand has not priced yet: never a
+   * cost, which is -1 or a positive weight.
+   */
+  private static final int UNPRICED = Integer.MIN_VALUE;
+
   private RouteSearch() {
     // Utility class
   }
@@ -109,6 +115,13 @@ public final class RouteSearch {
         costField = new int[cells];
       }
       return costField;
+    }
+
+    /** The cost-field array of {@link #costField(int)}, every cell unpriced. */
+    private int[] unpricedCostField(int cells) {
+      int[] field = costField(cells);
+      Arrays.fill(field, UNPRICED);
+      return field;
     }
   }
 
@@ -208,6 +221,48 @@ public final class RouteSearch {
             width,
             height,
             costs,
+            null,
+            start,
+            goal,
+            method,
+            weight,
+            accumulatedHeuristic,
+            refresh,
+            reopen,
+            buffers)
+        .run(budget);
+  }
+
+  /**
+   * The same search, pricing each cell from a lookup the first time it reaches the cell, in the
+   * working arrays' cost field, rather than over a whole cost field made beforehand. A search reads
+   * the cost of a cell only as a neighbour of one it expands, so it prices the cells around its
+   * route, not the map. The answer is the one over the whole field the lookup gives, as long as the
+   * lookup answers the same for a cell all through the search.
+   *
+   * @param lookup the cost of a cell, -1 for a rejected cell
+   * @param buffers the working arrays, used by one search at a time; their cost field is
+   *     overwritten
+   * @see #search(int, int, int[], int, int, int, int, boolean, boolean, boolean, int)
+   */
+  public static RouteSearchResult search(
+      int width,
+      int height,
+      CellCostLookup lookup,
+      int start,
+      int goal,
+      int method,
+      int weight,
+      boolean accumulatedHeuristic,
+      boolean refresh,
+      boolean reopen,
+      int budget,
+      Buffers buffers) {
+    return new Run(
+            width,
+            height,
+            buffers.unpricedCostField(width * height),
+            lookup,
             start,
             goal,
             method,
@@ -226,7 +281,13 @@ public final class RouteSearch {
 
     private final int width;
     private final int height;
+
+    /** The cost of every cell, or of the cells priced so far when {@code lookup} is set. */
     private final int[] costs;
+
+    /** Prices a cell the first time the search reads it, or null when every cost is given. */
+    private final CellCostLookup lookup;
+
     private final int start;
     private final int goal;
     private final int goalCol;
@@ -248,6 +309,7 @@ public final class RouteSearch {
         int width,
         int height,
         int[] costs,
+        CellCostLookup lookup,
         int start,
         int goal,
         int method,
@@ -268,6 +330,7 @@ public final class RouteSearch {
       this.width = width;
       this.height = height;
       this.costs = costs;
+      this.lookup = lookup;
       this.start = start;
       this.goal = goal;
       this.goalCol = goal % width;
@@ -326,6 +389,10 @@ public final class RouteSearch {
         }
         int target = nextRow * width + nextCol;
         int cost = costs[target];
+        if (cost == UNPRICED && lookup != null) {
+          cost = lookup.cost(nextCol, nextRow);
+          costs[target] = cost;
+        }
         if (cost == -1) {
           continue;
         }
