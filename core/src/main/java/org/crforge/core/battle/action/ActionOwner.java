@@ -598,9 +598,9 @@ public interface ActionOwner {
   }
 
   /**
-   * Whether a Clone's perform may clone the owner, as it tests it: no unit a Clone passes by, no
-   * clone, a living one, riding nothing. A refusal is told to the battle's observers; a clone the
-   * battle does not model is refused outright.
+   * Whether a Clone's perform may clone the owner, as it tests it: no unit a Clone passes by, a
+   * living one, riding nothing. A refusal is told to the battle's observers; a clone the battle
+   * does not model, the clone of a clone among them, is refused outright.
    *
    * @param instigator what caused the clone
    */
