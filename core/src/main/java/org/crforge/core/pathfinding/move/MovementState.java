@@ -181,4 +181,14 @@ public final class MovementState {
     pushStuck = 0;
     pushUnclamped = 0;
   }
+
+  /**
+   * Stops the pushback in flight: its in-flight bit and its attack bit both cleared, as leaving a
+   * pulled state, entering either pathfinding state and a knock on a unit switching lanes do. The
+   * flight's budget and target are left as they are, as the standard game leaves them.
+   */
+  public void stopPushback() {
+    pushbackInFlight = 0;
+    attackPushback = 0;
+  }
 }

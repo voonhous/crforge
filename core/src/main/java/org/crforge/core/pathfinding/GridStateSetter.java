@@ -479,8 +479,7 @@ public final class GridStateSetter implements StateSetter {
       movement.setExplicitX(-1);
       movement.setExplicitY(-1);
       resetCharge();
-      movement.setPushbackInFlight(0);
-      movement.setAttackPushback(0);
+      movement.stopPushback();
       following.dropReferenceOutOfRange();
     }
     if (newState == GridEntityState.CLONE_SETUP) {
@@ -638,10 +637,15 @@ public final class GridStateSetter implements StateSetter {
       case GridEntityState.ABILITY_FOLLOW_UP -> enterFollowUp();
       // The entity's own entry hook: a unit that goes underground or pathfinds in the battle drops
       // the damage pending on it, whose duration it keeps, and the projectiles aimed at it lose it.
+      // Then, with its movement component on, its pushback in flight is stopped: a unit pushed as
+      // its ability switches lanes routes across from where the push has left it.
       case GridEntityState.SPAWN_PATHFIND, GridEntityState.INGAME_PATHFIND -> {
         owner.setPendingDamageAmount(0);
         if (pathfindEntry != null) {
           pathfindEntry.run();
+        }
+        if (movement != null && owner.isMovementActive()) {
+          movement.stopPushback();
         }
       }
       case GridEntityState.DEPLOYING -> {

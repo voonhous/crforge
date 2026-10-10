@@ -2467,7 +2467,9 @@ public class CharacterEntity extends WorldEntity {
    * once the run has left. A unit knocked while it casts its ability or holds its follow-up state
    * carries on with it: the postponing reaches only the gate, which a cast already begun does not
    * ask again, and the knock neither reads nor changes the state, so the cast's countdowns, its
-   * activation and the follow-up go on in the air as on the ground.
+   * activation and the follow-up go on in the air as on the ground. A lane switch that activation
+   * makes ends the knock on its next update; a knock started on a unit already switching lanes is
+   * refused.
    */
   @Override
   public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
