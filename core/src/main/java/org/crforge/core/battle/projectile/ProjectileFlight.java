@@ -88,8 +88,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " of its own measured within the Monk's radius widened by it, and refused there, by"
             + " tv_replay_010; a spell passing outside it by the same run. The pass over a body's"
             + " cells beside a deflecting area effect the index does not list, by"
-            + " random_battle16_s0048. Supplied, not settled: the projectile's own radius is"
-            + " zero, and the row's target limit, which is not carried, is none. The on-impact"
+            + " random_battle16_s0048. The pass over a pingpong projectile's body on its sweep"
+            + " turning it around, after which it flies on its speed to its aim and lands there"
+            + " without coming back, by BattlePingpongDeflectTest. Supplied, not settled: the"
+            + " projectile's own radius is zero, and the row's target limit, which is not carried, is none. The on-impact"
             + " area effect at the impact point, after the spawned characters and before the"
             + " spawned projectiles, by card_Heal and spell_heal_into_push. The first step's"
             + " collision check along the segment from the owner to the projectile, by the hero"
@@ -184,9 +186,9 @@ final class ProjectileFlight {
             p.name() + " flies at the dashing " + target.name() + ", not modelled");
       }
     }
-    if (data.pingpongVisualTimeMs() >= 1) {
+    if (data.pingpongVisualTimeMs() >= 1 && p.getDeflections() == 0) {
       // A pingpong projectile sweeps on its time, not its speed, and arrives on the step after
-      // its time is up.
+      // its time is up. Once deflected it flies on its speed like any other.
       if (p.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
         arrive(p, world);
       } else {

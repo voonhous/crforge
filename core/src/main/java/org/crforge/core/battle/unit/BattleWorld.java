@@ -3884,14 +3884,14 @@ public class BattleWorld implements HolderPasses {
    * of its body radius, widened by the extra, by its body's half height - or its circle without one
    * - buildings tested as squares. Unless the projectile never deflects, or is measured only at its
    * target's point and has not been deflected yet, the deflecting area effects the index lists come
-   * first: one of the other team would turn it around, and then nothing is hit. Otherwise one fresh
-   * hit id for the whole pass, and the travelling hit on each entity found, in the index's order,
-   * until a hit finishes a projectile that stops at collisions; an area effect the index lists
-   * takes no hit, having no hit points.
+   * first, in the index's order: the first that deflects it turns it around, and then nothing is
+   * hit; one that answers no - it has arrived, or is on the area effect's team - lets the pass go
+   * on. Otherwise one fresh hit id for the whole pass, and the travelling hit on each entity found,
+   * in the index's order, until a hit finishes a projectile that stops at collisions; an area
+   * effect the index lists takes no hit, having no hit points.
    *
-   * <p>Refused rather than guessed: a deflection here, which would relaunch a projectile that flies
-   * to a point at its source, and a pass without a body beside a deflecting area effect, which
-   * would run the deflection pass instead.
+   * <p>Refused rather than guessed: a pass without a body beside a deflecting area effect, which
+   * would run the deflection pass instead, and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
    * @param x where the pass is centred, along the width
@@ -3922,17 +3922,10 @@ public class BattleWorld implements HolderPasses {
     if (deflectable) {
       for (AreaEffectEntity deflector : listedDeflectors(x, y, radius, halfHeight)) {
         // The deflect handler answers no for a projectile that has arrived or is on the area
-        // effect's own team, and does nothing else then.
-        if (!projectile.isReleased() && (deflector.side() & 1) != (projectile.side() & 1)) {
-          throw new UnsupportedOperationException(
-              projectile.name()
-                  + " ("
-                  + data.name()
-                  + ") passes cells within "
-                  + deflector.name()
-                  + " ("
-                  + deflector.getData().name()
-                  + "), which would deflect it, not modelled");
+        // effect's own team, and does nothing else then. One it turns around hits nothing here.
+        if (deflect(deflector, projectile)) {
+          index.release(found);
+          return;
         }
       }
     }
@@ -4127,23 +4120,40 @@ public class BattleWorld implements HolderPasses {
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a deflect radius or an action on its deflector, a body; one
-   * that hops, flies to a point, homes for a time, waits a random delay, sweeps, hooks or stops at
+   * that hops, flies to a point, homes for a time, waits a random delay, hooks or stops at
    * collisions; one that spawns a projectile, belongs to a chain or a volley's group. A spell such
    * as the Fireball, whose deflection behaviour sends it at the enemy nearest the area effect
    * without a target, is among them.
+   *
+   * <p>A pingpong projectile on its sweep, not deflected before and carrying no run, is modelled,
+   * its round body and its flight to a point with it, as the Executioner's axe is: the pass over
+   * its body's cells turns it around on its way. Refused: one deflected again, one deflected at its
+   * return and one an action runs on (the evolved axe's controller reads its start).
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
+    boolean pingpong = data.pingpongVisualTimeMs() >= 1;
+    if (pingpong
+        && (projectile.getDeflections() != 0
+            || projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()
+            || projectile.carriesRuns())) {
+      throw new UnsupportedOperationException(
+          projectile.name()
+              + " ("
+              + data.name()
+              + ") is a pingpong projectile deflected again, at its return or with a run on it, by "
+              + deflector.name()
+              + ", not modelled");
+    }
     if (data.deflectBehaviour() != 0
         || data.deflectRadius() != 0
         || data.actionOnDeflector() != null
-        || data.projectileRadius() != 0
+        || (data.projectileRadius() != 0 && !pingpong)
         || data.projectileRadiusY() != 0
         || data.chainedHitRadius() >= 1
-        || data.homingLike()
+        || (data.homingLike() && !pingpong)
         || data.homingTimeMs() >= 1
         || data.randomDelayMs() >= 1
-        || data.pingpongVisualTimeMs() >= 1
         || data.dragBackSpeed() >= 1
         || data.checkCollisions()
         || data.spawnProjectile() != null
@@ -5472,7 +5482,8 @@ public class BattleWorld implements HolderPasses {
    * Deals a typed hit an area effect queued: the type's pipeline, in which the area effect, which
    * carries no buffs, leaves the source's multiplier out; a damage id when the type takes one; the
    * typed hit's entry, which no source counts and whose shield break names the area effect as its
-   * cause; the death the area effect caused; and the type's action on the target, the area effect
+   * cause; the reflect of a reflecting target, the area effect its attacker, which strikes nothing
+   * back; the death the area effect caused; and the type's action on the target, the area effect
    * its cause. A type that scales by the source's level, whose level an area effect source would
    * give, and one with an action on the source are refused.
    */
@@ -5492,7 +5503,10 @@ public class BattleWorld implements HolderPasses {
     int amount =
         type.pipeline(hit.amount(), noDamage, false, null, 0, target.getBuffs()::damageReduction);
     int damageId = type.acquireDamageId() ? nextHitId() : 0;
+    int before = hitPointsOf(target);
     DamageResult result = target.takeTypedHit(null, source, amount, damageId, 0, 0);
+    // The area effect is the hit's attacker: a reflecting target's reflect strikes nothing back.
+    reflect(target, source, before, result, 0, 0);
     if (result.died()) {
       target.die(source);
     }
@@ -5513,7 +5527,8 @@ public class BattleWorld implements HolderPasses {
    * damage, then lowered by the target's protection and floored at 0. An amount of 0 is dealt as
    * nothing at all; any other, with no damage id, through the typed hit's entry, which lowers it by
    * the target's protection once more and floors it at 1, which no source counts and whose shield
-   * break names the area effect as its cause, and the death the area effect caused.
+   * break names the area effect as its cause; the reflect of a reflecting target, the area effect
+   * its attacker, which strikes nothing back; and the death the area effect caused.
    */
   private void drainAreaDamage(TypedHit hit) {
     WorldEntity target = hit.target();
@@ -5532,8 +5547,11 @@ public class BattleWorld implements HolderPasses {
     if (amount == 0) {
       return;
     }
+    int before = hitPointsOf(target);
     DamageResult result =
         target.takeTypedHit(null, source, amount, 0, hit.directionX(), hit.directionY());
+    // The area effect is the hit's attacker: a reflecting target's reflect strikes nothing back.
+    reflect(target, source, before, result, hit.directionX(), hit.directionY());
     if (result.died()) {
       target.die(source);
     }

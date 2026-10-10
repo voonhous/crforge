@@ -2783,6 +2783,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
+   * Lets the entity's targeting go on after a pingpong projectile it launched was deflected for the
+   * first time: the hold the launch set is cleared, whether the targeting component is on or off,
+   * so the visit passes its reference check again once the resume delay has run.
+   *
+   * @param projectile the projectile turned around
+   */
+  public void pingpongDeflected(ProjectileEntity projectile) {
+    held = null;
+    targeting.setVisitSuspended(false);
+  }
+
+  /**
    * Stores an attack sequence index, as an index-setting action does: only below the length of the
    * order, a longer one dropped and the old one kept, and, unless the action asks otherwise, only
    * while the targeting component is on.
@@ -2905,6 +2917,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void queueTypedHit(ActionOwner source, int amount, DamageType type) {
+    // The hit's attacker is its source. A reflecting entity strikes back at a character, building
+    // or tower (refused as the hit is dealt) and at a projectile's root; nothing for an area effect
+    // or for no source. A source of another kind is refused here.
+    if (source != null
+        && !(source instanceof WorldEntity)
+        && !(source instanceof AreaEffectEntity)) {
+      refuseReflect("a typed hit");
+    }
     world.queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
   }
 
@@ -2983,7 +3003,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int directionX,
       int directionY) {
     WorldEntity source = dealer;
-    refuseReflect("a typed hit");
+    // A typed hit's attacker is its dealer. One from an area effect, or from nothing, strikes
+    // nothing back (the drain runs the reflect of an area effect's hit with the area effect as its
+    // attacker); one a character, building or tower deals is refused.
+    if (dealer != null) {
+      refuseReflect("a typed hit");
+    }
     int shieldBefore = hitPoints.getShield();
     DamageResult result =
         DamageApplication.typedHit(

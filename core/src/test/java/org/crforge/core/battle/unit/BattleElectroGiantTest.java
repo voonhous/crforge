@@ -11,10 +11,10 @@ import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -36,6 +36,9 @@ class BattleElectroGiantTest {
   private static final int X = 3500;
 
   private static final int Y = 11000;
+
+  /** A point on the top side's left, just past the river, which a bottom-side play can reach. */
+  private static final int TOP_Y = 17500;
 
   /** The Electro Giant's row, whose reflect columns the expected values read. */
   private static final GameRow GIANT = Shipped.unitRow("ElectroGiant");
@@ -172,20 +175,82 @@ class BattleElectroGiantTest {
   }
 
   @Test
-  @DisplayName("the configured Zap, of the filter form, is not struck back")
-  @Disabled(
-      "the filter-form Zap's damage is a typed hit, whose reflect on the Electro Giant the battle"
-          + " refuses; what the game does with it is not traced")
-  void aFilterFormZapIsStruckBack() {
+  @DisplayName(
+      "the configured Zap, of the filter form, whose damage is a typed hit with the area effect as"
+          + " its attacker, is not struck back: nothing in reach takes the buff or the damage")
+  void aFilterFormZapIsNotStruckBack() {
     Scene scene = new Scene();
+    // A unit of the Zap's side well inside the reflect's reach, which a reflect would strike if
+    // the hit named it.
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    knight.setActive(CharacterEntity.TARGETING_SLOT, false);
     scene.step(25);
+    int giantBefore = scene.giant.getHitPoints().getHitPoints();
     scene.match.placeAreaEffect(scene.tick, "Zap", LEVEL, 1, X, Y, "Z");
     scene.step(1);
 
+    // The Zap's typed hit landed on the Giant and reached its reflect.
+    assertThat(scene.giant.getHitPoints().getHitPoints()).isLessThan(giantBefore);
     assertThat(scene.reflections).hasSize(1);
     Reflection zap = scene.reflections.get(0);
     assertThat(zap.attacker()).isInstanceOf(AreaEffectEntity.class);
+    assertThat(zap.source()).isNull();
+    assertThat(zap.struck()).isNull();
     assertThat(zap.buff()).isNull();
+    assertThat(zap.damage()).isZero();
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(knight.getHitPoints().getMaximum());
+    assertThat(knight.getBuffs().carries(BUFF)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "an Electro Wizard's deploy zap, a typed hit from its area effect, is not struck back at the"
+          + " Electro Wizard standing in reach")
+  void anElectroWizardsZapIsNotStruckBack() {
+    Scene scene = new Scene();
+    // A second Electro Giant, for the top side just past the river, which a bottom-side play can
+    // reach: the Electro Wizard lands inside its reflect's reach and its deploy zap on it.
+    CharacterEntity top = scene.still(0, 1, "ElectroGiant", X, TOP_Y, "top");
+    scene.step(25);
+    int before = top.getHitPoints().getHitPoints();
+    scene.match.play(
+        scene.tick, GameData.card("ElectroWizard"), LEVEL, 0, X, TOP_Y - 2500, "wizard");
+    scene.step(1);
+
+    // The zap's typed hit landed on the Giant and reached its reflect, which struck nothing back.
+    assertThat(top.getHitPoints().getHitPoints()).isLessThan(before);
+    List<Reflection> onTop = scene.reflections.stream().filter(r -> r.target() == top).toList();
+    assertThat(onTop).hasSize(1);
+    assertThat(onTop.get(0).attacker()).isInstanceOf(AreaEffectEntity.class);
+    assertThat(onTop.get(0).source()).isNull();
+    assertThat(onTop.get(0).buff()).isNull();
+    CharacterEntity wizard = scene.match.getPlays().get(0).units().get(0);
+    assertThat(wizard.getHitPoints().getHitPoints()).isEqualTo(wizard.getHitPoints().getMaximum());
+    assertThat(wizard.getBuffs().carries(BUFF)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a typed hit a character deals to a reflecting unit, whose reflect no reference reaches, is"
+          + " refused")
+  void aTypedHitFromACharacterIsRefused() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    scene.step(25);
+    BattleWorld world = scene.match.getWorld();
+    // The damage type the Electro Wizard's deploy zap deals, dealt here with a character source.
+    String typeName =
+        Shipped.text(Shipped.row("area_effect_objects", "ElectroWizardZap"), "Damage");
+    DamageType type = world.getActions().damageType(typeName, world.binding(knight));
+
+    // The typed hit is queued, and refused as the next step's damage drain deals it.
+    assertThatThrownBy(
+            () -> {
+              world.queueTypedHit(knight, scene.giant, type, 100);
+              scene.step(1);
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("reflects and takes a typed hit");
   }
 
   @Test
