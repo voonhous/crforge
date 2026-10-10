@@ -677,6 +677,13 @@ public class BattleWorld implements HolderPasses {
   private static final String PROJECTILE_DAMAGE_BUG = "V16_PROJECTILE_DAMAGE_BUG";
 
   /**
+   * The global for how near its owner an enemy deflecting area effect may be for a spell-like
+   * projectile deflected before to pass it untouched.
+   */
+  private static final String DOUBLE_DEFLECT_SPELL_MIN_DISTANCE =
+      "DOUBLEDEFLECT_SPELL_MIN_DISTANCE";
+
+  /**
    * The largest damage reduction, in percent, a carrier's buffs may add up to either way: the
    * global PROTECTION_CAP_PERCENTAGE.
    */
@@ -4160,10 +4167,15 @@ public class BattleWorld implements HolderPasses {
    * area effect of the other side may turn around again. The runs on it, as the evolved axe's
    * controller, are left as they are: the deflection asks them only for the damage of its hit on
    * the deflector's parent. Refused: one not deflected before that is deflected at its return.
+   *
+   * <p>A spell-like projectile is modelled too: one whose only deflection behaviour is the spells'
+   * tower share, with a deflect radius of its own and no body, as the Fireball, the Rocket, the
+   * Snowball and the evolved Cannon's bombs are (see {@link #deflect}).
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
+    boolean spellLike = spellLike(data);
     if (pingpong
         && projectile.getDeflections() == 0
         && projectile.getPingpongTimeMs() >= data.pingpongVisualTimeMs()) {
@@ -4175,8 +4187,8 @@ public class BattleWorld implements HolderPasses {
               + deflector.name()
               + ", not modelled");
     }
-    if (data.deflectBehaviour() != 0
-        || data.deflectRadius() != 0
+    if ((data.deflectBehaviour() != 0 && !spellLike)
+        || (data.deflectRadius() != 0 && !spellLike)
         || data.actionOnDeflector() != null
         || (data.projectileRadius() != 0 && !pingpong)
         || data.projectileRadiusY() != 0
@@ -4213,10 +4225,22 @@ public class BattleWorld implements HolderPasses {
    * projectile is sent back at its root owner, for the parent's side, so the drain deals the hit,
    * and the runs hear of it, after the turn-around.
    *
+   * <p>A spell-like projectile (see {@link #spellLike}) goes another way. Once deflected, one whose
+   * owner, a character, stands within DOUBLEDEFLECT_SPELL_MIN_DISTANCE of the area effect is not
+   * deflected at all: it passes on untouched. One without a target - a cast spell - is sent at a
+   * point instead of its root owner: the position of the crown tower of the other team than the
+   * area effect's nearest the area effect (see {@link #nearestEnemyCrownTower}), with no target;
+   * with no such tower it is sent back at its root owner after all. A bomb a barrage drops onto its
+   * area effect has that area effect as its root and its target while the area effect is in the
+   * battle: it is sent back at it, at its point, which it keeps as what it was dropped onto. The
+   * parent takes the projectile's damage either way, before the redirect.
+   *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
-   * a king tower fired, which searches for the nearest enemy instead when it has no target, and one
-   * carrying copies that change its damage. A deflection past the most a projectile takes
+   * a king tower fired that is not spell-like, which searches for the nearest enemy instead when it
+   * has no target, and one carrying copies that change its damage; a spell-like projectile the
+   * search would send at a king tower, which no recording holds; a projectile an area effect
+   * launched that was not dropped onto it. A deflection past the most a projectile takes
    * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
@@ -4226,12 +4250,28 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     refuseDeflection(deflector, projectile);
+    boolean spellLike = spellLike(projectile.getData());
+    WorldEntity source = projectile.getRoot();
+    // A bomb dropped onto its area effect has that area effect as its root.
+    AreaEffectEntity areaSource =
+        source == null && spellLike && projectile.getAreaLauncher() != null
+            ? projectile.getAreaLauncher()
+            : null;
+    if (areaSource != null && projectile.getAreaTarget() != areaSource) {
+      throw new UnsupportedOperationException(
+          deflector.name()
+              + " deflects "
+              + projectile.name()
+              + ", launched by an area effect it was not dropped onto, which is not modelled");
+    }
+    if (spellLike && (source != null || areaSource != null) && nearOwner(deflector, projectile)) {
+      return false;
+    }
     if (!(deflector.getFollow() instanceof WorldEntity parent)) {
       throw new UnsupportedOperationException(
           deflector.name() + " deflects without an object it follows, which is not modelled");
     }
-    WorldEntity source = projectile.getRoot();
-    if (source == null || source.getData().king()) {
+    if ((source == null && areaSource == null) || (!spellLike && source.getData().king())) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
@@ -4241,6 +4281,21 @@ public class BattleWorld implements HolderPasses {
     if (projectile.carriesListeners()) {
       throw new UnsupportedOperationException(
           projectile.name() + " is deflected carrying copies that change its damage, not modelled");
+    }
+    // A spell-like projectile without a target is sent at the enemy crown tower nearest the area
+    // effect; one with a target, as a bomb on its area effect, goes back at its root.
+    WorldEntity tower = null;
+    if (spellLike && projectile.getTarget() == null && projectile.getAreaTarget() == null) {
+      tower = nearestEnemyCrownTower(deflector, projectile);
+      if (tower != null && tower.getData().king()) {
+        throw new UnsupportedOperationException(
+            deflector.name()
+                + " sends "
+                + projectile.name()
+                + " at the king tower "
+                + tower.name()
+                + ", which is not modelled");
+      }
     }
     // The parent takes the projectile's own damage, through its damage reduction, unless the
     // projectile has hit it already: a pingpong projectile on its way back after hitting it.
@@ -4262,16 +4317,91 @@ public class BattleWorld implements HolderPasses {
       }
       queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
     }
-    projectile.deflect(parent, source);
+    WorldEntity sentAt = null;
+    if (tower != null) {
+      projectile.deflectAt(parent, tower.getView().getX(), tower.getView().getY());
+    } else if (source == null) {
+      projectile.deflectAt(parent, areaSource.getX(), areaSource.getY());
+    } else {
+      projectile.deflect(parent, source);
+      sentAt = source;
+    }
     // A deflection past the most a projectile takes still turns it around, and then ends its
     // flight, as a release does.
     if (projectile.getDeflections() > globalNumber("MAX_DEFLECTION_TIMES")) {
       projectile.finishOverDeflected();
     }
     for (WorldObserver observer : observers) {
-      observer.projectileDeflected(tick, deflector, projectile, parent, source);
+      observer.projectileDeflected(tick, deflector, projectile, parent, sentAt);
     }
     return true;
+  }
+
+  /**
+   * Whether a projectile is spell-like as a deflection reads it: its only deflection behaviour is
+   * the spells' tower share, and it has no body, so it is measured by its deflect radius.
+   */
+  private static boolean spellLike(ProjectileData data) {
+    return data.deflectBehaviour() == ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL
+        && data.projectileRadius() == 0
+        && data.projectileRadiusY() == 0;
+  }
+
+  /**
+   * The gate on a spell-like projectile deflected before: its owner - the parent of the area effect
+   * that turned it - is a character standing within DOUBLEDEFLECT_SPELL_MIN_DISTANCE of this area
+   * effect, by the guarded sum of squares against the distance squared.
+   */
+  private boolean nearOwner(AreaEffectEntity deflector, ProjectileEntity projectile) {
+    WorldEntity owner = projectile.getOwner();
+    if (projectile.getDeflections() < 1
+        || owner == null
+        || owner.kind() != BattleEntity.KIND_CHARACTER) {
+      return false;
+    }
+    int least = globalNumber(DOUBLE_DEFLECT_SPELL_MIN_DISTANCE);
+    int squared =
+        FixedMath.guardedSumOfSquares(
+            owner.getView().getX() - deflector.getX(), owner.getView().getY() - deflector.getY());
+    return squared < least * least;
+  }
+
+  /**
+   * The crown tower a deflected spell-like projectile is sent at: of the live list, in its order,
+   * every princess-like tower (a row that is a summoner tower) and king tower (a summoner) of the
+   * other team than the area effect's that the projectile has not hit and that the shared validator
+   * lets it reach, its own team not asked; the nearest to the area effect by the guarded sum of
+   * squares, the first on a tie. None when there is none.
+   */
+  private WorldEntity nearestEnemyCrownTower(
+      AreaEffectEntity deflector, ProjectileEntity projectile) {
+    WorldEntity best = null;
+    int bestSquared = FixedMath.INT_MAX;
+    for (BattleEntity entity : holder.entities()) {
+      if (!(entity instanceof WorldEntity candidate)
+          || !(candidate.getData().king() || candidate.getData().summonerTower())
+          || (candidate.side() & 1) == (deflector.side() & 1)
+          || projectile.getHitIds().contains(candidate.getId())
+          || !ReferenceValidator.sharedValidate(
+              projectile.areaOwner(),
+              candidate.getTargetView(),
+              true,
+              false,
+              false,
+              true,
+              validatorQueries)) {
+        continue;
+      }
+      int squared =
+          FixedMath.guardedSumOfSquares(
+              deflector.getX() - candidate.getView().getX(),
+              deflector.getY() - candidate.getView().getY());
+      if (squared < bestSquared) {
+        best = candidate;
+        bestSquared = squared;
+      }
+    }
+    return best;
   }
 
   /**
