@@ -1235,7 +1235,8 @@ public interface WorldObserver {
       int tick, WorldEntity unit, String action, SpawnHost cause, boolean inPendingPass) {}
 
   /**
-   * A buff instance was removed: its time ran out, or the not-attacking section took its row off.
+   * A buff instance was removed: its time ran out, or the not-attacking section took its row off,
+   * or the end of a Kamikaze hit deleted it for its death spawn.
    */
   default void buffRemoved(int tick, WorldEntity target, BuffInstance buff) {}
 
