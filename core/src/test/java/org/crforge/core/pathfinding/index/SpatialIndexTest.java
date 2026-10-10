@@ -1,6 +1,7 @@
 package org.crforge.core.pathfinding.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -304,5 +305,86 @@ class SpatialIndexTest {
     List<GridEntity> none = index.listQuery(false);
     assertThat(none).isEmpty();
     index.release(none);
+  }
+
+  /** An entity standing at the centre of one bucket, small enough to be in that bucket alone. */
+  private static GridEntity atBucket(int id, int cx, int cy) {
+    GridEntity e = new GridEntity();
+    e.setName("at_" + cx + "_" + cy);
+    e.setId(id);
+    e.setSide(0);
+    e.setX(cx * SpatialIndex.BUCKET_UNITS + SpatialIndex.BUCKET_UNITS / 2);
+    e.setY(cy * SpatialIndex.BUCKET_UNITS + SpatialIndex.BUCKET_UNITS / 2);
+    e.setCollisionRadius(1);
+    return e;
+  }
+
+  @Test
+  @DisplayName(
+      "a query visits the buckets that hold an entity column by column and row by row, the edge"
+          + " rows and columns included, whatever the order the entities were put in")
+  void aQueryVisitsTheFilledBucketsInOrderToTheEdges() {
+    GridEntity lastRowFirstColumn = atBucket(11, 0, 31);
+    GridEntity middleRowFirstColumn = atBucket(12, 0, 5);
+    GridEntity firstRowFirstColumn = atBucket(13, 0, 0);
+    GridEntity lastRowLastColumn = atBucket(14, 17, 31);
+    GridEntity firstRowLastColumn = atBucket(15, 17, 0);
+    GridEntity middle = atBucket(16, 9, 16);
+    index.rebuild(
+        List.of(
+            lastRowLastColumn,
+            middle,
+            lastRowFirstColumn,
+            firstRowLastColumn,
+            middleRowFirstColumn,
+            firstRowFirstColumn));
+
+    // A circle over the whole arena and past its edges on every side.
+    List<GridEntity> all =
+        index.query(new SpatialQuery(9000, 16_000, 40_000, 0, false, false, 0, -1));
+    assertThat(all)
+        .containsExactly(
+            firstRowFirstColumn,
+            middleRowFirstColumn,
+            lastRowFirstColumn,
+            middle,
+            firstRowLastColumn,
+            lastRowLastColumn);
+    index.release(all);
+    List<GridEntity> centred = index.centreQuery(9000, 16_000, 40_000, e -> true);
+    assertThat(centred)
+        .containsExactlyElementsOf(
+            List.of(
+                firstRowFirstColumn,
+                middleRowFirstColumn,
+                lastRowFirstColumn,
+                middle,
+                firstRowLastColumn,
+                lastRowLastColumn));
+    index.release(centred);
+
+    // A box reaching off the arena past the first column and the first row finds only the corner.
+    assertThat(index.boxQuery(0, 0, 1500, 1500, e -> true)).containsExactly(firstRowFirstColumn);
+    // Rows 5 to 31 of the first column, the range cut at the arena's last row.
+    List<GridEntity> column =
+        index.query(new SpatialQuery(512, 20_000, 14_900, 0, false, false, 0, -1));
+    assertThat(column).startsWith(middleRowFirstColumn, lastRowFirstColumn);
+    index.release(column);
+
+    // The next tick holds only the middle entity: the buckets the others filled are empty again.
+    index.rebuild(List.of(middle));
+    List<GridEntity> after =
+        index.query(new SpatialQuery(9000, 16_000, 40_000, 0, false, false, 0, -1));
+    assertThat(after).containsExactly(middle);
+    index.release(after);
+  }
+
+  @Test
+  @DisplayName("an arena of more than 64 bucket rows is refused")
+  void moreThanSixtyFourBucketRowsAreRefused() {
+    // 140 cells of 500 units make 69 buckets of 1024.
+    assertThatThrownBy(() -> new SpatialIndex(ARENA_CELLS_WIDE, 140))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("69 bucket rows");
   }
 }

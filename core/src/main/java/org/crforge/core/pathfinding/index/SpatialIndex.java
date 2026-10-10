@@ -73,6 +73,12 @@ public final class SpatialIndex {
 
   private int filledCount;
 
+  /**
+   * One word per bucket column: bit {@code cy} is set while bucket {@code (cx, cy)} holds an
+   * entity, so a query visits only the buckets that do, in the same ascending order.
+   */
+  private final long[] occupied;
+
   /** Number of result lists still available to a query. */
   private int freeResultLists = RESULT_LIST_POOL_SIZE;
 
@@ -86,8 +92,13 @@ public final class SpatialIndex {
     Dimensions dimensions = dimensions(cellsWide, cellsHigh);
     this.width = dimensions.wide();
     this.high = dimensions.high();
+    if (high > Long.SIZE) {
+      throw new IllegalArgumentException(
+          "an arena of " + high + " bucket rows; the index keeps at most " + Long.SIZE);
+    }
     this.buckets = newBuckets(width * high);
     this.filled = new int[width * high];
+    this.occupied = new long[width];
   }
 
   @SuppressWarnings("unchecked")
@@ -160,6 +171,7 @@ public final class SpatialIndex {
           ArrayList<GridEntity> bucket = buckets[entry];
           if (bucket.isEmpty()) {
             filled[filledCount++] = entry;
+            occupied[cx] |= 1L << cy;
           }
           bucket.add(entity);
         }
@@ -172,6 +184,7 @@ public final class SpatialIndex {
   public void clear() {
     for (int i = 0; i < filledCount; i++) {
       buckets[filled[i]].clear();
+      occupied[filled[i] % width] = 0;
     }
     filledCount = 0;
     populated = false;
@@ -210,14 +223,11 @@ public final class SpatialIndex {
     if (xLow > xHigh || yLow > yHigh) {
       return result;
     }
-    for (int cx = xLow; cx <= xHigh; cx++) {
-      if (cx < 0 || cx >= width) {
-        continue;
-      }
-      for (int cy = yLow; cy <= yHigh; cy++) {
-        if (cy < 0 || cy >= high) {
-          continue;
-        }
+    long rowRange = rowRange(yLow, yHigh);
+    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+      // The column's buckets in range that hold an entity, by ascending row.
+      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+        int cy = Long.numberOfTrailingZeros(rows);
         ArrayList<GridEntity> bucket = buckets[width * cy + cx];
         for (int i = 0, size = bucket.size(); i < size; i++) {
           GridEntity entity = bucket.get(i);
@@ -274,14 +284,11 @@ public final class SpatialIndex {
       return result;
     }
     Set<GridEntity> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-    for (int cx = xLow; cx <= xHigh; cx++) {
-      if (cx < 0 || cx >= this.width) {
-        continue;
-      }
-      for (int cy = yLow; cy <= yHigh; cy++) {
-        if (cy < 0 || cy >= high) {
-          continue;
-        }
+    long rowRange = rowRange(yLow, yHigh);
+    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, this.width - 1); cx <= lastCx; cx++) {
+      // The column's buckets in range that hold an entity, by ascending row.
+      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+        int cy = Long.numberOfTrailingZeros(rows);
         for (GridEntity entity : buckets[this.width * cy + cx]) {
           // Unlike the point queries, a rejected entity is marked too and never tested again.
           if (!seen.add(entity)) {
@@ -326,14 +333,11 @@ public final class SpatialIndex {
       return result;
     }
     int reach = radius * radius;
-    for (int cx = xLow; cx <= xHigh; cx++) {
-      if (cx < 0 || cx >= width) {
-        continue;
-      }
-      for (int cy = yLow; cy <= yHigh; cy++) {
-        if (cy < 0 || cy >= high) {
-          continue;
-        }
+    long rowRange = rowRange(yLow, yHigh);
+    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+      // The column's buckets in range that hold an entity, by ascending row.
+      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+        int cy = Long.numberOfTrailingZeros(rows);
         ArrayList<GridEntity> bucket = buckets[width * cy + cx];
         for (int i = 0, size = bucket.size(); i < size; i++) {
           GridEntity entity = bucket.get(i);
@@ -377,14 +381,11 @@ public final class SpatialIndex {
     if (yLow > yHigh) {
       return result;
     }
-    for (int cx = xLow; cx <= xHigh; cx++) {
-      if (cx < 0 || cx >= width) {
-        continue;
-      }
-      for (int cy = yLow; cy <= yHigh; cy++) {
-        if (cy < 0 || cy >= high) {
-          continue;
-        }
+    long rowRange = rowRange(yLow, yHigh);
+    for (int cx = Math.max(xLow, 0), lastCx = Math.min(xHigh, width - 1); cx <= lastCx; cx++) {
+      // The column's buckets in range that hold an entity, by ascending row.
+      for (long rows = occupied[cx] & rowRange; rows != 0; rows &= rows - 1) {
+        int cy = Long.numberOfTrailingZeros(rows);
         ArrayList<GridEntity> bucket = buckets[width * cy + cx];
         for (int i = 0, size = bucket.size(); i < size; i++) {
           GridEntity entity = bucket.get(i);
@@ -444,6 +445,19 @@ public final class SpatialIndex {
       return partitioned;
     }
     return result;
+  }
+
+  /**
+   * The bits of the bucket rows from {@code yLow} to {@code yHigh}, both included, cut to the
+   * arena's rows; none when nothing of the range is on the arena.
+   */
+  private long rowRange(int yLow, int yHigh) {
+    int low = Math.max(yLow, 0);
+    int highRow = Math.min(yHigh, high - 1);
+    if (low > highRow) {
+      return 0;
+    }
+    return (-1L >>> (Long.SIZE - 1 - (highRow - low))) << low;
   }
 
   /**
