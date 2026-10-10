@@ -420,9 +420,16 @@ public class BattleWorld implements HolderPasses {
   private record ActionKillDue(WorldEntity target, WorldEntity killer) implements QueuedHit {}
 
   /**
+   * A tiebreaker's clearing's kill of a character waiting for the drain, where it is dealt.
+   *
+   * @param target the character the clearing reached
+   */
+  private record ClearingKillDue(CharacterEntity target) implements QueuedHit {}
+
+  /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
    * share of a character's or a projectile's area, a projectile's hit on its one target, a circle's
-   * kill or a Kamikaze unit's kill.
+   * kill, a Kamikaze unit's kill, a kill action's kill or a tiebreaker's clearing's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
@@ -434,7 +441,8 @@ public class BattleWorld implements HolderPasses {
           ActionDamageDue,
           CircleKillDue,
           KamikazeKillDue,
-          ActionKillDue {}
+          ActionKillDue,
+          ClearingKillDue {}
 
   /**
    * A travelling hit of a projectile flying to a point waiting for the drain: dealt as {@link
@@ -1832,14 +1840,25 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Kills a character of either side that a tiebreaker's clearing reached: it is resumed first,
-   * then takes its whole hit points with no attacker, told to every observer as the clearing's kill
-   * rather than a hit.
+   * Kills a character of either side that a tiebreaker's clearing reached: it is resumed at once,
+   * and its kill, its whole hit points with no attacker, is queued for the damage drain, as a
+   * fallen king's circle's is. The character stays alive through the passes of the update the
+   * clearing runs and dies at that update's drain (see {@link #queuedHits}), so whatever reads it
+   * before - a tower aiming at it, its own movement, the place its death spawns are made at - finds
+   * it as it was.
    *
    * @param target the character
    */
   public void clearingKill(CharacterEntity target) {
     target.resume();
+    queuedHits.add(new ClearingKillDue(target));
+  }
+
+  /**
+   * The clearing's kill, dealt at the damage drain: the whole hit points with no attacker, told to
+   * every observer as the clearing's kill rather than a hit.
+   */
+  private void clearingKillNow(CharacterEntity target) {
     DamageResult result = target.takeKill();
     for (WorldObserver observer : observers) {
       observer.clearingKilled(tick, target);
@@ -5211,7 +5230,7 @@ public class BattleWorld implements HolderPasses {
    * the type's action on the source and its action on the target, and the observers are told. A
    * direct hit, a share of a character's or a projectile's area, or a projectile's hit on its one
    * target: the damage dealt, with its reflect, its observers, its death or the reference drop; a
-   * circle's or a Kamikaze unit's kill.
+   * circle's, a Kamikaze unit's, a kill action's or a tiebreaker's clearing's kill.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -5275,6 +5294,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof ActionKillDue kill) {
         killNow(kill.target(), kill.killer());
+        continue;
+      }
+      if (queued instanceof ClearingKillDue kill) {
+        clearingKillNow(kill.target());
         continue;
       }
       TypedHit hit = (TypedHit) queued;

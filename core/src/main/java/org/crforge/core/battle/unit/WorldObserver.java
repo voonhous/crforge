@@ -1301,7 +1301,8 @@ public interface WorldObserver {
   default void circleKilled(int tick, WorldEntity target, int radius) {}
 
   /**
-   * A tiebreaker's clearing killed a character.
+   * A tiebreaker's clearing's kill of a character landed, at the damage drain of the update the
+   * clearing ran.
    *
    * @param tick the battle tick
    * @param target the character

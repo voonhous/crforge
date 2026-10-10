@@ -74,13 +74,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * <p>A Ladder match allows no draws: when the time is up with equal crowns, the tiebreaker replaces
  * the step. Each of its steps adds 50 to its time, and from its first the battle refuses every
  * ordinary hit. Its first 30 steps clear the field - every projectile, area effect and character
- * without hit points is removed at once, every other unit and building is killed, the crown towers
- * left standing - and run the update, with its entity tick, only on a step whose clearing removed
- * or killed something; then the battle waits, running only the commands, every play refused, until
- * the step that begins at 3250 ms. From then each step drains every tower of both sides by one step
- * the lowest tower's hit points pick: 1 below 21, 10 below 200, 20 below 500, 40 below 1000, else
- * 50. When a tower reaches 0, or the two sides' lowest towers are equal, the holder is cleaned up,
- * and the next step ends the match by crowns: equal lowest towers end it a draw.
+ * without hit points is removed at once, every other unit and building is killed at the update's
+ * damage drain, the crown towers left standing - and run the update, with its entity tick, only on
+ * a step whose clearing removed or killed something; then the battle waits, running only the
+ * commands, every play refused, until the step that begins at 3250 ms. From then each step drains
+ * every tower of both sides by one step the lowest tower's hit points pick: 1 below 21, 10 below
+ * 200, 20 below 500, 40 below 1000, else 50. When a tower reaches 0, or the two sides' lowest
+ * towers are equal, the holder is cleaned up, and the next step ends the match by crowns: equal
+ * lowest towers end it a draw.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -99,7 +100,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " draw; by a battle recorded for it, with two volleys, a Fireball, a Poison and a"
             + " Bomb Tower's bomb listed as the tiebreaker begins: the clearing's removal at once"
             + " of a projectile, of an area effect and of a character without hit points, each"
-            + " leaving the object after it for the next step; by cg_elixir_collector_played and"
+            + " leaving the object after it for the next step; by a battle recorded for it, with"
+            + " towers attacking, a Barbarian Hut, a Balloon, a Witch's Skeletons and a walking"
+            + " Knight alive as the tiebreaker begins: the clearing's kill queued for the damage"
+            + " drain of the update it runs, the killed unit's step in that update, the towers'"
+            + " attacks on it and the place of its death spawns; by cg_elixir_collector_played and"
             + " card_ElixirGolem: the kings' elixir a collector and a death pay into; by"
             + " golden-gaps-v1/mirror_after_troop and"
             + " mirror_after_spell: the Mirror's item, its gates, its spend and its cycle, the"
@@ -449,10 +454,11 @@ public final class LadderMatch implements BattleMode {
    * The tiebreaker's clearing: one walk over the holder's live list in id order, from the first
    * object of the area-effect kind's band. A projectile is removed from the holder at once; an area
    * effect has its life ended and is removed at once; a character without hit points is removed at
-   * once; a crown tower is left standing; every other character is resumed and killed, with no
-   * attacker, and leaves at the next cleanup. A removal moves every object after it up one place
-   * while the walk still steps on, so the object right after a removed one is not reached in this
-   * step and waits for the next.
+   * once; a crown tower is left standing; every other character is resumed at once and its kill,
+   * with no attacker, queued for the damage drain of the update the clearing runs: it lives through
+   * that update's passes, dies at its drain and leaves at its cleanup. A removal moves every object
+   * after it up one place while the walk still steps on, so the object right after a removed one is
+   * not reached in this step and waits for the next.
    *
    * <p>A character of the neutral side, which the clearing only counts, and the stand-in owner of
    * actions, which stands for an object the battle does not have, are refused.
