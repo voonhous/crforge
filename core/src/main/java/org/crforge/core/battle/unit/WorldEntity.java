@@ -26,6 +26,7 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.GroundToAir;
+import org.crforge.core.battle.action.MusketeerSnipe;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.ResetTarget;
@@ -247,6 +248,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     this.targeting = new TargetingState();
     targeting.setOwner(view);
     targeting.setConfig(targetingConfig);
+    // The entity's running actions hear of every reference its setter stores.
+    targeting.setReferenceListener(this::referenceStored);
     // A row that loads before its first hit is born with its whole load still to run: the
     // countdown starts at LoadTime and only the targeting visits run it down, so a unit that has
     // just deployed winds up the full load before it can fire.
@@ -761,7 +764,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         return !hitListenerRuns().isEmpty()
             || berserking()
             || ghostEvoRunning()
-            || burstAttackRunning();
+            || burstAttackRunning()
+            || snipeRunning();
       }
 
       @Override
@@ -845,6 +849,29 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       }
     }
     return false;
+  }
+
+  /** Whether an evolved Musketeer's snipe is listed, which spends a round on every landed shot. */
+  private boolean snipeRunning() {
+    if (actionHolder == null || data.king()) {
+      return false;
+    }
+    for (ActionInstance instance : actionHolder.running()) {
+      if (instance instanceof MusketeerSnipe.Run) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Tells the entity's running actions of a reference its setter stored; nothing while it has no
+   * action holder, which no run is listed on.
+   */
+  private void referenceStored(TargetView reference) {
+    if (actionHolder != null) {
+      actionHolder.referenceStored(reference == null ? MusketeerSnipe.NONE : reference.id());
+    }
   }
 
   /** Whether a charge counter's run is listed, which spends a charge on every landed attack. */

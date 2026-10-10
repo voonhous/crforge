@@ -83,6 +83,14 @@ public abstract class ActionInstance {
   protected void objectLeft(int leftId) {}
 
   /**
+   * What the run does as its entity's reference setter stores a reference, after the store. By
+   * default nothing, as the base slot does; only a snipe answers it.
+   *
+   * @param referenceId the id of the reference stored, or -1 for none
+   */
+  protected void referenceStored(int referenceId) {}
+
+  /**
    * What the run does as its entity's spawner makes a character. By default nothing, as the base
    * slot does; only a run listening for destroyed objects answers it.
    *
