@@ -45,9 +45,62 @@ jfrconv --cpu "$J" conformance/build/profile/cpu.html
 jfrconv --alloc "$J" conformance/build/profile/alloc.html
 ```
 
-## Baseline (2026-10-10)
+## Baseline (2026-10-10, 2afbb93d)
 
-Source `battle_core` 71b09ba6 (the battle core as it was; the benchmark itself came after), data version 16.402.19 (450 of 451 cases run, 1 refused), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. The four-thread workload was run again on its own, as the machine was busy during its first run.
+The baseline to measure the next change against. Source `battle_core` 2afbb93d, data version 16.402.19 with the references at the commit `crforge-data.lock` names (459 of 459 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 2.3 to 4.1 during the run.
+
+| Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
+|----------|---------|---------|-----------|----------------------|--------------------|
+| `replays` | 1 | 74,079 +- 1,058 | 16.30 +- 0.34 | 80.4 MB | about 18 KB |
+| `allCases` | 1 | 123,433 +- 7,653 | 81.46 +- 8.86 | 18.1 MB | about 12 KB |
+| `allCasesFourThreads` | 4 | 494,770 +- 10,458 | 320.26 +- 6.24 | 17.8 MB | about 12 KB |
+
+Read as:
+
+- A real battle runs at about 74,000 steps a second on one thread, about 3,700 times the game's own 20 steps a second: a battle of about 4,550 steps in about 61 ms.
+- Four threads give 4.0 times one thread: linear.
+- The collector costs 48 ms over the 30 measured seconds of `replays` (0.16%).
+
+What the profile of the replays shows (async-profiler, as above, about 10,000 CPU samples inside the steps):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 34% | choosing targets (`TargetingVisit.reselect`, `SelectionChain`), most of it in `SpatialIndex.query` |
+| 26% | `SpatialIndex.query` (inside the above): mostly its own walk over the buckets (14%) and the look through its result for an entity already accepted (5%) |
+| 21% | preparing routes (`RoutePreparation`), 8% of it the route search |
+| 8% | following routes |
+
+Of the bytes allocated, 98% are allocated in the steps, and no one site holds more than 8% of them: small lists, their iterators, boxed integers, lambdas and streams across the step (`MovementChain.mark` 7.5%, `CharacterEntity`'s lambdas 5.2%, `SpatialIndex.query`'s result lists 4.5%, boxed integers in `ReferenceValidator.validate` 4.3%, `BuffComponent.visit`'s lists 4.3%).
+
+The flame graphs of that profile, cut to `Battle.step` (the benchmark's own frames left out, classes without their packages) and drawn root first: the width of a frame is its share of the step time or of the bytes allocated. The interactive pages come from the commands above.
+
+CPU:
+
+![CPU flame graph of Battle.step at 2afbb93d](assets/performance-2afbb93d-cpu.png)
+
+Allocated bytes:
+
+![Allocation flame graph of Battle.step at 2afbb93d](assets/performance-2afbb93d-alloc.png)
+
+## The first optimisations (#478, #479, #480)
+
+The three changes the first profile pointed to, each measured on its own and all three together, back to back against the source before them (81565a2e) on the same references (459 cases), single-thread workloads, load average 2.2 to 7.3:
+
+| Source | `replays` ticks/s | `allCases` ticks/s | Allocated per battle, `replays` | `allCases` |
+|--------|-------------------|--------------------|---------------------------------|------------|
+| before (81565a2e) | 60,360 +- 1,956 | 95,087 +- 6,428 | 181.2 MB | 40.5 MB |
+| #478: the routing overlay's two arrays rotated | 60,959 +- 2,095 | 93,659 +- 6,088 | 140.8 MB (-22%) | 26.3 MB (-35%) |
+| #479: spatial queries without a set or iterators | 72,538 +- 1,004 (+20%) | 120,746 +- 8,139 (+27%) | 158.7 MB (-12%) | 36.5 MB (-10%) |
+| #480: the route search's arrays kept | 59,814 +- 1,220 | 94,183 +- 6,045 | 144.1 MB (-20%) | 35.7 MB (-12%) |
+| all three (2afbb93d) | 72,699 +- 1,133 (+20%) | 124,019 +- 6,959 (+30%) | 79.7 MB (-56%) | 17.8 MB (-56%) |
+
+The speed came from the spatial queries; the other two cut the bytes allocated but not the time on one thread, where the collector was already cheap. Together they more than halved the bytes. On four threads the baseline above runs 494,770 steps a second against 370,143 in the first baseline below (+34%, on a slightly different set of references).
+
+## First baseline (2026-10-10, 71b09ba6)
+
+The baseline before the first optimisations, kept with its profile as the picture they started from.
+
+Source `battle_core` 71b09ba6 (the battle core as it was; the benchmark itself came after), data version 16.402.19 on an earlier set of its references (450 of 451 cases run, 1 refused, 23 replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. The four-thread workload was run again on its own, as the machine was busy during its first run.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -61,7 +114,7 @@ Read as:
 - Four threads give about 4.2 times one thread: linear within the error, so at four threads the threads do not yet hold each other back (9.2 GB allocated a second between them).
 - Each step allocates tens of kilobytes, about 2.3 GB a second on one thread. The collector itself costs little (106 ms of collection over the 30 measured seconds of `replays`, under 0.5%): the cost is in making and filling the objects.
 
-What the profile of the replays at this baseline shows (async-profiler, as above, about 9,600 CPU samples inside the steps):
+What the profile of the replays showed then (async-profiler, as above, about 9,600 CPU samples inside the steps):
 
 | Share of step time | Where |
 |--------------------|-------|
@@ -72,12 +125,12 @@ What the profile of the replays at this baseline shows (async-profiler, as above
 
 Of the bytes allocated, 99% are allocated in the steps (building the battle is under 1%): the routing overlay's fresh, zeroed array at the end of every step (`CellGrid.swap`, from `BattleWorld.postPass`: about 23%), the route search's arrays, new for every search (`RouteSearch$Run`, `CellCostField.costField`: about 22%), and `SpatialIndex.query`'s result lists and identity sets (about 15%).
 
-The flame graphs of that profile, cut to `Battle.step` (the benchmark's own frames left out, classes without their packages) and drawn root first: the width of a frame is its share of the step time or of the bytes allocated. The interactive pages come from the commands above.
+Its flame graphs, cut to `Battle.step` (the benchmark's own frames left out, classes without their packages) and drawn root first: the width of a frame is its share of the step time or of the bytes allocated. The interactive pages come from the commands above.
 
 CPU:
 
-![CPU flame graph of Battle.step at the baseline](assets/performance-baseline-cpu.png)
+![CPU flame graph of Battle.step at the baseline](assets/performance-71b09ba6-cpu.png)
 
 Allocated bytes:
 
-![Allocation flame graph of Battle.step at the baseline](assets/performance-baseline-alloc.png)
+![Allocation flame graph of Battle.step at the baseline](assets/performance-71b09ba6-alloc.png)
