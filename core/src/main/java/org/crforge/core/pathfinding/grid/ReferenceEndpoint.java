@@ -148,11 +148,18 @@ public final class ReferenceEndpoint {
         }
         int centreX = col * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
         int centreY = row * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
+        int distance =
+            (centreX - unitX) * (centreX - unitX) + (centreY - unitY) * (centreY - unitY);
+        // Once the best is of the preferred rank, a cell no nearer to the unit cannot beat it,
+        // whatever its distance to the target and its rank: its tests are skipped, a speed choice
+        // only, since they read the map and the target and change nothing. The acceptance test
+        // above is still asked of every cell, as it may be stateful.
+        if (bestRank == RANK_PLAIN && distance >= bestDistance) {
+          continue;
+        }
         if (targetDistanceSquared.distanceSquared(centreX, centreY) > range * range) {
           continue;
         }
-        int distance =
-            (centreX - unitX) * (centreX - unitX) + (centreY - unitY) * (centreY - unitY);
         int rank;
         if (useWaterRank) {
           if (waterBit.test(col, row) != 0) {

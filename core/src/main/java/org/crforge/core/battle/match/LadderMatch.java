@@ -217,6 +217,9 @@ public final class LadderMatch implements BattleMode {
   /** Whether the tiebreaker has decided the match, which the next step ends by crowns. */
   private boolean tiebreakDone;
 
+  /** Each side's king tower once {@link #king(int)} has found it. */
+  private final TowerEntity[] kings = new TowerEntity[2];
+
   /**
    * Sets a match up on a battle whose towers stand.
    *
@@ -737,10 +740,20 @@ public final class LadderMatch implements BattleMode {
     return 2 - Math.min(princessTowers, 2);
   }
 
-  /** A side's king, which is never removed from the holder. */
+  /**
+   * A side's king: the first king tower of that side in the holder's live list. A king tower is
+   * never removable and the tiebreaker's clearing leaves towers standing, so once found it stays
+   * listed, and a king tower listed later has a higher id and comes after it: it is looked up once
+   * and remembered, a speed choice only.
+   */
   private TowerEntity king(int side) {
+    TowerEntity king = kings[side];
+    if (king != null) {
+      return king;
+    }
     for (BattleEntity entity : world.getHolder().entities()) {
       if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
+        kings[side] = tower;
         return tower;
       }
     }

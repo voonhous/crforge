@@ -63,7 +63,37 @@ jfrconv --alloc "$J" conformance/build/profile/alloc.html
 
 ## Baseline (2026-10-11)
 
-The baseline to measure the next change against. Source `battle_core` 8c51ccfb with the slot marks of the spatial index and the route search's cells priced as it reaches them (the second optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (544 of 544 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 4.1 to 6.3 during the run, the four-thread workload's own threads included.
+The baseline to measure the next change against. Source `battle_core` 594d47d6 with the endpoint scan's tests skipped for a cell that cannot win and each side's king tower remembered (the third optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 3.2 to 4.6 during the run, the four-thread workload's own threads included.
+
+| Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
+|----------|---------|---------|-----------|----------------------|--------------------|
+| `replays` | 1 | 98,469 +- 4,963 | 21.86 +- 1.06 | 71.5 MB | about 16 KB |
+| `allCases` | 1 | 169,260 +- 4,739 | 119.33 +- 4.70 | 15.7 MB | about 11 KB |
+| `allCasesFourThreads` | 4 | 677,451 +- 6,836 | 469.51 +- 4.17 | 15.3 MB | about 11 KB |
+
+Read as:
+
+- A real battle runs at about 98,000 steps a second on one thread, about 4,900 times the game's own 20 steps a second: a battle of about 4,500 steps in about 46 ms.
+- Four threads give 4.0 times one thread.
+
+What the profile of the replays shows at this baseline (async-profiler, as above, about 10,000 CPU samples inside the steps, load average about 3.5):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 26% | choosing targets (`TargetingVisit.reselect`, `SelectionChain`) |
+| 16% | `SpatialIndex.query` (most of it inside the above, the rest in the push and avoidance passes): its own walk over the buckets 9% |
+| 19% | preparing routes (`RoutePreparation`): the route search 12%, the scan for the cell to walk to (`ReferenceEndpoint`) 6% |
+| 10% | following routes |
+| 10% | the world's pre-pass (`BattleWorld.prePass`): every entity's candidates registered 4%, the spatial index rebuilt 2%, the building footprints drawn 1.5% |
+| 7% | the commands, nearly all card plays: a play builds its card's unit rows again (1%) and finds each new unit's lane (1%) |
+| 2% | `LadderMatch.crowns`, a walk over every entity for the princess towers, several times a step |
+| 2% | the champion controller's list of champion views, built every step from a walk over every entity |
+
+The bytes allocated are spread as before, no site above 9%: `MovementChain.mark` 8%, `BuffComponent.visit` 8%, `CharacterEntity.stateQueries` 7%, `SpatialIndex.query` 7%, `BuffComponent.speedPercents` 7% (streams), boxed integers in `ReferenceValidator.validate` 4%.
+
+## Baseline at 287b0c7d (2026-10-11)
+
+The baseline after the second optimisations, kept with its profile. Source `battle_core` 8c51ccfb with the slot marks of the spatial index and the route search's cells priced as it reaches them (the second optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (544 of 544 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 4.1 to 6.3 during the run, the four-thread workload's own threads included.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -86,6 +116,19 @@ What the profile of the replays showed at 8c51ccfb, just before the second optim
 | 10% | following routes |
 
 The bytes allocated are spread as at 2afbb93d: no site above 8%.
+
+## The third optimisations (2026-10-11)
+
+Two smaller changes from the ranked list of the profile at 8c51ccfb, measured back to back against `battle_core` 594d47d6 (the baseline's code, 599 cases of 16.402.19, 25 of them replays): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 3.2 to 6.2 during the full runs, the four-thread workload's own threads included, and 1.5 to 2.8 during the replays alone.
+
+| Source | `replays` ticks/s | `replays` again | `allCases` ticks/s | `allCasesFourThreads` ticks/s | Allocated per battle, `replays` | `allCases` |
+|--------|-------------------|-----------------|--------------------|-------------------------------|---------------------------------|------------|
+| before (594d47d6) | 92,102 +- 1,049 | 93,504 +- 1,150 | 156,449 +- 5,440 | 615,151 +- 12,756 | 76.5 MB | 16.5 MB |
+| the endpoint scan's tests skipped for a cell that cannot win | 95,417 +- 1,799 (+3.6%) | 95,060 +- 1,189 (+1.7%) | 163,173 +- 9,357 (+4.3%) | 640,381 +- 7,874 (+4.1%) | 76.1 MB | 16.4 MB |
+| and each side's king tower remembered | 98,469 +- 4,963 (+6.9%) | 97,793 +- 3,579 (+4.6%) | 169,260 +- 4,739 (+8.2%) | 677,451 +- 6,836 (+10.1%) | 71.5 MB | 15.7 MB |
+
+- The endpoint scan's tests skipped for a cell that cannot win: once the best cell of the scan for the cell a unit walks to is of the preferred rank, a cell no nearer to the unit cannot beat it, so its distance to the target and its rank are not asked. The acceptance test is still asked of every cell.
+- Each side's king tower remembered: the Ladder match looked its kings up in the holder's live list several times a step (the crowns, whether a king is alive, the tiebreaker); a king tower never leaves the holder, so the first lookup is kept. It also saves each lookup's iterator: the replays allocated 76.1 MB a battle before it and 71.5 MB after, in the first round (80.7 and 73.2 MB in the second; the spread from run to run is about 4%).
 
 ## The second optimisations (2026-10-11)
 
