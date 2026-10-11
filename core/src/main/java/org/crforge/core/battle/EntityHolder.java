@@ -79,6 +79,10 @@ public class EntityHolder {
   /** The registered entities in ascending id. */
   private final List<BattleEntity> live = new ArrayList<>();
 
+  /** The live list's order: ascending id. */
+  private static final Comparator<BattleEntity> BY_ID =
+      Comparator.comparingInt(BattleEntity::getId);
+
   /** Entities handed over since the last cleanup, in the order they arrived. */
   private final List<BattleEntity> pendingAdditions = new ArrayList<>();
 
@@ -177,6 +181,19 @@ public class EntityHolder {
   /** The registered entities in ascending id. Entities still waiting for a cleanup are absent. */
   public List<BattleEntity> entities() {
     return Collections.unmodifiableList(live);
+  }
+
+  /**
+   * Whether an entity is in the live list, as {@link #entities()} would show it: found there by its
+   * id, which keeps the list sorted. One still waiting for a cleanup, or already removed, is not
+   * listed.
+   *
+   * @param entity the entity
+   * @return true when the live list holds it
+   */
+  public boolean isListed(BattleEntity entity) {
+    int index = Collections.binarySearch(live, entity, BY_ID);
+    return index >= 0 && live.get(index) == entity;
   }
 
   /**
@@ -303,8 +320,7 @@ public class EntityHolder {
    */
   public boolean removeAtOnce(BattleEntity entity) {
     checkState(!ticking, "an entity is not removed at once while a tick runs");
-    int index =
-        Collections.binarySearch(live, entity, Comparator.comparingInt(BattleEntity::getId));
+    int index = Collections.binarySearch(live, entity, BY_ID);
     if (index < 0 || live.get(index) != entity) {
       return false;
     }

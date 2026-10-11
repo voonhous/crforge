@@ -117,6 +117,17 @@ What the profile of the replays showed at 8c51ccfb, just before the second optim
 
 The bytes allocated are spread as at 2afbb93d: no site above 8%.
 
+## The fourth optimisations (2026-10-11)
+
+Two more from the ranked list of the profile at a606c90c, measured back to back against `battle_core` a606c90c (599 cases of 16.402.19, 25 of them replays): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 1.9 to 4.7 during the full runs, the four-thread workload's own threads included, and 2.4 to 9.2 during the replays alone (the machine was busier then).
+
+| Source | `replays` ticks/s | `replays` again | `allCases` ticks/s | `allCasesFourThreads` ticks/s | Allocated per battle, `replays` | `allCases` |
+|--------|-------------------|-----------------|--------------------|-------------------------------|---------------------------------|------------|
+| before (a606c90c) | 97,498 +- 4,776 | 102,320 +- 1,156 | 175,925 +- 3,787 | 676,067 +- 5,943 | 71.7 MB | 15.4 MB |
+| the crowns counted without walking every entity | 102,384 +- 1,343 (+5.0%) | 102,900 +- 1,302 (+0.6%) | 177,355 +- 4,957 (+0.8%) | 695,031 +- 7,976 (+2.8%) | 70.6 MB | 14.8 MB |
+
+- The crowns counted without walking every entity: the Ladder match remembers each side's princess towers from its first count and asks the holder whether each is still listed, a binary search by id, instead of walking the whole live list several times a step; the world remembers each side's king tower likewise. The base's first `replays` round has a wide error; against its second the gain is within the error.
+
 ## The third optimisations (2026-10-11)
 
 Two smaller changes from the ranked list of the profile at 8c51ccfb, measured back to back against `battle_core` 594d47d6 (the baseline's code, 599 cases of 16.402.19, 25 of them replays): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 3.2 to 6.2 during the full runs, the four-thread workload's own threads included, and 1.5 to 2.8 during the replays alone.
