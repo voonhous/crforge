@@ -37,10 +37,15 @@ import org.crforge.core.battle.replay.ReplayScenario;
  * <pre>
  * {"format": 1, "channel_id": 162000038,
  *  "session": {"client_version": "16.402.17", "content_sha": "7e76...", "fetched_at": "..."},
- *  "battle": {"content_version": "16.402.19", "content_sha": "7e76..."},
+ *  "battle": {"content_version": "16.402.19", "content_sha": "7e76...", "source": "tv_entry"},
  *  "entry": {...the listing the replay was found in...},
  *  "replay": "{\"battle\":{...},\"cmd\":[...],...}"}
  * </pre>
+ *
+ * <p>A battle whose data version is not known names {@code candidates} instead: each version it may
+ * have run on, with its content sha or null, and {@code candidates_complete}, false when a version
+ * not listed may be it. Such a record is not read, even on a candidate's tables: a replay is only
+ * played on the data it ran on.
  *
  * <p>Each record is read on its own, so one that cannot be read is listed with why and leaves the
  * others readable. A replay is opened with a capture block ({@link ReplayCapture}) built from its
@@ -206,6 +211,10 @@ public final class ReplayArchive {
     }
     JsonNode session = record.path("session");
     JsonNode battle = record.path("battle");
+    String unsure = unsureVersion(battle);
+    if (unsure != null) {
+      return Entry.unreadable(line, unsure);
+    }
     JsonNode header = replay.path("battle");
     return new Entry(
         line,
@@ -220,6 +229,26 @@ public final class ReplayArchive {
         replay.path("time").asLong(-1),
         replayText.asText(),
         null);
+  }
+
+  /**
+   * Why a battle that names candidates instead of a data version is not read, or null when it names
+   * none: {@code its data version is unsure: 16.402.19 or 16.402.21, or a version not listed}.
+   */
+  private static String unsureVersion(JsonNode battle) {
+    JsonNode candidates = battle.get("candidates");
+    if (candidates == null) {
+      return null;
+    }
+    List<String> versions = new ArrayList<>();
+    candidates.fieldNames().forEachRemaining(versions::add);
+    if (versions.isEmpty()) {
+      return "its data version is unknown: no candidate";
+    }
+    boolean complete = battle.path("candidates_complete").asBoolean(false);
+    return "its data version is unsure: "
+        + String.join(" or ", versions)
+        + (complete ? "" : ", or a version not listed");
   }
 
   private static String text(JsonNode node, String field) {
