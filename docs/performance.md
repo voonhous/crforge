@@ -71,6 +71,17 @@ What the profile of the replays showed at 8c51ccfb, just before the second optim
 
 The bytes allocated are spread as at 2afbb93d: no site above 8%.
 
+## The third optimisations (2026-10-11)
+
+Two smaller changes from the ranked list of the profile at 8c51ccfb, measured back to back against `battle_core` 594d47d6 (the baseline's code, 599 cases of 16.402.19, 25 of them replays): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 3.2 to 6.2 during the full runs, the four-thread workload's own threads included, and 1.5 to 2.8 during the replays alone.
+
+| Source | `replays` ticks/s | `replays` again | `allCases` ticks/s | `allCasesFourThreads` ticks/s | Allocated per battle, `replays` | `allCases` |
+|--------|-------------------|-----------------|--------------------|-------------------------------|---------------------------------|------------|
+| before (594d47d6) | 92,102 +- 1,049 | 93,504 +- 1,150 | 156,449 +- 5,440 | 615,151 +- 12,756 | 76.5 MB | 16.5 MB |
+| the endpoint scan's tests skipped for a cell that cannot win | 95,417 +- 1,799 (+3.6%) | 95,060 +- 1,189 (+1.7%) | 163,173 +- 9,357 (+4.3%) | 640,381 +- 7,874 (+4.1%) | 76.1 MB | 16.4 MB |
+
+- The endpoint scan's tests skipped for a cell that cannot win: once the best cell of the scan for the cell a unit walks to is of the preferred rank, a cell no nearer to the unit cannot beat it, so its distance to the target and its rank are not asked. The acceptance test is still asked of every cell.
+
 ## The second optimisations (2026-10-11)
 
 The changes the profile at 8c51ccfb pointed to, measured back to back against 8c51ccfb on the same references (544 cases): the full benchmark of each source in turn, then the replays alone again in the same order. Load average 2.4 to 8.0, the four-thread workload's own threads included.

@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -266,6 +267,113 @@ class ReferenceEndpointTest {
     assertThat(chosen.x()).isEqualTo(6);
     assertThat(chosen.y()).isEqualTo(48);
     assertThat(chosen.fallback()).isFalse();
+  }
+
+  /**
+   * The scan skips the target and rank tests of a cell that cannot beat a best of the preferred
+   * rank. Held here to the rule written out in full, every test asked of every cell, over many
+   * units, targets and ranges on the standard map with the towers' footprints, both rules on and
+   * off, ground and air.
+   */
+  @Test
+  void answersAsTheFullRuleDoesForEveryUnitAndTarget() {
+    Random random = new Random(20261011L);
+    for (int trial = 0; trial < 2000; trial++) {
+      int unitX = random.nextInt(map.width() * TileMap.CELL_UNITS);
+      int unitY = random.nextInt(map.height() * TileMap.CELL_UNITS);
+      int targetX = random.nextInt(map.width() * TileMap.CELL_UNITS);
+      int targetY = random.nextInt(map.height() * TileMap.CELL_UNITS);
+      int range = 500 + random.nextInt(6000);
+      boolean air = random.nextBoolean();
+      boolean flyingNoWater = random.nextBoolean();
+      boolean groundAvoidBuildings = random.nextBoolean();
+      TargetDistanceSquared toTarget =
+          (cellCentreX, cellCentreY) ->
+              FixedMath.squaredDistance(targetX, targetY, cellCentreX, cellCentreY);
+      CellPredicate water = (col, row) -> map.isWater(col, row) ? 1 : 0;
+      CellPredicate overlay = (col, row) -> CellTests.overlayBlocks(grid, col, row);
+      int targetCol = targetX / TileMap.CELL_UNITS;
+      int targetRow = targetY / TileMap.CELL_UNITS;
+
+      int packed =
+          ReferenceEndpoint.selectEndpoint(
+              map.width(),
+              map.height(),
+              unitX,
+              unitY,
+              targetCol,
+              targetRow,
+              range,
+              air,
+              flyingNoWater,
+              groundAvoidBuildings,
+              ReferenceEndpoint.everyCellInBounds(map.width(), map.height()),
+              toTarget,
+              water,
+              overlay,
+              null);
+
+      assertThat(packed)
+          .as("trial %d", trial)
+          .isEqualTo(
+              fullRule(
+                  unitX,
+                  unitY,
+                  targetCol,
+                  targetRow,
+                  range,
+                  air,
+                  flyingNoWater,
+                  groundAvoidBuildings,
+                  toTarget,
+                  water,
+                  overlay));
+    }
+  }
+
+  /** The endpoint rule of the class comment, every test asked of every cell in scan order. */
+  private int fullRule(
+      int unitX,
+      int unitY,
+      int targetCol,
+      int targetRow,
+      int range,
+      boolean air,
+      boolean flyingNoWater,
+      boolean groundAvoidBuildings,
+      TargetDistanceSquared toTarget,
+      CellPredicate water,
+      CellPredicate overlay) {
+    int extent = range / TileMap.CELL_UNITS + 1;
+    int lowCol = Math.max(targetCol - extent, 0);
+    int highCol = Math.min(targetCol + extent, map.width() - 1);
+    int lowRow = Math.max(targetRow - extent, 0);
+    int highRow = Math.min(targetRow + extent, map.height() - 1);
+    boolean leftToRight = unitX < map.width() * (TileMap.CELL_UNITS / 2);
+    int best = -1;
+    int bestRank = 0;
+    int bestDistance = Integer.MAX_VALUE;
+    for (int row = lowRow; row <= highRow; row++) {
+      for (int step = 0; step <= highCol - lowCol; step++) {
+        int col = leftToRight ? lowCol + step : highCol - step;
+        int centreX = col * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
+        int centreY = row * TileMap.CELL_UNITS + TileMap.CELL_UNITS / 2;
+        if (toTarget.distanceSquared(centreX, centreY) > range * range) {
+          continue;
+        }
+        int distance =
+            (centreX - unitX) * (centreX - unitX) + (centreY - unitY) * (centreY - unitY);
+        boolean wet = water.test(col, row) != 0 && (!air || !flyingNoWater);
+        boolean blocked = !air && groundAvoidBuildings && overlay.test(col, row) != 0;
+        int rank = wet || blocked ? 1 : 2;
+        if (rank > bestRank || (rank == bestRank && distance < bestDistance)) {
+          best = (col << 16) | row;
+          bestRank = rank;
+          bestDistance = distance;
+        }
+      }
+    }
+    return best;
   }
 
   @Test
