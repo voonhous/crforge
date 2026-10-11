@@ -2219,15 +2219,29 @@ public class BattleWorld implements HolderPasses {
    * The king tower of a side still in the battle, or null. It is looked up in the holder, where the
    * setup placed it, so a spell cast in the command pass of the first tick, before the world has
    * learnt its entities, finds it too.
+   *
+   * <p>A king tower is never removable and the tiebreaker's clearing leaves towers standing, so
+   * once found it stays listed, and a king tower listed later has a higher id and comes after it:
+   * the first one found for side 0 or 1 is remembered, a speed choice only.
    */
   public TowerEntity kingTower(int side) {
+    boolean remembered = side == 0 || side == 1;
+    if (remembered && kingTowers[side] != null) {
+      return kingTowers[side];
+    }
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof TowerEntity tower && tower.getData().king() && tower.side() == side) {
+        if (remembered) {
+          kingTowers[side] = tower;
+        }
         return tower;
       }
     }
     return null;
   }
+
+  /** Each side's king tower once {@link #kingTower(int)} has found it. */
+  private final TowerEntity[] kingTowers = new TowerEntity[2];
 
   /**
    * Whether an asker is an area effect that reaches hidden units, which the validator lets take a

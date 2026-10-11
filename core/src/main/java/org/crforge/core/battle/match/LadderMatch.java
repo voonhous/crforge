@@ -220,6 +220,9 @@ public final class LadderMatch implements BattleMode {
   /** Each side's king tower once {@link #king(int)} has found it. */
   private final TowerEntity[] kings = new TowerEntity[2];
 
+  /** Each side's princess towers once {@link #listedPrincessTowers(int)} has found them. */
+  private final TowerEntity[][] listedPrincessTowers = new TowerEntity[2][];
+
   /**
    * Sets a match up on a battle whose towers stand.
    *
@@ -730,14 +733,27 @@ public final class LadderMatch implements BattleMode {
       return 3;
     }
     int princessTowers = 0;
-    for (BattleEntity entity : world.getHolder().entities()) {
-      if (entity instanceof TowerEntity tower
-          && tower.getData().summonerTower()
-          && tower.side() == other) {
+    for (TowerEntity tower : listedPrincessTowers(other)) {
+      if (world.getHolder().isListed(tower)) {
         princessTowers++;
       }
     }
     return 2 - Math.min(princessTowers, 2);
+  }
+
+  /**
+   * A side's princess towers as the holder first listed them, remembered from the first ask. Towers
+   * are placed only by the battle's setup, which lists them all before the match begins, so every
+   * princess tower the holder will ever list is among them; {@link #crowns(int)} asks the holder
+   * which are still listed instead of walking every entity, a speed choice only.
+   */
+  private TowerEntity[] listedPrincessTowers(int side) {
+    TowerEntity[] towers = listedPrincessTowers[side];
+    if (towers == null) {
+      towers = princessTowers(side).toArray(new TowerEntity[0]);
+      listedPrincessTowers[side] = towers;
+    }
+    return towers;
   }
 
   /**

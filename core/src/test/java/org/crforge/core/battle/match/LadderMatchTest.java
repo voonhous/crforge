@@ -110,6 +110,61 @@ class LadderMatchTest {
 
   @Test
   @DisplayName(
+      "a fallen princess tower counts as a crown from the cleanup that removes it, not from its"
+          + " death")
+  void aPrincessTowerCountsFromItsRemoval() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    battle.getBattle().step();
+    // Asked once before any tower falls.
+    assertThat(List.of(match.crowns(0), match.crowns(1))).containsExactly(0, 0);
+    TowerEntity princess =
+        battle.getBattle().getHolder().entities().stream()
+            .filter(TowerEntity.class::isInstance)
+            .map(TowerEntity.class::cast)
+            .filter(tower -> tower.getData().summonerTower() && tower.side() == 1)
+            .findFirst()
+            .orElseThrow();
+    // What the crowns read while the dead tower is still listed (after the post-hooks, before the
+    // closing cleanup) and once it has left.
+    List<String> seen = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void afterPostHooks(
+                  int tick, List<WorldEntity> present, List<ProjectileEntity> projectiles) {
+                if (princess.getHitPoints().getHitPoints() <= 0) {
+                  seen.add(
+                      "dead, listed "
+                          + battle.getBattle().getHolder().entities().contains(princess)
+                          + ": "
+                          + match.crowns(0));
+                }
+              }
+
+              @Override
+              public void entityRemoved(int tick, WorldEntity removed) {
+                if (removed == princess) {
+                  seen.add(
+                      "removed, listed "
+                          + battle.getBattle().getHolder().entities().contains(princess)
+                          + ": "
+                          + match.crowns(0));
+                }
+              }
+            });
+    battle.getWorld().kill(princess, null);
+    // The kill lands at the step's damage drain and the tower leaves at its closing cleanup.
+    battle.getBattle().step();
+
+    assertThat(seen).containsExactly("dead, listed true: 0", "removed, listed false: 1");
+    assertThat(List.of(match.crowns(0), match.crowns(1))).containsExactly(1, 0);
+  }
+
+  @Test
+  @DisplayName(
       "both kings falling together leave the crowns equal: the tiebreaker, which idles to 3250 ms,"
           + " drains once and ends it a draw")
   void bothKingsFallingTogetherEndInADraw() {
