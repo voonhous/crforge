@@ -59,6 +59,57 @@ class BattleRecordsTest {
     records = new BattleRecords(GameTables.loadConfigured());
   }
 
+  /**
+   * A unit is built once per name and remembered. Every character and building row, asked of one
+   * records twice in a row and again after every other row, answers what a fresh records builds for
+   * it, the same object each time; a row the battle refuses is refused on every ask.
+   */
+  @Test
+  void aUnitIsBuiltOnceAndAnswersAsAFreshBuild() {
+    GameTables tables = GameTables.loadConfigured();
+    BattleRecords remembering = new BattleRecords(tables);
+    List<String> names = new ArrayList<>();
+    for (String table : List.of("characters", "buildings")) {
+      for (GameRow row : tables.table(table).rows()) {
+        names.add(row.name());
+      }
+    }
+    List<UnitData> first = new ArrayList<>();
+    for (String name : names) {
+      UnitData built = built(remembering, name);
+      first.add(built);
+      assertThat(built(remembering, name)).as(name).isSameAs(built);
+    }
+    int answered = 0;
+    for (int i = 0; i < names.size(); i++) {
+      String name = names.get(i);
+      UnitData fresh = built(new BattleRecords(tables), name);
+      assertThat(built(remembering, name)).as(name).isSameAs(first.get(i));
+      // A target filter compares by identity, and every build makes its own: the printed values
+      // are compared with the filters' identities left out.
+      assertThat(printed(first.get(i))).as(name).isEqualTo(printed(fresh));
+      if (fresh != null) {
+        assertThat(fresh.name()).isEqualTo(name);
+        answered++;
+      }
+    }
+    assertThat(answered).isPositive();
+  }
+
+  /** A unit's values as printed, without the identities of its target filters. */
+  private static String printed(UnitData unit) {
+    return String.valueOf(unit).replaceAll("GameObjectFilter@[0-9a-f]+", "GameObjectFilter");
+  }
+
+  /** A unit as the records build it, or null for a row they refuse. */
+  private static UnitData built(BattleRecords records, String name) {
+    try {
+      return records.unit(name);
+    } catch (RuntimeException refused) {
+      return null;
+    }
+  }
+
   @Test
   @DisplayName("a unit's fields are its row's columns, in milliseconds and game units")
   void aUnitIsItsColumns() {

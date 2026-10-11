@@ -11,6 +11,7 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -686,6 +687,13 @@ public final class BattleRecords {
   private final GameTables tables;
 
   /**
+   * Each unit row read so far, by name. A unit is built from the tables alone and is immutable, so
+   * the first build stands for every later ask, a speed choice only. A battle's records are read by
+   * the one thread that runs the battle.
+   */
+  private final Map<String, UnitData> units = new HashMap<>();
+
+  /**
    * @param tables the game tables of one data version
    */
   public BattleRecords(GameTables tables) {
@@ -699,6 +707,17 @@ public final class BattleRecords {
    * @param name the row's name
    */
   public UnitData unit(String name) {
+    UnitData known = units.get(name);
+    if (known != null) {
+      return known;
+    }
+    UnitData built = buildUnit(name);
+    units.put(name, built);
+    return built;
+  }
+
+  /** Builds a unit from its row, as {@link #unit(String)} first reads it. */
+  private UnitData buildUnit(String name) {
     GameRow row = unitRow(name).tracking();
     String deathSpawn = row.string("DeathSpawnCharacter");
     String deathProjectile = row.string("DeathSpawnProjectile");

@@ -63,7 +63,37 @@ jfrconv --alloc "$J" conformance/build/profile/alloc.html
 
 ## Baseline (2026-10-11)
 
-The baseline to measure the next change against. Source `battle_core` 594d47d6 with the endpoint scan's tests skipped for a cell that cannot win and each side's king tower remembered (the third optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 3.2 to 4.6 during the run, the four-thread workload's own threads included.
+The baseline to measure the next change against. Source `battle_core` a606c90c with the crowns counted without walking every entity and each unit row built once per battle (the fourth optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 3.4 to 5.8 during the run, the four-thread workload's own threads included.
+
+| Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
+|----------|---------|---------|-----------|----------------------|--------------------|
+| `replays` | 1 | 104,290 +- 1,193 | 23.14 +- 0.36 | 67.2 MB | about 15 KB |
+| `allCases` | 1 | 182,162 +- 5,507 | 128.66 +- 3.87 | 14.0 MB | about 10 KB |
+| `allCasesFourThreads` | 4 | 704,085 +- 6,456 | 490.22 +- 5.08 | 14.5 MB | about 10 KB |
+
+Read as:
+
+- A real battle runs at about 104,000 steps a second on one thread, about 5,200 times the game's own 20 steps a second: a battle of about 4,500 steps in about 43 ms. The replays alone, run again after the full benchmark, gave 104,509 +- 953.
+- Four threads give 3.9 times one thread.
+
+What the profile of the replays shows at this baseline (async-profiler, as above, about 10,000 CPU samples inside the steps, load average about 4.5):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 28% | choosing targets (`TargetingVisit.reselect`, `SelectionChain`) |
+| 16% | `SpatialIndex.query` (most of it inside the above, the rest in the push and avoidance passes): its own walk over the buckets 9% |
+| 20% | preparing routes (`RoutePreparation`): the route search 13%, the scan for the cell to walk to (`ReferenceEndpoint`) 6% |
+| 11% | following routes |
+| 11% | the world's pre-pass (`BattleWorld.prePass`): every entity's candidates registered 5%, the spatial index rebuilt 3%, the building footprints drawn 1.5% |
+| 5% | the commands, nearly all card plays (each new unit's lane 1%) |
+| 4% | the holder's cleanup: the removal rounds 1.6%, and the live list sorted again by id every step, about 1% |
+| 2% | the champion controller's list of champion views, built every step from a walk over every entity |
+
+The crowns (0.2%) and the unit rows (0.2%) have left the profile. The bytes allocated are spread as before, no site above 9%: `MovementChain.mark` 8%, `BuffComponent.visit` 8%, `CharacterEntity.stateQueries` 8%, `BuffComponent.speedPercents` 7% (streams), `SpatialIndex.query` 7%, boxed integers in `ReferenceValidator.validate` 4%.
+
+## Baseline at a606c90c (2026-10-11)
+
+The baseline after the third optimisations, kept with its profile. Source `battle_core` 594d47d6 with the endpoint scan's tests skipped for a cell that cannot win and each side's king tower remembered (the third optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 3.2 to 4.6 during the run, the four-thread workload's own threads included.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -125,8 +155,10 @@ Two more from the ranked list of the profile at a606c90c, measured back to back 
 |--------|-------------------|-----------------|--------------------|-------------------------------|---------------------------------|------------|
 | before (a606c90c) | 97,498 +- 4,776 | 102,320 +- 1,156 | 175,925 +- 3,787 | 676,067 +- 5,943 | 71.7 MB | 15.4 MB |
 | the crowns counted without walking every entity | 102,384 +- 1,343 (+5.0%) | 102,900 +- 1,302 (+0.6%) | 177,355 +- 4,957 (+0.8%) | 695,031 +- 7,976 (+2.8%) | 70.6 MB | 14.8 MB |
+| and each unit row built once per battle | 104,290 +- 1,193 (+7.0%) | 104,509 +- 953 (+2.1%) | 182,162 +- 5,507 (+3.5%) | 704,085 +- 6,456 (+4.1%) | 67.2 MB | 14.0 MB |
 
 - The crowns counted without walking every entity: the Ladder match remembers each side's princess towers from its first count and asks the holder whether each is still listed, a binary search by id, instead of walking the whole live list several times a step; the world remembers each side's king tower likewise. The base's first `replays` round has a wide error; against its second the gain is within the error.
+- Each unit row built once per battle: the battle's records built a unit from its row on every ask, for every card play (through the card and its champion) and every spawn; a unit is immutable, so the first build per name now stands for every later ask. Both together run above 100,000 steps a second on the replays in both rounds.
 
 ## The third optimisations (2026-10-11)
 
