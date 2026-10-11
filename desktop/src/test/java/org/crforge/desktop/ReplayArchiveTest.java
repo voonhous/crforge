@@ -250,6 +250,54 @@ class ReplayArchiveTest {
     assertThatThrownBy(entry::document).isInstanceOf(IllegalStateException.class);
   }
 
+  /**
+   * The record of a replay whose data version was dated from its battle time and is not settled:
+   * its battle names candidates, each with its content sha or null, instead of a version.
+   */
+  private static String unsureRecord(boolean complete, boolean none) throws IOException {
+    ObjectNode record = (ObjectNode) MAPPER.readTree(record(replayText(), "x", "x"));
+    ObjectNode battle = record.putObject("battle");
+    battle.put("source", "time");
+    ObjectNode candidates = battle.putObject("candidates");
+    if (!none) {
+      candidates.put("16.402.19", OTHER_SHA);
+      candidates.putNull("16.402.21");
+    }
+    battle.put("candidates_complete", complete);
+    return MAPPER.writeValueAsString(record);
+  }
+
+  @Test
+  @DisplayName("a record whose data version is unsure is not read, even on a candidate's tables")
+  void anUnsureVersionIsRefused() throws IOException {
+    // The second version's tables are a candidate's, and still the replay is not played on them.
+    // The third names no candidate at all: a replay without a battle time.
+    Path file =
+        gzip(
+            "crawl.jsonl.gz",
+            List.of(
+                unsureRecord(false, false), unsureRecord(true, false), unsureRecord(false, true)));
+
+    ReplayArchive archive = ReplayArchive.read(file);
+
+    assertThat(archive.readable()).isZero();
+    assertThat(archive.entries().get(0).problem())
+        .isEqualTo("its data version is unsure: 16.402.19 or 16.402.21, or a version not listed");
+    assertThat(archive.entries().get(1).problem())
+        .isEqualTo("its data version is unsure: 16.402.19 or 16.402.21");
+    assertThat(archive.entries().get(2).problem())
+        .isEqualTo("its data version is unknown: no candidate");
+    assertThatThrownBy(archive.entries().get(0)::document)
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(DesktopLauncher.openFirst(archive, versions, out, err)).isNull();
+    // Listed like any battle, the candidates as its data; "?" when a version not listed may be it.
+    List<String> rows = archive.rows(versions.current());
+    String battle = " {4}\\d  04-01 \\d\\d:\\d\\d  Ladder +  \\S.* +    400  ";
+    assertThat(rows.get(0)).matches(battle + "16\\.402\\.19/16\\.402\\.21/\\?");
+    assertThat(rows.get(1)).matches(battle + "16\\.402\\.19/16\\.402\\.21");
+    assertThat(rows.get(2)).matches(battle + "\\?");
+  }
+
   @Test
   @DisplayName("the list gives each record's time, game mode, arena, ticks and data, or why not")
   void theListsRows() throws IOException {
