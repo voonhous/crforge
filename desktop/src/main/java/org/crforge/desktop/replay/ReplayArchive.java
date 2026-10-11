@@ -84,6 +84,9 @@ public final class ReplayArchive {
    * @param battleTime the replay's time, in seconds since the epoch, or -1
    * @param replay the replay document as received, or null when the record cannot be read
    * @param problem why the record cannot be read, or null when it can
+   * @param candidates the data versions the battle may have run on when its record names candidates
+   *     instead of a version (then it cannot be read), else null
+   * @param candidatesComplete false when a version not among the candidates may be it
    */
   public record Entry(
       int line,
@@ -97,11 +100,14 @@ public final class ReplayArchive {
       int endTick,
       long battleTime,
       String replay,
-      String problem) {
+      String problem,
+      List<String> candidates,
+      boolean candidatesComplete) {
 
     /** A record that cannot be read, with why. */
     static Entry unreadable(int line, String problem) {
-      return new Entry(line, -1, null, null, null, null, -1, -1, -1, -1, null, problem);
+      return new Entry(
+          line, -1, null, null, null, null, -1, -1, -1, -1, null, problem, null, false);
     }
 
     /**
@@ -211,11 +217,27 @@ public final class ReplayArchive {
     }
     JsonNode session = record.path("session");
     JsonNode battle = record.path("battle");
-    String unsure = unsureVersion(battle);
-    if (unsure != null) {
-      return Entry.unreadable(line, unsure);
-    }
     JsonNode header = replay.path("battle");
+    List<String> candidates = candidates(battle);
+    if (candidates != null) {
+      // Listed like any battle, its candidates as its data, but never opened: see unsureVersion.
+      boolean complete = battle.path("candidates_complete").asBoolean(false);
+      return new Entry(
+          line,
+          record.path("channel_id").asLong(-1),
+          text(session, "client_version"),
+          text(session, "fetched_at"),
+          null,
+          null,
+          header.path("gamemode").asInt(-1),
+          header.path("arena").asInt(-1),
+          replay.path("endTick").asInt(-1),
+          replay.path("time").asLong(-1),
+          null,
+          unsureVersion(candidates, complete),
+          candidates,
+          complete);
+    }
     return new Entry(
         line,
         record.path("channel_id").asLong(-1),
@@ -228,24 +250,30 @@ public final class ReplayArchive {
         replay.path("endTick").asInt(-1),
         replay.path("time").asLong(-1),
         replayText.asText(),
-        null);
+        null,
+        null,
+        false);
   }
 
-  /**
-   * Why a battle that names candidates instead of a data version is not read, or null when it names
-   * none: {@code its data version is unsure: 16.402.19 or 16.402.21, or a version not listed}.
-   */
-  private static String unsureVersion(JsonNode battle) {
+  /** The data versions a battle names as candidates instead of a version, else null. */
+  private static List<String> candidates(JsonNode battle) {
     JsonNode candidates = battle.get("candidates");
     if (candidates == null) {
       return null;
     }
     List<String> versions = new ArrayList<>();
     candidates.fieldNames().forEachRemaining(versions::add);
+    return List.copyOf(versions);
+  }
+
+  /**
+   * Why a battle that names candidates instead of a data version is not read: {@code its data
+   * version is unsure: 16.402.19 or 16.402.21, or a version not listed}.
+   */
+  private static String unsureVersion(List<String> versions, boolean complete) {
     if (versions.isEmpty()) {
       return "its data version is unknown: no candidate";
     }
-    boolean complete = battle.path("candidates_complete").asBoolean(false);
     return "its data version is unsure: "
         + String.join(" or ", versions)
         + (complete ? "" : ", or a version not listed");
@@ -274,7 +302,9 @@ public final class ReplayArchive {
   /**
    * The list's rows, one a record: its line, the battle's time (UTC), game mode, arena, length in
    * ticks and data version, each id named by its row in the tables where they hold it; a record
-   * that cannot be read gives its line and why.
+   * that cannot be read gives its line and why. A battle whose data version is unsure is listed
+   * like the others with its candidates as its data, {@code 16.402.19/16.402.21}, and {@code /?}
+   * after them when a version not listed may be it; it still cannot be opened.
    *
    * @param tables the tables that name the ids
    */
@@ -282,7 +312,7 @@ public final class ReplayArchive {
     ReplayScenario names = new ReplayScenario(tables);
     List<String> rows = new ArrayList<>();
     for (Entry entry : entries) {
-      if (entry.problem() != null) {
+      if (entry.problem() != null && entry.candidates() == null) {
         rows.add(String.format(Locale.ROOT, "%5d  not read: %s", entry.line(), entry.problem()));
         continue;
       }
@@ -297,9 +327,21 @@ public final class ReplayArchive {
               name(entry.gameMode(), names),
               name(entry.arena(), names),
               entry.endTick() < 0 ? "?" : String.valueOf(entry.endTick()),
-              entry.contentVersion() == null ? "data ?" : entry.contentVersion()));
+              data(entry)));
     }
     return rows;
+  }
+
+  /** A row's data: the version, the candidates of an unsure one, or "data ?" when none is named. */
+  private static String data(Entry entry) {
+    if (entry.candidates() != null) {
+      List<String> shown = new ArrayList<>(entry.candidates());
+      if (!entry.candidatesComplete()) {
+        shown.add("?");
+      }
+      return String.join("/", shown);
+    }
+    return entry.contentVersion() == null ? "data ?" : entry.contentVersion();
   }
 
   /** The list's column titles, aligned with {@link #rows}. */

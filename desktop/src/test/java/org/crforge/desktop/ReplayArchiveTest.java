@@ -290,6 +290,12 @@ class ReplayArchiveTest {
     assertThatThrownBy(archive.entries().get(0)::document)
         .isInstanceOf(IllegalStateException.class);
     assertThat(DesktopLauncher.openFirst(archive, versions, out, err)).isNull();
+    // Listed like any battle, the candidates as its data; "?" when a version not listed may be it.
+    List<String> rows = archive.rows(versions.current());
+    String battle = " {4}\\d  04-01 \\d\\d:\\d\\d  Ladder +  \\S.* +    400  ";
+    assertThat(rows.get(0)).matches(battle + "16\\.402\\.19/16\\.402\\.21/\\?");
+    assertThat(rows.get(1)).matches(battle + "16\\.402\\.19/16\\.402\\.21");
+    assertThat(rows.get(2)).matches(battle + "\\?");
   }
 
   @Test
