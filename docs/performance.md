@@ -2,6 +2,8 @@
 
 How fast the battle core runs, headless, and the baseline later changes are measured against.
 
+**TL;DR:** read `replays` first. It steps real Ladder battles from start to end, so its steps a second are the closest figure to a real game, or to an agent playing one: the production workload. `allCases` runs about 1.7 times as many steps a second only because most of its cases are short, sparse setups of one mechanic each (see [Why the replays step slower](#why-the-replays-step-slower)); it is a wide check that a change holds up across mechanics, not a speed to expect.
+
 ## The benchmark
 
 `./gradlew :conformance:tickBenchmark -Pcrforge.references=<references folder>` runs `TickBenchmark` (`conformance/src/jmh`) with [JMH](https://github.com/openjdk/jmh). It reads the cases of a references folder as the reference tests do (the tables are the ones the build makes for `-Pcrforge.dataVersion`, which must be the references' version) and translates each case's scenario once. One operation builds the battle of the next case and steps it until it stops or reaches the case's horizon. Nothing is observed or compared, and nothing outside `core` and `conformance` is loaded: no window, no rendering. A case the battle core refuses is left out and counted.
@@ -23,6 +25,20 @@ How to read the output:
 | `:gc.alloc.rate.norm` | bytes allocated per battle; divided by the steps per battle, the bytes per step |
 | `:gc.alloc.rate` | megabytes allocated a second |
 | error | JMH's 99.9% confidence interval over the 15 measured iterations |
+
+### Why the replays step slower
+
+Steps a second measure the cost of one step, and a step costs more the more there is on the field. The two kinds of case have very different fields (the references of 16.402.19 on 2026-10-11, 599 cases):
+
+| | Replays (25) | Generated cases (574) |
+|---|---|---|
+| What it is | a real Ladder battle, both players playing cards from the start to the end | a short setup of one mechanic: a unit walking to a tower, an ability, two units meeting |
+| Commands (the plays) | median 52, mean 65 | median 3, mean 7 |
+| Length | a whole battle: about 4,500 steps a battle on average in the benchmark (3 minutes 45 seconds) | median horizon 1,200 steps (60 seconds); about 1,400 steps a battle on average across `allCases` |
+
+The expensive parts of a step are done per unit and look at the units around it: choosing targets (about a third of the step time) runs a spatial query per unit over its neighbours, preparing routes runs per moving unit, and the push and avoidance passes look at nearby pairs. A step's cost therefore grows with the units on the field, and faster than in proportion where they crowd together. A replay keeps several troops, their projectiles and spells on both sides most of the time, while a generated case is mostly the six towers and a unit or two, whose steps are cheap. The bytes allocated show the same: about 17 KB a step for the replays against about 12 KB on all the cases, as every live unit allocates its own small lists and queries each step.
+
+So `allCases` averages many cheap steps with the replays' costly ones, and its steps a second come out higher than any real battle runs. A change that speeds up the per-unit work moves `replays` the most.
 
 What it does not measure: the commands of a reference case are all known before the battle starts, so an agent choosing commands as the battle runs (and reading the battle to choose them) costs more than this.
 
