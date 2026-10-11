@@ -41,6 +41,7 @@ crforge aims to be that simulator for AI and ML research on Clash Royale: an ope
 - **Held to recorded battles**: the `conformance` module plays each recorded battle's scenario and compares every tick with the game's own trace, with no tolerance
 - **Fidelity ledger**: every battle core class says which of its parts are settled and which are not (`./gradlew :core:fidelityReport`)
 - **Replays**: the visualizer plays a replay file, or a crawl of them, on the data version it was recorded on
+- **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
 
 ## Quick Start
 
