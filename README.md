@@ -6,6 +6,9 @@
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment will be rebuilt on the battle core.
 
+- **Tick-exact**: 599 of 599 recorded reference battles match the game tick for tick, with no tolerance, on data versions 16.402.19 and 16.402.21 (598 of 599 on 16.402.18) ([conformance](conformance/README.md))
+- **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
+
 <p align="center">
   <img src="docs/assets/debug-visualizer.gif" alt="The replay viewer playing a Ladder replay beside the game's own replay of the same battle" width="800">
 </p>
@@ -41,7 +44,6 @@ crforge aims to be that simulator for AI and ML research on Clash Royale: an ope
 - **Held to recorded battles**: the `conformance` module plays each recorded battle's scenario and compares every tick with the game's own trace, with no tolerance
 - **Fidelity ledger**: every battle core class says which of its parts are settled and which are not (`./gradlew :core:fidelityReport`)
 - **Replays**: the visualizer plays a replay file, or a crawl of them, on the data version it was recorded on
-- **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
 
 ## Quick Start
 
