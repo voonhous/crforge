@@ -18,6 +18,7 @@ import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.InitialDelay;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +27,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The Mirror where the reference runs do not take it: a Mirror after a Mirror, a Mirror with
  * nothing to repeat, a Mirror of a card that staggers its units, and the plays it refuses - outside
- * a match, with another play of its side pending, and of a champion.
+ * a match and with another play of its side pending - and a Mirror of a champion, by a card or a
+ * hero play, whose copy the champion's slot follows.
  */
 class BattleMirrorTest {
 
@@ -42,6 +44,10 @@ class BattleMirrorTest {
   /** The same with an Archer Queen, a champion, in place of the Knight. */
   private static final List<String> QUEEN_MIRRORS =
       List.of("ArcherQueen", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  /** The same with a Mini Pekka, played from the hero slot, in place of the Knight. */
+  private static final List<String> PEKKA_MIRRORS =
+      List.of("MiniPekka", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
 
   /** The same with Skeletons, for 1 elixir, in place of the Knight. */
   private static final List<String> SKELETON_MIRRORS =
@@ -209,24 +215,97 @@ class BattleMirrorTest {
   }
 
   @Test
-  @DisplayName("a Mirror of a champion is refused once its gates pass")
-  void aMirrorOfAChampionIsRefused() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+  @DisplayName(
+      "a Mirror of a champion places a copy one level up while the first lives, for the item's"
+          + " cost, and the champion's slot follows the copy: a command naming the first is"
+          + " refused, one naming the copy passes")
+  void aMirrorOfAChampionIsFollowedBySlot() {
+    // The towers stand passive, so the first copy lives on.
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     LadderMatch match = battle.startLadderMatch(QUEEN_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(20, GameData.card("ArcherQueen"), LEVEL, 0, 3500, 10000, "q");
+    battle.play(20, GameData.card("ArcherQueen"), LEVEL, 0, 3500, 4000, "q");
     run(battle, 20);
+    CharacterEntity queen = battle.getPlays().get(0).units().get(0);
+    // Kept where she stands, so she takes no tower.
+    queen.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     // The Archer Queen's 5 and the Mirror's 1: played once the elixir covers 6.
-    int covered =
-        coveredFrom(
-            battle,
-            match,
-            Math.min(Shipped.cost("ArcherQueen") + Shipped.cost("Mirror"), MAX_MANA));
-    int mirror = Math.max(20 + AFTER_A_PLAY, covered);
-    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    int cost = Math.min(Shipped.cost("ArcherQueen") + Shipped.cost("Mirror"), MAX_MANA);
+    int mirror = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
+    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 4000, "m");
+    run(battle, mirror);
 
-    assertThatThrownBy(() -> run(battle, mirror))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("m: a Mirror of the champion ArcherQueen, which no reference holds");
+    Standard1v1Battle.Play play = battle.getPlays().get(1);
+    assertThat(play.matchCode()).isZero();
+    assertThat(play.mirror().repeats().name()).isEqualTo("ArcherQueen");
+    assertThat(play.mirror().level()).isEqualTo(LEVEL + MIRROR_LEVEL_OFFSET);
+    assertThat(play.mirror().cost()).isEqualTo(cost);
+    CharacterEntity copy = play.units().get(0);
+    copy.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    GameRow row = Shipped.unitRow("ArcherQueen");
+    assertThat(copy.getData().name()).isEqualTo("ArcherQueen");
+    assertThat(copy.getHitPoints().getMaximum())
+        .isEqualTo(Shipped.scaled(Shipped.number(row, "Hitpoints"), row, play.mirror().level()));
+    assertThat(battle.getWorld().getHolder().entities()).contains(queen, copy);
+    assertThat(match.side(0).getSpent())
+        .isEqualTo((Shipped.cost("ArcherQueen") + cost) * MatchSide.SCALE);
+    // The slot hears the Mirror's play as a play of the card it repeats, and follows the copy.
+    ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
+    assertThat(copy.getDeployIndex()).isEqualTo(1);
+    assertThat(slot.getDeployIndex()).isEqualTo(copy.getDeployIndex());
+
+    int abilityCost = Shipped.number(queenAbility(), "ManaCost");
+    int deployed = battle.getBattle().getTick() + Shipped.number(row, "DeployTime") / 50 + 1;
+    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < abilityCost) {
+      battle.getBattle().step();
+    }
+    int now = battle.getBattle().getTick();
+    battle.useAbility(now, 0, "q_0", "old");
+    battle.useAbility(now + 1, 0, "m_0", "new");
+    run(battle, now + 1);
+    List<Standard1v1Battle.AbilityUse> uses = battle.getAbilityUses();
+    assertThat(uses.get(uses.size() - 2).outcome().code()).isEqualTo(AbilityCommand.NO_CHAMPION);
+    assertThat(uses.get(uses.size() - 1).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(uses.get(uses.size() - 1).outcome().requested()).containsExactly(copy);
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror after a hero play repeats the hero row one level up, and the champion's slot"
+          + " follows the copy")
+  void aMirrorOfAHeroPlayIsFollowedBySlot() {
+    int[] heroFirst = new int[8];
+    heroFirst[0] = MatchSide.HERO_SLOT;
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    LadderMatch match =
+        battle.startLadderMatch(PEKKA_MIRRORS, KNIGHTS, 0, 0, heroFirst, new int[8]);
+    battle.play(20, GameData.card("MiniPekka"), LEVEL, 0, 3500, 4000, "p");
+    run(battle, 20);
+    MatchCard heroForm = match.side(0).deck().get(0).formRow(MatchCard.HERO_FORM);
+    String heroRow = heroForm.name();
+    int cost = Math.min(heroForm.cost() + Shipped.cost("Mirror"), MAX_MANA);
+    int mirror = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
+    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 4000, "m");
+    run(battle, mirror);
+
+    Standard1v1Battle.Play hero = battle.getPlays().get(0);
+    Standard1v1Battle.Play play = battle.getPlays().get(1);
+    assertThat(play.matchCode()).isZero();
+    assertThat(play.mirror().repeats().name()).isEqualTo(heroRow);
+    assertThat(play.mirror().level()).isEqualTo(LEVEL + MIRROR_LEVEL_OFFSET);
+    assertThat(play.mirror().cost()).isEqualTo(cost);
+    assertThat(play.result().placed()).isTrue();
+    // The slot follows the Mirror's play, the count of plays before it.
+    ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
+    assertThat(slot.getChampion().name())
+        .isEqualTo(GameData.records().cardChampion(heroRow).name());
+    assertThat(slot.getDeployIndex()).isEqualTo(1);
+    assertThat(hero.matchCode()).isZero();
+  }
+
+  /** The ability row the Archer Queen's row names. */
+  private static GameRow queenAbility() {
+    return Shipped.row(
+        "character_abilities", Shipped.text(Shipped.unitRow("ArcherQueen"), "Ability"));
   }
 
   /**

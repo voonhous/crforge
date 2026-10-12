@@ -166,8 +166,8 @@ class BattleEvolutionTest {
 
   @Test
   @DisplayName(
-      "a Mirror after a hero play repeats the hero row for its cost plus the Mirror's, and is"
-          + " refused as a Mirror of a champion")
+      "a Mirror after a hero play repeats the hero row for its cost plus the Mirror's, and places"
+          + " it")
   void aMirrorAfterAHeroPlayRepeatsTheHeroRow() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match =
@@ -181,9 +181,11 @@ class BattleEvolutionTest {
         .isEqualTo(cost("spells_other", "Mirror") + cost("spells_hero_form", "Giant_hero"));
     // Played once the elixir has had time to fill up, whatever the two costs.
     battle.playMirror(700, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    assertThatThrownBy(() -> run(battle, 700))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a Mirror of the champion Giant_hero");
+    run(battle, 700);
+    Standard1v1Battle.Play mirror = battle.getPlays().get(1);
+    assertThat(mirror.matchCode()).isZero();
+    assertThat(mirror.mirror().repeats().name()).isEqualTo("Giant_hero");
+    assertThat(mirror.result().placed()).isTrue();
   }
 
   @Test
