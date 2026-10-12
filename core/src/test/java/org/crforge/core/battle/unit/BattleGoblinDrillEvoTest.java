@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -135,14 +134,13 @@ class BattleGoblinDrillEvoTest {
 
   /** Plays the evolved drill onto the ring point and steps until it has surfaced and deployed. */
   private static CharacterEntity surfacedAndDeployed(Standard1v1Battle match) {
+    return surfacedAndDeployed(match, RING_X, RING_Y);
+  }
+
+  /** Plays the evolved drill onto a point and steps until it has surfaced and deployed. */
+  private static CharacterEntity surfacedAndDeployed(Standard1v1Battle match, int x, int y) {
     match.play(
-        0,
-        records.card("GoblinDrill_EV1"),
-        Standard1v1Battle.DEFAULT_LEVEL,
-        0,
-        RING_X,
-        RING_Y,
-        "Drill");
+        0, records.card("GoblinDrill_EV1"), Standard1v1Battle.DEFAULT_LEVEL, 0, x, y, "Drill");
     CharacterEntity drill = null;
     for (int step = 0; step < 200 && drill == null; step++) {
       match.getBattle().step();
@@ -238,19 +236,53 @@ class BattleGoblinDrillEvoTest {
   }
 
   @Test
-  @DisplayName("a drill that surfaces on no ring point of an enemy tower is refused")
-  void offTheRingItIsRefused() {
+  @DisplayName(
+      "on the ring of the top side's left princess tower, where the forward point lies nearer the"
+          + " enemy king, it walks five ring steps backward")
+  void itWalksBackwardWhenTheForwardPointIsNearerTheKing() {
     Standard1v1Battle match = passiveTowers();
-    match.play(
-        0, records.card("GoblinDrill_EV1"), Standard1v1Battle.DEFAULT_LEVEL, 0, 9000, 20000, "D");
+    // The left tower's seventh ring point, the mirror of RING_X across the arena's middle: five
+    // steps forward would end nearer the king than five steps backward.
+    CharacterEntity drill = surfacedAndDeployed(match, 3000, RING_Y);
+    drill.getHitPoints().setHitPoints(drill.getHitPoints().getMaximum() * 60 / 100);
 
-    assertThatThrownBy(
-            () -> {
-              for (int step = 0; step < 200; step++) {
-                match.getBattle().step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("standing on no ring point of an enemy tower");
+    for (int step = 0; step < 19; step++) {
+      match.getBattle().step();
+    }
+
+    // Two steps back along the near side to its corner, then three down the outer side.
+    assertThat(drill.getView().getX()).isEqualTo(1000);
+    assertThat(drill.getView().getY()).isEqualTo(26000);
+    assertThat(drill.getView().getState()).isEqualTo(GridEntityState.SPAWN_PATHFIND);
+  }
+
+  @Test
+  @DisplayName(
+      "a drill that surfaces on no ring point of an enemy tower hides at its threshold and comes up"
+          + " again where it stood")
+  void offTheRingItComesUpWhereItStood() {
+    Standard1v1Battle match = passiveTowers();
+    // Between the king's ring and the right princess tower's: on neither.
+    CharacterEntity drill = surfacedAndDeployed(match, 9000, 20000);
+    int x = drill.getView().getX();
+    int y = drill.getView().getY();
+    drill.getHitPoints().setHitPoints(drill.getHitPoints().getMaximum() * 60 / 100);
+
+    match.getBattle().step();
+    assertThat(drill.getView().getState()).isEqualTo(GridEntityState.SPAWN_PATHFIND);
+    assertThat(drill.hidden()).isTrue();
+    for (int step = 0; step < 18; step++) {
+      match.getBattle().step();
+    }
+    // No ring step: the move writes the half tile it stood on, its own point.
+    assertThat(drill.getView().getX()).isEqualTo(x);
+    assertThat(drill.getView().getY()).isEqualTo(y);
+
+    match.getBattle().step();
+    match.getBattle().step();
+    assertThat(drill.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(drill.hidden()).isFalse();
+    assertThat(drill.getView().getX()).isEqualTo(x);
+    assertThat(drill.getView().getY()).isEqualTo(y);
   }
 }
