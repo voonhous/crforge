@@ -123,7 +123,8 @@ public final class BlowdartDamageRun extends ActionInstance {
     clockMs += STEP_MS;
     leftMs -= STEP_MS;
     if (clockMs % damage.getColumns().hitSpeedMs() == 0 && owner.getHitPoints() != null) {
-      owner.world.dealDamage(owner.getTargetView(), amount, 0, 0);
+      // The damage entry queues the hit, with no attacker, for the holder's damage drain.
+      owner.world.dealQueuedDamage(owner.getTargetView(), amount, 0, 0);
     }
     if (leftMs <= 0) {
       finish();
