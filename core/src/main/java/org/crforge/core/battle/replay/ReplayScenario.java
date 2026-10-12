@@ -14,8 +14,10 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
@@ -119,6 +121,41 @@ public final class ReplayScenario {
    * selection or its level index.
    */
   private static final int KING_LEVEL = 1;
+
+  /** The table of the game modes. */
+  private static final String GAME_MODES = "game_modes";
+
+  /**
+   * The battle header values a Ladder replay is established on: the game mode type ({@code gmt}),
+   * the level cap ({@code lvlcap}) and {@code trail}.
+   */
+  private static final Map<String, String> LADDER_HEADER =
+      Map.of("gmt", "1", "lvlcap", "0", "trail", "170000000");
+
+  /**
+   * The game modes other than Ladder whose battles the Ladder match plays, by row name, each with
+   * the battle header values it is established on.
+   *
+   * <p>Ranked1v1_NewArena, Path of Legends: recorded battles of a Ladder replay with the Path of
+   * Legends header (game mode type 13, level cap 16, trail -1) play the same as the Ladder replay,
+   * cards, princess towers and kings at levels below and at the highest, 16. Its row differs from
+   * the Ladder row in the card level adjustment (Tournament), the fixed arena and whether it is a
+   * Ladder mode only. The three header values are battle inputs all the same, so each is pinned: in
+   * the recordings a level cap of 11 brings the princess towers and, under Tournament, the kings
+   * down to level 11, and game mode type 1 with trail 170000000 brings a Tournament king down to
+   * level 11.
+   */
+  private static final Map<String, Map<String, String>> PLAYED_AS_LADDER =
+      Map.of("Ranked1v1_NewArena", Map.of("gmt", "13", "lvlcap", "16", "trail", "-1"));
+
+  /**
+   * The game mode columns a mode played as Ladder may set differently from the Ladder row: its
+   * name, the card level adjustment, which with the mode's level cap leaves every legal level as it
+   * is, the fixed arena, whose look the battle does not read, and whether it is a Ladder mode,
+   * which is matchmaking.
+   */
+  private static final Set<String> OUTSIDE_THE_MATCH =
+      Set.of("Name", "CardLevelAdjustment", "FixedArena", "ValidLadderMode");
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
@@ -325,38 +362,43 @@ public final class ReplayScenario {
         "battle",
         with(
             format.battlePins().keySet(),
-            "gmt",
-            "plt",
-            "t1s",
-            "t2s",
-            "gamemode",
-            "hm",
-            "lvlcap",
-            "stp",
-            "trail",
-            "te",
-            "tps",
-            "arena",
-            "deck0",
-            "avatar0",
-            "deck1",
-            "avatar1",
-            "location",
-            "hbd"));
-    gameMode(battle);
+            with(
+                format.battleCarried().keySet(),
+                "gmt",
+                "plt",
+                "t1s",
+                "t2s",
+                "gamemode",
+                "hm",
+                "lvlcap",
+                "stp",
+                "trail",
+                "te",
+                "tps",
+                "arena",
+                "deck0",
+                "avatar0",
+                "deck1",
+                "avatar1",
+                "location",
+                "hbd")));
+    Map<String, String> modeHeader = gameMode(battle);
     location(battle);
     for (String field : List.of("gmt", "plt", "tps")) {
-      pin(battle, field, "1");
+      pin(battle, field, modeHeader.getOrDefault(field, "1"));
     }
     for (String field : List.of("t1s", "t2s", "lvlcap", "stp")) {
-      pin(battle, field, "0");
+      pin(battle, field, modeHeader.getOrDefault(field, "0"));
     }
     pin(battle, "hm", "false");
-    pin(battle, "trail", "170000000");
+    pin(battle, "trail", modeHeader.get("trail"));
     pin(battle, "te", "-1");
     required(battle, "arena");
     mapping.put("battle.arena", ARENA_CARRIED);
     format.battlePins().forEach((field, value) -> pin(battle, field, value));
+    format
+        .battleCarried()
+        .forEach((field, what) -> mapping.put("battle." + field, "carried: " + what));
     List<Integer> playerDataChoices = playerData(battle);
 
     List<List<String>> decks = new ArrayList<>();
@@ -651,14 +693,49 @@ public final class ReplayScenario {
     return value.asInt();
   }
 
-  /** The game mode: a Ladder match is the one mode the simulator plays. */
-  private void gameMode(JsonNode battle) {
+  /**
+   * The game mode: a Ladder match, played under the Ladder row or under a mode of {@link
+   * #PLAYED_AS_LADDER}, whose row the tables must hold equal to the Ladder row in every column but
+   * those of {@link #OUTSIDE_THE_MATCH}.
+   *
+   * @return the header fields pinned for the mode, by field
+   */
+  private Map<String, String> gameMode(JsonNode battle) {
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
-    if (!mode.name().equals(LadderMatch.GAME_MODE)) {
-      refuse("the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
-    }
     mapping.put(
-        "battle.gamemode", "consumed: the game mode row, which must be " + LadderMatch.GAME_MODE);
+        "battle.gamemode",
+        "consumed: the game mode row, "
+            + LadderMatch.GAME_MODE
+            + " or a mode played as it: "
+            + String.join(", ", PLAYED_AS_LADDER.keySet())
+            + ", each pinning gmt, lvlcap and trail to its own values");
+    if (mode.name().equals(LadderMatch.GAME_MODE)) {
+      return LADDER_HEADER;
+    }
+    Map<String, String> header = PLAYED_AS_LADDER.get(mode.name());
+    if (header == null) {
+      refuse("the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
+      // A survey reads on with the Ladder header.
+      return LADDER_HEADER;
+    }
+    GameRow ladder = tables.table(GAME_MODES).row(LadderMatch.GAME_MODE);
+    Set<String> columns = new TreeSet<>(ladder.columns().keySet());
+    columns.addAll(mode.columns().keySet());
+    columns.removeAll(OUTSIDE_THE_MATCH);
+    for (String column : columns) {
+      if (!Objects.equals(ladder.value(column), mode.value(column))) {
+        refuse(
+            "the game mode "
+                + mode.name()
+                + ", whose "
+                + column
+                + " differs from the "
+                + LadderMatch.GAME_MODE
+                + " row's",
+            "battle.gamemode=" + battle.get("gamemode"));
+      }
+    }
+    return header;
   }
 
   /** The location: only one on the standard map is built. */
