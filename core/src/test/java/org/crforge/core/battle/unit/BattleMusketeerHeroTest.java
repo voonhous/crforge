@@ -61,7 +61,7 @@ class BattleMusketeerHeroTest {
       "the ability places the dummy building its spawn's half tiles ahead of the hero; the"
           + " turret's placement there"
           + " passes the dummy by and keeps its point, while the dummy blocks a building another"
-          + " object places on it")
+          + " object places on it, which is moved off it")
   void theDummyDoesNotBlockItsOwnTurret() {
     Standard1v1Battle battle = abilityUsed();
     CharacterEntity hero = named(battle, HERO).get(0);
@@ -84,10 +84,11 @@ class BattleMusketeerHeroTest {
     // The dummy's own row: the turret's 600 circle overlaps the dummy's centre, which is passed by.
     assertThat(battle.getWorld().buildingPlacement(dummy, turret).place(x, y))
         .containsExactly(x, y);
-    // The hero's row on the same point: the dummy is a building of the live list and blocks it.
-    assertThatThrownBy(() -> battle.getWorld().buildingPlacement(hero, turret).place(x, y))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(TURRET + " is placed as a building at (" + x + ", " + y + ")");
+    // The hero's row on the same point: the dummy is a building of the live list and blocks it, so
+    // the turret is moved down the bottom side's column, off the point.
+    int[] moved = battle.getWorld().buildingPlacement(hero, turret).place(x, y);
+    assertThat(moved[0]).isEqualTo(x);
+    assertThat(moved[1]).isLessThan(y);
   }
 
   @Test

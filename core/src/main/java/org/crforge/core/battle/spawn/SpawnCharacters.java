@@ -65,7 +65,8 @@ public final class SpawnCharacters extends RowAction {
     SpawnHost cause =
         instigator != null && instigator.getOwner() instanceof SpawnHost host ? host : null;
     // A row that validates its point as a building's asks its owner for the placement, for the
-    // row it spawns: the point is kept when it is free; a blocked one is refused.
+    // row it spawns: the point is kept when it is free; a blocked one is searched over the next
+    // rows of its column toward the side's own end.
     SpawnPerform.PlacementSearch placement =
         spawn.validatePlacementAsBuilding() ? owner.buildingPlacement(spawn.spawnData()) : null;
     SpawnArguments arguments = SpawnPerform.arguments(spawn, owner, cause, false, false, placement);

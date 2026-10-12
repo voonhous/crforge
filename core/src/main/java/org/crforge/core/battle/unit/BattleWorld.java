@@ -56,6 +56,7 @@ import org.crforge.core.battle.data.GameVersions;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.Formation;
+import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.expression.Expression;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -6793,14 +6794,27 @@ public class BattleWorld implements HolderPasses {
     return new int[] {x, y, blocked ? 1 : 0};
   }
 
+  /** How many half-tile rows the building placement tries after a blocked point. */
+  private static final int PLACEMENT_ROWS = 9;
+
   /**
    * The building placement a spawn row that validates its point as a building's asks for: the point
    * clamped into the arena, kept when no building of the live list other than the owner overlaps
    * the child's circle there and its cell can be stood on. The owner is the object whose action
    * runs the row, so a building that places a building where it stands, as the hero Musketeer's
-   * dummy building places the turret, does not block its own point. A blocked point is refused: the
-   * search over the rows toward or away from the side that would follow, whose overlap test leaves
-   * no object out, is not modelled.
+   * dummy building places the turret, does not block its own point.
+   *
+   * <p>A blocked point is searched over the next nine half-tile rows of its column, one at a time,
+   * stepping down the arena for side 0 and up for side 1 (the Goblins hero's banner dropped on the
+   * river moves back onto its own side's bank). The child's footprint gives each row two edges,
+   * half the footprint below and above it; a row passes when the cells at both edges can be stood
+   * on and no building of the live list overlaps the child's circle at the middle of the two. This
+   * overlap test leaves no object out, the owner included. The first passing row places the child
+   * at the clamped x and at its lower edge moved a further footprint of rows along the side's way,
+   * in whole half tiles.
+   *
+   * <p>Refused: a point for which none of the nine rows passes, which the game leaves at the
+   * requested point, unclamped.
    *
    * @param owner the object whose action spawns the child
    * @param child the row of the child
@@ -6810,9 +6824,27 @@ public class BattleWorld implements HolderPasses {
     return (x, y) -> {
       int clampedX = Math.max(0, Math.min(x, tileMap.width() * TileMap.CELL_UNITS - 1));
       int clampedY = Math.max(0, Math.min(y, tileMap.height() * TileMap.CELL_UNITS - 1));
-      if (!buildingOver(clampedX, clampedY, child.collisionRadius(), owner)
-          && CellTests.cellBlocked(grid, clampedX, clampedY) == 0) {
+      int radius = child.collisionRadius();
+      int column = clampedX / TileMap.CELL_UNITS;
+      int start = clampedY / TileMap.CELL_UNITS;
+      if (!buildingOver(clampedX, clampedY, radius, owner) && cellStandable(column, start)) {
         return new int[] {clampedX, clampedY};
+      }
+      // Side 0 steps down the arena, side 1 up.
+      boolean down = (owner.side() & 1) == 0;
+      int footprint = PlacementSearch.footprint(child);
+      for (int k = 1; k <= PLACEMENT_ROWS; k++) {
+        int row = down ? start - k : start + k;
+        int low = row - footprint / 2;
+        int high = row + footprint / 2;
+        if (!cellStandable(column, low) || !cellStandable(column, high)) {
+          continue;
+        }
+        int middle = (low + high) / 2 * TileMap.CELL_UNITS;
+        if (buildingOver(clampedX, middle, radius)) {
+          continue;
+        }
+        return new int[] {clampedX, (low + (down ? -footprint : footprint)) * TileMap.CELL_UNITS};
       }
       throw new UnsupportedOperationException(
           child.name()
@@ -6820,8 +6852,22 @@ public class BattleWorld implements HolderPasses {
               + x
               + ", "
               + y
-              + "), which is blocked; the search for a free row is not modelled");
+              + "), which is blocked, and none of the next "
+              + PLACEMENT_ROWS
+              + " rows passes; the placement at a point with no free row is not modelled");
     };
+  }
+
+  /**
+   * Whether a unit may stand on a half-tile cell: inside the arena, and neither not placeable,
+   * blocked nor water. The standing test of a cell rather than of a point; a cell outside the arena
+   * cannot be stood on.
+   */
+  private boolean cellStandable(int column, int row) {
+    if (column < 0 || row < 0 || column >= grid.getWidth() || row >= grid.getHeight()) {
+      return false;
+    }
+    return CellTests.cellBlocked(grid, column * TileMap.CELL_UNITS, row * TileMap.CELL_UNITS) == 0;
   }
 
   /**

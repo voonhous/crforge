@@ -134,7 +134,8 @@ public interface SpawnHost extends SpawnObject {
 
   /**
    * The building placement a spawn row that validates its point as a building's asks for, for a
-   * child of the given row: the point kept when it is free, else refused.
+   * child of the given row: the point kept when it is free, else searched over the next rows of its
+   * column.
    *
    * @param child the row of the child it would place
    * @return the search
