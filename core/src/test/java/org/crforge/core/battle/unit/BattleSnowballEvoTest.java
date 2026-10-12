@@ -166,6 +166,31 @@ class BattleSnowballEvoTest {
 
   @Test
   @DisplayName(
+      "an enemy Electro Giant alive far away changes nothing in the capture: the captured Goblin is"
+          + " hidden on the same ticks")
+  void aReflectingUnitFarAwayChangesNothing() {
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, true);
+    CharacterEntity goblin =
+        match.deploy(0, match.getWorld().getRecords().unit("Goblin"), LEVEL, 1, 3000, 22500, "G");
+    CharacterEntity giant =
+        match.deploy(
+            0, match.getWorld().getRecords().unit("ElectroGiant"), LEVEL, 1, 14500, 25000, "E");
+    assertThat(giant.getData().reflectedAttackRadius())
+        .as("the Electro Giant reflects")
+        .isPositive();
+    match.play(14, match.getWorld().getRecords().card("Snowball_EV1"), LEVEL, 0, 3500, 19500, "S");
+    List<Integer> hidden = new ArrayList<>();
+    for (int tick = 0; tick <= 55; tick++) {
+      match.getBattle().step();
+      if (goblin.hidden()) {
+        hidden.add(tick);
+      }
+    }
+    assertThat(hidden).containsExactly(45, 46, 47, 48, 49, 50);
+  }
+
+  @Test
+  @DisplayName(
       "a unit in a jump when its drag completes is put down: on the ground and asked to stand")
   void aUnitCapturedInAJumpIsPutDown() {
     Capture capture = captureInTheAir(tables, GridEntityState.JUMPING);
