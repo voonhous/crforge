@@ -25,17 +25,23 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * from the step its share reaches the threshold until it has come up again. Positions are kept in
  * half tiles (500 game units), as the ring is laid out.
  *
- * <p>Refused as it starts rather than guessed: a building on no ring point of an enemy tower, a
- * ring around a tower already destroyed, a walk backward along the ring and the quarter rule of a
- * row without distance-based positioning, none of which a reference holds.
+ * <p>A building on no ring point of an enemy tower keeps index -1 and no walking direction: each
+ * hide moves it to the half tile it stood on as the run started, with no ring step.
+ *
+ * <p>Refused as it starts rather than guessed: a building on no ring point of a standing tower
+ * while a tower of that side is already destroyed (it may stand on the destroyed tower's ring), the
+ * quarter rule of a row without distance-based positioning and a choice with no enemy king, none of
+ * which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's first-appear action and ring index, each update's"
             + " threshold test, hide, timer, spawner hold, move two steps before the end and"
-            + " reappear. Held by evo_goblindrill_vs_musketeer. Refused: no ring point, a"
-            + " destroyed tower's ring, the backward walk and the quarter rule.")
+            + " reappear, the backward walk and the start on no ring point. Held by"
+            + " evo_goblindrill_vs_musketeer; the backward walk and the start on no ring point by"
+            + " recorded battles not yet in the reference set. Refused: a destroyed tower's ring,"
+            + " the quarter rule and no enemy king.")
 final class GoblinDrillRelocateRun extends ActionInstance {
 
   /** Game units in one half tile, the ring's unit. */
@@ -80,8 +86,11 @@ final class GoblinDrillRelocateRun extends ActionInstance {
 
   private int y;
 
-  /** The index of that point on the ring. */
+  /** The index of that point on the ring, or -1 when it stood on no ring point. */
   private int index;
+
+  /** True when it walks the ring backward: decided once, as the run starts. */
+  private boolean backward;
 
   /** True when the move to the point is still to be made. */
   private boolean moving;
@@ -89,7 +98,7 @@ final class GoblinDrillRelocateRun extends ActionInstance {
   /**
    * The start: the first-appear action scheduled on the building, the building as its cause; then
    * its own point in half tiles, that point's index on the ring of the enemy tower it stands by,
-   * and the walking direction.
+   * and, when it stands on one, the walking direction.
    *
    * @param row the relocation
    * @param unit the building it runs on
@@ -107,16 +116,9 @@ final class GoblinDrillRelocateRun extends ActionInstance {
     y = view.getY() / HALF_TILE;
     int enemy = 1 - (unit.side() & 1);
     index = ringIndex(unit.world().towers(enemy), x, y);
-    if (index < 0) {
-      throw new UnsupportedOperationException(
-          row.name()
-              + " starts on "
-              + unit.name()
-              + " standing on no ring point of an enemy tower, which is not modelled");
-    }
-    if (backward(unit.world().kingTower(enemy))) {
-      throw new UnsupportedOperationException(
-          row.name() + " walks " + unit.name() + " backward along the ring, which is not modelled");
+    // On no ring point: no direction is chosen, and each hide comes up on the point itself.
+    if (index >= 0) {
+      backward = backward(unit.world().kingTower(enemy));
     }
   }
 
@@ -248,10 +250,20 @@ final class GoblinDrillRelocateRun extends ActionInstance {
     if (hide < columns.hideActions().size()) {
       holder.schedule(columns.hideActions().get(hide), ActionHolder.OWN_DELAY, false, holder);
     }
-    for (int step = 0; step < columns.stepsToMove(); step++) {
-      x += STEP_X[index];
-      y += STEP_Y[index];
-      index = index > LAST - 1 ? index - LAST : index + 1;
+    // On no ring point the point stays where it is; the move is made all the same.
+    if (index >= 0) {
+      for (int step = 0; step < columns.stepsToMove(); step++) {
+        if (backward) {
+          // Backward: to the previous index first, then back over that index's step.
+          index = index < 1 ? LAST : index - 1;
+          x -= STEP_X[index];
+          y -= STEP_Y[index];
+        } else {
+          x += STEP_X[index];
+          y += STEP_Y[index];
+          index = index > LAST - 1 ? index - LAST : index + 1;
+        }
+      }
     }
     moving = true;
   }

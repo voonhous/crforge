@@ -22,6 +22,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  * around the tower, walked in steps of one tile. Which way it walks is decided once: with
  * distance-based positioning, toward whichever of the two points the steps reach lies farther from
  * the enemy king, forward on a tie; without it, by the quarter of the arena the building stands in.
+ * A building on no ring point walks nowhere: each hide brings it up on the half tile it stood on.
  *
  * <p>Each threshold in turn hides it once its share of the maximum falls to or below it: its state
  * becomes the underground one, it is untargetable for a tick, the threshold's hide action runs, and
@@ -38,10 +39,12 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " threshold test on the share and on the hit points less the pending damage, the"
             + " hide, the steps along the ring, the move two steps before the end, the reappear"
             + " and the spawner's hold. Held by evo_goblindrill_vs_musketeer (two hides, walking"
-            + " forward). Not modelled: the hide, reappear and target effects. Refused: a"
-            + " building on no ring point, the backward walk and the quarter rule, which no case"
-            + " holds, the character spawns on a hide or a reappear, reappear actions, the shared"
-            + " columns its run does not read, and an owner other than a building.")
+            + " forward); the backward walk and the start on no ring point by recorded battles"
+            + " not yet in the reference set. Not modelled: the hide,"
+            + " reappear and target effects. Refused: a destroyed tower's ring and the quarter"
+            + " rule, which no case holds, the character spawns on a hide or a reappear,"
+            + " reappear actions, the shared columns its run does not read, and an owner other"
+            + " than a building.")
 public final class GoblinDrillEvoRelocate extends RowAction {
 
   /**
