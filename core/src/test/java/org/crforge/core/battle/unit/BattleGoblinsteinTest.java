@@ -32,7 +32,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Goblinstein where the reference runs do not take it: a listener's count below its cost, a variant
  * card's play tested as its option, and counted, the tether over units, the ability's run off an
- * area effect that follows, and a Mirror of the card, whose doctor is a champion.
+ * area effect that follows, and a Mirror of the card, a champion's card of two groups.
  */
 class BattleGoblinsteinTest {
 
@@ -388,7 +388,9 @@ class BattleGoblinsteinTest {
 
     assertThatThrownBy(() -> run(battle, mirror))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("m: a Mirror of the champion Goblinstein, which no reference holds");
+        .hasMessage(
+            "m: a Mirror of the champion Goblinstein, a card of two groups, which no reference"
+                + " holds");
   }
 
   /**

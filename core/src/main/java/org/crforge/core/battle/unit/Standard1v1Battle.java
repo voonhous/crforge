@@ -554,7 +554,13 @@ public class Standard1v1Battle {
    * client builds it as the play is given, from that card or from a play of its side it has given
    * and not yet seen run; with no other play of the side due in the ticks between, the two agree. A
    * Mirror with another play of its side due then is refused, and so is a Mirror outside a match,
-   * which has no last card, and one that repeats a champion, which no reference holds.
+   * which has no last card.
+   *
+   * <p>A Mirror of a champion's card, or of a hero play, which it repeats as the hero row, places a
+   * copy one level up even while the first copy lives, and the champion slots hear the play as a
+   * play of that row: the slot of its champion follows the copy, as it follows a second play of the
+   * card, and the first copy stays as a plain unit. A Mirror of a champion's card of two groups,
+   * whose copy no recording holds, is refused.
    *
    * @param tick the tick the play runs on
    * @param card the Mirror's card row name
@@ -620,11 +626,19 @@ public class Standard1v1Battle {
     }
     // The repeated card is placed as itself, its units staggered as the Mirror's own row staggers
     // them: the item names the Mirror.
+    // A champion's card or hero row is repeated as any card: the copy is placed beside a live one
+    // as a second play of the card would be, and the champion slots hear the play as a play of the
+    // row the item repeats, so the slot of its champion follows the copy.
     DeployCard repeated =
         world.getRecords().withStaggerOfCard(world.getRecords().card(item.repeats().name()), card);
-    if (world.getRecords().cardChampion(repeated.name()) != null) {
+    // A champion's card of two groups, Goblinstein's doctor and monster, which its card listener
+    // ties together, has no copy any recording holds.
+    if (repeated.secondary() != null && world.getRecords().cardChampion(repeated.name()) != null) {
       throw new UnsupportedOperationException(
-          name + ": a Mirror of the champion " + repeated.name() + ", which no reference holds");
+          name
+              + ": a Mirror of the champion "
+              + repeated.name()
+              + ", a card of two groups, which no reference holds");
     }
     place(
         target,
