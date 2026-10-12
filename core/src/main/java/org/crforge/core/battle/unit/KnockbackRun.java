@@ -44,7 +44,8 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " height in 32-bit arithmetic with its two divisions by 100, the landing's route"
             + " reset and the finish; held by the reference battles"
             + " cg_megaknight_evo_uppercut_giant and evo_megaknight_vs_musketeer. The landing"
-            + " action, with the cause passed on, held by ability_hero_giant_slap. A knock on a"
+            + " action, with the cause passed on, held by ability_hero_giant_slap; with the cause"
+            + " dead or gone, held by a recorded witness outside the locked references. A knock on a"
             + " hero whose ability is idle held by random_battle16_s0019 and tv_replay_015; the"
             + " ability postponed while the run is listed, a request in the air cast once it has"
             + " left, held by a recorded witness outside the locked references. The charge reset"
@@ -189,20 +190,11 @@ final class KnockbackRun extends ActionInstance {
 
   /**
    * Schedules the landing action on the unit, built for it, with its cause: the knock's cause when
-   * the row passes it on - refused when that has left the battle, whose kept reference is not
-   * modelled - else the unit itself.
+   * the row passes it on - kept as it was when it has died or left the battle, its side with it, so
+   * an area effect the landing spawns is still the cause's - else the unit itself.
    */
   private void land() {
     WorldEntity cause = row.isPassInstigator() ? instigator : unit;
-    if (row.isPassInstigator() && !instigator.actionAlive()) {
-      throw new UnsupportedOperationException(
-          row.name()
-              + " lands "
-              + unit.name()
-              + " after its cause "
-              + instigator.name()
-              + " has died, not modelled");
-    }
     BattleAction action =
         unit.world().getActions().build(row.getLandingAction(), unit.world().binding(unit));
     unit.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, cause.actionHolder());
