@@ -4114,11 +4114,12 @@ public class BattleWorld implements HolderPasses {
    * The deflection pass of a flying projectile, at a point and height: after each move, at its new
    * position, and at its arrival, at its aim. A projectile that never deflects passes untouched.
    * Every other is measured as a point, standing on the ground, in three dimensions, against every
-   * area effect of the live list, in its order, that deflects projectiles and whose life has not
-   * run out: within the area effect's deflection radius widened by the projectile's own deflect
-   * radius, or its body radius without one. The first that touches it and deflects it ends the
-   * pass; one that touches it but answers no - it has arrived, or is on the area effect's team -
-   * lets the pass go on. A projectile that no deflection turns around passes untouched.
+   * area effect of the live list, in its order, that deflects projectiles and that the cleanup
+   * would not remove - its countdown not below 0, so one on its last step, at 0, still counts:
+   * within the area effect's deflection radius widened by the projectile's own deflect radius, or
+   * its body radius without one. The first that touches it and deflects it ends the pass; one that
+   * touches it but answers no - it has arrived, or is on the area effect's team - lets the pass go
+   * on. A projectile that no deflection turns around passes untouched.
    *
    * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
    * on the ground plane, by a box, or only at its target's point (whose arrival is measured at a
@@ -4154,7 +4155,9 @@ public class BattleWorld implements HolderPasses {
               + ") flies by a deflecting area effect, whose deflection of it is not modelled");
     }
     for (AreaEffectEntity deflector : deflectors) {
-      if (deflector.getCountdown() < 1) {
+      // Only an area effect the cleanup would remove, its countdown below 0, is passed over: one on
+      // its last step, its countdown at 0, still deflects.
+      if (deflector.getCountdown() < 0) {
         continue;
       }
       int reach = deflector.deflectRadius() + rx;
@@ -4293,11 +4296,14 @@ public class BattleWorld implements HolderPasses {
    * from where it stands back by its flight from its start to its aim, so it rolls the way it came
    * by the length it was thrown.
    *
+   * <p>A projectile a crown tower fired at the parent has the tower as its root and keeps its
+   * target: it is sent back at the tower, a king tower as a princess tower, as from any root.
+   *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
-   * a king tower fired that is not spell-like, which searches for the nearest enemy instead when it
-   * has no target, and one carrying copies that change its damage; a spell-like projectile the
-   * search would send at a king tower, which no recording holds; a projectile an area effect
+   * a king tower fired that is not spell-like and has lost its target, which searches for the
+   * nearest enemy instead, and one carrying copies that change its damage; a spell-like projectile
+   * the search would send at a king tower, which no recording holds; a projectile an area effect
    * launched that was not dropped onto it. A deflection past the most a projectile takes
    * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
@@ -4330,13 +4336,18 @@ public class BattleWorld implements HolderPasses {
           deflector.name() + " deflects without an object it follows, which is not modelled");
     }
     boolean rolling = rollingBody(projectile.getData());
+    // A projectile without a root owner is turned at its start and finished; one a king tower
+    // fired that has lost its target searches for the nearest enemy crown tower instead. One a
+    // king tower fired with its target still set is sent back at the king, as from any root.
     if (!rolling
-        && ((source == null && areaSource == null) || (!spellLike && source.getData().king()))) {
+        && ((source == null && areaSource == null)
+            || (!spellLike && source.getData().king() && projectile.getTarget() == null))) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
               + projectile.name()
-              + " without a root owner or from a king tower, which is not modelled");
+              + " without a root owner or from a king tower without a target, which is not"
+              + " modelled");
     }
     if (projectile.carriesListeners()) {
       throw new UnsupportedOperationException(
