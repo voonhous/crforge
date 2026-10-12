@@ -267,9 +267,31 @@ public final class BuffComponent implements BattleComponent {
   }
 
   /**
-   * The apply, from a source or from a parent handing the buff to this rider.
+   * Applies a buff an action puts on the entity whose holder runs it, as {@link #apply(BuffData,
+   * int, int, SpawnHost, int, BattleEntity)} does. A rider takes it as any unit does: the action
+   * runs on the rider's own holder (the remove action of an instance its parent handed it, for
+   * one), so nothing selects the rider, and the game's spawn calls the same apply the hand-over
+   * calls, with the same flags.
    *
-   * @param handedOver true when a parent hands the buff to this rider
+   * @param buff the buff's row
+   * @param time how long it lasts, in milliseconds
+   * @param packedLevel the level it is applied at, packed against the source's rarity
+   * @param source what applies it
+   * @param side the side it is applied for
+   * @param parent the entity whose removal removes the instance, kept only for a buff that stacks;
+   *     null for none
+   */
+  void applyByOwnAction(
+      BuffData buff, int time, int packedLevel, SpawnHost source, int side, BattleEntity parent) {
+    apply(buff, time, packedLevel, source, side, parent, true);
+  }
+
+  /**
+   * The apply, from a source, from a parent handing the buff to this rider, or from an action of
+   * the entity's own.
+   *
+   * @param riderTakes true when a rider takes the buff: a parent hands it over, or an action the
+   *     rider's own holder runs puts it on the rider
    */
   private void apply(
       BuffData buff,
@@ -278,7 +300,7 @@ public final class BuffComponent implements BattleComponent {
       SpawnHost source,
       int side,
       BattleEntity parent,
-      boolean handedOver) {
+      boolean riderTakes) {
     // The entity's running actions see the buff before any gate, from the last listed to the
     // first, and may put another buff in its place.
     ActionHolder holder = entity.madeActionHolder();
@@ -294,9 +316,10 @@ public final class BuffComponent implements BattleComponent {
     if ((entity.getView().getFlags() & entity.getView().getFlagBits().noBuffs()) != 0) {
       return;
     }
-    // A rider takes a buff only from its parent: an area effect's buff test refuses it, and a hit's
-    // buff goes to the parent.
-    if (!handedOver && entity instanceof CharacterEntity c && c.getParent() != null) {
+    // A rider takes a buff from its parent or from an action of its own: an area effect's buff
+    // test refuses it, and a hit's buff goes to the parent. Any other apply on a rider is not
+    // modelled.
+    if (!riderTakes && entity instanceof CharacterEntity c && c.getParent() != null) {
       throw new UnsupportedOperationException(
           buff.name()
               + " is applied to "

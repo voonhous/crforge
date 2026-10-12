@@ -8281,7 +8281,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A buff-spawning action's buff on its owner: for its time, at its source's level and for its
-   * source's side, with the source as the buff's.
+   * source's side, with the source as the buff's. An owner riding on a parent takes it as any unit
+   * does.
    *
    * @param owner the entity the buff goes on
    * @param action the action's name
@@ -8311,7 +8312,9 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.buffSpawned(tick, owner, action, data, timeMs, source.packedLevel(), source);
     }
-    owner.getBuffs().apply(data, timeMs, source.packedLevel(), source, source.side(), parent);
+    owner
+        .getBuffs()
+        .applyByOwnAction(data, timeMs, source.packedLevel(), source, source.side(), parent);
   }
 
   /**
