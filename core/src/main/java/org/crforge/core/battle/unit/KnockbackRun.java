@@ -19,6 +19,11 @@ import org.crforge.core.pathfinding.move.MovementState;
  * One run of a knock on a character: its counter, from the row's duration, and the height it last
  * pushed.
  *
+ * <p>As it starts, a unit with a movement component in a jump, or dashing under a row with a jump
+ * height (a jumping Mega Knight), is put down as a hook or a capture's completed drag puts it down:
+ * on the ground, asked to stand, which ends its jump or dash, and its route emptied; the knock then
+ * lifts it as any other.
+ *
  * <p>Each update raises DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS, and FORCE_IS_AIR while more
  * than 149 ms are left. A unit with a movement component that tracks a charge has its charge reset,
  * as the state setter resets it: the progress to 0 for a unit with a charge range of its own or
@@ -47,10 +52,12 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " or an ability's follow-up state going on through the knock, the activation in the"
             + " air included, held by recorded witnesses outside the locked references. A lane"
             + " switch in the air ending the run on the next update, the pushback in flight"
-            + " stopped, held by recorded witnesses outside the locked references. Refused: a"
-            + " unit already switching lanes as the run starts, which the standard game finishes"
-            + " at once but no recorded battle reaches; a unit jumping or dashing, whose jump or"
-            + " dash the start stops, which no reference holds; a unit following a removed"
+            + " stopped, held by recorded witnesses outside the locked references. The start's"
+            + " put-down of a unit in a jump or dashing under a row with a jump height, held by"
+            + " recorded witnesses outside the locked references. Refused: a unit already"
+            + " switching lanes as the run starts, which the standard game finishes at once but"
+            + " no recorded battle reaches; a unit dashing under a row with no jump height, which"
+            + " the put-down leaves dashing and no reference holds; a unit following a removed"
             + " building, which the knock's own code does not test but whose pulled state under"
             + " the knock no reference holds; a clone, a rider or carrier.")
 final class KnockbackRun extends ActionInstance {
@@ -74,8 +81,9 @@ final class KnockbackRun extends ActionInstance {
   private final WorldEntity instigator;
 
   /**
-   * The start: the ability postponed while the run is listed, the counter from the duration, and
-   * FORCE_IS_AIR with DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS raised.
+   * The start: a unit in a jump or a dash with a height put down, the ability postponed while the
+   * run is listed, the counter from the duration, and FORCE_IS_AIR with
+   * DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS raised.
    *
    * @param row the knock
    * @param unit the unit it runs on
@@ -87,9 +95,13 @@ final class KnockbackRun extends ActionInstance {
     this.row = row;
     this.unit = unit;
     int state = unit.getView().getState();
+    // A unit following a removed building, which the knock's own code does not test, and a unit
+    // the put-down below leaves in the air - dashing under a row with no jump height, or in a jump
+    // or a dash with a height but no movement component - are held by no reference.
+    boolean inTheAir = BattleWorld.inTheAir(unit);
     if (state == GridEntityState.FOLLOWING_REMOVED_BUILDING
-        || state == GridEntityState.JUMPING
-        || state == GridEntityState.DASHING) {
+        || (state == GridEntityState.DASHING && !inTheAir)
+        || (inTheAir && !unit.hasMovementComponent())) {
       throw new UnsupportedOperationException(
           row.name() + " knocks " + unit.name() + " in state " + state + ", not modelled");
     }
@@ -110,6 +122,14 @@ final class KnockbackRun extends ActionInstance {
               + " knocks "
               + unit.name()
               + " as it switches lanes, which no reference holds");
+    }
+    // The put-down a hook and a capture's completed drag give, before the run's tags: a unit in a
+    // jump, or dashing under a row with a jump height (a jumping Mega Knight), is set on the
+    // ground, asked to stand, which ends its jump or dash, and its route emptied.
+    if (inTheAir) {
+      unit.getView().setZ(0);
+      unit.requestState(GridEntityState.STANDING);
+      unit.resetRoute();
     }
     addTags(unit.getView().getFlagBits().abilityPostponed());
     counter = row.getDurationMs();
