@@ -163,6 +163,89 @@ class BattleGiantHeroAbilityTest {
     assertThat(knightXs[land + 1]).isEqualTo(pushedFrom + 250 * (land + 2 - push));
   }
 
+  @Test
+  @DisplayName(
+      "a Giant killed between the pick and the push: the Knight is still pushed along the width,"
+          + " away from where the Giant stood, and lands on an area effect of the Giant's side")
+  void theSlapOutlivesAGiantKilledBeforeThePush() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    Slap slap = slap();
+    // Killed on the step after the pick: gone from the holder before the push is due.
+    stepTo(slap.battle(), CAST + PICK + 1);
+    slap.battle().getWorld().kill(slap.giant(), null);
+    int pushedFrom = slap.knight().getView().getX();
+    stepTo(slap.battle(), CAST + push - 1);
+    assertThat(named(slap.battle(), "GiantHero")).isEmpty();
+    assertThat(slap.knight().getView().getX()).isEqualTo(pushedFrom);
+    stepTo(slap.battle(), CAST + push);
+    assertThat(slap.knight().getView().getX()).isEqualTo(pushedFrom + 250);
+    assertLanding(slap, land);
+  }
+
+  @Test
+  @DisplayName(
+      "a Giant killed between the push and the landing: the Knight lands on an area effect of the"
+          + " Giant's side, which hurts it as the Giant's own")
+  void theLandingOutlivesAGiantKilledAfterThePush() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    Slap slap = slap();
+    stepTo(slap.battle(), CAST + push + 2);
+    slap.battle().getWorld().kill(slap.giant(), null);
+    stepTo(slap.battle(), CAST + push + 6);
+    assertThat(named(slap.battle(), "GiantHero")).isEmpty();
+    assertLanding(slap, land);
+  }
+
+  /** The Giant's slap cast on the Knight, stepped to the cast. */
+  private record Slap(Standard1v1Battle battle, CharacterEntity giant, CharacterEntity knight) {}
+
+  private static Slap slap() {
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0; match == null || !inHand(match, "Giant"); word++) {
+      battle = new Standard1v1Battle(GameData.tables());
+      match = battle.startLadderMatch(GIANT_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
+    }
+    battle.play(220, GameData.card("Giant"), LEVEL, 0, 3500, 14000, "g");
+    battle.play(260, GameData.card("Knight"), LEVEL, 1, 3500, 22000, "k");
+    stepTo(battle, CAST - 20);
+    CharacterEntity giant = named(battle, "GiantHero").get(0);
+    CharacterEntity knight = named(battle, "Knight").get(0);
+    battle.useAbility(CAST, 0, giant.name(), "slap");
+    stepTo(battle, CAST);
+    return new Slap(battle, giant, knight);
+  }
+
+  /**
+   * The landing with the Giant gone: on the landing step an area effect of the Giant's side at the
+   * Knight's point, and the next step the Knight loses the area's hit scaled by the Giant's level.
+   */
+  private static void assertLanding(Slap slap, int land) {
+    String landing =
+        Shipped.text(
+            Shipped.actionNames(Shipped.actionName(KNOCKBACK, "ActionOnLanding"), "SubActions")
+                .get(0),
+            "SpawnData");
+    stepTo(slap.battle(), CAST + land - 1);
+    assertThat(areaEffects(slap.battle())).isEmpty();
+    stepTo(slap.battle(), CAST + land);
+    List<AreaEffectEntity> listed = areaEffects(slap.battle());
+    assertThat(listed).hasSize(1);
+    assertThat(listed.get(0).getData().name()).isEqualTo(landing);
+    assertThat(listed.get(0).side()).isZero();
+    assertThat(listed.get(0).x()).isEqualTo(slap.knight().getView().getX());
+    int hp = slap.knight().getHitPoints().getHitPoints();
+    stepTo(slap.battle(), CAST + land + 1);
+    int base =
+        Shipped.column(Shipped.row("area_effect_objects", landing), "Damage")
+            .path("BaseDamage")
+            .asInt();
+    assertThat(slap.knight().getHitPoints().getHitPoints())
+        .isEqualTo(hp - Shipped.scaled(base, slap.giant()));
+  }
+
   /** Slot flags with the first card in the hero slot. */
   private static int[] heroFirst() {
     int[] slots = new int[8];
