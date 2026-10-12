@@ -344,9 +344,10 @@ public class BattleWorld implements HolderPasses {
   /**
    * One direct hit waiting for the drain: what the attacker's targeting visit hands the damage
    * entry, dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)} deals it at once,
-   * then followed by the attacker's buff on damage when the hit landed.
+   * then followed by the attacker's buff on damage when the hit landed. A hit with no attacker, as
+   * a damage run hands the entry one, is dealt the same way, with no buff on damage after it.
    *
-   * @param attacker the entity whose hit it is
+   * @param attacker the entity whose hit it is, or null for none
    * @param target the view the hit resolved against
    * @param damage hit points the hit deals, before the target's guards and the clamp to zero
    * @param directionX direction of the hit along the arena's width
@@ -562,6 +563,11 @@ public class BattleWorld implements HolderPasses {
    * dies of it, at the drain. So a carrier the damage kills is still alive for the rest of the buff
    * pass and for the post-hooks, and what a later carrier's buff makes in that pass - a spawner
    * buff's child - is made before what the dying carrier's death leaves.
+   *
+   * <p>The evolved Dart Goblin's poison damage goes the same way (see {@link
+   * #dealQueuedDamage(TargetView, int, int, int)}): its run, in the action pass, hands each hit to
+   * the damage entry with no attacker, so a target the poison kills is still alive for the
+   * post-hooks - a spawner's child made in them may still pick it - and dies at the drain.
    */
   private final List<QueuedHit> queuedHits = new ArrayList<>();
 
@@ -959,6 +965,21 @@ public class BattleWorld implements HolderPasses {
   public void dealDirectHit(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
     queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
+  }
+
+  /**
+   * Deals the damage of one hit with no attacker, as a damage run hands it to the damage entry:
+   * queued for the damage drain, in the order hits are dealt (see {@link #queuedHits}), where it is
+   * dealt as {@link #dealDamage(TargetView, int, int, int)} deals it at once. A hit dealt after the
+   * tick's drain waits for the next tick's.
+   *
+   * @param target the view the hit resolved against
+   * @param damage hit points the hit deals, before the target's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   */
+  public void dealQueuedDamage(TargetView target, int damage, int directionX, int directionY) {
+    queuedHits.add(new DirectHitDue(null, target, damage, directionX, directionY));
   }
 
   /**
@@ -8073,14 +8094,15 @@ public class BattleWorld implements HolderPasses {
    * applies it only for a record its bookkeeping accepted), a hit that kills included; nothing for
    * an attacker whose row sets none, or a target that has left the battle. The bookkeeping accepts
    * a hit after the battle's end too, which takes nothing; the drain would apply the buff on damage
-   * of such a hit as well, which no reference holds, so it is refused.
+   * of such a hit as well, which no reference holds, so it is refused. A hit with no attacker
+   * carries none.
    *
-   * @param attacker the entity whose hit it is
+   * @param attacker the entity whose hit it is, or null for none
    * @param target the view the hit resolved against
    * @param result what the hit's damage did
    */
   private void drainBuffOnDamage(WorldEntity attacker, TargetView target, DamageResult result) {
-    if (!result.accepted() || attacker.getData().buffOnDamage() == null) {
+    if (!result.accepted() || attacker == null || attacker.getData().buffOnDamage() == null) {
       return;
     }
     if (!result.landed()) {

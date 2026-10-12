@@ -21,14 +21,17 @@ import org.crforge.core.fidelity.FidelityStatus;
  * re-trigger puts the duration (Duration, or CrownTowerDuration on a crown tower) back and raises
  * the amount when the new one is higher. Each step adds 50 ms to the run's clock and takes 50 ms
  * off the duration; on each whole HitSpeed of the clock the object takes the amount, with no
- * attacker, and once the duration is out the run finishes.
+ * attacker, and once the duration is out the run finishes. The damage entry queues the amount for
+ * the holder's damage drain, after every post-hook, so an object the poison kills is still alive
+ * for the post-hooks of that tick and dies at the drain.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the run per object and thrower, the amount from the copy's stack, the area's"
             + " level and the crown tower share, the duration put back by each hit and the damage"
-            + " on each whole HitSpeed; held by evo_blowdartgoblin_vs_musketeer. Supplied: the"
+            + " on each whole HitSpeed, landing at the damage drain; held by"
+            + " evo_blowdartgoblin_vs_musketeer and tv_replay_015. Supplied: the"
             + " amount is scaled as an area effect's damage is. Refused as the row is built:"
             + " OnHitAction, which no shipped row sets.")
 public final class BlowdartDamage extends RowAction {
