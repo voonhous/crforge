@@ -2369,10 +2369,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * Puts a taunt's buff on the entity, the forced object its source, at that object's level and for
-   * its side.
+   * its side. The taunt's run is listed by the entity's own holder, so a rider takes the buff as
+   * from an action of its own.
    */
   void tauntBuff(String buff, int timeMs, WorldEntity source) {
-    getBuffs().apply(world.buffData(buff), timeMs, source.packedLevel(), source, source.side());
+    getBuffs()
+        .applyByOwnAction(
+            world.buffData(buff), timeMs, source.packedLevel(), source, source.side(), null);
   }
 
   /** Tells the observers what a taunt's arming or step did. */

@@ -29,10 +29,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * removes the taunt's buffs from it. Each arming and step is told to the battle's observers with
  * the calls it made, in order.
  *
- * <p>The reach is tested only for a building owner (a taunted rider, the other owner the test
- * applies to, is refused as the taunt starts): the forced object must lie within the owner's sight
- * range, its collision radius added, out from the object's edge, and no nearer than the owner's
- * minimum range in from it.
+ * <p>The reach is tested only for a building owner or a rider, an owner that rides on another, as
+ * the Spear Goblins on a Goblin Giant: the forced object must lie within the owner's sight range,
+ * its collision radius added, out from the object's edge, and no nearer than the owner's minimum
+ * range in from it. A rider takes a building owner's steps and, onto a unit, the reach test in
+ * front of the forced reference at the arming.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -46,7 +47,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " reference kept while it stays on the forced object, or marked in the targeting"
             + " queue and forced back onto it, nothing while the targeting component is off. A"
             + " building other than a crown tower takes the building steps: held by the hero"
-            + " Knight's taunt on a Cannon and an Inferno Tower within and beyond their reach.")
+            + " Knight's taunt on a Cannon and an Inferno Tower within and beyond their reach. A"
+            + " rider takes a building's reach and steps, and a carrier's riders are taunted with"
+            + " it: held by recorded battles of the hero Knight's taunt on Goblin Giants and hero"
+            + " Ice Wizards.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -108,9 +112,9 @@ final class TauntRun extends ActionInstance {
     boolean building = onto.building();
     boolean able = onto.air() ? row.attacksAir() : row.attacksGround() || !row.attacksAir();
     boolean valid = able && !(building ? row.targetOnlyTroops() : row.targetOnlyBuildings());
-    // A building object puts the reach test in front of the forced reference; so would a rider
-    // owner, which the taunt refuses as it starts.
-    boolean recheck = building;
+    // A building object puts the reach test in front of the forced reference; so does a rider
+    // owner.
+    boolean recheck = building || rider();
     boolean crown = owner.getTargetView().crownTower();
     if (crown && owner.getSelection().validate(onto, ReferenceValidator.MODE_TAKE)) {
       durationMs = taunt.getCrownTowerDurationMs();
@@ -191,7 +195,7 @@ final class TauntRun extends ActionInstance {
       report(calls);
       return;
     }
-    if (unit) {
+    if (unit && !rider()) {
       stepUnit(calls);
       closeStep(calls);
       return;
@@ -315,7 +319,7 @@ final class TauntRun extends ActionInstance {
    * minimum range in from it, compared on 32-bit squares without a sign.
    */
   private boolean reach() {
-    if (!owner.getTargetView().building()) {
+    if (!owner.getTargetView().building() && !rider()) {
       return true;
     }
     TargetingState t = owner.getTargeting();
@@ -336,6 +340,11 @@ final class TauntRun extends ActionInstance {
     }
     int inner = Math.max(AttackRange.minRange(t) - radius, 0);
     return Integer.compareUnsigned(inner * inner, squared) <= 0;
+  }
+
+  /** Whether the owner rides on another unit, which takes a building owner's reach and steps. */
+  private boolean rider() {
+    return owner instanceof CharacterEntity unit && unit.getParent() != null;
   }
 
   /** Whether the owner's reference is the forced object now. */
