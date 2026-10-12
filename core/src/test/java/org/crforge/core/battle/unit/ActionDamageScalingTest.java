@@ -172,4 +172,68 @@ class ActionDamageScalingTest {
             .build("ElectroGiant_EV1_Apply_Pulse_Damage", battle.getWorld().binding(knight));
     assertThat(pulse).isInstanceOf(TakeDamage.class);
   }
+
+  @Test
+  @DisplayName(
+      "a pulse hit of no amount drained after the evolved Electro Giant's pulse area has left lands"
+          + " as nothing")
+  void pulseHitOfNoAmountFromAnAreaThatLeftLands() {
+    String damageAction = "ElectroGiant_EV1_Apply_Pulse_Damage";
+    // The case holds only while the pulse's damage has no amount: 0 scales to 0 at any level.
+    assertThat(fields(damageAction).get("Damage").get("BaseDamage").asInt()).isZero();
+    assertThat(fields(damageAction).get("Damage").get("TowerDamage").asInt()).isZero();
+    String pulseArea = "ElectroGiant_EV1_Pulse_AEO";
+    int life = number(row("area_effect_objects", pulseArea), "LifeDuration");
+    // A first battle finds the step the first pulse area appears on; the second, the same up to
+    // then, puts a knight down beside the giant on the area's last step, so the area's last hit
+    // reaches it first and its damage-taking action is drained on the next step, after the area
+    // has left the battle.
+    int pulseStep = pulseStep(pulseArea);
+    int lastStep = pulseStep + life / 50;
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+    List<Hit> hits = hits(battle);
+    CharacterEntity giant =
+        battle.deploy(0, records.unit("ElectroGiant_EV1"), LEVEL, 0, 3500, 10000, "giant");
+    CharacterEntity knight =
+        battle.deploy(lastStep, records.unit("Knight"), LEVEL, 1, 3500, 11500, "knight");
+    while (battle.getBattle().getTick() < lastStep + 5) {
+      battle.getBattle().step();
+      giant.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    }
+
+    List<Hit> onKnight = hits.stream().filter(h -> h.target() == knight).toList();
+    assertThat(onKnight).as("the pulse's hit on the knight").isNotEmpty();
+    assertThat(onKnight).allSatisfy(h -> assertThat(h.amount()).isZero());
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(knight.getHitPoints().getMaximum());
+  }
+
+  /** The step an evolved Electro Giant kept in place first has its pulse area in the battle. */
+  private static int pulseStep(String pulseArea) {
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+    CharacterEntity giant =
+        battle.deploy(0, records.unit("ElectroGiant_EV1"), LEVEL, 0, 3500, 10000, "giant");
+    while (battle.getBattle().getTick() < 400) {
+      battle.getBattle().step();
+      giant.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+      List<Boolean> found = new ArrayList<>();
+      battle
+          .getBattle()
+          .getHolder()
+          .entities()
+          .forEach(
+              e -> {
+                if (e instanceof AreaEffectEntity a && a.getData().name().equals(pulseArea)) {
+                  found.add(true);
+                }
+              });
+      if (!found.isEmpty()) {
+        return battle.getBattle().getTick();
+      }
+    }
+    throw new AssertionError("no pulse area within 400 steps");
+  }
 }

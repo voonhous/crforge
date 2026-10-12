@@ -25,17 +25,19 @@ import org.crforge.core.fidelity.FidelityStatus;
  * multiplier of the source row's rarity for the step of the source's level, over 100, on a 32-bit
  * product, with step 0 and a row without a rarity leaving the amount as it is. The source is the
  * character, building or tower that caused the action, or the area effect whose hit ran it; a hit
- * without a source is not scaled.
+ * without a source is not scaled. A source that has left the battle by the drain is no source: a
+ * hit of no amount from one deals 0, and the level scaling of one with an amount is refused.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the owner with hit points, the added amount evaluated with the start's context,"
             + " the source, the queue, the amount at the drain, the level scaling by a character's"
-            + " or an area effect's own row and level, and the flags read. Supplied: no attacker's"
-            + " buff changes the amount. Refused: a scaled damage from another kind of source or"
-            + " from a source no longer in the battle, and the flags and columns no row of the"
-            + " data needs.")
+            + " or an area effect's own row and level, a hit of no amount from a source no longer in"
+            + " the battle, and the flags read. Supplied: no attacker's buff changes the amount."
+            + " Refused: a scaled damage from another kind of source, one with an amount from a"
+            + " source no longer in the battle, and the flags and columns no row of the data"
+            + " needs.")
 public final class TakeDamage extends RowAction {
 
   /** A tower amount a damage that gives none carries. */

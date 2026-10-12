@@ -5720,7 +5720,8 @@ public class BattleWorld implements HolderPasses {
    * at 0 unless NoProtection. The damage entry deals it with the source counting it (an area effect
    * counts nothing), the target's runs told whether it is a Reflected hit, the hidden test lifted
    * under DamagesHidden, and the death it causes runs at once. A source that has left the battle is
-   * no source; the level scaling of a hit from one is refused. A source whose row sets a buff on
+   * no source; a hit from one with an amount of 0 deals 0, which level scaling keeps at any level,
+   * and the level scaling of one with an amount is refused. A source whose row sets a buff on
    * damage, which the drain applies after a hit it lets through, is refused.
    *
    * <p>The level scaling is the card damage scaling of the source's own row and level: a
@@ -5737,17 +5738,20 @@ public class BattleWorld implements HolderPasses {
             ? null
             : due.areaSource();
     TakeDamage.Damage damage = due.damage();
-    if (damage.levelScaled()
-        && source == null
-        && areaSource == null
-        && (due.source() != null || due.areaSource() != null)) {
-      throw new UnsupportedOperationException(
-          "a damage-taking action's hit scaled by the level of a source no longer in the battle"
-              + " is not modelled");
-    }
     int amount = 0;
     if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) == 0) {
       amount = damage.amount(target.getTargetView().isCrownTowerTarget()) + due.added();
+      // A source that has left gives no level to scale by; an amount of 0 scales to 0 at any
+      // level, so only a hit with an amount needs that level.
+      if (damage.levelScaled()
+          && amount != 0
+          && source == null
+          && areaSource == null
+          && (due.source() != null || due.areaSource() != null)) {
+        throw new UnsupportedOperationException(
+            "a damage-taking action's hit of an amount scaled by the level of a source no longer"
+                + " in the battle is not modelled");
+      }
       if (damage.levelScaled() && source != null) {
         amount =
             LevelScaling.scale(
