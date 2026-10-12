@@ -2562,7 +2562,8 @@ public class BattleWorld implements HolderPasses {
    * @param side the side that played
    * @param deployed the card the play put down: a Mirror's repeated card, a variant's option
    * @param played the card played: the Mirror, the variant card
-   * @param variant true for a variant card's play, which a listener of its side refuses
+   * @param variant true for a variant card's play, whose cost a listener of its side that hears it
+   *     and counts it refuses
    */
   void cardPlayed(int side, String deployed, String played, boolean variant) {
     List<BattleEntity> all = new ArrayList<>(holder.entities());
@@ -2576,25 +2577,31 @@ public class BattleWorld implements HolderPasses {
         if (!(instance instanceof CardDeployListener.Run run)) {
           continue;
         }
-        if (variant && (owner.side() & 1) == (side & 1)) {
-          throw new UnsupportedOperationException(
-              played
-                  + " played as "
-                  + deployed
-                  + " while "
-                  + owner.name()
-                  + "'s "
-                  + instance.getAction().name()
-                  + " listens for its side's card plays: a variant card's play, whose kind the"
-                  + " group's lists answer, is not modelled");
-        }
+        // A variant card's play is tested as any play is: with EvaluateDeployedCard the option's
+        // row it was cast as, else the variant card, each against its group's list for its form;
+        // no shipped group lists either, so no listener hears one. The elixir a heard variant play
+        // would add to a count below the listener's cost is not established.
         String scheduled =
             run.hear(
                 owner.side(),
                 side,
                 deployed,
                 played,
-                () -> records.matchCard(deployed).cost(),
+                () -> {
+                  if (variant) {
+                    throw new UnsupportedOperationException(
+                        played
+                            + " played as "
+                            + deployed
+                            + " is counted by "
+                            + owner.name()
+                            + "'s "
+                            + instance.getAction().name()
+                            + ", which listens for its side's card plays: the elixir a variant"
+                            + " card's play adds to the count is not modelled");
+                  }
+                  return records.matchCard(deployed).cost();
+                },
                 card -> records.matchCard(card).form() == MatchCard.HERO_FORM);
         if (scheduled != null) {
           owner

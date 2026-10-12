@@ -19,14 +19,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>The listener is made in its owner's pending pass, after the play that made the owner was sent,
  * so it never hears that play. A later card play of the owner's side that it hears tests the card -
- * the card the play put down, a Mirror's repeated card or an evolved or hero play's row, with
- * EvaluateDeployedCard, else the card played - against its card group: a row in the hero form
- * against the group's heroes, any other against its playable cards; a listener with no group takes
- * every card. A row's form is its card form column, else the hero form for a row of the hero forms
- * (and the evolved form for a row of the evolved cards, else the basic form). When the elixir the
- * run has counted reaches the row's cost before the play, the activation action is scheduled on the
- * owner, the owner its cause, and the cost taken off the count; below it, the played card's cost is
- * added to the count. The effects it shows are presentation.
+ * the card the play put down, a Mirror's repeated card, an evolved or hero play's row or the option
+ * a variant card was played as, with EvaluateDeployedCard, else the card played, the Mirror or the
+ * variant card - against its card group: a row in the hero form against the group's heroes, any
+ * other against its playable cards; a listener with no group takes every card. A row's form is its
+ * card form column, else the hero form for a row of the hero forms (and the evolved form for a row
+ * of the evolved cards, else the basic form). When the elixir the run has counted reaches the row's
+ * cost before the play, the activation action is scheduled on the owner, the owner its cause, and
+ * the cost taken off the count; below it, the played card's cost is added to the count. The effects
+ * it shows are presentation.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -39,8 +40,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " banner going and the earlier hero goblins tagged at a new hero play. A count"
             + " below the cost, which no listener of a modelled card reaches, is held by a unit"
             + " test only; a Mirror's repeated card tested in place of the Mirror, and an evolved"
-            + " play's row in place of its deck card, are translated but held by no run. Refused:"
-            + " a variant card's play heard by a listener of its side.")
+            + " play's row in place of its deck card, are translated but held by no run. A"
+            + " variant card's play tested as the option it was played as, which no shipped"
+            + " group lists, so the Goblins hero banner and goblins stand through a Merge Maiden"
+            + " of either option. Refused: the elixir a heard variant play adds to a count below"
+            + " the cost, which no shipped group reaches.")
 public final class CardDeployListener extends RowAction {
 
   /** The card group whose plays the listener answers, empty for every card. */
@@ -110,8 +114,8 @@ public final class CardDeployListener extends RowAction {
      *
      * @param ownerSide the owner's side
      * @param side the side that played
-     * @param deployed the card the play put down: a Mirror's repeated card
-     * @param played the card played: the Mirror
+     * @param deployed the card the play put down: a Mirror's repeated card, a variant's option
+     * @param played the card played: the Mirror, the variant card
      * @param deployedCost the cost of the card the play put down, asked only when it is counted
      * @param heroForm tells whether a card row is in the hero form, asked only with a group
      * @return the action to schedule on the owner, or null for none
