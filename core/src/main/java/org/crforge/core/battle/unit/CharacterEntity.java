@@ -1389,18 +1389,23 @@ public class CharacterEntity extends WorldEntity {
    * tower, as a Cannon, takes the same run as a crown tower past the arming's crown tower branch:
    * the reach tested and the reference forced again on each step, as for every building owner.
    *
-   * <p>Refused rather than guessed: a unit that rides on another or carries riders, whose riders
-   * the perform would taunt too, a unit in a pathfinding state, and an object to force onto that is
-   * not in the battle or flies, which a tag may count as on the ground.
+   * <p>A unit that carries riders, as a Goblin Giant, has each of its riders taunted onto the same
+   * object as well, in the order they were made, each by a run of its own armed after the carrier's
+   * and listed by the rider's holder; the perform is told once, for the carrier. A rider's run,
+   * whether it came that way or the rider was taunted itself, takes the reach test of a building
+   * owner (see {@link TauntRun}).
+   *
+   * <p>Refused rather than guessed: a unit or one of its riders in a pathfinding state, a rider
+   * that already lists a run of the same row, and an object to force onto that is not in the battle
+   * or flies, which a tag may count as on the ground.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
     String refused = null;
-    if (parent != null || !riders().isEmpty()) {
-      refused = "a rider or a carrier, whose riders it would taunt too, which";
-    } else if (getView().getState() == GridEntityState.SPAWN_PATHFIND
-        || getView().getState() == GridEntityState.INGAME_PATHFIND) {
+    if (pathfinding() || riders().stream().anyMatch(CharacterEntity::pathfinding)) {
       refused = "a pathfinding unit, which";
+    } else if (riders().stream().anyMatch(rider -> rider.listsRunOf(action))) {
+      refused = "a rider that lists a run of it already, which";
     } else if (!(forced instanceof WorldEntity onto) || onto.getTargetView().air()) {
       refused = "a flying object or one not in the battle, which";
     }
@@ -1412,7 +1417,30 @@ public class CharacterEntity extends WorldEntity {
     world.tauntPerformed(this, action.name(), phase, instigator, onto);
     TauntRun run = new TauntRun(action, this, onto);
     run.start();
+    // The carrier's riders are taunted onto the same object, each by its own run, after the
+    // carrier's run is armed.
+    for (CharacterEntity rider : List.copyOf(riders())) {
+      TauntRun ridden = new TauntRun(action, rider, onto);
+      ridden.start();
+      rider.actionHolder().list(ridden);
+    }
     return run;
+  }
+
+  /** Whether the unit is in a pathfinding state, which a taunt does not model. */
+  private boolean pathfinding() {
+    int state = getView().getState();
+    return state == GridEntityState.SPAWN_PATHFIND || state == GridEntityState.INGAME_PATHFIND;
+  }
+
+  /** Whether the unit's holder lists an unfinished run of the action's row. */
+  private boolean listsRunOf(Taunt action) {
+    for (ActionInstance instance : actionHolder().running()) {
+      if (!instance.isFinished() && instance.getAction().name().equals(action.name())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
