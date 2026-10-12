@@ -9,6 +9,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -33,6 +34,24 @@ class RiderTest {
 
   /** The height a rider rides at, written into its row. */
   private static final int RIDER_HEIGHT = 4000;
+
+  /**
+   * A buff whose remove action puts {@link #SLOW} on its carrier, written into the buff table; its
+   * columns are otherwise none.
+   */
+  private static final String FREEZE = "Test_Rider_Freeze";
+
+  /** The remove action of {@link #FREEZE}: a spawn of {@link #SLOW} on its owner. */
+  private static final String SLOW_SPAWN = "Test_Rider_Slow_Spawn";
+
+  /** The buff {@link #SLOW_SPAWN} puts on its owner, written into the buff table. */
+  private static final String SLOW = "Test_Rider_Slow";
+
+  /** How long {@link #FREEZE} is applied for in the tests. */
+  private static final int FREEZE_MS = 500;
+
+  /** How long {@link #SLOW_SPAWN} puts {@link #SLOW} on its owner for. */
+  private static final int SLOW_MS = 2000;
 
   @TempDir static Path tablesFolder;
 
@@ -67,6 +86,32 @@ class RiderTest {
         tablesFolder,
         "spells_characters",
         rows -> GameData.columns(rows, "GoblinGiant").put("SummonNumber", 1));
+    GameData.alterLoaded(
+        tablesFolder,
+        "actions",
+        rows -> {
+          ObjectNode row = rows.putObject(SLOW_SPAWN);
+          row.put("class", "LogicActionSpawnData");
+          row.put("ClassType", "ActionSpawn");
+          ObjectNode fields = row.putObject("fields");
+          fields.put("ClassType", "ActionSpawn");
+          fields.put("SpawnData", SLOW);
+          fields.put("SpawnTime", SLOW_MS);
+          fields.put("SpawnType", "BuffType");
+        });
+    GameData.alterLoaded(
+        tablesFolder,
+        "character_buffs",
+        rows -> {
+          ObjectNode freeze = rows.putObject(FREEZE);
+          freeze.put("index", rows.size() - 1);
+          freeze.put("class", "LogicCharacterBuffData");
+          freeze.putObject("columns").put("Rarity", "Common").put("OnRemoveAction", SLOW_SPAWN);
+          ObjectNode slow = rows.putObject(SLOW);
+          slow.put("index", rows.size() - 1);
+          slow.put("class", "LogicCharacterBuffData");
+          slow.putObject("columns").put("Rarity", "Common").put("SpeedMultiplier", -30);
+        });
     tables = GameTables.load(tablesFolder);
     records = new BattleRecords(tables);
   }
@@ -282,6 +327,56 @@ class RiderTest {
                     .apply(records.buff("ZapFreeze"), 500, LEVEL_11, null, 1))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a rider, other than through its parent");
+  }
+
+  @Test
+  @DisplayName(
+      "a rider's own action puts its buff on the rider: the remove action of the instance its"
+          + " parent handed it, run as that instance runs out, after the parent's own was removed")
+  void aRidersOwnActionBuffsTheRider() {
+    Standard1v1Battle match = new Standard1v1Battle(tables);
+    CharacterEntity giant = playedGoblinGiant(match);
+    giant.getBuffs().apply(records.buff(FREEZE), FREEZE_MS, LEVEL_11, giant, 1);
+    // The Giant's instance removed at once: its remove action, run in the Giant's next pending
+    // pass, puts the slow on the Giant, which hands it to the riders. The riders keep their own
+    // instances of the first buff.
+    giant.getBuffs().removeRow(FREEZE);
+    match.getBattle().step();
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(rider.getBuffs().carries(FREEZE)).isTrue();
+      assertThat(rider.getBuffs().carries(SLOW)).isTrue();
+    }
+    int steps = 1;
+    while (giant.riders().get(0).getBuffs().carries(FREEZE)) {
+      match.getBattle().step();
+      steps++;
+    }
+    // Each rider's own instance runs out: its remove action, run in the rider's next pending pass,
+    // puts the slow on the rider itself, which refreshes the instance handed over from the Giant.
+    match.getBattle().step();
+    steps++;
+
+    List<String> giantSlow = instances(giant).stream().filter(i -> i.startsWith(SLOW)).toList();
+    assertThat(giantSlow).hasSize(1);
+    for (CharacterEntity rider : giant.riders()) {
+      assertThat(rider.getBuffs().carries(FREEZE)).isFalse();
+      List<BuffInstance> slows =
+          rider.getBuffs().items().stream().filter(i -> i.getBuff().name().equals(SLOW)).toList();
+      assertThat(slows).hasSize(1);
+      BuffInstance slow = slows.get(0);
+      BuffInstance giantsSlow =
+          giant.getBuffs().items().stream()
+              .filter(i -> i.getBuff().name().equals(SLOW))
+              .findFirst()
+              .orElseThrow();
+      // Handed over with the Giant's and stepped with it until the rider's own action refreshed
+      // it: the time that refresh added is the time the Giant's has run down since.
+      assertThat(slow.getRemaining()).isGreaterThan(giantsSlow.getRemaining());
+      assertThat(slow.getTotal() - SLOW_MS)
+          .isEqualTo(slow.getRemaining() - giantsSlow.getRemaining());
+      assertThat(slow.getSource()).isSameAs(giant);
+      assertThat(steps).isGreaterThan(FREEZE_MS / 50);
+    }
   }
 
   @Test
