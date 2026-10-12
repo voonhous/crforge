@@ -13,6 +13,7 @@ import static org.crforge.core.battle.Shipped.text;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
@@ -111,6 +112,59 @@ class BattleGoblinCageEvoTest {
     assertThat(giant.hidden()).as("no longer hidden").isFalse();
     assertThat(captureBuffs(giant, cage)).as("the buff left with its parent").isEmpty();
     assertThat(giant.getView().getY()).as("walking again").isNotEqualTo(cageY);
+  }
+
+  @Test
+  @DisplayName(
+      "a Giant Skeleton killed in the evolved cage drops its bomb on its own point, the cage's, as"
+          + " any death spawn of one child: the capture's find-location tag moves nothing")
+  void aGiantSkeletonKilledInTheCageDropsItsBombOnTheCagesPoint() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Battle battle = match.getBattle();
+    CharacterEntity cage =
+        match.deploy(0, GameData.unit("GoblinCage_EV1_TEMPNAME"), LEVEL, 0, 3500, 14500);
+    CharacterEntity skeleton =
+        match.deploy(200, GameData.unit("GiantSkeleton"), LEVEL, 1, 3500, 19000);
+    String bombRow = skeleton.getData().deathSpawnCharacter();
+    assertThat(GameData.unit(bombRow).building())
+        .as("the Giant Skeleton's death spawn is a building")
+        .isTrue();
+    int cageX = cage.getView().getX();
+    int cageY = cage.getView().getY();
+
+    // Held on the cage's point and hidden there, so the capture has dragged it and raised its tags.
+    boolean held = false;
+    for (int tick = 0; tick < 300 && !held; tick++) {
+      battle.step();
+      held =
+          skeleton.getView().getX() == cageX
+              && skeleton.getView().getY() == cageY
+              && skeleton.hidden();
+    }
+    assertThat(held).as("the Giant Skeleton is held hidden on the cage's point").isTrue();
+
+    // The cage's next hit kills it.
+    skeleton.getHitPoints().setHitPoints(1);
+    WorldEntity bomb = null;
+    for (int tick = 0; tick < 2 * HIT_TICKS && bomb == null; tick++) {
+      battle.step();
+      bomb = live(battle, bombRow);
+    }
+    assertThat(skeleton.getHitPoints().getHitPoints()).as("killed by the cage's hit").isZero();
+    assertThat(bomb).as("its bomb is spawned").isNotNull();
+    assertThat(bomb.side()).isEqualTo(skeleton.side());
+    assertThat(bomb.getView().getX()).as("on the cage's point").isEqualTo(cageX);
+    assertThat(bomb.getView().getY()).as("on the cage's point").isEqualTo(cageY);
+  }
+
+  /** The live object of a row in the battle, or null for none. */
+  private static WorldEntity live(Battle battle, String row) {
+    for (BattleEntity entity : battle.getHolder().entities()) {
+      if (entity instanceof WorldEntity unit && unit.getData().name().equals(row)) {
+        return unit;
+      }
+    }
+    return null;
   }
 
   /** The unit's instances of the capture buff whose parent and source are the cage. */

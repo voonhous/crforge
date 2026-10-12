@@ -421,6 +421,18 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
+   * A capture's hit on a unit it holds waiting for the drain: dealt there as a direct hit is, past
+   * the hidden test, with no direction and with the capturing character as the attacker, so a hit
+   * that kills runs the unit's death there.
+   *
+   * @param owner the capturing character
+   * @param unit the unit held
+   * @param damage the damage per hit at the owner's level
+   */
+  private record CaptureHitDue(CharacterEntity owner, WorldEntity unit, int damage)
+      implements QueuedHit {}
+
+  /**
    * The kill of a fallen king's circle waiting for the drain, where it is dealt.
    *
    * @param target the entity the circle reached
@@ -453,8 +465,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
    * share of a character's or a projectile's area, a projectile's hit on its one target, a hit of a
-   * buff's damage over time, a circle's kill, a Kamikaze unit's kill, a kill action's kill or a
-   * tiebreaker's clearing's kill.
+   * buff's damage over time, a capture's hit, a circle's kill, a Kamikaze unit's kill, a kill
+   * action's kill or a tiebreaker's clearing's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
@@ -465,6 +477,7 @@ public class BattleWorld implements HolderPasses {
           TravellingHitDue,
           ActionDamageDue,
           BuffHitDue,
+          CaptureHitDue,
           CircleKillDue,
           KamikazeKillDue,
           ActionKillDue,
@@ -4555,6 +4568,8 @@ public class BattleWorld implements HolderPasses {
         queued += share.damage();
       } else if (hit instanceof BuffHitDue buffHit && buffHit.target() == entity) {
         queued += buffHit.damage();
+      } else if (hit instanceof CaptureHitDue capture && capture.unit() == entity) {
+        queued += capture.damage();
       } else if (hit instanceof ProjectileHitDue single && single.target() == entity) {
         queued += single.damage();
       }
@@ -5557,10 +5572,10 @@ public class BattleWorld implements HolderPasses {
    * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit, a share of a character's or a projectile's area, or a projectile's hit on its one
-   * target: the damage dealt, with its reflect, its observers, its death or the reference drop; a
-   * hit of a buff's damage over time; a circle's, a Kamikaze unit's, a kill action's or a
-   * tiebreaker's clearing's kill.
+   * direct hit, a share of a character's or a projectile's area, a projectile's hit on its one
+   * target, or a capture's hit: the damage dealt, with its reflect, its observers, its death or the
+   * reference drop; a hit of a buff's damage over time; a circle's, a Kamikaze unit's, a kill
+   * action's or a tiebreaker's clearing's kill.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -5616,6 +5631,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof BuffHitDue buffHit) {
         dealBuffDamageNow(buffHit);
+        continue;
+      }
+      if (queued instanceof CaptureHitDue capture) {
+        dealDamage(capture.owner(), capture.unit().getTargetView(), capture.damage(), 0, 0, true);
         continue;
       }
       if (queued instanceof CircleKillDue kill) {
@@ -7613,9 +7632,11 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The capture's tags on a unit it drags, for one step, with NO_MOVE, NO_SUMMON and NO_ATTACK
-   * besides for a capture without a buff. Refused: a unit whose death spawns a building, and a
-   * reflecting unit in the battle, whose readers of two of the tags are not modelled, and a unit
-   * with a spawner held without a buff, whose reader of NO_SUMMON is not modelled.
+   * besides for a capture without a buff. BUILDING_DEATH_SPAWN_FIND_LOCATION is raised and read by
+   * nothing else: the death spawn of a captured unit, a building included, is put where any death
+   * spawn is, on the unit's own point for one child. Refused: a reflecting unit in the battle,
+   * whose reader of NO_REFLECTED_ATTACK is not modelled, and a unit with a spawner held without a
+   * buff, whose reader of NO_SUMMON is not modelled.
    *
    * @param unit the unit dragged
    * @param withoutBuff true for a capture whose row gives no capture buff
@@ -7624,11 +7645,6 @@ public class BattleWorld implements HolderPasses {
     if (withoutBuff && unit.getData().spawnCharacter() != null) {
       throw new UnsupportedOperationException(
           unit.name() + " is captured without a buff and has a spawner, not modelled");
-    }
-    String deathSpawn = unit.getData().deathSpawnCharacter();
-    if (deathSpawn != null && records.unit(deathSpawn).building()) {
-      throw new UnsupportedOperationException(
-          unit.name() + " is captured and its death spawns a building, not modelled");
     }
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof WorldEntity other && other.getData().reflectedAttackRadius() >= 1) {
@@ -7653,14 +7669,18 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A capture's hit on a unit it holds: the damage entry with no hit id and no dedupe id, the
-   * capturing character the attacker, passing the hidden unit.
+   * capturing character the attacker, passing the hidden unit. The entry queues it for the damage
+   * drain, after the tick's post-hooks, as it queues a direct hit (see {@link #queuedHits}); a hit
+   * that kills runs the unit's death there, the capturing character its killer, so the unit's death
+   * slot runs - its death damage, its death spawn, a building included, and its area effect - and
+   * its death handler after it.
    *
    * @param owner the capturing character
    * @param unit the unit held
    * @param damage the damage per hit at the owner's level
    */
   public void captureHit(CharacterEntity owner, WorldEntity unit, int damage) {
-    unit.takeDamage(damage, 0, 0, 0, true, owner, owner);
+    queuedHits.add(new CaptureHitDue(owner, unit, damage));
   }
 
   /** A captured unit's pre-hook changed its hidden tag or the capture's tags in its word. */

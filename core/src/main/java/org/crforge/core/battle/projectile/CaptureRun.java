@@ -47,10 +47,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " jump or a dash with a height as its drag completes, as the hook's, on the ground"
             + " and asked to stand: held by recorded cases of the evolved Snowball on a jumping"
             + " Mega Knight and on a Hog Rider jumping the river, put on the bank and over the"
-            + " water; the cage's filter leaves such a unit out. Held by no run: the hold tags of a"
-            + " character's capture without a buff, a capture that leaves the battle or dies, and the"
-            + " distances it leaves behind, a claim whose lock another holds, two units equally"
-            + " near, and a unit within the hide distance before the drag time has passed.")
+            + " water; the cage's filter leaves such a unit out. A unit the cage's hits kill while"
+            + " it holds it: the hit queued for the damage drain, the death run there, its bomb, a"
+            + " building, on its own point, the cage's; held by a recorded case of the evolved cage"
+            + " on a Giant Skeleton, which does not tell the drain from a death in the capture's"
+            + " pass. Held by no run: the hold tags of a character's capture without a buff, a"
+            + " capture that leaves the battle, and the distances it leaves behind, a claim whose"
+            + " lock another holds, two units equally near, and a unit within the hide distance"
+            + " before the drag time has passed.")
 public final class CaptureRun extends ActionInstance {
 
   /** The step every timer takes, in milliseconds. */
