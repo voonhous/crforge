@@ -29,13 +29,15 @@ import org.crforge.core.pathfinding.target.RangeTest;
  * entry past every gate of the request; then the row's action is scheduled on it with the unit as
  * the cause, a push the entry took clears the target's avoidance blend unless the row turns that
  * off, and the unit carries NO_ATTACK, NO_MOVE and LOCK_TARGET for one step and is held for the
- * follow-up delay. A target with no movement component switched on, or one following a removed
- * building, is not pushed and ends the run. So does a target whose tag word holds NO_PUSHBACK,
- * which the uppercut's push entry refuses (no other push asks the entry that): nothing is scheduled
- * on it unless the row's OnlyRunActionOnPushback is off, and the unit is not held. Each later
- * update ends the run when the unit has no target or attacks another one in range; with another
- * target out of range it marks the uppercut's target in its targeting queue, at a priority the
- * queue's flush never takes; then the delay runs down by 50 ms, the unit held for one more step
+ * follow-up delay. A target with no movement component switched on, or one already switching lanes
+ * (the in-game pathfinding state of a lane switch ability), is not pushed, nothing is scheduled on
+ * it, and the run ends; that state is the only one the push point tests, so a target following a
+ * removed building is pushed like any other. The run ends too for a target whose tag word holds
+ * NO_PUSHBACK, which the uppercut's push entry refuses (no other push asks the entry that): nothing
+ * is scheduled on it unless the row's OnlyRunActionOnPushback is off, and the unit is not held.
+ * Each later update ends the run when the unit has no target or attacks another one in range; with
+ * another target out of range it marks the uppercut's target in its targeting queue, at a priority
+ * the queue's flush never takes; then the delay runs down by 50 ms, the unit held for one more step
  * while any is left, and the run ends when none is. A target that leaves the battle is forgotten,
  * and the next update ends the run.
  */
@@ -48,7 +50,9 @@ import org.crforge.core.pathfinding.target.RangeTest;
             + " and evo_megaknight_vs_musketeer. The blend cleared after a push the entry took,"
             + " on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. The entry's refusal of"
             + " a NO_PUSHBACK target, the run ended without the hold and no action on the target"
-            + " while OnlyRunActionOnPushback is set; held by BattleUppercutWindTest. Refused:"
+            + " while OnlyRunActionOnPushback is set; held by BattleUppercutWindTest. A target"
+            + " switching lanes not pushed, nothing scheduled on it and the run ended; held by"
+            + " BattleUppercutWindTest. Refused:"
             + " the start without a current target, which reads the targeting component's previous"
             + " reference, a push point with no tower or king found, which turns to the facing,"
             + " and a target other than a character with a movement component.")
@@ -163,16 +167,14 @@ final class UppercutRun extends ActionInstance {
     return "delay over";
   }
 
-  /**
-   * The push point and the push: answers whether the push ran on a target not following a removed
-   * building.
-   */
+  /** The push point and the push: answers whether the push ran on a target not switching lanes. */
   private boolean pushTarget() {
     if (!target.hasMovementComponent()) {
       return false;
     }
-    int state = target.getView().getState();
-    if (state == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
+    // The push point reads the target's state once and tests it for the lane switch alone: a
+    // target switching lanes is neither pushed nor given the row's action, and the run ends.
+    if (target.getView().getState() == GridEntityState.INGAME_PATHFIND) {
       return false;
     }
     int tx = target.getView().getX();
