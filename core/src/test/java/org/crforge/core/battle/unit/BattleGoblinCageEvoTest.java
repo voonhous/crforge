@@ -157,6 +157,54 @@ class BattleGoblinCageEvoTest {
     assertThat(bomb.getView().getY()).as("on the cage's point").isEqualTo(cageY);
   }
 
+  @Test
+  @DisplayName(
+      "an Electro Giant held in the evolved cage takes the cage's hits and strikes none back: the"
+          + " capture raises no tag a reflect reads, and the capture buff stops the reflect by its"
+          + " hit speed")
+  void anElectroGiantInTheCageStrikesNothingBack() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    Battle battle = match.getBattle();
+    CharacterEntity cage =
+        match.deploy(0, GameData.unit("GoblinCage_EV1_TEMPNAME"), LEVEL, 0, 3500, 14500);
+    CharacterEntity giant = match.deploy(200, GameData.unit("ElectroGiant"), LEVEL, 1, 3500, 19000);
+    assertThat(giant.getData().reflectedAttackRadius())
+        .as("the Electro Giant reflects")
+        .isPositive();
+    List<Reflection> reflections = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void reflected(int tick, Reflection reflection) {
+                if (reflection.target() == giant && reflection.attacker() == cage) {
+                  reflections.add(reflection);
+                }
+              }
+            });
+    int cageX = cage.getView().getX();
+    int cageY = cage.getView().getY();
+
+    boolean held = false;
+    for (int tick = 0; tick < 300 && !held; tick++) {
+      battle.step();
+      held = giant.getView().getX() == cageX && giant.getView().getY() == cageY && giant.hidden();
+    }
+    assertThat(held).as("the Electro Giant is held hidden on the cage's point").isTrue();
+    for (int tick = 0; tick < 3 * HIT_TICKS; tick++) {
+      battle.step();
+    }
+    // Each of the cage's hits reached the reflect, which found the unit stopped by its capture
+    // buff and struck nothing back.
+    assertThat(reflections).as("the cage's hits reach the reflect").hasSizeGreaterThanOrEqualTo(2);
+    for (Reflection reflection : reflections) {
+      assertThat(reflection.hitSpeed()).as("stopped by the capture buff").isLessThan(1);
+      assertThat(reflection.buff()).as("no buff on the cage").isNull();
+      assertThat(reflection.damage()).as("no damage back").isZero();
+    }
+  }
+
   /** The live object of a row in the battle, or null for none. */
   private static WorldEntity live(Battle battle, String row) {
     for (BattleEntity entity : battle.getHolder().entities()) {

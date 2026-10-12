@@ -7467,14 +7467,15 @@ public class BattleWorld implements HolderPasses {
   private static final int ROLL_BLOCKING_CELL = TileMap.NOT_PLACEABLE_BIT;
 
   /**
-   * The tags a capture's drag raises on its unit for one step. NO_REFLECTED_ATTACK adds nothing
-   * under a tags table that does not list it.
+   * The tags a capture's drag raises on its unit for one step. NO_REFLECTED_ATTACK is not among
+   * them: the drag raises no tag a reflect reads, and a reflect tests no tag of the unit hit. A
+   * captured unit that reflects is stopped only as any reflect is, here by its capture buff's hit
+   * speed of none, so it strikes nothing back while held.
    */
   long captureTags() {
     return flagBits.noDash()
         | flagBits.buildingDeathSpawnFindLocation()
         | flagBits.abilityDisabled()
-        | flagBits.noReflectedAttack()
         | flagBits.captured();
   }
 
@@ -7645,9 +7646,9 @@ public class BattleWorld implements HolderPasses {
    * The capture's tags on a unit it drags, for one step, with NO_MOVE, NO_SUMMON and NO_ATTACK
    * besides for a capture without a buff. BUILDING_DEATH_SPAWN_FIND_LOCATION is raised and read by
    * nothing else: the death spawn of a captured unit, a building included, is put where any death
-   * spawn is, on the unit's own point for one child. Refused: a reflecting unit in the battle,
-   * whose reader of NO_REFLECTED_ATTACK is not modelled, and a unit with a spawner held without a
-   * buff, whose reader of NO_SUMMON is not modelled.
+   * spawn is, on the unit's own point for one child. A reflecting unit, the one captured or any
+   * other, is untouched by the capture's tags (see {@link #captureTags()}). Refused: a unit with a
+   * spawner held without a buff, whose reader of NO_SUMMON is not modelled.
    *
    * @param unit the unit dragged
    * @param withoutBuff true for a capture whose row gives no capture buff
@@ -7656,12 +7657,6 @@ public class BattleWorld implements HolderPasses {
     if (withoutBuff && unit.getData().spawnCharacter() != null) {
       throw new UnsupportedOperationException(
           unit.name() + " is captured without a buff and has a spawner, not modelled");
-    }
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof WorldEntity other && other.getData().reflectedAttackRadius() >= 1) {
-        throw new UnsupportedOperationException(
-            unit.name() + " is captured beside the reflecting " + other.name() + ", not modelled");
-      }
     }
     unit.raiseCaptureTags(withoutBuff ? captureTags() | captureHoldTags() : captureTags());
   }
