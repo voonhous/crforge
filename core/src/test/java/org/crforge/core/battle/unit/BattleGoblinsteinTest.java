@@ -9,6 +9,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -30,8 +31,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Goblinstein where the reference runs do not take it: a listener's count below its cost, a variant
- * card's play it hears, the tether over units, the ability's run off an area effect that follows,
- * and a Mirror of the card, whose doctor is a champion.
+ * card's play tested as its option, and counted, the tether over units, the ability's run off an
+ * area effect that follows, and a Mirror of the card, whose doctor is a champion.
  */
 class BattleGoblinsteinTest {
 
@@ -109,19 +110,116 @@ class BattleGoblinsteinTest {
   }
 
   @Test
-  @DisplayName("a variant card's play that a listener of its side hears is refused")
-  void aVariantPlayHeardIsRefused() {
+  @DisplayName(
+      "a variant card's play is tested as the option it was played as, which the shipped group"
+          + " does not list, so the listener does not hear it and the battle runs on")
+  void aVariantPlayIsNotHeardByAGroupWithoutItsOption() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    List<String> heard = heardBy(battle, "g_0");
     battle.startLadderMatch(GOBLINSTEIN_MAIDEN, KNIGHTS, 0, 0);
     battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
     battle.playVariant(400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
+    run(battle, 400);
 
-    assertThatThrownBy(() -> run(battle, 400))
+    assertThat(GameData.records().cardGroup("Goblinstein"))
+        .doesNotContain("MergeMaiden", "MergeMaiden_Mounted");
+    assertThat(heard).containsExactly("MergeMaiden MergeMaiden_Mounted 0 null");
+  }
+
+  @Test
+  @DisplayName(
+      "a listener that tests the card put down hears a variant card's play by the option's row:"
+          + " a group listing the variant card does not hear it, one listing the option does")
+  void aVariantPlayIsTestedAsItsOption(@TempDir Path folder) throws IOException {
+    // The monster's group given the variant card, as the test writes it.
+    GameData.altered(
+        folder,
+        "card_groups",
+        rows ->
+            GameData.columns(rows, "Goblinstein").withArray("PlayableCards").add("MergeMaiden"));
+    assertThat(heardMaidenPlay(GameTables.load(folder)))
+        .containsExactly("MergeMaiden MergeMaiden_Mounted 0 null");
+
+    // Then the option's row in its place.
+    GameData.alterLoaded(
+        folder,
+        "card_groups",
+        rows -> {
+          ArrayNode cards = GameData.columns(rows, "Goblinstein").withArray("PlayableCards");
+          cards.remove(cards.size() - 1);
+          cards.add("MergeMaiden_Mounted");
+        });
+    assertThat(heardMaidenPlay(GameTables.load(folder)))
+        .containsExactly("MergeMaiden MergeMaiden_Mounted 0 goblinstein_set_custom_tag");
+  }
+
+  @Test
+  @DisplayName(
+      "a variant card's play heard by a listener whose count is below its cost, which would add"
+          + " its elixir to the count, is refused")
+  void aVariantPlayCountedIsRefused(@TempDir Path folder) throws IOException {
+    // The monster's group given the option's row and its listener a cost of 8, as the test writes
+    // them.
+    GameData.altered(
+        folder,
+        "card_groups",
+        rows ->
+            GameData.columns(rows, "Goblinstein")
+                .withArray("PlayableCards")
+                .add("MergeMaiden_Mounted"));
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> GameData.fields(rows, "goblinstein_listen_to_new_deploy").put("ElixirCost", 8));
+
+    assertThatThrownBy(() -> heardMaidenPlay(GameTables.load(folder)))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "MergeMaiden played as MergeMaiden_Mounted while g_0's goblinstein_listen_to_new_deploy"
-                + " listens for its side's card plays: a variant card's play, whose kind the"
-                + " group's lists answer, is not modelled");
+            "MergeMaiden played as MergeMaiden_Mounted is counted by g_0's"
+                + " goblinstein_listen_to_new_deploy, which listens for its side's card plays:"
+                + " the elixir a variant card's play adds to the count is not modelled");
+  }
+
+  /**
+   * Plays a Goblinstein and then a mounted Merge Maiden of its side in a match on the tables, and
+   * returns what the monster's listener heard of the maiden's play.
+   */
+  private static List<String> heardMaidenPlay(GameTables tables) {
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    List<String> heard = heardBy(battle, "g_0");
+    battle.startLadderMatch(GOBLINSTEIN_MAIDEN, KNIGHTS, 0, 0);
+    battle.play(21, new BattleRecords(tables).card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
+    battle.playVariant(400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
+    run(battle, 400);
+    return heard;
+  }
+
+  /**
+   * Lists each play the named owner's listener hears: the card played, the card put down, the count
+   * after it and the action it scheduled.
+   */
+  private static List<String> heardBy(Standard1v1Battle battle, String owner) {
+    List<String> heard = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void cardPlayHeard(
+                  int tick,
+                  WorldEntity listener,
+                  String action,
+                  int side,
+                  String played,
+                  String deployed,
+                  int total,
+                  String scheduled) {
+                if (listener.name().equals(owner)) {
+                  heard.add(played + " " + deployed + " " + total + " " + scheduled);
+                }
+              }
+            });
+    return heard;
   }
 
   @Test
