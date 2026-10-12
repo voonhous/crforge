@@ -404,6 +404,7 @@ public final class ActionRows {
               Set.of(
                   "Interval",
                   "StartCounterAt",
+                  "MaxRepetitions",
                   "ActionToExecute",
                   "PauseTag",
                   "AffectedByHitSpeed",
@@ -1565,7 +1566,8 @@ public final class ActionRows {
                     action(f.get("ActionToExecute")),
                     f.has("PauseTag") ? tagMask(f.get("PauseTag").asText()) : 0,
                     binding.tags(),
-                    intervalRate(f, binding));
+                    intervalRate(f, binding),
+                    integer(f, "MaxRepetitions", Interval.NO_LIMIT));
             case "ActionFlipFlop" ->
                 new FlipFlop(
                     shared,
