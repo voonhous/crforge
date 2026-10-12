@@ -531,6 +531,46 @@ class BattleUppercutWindTest {
 
   @Test
   @DisplayName(
+      "the uppercut does not push a target already switching lanes: the push refused, nothing"
+          + " scheduled on it, so no knock starts, and the run ends without holding the unit")
+  void anUppercutOnALaneSwitchIsNotPushed() {
+    Scene scene = new Scene();
+    CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 6000, "mk");
+    CharacterEntity miner = scene.unit(1, "MightyMiner", 3500, 20000, "mm");
+    scene.step(40);
+    // Held where it stands, far from the Miner, so no hit of its own runs an uppercut.
+    mk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    miner.requestAbility();
+    int steps = 0;
+    while (miner.getView().getState() != GridEntityState.INGAME_PATHFIND) {
+      scene.step(1);
+      steps++;
+      assertThat(steps).as("switching lanes at last").isLessThan(40);
+    }
+    mk.getUnit().targeting().setReference(miner.getTargetView());
+    List<String> before = actionsOn(miner);
+    scene.log.clear();
+
+    mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), miner.actionHolder());
+    scene.step(1);
+    assertThat(miner.getView().getState())
+        .as("still switching lanes after the push step")
+        .isEqualTo(GridEntityState.INGAME_PATHFIND);
+    scene.step(1);
+
+    assertThat(scene.log.stream().filter(line -> line.startsWith("update")))
+        .containsExactly("update mk push refused 0");
+    MovementState movement = miner.getUnit().movement();
+    assertThat(movement.getAttackPushback()).as("an attack's push").isZero();
+    assertThat(movement.getPushbackInFlight()).as("a pushback").isZero();
+    assertThat(actionsOn(miner)).as("nothing scheduled on the target").isEqualTo(before);
+    assertThat(scene.log)
+        .doesNotContain(
+            "tags mk " + Long.toHexString(BITS.noAttack() | BITS.noMove() | BITS.lockTarget()));
+  }
+
+  @Test
+  @DisplayName(
       "a lane switch in the air ends the knock on its next update: the pushback in flight stopped,"
           + " the counter not run down, no height pushed and no landing")
   void aLaneSwitchEndsAKnock() {
