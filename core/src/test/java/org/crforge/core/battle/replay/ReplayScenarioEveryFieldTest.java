@@ -85,6 +85,92 @@ class ReplayScenarioEveryFieldTest {
     assertThat(mapping.mapping().get("cmd[i].ct")).startsWith("consumed: 153, a card play, or 189");
   }
 
+  /**
+   * The knight replay as a Path of Legends battle: the Ranked1v1_NewArena game mode with the header
+   * its replays write (game mode type 13, level cap 16, trail -1, the ranked header {@code rkd}),
+   * each player's data naming the battle's arena ({@code sa}) and each avatar its ranked score
+   * ({@code rnk_sc}).
+   */
+  private static ObjectNode pathOfLegends(ObjectNode scenario) {
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("gamemode", 72_000_000 + tables.table("game_modes").row(RANKED).index());
+    battle.put("gmt", 13);
+    battle.put("lvlcap", 16);
+    battle.put("trail", -1);
+    battle.putObject("rkd").put("t", 46).put("d", 22);
+    for (int side = 0; side < 2; side++) {
+      ((ObjectNode) battle.path("hbd").get(side)).put("sa", battle.path("arena").asInt());
+      ((ObjectNode) battle.path("avatar" + side)).put("rnk_sc", 3000 + side);
+    }
+    return scenario;
+  }
+
+  /** The Path of Legends game mode. */
+  private static final String RANKED = "Ranked1v1_NewArena";
+
+  @Test
+  void readsAPathOfLegendsReplayAsTheLadderReplayOfTheSameBattle() {
+    ScenarioPlan ladder =
+        new ReplayScenario(tables).translate(fit(Scenarios.knightWithEveryField()));
+    ReplayScenario mapping = new ReplayScenario(tables);
+    ObjectNode scenario = fit(pathOfLegends(Scenarios.knightWithEveryField()));
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    // The same towers, decks, levels and plays as the Ladder replay: the mode's level cap, 16,
+    // leaves every level as it is.
+    assertThat(plan.towers()).isEqualTo(ladder.towers());
+    assertThat(plan.decks()).isEqualTo(ladder.decks());
+    for (int side = 0; side < 2; side++) {
+      assertThat(plan.deckLevels().get(side)).containsExactly(ladder.deckLevels().get(side));
+    }
+    assertThat(plan.plays()).isEqualTo(ladder.plays());
+    assertThat(mapping.mapping())
+        .containsEntry("gmt", "pinned: 13")
+        .containsEntry("lvlcap", "pinned: 16")
+        .containsEntry("trail", "pinned: -1")
+        .containsKeys("battle.rkd", "battle.avatarN.rnk_sc");
+    // The battle it builds plays the Ladder battle's steps.
+    Standard1v1Battle ranked = ReplayBattle.build(tables, plan);
+    Standard1v1Battle played = ReplayBattle.build(tables, ladder);
+    for (int tick = 0; tick < 400; tick++) {
+      ranked.getBattle().step();
+      played.getBattle().step();
+    }
+    assertThat(ranked.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .containsExactly("cmd0")
+        .isEqualTo(played.getPlays().stream().map(Standard1v1Battle.Play::name).toList());
+  }
+
+  @Test
+  void refusesAPathOfLegendsReplayWithAnotherLevelCapOrGameModeType() {
+    ObjectNode scenario = fit(pathOfLegends(Scenarios.knightWithEveryField()));
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("lvlcap", 11);
+    battle.put("gmt", 1);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("gmt=1", "lvlcap=11");
+  }
+
+  @Test
+  void refusesTheLadderModeWithThePathOfLegendsHeader() {
+    ObjectNode scenario = fit(pathOfLegends(Scenarios.knightWithEveryField()));
+    ((ObjectNode) scenario.path("battle")).put("gamemode", 72_000_000 + ladderIndex());
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("gmt=13", "lvlcap=16", "trail=-1");
+  }
+
+  /** The Ladder game mode's row index. */
+  private static int ladderIndex() {
+    return tables.table("game_modes").row("Ladder").index();
+  }
+
   @Test
   void readsAnAbilityCommandOfType189() {
     ObjectNode scenario = fit(Scenarios.knightWithEveryField());

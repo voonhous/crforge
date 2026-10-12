@@ -35,6 +35,8 @@ import org.crforge.core.battle.data.GameVersions;
  *     {@link #EVENT_TYPES}; else they are pinned to none
  * @param battlePins the battle header's fields pinned to one value beyond those every version pins,
  *     by field
+ * @param battleCarried the battle header's fields carried, by field, with what each is; a field
+ *     listed may be left out
  * @param avatarPins each avatar's fields pinned to one value, by field
  * @param avatarCarried each avatar's fields carried, by field, with what each is
  * @param accountHighOptional whether an avatar may leave out the high word of its account id, read
@@ -54,6 +56,7 @@ public record ReplayFormat(
     Map<String, String> rootPins,
     boolean events,
     Map<String, String> battlePins,
+    Map<String, String> battleCarried,
     Map<String, String> avatarPins,
     Map<String, String> avatarCarried,
     boolean accountHighOptional,
@@ -87,6 +90,7 @@ public record ReplayFormat(
           Map.of(),
           false,
           Map.of(),
+          Map.of(),
           ordered("expLevel", "1", "npc", "false"),
           Map.of(),
           false,
@@ -110,6 +114,10 @@ public record ReplayFormat(
           ordered("srq", "[]", "srs", "[]"),
           true,
           ordered("cardlvlmin", "0", "rrb", "false", "seb", "false"),
+          ordered(
+              "rkd",
+              "the Path of Legends header of a Ranked1v1_NewArena replay, matchmaking and"
+                  + " presentation: the battle plays the same with it as a Ladder battle"),
           ordered("npc", "false"),
           ordered(
               "expLevel",
@@ -138,7 +146,10 @@ public record ReplayFormat(
               "lti",
               "presentation",
               "birth_date",
-              "presentation"),
+              "presentation",
+              "rnk_sc",
+              "the player's Path of Legends score, presentation: the battle plays the same with"
+                  + " it as a Ladder battle"),
           true,
           List.of("hdr"),
           List.of("pr", "sc", "hsc"),
@@ -158,7 +169,8 @@ public record ReplayFormat(
               "dbi",
               "ptix",
               "rrsmr",
-              "ts"),
+              "ts",
+              "sa"),
           true);
 
   /**
@@ -247,6 +259,7 @@ public record ReplayFormat(
         rootPins,
         events,
         battlePins,
+        battleCarried,
         avatarPins,
         avatarCarried,
         accountHighOptional,
