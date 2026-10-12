@@ -1274,9 +1274,10 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Whether a unit is in a jump or dashing under a row with a jump height (a jumping Mega Knight),
-   * the units the put-down of a hook or of a capture's completed drag sets on the ground.
+   * the units the put-down of a hook, of a capture's completed drag or of a knock's start sets on
+   * the ground.
    */
-  private static boolean inTheAir(WorldEntity unit) {
+  static boolean inTheAir(WorldEntity unit) {
     int state = unit.getView().getState();
     return state == GridEntityState.JUMPING
         || (state == GridEntityState.DASHING && unit.getData().jumpHeight() >= 1);

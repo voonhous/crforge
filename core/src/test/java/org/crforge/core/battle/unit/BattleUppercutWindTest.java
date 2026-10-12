@@ -30,9 +30,9 @@ import org.junit.jupiter.api.Test;
 /**
  * The evolved Mega Knight's uppercut, the knock it gives, and the evolved Baby Dragon's wind where
  * the reference runs do not take them: the ends of the uppercut, its refusals, the knock's arc, its
- * postponing of an ability and a cast or follow-up it leaves going, the wind on the other side, its
- * re-trigger and a new wind after one has ended, a choice by team without a cause, and the actions
- * run at an area effect's ages.
+ * postponing of an ability and a cast or follow-up it leaves going, its put-down of a unit in a
+ * jump or a dash with a height, the wind on the other side, its re-trigger and a new wind after one
+ * has ended, a choice by team without a cause, and the actions run at an area effect's ages.
  */
 class BattleUppercutWindTest {
 
@@ -897,6 +897,65 @@ class BattleUppercutWindTest {
     assertThat(points).hasSize(1);
     assertThat(List.of(points.get(0)[2], points.get(0)[3]))
         .containsExactly(x - left.getView().getX(), y - left.getView().getY());
+  }
+
+  @Test
+  @DisplayName(
+      "a knock started on a unit in a jump puts it down first: on the ground, asked to stand,"
+          + " which ends the jump, and its route emptied; the knock then lifts it")
+  void aKnockPutsDownAUnitInAJump() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.unit(1, "Knight", 3500, 22000, "k");
+    scene.step(30);
+    assertPutDown(scene, knight, GridEntityState.JUMPING);
+  }
+
+  @Test
+  @DisplayName(
+      "a knock started on a unit dashing under a row with a jump height (a jumping Mega Knight)"
+          + " puts it down first, which ends the dash")
+  void aKnockPutsDownAUnitDashingWithAHeight() {
+    Scene scene = new Scene();
+    CharacterEntity megaKnight = scene.unit(1, "MegaKnight", 3500, 22000, "mk");
+    assertThat(megaKnight.getData().jumpHeight()).as("a row with a jump height").isPositive();
+    scene.step(40);
+    assertPutDown(scene, megaKnight, GridEntityState.DASHING);
+  }
+
+  @Test
+  @DisplayName(
+      "a knock started on a unit dashing under a row with no jump height is refused: the put-down"
+          + " leaves it dashing, which no reference holds")
+  void aKnockOnADashWithNoHeightIsRefused() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.unit(1, "Knight", 3500, 22000, "k");
+    assertThat(knight.getData().jumpHeight()).as("a row with no jump height").isLessThan(1);
+    scene.step(30);
+    knight.getView().setState(GridEntityState.DASHING);
+
+    assertThatThrownBy(() -> knight.actionHolder().start(scene.row(KNOCK, knight), null))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("in state " + GridEntityState.DASHING);
+  }
+
+  /** The height a unit in the air is held at before the knock starts on it. */
+  private static final int AIR_Z = 1000;
+
+  /**
+   * Holds a deployed unit in a state with a height, starts the knock on it and checks the put-down
+   * at the start, then the knock's lift on its first update.
+   */
+  private static void assertPutDown(Scene scene, CharacterEntity unit, int state) {
+    unit.getView().setState(state);
+    unit.getView().setZ(AIR_Z);
+
+    unit.actionHolder().start(scene.row(KNOCK, unit), null);
+    assertThat(unit.getView().getZ()).as("on the ground").isZero();
+    assertThat(unit.getView().getState()).as("asked to stand").isEqualTo(GridEntityState.STANDING);
+    assertThat(unit.getUnit().movement().getRoute().isEmpty()).as("the route emptied").isTrue();
+
+    scene.step(2);
+    assertThat(unit.getView().getHeightOffset()).as("lifted by the knock").isPositive();
   }
 
   @Test
