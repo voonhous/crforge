@@ -198,6 +198,40 @@ class BattleGiantHeroAbilityTest {
     assertLanding(slap, land);
   }
 
+  @Test
+  @DisplayName(
+      "a Knight killed between the pick and the push: the push's failure action on the Giant starts"
+          + " the selector again, which slaps the next Knight to come in reach")
+  void aKnightKilledBeforeThePushGivesTheSlapBack() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    Slap slap = slap();
+    // Killed on the step after the pick: let go from its holder before the push is due.
+    stepTo(slap.battle(), CAST + PICK + 1);
+    slap.battle().getWorld().kill(slap.knight(), null);
+    slap.battle().play(CAST + PICK + 2, GameData.card("Knight"), LEVEL, 1, 3500, 22000, "k2");
+    stepTo(slap.battle(), CAST + push);
+    assertThat(named(slap.battle(), "Knight")).hasSize(1);
+    CharacterEntity next = named(slap.battle(), "Knight").get(0);
+    assertThat(next).isNotSameAs(slap.knight());
+    // The selector, started again, waits for the next Knight and slaps it: the Giant stands for
+    // the slap and the Knight is pushed along the width, 250 a step.
+    int pushedAt = -1;
+    int lastX = next.getView().getX();
+    int lastY = next.getView().getY();
+    for (int k = push + 1; k <= push + 200 && pushedAt < 0; k++) {
+      stepTo(slap.battle(), CAST + k);
+      int x = next.getView().getX();
+      int y = next.getView().getY();
+      if (x - lastX == 250 && y == lastY) {
+        pushedAt = k;
+      }
+      lastX = x;
+      lastY = y;
+    }
+    assertThat(pushedAt).as("the next Knight's push").isPositive();
+    assertThat(slap.giant().getView().getState()).isEqualTo(GridEntityState.STANDING);
+  }
+
   /** The Giant's slap cast on the Knight, stepped to the cast. */
   private record Slap(Standard1v1Battle battle, CharacterEntity giant, CharacterEntity knight) {}
 
