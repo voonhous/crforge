@@ -568,19 +568,72 @@ class BattleFishermanTest {
   }
 
   @Test
-  @DisplayName("a hook on a troop another holds a lock on is refused")
+  @DisplayName(
+      "a hook arriving at a troop another holds a lock on does not hook it: it ends at its aim as"
+          + " an ordinary arrival")
   void aLockedTroop() {
     Scene locked = new Scene();
     CharacterEntity held = locked.still(0, 1, "Knight", X, Y + IN_RING, "K");
-    // Far off on the other half, out of everyone's sight: the lock's holder.
-    CharacterEntity holder = locked.still(0, 0, "Knight", 15500, 3000, "holder");
+    CharacterEntity holder = farOff(locked);
     stepToTheFlight(locked);
-    TargetLocks locks = locked.match.getWorld().locks();
+    hold(locked, holder, held);
+    ProjectileEntity hook = locked.hooks.get(0);
+    while (!hook.isReleased() && locked.tick < 200) {
+      locked.step(1);
+    }
+    GridEntity view = held.getView();
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(hook.isHooked()).isFalse();
+    // Neither the troop nor the Fisherman is asked into a hook's state.
+    assertThat(locked.states).isEmpty();
+    // Released at its aim, the troop's point.
+    assertThat(hook.getX()).isEqualTo(view.getX());
+    assertThat(hook.getY()).isEqualTo(view.getY());
+    assertThat(view.getState()).isNotEqualTo(GridEntityState.FOLLOWING_REMOVED);
+  }
+
+  @Test
+  @DisplayName(
+      "a hook arriving at a troop another held a lock on during its flight but no longer does is"
+          + " refused")
+  void aTroopLockedDuringTheFlight() {
+    Scene scene = new Scene();
+    CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    CharacterEntity holder = farOff(scene);
+    stepToTheFlight(scene);
+    hold(scene, holder, held);
+    // One step under the lock, then let go: the next pre-pass drops it.
+    scene.step(1);
+    assertThat(scene.hooks.get(0).isReleased()).isFalse();
+    scene.match.getWorld().locks().release(holder.getId(), held.getId(), 0);
+    assertThatThrownBy(() -> scene.step(200))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("held during its flight");
+  }
+
+  @Test
+  @DisplayName("a pulled troop another then holds a lock on is refused")
+  void aPulledTroopLocked() {
+    Scene scene = new Scene();
+    CharacterEntity held = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
+    CharacterEntity holder = farOff(scene);
+    scene.stepToTheHook();
+    hold(scene, holder, held);
+    assertThatThrownBy(() -> scene.step(1))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("which another now holds");
+  }
+
+  /** A Knight far off on the other half, out of everyone's sight: a lock's holder. */
+  private static CharacterEntity farOff(Scene scene) {
+    return scene.still(0, 0, "Knight", 15500, 3000, "holder");
+  }
+
+  /** Gives the holder a lock on the troop, on the hook's channel, until it is released. */
+  private static void hold(Scene scene, CharacterEntity holder, CharacterEntity held) {
+    TargetLocks locks = scene.match.getWorld().locks();
     locks.request(holder.getId(), held.getId(), 0, 1, 0);
     locks.postPass();
-    assertThatThrownBy(() -> locked.step(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("which another holds");
   }
 
   @Test
