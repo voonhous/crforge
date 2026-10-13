@@ -1,21 +1,21 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 88.0,
-  "ticks_agreed": 94.8,
+  "to_the_end": 88.7,
+  "ticks_agreed": 95.2,
   "outcomes": {
-    "diagnostic_match": 8802,
+    "diagnostic_match": 8872,
     "invalid": 5,
-    "mismatch": 1169,
+    "mismatch": 1099,
     "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].x": 505,
-    "mismatch $.entities[].state": 235,
-    "mismatch $.entities[].hp": 225,
-    "mismatch $.entities.length": 140,
-    "mismatch $.entities[].id": 35,
-    "mismatch $.entities[].y": 20,
+    "mismatch $.entities[].x": 479,
+    "mismatch $.entities[].hp": 222,
+    "mismatch $.entities[].state": 197,
+    "mismatch $.entities.length": 138,
+    "mismatch $.entities[].id": 33,
+    "mismatch $.entities[].y": 21,
     "mismatch $.entities[].row": 6,
     "invalid": 5,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
@@ -27,5 +27,5 @@
     "unsupported: proj_# rolls beside a deflecting area effect, which is not modelled": 2
   },
   "set": "296000195c872c7d",
-  "commit": "a6c31240ac1a066453641ea6111224b04e027885"
+  "commit": "a2dba009d3bf4c3e402e34d1ffea78ead295f3b6"
 }
