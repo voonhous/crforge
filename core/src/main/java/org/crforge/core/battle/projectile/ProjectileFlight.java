@@ -9,6 +9,7 @@ package org.crforge.core.battle.projectile;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.unit.BattleWorld;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -53,6 +54,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * <p>A homing projectile hands the damage it registered on its target back as it arrives, before
  * its impact, so the damage lands on a target that no longer carries it as pending.
  *
+ * <p>A projectile whose target routes across the arena from its ability lets it go on its next
+ * step, when its row allows it: the target's reset hook empties the damage on its way to it and
+ * drops it from every projectile aimed at it that allows it, and the projectile flies on to its aim
+ * and lands on nothing. Entering that state runs the same hook, which a projectile launched in the
+ * same step joins the battle too late for.
+ *
  * <p>A row with a target buff buffs the same circle, or the one target of a projectile without a
  * radius, after the damage, or before it when the row says so. A row that spawns characters then
  * makes them in formation around the aim, and a row that spawns an area effect then makes it at the
@@ -87,7 +94,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " of a projectile that stops at collisions by card_Hunter and"
             + " cg_hunter_evo_net_hogrider_giant; the hand-back of the damage registered on the"
             + " target at the arrival, before the impact, by every tower's re-lock after its"
-            + " arrow's kill. The deflection pass after each move, at the new position and"
+            + " arrow's kill. A target routing across the arena from its ability let go on the"
+            + " flight step, its reset hook run, and the projectile on to its aim, by"
+            + " mightyminer_shot_on_switch_step and the shots launched at a Mighty Miner in the"
+            + " step it starts across in the coverage battles; the refused hook and the"
+            + " projectile that keeps its target held by no run. The"
+            + " deflection pass after each move, at the new position and"
             + " height, which turns an arrow around after the move that brings it within the"
             + " Monk's deflection, held by ability_monk and random_battle16_s0048; the pass at"
             + " the arrival, before the hand-back, by no run. A projectile with a deflect radius"
@@ -161,6 +173,15 @@ final class ProjectileFlight {
     if (p.getDelayMs() >= 1) {
       p.stepDelay();
       return;
+    }
+    // A target routing across the arena from its ability is let go here, under a row that allows
+    // it: the target's reset hook runs, as entering that state runs it, and the projectile flies on
+    // to its aim. A projectile launched in the step its target starts across meets it so, as the
+    // entry's run of the hook came before it joined the battle.
+    if (p.getTarget() instanceof CharacterEntity unit
+        && unit.getView().getState() == GridEntityState.INGAME_PATHFIND
+        && data.allowResetTarget()) {
+      world.targetRoutingInFlight(p, unit);
     }
     boolean drags = data.dragBackSpeed() >= 1;
     if (drags && (world.ownerLost(p) || world.hookTargetLost(p))) {

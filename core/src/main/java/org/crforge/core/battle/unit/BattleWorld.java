@@ -6785,6 +6785,42 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * A projectile's flight step finding its target routing across the arena from its ability, under
+   * a row that allows it: the target's reset hook, the same as entering a pathfinding state. The
+   * damage on its way to the unit is set to 0, then every projectile aimed at it whose row allows
+   * it loses it as its target, the one flying among them, handing nothing back; each flies on to
+   * its aim, where the unit last stood for it, and lands on nothing. The switch's entry runs the
+   * same hook, but a projectile launched in the step the unit starts across joins the battle after
+   * it, so its own first flight step lets the unit go. A hook that would let its target go so,
+   * whose flight goes on reading the target it let go, is refused, and so is a projectile aimed at
+   * the unit whose row keeps its target through the reset, as at a warp.
+   *
+   * @param projectile the projectile whose flight step found its target routing across
+   * @param unit its target
+   */
+  public void targetRoutingInFlight(ProjectileEntity projectile, CharacterEntity unit) {
+    if (projectile.getData().dragBackSpeed() >= 1) {
+      throw new UnsupportedOperationException(
+          projectile.name() + " lets " + unit.name() + " go as it routes across, not modelled");
+    }
+    for (BattleEntity entity : holder.entities()) {
+      if (entity instanceof ProjectileEntity p
+          && p.getTarget() == unit
+          && !p.getData().allowResetTarget()) {
+        throw new UnsupportedOperationException(
+            projectile.name()
+                + " lets "
+                + unit.name()
+                + " go as it routes across with "
+                + p.name()
+                + " aimed at it, whose row keeps its target through the reset, not modelled");
+      }
+    }
+    unit.getView().setPendingDamageAmount(0);
+    dropProjectilesAimedAt(unit);
+  }
+
+  /**
    * A unit going into either pathfinding state: every projectile of the live list aimed at it whose
    * row allows it loses it as its target, handing no damage back; it flies on to its aim and lands
    * on nothing.

@@ -17,6 +17,8 @@ import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -26,8 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Mighty Miner's lane switch where its runs do not take it: a spell landing on it as it routes
- * across the arena, a switch from the arena's edge, and the rows that would make it do what no
- * reference holds.
+ * across the arena, a shot launched at it as it starts across, a switch from the arena's edge, and
+ * the rows that would make it do what no reference holds.
  */
 class BattleMightyMinerTest {
 
@@ -218,6 +220,69 @@ class BattleMightyMinerTest {
     assertThat(scene.miner.getHitPoints().getHitPoints())
         .as("the burn deals again once the Mighty Miner stands visible")
         .isLessThan(full);
+  }
+
+  @Test
+  @DisplayName(
+      "a shot launched at the Mighty Miner as it starts across, which the switch's own drop did not"
+          + " see, drops it on its first step and flies on to where it stood")
+  void aShotAtTheSwitchingMinerFliesOnToItsOldPoint() {
+    Scene scene = new Scene(GameData.tables(), 3500, 12000);
+    List<ProjectileEntity> shots = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileLaunched(int t, ProjectileEntity projectile) {
+                shots.add(projectile);
+              }
+            });
+    scene.switchLanes();
+    TowerEntity tower = BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER);
+    shots.clear();
+
+    // Launched once the switch has run its drop, as a shot fired in the step the Mighty Miner
+    // starts across is: it joins the battle after the drop and is not dropped by it.
+    ProjectileLauncher.launch(
+        tower,
+        tower.getTargeting(),
+        scene.miner.getTargetView(),
+        -1,
+        false,
+        scene.match.getWorld());
+    assertThat(shots).hasSize(1);
+    ProjectileEntity shot = shots.get(0);
+    assertThat(shot.getData().homing()).as("a shot that re-aims at its target").isTrue();
+    assertThat(shot.getData().allowResetTarget()).isTrue();
+    assertThat(shot.getTarget()).isSameAs(scene.miner);
+    int aimX = shot.getAimX();
+    int aimY = shot.getAimY();
+    int startX = shot.getX();
+    int startY = shot.getY();
+    int full = scene.miner.getHitPoints().getHitPoints();
+
+    // Its first flight step finds its target routing across: it lets it go, emptying the damage on
+    // its way to it, and flies on to the point it was launched at.
+    while (shot.getX() == startX && shot.getY() == startY && !shot.isReleased()) {
+      scene.step();
+      assertThat(scene.tick).as("the shot flies").isLessThan(TICKS);
+    }
+    assertThat(shot.getTarget()).isNull();
+    assertThat(scene.miner.getView().getPendingDamageAmount()).isZero();
+    while (!shot.isReleased()) {
+      assertThat(new int[] {shot.getAimX(), shot.getAimY()})
+          .as("the aim stays where the Mighty Miner stood")
+          .containsExactly(aimX, aimY);
+      scene.step();
+      assertThat(scene.tick).as("the shot lands").isLessThan(TICKS);
+    }
+    assertThat(new int[] {shot.getX(), shot.getY()}).containsExactly(aimX, aimY);
+    long dx = scene.miner.getView().getX() - aimX;
+    long dy = scene.miner.getView().getY() - aimY;
+    assertThat(dx * dx + dy * dy).as("the Mighty Miner has moved on").isPositive();
+    assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
   }
 
   @Test
