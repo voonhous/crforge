@@ -20,18 +20,25 @@ jobs:
       # fork, which gets no secrets.
       # Only whether the key is set, not the key: every step sees the job's environment.
       HAS_GAME_TABLES_KEY: ${{ secrets.GAME_TABLES_KEY != '' }}
+      # The same for the coverage dataset's read token (the coverage job).
+      HAS_COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN != '' }}
 
     outputs:
       commit: ${{ steps.lock.outputs.commit }}
       has-game-data: ${{ steps.lock.outputs.available }}
       compatible: ${{ steps.lock.outputs.compatible }}
       others: ${{ steps.lock.outputs.others }}
+      coverage-revision: ${{ steps.coverage.outputs.revision }}
+      coverage-versions: ${{ steps.coverage.outputs.versions }}
+      has-coverage: ${{ steps.coverage.outputs.available }}
 
     steps:
-      # The lock file alone.
+      # The lock files alone.
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: crforge-data.lock
+          sparse-checkout: |
+            crforge-data.lock
+            coverage.lock
           sparse-checkout-cone-mode: false
 
       # crforge-data.lock pins the data repository's commit, so a change and its data agree. The
@@ -52,6 +59,15 @@ jobs:
           echo "compatible=$(printf '%s\n' $compatible | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "others=$(printf '%s\n' $compatible | grep -vxF "$version" | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_GAME_TABLES_KEY == 'true' && vars.GAME_TABLES_REPOSITORY != '' }}" >> "$GITHUB_OUTPUT"
+
+      # coverage.lock pins the coverage dataset's revision and names the data versions it has a
+      # coverage set of; the coverage job scores each of them.
+      - name: Read the coverage lock
+        id: coverage
+        run: |
+          echo "revision=$(sed -n 's/^revision=//p' coverage.lock)" >> "$GITHUB_OUTPUT"
+          echo "versions=$(sed -n 's/^versions=//p' coverage.lock | tr ' ' '\n' | grep . | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
+          echo "available=${{ env.HAS_COVERAGE_TOKEN == 'true' && vars.COVERAGE_DATASET != '' }}" >> "$GITHUB_OUTPUT"
 
   # The address check, the build with its checks, and the unit tests on the tables of the lock's
   # version.
@@ -213,3 +229,137 @@ jobs:
           name: reference-scorecard-${{ matrix.version }}-${{ matrix.shard }}
           path: conformance/build/reference-scorecard/
           if-no-files-found: warn
+
+  # The coverage score of each data version coverage.lock names: every battle of its coverage set, a
+  # large sample of the game's own recorded battles of that version, played on the battle core and
+  # compared tick by tick. A measurement, never a gate: the job cannot fail the run, and it prints
+  # and keeps the totals only, never a battle.
+  coverage:
+    needs: lock
+    if: >-
+      needs.lock.outputs.has-game-data == 'true' && needs.lock.outputs.has-coverage == 'true'
+      && needs.lock.outputs.coverage-versions != '[]'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.lock.outputs.coverage-versions) }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The game's asset files only: the build makes the version's tables from them.
+      - name: Check out the game data
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ref: ${{ needs.lock.outputs.commit }}
+          ssh-key: ${{ secrets.GAME_TABLES_KEY }}
+          path: game-tables
+          sparse-checkout: cdn
+
+      # The set at the locked revision: corpus.json and its parts, each part checked against the
+      # sha256 corpus.json gives, unpacked into a references folder (corpora/ and battles/).
+      - name: Download the coverage set
+        env:
+          TOKEN: ${{ secrets.COVERAGE_TOKEN }}
+          DATASET: ${{ vars.COVERAGE_DATASET }}
+          REVISION: ${{ needs.lock.outputs.coverage-revision }}
+          VERSION: ${{ matrix.version }}
+        run: |
+          set -euo pipefail
+          base="https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$VERSION"
+          # A large file answers with a redirect to the dataset's storage: follow it (curl sends the
+          # token to the dataset's host only).
+          get() { curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" -o "$2" "$base/$1"; }
+          mkdir -p coverage/corpora
+          get corpus.json coverage/corpus.json
+          jq -r '.parts[] | .file + " " + .sha256' coverage/corpus.json | while read -r file sha; do
+            get "$file" "coverage/$file"
+            echo "$sha  coverage/$file" | sha256sum -c --quiet
+            tar -xf "coverage/$file" -C coverage
+            rm "coverage/$file"
+          done
+          mv coverage/corpus.json "coverage/corpora/coverage-$VERSION.json"
+          echo "$(jq '.cases | length' "coverage/corpora/coverage-$VERSION.json") battles"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+
+      - name: Score the coverage set
+        run: >-
+          ./gradlew :conformance:coverageScore
+          -Pcrforge.dataVersion=${{ matrix.version }}
+          -Pcrforge.assetSource=file://${{ github.workspace }}/game-tables/cdn/
+          -Pcrforge.coverage=${{ github.workspace }}/coverage
+
+      - name: Upload the score
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-score-${{ matrix.version }}
+          path: conformance/build/coverage/
+          if-no-files-found: error
+
+  # Publishes each version's score and its shields.io badge (the README's coverage badges) to the
+  # badges branch, after a push to battle_core only, and warns when a version's share of battles
+  # reproduced to the end dropped since the last published score.
+  badges:
+    needs: coverage
+    if: >-
+      always() && needs.coverage.result != 'skipped'
+      && github.event_name == 'push' && github.ref == 'refs/heads/battle_core'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: write
+    concurrency:
+      group: badges
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-score-*
+          merge-multiple: true
+          path: scores
+
+      - name: Publish the scores and badges
+        env:
+          TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git init -q badges
+          cd badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:$TOKEN@github.com/$REPOSITORY.git"
+          if git fetch -q --depth 1 origin badges; then git checkout -q -b badges FETCH_HEAD; else git checkout -q --orphan badges; fi
+          for score in ../scores/score-*.json; do
+            name=$(basename "$score")
+            version=$(jq -r .content_version "$score")
+            now=$(jq -r .to_the_end "$score")
+            if [ -f "$name" ]; then
+              before=$(jq -r .to_the_end "$name")
+              if [ "$(jq -n --argjson now "$now" --argjson before "$before" '$now < $before')" = true ]; then
+                echo "::warning::coverage of $version dropped: $before% -> $now% of battles reproduced to the end"
+              fi
+            fi
+            echo "$version: $now% of battles reproduced to the end"
+            cp "$score" "../scores/badge-$version.json" .
+          done
+          git add -A
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -q -m "Coverage scores of ${GITHUB_SHA::8}"
+          git push -q origin HEAD:badges

@@ -103,6 +103,27 @@ tasks.register<JavaExec>("updateReferenceExpectations") {
 }
 
 // The benchmarks are compiled with every check, so they keep compiling as the battle core moves.
+tasks.register<JavaExec>("coverageScore") {
+    description =
+        "Plays every battle of a data version's coverage set (-Pcrforge.coverage) and writes the " +
+            "share the battle core reproduces, with its badge, to build/coverage/ (a measurement, " +
+            "never a gate)."
+    group = "verification"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.crforge.conformance.CoverageScore")
+    maxHeapSize = "3g"
+    dependsOn(":tables:gameTables")
+    val version = rootProject.extra["crforge.dataVersion"] as String
+    systemProperty("crforge.gameTables", "${rootProject.extra["crforge.builtTablesRoot"]}/$version")
+    setting("crforge.coverage")?.let { systemProperty("crforge.coverage", it) }
+    val out = layout.buildDirectory.dir("coverage").get().asFile
+    args(
+        "--out", out.resolve("score-$version.json").absolutePath,
+        "--badge", out.resolve("badge-$version.json").absolutePath,
+    )
+    outputs.upToDateWhen { false }
+}
+
 tasks.check { dependsOn(tasks.named(jmh.classesTaskName)) }
 
 tasks.register<JavaExec>("tickBenchmark") {
