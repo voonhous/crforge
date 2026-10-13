@@ -21,7 +21,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * differ: a flying unit configured to walk direct paths heads for a point near its reference
  * instead of following a route at all, while it holds one with its targeting component on (set up
  * as a clone, its targeting off, it follows its route's node), and a unit with an empty route aims
- * at its own position, which makes the displacement a no-op that still reports arrival.
+ * at its own position, which makes the displacement a no-op that still reports arrival, unless it
+ * has a reference beyond its attack range: then it heads for the same point near the reference as a
+ * flying unit with direct paths. A dash whose single-node route a pushback's end dropped goes on
+ * toward its reference this way.
  *
  * <p>While a touchdown mode restricts a defender to its own side of the arena, a moving unit with
  * no reference keeps its own x and only walks along the arena's length.
@@ -35,8 +38,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "The ordinary waypoint agrees with the reference, and so does the special waypoint of a"
             + " unit that flies direct paths, held by the reference battles card_SkeletonBalloon"
             + " and evo_skeletonballoon_vs_musketeer; with its targeting off, the route's node,"
-            + " held by a cloned Skeleton Balloon's move apart. Not modelled: the touchdown"
-            + " override is not held by a fixture.")
+            + " held by a cloned Skeleton Balloon's move apart; an empty route's point near a"
+            + " reference beyond range, held by recorded Bandit and Boss Bandit dashes pushed"
+            + " back as they start. Not modelled: the touchdown override is not held by a"
+            + " fixture.")
 public final class WaypointSelector {
 
   private WaypointSelector() {
@@ -70,6 +75,19 @@ public final class WaypointSelector {
     }
     Route route = component.getRoute();
     if (route.isEmpty()) {
+      // With no route, a unit whose reference stands beyond its attack range heads for the same
+      // point near the reference a flying unit with direct paths does: a dash whose route a
+      // pushback's end dropped goes on toward its reference this way. Without a reference, or
+      // with the reference in range, it aims at its own position.
+      chain.mark("reference_available");
+      if (queries.referenceAvailable() != 0) {
+        chain.mark("reference_in_range");
+        if ((queries.referenceInRange() & 1) == 0) {
+          chain.mark("special_waypoint");
+          int[] supplied = queries.specialWaypoint();
+          return new int[] {supplied[0], supplied[1]};
+        }
+      }
       return new int[] {owner.getX(), owner.getY()};
     }
     int node = route.last();

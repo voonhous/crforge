@@ -75,6 +75,9 @@ class MovementVisitTest {
 
   @Test
   void aUnitWithoutARouteStepsTowardItsOwnPositionAndStaysPut() {
+    // With no reference to head for, the empty route's waypoint is the unit's own position.
+    queries.referenceAvailable = 0;
+
     MovementChain chain = visit();
 
     assertThat(owner.getX()).isEqualTo(3500);
@@ -94,8 +97,37 @@ class MovementVisitTest {
             "release",
             "speed_budget",
             "modifier_component",
+            "reference_available",
             "facing_gate",
             "modifier_component");
+  }
+
+  @Test
+  void aUnitWithoutARouteKeepsItsPlaceWhileItsReferenceIsInRange() {
+    queries.referenceInRange = 1;
+    queries.specialWaypoint = new int[] {3500, 12000};
+
+    MovementChain chain = visit();
+
+    assertThat(owner.getX()).isEqualTo(3500);
+    assertThat(owner.getY()).isEqualTo(10000);
+    assertThat(component.getWorkVector()).containsExactly(3500, 10000);
+    assertThat(chain.markers()).contains("reference_in_range").doesNotContain("special_waypoint");
+  }
+
+  @Test
+  void aUnitWithoutARouteHeadsForThePointNearItsReferenceBeyondRange() {
+    // The point its attack range away from the reference, as a flying unit with direct paths
+    // heads for.
+    queries.specialWaypoint = new int[] {3500, 12000};
+
+    MovementChain chain = visit();
+
+    assertThat(component.getWorkVector()).containsExactly(3500, 12000);
+    assertThat(owner.getX()).isEqualTo(3500);
+    assertThat(owner.getY()).isGreaterThan(10000);
+    assertThat(chain.markers())
+        .containsSubsequence("reference_available", "reference_in_range", "special_waypoint");
   }
 
   @Test

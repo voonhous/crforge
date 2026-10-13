@@ -27,7 +27,7 @@ The targeting visit steps its countdowns, decides whether the reference it holds
 
 Path cells span 500 game units. Ordinary cell-center waypoints use `(500 * column + 250, 500 * row + 250)`. Position-to-cell conversion truncates division toward zero.
 
-Routes use row-major cell IDs and are stored destination-first. Following consumes the last node. An empty route uses the current position as its waypoint. Special movement states can override ordinary waypoint selection.
+Routes use row-major cell IDs and are stored destination-first. Following consumes the last node. An empty route uses the current position as its waypoint, unless the unit has a reference beyond its attack range: then it heads for the point its attack range away from the reference, as a flying unit with direct paths does (a dash whose route a pushback's end dropped goes on this way). Special movement states can override ordinary waypoint selection.
 
 The standard arena is 36 by 64 cells, 18000 by 32000 game units. Each published cell value contributes only its low seven bits to routing: bits 0 and 1 are the road id (lane), 0 for none; bit 4 is not placeable; bit 5 is water; bit 6 is blocked, which no cell on the standard map sets. Higher bits exist in the published data for a few cells; no routing rule reads them, so `TileMap` masks them away and never exposes them. What they mean is not established. Road 1 covers columns 4 to 17 and road 2 columns 18 to 31; water is rows 30 to 33 except at the bridge columns.
 
