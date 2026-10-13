@@ -4,9 +4,9 @@
   "to_the_end": 91.8,
   "ticks_agreed": 95.7,
   "outcomes": {
-    "diagnostic_match": 1591,
+    "diagnostic_match": 1592,
     "mismatch": 126,
-    "unsupported": 16
+    "unsupported": 15
   },
   "first_failures": {
     "mismatch $.entities[].x": 67,
@@ -23,7 +23,7 @@
     "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
     "unsupported: cmd#_clone# launches GoblinDemolisherDeathProjectile as it dies and is a clone, whose projectiles carry it, not modelled": 1,
     "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it, not modelled": 1,
-    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 1
+    "unsupported: proj_# (EliteArcherArrow) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700"
 }

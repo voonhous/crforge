@@ -1,22 +1,21 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 85.5,
-  "ticks_agreed": 92.9,
+  "to_the_end": 85.7,
+  "ticks_agreed": 93.1,
   "outcomes": {
-    "diagnostic_match": 8557,
+    "diagnostic_match": 8572,
     "invalid": 6,
-    "mismatch": 1336,
-    "unsupported": 101
+    "mismatch": 1340,
+    "unsupported": 82
   },
   "first_failures": {
-    "mismatch $.entities[].x": 610,
-    "mismatch $.entities[].state": 295,
+    "mismatch $.entities[].x": 613,
+    "mismatch $.entities[].state": 296,
     "mismatch $.entities[].hp": 231,
     "mismatch $.entities.length": 136,
     "mismatch $.entities[].id": 35,
     "mismatch $.entities[].y": 21,
-    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 19,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 16,
     "invalid": 6,
     "mismatch $.entities[].row": 6,
@@ -24,7 +23,8 @@
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 5,
     "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be the buff's source or a side alone, not modelled": 5,
     "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 5,
-    "unsupported: Knight_hero_ApplyTaunt steps on cmd# while it pathfinds, which is not modelled": 4
+    "unsupported: Knight_hero_ApplyTaunt steps on cmd# while it pathfinds, which is not modelled": 4,
+    "unsupported: ResetTauntEffect taunts cmd# onto a flying object or one not in the battle, which is not modelled": 4
   },
   "set": "296000195c872c7d"
 }
