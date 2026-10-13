@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
@@ -139,13 +140,12 @@ class BattleChampionTest {
 
   @Test
   @DisplayName(
-      "a clone of a unit carrying a buff that is not cloned, as an Archer Queen's ability's is, is"
-          + " refused")
-  void aCloneOfACarrierOfANotClonedBuffIsRefused() {
+      "a clone of a unit carrying a buff that is not cloned, as an Archer Queen's ability's is,"
+          + " comes without it: its copy is removed from the clone, and the unit keeps its own")
+  void aCloneOfACarrierOfANotClonedBuffComesWithoutIt() {
     Standard1v1Battle battle =
         new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
-    // A clone of the champion herself is refused as it is made; her buff on a Knight reaches the
-    // clone's copy of its buffs.
+    // Her buff on a Knight reaches the clone's copy of its buffs.
     CharacterEntity knight = battle.deploy(0, GameData.unit("Knight"), LEVEL, 0, 3500, 9500, "k");
     run(battle, 25);
     knight
@@ -158,9 +158,16 @@ class BattleChampionTest {
             0);
 
     battle.play(26, GameData.card("Clone"), LEVEL, 0, 3500, 9500, "c");
-    assertThatThrownBy(() -> run(battle, 40))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage("k is cloned carrying ArcherQueenRapid, which is not cloned, not modelled");
+    run(battle, 40);
+    CharacterEntity clone = null;
+    for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+      if (entity instanceof CharacterEntity c && c.name().equals("k_clone0")) {
+        clone = c;
+      }
+    }
+    assertThat(clone).isNotNull();
+    assertThat(clone.getBuffs().carries("ArcherQueenRapid")).isFalse();
+    assertThat(knight.getBuffs().carries("ArcherQueenRapid")).isTrue();
   }
 
   @Test

@@ -8480,15 +8480,16 @@ public class BattleWorld implements HolderPasses {
    * moves nothing - and joins the live list at the tick's closing cleanup, whose fold starts it as
    * any spawn: its own row's starting action is scheduled then. The unit's runs stay the unit's. It
    * takes a copy of every buff the unit carries, the Clone's own buff, just put on the unit, among
-   * them, with the time each has left. Then the two move apart: the clone back toward its own side,
-   * and the unit, set up as a clone too unless it dashes, forward. Last, for a unit that carries
-   * riders, each rider in their order is cloned the same way, through this creator - its clone made
-   * on the rider's point, the rider set up as a clone and moving apart too - and its clone attached
-   * to the unit's clone on the rider's angle. The clone of a unit that carries riders never enters
-   * the deploying state, so it makes no riders of its own. A unit still deploying is set up as a
-   * clone with its countdown running, as its clone is: the countdown runs down in the setup, and
-   * each move apart that reaches its duration holds its unit still until the countdown has ended,
-   * then resumes it.
+   * them, with the time each has left, and none of their start actions runs; then the copies of a
+   * row that is not cloned are removed from it, their remove actions run on the clone. Then the two
+   * move apart: the clone back toward its own side, and the unit, set up as a clone too unless it
+   * dashes, forward. Last, for a unit that carries riders, each rider in their order is cloned the
+   * same way, through this creator - its clone made on the rider's point, the rider set up as a
+   * clone and moving apart too - and its clone attached to the unit's clone on the rider's angle.
+   * The clone of a unit that carries riders never enters the deploying state, so it makes no riders
+   * of its own. A unit still deploying is set up as a clone with its countdown running, as its
+   * clone is: the countdown runs down in the setup, and each move apart that reaches its duration
+   * holds its unit still until the countdown has ended, then resumes it.
    *
    * @param original the unit
    * @param instigator the Clone's area effect

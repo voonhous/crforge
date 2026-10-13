@@ -243,8 +243,8 @@ class BattleShieldLostTest {
 
   @Test
   @DisplayName(
-      "a swap and a clone's copy while a charge range buff is listed, its removal and the buff on"
-          + " a unit that fires are refused")
+      "a swap while a charge range buff is listed, its removal and the buff on a unit that fires"
+          + " are refused; a clone's copy of it resets no charge")
   void theChargeBuffRefusals() {
     Scene scene = new Scene();
     CharacterEntity recruit = scene.still(0, "Recruit_EV1", 3500, 12000, "r");
@@ -257,9 +257,11 @@ class BattleShieldLostTest {
     assertThatThrownBy(() -> recruit.changeData("Recruit", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a charge or a river jump");
-    assertThatThrownBy(() -> knight.getBuffs().copyFrom(recruit.getBuffs()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("which gives a charge range, not modelled");
+    // The copy lists the buff and leaves the charge as it is: only an apply resets it.
+    int before = knight.chargeProgress();
+    knight.getBuffs().copyFrom(recruit.getBuffs());
+    assertThat(knight.getBuffs().carries("RecruitsCharge_EV1")).isTrue();
+    assertThat(knight.chargeProgress()).isEqualTo(before);
     assertThatThrownBy(() -> recruit.getBuffs().removeRow("RecruitsCharge_EV1"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("which gives a charge range, not modelled");

@@ -451,6 +451,17 @@ public final class BuffComponent implements BattleComponent {
    * that its level setter put on, as a Ghost's clone carries - is written over by the copy at its
    * index or dropped past the copy's end: the component lists the copies alone.
    *
+   * <p>The read-back lists the copies and nothing more: no copy schedules its row's start action,
+   * nor its stacked action, and no copy resets the charge for a charge range, which only an apply
+   * does as it lists or refreshes an instance. The actions of a copy run later as any instance's
+   * do: its remove action as it runs out or is removed, its stacked action as it is refreshed.
+   *
+   * <p>Then the copies of a row that is not cloned are taken off: walking the list from the first,
+   * at each index whose row is not cloned, every instance of that row with the same parent is
+   * removed, from the last to the first, as any removal is, its remove action scheduled on the
+   * clone. The walk goes on at the next index, so an instance moved down onto the index just walked
+   * is not asked.
+   *
    * @param original the original's component
    */
   void copyFrom(BuffComponent original) {
@@ -471,26 +482,7 @@ public final class BuffComponent implements BattleComponent {
       items.remove(held);
       onRemoved(held);
     }
-    // The clone creator leaves a buff that is not cloned off the clone, which no reference holds,
-    // and whether a copy runs a buff's start action is not established.
     for (BuffInstance instance : original.items) {
-      if (instance.getBuff().onStartAction() != null
-          || instance.getBuff().onRemoveAction() != null
-          || instance.getBuff().onStackedAction() != null) {
-        throw new UnsupportedOperationException(
-            original.entity.name()
-                + " is cloned carrying "
-                + instance.getBuff().name()
-                + ", which runs an action as it is listed or removed, or as it is refreshed, not"
-                + " modelled");
-      }
-      if (instance.getBuff().overrideChargeRange() != 0) {
-        throw new UnsupportedOperationException(
-            original.entity.name()
-                + " is cloned carrying "
-                + instance.getBuff().name()
-                + ", which gives a charge range, not modelled");
-      }
       if (instance.getBuff().spawnObject() != null) {
         throw new UnsupportedOperationException(
             original.entity.name()
@@ -498,19 +490,22 @@ public final class BuffComponent implements BattleComponent {
                 + instance.getBuff().name()
                 + ", whose spawner's copy is not modelled");
       }
-      if (instance.getBuff().notCloned()) {
-        throw new UnsupportedOperationException(
-            original.entity.name()
-                + " is cloned carrying "
-                + instance.getBuff().name()
-                + ", which is not cloned, not modelled");
-      }
     }
+    // Listed with the counters the original's component holds for them; no action is scheduled
+    // and no charge is reset.
     for (BuffInstance instance : original.items) {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);
       onListed(copy);
       world.buffCopied(original.entity, entity, copy);
+    }
+    // The copies of a row that is not cloned come off as removals do, their remove actions run on
+    // the clone; the index goes on after each removal.
+    for (int i = 0; i < items.size(); i++) {
+      BuffInstance instance = items.get(i);
+      if (instance.getBuff().notCloned()) {
+        removeParented(instance.getBuff().name(), instance.getParent());
+      }
     }
   }
 
