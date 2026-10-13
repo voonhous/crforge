@@ -1,19 +1,18 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 91.1,
-  "ticks_agreed": 94.9,
+  "to_the_end": 91.4,
+  "ticks_agreed": 95.3,
   "outcomes": {
-    "diagnostic_match": 1580,
-    "mismatch": 125,
-    "unsupported": 28
+    "diagnostic_match": 1584,
+    "mismatch": 126,
+    "unsupported": 23
   },
   "first_failures": {
-    "mismatch $.entities[].x": 66,
+    "mismatch $.entities[].x": 67,
     "mismatch $.entities[].hp": 20,
     "mismatch $.entities[].state": 20,
     "mismatch $.entities.length": 16,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 5,
     "unsupported: target_is_ground on cmd#, which carries FORCE_IS_GROUND, not modelled": 3,
     "mismatch $.entities[].y": 2,
     "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled": 2,
@@ -23,7 +22,8 @@
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "mismatch $.sides[].elixir": 1,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
-    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1
+    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
+    "unsupported: cmd#_clone# launches GoblinDemolisherDeathProjectile as it dies and is a clone, whose projectiles carry it, not modelled": 1
   },
   "set": "bb3808097b85b700"
 }
