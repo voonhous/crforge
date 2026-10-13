@@ -1,20 +1,19 @@
 {
   "content_version" : "16.402.19",
   "battles" : 1733,
-  "to_the_end" : 88.8,
-  "ticks_agreed" : 92.3,
+  "to_the_end" : 89.4,
+  "ticks_agreed" : 92.9,
   "outcomes" : {
-    "diagnostic_match" : 1540,
-    "mismatch" : 116,
-    "unsupported" : 77
+    "diagnostic_match" : 1551,
+    "mismatch" : 117,
+    "unsupported" : 65
   },
   "first_failures" : {
     "mismatch $.entities[].x" : 63,
     "mismatch $.entities[].hp" : 19,
-    "mismatch $.entities[].state" : 18,
-    "unsupported: cmd#_clone# would be a clone of a champion, which is not modelled" : 14,
+    "mismatch $.entities[].state" : 19,
     "mismatch $.entities.length" : 13,
-    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled" : 6,
+    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled" : 7,
     "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled" : 5,
     "unsupported: cmd# reflects and takes a damage-taking action's hit, whose reflect is not modelled" : 5,
     "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 5,
@@ -23,6 +22,7 @@
     "unsupported: proj_# (LogProjectileRolling) flies by a deflecting area effect, whose deflection of it is not modelled" : 3,
     "mismatch $.entities[].y" : 2,
     "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled" : 2,
-    "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled" : 2
+    "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled" : 2,
+    "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled" : 2
   }
 }
