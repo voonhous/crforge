@@ -703,9 +703,21 @@ public class ProjectileEntity extends BattleEntity
     this.ownerId = launcher == null ? 0 : launcher.getId();
     this.root = rootOwner;
     this.spawnChain = data.spawnChain();
-    if (deflections >= 1) {
-      // A deflection's relaunch aims at the hit position itself: neither stretched to the row's
-      // range nor to its least distance, and it keeps its target.
+    // A deflection's relaunch of a projectile that flies to a point and neither inverts its
+    // direction, sweeps out and back nor stops at collisions, as the Magic Archer's arrow, is aimed
+    // as a first launch is, but from where it stands: stretched to its range toward the hit
+    // position, forgetting the target, and held to its least distance.
+    boolean aimsFromItself =
+        deflections >= 1
+            && data.homingLike()
+            && (data.deflectBehaviour() & ProjectileData.INVERT_DIRECTION) == 0
+            && data.pingpongVisualTimeMs() < 1
+            && !data.checkCollisions();
+    if (aimsFromItself) {
+      aim(sx, sy, hx, hy);
+    } else if (deflections >= 1) {
+      // Any other deflection's relaunch aims at the hit position itself: neither stretched to the
+      // row's range nor to its least distance, and it keeps its target.
       aimX = hx;
       aimY = hy;
     } else {
@@ -723,7 +735,7 @@ public class ProjectileEntity extends BattleEntity
         homingTimeMs = data.homingTimeMs();
       }
     }
-    if (data.minDistance() != 0 && deflections < 1) {
+    if (data.minDistance() != 0 && (deflections < 1 || aimsFromItself)) {
       int[] vec = {aimX - startX, aimY - startY};
       if (FixedMath.guardedDistance(vec[0], vec[1]) < data.minDistance()) {
         FixedMath.normalize(vec, data.minDistance());
@@ -834,6 +846,12 @@ public class ProjectileEntity extends BattleEntity
    * its own level, and registers its damage, now the deflected share, on the source. A row with a
    * random delay draws a fresh one from the battle's random source, as every launch with a launcher
    * does, so the turned projectile waits where it was turned before it flies back.
+   *
+   * <p>A projectile that flies to a point and neither inverts its direction, sweeps out and back
+   * nor stops at collisions, as the Magic Archer's arrow, is aimed from where it stands instead,
+   * stretched to its range toward the source, and forgets the source as its target; a row that
+   * homes for a time homes on the source again when it stands farther than the row's least homing
+   * distance, and its flight is then measured from the deflector, as from a launcher.
    *
    * <p>A pingpong projectile not deflected before first lets its owner's targeting go on, whether
    * the component is on or off, and its sweep time starts over; the relaunch sets no hold on the

@@ -4365,12 +4365,12 @@ public class BattleWorld implements HolderPasses {
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
    * at its impact, as the Goblin Barrel, which no recording holds; one that hops, homes for a time
-   * or hooks; one that flies to a point and does not stop at collisions, as the Magic Archer's
-   * arrow, whose relaunch stretches its aim to its range from where it stands; one whose impact
-   * spawns a chain of projectiles two links or more long, as the evolved Bomber's bouncing bomb;
-   * one that belongs to a chain and is not spell-like, or that its launcher marks as grouped
-   * without a volley's group. A spell such as the Fireball, whose deflection behaviour sends it at
-   * the enemy nearest the area effect without a target, is among them.
+   * or hooks; one that flies to a point and does not stop at collisions with a least distance, a
+   * box body or a deflect radius, which no recording holds; one whose impact spawns a chain of
+   * projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that belongs to
+   * a chain and is not spell-like, or that its launcher marks as grouped without a volley's group.
+   * A spell such as the Fireball, whose deflection behaviour sends it at the enemy nearest the area
+   * effect without a target, is among them.
    *
    * <p>A projectile that flies to a point and stops at collisions is modelled, as the Hunter's
    * pellets are: its relaunch aims at its root owner's position itself, not stretched to its range,
@@ -4380,6 +4380,11 @@ public class BattleWorld implements HolderPasses {
    * stops at the first hit as before. A volley's group that a deflection does not turn around as
    * one, as the Hunter's pellets leave it (DeflectGroup False), is no bar either: each projectile
    * of it is deflected on its own (see {@link #deflect}).
+   *
+   * <p>So is a piercing body (see {@link #piercingBody}), as the Magic Archer's arrow: its relaunch
+   * stretches its aim to its range from where it stands toward its root owner, forgetting the
+   * target, and a row that homes for a time homes on the root owner again (see {@link
+   * ProjectileEntity#deflect}); turned, it hits what its body passes on its way back.
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -4422,6 +4427,7 @@ public class BattleWorld implements HolderPasses {
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
     boolean spellLike = spellLike(data);
     boolean rolling = rollingBody(data);
+    boolean piercing = piercingBody(data);
     // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
@@ -4429,8 +4435,8 @@ public class BattleWorld implements HolderPasses {
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
-        || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions())
-        || data.homingTimeMs() >= 1
+        || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
+        || (data.homingTimeMs() >= 1 && !piercing)
         || data.dragBackSpeed() >= 1
         || (data.spawnProjectile() != null && data.spawnChain() >= 2)
         || (projectile.getChain() != null && !spellLike)
@@ -4730,6 +4736,24 @@ public class BattleWorld implements HolderPasses {
         && data.homingLike()
         && data.pingpongVisualTimeMs() < 1
         && data.deflectRadius() == 0;
+  }
+
+  /**
+   * Whether a projectile is a piercing body as a deflection reads it: it flies to a point with a
+   * round body, not sweeping out and back, does not stop at collisions and has no deflection
+   * behaviour of its own (but the measure on the ground plane), no deflect radius and no least
+   * distance, as the Magic Archer's arrows. Its relaunch aims from where it stands (see {@link
+   * ProjectileEntity#deflect}); a time it homes for is no bar, the relaunch homes on its root owner
+   * again as every launch homes on its target.
+   */
+  private static boolean piercingBody(ProjectileData data) {
+    return (data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT) == 0
+        && data.homingLike()
+        && data.pingpongVisualTimeMs() < 1
+        && !data.checkCollisions()
+        && data.projectileRadiusY() == 0
+        && data.deflectRadius() == 0
+        && data.minDistance() == 0;
   }
 
   /**

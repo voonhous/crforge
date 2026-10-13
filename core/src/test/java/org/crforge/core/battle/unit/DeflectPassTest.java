@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.crforge.core.battle.Shipped.actionNames;
 import static org.crforge.core.battle.Shipped.row;
 import static org.crforge.core.battle.Shipped.text;
@@ -30,10 +29,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>A projectile with a body that flies to a point, such as the Magic Archer's arrow, runs a pass
  * over what its body covers after each step: the spatial index answers it, deflecting area effects
- * included, and only an enemy deflecting area effect the index lists would turn it around. Away
- * from the Deflect it hits as without one. A spell projectile such as the Fireball is measured
- * against the Deflect's radius widened by its own deflect radius; one that passes outside it lands
- * as without one. One that passes inside it is turned around: see {@link SpellDeflectTest}.
+ * included, and only an enemy deflecting area effect the index lists turns it around (see {@link
+ * MagicArcherDeflectTest}). Away from the Deflect it hits as without one. A spell projectile such
+ * as the Fireball is measured against the Deflect's radius widened by its own deflect radius; one
+ * that passes outside it lands as without one. One that passes inside it is turned around: see
+ * {@link SpellDeflectTest}.
  */
 class DeflectPassTest {
 
@@ -156,29 +156,6 @@ class DeflectPassTest {
         .as("the arrow that hit was launched while the Deflect lived")
         .anyMatch(p -> p.getData().name().equals(ARROW));
     assertThat(deflectAlive(scene.match())).as("the Deflect still lives").isTrue();
-  }
-
-  @Test
-  @DisplayName("a Magic Archer's arrow at the Monk would be deflected in its pass, refused")
-  void arrowAtTheDeflectIsRefused() {
-    Scene scene = scene();
-    int now = scene.tick() + 1;
-    CharacterEntity archer =
-        scene
-            .match()
-            .deploy(
-                now, scene.records().unit("EliteArcher"), LEVEL, ENEMY_SIDE, 3500, 15000, "archer");
-    scene.step();
-    archer.setActive(CharacterEntity.MOVEMENT_SLOT, false);
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < TICKS; i++) {
-                scene.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(ARROW)
-        .hasMessageContaining(DEFLECT);
   }
 
   @Test
