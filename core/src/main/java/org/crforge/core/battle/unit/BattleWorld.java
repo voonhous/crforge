@@ -523,6 +523,7 @@ public class BattleWorld implements HolderPasses {
   private record ActionDamageDue(
       WorldEntity source,
       AreaEffectEntity areaSource,
+      ProjectileEntity projectileSource,
       WorldEntity target,
       TakeDamage.Damage damage,
       int added,
@@ -4318,13 +4319,13 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
-   * one with a deflection behaviour or an action on its deflector, a box body; one with a deflect
-   * radius that spawns a character at its impact, as the Goblin Barrel, which no recording holds;
-   * one that hops, flies to a point, homes for a time, waits a random delay, hooks or stops at
-   * collisions; one that spawns a projectile, belongs to a chain, or belongs to a volley's group
-   * that a deflection does not turn around as one, as the Hunter's pellets. A spell such as the
-   * Fireball, whose deflection behaviour sends it at the enemy nearest the area effect without a
-   * target, is among them.
+   * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
+   * at its impact, as the Goblin Barrel, which no recording holds; one that hops, flies to a point,
+   * homes for a time, waits a random delay, hooks or stops at collisions; one whose impact spawns a
+   * chain of projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that
+   * belongs to a chain, or to a volley's group that a deflection does not turn around as one, as
+   * the Hunter's pellets. A spell such as the Fireball, whose deflection behaviour sends it at the
+   * enemy nearest the area effect without a target, is among them.
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -4351,10 +4352,15 @@ public class BattleWorld implements HolderPasses {
    * Snowball and the evolved Cannon's bombs are (see {@link #deflect}).
    *
    * <p>And a rolling body: one whose deflection behaviour inverts its direction, with a round or a
-   * box body and no deflect radius, that flies to a point, as the Bowler's ball and the rolling
-   * logs do (see {@link #rollingBody}). Refused: such a row with a constant height, as the
-   * Firecracker's sparks, which no recording holds, and one with a starting action, as the hero
-   * Barbarian Barrel's, which sets its owner's ability button while it rolls.
+   * box body and no deflect radius, that flies to a point, as the Bowler's ball, the rolling logs
+   * and the Firecracker's sparks do (see {@link #rollingBody}). Refused: such a row with a starting
+   * action, as the hero Barbarian Barrel's, which sets its owner's ability button while it rolls.
+   *
+   * <p>An action on the deflector is no bar, as the Firecracker's rocket has: the redirect runs it
+   * on the deflector's parent (see {@link ProjectileEntity#deflect}). Nor is a projectile whose
+   * impact spawns projectiles one link long, as the rocket's sparks: the impact reads nothing of
+   * the deflection but the side and the start the redirect gave it, so the sparks fan out, for the
+   * deflector's side, along the line from where the rocket was turned to its new aim.
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
@@ -4365,7 +4371,6 @@ public class BattleWorld implements HolderPasses {
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
         || (data.deflectRadius() != 0 && !spellLike && data.spawnCharacter() != null)
-        || data.actionOnDeflector() != null
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
@@ -4374,7 +4379,7 @@ public class BattleWorld implements HolderPasses {
         || data.randomDelayMs() >= 1
         || data.dragBackSpeed() >= 1
         || data.checkCollisions()
-        || data.spawnProjectile() != null
+        || (data.spawnProjectile() != null && data.spawnChain() >= 2)
         || projectile.getChain() != null
         || (projectile.isGrouped()
             && (projectile.getGroup() == null || !projectile.getGroup().deflectsAsOne()))) {
@@ -4643,16 +4648,16 @@ public class BattleWorld implements HolderPasses {
    * Whether a projectile is a rolling body as a deflection reads it: its deflection behaviour
    * inverts its direction, alone or with the spells' tower share, which the inverting deflection
    * never reads; it flies to a point with a body, round as the Bowler's ball or a box as the
-   * rolling logs, not sweeping out and back, and it has no deflect radius and no constant height. A
-   * least distance is no bar: a deflected launch is never held to it.
+   * rolling logs, not sweeping out and back, and it has no deflect radius. A least distance is no
+   * bar: a deflected launch is never held to it. Nor is a constant height, as the Firecracker's
+   * sparks have: the relaunch puts the projectile back at that height, as every launch does.
    */
   private static boolean rollingBody(ProjectileData data) {
     return (data.deflectBehaviour() & ~ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL)
             == ProjectileData.INVERT_DIRECTION
         && data.homingLike()
         && data.pingpongVisualTimeMs() < 1
-        && data.deflectRadius() == 0
-        && data.constantHeight() == 0;
+        && data.deflectRadius() == 0;
   }
 
   /**
@@ -5661,8 +5666,9 @@ public class BattleWorld implements HolderPasses {
   /**
    * Queues a damage-taking action's hit, which the drain deals after the post-hooks of the tick;
    * one queued after that lands on the next tick. Its source is the character, building or tower
-   * that caused the action, or the area effect whose hit ran it; anything else that caused it is no
-   * source, and the level scaling of a damage from such a cause is refused.
+   * that caused the action, the area effect whose hit ran it, or the projectile whose deflection
+   * ran it on the deflector's parent; anything else that caused it is no source, and the level
+   * scaling of a damage from such a cause is refused.
    *
    * @param cause what caused the action, or null for nothing
    * @param target the entity it lands on
@@ -5673,7 +5679,12 @@ public class BattleWorld implements HolderPasses {
       ActionOwner cause, WorldEntity target, TakeDamage.Damage damage, int added) {
     WorldEntity source = cause instanceof WorldEntity entity ? entity : null;
     AreaEffectEntity areaSource = cause instanceof AreaEffectEntity area ? area : null;
-    if (cause != null && source == null && areaSource == null && damage.levelScaled()) {
+    ProjectileEntity projectileSource = cause instanceof ProjectileEntity shot ? shot : null;
+    if (cause != null
+        && source == null
+        && areaSource == null
+        && projectileSource == null
+        && damage.levelScaled()) {
       throw new UnsupportedOperationException(
           "a damage-taking action's hit scaled by the level of "
               + cause.actionRowName()
@@ -5687,9 +5698,15 @@ public class BattleWorld implements HolderPasses {
     } else if (areaSource != null) {
       directionX = target.getView().getX() - areaSource.getX();
       directionY = target.getView().getY() - areaSource.getY();
+    } else if (projectileSource != null) {
+      // Taken from the projectile's point as from a character's: the direction is kept only for a
+      // death, and no recording holds one by such a hit.
+      directionX = target.getView().getX() - projectileSource.getX();
+      directionY = target.getView().getY() - projectileSource.getY();
     }
     queuedHits.add(
-        new ActionDamageDue(source, areaSource, target, damage, added, directionX, directionY));
+        new ActionDamageDue(
+            source, areaSource, projectileSource, target, damage, added, directionX, directionY));
   }
 
   /**
@@ -5889,18 +5906,19 @@ public class BattleWorld implements HolderPasses {
    * a target that takes no damage; otherwise the damage's amount for the target - its tower amount
    * against a crown tower when it gives one - plus the added amount, scaled by the source's level
    * unless NoScaling, floored at 0 behind the source's percentages (which no buff changes) unless
-   * NoAmplification - an area effect has none - then lowered by the target's protection and floored
-   * at 0 unless NoProtection. The damage entry deals it with the source counting it (an area effect
-   * counts nothing), the target's runs told whether it is a Reflected hit, the hidden test lifted
-   * under DamagesHidden; then the reflect of a reflecting target, the action's cause its attacker -
-   * a character, building or tower is struck back as at any hit, an area effect never - and the
-   * death the hit causes, at once. A source that has left the battle is no source; a hit from one
-   * with an amount of 0 deals 0, which level scaling keeps at any level, and the level scaling of
-   * one with an amount is refused. A source whose row sets a buff on damage, which the drain
-   * applies after a hit it lets through, is refused.
+   * NoAmplification - an area effect and a projectile have none - then lowered by the target's
+   * protection and floored at 0 unless NoProtection. The damage entry deals it with the source
+   * counting it (an area effect or a projectile counts nothing), the target's runs told whether it
+   * is a Reflected hit, the hidden test lifted under DamagesHidden; then the reflect of a
+   * reflecting target, the action's cause its attacker - a character, building or tower is struck
+   * back as at any hit, an area effect never - and the death the hit causes, at once. A source that
+   * has left the battle is no source; a hit from one with an amount of 0 deals 0, which level
+   * scaling keeps at any level, and the level scaling of one with an amount is refused. A source
+   * whose row sets a buff on damage, which the drain applies after a hit it lets through, is
+   * refused.
    *
    * <p>The level scaling is the card damage scaling of the source's own row and level: a
-   * character's, a building's or a tower's, or an area effect's.
+   * character's, a building's or a tower's, an area effect's, or a projectile's.
    */
   private void drainActionDamage(ActionDamageDue due) {
     WorldEntity target = due.target();
@@ -5912,6 +5930,11 @@ public class BattleWorld implements HolderPasses {
         due.areaSource() == null || liveObject(due.areaSource().getId()) != due.areaSource()
             ? null
             : due.areaSource();
+    ProjectileEntity projectileSource =
+        due.projectileSource() == null
+                || liveObject(due.projectileSource().getId()) != due.projectileSource()
+            ? null
+            : due.projectileSource();
     TakeDamage.Damage damage = due.damage();
     int amount = 0;
     if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) == 0) {
@@ -5922,7 +5945,8 @@ public class BattleWorld implements HolderPasses {
           && amount != 0
           && source == null
           && areaSource == null
-          && (due.source() != null || due.areaSource() != null)) {
+          && projectileSource == null
+          && (due.source() != null || due.areaSource() != null || due.projectileSource() != null)) {
         throw new UnsupportedOperationException(
             "a damage-taking action's hit of an amount scaled by the level of a source no longer"
                 + " in the battle is not modelled");
@@ -5943,6 +5967,16 @@ public class BattleWorld implements HolderPasses {
                 areaSource.getPackedLevel(),
                 ScalingMode.CARD_DAMAGE,
                 areaSource.getData().rarity());
+      } else if (damage.levelScaled() && projectileSource != null) {
+        // A projectile's own row and level, as its own damage is scaled; it carries no buffs, so
+        // no percentages follow.
+        amount =
+            LevelScaling.scale(
+                ScalingGlobals.standard(),
+                amount,
+                projectileSource.packedLevel(),
+                ScalingMode.CARD_DAMAGE,
+                projectileSource.getData().rarity());
       }
       if (source != null && !damage.noAmplification()) {
         refuseTypedPercents(source, "a damage-taking action's hit");
@@ -5953,10 +5987,13 @@ public class BattleWorld implements HolderPasses {
       }
     }
     int before = hitPointsOf(target);
+    // The hit's cause: the area effect, the projectile or the character, building or tower.
+    SpawnHost cause =
+        areaSource != null ? areaSource : projectileSource != null ? projectileSource : source;
     DamageResult result =
         target.takeActionDamage(
             source,
-            areaSource != null ? areaSource : source,
+            cause,
             amount,
             damage.reflected(),
             damage.damagesHidden(),
@@ -5964,15 +6001,11 @@ public class BattleWorld implements HolderPasses {
             due.directionY());
     // The action's cause is the hit's attacker: a reflecting target strikes back at a character,
     // building or tower that caused it, as at any hit, and at nothing for an area effect's.
-    reflect(
-        target,
-        areaSource != null ? areaSource : source,
-        before,
-        result,
-        due.directionX(),
-        due.directionY());
+    BattleEntity attacker =
+        areaSource != null ? areaSource : projectileSource != null ? projectileSource : source;
+    reflect(target, attacker, before, result, due.directionX(), due.directionY());
     if (result.died()) {
-      target.die(areaSource != null ? areaSource : source);
+      target.die(attacker);
     }
     if (result.accepted() && source != null && source.getData().buffOnDamage() != null) {
       throw new UnsupportedOperationException(
