@@ -22,10 +22,14 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>An air unit that lands at the end of its descent has the row's action once on the ground
  * scheduled on it, with itself as the cause, as the evolved Royal Hog's fall does.
  *
+ * <p>A clone on the ground is held as any other ground unit is, unless the entity that caused the
+ * run is a character or a tower whose own holder lists a run of the same row: the run then takes
+ * that run's phase and counter, which is refused here.
+ *
  * <p>Refused as the row is built: the landing and landing end actions, a path reset at landing and
- * a next action. As it starts: an owner that is a clone or rides another, a hovering owner a force
- * tag already holds, and an action once on the ground for a run that starts on the ground, none of
- * which a reference holds.
+ * a next action. As it starts: an owner that rides another, a clone whose cause lists a run of the
+ * row, a clone at a flying height or hovering, a hovering owner a force tag already holds, and an
+ * action once on the ground for a run that starts on the ground, none of which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -42,8 +46,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " owner held from the start, by BattleAirToGroundTest and recorded Vines battles on"
             + " the Ghost and its evolution, a push off the river at the hold's last step"
             + " among them. Refused: the landing and landing end actions, a path reset at"
-            + " landing, a next action, the action once on the ground at the start, a clone or"
-            + " riding owner, and a hovering owner a force tag already holds.")
+            + " landing, a next action, the action once on the ground at the start, a riding"
+            + " owner, a clone whose cause lists a run of the row, a clone at a flying height or"
+            + " hovering, and a hovering owner a force tag already holds. A clone on the ground"
+            + " held as any ground unit is, by BattleAirToGroundTest; recorded battles of"
+            + " the Skeleton King's graveyard skeletons held run on through it.")
 public final class AirToGround extends RowAction {
 
   /** How long the descent and the climb each take, in milliseconds. */
@@ -86,6 +93,12 @@ public final class AirToGround extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder) {
-    return holder.getOwner().airToGround(this, holder.passPhase());
+    return start(holder, null);
+  }
+
+  /** Starts the run on the holder's owner; the cause is read for a clone only. */
+  @Override
+  public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
+    return holder.getOwner().airToGround(this, holder.passPhase(), instigator);
   }
 }

@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -16,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.ActionHolder;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.grid.Route;
@@ -28,7 +31,9 @@ import org.junit.jupiter.api.io.TempDir;
  * Vines' air-to-ground run where the reference runs do not reach: an air unit that lives through
  * its hold, whose climb ends in the path reset; the ground tag a held ground unit carries, and none
  * without the row's flag; a Goblin Giant held like any ground unit while its riders are left alone;
- * and a hovering unit, held from the start for the whole run.
+ * a hovering unit, held from the start for the whole run; and a clone on the ground, as the
+ * Skeleton King's graveyard makes each skeleton, held like any other ground unit, while a clone in
+ * the air and one whose run's cause runs the row too are refused.
  *
  * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
  * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
@@ -299,5 +304,61 @@ class BattleAirToGroundTest {
     assertThat(scene.forcedOntoTheGround(knight)).isFalse();
     assertThat(knight.getView().isAir()).isFalse();
     assertThat(scene.runs).hasSize(2);
+  }
+
+  @Test
+  @DisplayName(
+      "a clone, as the Skeleton King's graveyard makes each skeleton, is held like any ground unit,"
+          + " its run started on the ground for the whole duration and FORCE_IS_GROUND raised")
+  void aCloneIsHeld(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(vines(folder, fields -> {}));
+    CharacterEntity knight =
+        scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "cloned knight");
+    // Set up as a clone of nothing, as the graveyard's spawner sets up each skeleton it makes.
+    knight.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(20);
+    assertThat(scene.held).containsExactly(knight.name());
+    assertThat(scene.runs).containsExactly("18 start phase 0 counter 2000 height -1");
+    assertThat(scene.forcedOntoTheGround(knight)).isFalse();
+    // The tag is in the word from the pre-hook after the run's first step, as on any ground unit.
+    scene.steps(1);
+    assertThat(scene.forcedOntoTheGround(knight)).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a run on a clone caused by a character whose own holder lists a run of the row, whose"
+          + " phase the clone's run would copy, is refused")
+  void aCloneFromACauseRunningTheRowIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(vines(folder, fields -> {}));
+    CharacterEntity dragon =
+        scene.match.deploy(0, GameData.unit("BabyDragon"), LEVEL, 1, X, Y, "dragon");
+    CharacterEntity knight =
+        scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y - 6000, "cloned knight");
+    knight.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(19);
+    assertThat(scene.held).containsExactly(dragon.name());
+
+    BattleWorld world = scene.match.getWorld();
+    BattleAction run = world.getActions().build("Vines_Air_To_Ground", world.binding(knight));
+    knight.actionHolder().schedule(run, ActionHolder.OWN_DELAY, false, dragon.actionHolder());
+    assertThatThrownBy(() -> scene.steps(1))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("holds the clone cloned knight from a cause that runs it too");
+  }
+
+  @Test
+  @DisplayName("a run on a clone at a flying height, which no reference holds, is refused")
+  void anAirCloneIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(vines(folder, fields -> {}));
+    CharacterEntity dragon =
+        scene.match.deploy(0, GameData.unit("BabyDragon"), LEVEL, 1, X, Y, "cloned dragon");
+    dragon.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    assertThatThrownBy(() -> scene.steps(19))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("holds the clone cloned dragon at a flying height or hovering");
   }
 }
