@@ -2544,6 +2544,8 @@ public final class BattleRecords {
             .allowResetTarget(!row.has("AllowResetTarget") || row.bool("AllowResetTarget"))
             .deflectBehaviour(deflectBehaviour(row.string("DeflectBehaviour")))
             .deflectRadius(row.intValue("DeflectRadius"))
+            // The loader stores true for an empty column.
+            .deflectGroup(!row.has("DeflectGroup") || row.bool("DeflectGroup"))
             .actionOnDeflector(
                 set(row, "ActionOnDeflector") ? row.string("ActionOnDeflector") : null)
             .customDeflectAction(actionName(row, "CustomDeflectAction"))

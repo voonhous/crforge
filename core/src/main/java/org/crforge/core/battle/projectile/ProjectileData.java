@@ -120,6 +120,9 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
  *     #USE_SPELLS_TOWER_DAMAGE_MUL} and {@link #IGNORE_HEIGHT}
  * @param deflectRadius the radius a deflecting area effect measures it by in place of its own; 0
  *     for its own
+ * @param deflectGroup true for a projectile whose volley, when its launcher's row links the
+ *     volley's projectiles into one group and it is the volley's last, is turned around as one by a
+ *     deflection: true for an empty column, as the loader stores it
  * @param actionOnDeflector the action a deflection runs on the deflector, or null
  * @param customDeflectAction the action a deflection runs on the projectile in place of turning it,
  *     or null
@@ -204,6 +207,7 @@ public record ProjectileData(
     boolean allowResetTarget,
     int deflectBehaviour,
     int deflectRadius,
+    boolean deflectGroup,
     String actionOnDeflector,
     String customDeflectAction,
     boolean useCustomMovement,
