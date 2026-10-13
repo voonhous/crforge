@@ -33,7 +33,8 @@ import org.junit.jupiter.api.io.TempDir;
  * damage; an area hit struck back; nothing for its own side or a shot whose row ignores the
  * reflect; a death the reflected damage causes running at once; a rider's shot struck back at its
  * parent; a damage-taking action's hit struck back at the character that caused it and never at an
- * area effect; and the hits the battle refuses.
+ * area effect; an unkillable attacker held at 1 hit point by the reflected damage; and the hits the
+ * battle refuses.
  */
 class BattleElectroGiantTest {
 
@@ -424,6 +425,71 @@ class BattleElectroGiantTest {
 
     assertThat(scene.from("skeleton").get(0).hitPointsAfter()).isZero();
     assertThat(scene.holds("GiantSkeletonBomb")).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "an unkillable attacker the reflected damage would kill is held at 1 hit point and lives: the"
+          + " reflected hit does not pierce its immunity")
+  void anUnkillableAttackerIsHeldAtOne() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    // A buff that sets only the UNKILLABLE tag, as the Berserker hero's ability buff sets it.
+    knight
+        .getBuffs()
+        .apply(
+            BuffData.builder()
+                .name("unkillable")
+                .rarity(GameData.records().buff("Rage").rarity())
+                .gameTagsToSet(knight.getView().getFlagBits().unkillable())
+                .build(),
+            1000000,
+            knight.getPackedLevel(),
+            null,
+            1);
+    scene.step(25);
+    assertThat(knight.unkillable()).isTrue();
+    // Every hit point but one off, so the next reflected damage would kill a killable Knight.
+    knight.getHitPoints().setHitPoints(1);
+    int guard = scene.tick + 200;
+    while (scene.from("knight").stream().noneMatch(r -> r.damage() > 0) && scene.tick < guard) {
+      scene.step(1);
+    }
+
+    Reflection struck =
+        scene.from("knight").stream().filter(r -> r.damage() > 0).findFirst().orElseThrow();
+    assertThat(struck.damage()).isEqualTo(reflectedDamage());
+    assertThat(struck.hitPointsBefore()).isEqualTo(1);
+    assertThat(struck.hitPointsAfter()).isEqualTo(1);
+    scene.step(1);
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(knight.isRemovable()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a reflect from a unit whose buffs scale its damage, which no Ladder card gives an Electro"
+          + " Giant, is refused")
+  void aReflectWithADamagePercentIsRefused() {
+    Scene scene = new Scene();
+    scene
+        .giant
+        .getBuffs()
+        .apply(
+            BuffData.builder()
+                .name("double")
+                .rarity(GameData.records().buff("Rage").rarity())
+                .damageMultiplier(200)
+                .build(),
+            1000000,
+            scene.giant.getPackedLevel(),
+            null,
+            0);
+    scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+
+    assertThatThrownBy(() -> scene.step(60))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("whose buffs scale its damage");
   }
 
   @Test

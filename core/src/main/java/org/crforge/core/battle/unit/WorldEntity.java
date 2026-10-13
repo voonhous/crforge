@@ -434,24 +434,25 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * Takes a reflected attack's damage: the damage entry as any hit's, with the battle's holds, the
-   * hidden test and the untouchable test lifted, the one struck never riding on a parent.
+   * hidden test and the untouchable test lifted, the one struck never riding on a parent. The hit
+   * does not pierce immunity, so an unkillable target is held at 1 hit point as by any other hit.
    */
   DamageResult takeReflectedDamage(
       WorldEntity reflecting, int damage, int directionX, int directionY) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    // Which object the reflected attack names as its source, whose percents would scale it, and
-    // whether it holds an unkillable target at 1 hit point, are not established.
-    if (unkillable()
-        || reflecting.getBuffs().damagePercent() != 100
+    // The reflected hit names the reflecting unit as its source, so the entry would scale it by
+    // that unit's percents as any hit's; no Ladder card gives a reflecting unit a buff that sets
+    // one, and no recording holds it.
+    if (reflecting.getBuffs().damagePercent() != 100
         || reflecting.getBuffs().crownTowerDamagePercent() != 100) {
       throw new UnsupportedOperationException(
           "a reflected attack from "
               + reflecting.name()
               + " on "
               + name()
-              + ", with a damage percent or an unkillable target, is not modelled");
+              + ", whose buffs scale its damage, is not modelled");
     }
     int shieldBefore = hitPoints.getShield();
     boolean crownTower = targetView.isCrownTowerTarget();
@@ -482,6 +483,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               @Override
               public void hitPointsTaken(int amount) {
                 scheduleDamageTaken();
+              }
+
+              // The subtraction holds an entity whose tag word holds UNKILLABLE at 1 hit point at
+              // least: the reflected hit does not pierce immunity.
+              @Override
+              public boolean unkillable() {
+                return WorldEntity.this.unkillable();
               }
             });
     shieldHit(damage, shieldBefore, reflecting);
