@@ -19,6 +19,7 @@ import org.crforge.core.battle.action.CountingRun;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -191,6 +192,45 @@ class BattleMiniPekkaHeroQuestTest {
         50 * Shipped.number(Shipped.row("character_buffs", "Rage"), "HitSpeedMultiplier") / 100;
     assertThat(hero.getBuffs().hitSpeed(50)).isEqualTo(raged);
     assertThat(progressSteps(battle, hero, 10)).as("Rage's share of 50").containsOnly(raged);
+  }
+
+  @Test
+  @DisplayName(
+      "a tap that starts the cast at once tags the hero ABILITY_CASTED for a step, which the"
+          + " timer's stop gate reads on the tap's own step: the run ends there and the level its"
+          + " count would raise on that step is never raised")
+  void aTapStopsTheTimerOnItsOwnStep() {
+    Standard1v1Battle battle = playedBattle();
+    CharacterEntity hero = playHero(battle);
+    // Kept in place and out of reach, so no hit gives it its tag.
+    hero.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    int first = battle.getBattle().getTick() - 1;
+    int stack = battle.getWorld().declaredVariable("MiniPekkaHero_levelStack");
+    int played = battle.getWorld().declaredVariable("MiniPekkaHero_ability_played");
+
+    // The step on which the count reaches the first interval (as the first test finds it).
+    int raise = first + DELAY_STEPS + steps(INTERVAL) - 1;
+    while (battle.getBattle().getTick() < raise) {
+      battle.getBattle().step();
+    }
+    assertThat(timerRun(hero)).isNotNull();
+    assertThat(((CountingRun) timerRun(hero)).counter()).isEqualTo(INTERVAL - 50L);
+    assertThat(hero.variable(stack)).isZero();
+
+    battle.useAbility(raise, 0, hero.name(), "a");
+    battle.getBattle().step();
+    assertThat(battle.getAbilityUses()).hasSize(1);
+    assertThat(battle.getAbilityUses().get(0).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(hero.getView().getState()).isEqualTo(GridEntityState.CASTING);
+    assertThat(timerRun(hero)).as("stopped on the tap's step").isNull();
+    assertThat(hero.variable(stack)).as("the level is not raised").isZero();
+
+    // The activation, after the ability's trigger delay, reads the level stack the tap left.
+    for (int i = 0; i < 20; i++) {
+      battle.getBattle().step();
+    }
+    assertThat(hero.variable(played)).as("the ability ran").isEqualTo(1);
+    assertThat(hero.variable(stack)).isZero();
   }
 
   /** The counting steps of 50 it takes to reach an amount. */
