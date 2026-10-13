@@ -1,0 +1,31 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 85.9,
+  "ticks_agreed": 93.5,
+  "outcomes": {
+    "diagnostic_match": 8599,
+    "invalid": 6,
+    "mismatch": 1354,
+    "unsupported": 41
+  },
+  "first_failures": {
+    "mismatch $.entities[].x": 620,
+    "mismatch $.entities[].state": 299,
+    "mismatch $.entities[].hp": 234,
+    "mismatch $.entities.length": 137,
+    "mismatch $.entities[].id": 35,
+    "mismatch $.entities[].y": 21,
+    "invalid": 6,
+    "mismatch $.entities[].row": 6,
+    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 5,
+    "unsupported: proj_# (FishermanProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 5,
+    "unsupported: Knight_hero_ApplyTaunt steps on cmd# while it pathfinds, which is not modelled": 4,
+    "unsupported: RoyalHog_EV1_To_Ground starts on the ground on cmd#, scheduling its action once on the ground at the start, which is not modelled": 4,
+    "unsupported: proj_# hooks cmd#, which another holds, not modelled": 3,
+    "mismatch $.sides[].elixir": 2,
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2
+  },
+  "set": "296000195c872c7d",
+  "commit": "db7db5491cc0011f93514ea339ea9bc018ca82e3"
+}
