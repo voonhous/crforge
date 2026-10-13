@@ -5,11 +5,11 @@
   "ticks_agreed": 94.9,
   "outcomes": {
     "diagnostic_match": 1580,
-    "mismatch": 124,
-    "unsupported": 29
+    "mismatch": 125,
+    "unsupported": 28
   },
   "first_failures": {
-    "mismatch $.entities[].x": 65,
+    "mismatch $.entities[].x": 66,
     "mismatch $.entities[].hp": 20,
     "mismatch $.entities[].state": 20,
     "mismatch $.entities.length": 16,
@@ -22,8 +22,8 @@
     "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "mismatch $.sides[].elixir": 1,
-    "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 1,
-    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
+    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1
   },
   "set": "bb3808097b85b700"
 }

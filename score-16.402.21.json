@@ -1,13 +1,13 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 84.9,
-  "ticks_agreed": 92.3,
+  "to_the_end": 85.0,
+  "ticks_agreed": 92.4,
   "outcomes": {
-    "diagnostic_match": 8496,
+    "diagnostic_match": 8506,
     "invalid": 6,
     "mismatch": 1327,
-    "unsupported": 171
+    "unsupported": 161
   },
   "first_failures": {
     "mismatch $.entities[].x": 602,
@@ -21,10 +21,10 @@
     "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: GiantHero_Slap_Pushback on cmd# was let go before its push, not modelled": 10,
-    "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 10,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 9,
     "invalid": 6,
-    "mismatch $.entities[].row": 6
+    "mismatch $.entities[].row": 6,
+    "unsupported: proj_# (EliteArcherHero_arrow_projectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 6
   },
   "set": "296000195c872c7d"
 }
