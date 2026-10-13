@@ -224,9 +224,10 @@ public interface ActionOwner {
    *
    * @param action the row
    * @param phase the pending pass it starts in
+   * @param instigator the holder of the entity that caused it, or null for none
    * @return the run
    */
-  default ActionInstance airToGround(AirToGround action, int phase) {
+  default ActionInstance airToGround(AirToGround action, int phase, ActionHolder instigator) {
     throw new UnsupportedOperationException(
         action.name() + " holds an owner that is neither a character nor a tower, not modelled");
   }

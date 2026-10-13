@@ -1875,15 +1875,39 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Starts an air-to-ground run on the entity, listed by the holder. A unit carrying riders is held
    * like any other: the run reads and moves only the unit it is on, and its riders, which nothing
    * targets, are left to follow it. A hovering unit is held from the start (see {@link
-   * AirToGroundRun}). A clone and a unit that rides another are refused, and so is a hovering row a
-   * force tag already holds, which the run would take for a plain ground unit: no reference holds
-   * one.
+   * AirToGroundRun}). A clone on the ground, such as each skeleton the Skeleton King's graveyard
+   * makes, is held like any other ground unit: the start asks a clone for one thing more, whether
+   * the entity that caused the run is a character or a tower whose own holder lists a run of the
+   * same row, finished or not, for a singleton row, whose phase and counter the clone's run would
+   * then take. That copy, a clone at a flying height or hovering, a unit that rides another, and a
+   * hovering row a force tag already holds, which the run would take for a plain ground unit, are
+   * refused: no reference holds one.
+   *
+   * @param action the row
+   * @param phase the pending pass it starts in
+   * @param instigator the holder of the entity that caused it, or null for none
+   * @return the run
    */
   @Override
-  public ActionInstance airToGround(AirToGround action, int phase) {
-    if (this instanceof CharacterEntity unit && (unit.isClone() || unit.getParent() != null)) {
+  public ActionInstance airToGround(AirToGround action, int phase, ActionHolder instigator) {
+    if (this instanceof CharacterEntity unit && unit.getParent() != null) {
       throw new UnsupportedOperationException(
-          action.name() + " holds " + name() + ", a clone or a rider, which is not modelled");
+          action.name() + " holds " + name() + ", a rider, which is not modelled");
+    }
+    if (this instanceof CharacterEntity unit && unit.isClone()) {
+      if (instigator != null
+          && (instigator.getOwner() instanceof CharacterEntity
+              || instigator.getOwner() instanceof TowerEntity)
+          && action.singleton()
+          && instigator.running().stream()
+              .anyMatch(run -> run.getAction().name().equals(action.name()))) {
+        throw new UnsupportedOperationException(
+            action.name()
+                + " holds the clone "
+                + name()
+                + " from a cause that runs it too, whose run the clone's would copy, which is"
+                + " not modelled");
+      }
     }
     if (data.hovering() && !layerHovering()) {
       throw new UnsupportedOperationException(
@@ -1894,6 +1918,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
+    if (this instanceof CharacterEntity unit
+        && unit.isClone()
+        && run.phase() != AirToGroundRun.GROUND) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " holds the clone "
+              + name()
+              + " at a flying height or hovering, which no reference holds");
+    }
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
     return run;
   }
