@@ -4,13 +4,13 @@
   "to_the_end": 88.0,
   "ticks_agreed": 94.8,
   "outcomes": {
-    "diagnostic_match": 8801,
+    "diagnostic_match": 8802,
     "invalid": 5,
-    "mismatch": 1168,
-    "unsupported": 26
+    "mismatch": 1169,
+    "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].x": 504,
+    "mismatch $.entities[].x": 505,
     "mismatch $.entities[].state": 235,
     "mismatch $.entities[].hp": 225,
     "mismatch $.entities.length": 140,
@@ -18,7 +18,7 @@
     "mismatch $.entities[].y": 20,
     "mismatch $.entities[].row": 6,
     "invalid": 5,
-    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 5,
+    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2,
     "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it to what they spawn, not modelled": 2,
@@ -27,5 +27,5 @@
     "unsupported: proj_# rolls beside a deflecting area effect, which is not modelled": 2
   },
   "set": "296000195c872c7d",
-  "commit": "a441a3d37bbec5b6a8a37d03fe6c0f62feaebbb9"
+  "commit": "a6c31240ac1a066453641ea6111224b04e027885"
 }
