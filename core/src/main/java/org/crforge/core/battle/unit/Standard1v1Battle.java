@@ -241,8 +241,16 @@ public class Standard1v1Battle {
   /** A card play queued: the tick it runs on, its side, its card and what it plays. */
   private record QueuedPlay(int tick, int side, String card, PlayKind kind) {}
 
-  /** An ability command queued: the tick it runs on and its side. */
-  private record QueuedAbility(int tick, int side) {}
+  /**
+   * An ability command queued: the tick it runs on, its side, and the unit it names, by the name a
+   * card play gave it or, from a replay, by its game object id.
+   *
+   * @param tick the tick the command runs on
+   * @param side the commanding side
+   * @param unit the name of the unit it names, or null when it names one by id
+   * @param objectId the game object id of the unit it names, or -1 when it names one by name
+   */
+  private record QueuedAbility(int tick, int side, String unit, int objectId) {}
 
   /**
    * Every card play queued so far, which a Mirror's and a variant card's item are built against.
@@ -268,7 +276,8 @@ public class Standard1v1Battle {
   /**
    * How many ticks after a command is given the player's client holds back the cost it promised,
    * unless the command's run releases it first: a play that passes its gates and is placed releases
-   * it as it pays, one refused at its run keeps it until then.
+   * it as it pays, one refused at its run keeps it until then; an ability command's run releases it
+   * before its gates, whatever the command comes to.
    */
   private static final int PROMISE_TICKS = 60;
 
@@ -424,7 +433,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(tick, side));
+    queuedAbilities.add(new QueuedAbility(tick, side, unit, -1));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -462,7 +471,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(tick, side));
+    queuedAbilities.add(new QueuedAbility(tick, side, null, objectId));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -663,13 +672,16 @@ public class Standard1v1Battle {
    * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, the
    * last the client can have seen before it gives the play, from the king's elixir less the costs
    * its client has promised: each play of its side given and not yet run holds back its item's cost
-   * from the step after it is given until its run pays it. A variant play given in the tick of
-   * another play of its side or the tick after, where the client's moment decides whether that
-   * play's cost is held back yet, is refused, and so is one with a Mirror's play of its side
-   * pending, one given within {@value #PROMISE_TICKS} ticks after a play of its side the match
-   * refused at its run, which may still hold its cost back, one with an ability command of its side
-   * given in the {@value #PROMISE_TICKS} ticks up to it, one outside a match, which has no king's
-   * elixir, and one run before tick 21, given before the first step.
+   * from the step after it is given until its run pays it. An ability command of its side holds
+   * back its ability's cost the same way until its run, which releases it whatever the command
+   * comes to, so one that has run holds nothing back; a variant play whose option a pending
+   * command's cost would change is refused, as no recording holds that cost set aside. A variant
+   * play given in the tick of another play or ability command of its side or the tick after, where
+   * the client's moment decides whether that cost is held back yet, is refused, and so is one given
+   * in the tick an ability command of its side runs, one with a Mirror's play of its side pending,
+   * one given within {@value #PROMISE_TICKS} ticks after a play of its side the match refused at
+   * its run, which may still hold its cost back, one outside a match, which has no king's elixir,
+   * and one run before tick 21, given before the first step.
    *
    * @param tick the tick the play runs on
    * @param card the variant card's row name
@@ -704,7 +716,15 @@ public class Standard1v1Battle {
 
           @Override
           public void execute(Battle target) {
-            option[0] = match.pickOption(side, card, promised(queued, name));
+            int promised = promised(queued, name);
+            option[0] = match.pickOption(side, card, promised);
+            int abilities = abilitiesPromised(queued, name);
+            if (abilities > 0 && match.pickOption(side, card, promised + abilities) != option[0]) {
+              throw new UnsupportedOperationException(
+                  name
+                      + ": a variant play given while an ability command of its side is pending,"
+                      + " whose cost set aside would change the option picked, is not modelled");
+            }
           }
         });
     battle.queue(
@@ -761,7 +781,8 @@ public class Standard1v1Battle {
    * builds the play's item after the step before the play is given: the item's cost of each play of
    * its side given at least two ticks before the variant play and not yet run. Each such play is a
    * deck card's: its item, built here from the side's count, is the one it runs with, a Mirror's or
-   * a variant card's being refused.
+   * a variant card's being refused. The ability commands' promises are counted apart ({@link
+   * #abilitiesPromised}).
    */
   private int promised(QueuedPlay queued, String name) {
     int side = queued.side();
@@ -787,12 +808,69 @@ public class Standard1v1Battle {
   }
 
   /**
+   * The whole elixir the ability commands of a variant play's side hold back as its pick reads the
+   * elixir: the ability's cost of each command of its side given at least two ticks before the
+   * variant play and run after the tick it is given in. The player's client promises an ability's
+   * cost as it gives the command, as it does a play's, and the command's run releases it before its
+   * gates, so a command that has run holds nothing back, whatever it came to; one that runs in the
+   * tick the variant play is given is refused at the variant play's run.
+   */
+  private int abilitiesPromised(QueuedPlay queued, String name) {
+    int side = queued.side();
+    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int total = 0;
+    for (QueuedAbility ability : queuedAbilities) {
+      int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
+      if (ability.side() == side && abilityGiven <= given - 2 && ability.tick() > given) {
+        total += abilityCost(ability, name);
+      }
+    }
+    return total;
+  }
+
+  /**
+   * The cost a pending ability command holds back: the ability's cost, in whole elixir, of the unit
+   * it names, which the client read as it gave the command. The unit is the one a card play made
+   * under the name, or by the id, else the live character holding the id. A command naming no such
+   * unit, or one with no ability, is one the client would not have given, and is refused.
+   */
+  private int abilityCost(QueuedAbility ability, String name) {
+    CharacterEntity unit = null;
+    if (ability.unit() != null) {
+      unit = playedUnit(ability.unit());
+    } else {
+      for (Play play : plays) {
+        for (CharacterEntity made : play.units()) {
+          if (made.getId() == ability.objectId()) {
+            unit = made;
+          }
+        }
+      }
+      for (BattleEntity entity : world.getHolder().entities()) {
+        if (unit == null
+            && entity.getId() == ability.objectId()
+            && entity instanceof CharacterEntity live) {
+          unit = live;
+        }
+      }
+    }
+    if (unit == null || unit.getData().ability() == null) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a variant play given while an ability command of its side is pending that names"
+              + " no unit with an ability, whose cost is not known, is not modelled");
+    }
+    return unit.getData().ability().manaCost();
+  }
+
+  /**
    * Refuses a variant play whose pick may have counted a promise {@link #promised} does not: a play
-   * of its side given in the tick of the variant play or the tick before, which the client files
-   * apart and counts only from the next step, at a moment of the client's not modelled; a play of
-   * its side refused at its run within {@value #PROMISE_TICKS} ticks of its giving, whose promise
-   * the client keeps until then; and an ability command of its side given in the {@value
-   * #PROMISE_TICKS} ticks up to it, whose promise is not modelled.
+   * or ability command of its side given in the tick of the variant play or the tick before, which
+   * the client files apart and counts only from the next step, at a moment of the client's not
+   * modelled; an ability command of its side that runs in the tick the variant play is given, which
+   * the battle may run before the pick; and a play of its side refused at its run within {@value
+   * #PROMISE_TICKS} ticks of its giving, whose promise the client keeps until then. An ability
+   * command's run releases its promise before its gates, so one refused at its run keeps none.
    */
   private void checkPromisesKnown(QueuedPlay queued, String name) {
     int side = queued.side();
@@ -825,13 +903,18 @@ public class Standard1v1Battle {
     }
     for (QueuedAbility ability : queuedAbilities) {
       int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
-      if (ability.side() == side
-          && abilityGiven >= given - PROMISE_TICKS - 2
-          && abilityGiven <= given) {
+      if (ability.side() == side && abilityGiven >= given - 1 && abilityGiven <= given) {
         throw new UnsupportedOperationException(
             name
-                + ": a variant play given while an ability command of its side may hold back its"
-                + " cost, is not modelled");
+                + ": a variant play given in the tick of an ability command of its side or the"
+                + " tick after, whose cost the player's client may not yet set aside, is not"
+                + " modelled");
+      }
+      if (ability.side() == side && ability.tick() == given) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a variant play given in the tick an ability command of its side runs, which"
+                + " may pay before the pick reads the elixir, is not modelled");
       }
     }
   }
