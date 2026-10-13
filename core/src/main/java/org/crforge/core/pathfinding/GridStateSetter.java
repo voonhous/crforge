@@ -203,6 +203,14 @@ public final class GridStateSetter implements StateSetter {
     /** Switches the movement component back on, as leaving the held state to attack does. */
     void movementOn();
 
+    /**
+     * Whether the targeting component is switched on now: the reference check of an entry to or an
+     * exit from a pulled state runs only on a component that was on as the change was asked.
+     *
+     * @return true when the targeting component is on
+     */
+    boolean targetingOn();
+
     /** Drops the targeting reference when it no longer passes the attack range test. */
     void dropReferenceOutOfRange();
 
@@ -472,15 +480,23 @@ public final class GridStateSetter implements StateSetter {
    * dropped; then the standing test on the unit's cell, which moves it off a cell it may not stand
    * on. The route the standard game empties here too is emptied, or prepared afresh, by the entry
    * of the standing or the moving state, the only two a pulled unit is asked into.
+   *
+   * <p>The reference check reads the targeting component as it was when the change was asked,
+   * before the switch: a pulled troop's is off, so the troop keeps its reference however far the
+   * pull took it, and an attack it was part way through goes on from where the hook stopped it. A
+   * Fisherman dragged to a building has his on, and drops a reference out of range.
    */
   private void exitPulled(int newState) {
+    boolean targetingWasOn = following.targetingOn();
     following.components(true);
     if (movement != null) {
       movement.setExplicitX(-1);
       movement.setExplicitY(-1);
       resetCharge();
       movement.stopPushback();
-      following.dropReferenceOutOfRange();
+      if (targetingWasOn) {
+        following.dropReferenceOutOfRange();
+      }
     }
     if (newState == GridEntityState.CLONE_SETUP) {
       // Cloned while pulled, the unit would go straight into the clone's setup.
@@ -598,13 +614,16 @@ public final class GridStateSetter implements StateSetter {
         }
         resetRoute();
       }
-      // Pulled: a reference out of range is dropped, and both components are switched off; held:
+      // Pulled: a reference out of range is dropped, when the targeting component is on as the
+      // change is asked, and both components are switched off; held:
       // both are switched off. The combat gate after it switches the targeting one back on in all
       // but the troop's pulled state.
       // A building, which the standard game makes stand instead, is never asked: a hook on one
       // drags its owner.
       case GridEntityState.FOLLOWING_REMOVED, GridEntityState.FOLLOWING_REMOVED_BUILDING -> {
-        following.dropReferenceOutOfRange();
+        if (following.targetingOn()) {
+          following.dropReferenceOutOfRange();
+        }
         following.components(false);
       }
       case GridEntityState.COMPONENTS_DISABLED -> following.components(false);

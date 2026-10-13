@@ -24,8 +24,8 @@ import org.crforge.core.pathfinding.target.TargetingVisit;
  * has no deploy time left and whose hit speed scales above 0 is acting: it is switched on, except
  * in an ability's follow-up, where it is off. Anything else - dead, still deploying, or a hit speed
  * scaled to 0 - has its reference dropped through the setter's null path while its targeting
- * component is on, and is then switched off when its row has hit points; one without keeps whatever
- * it had.
+ * component is on, or at any time under a stun, and is then switched off when its row has hit
+ * points; one without keeps whatever it had.
  *
  * <p>So a unit's reference is gone on its death tick, and a king tower, which is never removed, is
  * switched off on the tick it dies and never on again. A stun, which scales the hit speed to 0,
@@ -103,8 +103,12 @@ final class CombatGate {
       }
     }
     // Not acting: the reference goes through the setter's null path while the component is on,
-    // but for a clone's setup, which keeps it.
-    if (state != GridEntityState.CLONE_SETUP && targetingOn && targeting.getReference() != null) {
+    // but for a clone's setup, which keeps it. A stun, which scales the hit speed to 0, drops it
+    // whether the component is on or not: a troop stunned as a hook pulls it, whose component the
+    // pull switched off, loses its reference all the same.
+    if (state != GridEntityState.CLONE_SETUP
+        && (targetingOn || hitSpeed == 0)
+        && targeting.getReference() != null) {
       TargetingOutcome outcome = new TargetingOutcome();
       outcome.setRoutePreparer(routePreparer);
       TargetingVisit.clearReference(targeting, view, outcome);
