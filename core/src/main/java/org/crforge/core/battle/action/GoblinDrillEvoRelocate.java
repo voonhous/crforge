@@ -15,14 +15,16 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * The evolved Goblin Drill's relocation: a run on its building that hides it underground each time
  * its hit points fall to a threshold, and brings it up again a fixed number of steps further along
- * a square ring around the enemy tower it stands by.
+ * a square ring around the enemy princess tower it stands by.
  *
  * <p>As it starts it schedules its first-appear action on the building, and finds where the
- * building stands on the ring of one of the enemy side's towers: a square of five tiles a side
- * around the tower, walked in steps of one tile. Which way it walks is decided once: with
- * distance-based positioning, toward whichever of the two points the steps reach lies farther from
- * the enemy king, forward on a tie; without it, by the quarter of the arena the building stands in.
- * A building on no ring point walks nowhere: each hide brings it up on the half tile it stood on.
+ * building stands on the ring of one of the enemy side's princess towers still listed: a square of
+ * five tiles a side around the tower, walked in steps of one tile. The king's ring is not looked
+ * at, nor a destroyed tower's once the cleanup has taken it out. Which way it walks is decided
+ * once: with distance-based positioning, toward whichever of the two points the steps reach lies
+ * farther from the enemy king, forward on a tie; without it, by the quarter of the arena the
+ * building stands in. A building on no ring point walks nowhere: each hide brings it up on the half
+ * tile it stood on.
  *
  * <p>Each threshold in turn hides it once its share of the maximum falls to or below it: its state
  * becomes the underground one, it is untargetable for a tick, the threshold's hide action runs, and
@@ -39,10 +41,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " threshold test on the share and on the hit points less the pending damage, the"
             + " hide, the steps along the ring, the move two steps before the end, the reappear"
             + " and the spawner's hold. Held by evo_goblindrill_vs_musketeer (two hides, walking"
-            + " forward); the backward walk and the start on no ring point by recorded battles"
-            + " not yet in the reference set. Not modelled: the hide,"
-            + " reappear and target effects. Refused: a destroyed tower's ring and the quarter"
-            + " rule, which no case holds, the character spawns on a hide or a reappear,"
+            + " forward); the backward walk, the start on no ring point and the ring of a"
+            + " destroyed tower, which is not looked at, by recorded battles not yet in the"
+            + " reference set. Not modelled: the hide, reappear and target effects. Refused: the"
+            + " quarter rule, which no case holds, the character spawns on a hide or a reappear,"
             + " reappear actions, the shared columns its run does not read, and an owner other"
             + " than a building.")
 public final class GoblinDrillEvoRelocate extends RowAction {

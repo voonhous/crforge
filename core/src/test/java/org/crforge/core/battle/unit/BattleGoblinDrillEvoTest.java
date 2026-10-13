@@ -137,10 +137,19 @@ class BattleGoblinDrillEvoTest {
     return surfacedAndDeployed(match, RING_X, RING_Y);
   }
 
-  /** Plays the evolved drill onto a point and steps until it has surfaced and deployed. */
+  /**
+   * Plays the evolved drill onto a point on the battle's current tick and steps until it has
+   * surfaced and deployed.
+   */
   private static CharacterEntity surfacedAndDeployed(Standard1v1Battle match, int x, int y) {
     match.play(
-        0, records.card("GoblinDrill_EV1"), Standard1v1Battle.DEFAULT_LEVEL, 0, x, y, "Drill");
+        match.getBattle().getTick(),
+        records.card("GoblinDrill_EV1"),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        x,
+        y,
+        "Drill");
     CharacterEntity drill = null;
     for (int step = 0; step < 200 && drill == null; step++) {
       match.getBattle().step();
@@ -284,5 +293,48 @@ class BattleGoblinDrillEvoTest {
     assertThat(drill.hidden()).isFalse();
     assertThat(drill.getView().getX()).isEqualTo(x);
     assertThat(drill.getView().getY()).isEqualTo(y);
+  }
+
+  @Test
+  @DisplayName(
+      "on the ring of a princess tower destroyed before it surfaced it stands on no ring point:"
+          + " it hides at its threshold and comes up again where it stood")
+  void onADestroyedTowersRingItComesUpWhereItStood() {
+    Standard1v1Battle match = passiveTowers();
+    TowerEntity left = null;
+    for (BattleEntity entity : match.getBattle().getHolder().entities()) {
+      if (entity instanceof TowerEntity tower
+          && tower.side() == 1
+          && tower.getData().summonerTower()
+          && (left == null || tower.getView().getX() < left.getView().getX())) {
+        left = tower;
+      }
+    }
+    assertThat(left).as("the top side's left princess tower").isNotNull();
+    // Destroyed from outside; the next step's cleanup takes it out of the battle and its side's
+    // list.
+    match.getBattle().step();
+    match.getWorld().dealDamage(left.getTargetView(), 1_000_000, 0, 1);
+    match.getBattle().step();
+    assertThat(match.getBattle().getHolder().entities()).doesNotContain(left);
+
+    // The point of the backward walk's test: the seventh point of that tower's ring.
+    CharacterEntity drill = surfacedAndDeployed(match, 3000, RING_Y);
+    drill.getHitPoints().setHitPoints(drill.getHitPoints().getMaximum() * 60 / 100);
+
+    match.getBattle().step();
+    assertThat(drill.getView().getState()).isEqualTo(GridEntityState.SPAWN_PATHFIND);
+    for (int step = 0; step < 18; step++) {
+      match.getBattle().step();
+    }
+    // No ring step: not the walk around the destroyed tower, the half tile it stood on.
+    assertThat(drill.getView().getX()).isEqualTo(3000);
+    assertThat(drill.getView().getY()).isEqualTo(RING_Y);
+
+    match.getBattle().step();
+    match.getBattle().step();
+    assertThat(drill.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(drill.getView().getX()).isEqualTo(3000);
+    assertThat(drill.getView().getY()).isEqualTo(RING_Y);
   }
 }
