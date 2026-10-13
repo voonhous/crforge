@@ -22,15 +22,17 @@ import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
  * A body projectile that flies to a point and inverts its direction when deflected - the Bowler's
- * ball - rolling into an enemy Monk's Deflect: the Monk takes its damage, and the ball rolls back
- * the way it came, from where it was turned, by the length of its flight from its start to its aim,
- * for the Monk's side and with no target, hitting what it passes on its way back.
+ * ball, round, and the rolling logs, a box - rolling into an enemy Monk's Deflect: the Monk takes
+ * its damage, and the body rolls back the way it came, from where it was turned, by the length of
+ * its flight from its start to its aim, for the Monk's side and with no target, hitting what it
+ * passes on its way back. A rolling log is measured by its box as it arrives beside a Deflect.
  */
 class BodyDeflectTest {
 
@@ -81,6 +83,7 @@ class BodyDeflectTest {
     final List<Deflection> deflections = new ArrayList<>();
     final List<ProjectileEntity> balls = new ArrayList<>();
     final Map<ProjectileEntity, Flight> flights = new HashMap<>();
+    final List<CharacterEntity> projectileSpawns = new ArrayList<>();
     int ticks;
 
     Scene() {
@@ -116,11 +119,26 @@ class BodyDeflectTest {
                           projectile.getTarget(),
                           flights.get(projectile)));
                 }
+
+                @Override
+                public void characterSpawned(
+                    int tick, SpawnHost source, CharacterEntity child, int x, int y) {
+                  if (source instanceof ProjectileEntity) {
+                    projectileSpawns.add(child);
+                  }
+                }
               });
     }
 
     void step() {
       match.getBattle().step();
+      for (BattleEntity entity : match.getWorld().getHolder().entities()) {
+        if (entity instanceof ProjectileEntity projectile
+            && projectile.getData().projectileRadiusY() > 0
+            && !balls.contains(projectile)) {
+          balls.add(projectile);
+        }
+      }
       for (ProjectileEntity ball : balls) {
         flights.put(
             ball, new Flight(ball.getStartX(), ball.getStartY(), ball.getAimX(), ball.getAimY()));
@@ -262,5 +280,78 @@ class BodyDeflectTest {
     assertThat(towerBefore - tower.getHitPoints().getHitPoints())
         .isEqualTo(ball.undeflectedTowerDamage())
         .isNotEqualTo(ball.towerDamage());
+  }
+
+  /** The rolling projectile a spell card's projectile lets out where it lands. */
+  private static String rolling(String card) {
+    return text(
+        row("projectiles", text(row("spells_other", card), "Projectile")), "SpawnProjectile");
+  }
+
+  @Test
+  @DisplayName(
+      "a Barbarian Barrel's barrel rolling into an enemy Deflect rolls back the way it came, for"
+          + " the Monk's side, and the Barbarian it lets out at its end fights for the Monk's side")
+  void barrelRollsBackAndLetsOutItsBarbarianForTheMonk() {
+    BattleRecords records = new BattleRecords(GameData.tables());
+    ProjectileData barrel = records.projectile(rolling("BarbLog"));
+    assertThat(barrel.projectileRadiusY()).as("the barrel has a box body").isPositive();
+    assertThat(barrel.deflectBehaviour() & ProjectileData.INVERT_DIRECTION).isNotZero();
+    Scene scene = new Scene();
+    // Out of every crown tower's reach; the barrel is placed up the lane and rolls down into it.
+    CharacterEntity monk = scene.monkWithDeflect(0, 3500, 14000);
+    monk.setActive(CharacterEntity.TARGETING_SLOT, false);
+    int monkBefore = monk.getHitPoints().getHitPoints();
+    scene.match.submit(records.card("BarbLog"), LEVEL, 1, 3500, 16500, "barrel");
+    while (scene.deflections.isEmpty()) {
+      scene.step();
+    }
+    Deflection d = scene.deflections.get(0);
+    assertThat(d.projectile().getData().name()).isEqualTo(barrel.name());
+    assertThat(d.parent()).isSameAs(monk);
+    assertThat(d.source()).as("sent on to a point, not back at its source").isNull();
+    assertThat(d.side()).isEqualTo(monk.side());
+    assertThat(d.target()).isNull();
+    Flight before = d.before();
+    assertThat(d.aimX()).isEqualTo(d.x() + before.startX() - before.aimX());
+    assertThat(d.aimY()).isEqualTo(d.y() + before.startY() - before.aimY());
+    ProjectileEntity rolled = d.projectile();
+    scene.step();
+    assertThat(monk.getHitPoints().getHitPoints())
+        .as("the Monk takes the barrel's damage as it turns it")
+        .isLessThan(monkBefore);
+    while (scene.projectileSpawns.isEmpty()) {
+      assertThat(rolled.isReleased() && scene.projectileSpawns.isEmpty())
+          .as("the barrel lets its Barbarian out at its end")
+          .isFalse();
+      scene.step();
+    }
+    CharacterEntity barbarian = scene.projectileSpawns.get(0);
+    assertThat(barbarian.getData().name()).isEqualTo(barrel.spawnCharacter());
+    assertThat(barbarian.side()).as("for the side that turned the barrel").isEqualTo(monk.side());
+    assertThat(barbarian.getView().getY()).isEqualTo(d.aimY());
+    assertThat(scene.deflections).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a rolling log arriving at its aim while an enemy Deflect stands across the arena is measured"
+          + " by its box, not turned, and lands")
+  void logArrivingFarFromADeflectLands() {
+    BattleRecords records = new BattleRecords(GameData.tables());
+    assertThat(records.projectile(rolling("Log")).projectileRadiusY()).isPositive();
+    Scene scene = new Scene();
+    // The Monk in the right lane, the log rolling down the left one.
+    CharacterEntity monk = scene.monkWithDeflect(0, 14500, 14000);
+    monk.setActive(CharacterEntity.TARGETING_SLOT, false);
+    scene.match.submit(records.card("Log"), LEVEL, 1, 3500, 20000, "log");
+    ProjectileEntity log = null;
+    while (log == null || !log.isReleased()) {
+      scene.step();
+      log = scene.balls.isEmpty() ? null : scene.balls.get(0);
+    }
+    assertThat(log.getData().name()).isEqualTo(rolling("Log"));
+    assertThat(scene.deflectors()).as("the Deflect still stands").isPositive();
+    assertThat(scene.deflections).isEmpty();
   }
 }
