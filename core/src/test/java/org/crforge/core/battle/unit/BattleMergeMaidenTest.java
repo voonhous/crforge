@@ -30,10 +30,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Merge Maiden where the reference runs do not take it: the step its option is picked after, a
- * pending play's cost the pick sets aside, a play the elixir does not cover, a Mirror after it,
- * which repeats the option it was played as, and the plays it refuses - outside a match, before
- * tick 21, given in or right after another play's tick, with a Mirror pending or a refused play's
- * promise held - and a Mirror of a variant card whose row would have it repeat the card itself.
+ * pending play's cost the pick sets aside, a play run in the pick's own tick, a play the elixir
+ * does not cover, a Mirror after it, which repeats the option it was played as, and the plays it
+ * refuses - outside a match, before tick 22, given within two ticks after another play's tick, with
+ * a Mirror pending or a refused play's promise held - and a Mirror of a variant card whose row
+ * would have it repeat the card itself.
  */
 class BattleMergeMaidenTest {
 
@@ -86,15 +87,16 @@ class BattleMergeMaidenTest {
 
   @Test
   @DisplayName(
-      "the option is picked from the elixir after the step 21 before the play's run: just below"
-          + " the mounted option's trigger then, though past it by the run, the maiden on foot; a"
-          + " tick later, the mounted one")
+      "the option is picked from the elixir after the step 22 before the play's run: just below"
+          + " the mounted option's trigger then, though past it a step later and by the run, the"
+          + " maiden on foot; a tick later, the mounted one")
   void theOptionIsPickedAsThePlayIsGiven() {
     // The first step after which the elixir reaches the mounted option's trigger is found on a
-    // battle of the same plays, so the two plays below run 21 ticks after the step before it and
-    // after it.
+    // battle of the same plays, so the two plays below run 22 ticks after the step before it and
+    // after it: the first is given in the step after the one that reaches the trigger, and still
+    // picked from the elixir before it.
     int reached = firstStepReaching(mountedTrigger());
-    int footTick = reached - 1 + 21;
+    int footTick = reached - 1 + 22;
     Standard1v1Battle foot = new Standard1v1Battle(GameData.tables());
     LadderMatch footMatch = foot.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
     foot.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
@@ -127,9 +129,9 @@ class BattleMergeMaidenTest {
     LadderMatch match = battle.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
     // The first Merge Maiden comes mounted; the second is picked on foot after step 21 and finds
     // less than its cost at its run.
-    battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
-    battle.playVariant(42, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
-    run(battle, 42);
+    battle.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
+    battle.playVariant(43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
+    run(battle, 43);
 
     Standard1v1Battle.Play refused = battle.getPlays().get(1);
     assertThat(refused.matchCode()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
@@ -151,15 +153,15 @@ class BattleMergeMaidenTest {
   }
 
   @Test
-  @DisplayName("a variant play run before tick 21, given before the first step, is refused")
-  void aVariantBeforeTick21IsRefused() {
+  @DisplayName("a variant play run before tick 22, picked before the first step, is refused")
+  void aVariantBeforeTick22IsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
 
-    assertThatThrownBy(() -> battle.playVariant(20, "MergeMaiden", LEVEL, 0, 3500, 10000, "m"))
+    assertThatThrownBy(() -> battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "m: a variant play runs on tick 21 or later, its option picked after the step 21"
+            "m: a variant play runs on tick 22 or later, its option picked after the step 22"
                 + " ticks before");
   }
 
@@ -170,12 +172,12 @@ class BattleMergeMaidenTest {
           + " pick it mounted")
   void aPendingPlaysCostIsSetAsideByThePick() {
     // The Zap is given on 21 and runs on 41; the Merge Maiden is given on 30, its option picked
-    // after step 29, while the Zap is still pending.
+    // after step 28, while the Zap is still pending.
     int zapRun = 41;
     int maidenRun = 50;
-    // The elixir after step 29 alone reaches the mounted option's trigger; less the Zap's cost it
+    // The elixir after step 28 alone reaches the mounted option's trigger; less the Zap's cost it
     // does not.
-    int elixir = elixirAfterStep(maidenRun - 21);
+    int elixir = elixirAfterStep(maidenRun - 22);
     assertThat(elixir).isGreaterThanOrEqualTo(mountedTrigger());
     assertThat(elixir - ZAP * MatchSide.SCALE).isLessThan(mountedTrigger());
 
@@ -195,10 +197,37 @@ class BattleMergeMaidenTest {
 
   @Test
   @DisplayName(
-      "a variant play given in the tick of another play of its side, or the tick after it, is"
-          + " refused; one given after that play has run is picked from the elixir alone")
+      "a play of its side that runs in the pick's own tick has paid its cost before the pick, which"
+          + " does not set it aside again: the elixir after it covers the mounted option's trigger"
+          + " but not with the Zap's cost taken twice, and the maiden comes mounted")
+  void aPlayRunInThePicksTickIsNotSetAsideAgain() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
+    // The Zap runs in the first step that begins with the trigger plus the Zap's cost, so that,
+    // paid, it leaves the trigger and less than the trigger plus the Zap's cost.
+    int zapRun = stepUntil(battle, match, mountedTrigger() + ZAP * MatchSide.SCALE);
+    int afterZap = match.side(0).getElixir() - ZAP * MatchSide.SCALE;
+    assertThat(afterZap).isGreaterThanOrEqualTo(mountedTrigger());
+    assertThat(afterZap - ZAP * MatchSide.SCALE).isLessThan(mountedTrigger());
+    battle.play(zapRun, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    // The Merge Maiden is given in the tick after it, and picked in the Zap's tick, after its run.
+    int maidenRun = zapRun + 21;
+    battle.playVariant(maidenRun, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(battle, maidenRun);
+    assertThat(battle.getPlays().get(0).matchCode()).isZero();
+
+    Standard1v1Battle.Play maiden = battle.getPlays().get(1);
+    assertThat(maiden.matchCode()).isZero();
+    assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Mounted");
+    assertThat(match.side(0).getSpent()).isEqualTo((ZAP + MOUNTED) * MatchSide.SCALE);
+  }
+
+  @Test
+  @DisplayName(
+      "a variant play given in the tick of another play of its side, or within the two ticks after"
+          + " it, is refused; one given after that play has run is picked from the elixir alone")
   void aVariantGivenWithAnotherPlayIsRefused() {
-    for (int maidenRun : new int[] {41, 42}) {
+    for (int maidenRun : new int[] {41, 42, 43}) {
       Standard1v1Battle pending = new Standard1v1Battle(GameData.tables());
       pending.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
       pending.play(41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
@@ -207,8 +236,8 @@ class BattleMergeMaidenTest {
       assertThatThrownBy(() -> run(pending, maidenRun))
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessage(
-              "m: a variant play given in the tick of another play of its side or the tick after,"
-                  + " whose cost the player's client may not yet set aside, is not modelled");
+              "m: a variant play given within two ticks after another play of its side, whose"
+                  + " cost the player's client may not yet set aside, is not modelled");
     }
 
     Standard1v1Battle later = new Standard1v1Battle(GameData.tables());
@@ -242,11 +271,11 @@ class BattleMergeMaidenTest {
     // refused, its promise held by the player's client past its run.
     Standard1v1Battle refused = new Standard1v1Battle(GameData.tables());
     refused.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
-    refused.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
-    refused.playVariant(42, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
-    refused.playVariant(84, "MergeMaiden", LEVEL, 0, 14500, 9000, "m3");
+    refused.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
+    refused.playVariant(43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
+    refused.playVariant(85, "MergeMaiden", LEVEL, 0, 14500, 9000, "m3");
 
-    assertThatThrownBy(() -> run(refused, 84))
+    assertThatThrownBy(() -> run(refused, 85))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "m3: a variant play given while a play of its side refused at its run may still hold"
@@ -271,8 +300,9 @@ class BattleMergeMaidenTest {
     int step = stepUntil(battle, match, mountedTrigger()) - 1;
     int elixir = match.side(0).getElixir();
     assertThat(elixir - cost * MatchSide.SCALE).isLessThan(mountedTrigger());
-    // The variant play is given in the step after; the command was given within 60 ticks before.
-    int given = step + 1;
+    // The variant play is given two steps after, picked after that step; the command was given
+    // within 60 ticks before.
+    int given = step + 2;
     assertThat(given - (tap - 20)).isLessThanOrEqualTo(60);
     battle.playVariant(given + 20, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     run(battle, given + 20);
@@ -292,7 +322,7 @@ class BattleMergeMaidenTest {
     Standard1v1Battle same = knightBattle();
     int cost = knightAbilityCost(same);
     int covered = stepUntil(same, same.getMatch(), mountedTrigger() + cost * MatchSide.SCALE) - 1;
-    int given = covered + 1;
+    int given = covered + 2;
     same.useAbility(given + 10, 0, "g_0", "a");
     same.playVariant(given + 20, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     run(same, given + 20);
@@ -306,10 +336,10 @@ class BattleMergeMaidenTest {
     int reached = stepUntil(other, other.getMatch(), mountedTrigger()) - 1;
     assertThat(other.getMatch().side(0).getElixir() - cost * MatchSide.SCALE)
         .isLessThan(mountedTrigger());
-    other.useAbility(reached + 11, 0, "g_0", "a");
-    other.playVariant(reached + 21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    other.useAbility(reached + 12, 0, "g_0", "a");
+    other.playVariant(reached + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
 
-    assertThatThrownBy(() -> run(other, reached + 21))
+    assertThatThrownBy(() -> run(other, reached + 22))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "m: a variant play given while an ability command of its side is pending, whose cost"
@@ -318,10 +348,10 @@ class BattleMergeMaidenTest {
 
   @Test
   @DisplayName(
-      "a variant play given in the tick of an ability command of its side or the tick after, or"
-          + " in the tick one runs, is refused")
+      "a variant play given in the tick of an ability command of its side or within the two ticks"
+          + " after, or in the tick after one runs, is refused")
   void aVariantGivenWithAnAbilityCommandIsRefused() {
-    for (int offset : new int[] {0, 1}) {
+    for (int offset : new int[] {0, 1, 2}) {
       Standard1v1Battle battle = knightBattle();
       int tick = battle.getBattle().getTick() + 30;
       battle.useAbility(tick, 0, "g_0", "a");
@@ -330,21 +360,20 @@ class BattleMergeMaidenTest {
       assertThatThrownBy(() -> run(battle, tick + offset))
           .isInstanceOf(UnsupportedOperationException.class)
           .hasMessage(
-              "m: a variant play given in the tick of an ability command of its side or the tick"
-                  + " after, whose cost the player's client may not yet set aside, is not"
-                  + " modelled");
+              "m: a variant play given within two ticks after an ability command of its side,"
+                  + " whose cost the player's client may not yet set aside, is not modelled");
     }
 
     Standard1v1Battle runs = knightBattle();
     int tick = runs.getBattle().getTick() + 30;
     runs.useAbility(tick, 0, "g_0", "a");
-    runs.playVariant(tick + 20, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    runs.playVariant(tick + 21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
 
-    assertThatThrownBy(() -> run(runs, tick + 20))
+    assertThatThrownBy(() -> run(runs, tick + 21))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
-            "m: a variant play given in the tick an ability command of its side runs, which may"
-                + " pay before the pick reads the elixir, is not modelled");
+            "m: a variant play given in the tick after an ability command of its side runs, which"
+                + " runs before the pick reads the elixir, is not modelled");
   }
 
   @Test
@@ -352,11 +381,11 @@ class BattleMergeMaidenTest {
       "a Mirror after a Merge Maiden repeats the option it was played as, mounted or on foot, one"
           + " level up, for the Mirror's cost and the option's; the Merge Maiden stays the last card")
   void aMirrorOfAMergeMaidenRepeatsTheOptionPlayed() {
-    // Mounted: the Merge Maiden on 21, picked from the starting elixir.
+    // Mounted: the Merge Maiden on 22, picked from the starting elixir.
     Standard1v1Battle mounted = new Standard1v1Battle(GameData.tables());
     LadderMatch mountedMatch = mounted.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    mounted.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    run(mounted, 21);
+    mounted.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(mounted, 22);
     playMirrorOnceCovered(mounted, mountedMatch, "MergeMaiden_Mounted");
     assertMirrorRepeats(mounted, mountedMatch, "MergeMaiden_Mounted", 0);
 
@@ -382,7 +411,7 @@ class BattleMergeMaidenTest {
             rows -> GameData.columns(rows, "MergeMaiden").putNull("MirrorUsesRootSpell"));
     Standard1v1Battle battle = new Standard1v1Battle(tables);
     battle.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    battle.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "r");
 
     assertThatThrownBy(() -> run(battle, 300))

@@ -65,8 +65,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " of its side is pending or after one the match refused, its item repeating that"
             + " play while its client lists the play as promised, held by captured Ladder"
             + " battles; a variant card's play,"
-            + " its option picked from the elixir after the step 21 before its run, held by"
-            + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot; a play of a"
+            + " its option picked from the elixir after the step 22 before its run, the step"
+            + " before the last one its play's tick follows, held by card_item_merge_maiden_mounted"
+            + " and card_item_merge_maiden_on_foot and by captured Ladder battles; a play of a"
             + " deck card with slots, its item built as it runs and its evolved or hero row"
             + " placed, held by knight_evolved_third_play and the hero reference battles"
             + " (hero_giant, deck_hero_and_champion); the draw each player's data takes of the"
@@ -77,7 +78,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " after, one given within two ticks of the drop of a refused play's promise, and one"
             + " whose client would repeat a Mirror's play or a refused variant play; a variant"
             + " card outside a match, run"
-            + " before tick 21, or given while another play of its side is pending, whose cost"
+            + " before tick 22, or given while another play of its side is pending, whose cost"
             + " the pick would set aside; a play of an evolution slot's card given while another"
             + " play of it is due, whose item the client builds from the count before that play."
             + " Supplied: the step a variant's option is picked after, the last the client can"
@@ -267,10 +268,13 @@ public class Standard1v1Battle {
 
   /**
    * How many ticks before its own run a variant card's option is picked: after the step this many
-   * ticks before, the last the player's client can have seen before it gives the play. A play of
-   * its side that runs from the next tick on is pending at the pick.
+   * ticks before, the one before the step the play's tick follows. The player's client builds the
+   * item from a king one step older than the step before its play's tick: every captured Merge
+   * Maiden play agrees with a pick after that step, and some picked on foot hold an elixir that had
+   * reached the mounted trigger by the step after it. A play of its side that runs from the next
+   * tick on is pending at the pick, and one that runs in that tick has run before it.
    */
-  private static final int VARIANT_PICK_TICKS = PLAY_DELAY_TICKS + 1;
+  private static final int VARIANT_PICK_TICKS = PLAY_DELAY_TICKS + 2;
 
   /**
    * How many ticks after a command is given the player's client holds back the cost it promised,
@@ -756,19 +760,21 @@ public class Standard1v1Battle {
    * and the variant card goes to the back of the queue. The option's card is placed and cast as any
    * troop card, its units named after the play.
    *
-   * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, the
-   * last the client can have seen before it gives the play, from the king's elixir less the costs
-   * its client has promised: each play of its side given and not yet run holds back its item's cost
-   * from the step after it is given until its run pays it. An ability command of its side holds
-   * back its ability's cost the same way until its run, which releases it whatever the command
-   * comes to, so one that has run holds nothing back; a variant play whose option a pending
-   * command's cost would change is refused, as no recording holds that cost set aside. A variant
-   * play given in the tick of another play or ability command of its side or the tick after, where
-   * the client's moment decides whether that cost is held back yet, is refused, and so is one given
-   * in the tick an ability command of its side runs, one with a Mirror's play of its side pending,
-   * one given within {@value #PROMISE_TICKS} ticks after a play of its side the match refused at
-   * its run, which may still hold its cost back, one outside a match, which has no king's elixir,
-   * and one run before tick 21, given before the first step.
+   * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, one
+   * older than the step before the play's tick, as its client reads the king, from the king's
+   * elixir less the costs its client has promised: each play of its side given and not yet run
+   * holds back its item's cost from the step after it is given until its run pays it, so a play
+   * that runs in the pick's own tick, before the pick, holds back nothing more once it has paid. An
+   * ability command of its side holds back its ability's cost the same way until its run, which
+   * releases it whatever the command comes to, so one that has run holds nothing back; a variant
+   * play whose option a pending command's cost would change is refused, as no recording holds that
+   * cost set aside. A variant play given in the tick of another play or ability command of its side
+   * or within the two ticks after, where the client's moment decides whether that cost is held back
+   * yet, is refused, and so is one given in the tick after an ability command of its side runs,
+   * which runs before the pick, one with a Mirror's play of its side pending, one given within
+   * {@value #PROMISE_TICKS} ticks after a play of its side the match refused at its run, which may
+   * still hold its cost back, one outside a match, which has no king's elixir, and one run before
+   * tick 22, picked before the first step.
    *
    * @param tick the tick the play runs on
    * @param card the variant card's row name
@@ -787,7 +793,7 @@ public class Standard1v1Battle {
         tick >= VARIANT_PICK_TICKS,
         () ->
             name
-                + ": a variant play runs on tick 21 or later, its option picked after the step 21"
+                + ": a variant play runs on tick 22 or later, its option picked after the step 22"
                 + " ticks before");
     QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
@@ -798,7 +804,7 @@ public class Standard1v1Battle {
         new BattleCommand() {
           @Override
           public int tick() {
-            return tick - VARIANT_PICK_TICKS + 1;
+            return pickTick(queued);
           }
 
           @Override
@@ -863,24 +869,43 @@ public class Standard1v1Battle {
         null);
   }
 
+  /** The tick a variant play's option is picked in, at the head of its step. */
+  private static int pickTick(QueuedPlay queued) {
+    return queued.tick() - VARIANT_PICK_TICKS + 1;
+  }
+
+  /** Whether a queued play has run and paid: placed or cast with no match code. */
+  private boolean paid(QueuedPlay queued) {
+    for (Play play : plays) {
+      if (play.name().equals(queued.name())) {
+        return play.matchCode() == 0 && play.result() != null && play.result().placed();
+      }
+    }
+    return false;
+  }
+
   /**
    * The whole elixir a variant play's pick sets aside, as its player's client counts it when it
-   * builds the play's item after the step before the play is given: the item's cost of each play of
-   * its side given at least two ticks before the variant play and not yet run. Each such play is a
-   * deck card's: its item, built here from the side's count, is the one it runs with, a Mirror's or
-   * a variant card's being refused. The ability commands' promises are counted apart ({@link
+   * builds the play's item after the step before the pick's tick: the item's cost of each play of
+   * its side given at least two ticks before the pick's tick and not run before it. A play that
+   * runs in the pick's own tick has run before the pick, as it was queued first: placed, it has
+   * paid its cost, which the client, reading the king before that run, held back instead, so it is
+   * not counted again; refused at its run, it paid nothing and is counted. Each such play is a deck
+   * card's: its item, built here from the side's count, is the one it runs with, a Mirror's or a
+   * variant card's being refused. The ability commands' promises are counted apart ({@link
    * #abilitiesPromised}).
    */
   private int promised(QueuedPlay queued, String name) {
     int side = queued.side();
-    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int pick = pickTick(queued);
     int total = 0;
     for (QueuedPlay other : queuedPlays) {
       int otherGiven = other.tick() - PLAY_DELAY_TICKS;
       if (other == queued
           || other.side() != side
-          || otherGiven > given - 2
-          || other.tick() < given) {
+          || otherGiven > pick - 2
+          || other.tick() < pick
+          || (other.tick() == pick && paid(other))) {
         continue;
       }
       if (other.kind() != PlayKind.CARD) {
@@ -897,18 +922,18 @@ public class Standard1v1Battle {
   /**
    * The whole elixir the ability commands of a variant play's side hold back as its pick reads the
    * elixir: the ability's cost of each command of its side given at least two ticks before the
-   * variant play and run after the tick it is given in. The player's client promises an ability's
-   * cost as it gives the command, as it does a play's, and the command's run releases it before its
-   * gates, so a command that has run holds nothing back, whatever it came to; one that runs in the
-   * tick the variant play is given is refused at the variant play's run.
+   * pick's tick and run after it. The player's client promises an ability's cost as it gives the
+   * command, as it does a play's, and the command's run releases it before its gates, so a command
+   * that has run holds nothing back, whatever it came to; one that runs in the pick's tick is
+   * refused at the variant play's run.
    */
   private int abilitiesPromised(QueuedPlay queued, String name) {
     int side = queued.side();
-    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int pick = pickTick(queued);
     int total = 0;
     for (QueuedAbility ability : queuedAbilities) {
       int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
-      if (ability.side() == side && abilityGiven <= given - 2 && ability.tick() > given) {
+      if (ability.side() == side && abilityGiven <= pick - 2 && ability.tick() > pick) {
         total += abilityCost(ability, name);
       }
     }
@@ -952,25 +977,26 @@ public class Standard1v1Battle {
 
   /**
    * Refuses a variant play whose pick may have counted a promise {@link #promised} does not: a play
-   * or ability command of its side given in the tick of the variant play or the tick before, which
-   * the client files apart and counts only from the next step, at a moment of the client's not
-   * modelled; an ability command of its side that runs in the tick the variant play is given, which
-   * the battle may run before the pick; and a play of its side refused at its run within {@value
+   * or ability command of its side given from the tick before the pick's on, up to the variant
+   * play's, which the client files apart and counts only from the next step, at a moment of the
+   * client's not modelled; an ability command of its side that runs in the pick's tick, which the
+   * battle runs before the pick; and a play of its side refused at its run within {@value
    * #PROMISE_TICKS} ticks of its giving, whose promise the client keeps until then. An ability
    * command's run releases its promise before its gates, so one refused at its run keeps none.
    */
   private void checkPromisesKnown(QueuedPlay queued, String name) {
     int side = queued.side();
     int given = queued.tick() - PLAY_DELAY_TICKS;
+    int pick = pickTick(queued);
     for (QueuedPlay other : queuedPlays) {
       if (other != queued
           && other.side() == side
-          && other.tick() - PLAY_DELAY_TICKS >= given - 1
+          && other.tick() - PLAY_DELAY_TICKS >= pick - 1
           && other.tick() <= queued.tick()) {
         throw new UnsupportedOperationException(
             name
-                + ": a variant play given in the tick of another play of its side or the tick"
-                + " after, whose cost the player's client may not yet set aside, is not modelled");
+                + ": a variant play given within two ticks after another play of its side, whose"
+                + " cost the player's client may not yet set aside, is not modelled");
       }
     }
     // A refused play's promise is dropped by the first step whose tick reaches PROMISE_TICKS after
@@ -980,8 +1006,8 @@ public class Standard1v1Battle {
       boolean refused = play.matchCode() != 0 || play.result() == null || !play.result().placed();
       if (play.side() == side
           && refused
-          && play.tick() - PLAY_DELAY_TICKS + PROMISE_TICKS >= given - 2
-          && play.tick() < given) {
+          && play.tick() - PLAY_DELAY_TICKS + PROMISE_TICKS >= pick - 2
+          && play.tick() <= pick) {
         throw new UnsupportedOperationException(
             name
                 + ": a variant play given while a play of its side refused at its run may still"
@@ -990,18 +1016,17 @@ public class Standard1v1Battle {
     }
     for (QueuedAbility ability : queuedAbilities) {
       int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
-      if (ability.side() == side && abilityGiven >= given - 1 && abilityGiven <= given) {
+      if (ability.side() == side && abilityGiven >= pick - 1 && abilityGiven <= given) {
         throw new UnsupportedOperationException(
             name
-                + ": a variant play given in the tick of an ability command of its side or the"
-                + " tick after, whose cost the player's client may not yet set aside, is not"
-                + " modelled");
+                + ": a variant play given within two ticks after an ability command of its side,"
+                + " whose cost the player's client may not yet set aside, is not modelled");
       }
-      if (ability.side() == side && ability.tick() == given) {
+      if (ability.side() == side && ability.tick() == pick) {
         throw new UnsupportedOperationException(
             name
-                + ": a variant play given in the tick an ability command of its side runs, which"
-                + " may pay before the pick reads the elixir, is not modelled");
+                + ": a variant play given in the tick after an ability command of its side runs,"
+                + " which runs before the pick reads the elixir, is not modelled");
       }
     }
   }
