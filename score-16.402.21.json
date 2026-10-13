@@ -1,0 +1,29 @@
+{
+  "content_version" : "16.402.21",
+  "battles" : 10000,
+  "to_the_end" : 83.1,
+  "ticks_agreed" : 90.0,
+  "outcomes" : {
+    "diagnostic_match" : 8310,
+    "invalid" : 6,
+    "mismatch" : 1277,
+    "unsupported" : 407
+  },
+  "first_failures" : {
+    "mismatch $.entities[].x" : 574,
+    "mismatch $.entities[].state" : 290,
+    "mismatch $.entities[].hp" : 224,
+    "mismatch $.entities.length" : 127,
+    "mismatch $.entities[].id" : 34,
+    "unsupported: proj_# (BarbLogProjectileRolling) flies by a deflecting area effect, whose deflection of it is not modelled" : 34,
+    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled" : 26,
+    "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled" : 22,
+    "unsupported: cmd# reflects and takes a damage-taking action's hit, whose reflect is not modelled" : 22,
+    "unsupported: proj_# (RoyalGiantProjectile) flies by a deflecting area effect, whose deflection of it is not modelled" : 22,
+    "mismatch $.entities[].y" : 20,
+    "unsupported: cmd#_clone# would be a clone of a champion, which is not modelled" : 19,
+    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 18,
+    "unsupported: cmd#: a variant play given while an ability command of its side may hold back its cost, is not modelled" : 15,
+    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled" : 15
+  }
+}
