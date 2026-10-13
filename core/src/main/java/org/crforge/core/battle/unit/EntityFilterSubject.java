@@ -21,9 +21,10 @@ import org.crforge.core.pathfinding.GridEntity;
             + " hit points, row name, state, whether it rides on a parent and whether its row ignores"
             + " pushback, whether its row sets Kamikaze or IgnoreResurrect, its buffs' invisible count, and whether it is hidden, which asks the"
             + " entity's own hidden test as the filter's hidden flag does, and whether it is"
-            + " underground, which asks the entity's own underground test; the summoner is the"
-            + " king tower. Supplied: a princess tower is a row with the summoner-tower column,"
-            + " and nothing is immune while dashing, which the battle does not model yet.")
+            + " underground, which asks the entity's own underground test; the dash immunity"
+            + " time of its row, which the DashImmune exclusion reads with its dashing state; the"
+            + " summoner is the king tower. Supplied: a princess tower is a row with the"
+            + " summoner-tower column.")
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
@@ -141,9 +142,14 @@ final class EntityFilterSubject implements FilterSubject {
     return view().getState();
   }
 
+  /**
+   * The row's dash immunity time (DashImmuneToDamageTime). The filter's DashImmune exclusion leaves
+   * out a character in the dashing state whose row sets one; the immunity a unit keeps for a while
+   * after its dash does not count there.
+   */
   @Override
   public int dashImmuneMs() {
-    return 0;
+    return entity.getData().dashImmuneToDamageTimeMs();
   }
 
   @Override
