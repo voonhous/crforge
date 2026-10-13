@@ -31,7 +31,9 @@ jobs:
       coverage-revision: ${{ steps.coverage.outputs.revision }}
       coverage-versions: ${{ steps.coverage.outputs.versions }}
       coverage-parts: ${{ steps.parts.outputs.parts }}
+      coverage-sets: ${{ steps.parts.outputs.sets }}
       has-coverage: ${{ steps.coverage.outputs.available }}
+      score-coverage: ${{ steps.coverage.outputs.score }}
 
     steps:
       # The lock files alone.
@@ -63,15 +65,22 @@ jobs:
 
       # coverage.lock pins the coverage dataset's revision and names the data versions it has a
       # coverage set of; the coverage job scores each of them.
+      # Coverage is scored on a push to battle_core only: a regression, or a set that cannot be
+      # scored, fails that run (the badges job), and a pull request's scores would be compared with
+      # nothing. The parts are still listed on a pull request (below), which checks the lock: its
+      # revision and versions must exist.
       - name: Read the coverage lock
         id: coverage
         run: |
           echo "revision=$(sed -n 's/^revision=//p' coverage.lock)" >> "$GITHUB_OUTPUT"
           echo "versions=$(sed -n 's/^versions=//p' coverage.lock | tr ' ' '\n' | grep . | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_COVERAGE_TOKEN == 'true' && vars.COVERAGE_DATASET != '' }}" >> "$GITHUB_OUTPUT"
+          echo "score=${{ github.event_name == 'push' && github.ref == 'refs/heads/battle_core' }}" >> "$GITHUB_OUTPUT"
 
       # Each version's set is scored part by part, one coverage job per part file: its corpus.json
-      # (small) names the parts.
+      # (small) names the parts. A set's id is the hash of its parts' sha256 (so a lock move that
+      # leaves a version's battles as they are keeps its id); the badges job compares a score only
+      # with a published score of the same set.
       - name: List the coverage parts
         id: parts
         if: steps.coverage.outputs.available == 'true'
@@ -83,12 +92,17 @@ jobs:
         run: |
           set -euo pipefail
           parts='[]'
+          sets='{}'
           for version in $(jq -r '.[]' <<< "$VERSIONS"); do
-            count=$(curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" \
-              "https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$version/corpus.json" | jq '.parts | length')
+            listing=$(curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" \
+              "https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$version/corpus.json")
+            count=$(jq '.parts | length' <<< "$listing")
+            id=$(jq -r '[.parts[].sha256] | join(",")' <<< "$listing" | sha256sum | cut -c1-16)
             parts=$(jq -c --arg v "$version" --argjson n "$count" '. + [range($n) | {version: $v, part: .}]' <<< "$parts")
+            sets=$(jq -c --arg v "$version" --arg id "$id" '. + {($v): $id}' <<< "$sets")
           done
           echo "parts=$parts" >> "$GITHUB_OUTPUT"
+          echo "sets=$sets" >> "$GITHUB_OUTPUT"
 
   # The address check, the build with its checks, and the unit tests on the tables of the lock's
   # version.
@@ -260,7 +274,7 @@ jobs:
     needs: lock
     if: >-
       needs.lock.outputs.has-game-data == 'true' && needs.lock.outputs.has-coverage == 'true'
-      && needs.lock.outputs.coverage-parts != '[]'
+      && needs.lock.outputs.score-coverage == 'true' && needs.lock.outputs.coverage-parts != '[]'
     runs-on: ubuntu-latest
     continue-on-error: true
 
@@ -394,15 +408,17 @@ jobs:
           if-no-files-found: error
 
   # Publishes each version's score and its shields.io badge (the README's coverage badges) to the
-  # badges branch, after a push to battle_core only, and warns when a version's share of battles
-  # reproduced to the end dropped since the last published score.
+  # badges branch, after a push to battle_core only, then fails when a version's share of battles
+  # reproduced to the end dropped since the last published score of the same set, or when a version
+  # coverage.lock lists got no score (a part not scored), so a regression or a set that cannot be
+  # scored shows as a failed run on battle_core (the scores are published first: the badge shows
+  # the drop until a fix lands). The only coverage job that can fail the run.
   badges:
-    needs: coverage-merge
+    needs: [ lock, coverage-merge ]
     if: >-
       always() && needs.coverage-merge.result != 'skipped'
       && github.event_name == 'push' && github.ref == 'refs/heads/battle_core'
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: write
     concurrency:
@@ -420,8 +436,18 @@ jobs:
         env:
           TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
+          SETS: ${{ needs.lock.outputs.coverage-sets }}
+          VERSIONS: ${{ needs.lock.outputs.coverage-versions }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
+          dropped=0
+          for version in $(jq -r '.[]' <<< "$VERSIONS"); do
+            if [ ! -f "scores/score-$version.json" ]; then
+              echo "::error::coverage of $version: no score this run (a part was not scored)"
+              dropped=1
+            fi
+          done
           git init -q badges
           cd badges
           git config user.name "github-actions[bot]"
@@ -432,16 +458,25 @@ jobs:
             name=$(basename "$score")
             version=$(jq -r .content_version "$score")
             now=$(jq -r .to_the_end "$score")
-            if [ -f "$name" ]; then
+            set_id=$(jq -r --arg v "$version" '.[$v] // ""' <<< "$SETS")
+            if [ -f "$name" ] && [ -n "$set_id" ] && [ "$(jq -r '.set // ""' "$name")" = "$set_id" ]; then
               before=$(jq -r .to_the_end "$name")
               if [ "$(jq -n --argjson now "$now" --argjson before "$before" '$now < $before')" = true ]; then
-                echo "::warning::coverage of $version dropped: $before% -> $now% of battles reproduced to the end"
+                echo "::error::coverage of $version dropped: $before% -> $now% of battles reproduced to the end"
+                dropped=1
               fi
+            elif [ -f "$name" ]; then
+              echo "::notice::coverage of $version: the last published score is of another set (or names none); not compared"
             fi
             echo "$version: $now% of battles reproduced to the end"
-            cp "$score" "../scores/badge-$version.json" .
+            jq --arg set "$set_id" '. + {set: $set}' "$score" > "$name"
+            cp "../scores/badge-$version.json" .
           done
           git add -A
-          if git diff --cached --quiet; then echo "no change"; exit 0; fi
-          git commit -q -m "Coverage scores of ${GITHUB_SHA::8}"
-          git push -q origin HEAD:badges
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -q -m "Coverage scores of ${GITHUB_SHA::8}"
+            git push -q origin HEAD:badges
+          fi
+          exit "$dropped"
