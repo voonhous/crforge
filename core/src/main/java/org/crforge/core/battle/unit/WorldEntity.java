@@ -2963,7 +2963,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Takes a damage-taking action's hit from the drain, its amount already settled: the damage entry
    * as for any hit, the dealer counting it, the source named as its cause, and the entity's runs
-   * told whether its damage is a Reflected one.
+   * told whether its damage is a Reflected one. A Reflected hit on a reflecting entity is refused;
+   * any other hit's reflect is the drain's to run.
    *
    * @param dealer the character or tower that caused the action and counts the hit, or null for
    *     none
@@ -2986,7 +2987,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
-    refuseReflect("a damage-taking action's hit");
+    // The hit's attacker is the action's cause, and the drain runs the reflect after the hit. A
+    // Reflected damage on a reflecting entity, whose effect on the reflect is not established (no
+    // row the battle plays deals one), stays refused.
+    if (reflected) {
+      refuseReflect("a damage-taking action's Reflected hit");
+    }
     if (passesHidden && hidden() && !reachableWhileHidden()) {
       throw new UnsupportedOperationException(
           "a damage that reaches hidden units reaches " + name() + ", which is not modelled");

@@ -5719,10 +5719,12 @@ public class BattleWorld implements HolderPasses {
    * NoAmplification - an area effect has none - then lowered by the target's protection and floored
    * at 0 unless NoProtection. The damage entry deals it with the source counting it (an area effect
    * counts nothing), the target's runs told whether it is a Reflected hit, the hidden test lifted
-   * under DamagesHidden, and the death it causes runs at once. A source that has left the battle is
-   * no source; a hit from one with an amount of 0 deals 0, which level scaling keeps at any level,
-   * and the level scaling of one with an amount is refused. A source whose row sets a buff on
-   * damage, which the drain applies after a hit it lets through, is refused.
+   * under DamagesHidden; then the reflect of a reflecting target, the action's cause its attacker -
+   * a character, building or tower is struck back as at any hit, an area effect never - and the
+   * death the hit causes, at once. A source that has left the battle is no source; a hit from one
+   * with an amount of 0 deals 0, which level scaling keeps at any level, and the level scaling of
+   * one with an amount is refused. A source whose row sets a buff on damage, which the drain
+   * applies after a hit it lets through, is refused.
    *
    * <p>The level scaling is the card damage scaling of the source's own row and level: a
    * character's, a building's or a tower's, or an area effect's.
@@ -5777,6 +5779,7 @@ public class BattleWorld implements HolderPasses {
         amount = Math.max(target.getBuffs().damageReduction(amount), 0);
       }
     }
+    int before = hitPointsOf(target);
     DamageResult result =
         target.takeActionDamage(
             source,
@@ -5786,6 +5789,15 @@ public class BattleWorld implements HolderPasses {
             damage.damagesHidden(),
             due.directionX(),
             due.directionY());
+    // The action's cause is the hit's attacker: a reflecting target strikes back at a character,
+    // building or tower that caused it, as at any hit, and at nothing for an area effect's.
+    reflect(
+        target,
+        areaSource != null ? areaSource : source,
+        before,
+        result,
+        due.directionX(),
+        due.directionY());
     if (result.died()) {
       target.die(areaSource != null ? areaSource : source);
     }

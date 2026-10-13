@@ -32,7 +32,8 @@ import org.junit.jupiter.api.io.TempDir;
  * at a hit that finds it already down; a building that is no crown tower taking the ordinary
  * damage; an area hit struck back; nothing for its own side or a shot whose row ignores the
  * reflect; a death the reflected damage causes running at once; a rider's shot struck back at its
- * parent; and the hits the battle refuses.
+ * parent; a damage-taking action's hit struck back at the character that caused it and never at an
+ * area effect; and the hits the battle refuses.
  */
 class BattleElectroGiantTest {
 
@@ -257,6 +258,77 @@ class BattleElectroGiantTest {
             })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("reflects and takes a typed hit");
+  }
+
+  @Test
+  @DisplayName(
+      "a Three Musketeers bayonet, a damage-taking action's hit the musketeer caused, is struck back"
+          + " at the musketeer as any hit: the buff and the reflected damage")
+  void aBayonetIsStruckBack() {
+    Scene scene = new Scene();
+    scene.giant.setActive(CharacterEntity.TARGETING_SLOT, false);
+    // Inside the bayonet's range of a ground target and inside the reflect's reach.
+    CharacterEntity musketeer =
+        scene.still(0, 1, "ThreeMusketeer_Rework_Character_1", X, Y + 1500, "musketeer");
+    while (scene.from("musketeer").isEmpty() && scene.tick < 120) {
+      scene.step(1);
+    }
+
+    List<Reflection> bayonets = scene.from("musketeer");
+    assertThat(bayonets).hasSize(1);
+    Reflection first = bayonets.get(0);
+    assertThat(first.attacker()).isSameAs(musketeer);
+    assertThat(first.struck()).isSameAs(musketeer);
+    assertThat(first.buff()).isEqualTo(BUFF);
+    assertThat(first.damage()).isEqualTo(reflectedDamage());
+    assertThat(musketeer.getHitPoints().getHitPoints())
+        .isEqualTo(musketeer.getHitPoints().getMaximum() - reflectedDamage());
+    assertThat(musketeer.getBuffs().carries(BUFF)).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Electro Giant's pulse, a damage-taking action its area effect runs, is not struck"
+          + " back at the evolved Giant standing in reach")
+  void anEvolvedPulseIsNotStruckBack() {
+    Scene scene = new Scene();
+    scene.giant.setActive(CharacterEntity.TARGETING_SLOT, false);
+    CharacterEntity evolved = scene.still(0, 1, "ElectroGiant_EV1", X, Y + 1500, "evolved");
+    evolved.setActive(CharacterEntity.TARGETING_SLOT, false);
+    // The debuff the pulse's hit group puts on what it hits, next to its damage-taking action.
+    String debuff = Shipped.fields("ElectroGiant_EV_Apply_Pulse_Debuff").path("SpawnData").asText();
+    while (!scene.giant.getBuffs().carries(debuff) && scene.tick < 200) {
+      scene.step(1);
+    }
+
+    // The pulse reached the Giant; no reflect struck anything back.
+    assertThat(scene.giant.getBuffs().carries(debuff)).isTrue();
+    assertThat(scene.reflections).allSatisfy(r -> assertThat(r.struck()).isNull());
+    assertThat(evolved.getHitPoints().getHitPoints())
+        .isEqualTo(evolved.getHitPoints().getMaximum());
+    assertThat(evolved.getBuffs().carries(BUFF)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a damage-taking action's Reflected hit on a reflecting unit, which no reference reaches, is"
+          + " refused")
+  void aReflectedActionHitIsRefused(@TempDir Path folder) throws IOException {
+    GameTables reflected =
+        GameData.altered(
+            folder,
+            "actions",
+            rows ->
+                ((ObjectNode)
+                        GameData.fields(rows, "ThreeMusketeer_Rework_Bayonet_Attack_Deal_Damage")
+                            .get("Damage"))
+                    .put("Flags", "Reflected"));
+    Scene scene = new Scene(reflected);
+    scene.still(0, 1, "ThreeMusketeer_Rework_Character_1", X, Y + 1500, "musketeer");
+
+    assertThatThrownBy(() -> scene.step(120))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("reflects and takes a damage-taking action's Reflected hit");
   }
 
   @Test
