@@ -35,7 +35,7 @@ import org.crforge.core.pathfinding.math.FixedMath;
         "Settled line for line and held by 2000 recorded cases: the gates and what lifts them, the"
             + " zero vector, the cap and the separation, the longer pushback kept, the dash"
             + " wind-up resumed, the budget, the target and the in-flight flags. Supplied: no buff"
-            + " refuses a pushback, nothing is hidden and no ported unit dashes. Not modelled: the"
+            + " refuses a pushback and nothing is hidden. Not modelled: the"
             + " direction told to the presentation and the source player's statistics.")
 public final class PushbackRequest {
 

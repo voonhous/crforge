@@ -27,7 +27,7 @@ public interface PushbackQueries {
 
   /**
    * The wind-up of a dash the entity's targeting component is running, in milliseconds, or 0 or
-   * less for none. No ported unit dashes yet: 0.
+   * less for none; 0 for an entity that does not dash.
    */
   default int dashWindupMs() {
     return 0;
