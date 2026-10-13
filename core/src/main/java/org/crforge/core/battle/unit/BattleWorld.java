@@ -4426,11 +4426,18 @@ public class BattleWorld implements HolderPasses {
    * <p>A projectile a crown tower fired at the parent has the tower as its root and keeps its
    * target: it is sent back at the tower, a king tower as a princess tower, as from any root.
    *
+   * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
+   * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
+   * The parent takes its damage as above, it is turned at its start with no target, for the
+   * parent's side, and its flight is ended: it takes no further step and leaves at the next
+   * cleanup, without an impact on its target and without its action on reaching its target.
+   *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
-   * that follows nothing, a projectile without a root owner - whose deflection finishes it - or one
-   * a king tower fired that is not spell-like and has lost its target, which searches for the
-   * nearest enemy instead, and one carrying copies that change its damage; a spell-like projectile
-   * the search would send at a king tower, which no recording holds; a projectile an area effect
+   * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
+   * effect has left - or has an action on reaching its target, which no recording holds; one a king
+   * tower fired that is not spell-like and has lost its target, which searches for the nearest
+   * enemy instead, and one carrying copies that change its damage; a spell-like projectile the
+   * search would send at a king tower, which no recording holds; a projectile an area effect
    * launched that was not dropped onto it. A deflection past the most a projectile takes
    * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
@@ -4463,18 +4470,37 @@ public class BattleWorld implements HolderPasses {
           deflector.name() + " deflects without an object it follows, which is not modelled");
     }
     boolean rolling = rollingBody(projectile.getData());
-    // A projectile without a root owner is turned at its start and finished; one a king tower
-    // fired that has lost its target searches for the nearest enemy crown tower instead. One a
-    // king tower fired with its target still set is sent back at the king, as from any root.
-    if (!rolling
-        && ((source == null && areaSource == null)
-            || (!spellLike && source.getData().king() && projectile.getTarget() == null))) {
+    // A projectile without a root owner - its shooter has left - is turned at its start and
+    // finished: no gate, no search.
+    boolean rootless = !rolling && source == null && areaSource == null;
+    // Refused there: a spell-like projectile, a bomb whose area effect has left, and one with an
+    // action on reaching its target, which the finish does not schedule; no recording holds either.
+    if (rootless && (spellLike || projectile.getData().onTargetReachedAction() != null)) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
               + projectile.name()
-              + " without a root owner or from a king tower without a target, which is not"
-              + " modelled");
+              + " ("
+              + projectile.getData().name()
+              + ") without a root owner, "
+              + (spellLike ? "a spell-like projectile" : "with an action on reaching its target")
+              + ", which is not modelled");
+    }
+    // One a king tower fired that has lost its target searches for the nearest enemy crown tower
+    // instead. One a king tower fired with its target still set is sent back at the king, as from
+    // any root.
+    if (!rolling
+        && !rootless
+        && !spellLike
+        && source.getData().king()
+        && projectile.getTarget() == null) {
+      throw new UnsupportedOperationException(
+          deflector.name()
+              + " deflects "
+              + projectile.name()
+              + " from the king tower "
+              + source.name()
+              + " without a target, which is not modelled");
     }
     if (projectile.carriesListeners()) {
       throw new UnsupportedOperationException(
@@ -4483,7 +4509,10 @@ public class BattleWorld implements HolderPasses {
     // A spell-like projectile without a target is sent at the enemy crown tower nearest the area
     // effect; one with a target, as a bomb on its area effect, goes back at its root.
     WorldEntity tower = null;
-    if (spellLike && projectile.getTarget() == null && projectile.getAreaTarget() == null) {
+    if (spellLike
+        && !rootless
+        && projectile.getTarget() == null
+        && projectile.getAreaTarget() == null) {
       tower = nearestEnemyCrownTower(deflector, projectile);
       if (tower != null && tower.getData().king()) {
         throw new UnsupportedOperationException(
@@ -4522,6 +4551,9 @@ public class BattleWorld implements HolderPasses {
           parent,
           projectile.getX() + projectile.getStartX() - projectile.getAimX(),
           projectile.getY() + projectile.getStartY() - projectile.getAimY());
+    } else if (rootless) {
+      // At its start, with no target: where it was launched from.
+      projectile.deflectAt(parent, projectile.getStartX(), projectile.getStartY());
     } else if (tower != null) {
       projectile.deflectAt(parent, tower.getView().getX(), tower.getView().getY());
     } else if (source == null) {
@@ -4534,6 +4566,11 @@ public class BattleWorld implements HolderPasses {
     // flight, as a release does.
     if (projectile.getDeflections() > globalNumber("MAX_DEFLECTION_TIMES")) {
       projectile.finishOverDeflected();
+    }
+    // A projectile turned without a root owner is finished: it takes no further step and leaves at
+    // the next cleanup, without an impact and without its action on reaching its target.
+    if (rootless) {
+      projectile.finishRootless();
     }
     for (WorldObserver observer : observers) {
       observer.projectileDeflected(tick, deflector, projectile, parent, sentAt);

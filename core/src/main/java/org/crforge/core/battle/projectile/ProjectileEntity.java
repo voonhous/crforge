@@ -959,6 +959,21 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Ends the flight of a projectile a deflection turned around without a root owner, its shooter
+   * gone: it takes no further step and leaves at the next cleanup, without an impact. Unlike a
+   * release, its action on reaching its target is not scheduled; a damage still registered on its
+   * target is handed back, though the redirect has already dropped the target. A projectile already
+   * released, by a deflection past the most a projectile takes, is left as it is.
+   */
+  public void finishRootless() {
+    if (released) {
+      return;
+    }
+    released = true;
+    releasePending();
+  }
+
+  /**
    * Ends the flight of a projectile that stops at collisions, on the first hit its body lands: it
    * takes no further hit or step and leaves at the next cleanup, without an impact; as a release,
    * its action on reaching its target is scheduled and a damage still registered on its target is
