@@ -23,8 +23,10 @@ import org.crforge.core.pathfinding.GridEntityState;
  *   <li>while attached to a parent;
  *   <li>in the dashing state, the jumping state or the first following-removed state;
  *   <li>while deploying as a clone;
- *   <li>(not reachable here) for a building of the placeable-building kind, while another entity
- *       stands within 500 of it edge to edge.
+ *   <li>for a building whose row is in the characters table (the evolved buildings' rows), while
+ *       the nearest other building - a crown tower, a building, a dying one still listed - stands
+ *       within 500 of it edge to edge; the battle answers that ({@link
+ *       GridEntity#besideAnotherBuilding()}).
  * </ul>
  *
  * <p>The avoidance answer is 0 in either following-removed state and under the no-check-avoidance
@@ -50,9 +52,10 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " no part, neither pushed nor pushing, is held by ability_skeleton_king and"
             + " card_SkeletonKing, and a clone's death spawn deploying by a recorded battle not"
             + " yet in the reference set; an entity byte that would keep such a clone in collision,"
-            + " unnamed, is supplied clear, as for every unit the standard game makes. Supplied:"
-            + " no building is of the placeable-building kind whose answer depends on the"
-            + " entities near it, which is not reachable from the units the grid drives.")
+            + " unnamed, is supplied clear, as for every unit the standard game makes. A building"
+            + " of the characters table beside another building taking no part, pushing nobody,"
+            + " is held by the recorded battles of a Skeleton Balloon's container dropped beside"
+            + " an evolved Cannon or Goblin Cage, not yet in the reference set.")
 public final class ContactRule {
 
   /** The states in which an entity takes no part in collision: dashing, jumping, hooked away. */
@@ -82,6 +85,11 @@ public final class ContactRule {
       return 0;
     }
     if (state == GridEntityState.DEPLOYING && entity.isClone()) {
+      return 0;
+    }
+    // A building of the characters table stands out of contact while the nearest other building
+    // is within 500 of it edge to edge.
+    if (entity.besideAnotherBuilding()) {
       return 0;
     }
     return 1;

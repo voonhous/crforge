@@ -6573,6 +6573,57 @@ public class BattleWorld implements HolderPasses {
     return !(columns.avoidBlocked() && grid.tiles(col, row) == WARP_BLOCKED_CELL);
   }
 
+  /** How far beyond its own radius the nearest other building is looked for, in game units. */
+  private static final int BESIDE_BUILDING_SEARCH = 2000;
+
+  /** The edge-to-edge gap below which a building of the characters table leaves contact. */
+  private static final int BESIDE_BUILDING_GAP = 500;
+
+  /**
+   * Whether another building stands beside a building of the characters table, which takes it out
+   * of contact: the nearest building other than itself - a listed character or crown tower that is
+   * a building, a dying one still listed among them - is looked for over the live list in its
+   * order, taken when its squared distance from the building's point is below the best so far and
+   * below its own radius plus 2000, squared; the building is beside it when their distance, less
+   * both radii, is below 500. A building found nowhere within reach leaves it in contact.
+   *
+   * @param self the building of the characters table that asks
+   * @return true when the nearest other building is within 500 of it edge to edge
+   */
+  boolean besideAnotherBuilding(WorldEntity self) {
+    GridEntity own = self.getView();
+    int x = own.getX();
+    int y = own.getY();
+    GridEntity nearest = null;
+    int best = Integer.MAX_VALUE;
+    for (BattleEntity entity : holder.entities()) {
+      if (!(entity instanceof WorldEntity other) || other == self) {
+        continue;
+      }
+      GridEntity view = other.getView();
+      if (!view.isBuilding()) {
+        continue;
+      }
+      // Squared in 32 bits as the search takes it; the reach is compared without a sign.
+      int dx = x - view.getX();
+      int dy = y - view.getY();
+      int squared = dx * dx + dy * dy;
+      if (squared >= best) {
+        continue;
+      }
+      int reach = view.getCollisionRadius() + BESIDE_BUILDING_SEARCH;
+      if (Integer.compareUnsigned(squared, reach * reach) < 0) {
+        best = squared;
+        nearest = view;
+      }
+    }
+    if (nearest == null) {
+      return false;
+    }
+    int distance = FixedMath.guardedDistance(x - nearest.getX(), y - nearest.getY());
+    return distance - own.getCollisionRadius() - nearest.getCollisionRadius() < BESIDE_BUILDING_GAP;
+  }
+
   /**
    * The spawner: creates the children a spawn row's block describes, each one after the other.
    *

@@ -740,6 +740,8 @@ public final class BattleRecords {
             .attacksAir(row.bool("AttacksAir"))
             .air(row.intValue("FlyingHeight") > 0)
             .building(row.bool("IsBuilding"))
+            // A building of the characters table answers contact by the buildings beside it.
+            .characterBuilding(row.bool("IsBuilding") && tables.table(CHARACTERS).has(name))
             .king(row.bool("IsSummoner"))
             .summonerTower(row.bool("IsSummonerTower"))
             .hitpoints(row.intValue("Hitpoints"))

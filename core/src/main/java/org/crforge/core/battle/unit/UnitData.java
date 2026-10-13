@@ -37,6 +37,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param attacksAir whether the unit can hit air targets
  * @param air whether the unit flies
  * @param building whether the unit is a building
+ * @param characterBuilding whether the unit is a building whose row is in the characters table, as
+ *     the evolved buildings' rows are: it takes no part in contact while another building stands
+ *     within 500 of it edge to edge
  * @param king whether the unit is a king tower
  * @param summonerTower whether the unit is a princess tower
  * @param hitpoints hit points at the first level
@@ -294,6 +297,7 @@ public record UnitData(
     boolean attacksAir,
     boolean air,
     boolean building,
+    boolean characterBuilding,
     boolean king,
     boolean summonerTower,
     int hitpoints,
