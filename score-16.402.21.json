@@ -1,30 +1,30 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 84.2,
-  "ticks_agreed": 91.5,
+  "to_the_end": 85.7,
+  "ticks_agreed": 93.2,
   "outcomes": {
-    "diagnostic_match": 8426,
+    "diagnostic_match": 8578,
     "invalid": 6,
-    "mismatch": 1310,
-    "unsupported": 258
+    "mismatch": 1346,
+    "unsupported": 70
   },
   "first_failures": {
-    "mismatch $.entities[].x": 594,
-    "mismatch $.entities[].state": 291,
-    "mismatch $.entities[].hp": 230,
-    "mismatch $.entities.length": 132,
-    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled": 37,
+    "mismatch $.entities[].x": 617,
+    "mismatch $.entities[].state": 298,
+    "mismatch $.entities[].hp": 231,
+    "mismatch $.entities.length": 136,
     "mismatch $.entities[].id": 35,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 21,
-    "mismatch $.entities[].y": 20,
-    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 17,
-    "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled": 14,
-    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
-    "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
-    "unsupported: cmd#: a Mirror given while another play of its side is pending, which the client may repeat in place of the last card, is not modelled": 12,
-    "unsupported: GiantHero_Slap_Pushback on cmd# was let go before its push, not modelled": 10,
-    "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 10
+    "mismatch $.entities[].y": 21,
+    "invalid": 6,
+    "mismatch $.entities[].row": 6,
+    "unsupported: proj_# (EliteArcherHero_arrow_projectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 6,
+    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 5,
+    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be the buff's source or a side alone, not modelled": 5,
+    "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 5,
+    "unsupported: proj_# (FishermanProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 5,
+    "unsupported: Knight_hero_ApplyTaunt steps on cmd# while it pathfinds, which is not modelled": 4,
+    "unsupported: ResetTauntEffect taunts cmd# onto a flying object or one not in the battle, which is not modelled": 4
   },
   "set": "296000195c872c7d"
 }

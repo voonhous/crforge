@@ -1,29 +1,29 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 90.2,
-  "ticks_agreed": 93.8,
+  "to_the_end": 91.8,
+  "ticks_agreed": 95.7,
   "outcomes": {
-    "diagnostic_match": 1564,
-    "mismatch": 119,
-    "unsupported": 50
+    "diagnostic_match": 1592,
+    "mismatch": 127,
+    "unsupported": 14
   },
   "first_failures": {
-    "mismatch $.entities[].x": 64,
-    "mismatch $.entities[].hp": 19,
-    "mismatch $.entities[].state": 19,
-    "mismatch $.entities.length": 14,
-    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled": 9,
-    "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled": 5,
-    "unsupported: cmd#: a Mirror given while another play of its side is pending, which the client may repeat in place of the last card, is not modelled": 5,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 5,
-    "unsupported: target_is_ground on cmd#, which carries FORCE_IS_GROUND, not modelled": 3,
+    "mismatch $.entities[].x": 67,
+    "mismatch $.entities[].hp": 20,
+    "mismatch $.entities[].state": 20,
+    "mismatch $.entities.length": 17,
     "mismatch $.entities[].y": 2,
     "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled": 2,
     "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
     "unsupported: cmd#_clone#_0 would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
-    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
-    "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2
+    "mismatch $.sides[].elixir": 1,
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
+    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
+    "unsupported: cmd#_clone# launches GoblinDemolisherDeathProjectile as it dies and is a clone, whose projectiles carry it, not modelled": 1,
+    "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it, not modelled": 1,
+    "unsupported: proj_# (EliteArcherArrow) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1,
+    "unsupported: proj_# (FishermanProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700"
 }
