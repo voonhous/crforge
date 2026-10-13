@@ -5504,7 +5504,7 @@ public class BattleWorld implements HolderPasses {
       return;
     }
     int towerDamage = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
-    pushingArea(dying, radius, damage, towerDamage, 0, push);
+    pushingArea(dying, radius, damage, towerDamage, 0, push, false);
   }
 
   /**
@@ -5513,7 +5513,10 @@ public class BattleWorld implements HolderPasses {
    * tower too, under the hit id the landing took, with no split and a thousand victims at most. It
    * hits air units when the row attacks air and ground ones unless the row attacks air alone, and
    * pushes each victim still alive, with a movement component and a row that does not ignore
-   * pushback, the row's dash pushback away from the landing point.
+   * pushback, the row's dash pushback away from the landing point. It collects its victims as a
+   * projectile's area does: a unit the untouchable test refuses as it collects, the immunity left
+   * after a dash counted - one dashing under a row with a dash immunity among them - is passed by,
+   * neither damaged nor pushed.
    *
    * @param dasher the unit that landed
    * @param damage the dash damage at its level
@@ -5521,16 +5524,27 @@ public class BattleWorld implements HolderPasses {
    */
   void dashLandingArea(CharacterEntity dasher, int damage, int hitId) {
     UnitData data = dasher.getData();
-    pushingArea(dasher, data.dashRadius(), damage, damage, hitId, data.dashPushBack());
+    pushingArea(dasher, data.dashRadius(), damage, damage, hitId, data.dashPushBack(), true);
   }
 
   /**
    * An area damage around an entity, the entity as its owner and its targeting as the validator's,
    * that pushes each victim away from its centre: no split, a thousand victims at most, air units
-   * when the entity's row attacks air and ground ones unless it attacks air alone.
+   * when the entity's row attacks air and ground ones unless it attacks air alone. It passes by a
+   * hidden victim, and with the collection gate also one the untouchable test refuses, the immunity
+   * left after a dash counted.
+   *
+   * @param gated true for an area that collects through the untouchable test (a dash landing's),
+   *     false for one that passes by a hidden victim only (the death damage's)
    */
   private void pushingArea(
-      WorldEntity owner, int radius, int damage, int towerDamage, int hitId, int push) {
+      WorldEntity owner,
+      int radius,
+      int damage,
+      int towerDamage,
+      int hitId,
+      int push,
+      boolean gated) {
     UnitData data = owner.getData();
     int x = owner.getView().getX();
     int y = owner.getView().getY();
@@ -5564,7 +5578,8 @@ public class BattleWorld implements HolderPasses {
             new AreaDamage.Queries() {
               @Override
               public boolean untouchable(TargetView victim) {
-                return entityOf(victim.getEntity()).passedBy(false);
+                WorldEntity entity = entityOf(victim.getEntity());
+                return gated ? entity.passedByAreaCollection() : entity.passedBy(false);
               }
 
               @Override

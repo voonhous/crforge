@@ -1310,13 +1310,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Whether a projectile's area passes the entity by as it collects its victims: while it is
-   * hidden, or when the area's state gate refuses it - the untouchable test with the immunity left
-   * after a dash counted, which a tower never fails. The gate is tested as the area collects, at
-   * the impact, and not again when the damage drain deals the shares: a dasher whose own visit of
-   * the tick counts its immunity down to 0 after the impact is still passed by.
+   * Whether a projectile's area or a dash landing's area passes the entity by as it collects its
+   * victims: while it is hidden, or when the area's state gate refuses it - the untouchable test
+   * with the immunity left after a dash counted, which a tower never fails. The gate is tested as
+   * the area collects, at the impact or the landing, and not again when the damage drain deals the
+   * shares: a dasher whose own visit of the tick counts its immunity down to 0 after the impact is
+   * still passed by. The direct hit's area and the death damage pass by a hidden entity only.
    */
-  public boolean passedByProjectileArea() {
+  public boolean passedByAreaCollection() {
     return passedBy(false) || untouchable(true);
   }
 

@@ -622,7 +622,7 @@ final class ProjectileFlight {
           // A hidden victim, and one the area's state gate refuses as it collects.
           @Override
           public boolean untouchable(TargetView victim) {
-            return world.entityOf(victim.getEntity()).passedByProjectileArea();
+            return world.entityOf(victim.getEntity()).passedByAreaCollection();
           }
 
           @Override
