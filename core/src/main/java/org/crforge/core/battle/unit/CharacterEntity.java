@@ -1454,9 +1454,12 @@ public class CharacterEntity extends WorldEntity {
    * whether it came that way or the rider was taunted itself, takes the reach test of a building
    * owner (see {@link TauntRun}).
    *
+   * <p>An object to force onto that flies is taunted onto as any other; the arming judges it by the
+   * ground rule while FORCE_IS_AIR holds it in the air (see {@link TauntRun#arm}).
+   *
    * <p>Refused rather than guessed: a unit or one of its riders in a pathfinding state, a rider
-   * that already lists a run of the same row, and an object to force onto that is not in the battle
-   * or flies, which a tag may count as on the ground.
+   * that already lists a run of the same row, and an object to force onto that is not in the
+   * battle.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
@@ -1465,8 +1468,8 @@ public class CharacterEntity extends WorldEntity {
       refused = "a pathfinding unit, which";
     } else if (riders().stream().anyMatch(rider -> rider.listsRunOf(action))) {
       refused = "a rider that lists a run of it already, which";
-    } else if (!(forced instanceof WorldEntity onto) || onto.getTargetView().air()) {
-      refused = "a flying object or one not in the battle, which";
+    } else if (!(forced instanceof WorldEntity)) {
+      refused = "an object not in the battle, which";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(

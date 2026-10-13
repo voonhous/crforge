@@ -370,17 +370,18 @@ public class TowerEntity extends WorldEntity {
    * holder lists. Every tower is a crown tower, so the arming tries the crown tower branch first.
    * The perform is told to the observers first.
    *
-   * <p>Refused rather than guessed: an object to force onto that is not in the battle or flies,
-   * which a tag may count as on the ground.
+   * <p>An object to force onto that flies is taunted onto as any other (see {@link TauntRun#arm}).
+   *
+   * <p>Refused rather than guessed: an object to force onto that is not in the battle.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
-    if (!(forced instanceof WorldEntity onto) || onto.getTargetView().air()) {
+    if (!(forced instanceof WorldEntity onto)) {
       throw new UnsupportedOperationException(
           action.name()
               + " taunts "
               + name()
-              + " onto a flying object or one not in the battle, which is not modelled");
+              + " onto an object not in the battle, which is not modelled");
     }
     world.tauntPerformed(this, action.name(), phase, instigator, onto);
     TauntRun run = new TauntRun(action, this, onto);

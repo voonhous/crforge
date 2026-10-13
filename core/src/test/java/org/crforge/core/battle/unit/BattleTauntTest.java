@@ -30,7 +30,8 @@ import org.junit.jupiter.api.io.TempDir;
  * filter, OnlyGoblinDemolisher, reaches the Demolisher alone; written to reach its whole side, it
  * holds an own unit beside the Demolisher, one that attacks only buildings, the Demolisher leaving
  * while a unit is taunted onto it. Also an area effect that moves with the object it follows or
- * outlives it, a longer taunt, and the refusal.
+ * outlives it, a longer taunt, the Demolisher taunted onto itself in the air, held there by
+ * FORCE_IS_AIR or by a flying row, and the refusal.
  */
 class BattleTauntTest {
 
@@ -57,7 +58,16 @@ class BattleTauntTest {
 
     Scene(GameTables tables) {
       match = new Standard1v1Battle(tables, LEVEL, false);
-      demolisher = match.deploy(0, GameData.unit("GoblinDemolisher"), LEVEL, 0, X, Y, "demolisher");
+      // The row as the battle's own tables give it, so a test that alters it deploys the change.
+      demolisher =
+          match.deploy(
+              0,
+              match.getWorld().getRecords().unit("GoblinDemolisher"),
+              LEVEL,
+              0,
+              X,
+              Y,
+              "demolisher");
       match
           .getWorld()
           .addObserver(
@@ -131,6 +141,30 @@ class BattleTauntTest {
         rows ->
             ((ObjectNode) rows.get("ResetTauntEffect").get("fields"))
                 .put("ValidDuration", durationMs));
+  }
+
+  /**
+   * The configured tables with the taunt lasting {@link #DURATION} and the Demolisher's row
+   * attacking the ground alone, so the arming's air rule and its ground rule answer apart; flying
+   * at a height when {@code flyingHeight} is above 0.
+   */
+  private static GameTables groundAttacker(Path folder, int flyingHeight) throws IOException {
+    Files.createDirectories(folder);
+    GameData.altered(
+        folder,
+        "characters",
+        rows -> {
+          ObjectNode columns = GameData.columns(rows, "GoblinDemolisher");
+          columns.put("AttacksGround", true);
+          columns.remove("AttacksAir");
+          if (flyingHeight > 0) {
+            columns.put("FlyingHeight", flyingHeight);
+          } else {
+            columns.remove("FlyingHeight");
+          }
+        });
+    lasting(folder, DURATION);
+    return GameTables.load(folder);
   }
 
   private static String reference(WorldEntity unit) {
@@ -368,6 +402,54 @@ class BattleTauntTest {
     scene.match.getBattle().step();
     assertThat(scene.taunts).hasSize(1);
     assertThat(scene.taunts.get(0)).startsWith("demolisher [remaining 0").contains("finish");
+  }
+
+  @Test
+  @DisplayName(
+      "a Demolisher FORCE_IS_AIR holds in the air is taunted onto itself by the ground rule: its"
+          + " ground attack makes it valid, so its reference is forced onto itself under the buff")
+  void liftedIntoTheAir(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(groundAttacker(folder, 0));
+    BattleWorld world = scene.match.getWorld();
+    // An uppercut or a knock starts the unit's layering and raises FORCE_IS_AIR each step it holds
+    // the unit; the pre-hook folds it into the tag word, and the layer reads it from there.
+    scene.demolisher.startLayering();
+    scene.demolisher.raiseWatched(world.forceIsAir());
+    scene.match.getBattle().step();
+    scene.demolisher.raiseWatched(world.forceIsAir());
+    scene.cancel();
+    scene.match.getBattle().step();
+
+    assertThat(scene.demolisher.getTargetView().air()).as("in the air").isTrue();
+    assertThat(scene.demolisher.getView().getFlags() & world.forceIsAir()).isNotZero();
+    assertThat(reference(scene.demolisher)).isEqualTo("demolisher");
+    assertThat(scene.demolisher.getBuffs().carries(BUFF)).isTrue();
+    assertThat(scene.taunts)
+        .containsExactly(
+            "demolisher performed onto demolisher",
+            "demolisher [set_target demolisher 0 0 1, raise LOCK_TARGET, remaining %d,"
+                    .formatted(DURATION)
+                + " apply_buff %s %d level %d source demolisher side 0]"
+                    .formatted(BUFF, DURATION, scene.demolisher.getPackedLevel()));
+  }
+
+  @Test
+  @DisplayName(
+      "a Demolisher whose row flies is taunted onto itself by the air rule: with no air attack it"
+          + " is not valid, so no reference and no buff, and its run finishes at once")
+  void aFlyingRow(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(groundAttacker(folder, 1500));
+    scene.match.getBattle().step();
+    scene.cancel();
+    scene.match.getBattle().step();
+
+    assertThat(scene.demolisher.getTargetView().air()).as("in the air").isTrue();
+    assertThat(reference(scene.demolisher)).isNotEqualTo("demolisher");
+    assertThat(scene.demolisher.getBuffs().carries(BUFF)).isFalse();
+    assertThat(scene.taunts)
+        .containsExactly(
+            "demolisher performed onto demolisher",
+            "demolisher [finish, remove_buff " + BUFF + "]");
   }
 
   @Test

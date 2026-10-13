@@ -32,9 +32,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * reference is forced at the arming without the reach test when the forced object is not a
  * building.
  *
+ * <p>Whether the owner can attack the forced object reads the object's layer at the arming: in the
+ * air, the owner's air attack; on the ground, or in the air only because FORCE_IS_AIR holds it
+ * there (a ground unit an uppercut or a knock lifted), its ground attack or no air attack.
+ *
  * <p>Refused rather than guessed, as the row is built: the end by a stun and the visual effect. As
  * it starts: a taunted unit that rides on another or carries riders, or that is in a pathfinding
- * state, and a forced object that flies.
+ * state, and a forced object not in the battle.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -53,7 +57,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " held by recordings of the game. The arming's invalid branch, the falloff"
             + " on a lost reach, the re-arm and the run ending as its forced object leaves are"
             + " translated but held by no run. Refused: the end by a stun, the visual effect, a"
-            + " taunted rider, carrier or pathfinding unit, and a flying forced object.")
+            + " taunted rider, carrier or pathfinding unit, and a forced object not in the"
+            + " battle. A forced object in the air is judged by the owner's air attack unless"
+            + " FORCE_IS_AIR holds it there: settled line for line; recorded"
+            + " battles where the Goblin Demolisher, lifted by an uppercut, is taunted onto itself"
+            + " play on with it, though they do not tell it from the ground rule.")
 @Getter
 public final class Taunt extends RowAction {
 

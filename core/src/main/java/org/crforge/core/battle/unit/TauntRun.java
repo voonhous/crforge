@@ -50,7 +50,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Knight's taunt on a Cannon and an Inferno Tower within and beyond their reach. A"
             + " rider takes a building's reach and steps, and a carrier's riders are taunted with"
             + " it: held by recorded battles of the hero Knight's taunt on Goblin Giants and hero"
-            + " Ice Wizards.")
+            + " Ice Wizards. The arming's air rule, an object in the air judged by the owner's"
+            + " air attack unless FORCE_IS_AIR holds it there, is settled line for line; recorded"
+            + " battles of the Goblin Demolisher taunted onto itself as an uppercut lifts it play"
+            + " on with it, though they do not tell it from the ground rule.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -91,7 +94,9 @@ final class TauntRun extends ActionInstance {
    *   <li>otherwise an owner that can attack the object - the air with an air attack, the ground
    *       with a ground attack or with no air attack, and a building it may attack or a troop it
    *       may attack: the valid duration and buff, its reference forced while it reaches a building
-   *       object, unless it is dashing or winding up a dash;
+   *       object, unless it is dashing or winding up a dash. An object in the air that carries
+   *       FORCE_IS_AIR, a ground unit lifted by an uppercut or a knock, counts as on the ground
+   *       here;
    *   <li>otherwise, only when the row names an invalid buff: the invalid duration and buff, its
    *       reference forced while it reaches a building object.
    * </ul>
@@ -110,7 +115,12 @@ final class TauntRun extends ActionInstance {
     UnitData row = owner.getData();
     TargetView onto = forced.getTargetView();
     boolean building = onto.building();
-    boolean able = onto.air() ? row.attacksAir() : row.attacksGround() || !row.attacksAir();
+    // The forced object's layer is asked now, from its tag word and its height; one in the air
+    // only because FORCE_IS_AIR holds it there, as a ground unit an uppercut or a knock lifted, is
+    // judged by the ground rule.
+    boolean flies =
+        forced.layerAir() && (forced.getView().getFlags() & forced.world().forceIsAir()) == 0;
+    boolean able = flies ? row.attacksAir() : row.attacksGround() || !row.attacksAir();
     boolean valid = able && !(building ? row.targetOnlyTroops() : row.targetOnlyBuildings());
     // A building object puts the reach test in front of the forced reference; so does a rider
     // owner.
@@ -283,12 +293,12 @@ final class TauntRun extends ActionInstance {
     if (parent == null || parent == forced) {
       return;
     }
-    if (!(parent instanceof WorldEntity onto) || onto.getTargetView().air()) {
+    if (!(parent instanceof WorldEntity onto)) {
       throw new UnsupportedOperationException(
           taunt.name()
               + " re-taunts "
               + owner.name()
-              + " onto a flying object or one not in the battle, which is not modelled");
+              + " onto an object not in the battle, which is not modelled");
     }
     forced = onto;
     falloffMs = taunt.getFalloffDelayMs();
