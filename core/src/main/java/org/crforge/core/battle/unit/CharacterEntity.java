@@ -3247,6 +3247,18 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The combat gate a card play's change into the deploying state ends with, as every change of
+   * state does: the unit is still deploying, so the gate switches its targeting component off and
+   * raises the tag every switch-off raises. Until the gate that ends the deploy switches it on,
+   * after the moving state's entry, the unit selects nothing, a taunt's steps leave it alone, and
+   * its route preparation reads no reference: a reference a taunt forces onto it while it deploys
+   * makes it no route, and its first walking step searches one from where it was placed.
+   */
+  void deployGate() {
+    combatGate(isActive(TARGETING_SLOT), setter::prepareRoute);
+  }
+
+  /**
    * What the setter's entry to the deploying state makes of the character's row, in its order: the
    * riders of a row that attaches its spawner's children, the row's area object, then its push on
    * the enemies around it. A card play's construction enters the state before it hands the

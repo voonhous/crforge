@@ -1198,6 +1198,9 @@ public class Standard1v1Battle {
       // queued after it.
       if (!waits) {
         character.enteredDeploying();
+        // The change ends with the combat gate, as every change of state does: the unit deploys
+        // with its targeting component switched off.
+        character.deployGate();
       }
       target.getHolder().add(character);
       // The opening cleanup that admits it starts it, deploying or still waiting its turn: its
