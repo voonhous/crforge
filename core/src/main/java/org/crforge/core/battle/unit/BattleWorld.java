@@ -439,30 +439,35 @@ public class BattleWorld implements HolderPasses {
    *
    * @param target the entity the circle reached
    * @param radius the circle's radius
+   * @param amount the target's hit points as the kill was queued
    */
-  private record CircleKillDue(WorldEntity target, int radius) implements QueuedHit {}
+  private record CircleKillDue(WorldEntity target, int radius, int amount) implements QueuedHit {}
 
   /**
    * A Kamikaze unit's kill of itself waiting for the drain, where it is dealt.
    *
    * @param unit the unit whose hit ended
+   * @param amount the unit's hit points as the kill was queued
    */
-  private record KamikazeKillDue(WorldEntity unit) implements QueuedHit {}
+  private record KamikazeKillDue(WorldEntity unit, int amount) implements QueuedHit {}
 
   /**
    * A kill action's kill of its owner waiting for the drain, where it is dealt.
    *
    * @param target the kill action's owner
    * @param killer the entity that caused the action, or null for none
+   * @param amount the target's hit points as the kill was queued
    */
-  private record ActionKillDue(WorldEntity target, WorldEntity killer) implements QueuedHit {}
+  private record ActionKillDue(WorldEntity target, WorldEntity killer, int amount)
+      implements QueuedHit {}
 
   /**
    * A tiebreaker's clearing's kill of a character waiting for the drain, where it is dealt.
    *
    * @param target the character the clearing reached
+   * @param amount the character's hit points as the clearing reached it
    */
-  private record ClearingKillDue(CharacterEntity target) implements QueuedHit {}
+  private record ClearingKillDue(CharacterEntity target, int amount) implements QueuedHit {}
 
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
@@ -573,7 +578,11 @@ public class BattleWorld implements HolderPasses {
    * that targets it walks at it once more, and its body still stands among the others. A kill
    * action's kill of its owner (see {@link #kill(WorldEntity, WorldEntity)}) goes the same way: its
    * owner's kill action is scheduled at once, and the owner dies at the drain, so a building a
-   * pending pass kills still pushes the units around it in that tick's movement pass.
+   * pending pass kills still pushes the units around it in that tick's movement pass. Each of these
+   * kills - and a tiebreaker's clearing's (see {@link #clearingKill(CharacterEntity)}) - carries
+   * the hit points its target had as it was queued, and the drain deals that amount through the
+   * damage entry, which lowers it by the target's damage reduction: a target with a reduction
+   * listed lives through it, and one healed since keeps the heal.
    *
    * <p>A buff's damage over time goes the same way (see {@link #dealBuffDamage(WorldEntity,
    * BuffInstance, int)}): the buff pass queues each hit it finds due, and the carrier takes it, and
@@ -1728,13 +1737,13 @@ public class BattleWorld implements HolderPasses {
    * @param killer the entity that caused it, or null for none
    */
   public void kill(WorldEntity target, WorldEntity killer) {
-    queuedHits.add(new ActionKillDue(target, killer));
+    queuedHits.add(new ActionKillDue(target, killer, target.killAmount()));
   }
 
   /** A kill action's kill, dealt at the damage drain. */
-  private void killNow(WorldEntity target, WorldEntity killer) {
+  private void killNow(WorldEntity target, WorldEntity killer, int amount) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
-    DamageResult result = target.takeKill(null, killer);
+    DamageResult result = target.takeKill(amount, null, killer);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, target, before, result);
     }
@@ -1908,13 +1917,13 @@ public class BattleWorld implements HolderPasses {
    * @param unit the unit
    */
   public void kamikazeKill(WorldEntity unit) {
-    queuedHits.add(new KamikazeKillDue(unit));
+    queuedHits.add(new KamikazeKillDue(unit, unit.killAmount()));
   }
 
   /** The Kamikaze kill, dealt at the damage drain. */
-  private void kamikazeKillNow(WorldEntity unit) {
+  private void kamikazeKillNow(WorldEntity unit, int amount) {
     int before = unit.getHitPoints().getHitPoints();
-    DamageResult result = unit.takeKill(unit, unit);
+    DamageResult result = unit.takeKill(amount, unit, unit);
     for (WorldObserver observer : observers) {
       observer.kamikazeKilled(tick, unit, before, result);
     }
@@ -1964,12 +1973,12 @@ public class BattleWorld implements HolderPasses {
    * @param radius the circle's radius
    */
   public void circleKill(WorldEntity target, int radius) {
-    queuedHits.add(new CircleKillDue(target, radius));
+    queuedHits.add(new CircleKillDue(target, radius, target.killAmount()));
   }
 
   /** The circle's kill, dealt at the damage drain. */
-  private void circleKillNow(WorldEntity target, int radius) {
-    DamageResult result = target.takeKill();
+  private void circleKillNow(WorldEntity target, int radius, int amount) {
+    DamageResult result = target.takeKill(amount, null, null);
     for (WorldObserver observer : observers) {
       observer.circleKilled(tick, target, radius);
     }
@@ -1980,25 +1989,27 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Kills a character of either side that a tiebreaker's clearing reached: it is resumed at once,
-   * and its kill, its whole hit points with no attacker, is queued for the damage drain, as a
-   * fallen king's circle's is. The character stays alive through the passes of the update the
-   * clearing runs and dies at that update's drain (see {@link #queuedHits}), so whatever reads it
-   * before - a tower aiming at it, its own movement, the place its death spawns are made at - finds
-   * it as it was.
+   * and its kill, its hit points as the clearing reached it with no attacker, is queued for the
+   * damage drain, as a fallen king's circle's is. The character stays alive through the passes of
+   * the update the clearing runs and dies at that update's drain (see {@link #queuedHits}), so
+   * whatever reads it before - a tower aiming at it, its own movement, the place its death spawns
+   * are made at - finds it as it was. The drain's damage entry lowers the kill by the character's
+   * damage reduction, and a heal over time landing in that update's passes is not in it, so such a
+   * character lives through the kill and the next step's clearing reaches it again.
    *
    * @param target the character
    */
   public void clearingKill(CharacterEntity target) {
     target.resume();
-    queuedHits.add(new ClearingKillDue(target));
+    queuedHits.add(new ClearingKillDue(target, target.killAmount()));
   }
 
   /**
-   * The clearing's kill, dealt at the damage drain: the whole hit points with no attacker, told to
-   * every observer as the clearing's kill rather than a hit.
+   * The clearing's kill, dealt at the damage drain: the hit points it was queued with, no attacker,
+   * told to every observer as the clearing's kill rather than a hit.
    */
-  private void clearingKillNow(CharacterEntity target) {
-    DamageResult result = target.takeKill();
+  private void clearingKillNow(CharacterEntity target, int amount) {
+    DamageResult result = target.takeKill(amount, null, null);
     for (WorldObserver observer : observers) {
       observer.clearingKilled(tick, target);
     }
@@ -5991,19 +6002,19 @@ public class BattleWorld implements HolderPasses {
         continue;
       }
       if (queued instanceof CircleKillDue kill) {
-        circleKillNow(kill.target(), kill.radius());
+        circleKillNow(kill.target(), kill.radius(), kill.amount());
         continue;
       }
       if (queued instanceof KamikazeKillDue kamikaze) {
-        kamikazeKillNow(kamikaze.unit());
+        kamikazeKillNow(kamikaze.unit(), kamikaze.amount());
         continue;
       }
       if (queued instanceof ActionKillDue kill) {
-        killNow(kill.target(), kill.killer());
+        killNow(kill.target(), kill.killer(), kill.amount());
         continue;
       }
       if (queued instanceof ClearingKillDue kill) {
-        clearingKillNow(kill.target());
+        clearingKillNow(kill.target(), kill.amount());
         continue;
       }
       TypedHit hit = (TypedHit) queued;
