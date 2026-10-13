@@ -1,13 +1,13 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 85.3,
+  "to_the_end": 85.4,
   "ticks_agreed": 92.7,
   "outcomes": {
-    "diagnostic_match": 8533,
+    "diagnostic_match": 8540,
     "invalid": 6,
     "mismatch": 1331,
-    "unsupported": 130
+    "unsupported": 123
   },
   "first_failures": {
     "mismatch $.entities[].x": 606,
