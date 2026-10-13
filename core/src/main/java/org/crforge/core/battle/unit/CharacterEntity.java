@@ -1048,10 +1048,12 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
-   * by anything but an area effect, of a unit still deploying, or of a unit running an
-   * air-to-ground action, which the game starts again on the clone - for a carrier, of any of its
-   * riders too, each cloned with it. A row with a cloned version and the runs of every other action
-   * class are modelled: the clone is made of the cloned version, and the runs stay the unit's.
+   * by anything but an area effect, of a carrier still deploying or one of its riders, of a unit
+   * still deploying whose clone's row spawns an area object or a push as it enters the deploying
+   * state, or of a unit running an air-to-ground action, which the game starts again on the clone -
+   * for a carrier, of any of its riders too, each cloned with it. Any other unit still deploying is
+   * cloned with its countdown. A row with a cloned version and the runs of every other action class
+   * are modelled: the clone is made of the cloned version, and the runs stay the unit's.
    *
    * <p>The perform does not ask whether the unit is a clone itself: a clone it reaches is cloned
    * again. A Clone's area never reaches one, its filter dropping clones, so a clone the action
@@ -1089,9 +1091,22 @@ public class CharacterEntity extends WorldEntity {
       cloned.addAll(riders);
     }
     for (CharacterEntity unit : cloned) {
+      // A clone of a unit still deploying takes its countdown and enters the deploying state
+      // before its setup. Not modelled: a carrier or its riders still deploying, whose clone the
+      // creator sets up first; and a row whose entry into the deploying state spawns an area object
+      // or a push, which the clone's entry would spawn again.
       if (unit.getView().getDeployCountdown() > 0) {
-        throw new UnsupportedOperationException(
-            unit.name() + " is cloned with a deploy countdown, which is not modelled");
+        UnitData row = unit.cloneRow();
+        String refused = null;
+        if (getData().spawnAttach()) {
+          refused = unit == this ? "and carries riders" : "as a carrier's rider";
+        } else if (row.spawnAreaObject() != null || row.pushesOnDeploy()) {
+          refused = "and its clone's row spawns an area object or a push as it deploys";
+        }
+        if (refused != null) {
+          throw new UnsupportedOperationException(
+              unit.name() + " is cloned with a deploy countdown " + refused + ", not modelled");
+        }
       }
       // The creator tells each run the unit has listed of the clone; every class but the
       // air-to-ground one does nothing with it, so the runs stay the unit's. That one starts its
@@ -1113,6 +1128,12 @@ public class CharacterEntity extends WorldEntity {
     world.makeClone(this, (AreaEffectEntity) instigator, action);
   }
 
+  /** The row a clone of the character is made of: its own, or the one its row names. */
+  UnitData cloneRow() {
+    UnitData row = getData();
+    return row.clonedVersion() != null ? world.getRecords().unit(row.clonedVersion()) : row;
+  }
+
   /**
    * Sets the character up as a clone, through its setter, and runs the combat gate that ends the
    * change: its targeting component goes off and keeps its reference.
@@ -1120,6 +1141,40 @@ public class CharacterEntity extends WorldEntity {
   void enterCloneSetup() {
     setter.setState(getView(), GridEntityState.CLONE_SETUP);
     stateTailGate();
+  }
+
+  /**
+   * Sets a new clone up as {@link #enterCloneSetup()} does, with the deploy countdown its original
+   * has left. The countdown setter puts a unit with a countdown of 1 or more into the deploying
+   * state, unless it is already set up as a clone, and then stores the countdown. The creator calls
+   * it before the clone's setup, so the clone enters the deploying state and leaves it for its
+   * setup with the countdown kept; for an original whose row carries riders it calls it after the
+   * setup, so that clone never enters the deploying state, whose entry would make its riders. In
+   * the setup the countdown runs down as any unit's, without a resume at 0.
+   *
+   * @param deployCountdown the original's deploy countdown, in milliseconds
+   * @param setupFirst whether the original's row carries riders
+   */
+  void enterCloneSetup(int deployCountdown, boolean setupFirst) {
+    if (setupFirst) {
+      setter.setState(getView(), GridEntityState.CLONE_SETUP);
+      countDeployFrom(deployCountdown);
+    } else {
+      countDeployFrom(deployCountdown);
+      setter.setState(getView(), GridEntityState.CLONE_SETUP);
+    }
+    stateTailGate();
+  }
+
+  /**
+   * The deploy countdown setter: a countdown of 1 or more sets the character deploying unless it is
+   * set up as a clone, and the countdown is stored as given.
+   */
+  private void countDeployFrom(int deployCountdown) {
+    if (deployCountdown >= 1 && getView().getState() != GridEntityState.CLONE_SETUP) {
+      setter.setState(getView(), GridEntityState.DEPLOYING);
+    }
+    getView().setDeployCountdown(deployCountdown);
   }
 
   /**
@@ -1188,10 +1243,12 @@ public class CharacterEntity extends WorldEntity {
       if (elapsedMs < durationMs) {
         return;
       }
-      // With its deploy countdown still running, the run holds the unit still and waits.
+      // With its deploy countdown still running, the run holds the unit still and waits: it sets
+      // NO_MOVE on itself, which the unit carries while the run is listed, and asks again on its
+      // next step. The countdown runs down in the setup without a resume, so the run resumes it.
       if (getView().getDeployCountdown() > 0) {
-        throw new UnsupportedOperationException(
-            name() + "'s move apart waits on its deploy countdown, which is not modelled");
+        addTags(getView().getFlagBits().noMove());
+        return;
       }
       boolean resumed = getView().getState() == GridEntityState.CLONE_SETUP;
       if (resumed) {
