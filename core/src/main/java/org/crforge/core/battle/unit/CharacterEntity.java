@@ -1002,10 +1002,14 @@ public class CharacterEntity extends WorldEntity {
    * only its mark is set, and what it spawns as a clone is a clone too. A unit whose hit destroys
    * it without a projectile, as the Skeleton Balloon itself, ends its hit as any such unit.
    *
+   * <p>A champion, a hero form among them, is cloned as any unit: its clone keeps the champion's
+   * row and ability, but the champion slots follow no clone, so no tap reaches it and a paid
+   * ability is requested of the champion alone, and the clone's state changes leave no cast
+   * pending.
+   *
    * <p>Refused rather than guessed: a building with hit points, whose lifetime the hit points'
-   * visit counts differently for a clone; a unit whose hit destroys it and launches a projectile,
-   * whose projectile's spawns would be clones; and a champion, which the ability controller leaves
-   * out.
+   * visit counts differently for a clone; and a unit whose hit destroys it and launches a
+   * projectile, whose projectile's spawns would be clones.
    *
    * @param original the unit it stands for, or null for none
    */
@@ -1016,8 +1020,6 @@ public class CharacterEntity extends WorldEntity {
       refused = "a building with hit points";
     } else if (data.kamikaze() && data.hasProjectile()) {
       refused = "a unit whose hit destroys it and launches a projectile";
-    } else if (data.champion()) {
-      refused = "a champion";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(
