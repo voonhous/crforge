@@ -1,19 +1,19 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 96.9,
-  "ticks_agreed": 98.4,
+  "to_the_end": 97.5,
+  "ticks_agreed": 98.5,
   "outcomes": {
-    "diagnostic_match": 1681,
-    "mismatch": 48,
+    "diagnostic_match": 1690,
+    "mismatch": 39,
     "unsupported": 4
   },
   "first_failures": {
-    "mismatch $.entities[].x": 19,
     "mismatch $.entities[].hp": 15,
+    "mismatch $.entities[].x": 11,
     "mismatch $.entities[].state": 6,
     "mismatch $.entities.length": 5,
-    "mismatch $.entities[].y": 2,
+    "mismatch $.entities[].y": 1,
     "mismatch $.sides[].elixir": 1,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
     "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
@@ -21,5 +21,5 @@
     "unsupported: proj_# (GoblinBarrelSpell) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700",
-  "commit": "de5d2266d3a19312df33cb3a08a93ddadf82bca4"
+  "commit": "f86944938d5a3795ee31a3b0d58a4d64e5d7b7f7"
 }

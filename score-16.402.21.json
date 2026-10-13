@@ -1,21 +1,21 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 95.7,
-  "ticks_agreed": 98.0,
+  "to_the_end": 96.0,
+  "ticks_agreed": 98.1,
   "outcomes": {
-    "diagnostic_match": 9573,
+    "diagnostic_match": 9601,
     "invalid": 4,
-    "mismatch": 399,
+    "mismatch": 371,
     "unsupported": 24
   },
   "first_failures": {
     "mismatch $.entities[].hp": 140,
-    "mismatch $.entities[].x": 113,
+    "mismatch $.entities[].x": 88,
     "mismatch $.entities.length": 76,
     "mismatch $.entities[].state": 53,
-    "mismatch $.entities[].y": 8,
     "mismatch $.entities[].row": 6,
+    "mismatch $.entities[].y": 5,
     "invalid": 4,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
@@ -27,5 +27,5 @@
     "mismatch $.entities[].side": 1
   },
   "set": "296000195c872c7d",
-  "commit": "de5d2266d3a19312df33cb3a08a93ddadf82bca4"
+  "commit": "f86944938d5a3795ee31a3b0d58a4d64e5d7b7f7"
 }
