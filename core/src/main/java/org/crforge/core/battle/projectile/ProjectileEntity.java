@@ -27,6 +27,7 @@ import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RollingProjectile;
+import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -860,8 +861,27 @@ public class ProjectileEntity extends BattleEntity
     turnAround(deflector, null, px, py);
   }
 
-  /** The redirect both deflections share, at a target and its point or at a point alone. */
+  /**
+   * The redirect both deflections share, at a target and its point or at a point alone. A row's
+   * action on its deflector, as the Firecracker's rocket's damage on the deflector, is scheduled
+   * first on the deflector's parent, the projectile its cause: outside a pending pass it waits for
+   * the next one, and the damage it queues falls on the parent at the drain after it, scaled by the
+   * projectile's level. Refused: an action on the deflector that deals no damage to its owner,
+   * which no recording holds.
+   */
   private void turnAround(WorldEntity deflector, WorldEntity source, int px, int py) {
+    if (data.actionOnDeflector() != null) {
+      BattleAction onDeflector =
+          world.getActions().build(data.actionOnDeflector(), world.binding(deflector));
+      if (!(onDeflector instanceof TakeDamage)) {
+        throw new UnsupportedOperationException(
+            name()
+                + " is deflected, which runs "
+                + data.actionOnDeflector()
+                + " on its deflector, not modelled");
+      }
+      deflector.actionHolder().schedule(onDeflector, ActionHolder.OWN_DELAY, false, actionHolder());
+    }
     if (data.customDeflectAction() != null) {
       throw new UnsupportedOperationException(
           name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
