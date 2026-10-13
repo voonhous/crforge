@@ -346,8 +346,9 @@ public class CharacterEntity extends WorldEntity {
   @Getter private GridUnitState unit;
 
   /**
-   * What a pushback request asks of the character: whether its row ignores pushback, and whether a
-   * buff it carries does.
+   * What a pushback request asks of the character: whether its row ignores pushback, whether a buff
+   * it carries does, and the dash wind-up its targeting component runs, which a pushback breaks
+   * off.
    */
   private final PushbackQueries pushbackQueries =
       new PushbackQueries() {
@@ -359,6 +360,26 @@ public class CharacterEntity extends WorldEntity {
         @Override
         public boolean buffRefusesPushback() {
           return getBuffs().ignoresPushBack();
+        }
+
+        /** The running wind-up, read only while the targeting component is on; else none. */
+        @Override
+        public int dashWindupMs() {
+          return isActive(TARGETING_SLOT) ? unit.targeting().getDashWindupMs() : 0;
+        }
+
+        /**
+         * A pushback that lands during a dash wind-up resumes the character (moving when it may
+         * hold a route, else standing), so a unit still showing its last attack walks while it is
+         * pushed, and then ends its dash chain. The wind-up itself is left running: the dash starts
+         * when it runs out, as it would have without the pushback.
+         */
+        @Override
+        public void resumeDashWindup() {
+          resume();
+          if (isActive(TARGETING_SLOT)) {
+            dashReset();
+          }
         }
       };
 
