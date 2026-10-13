@@ -4,10 +4,10 @@
   "to_the_end": 85.8,
   "ticks_agreed": 93.3,
   "outcomes": {
-    "diagnostic_match": 8584,
+    "diagnostic_match": 8587,
     "invalid": 6,
     "mismatch": 1349,
-    "unsupported": 61
+    "unsupported": 58
   },
   "first_failures": {
     "mismatch $.entities[].x": 618,
