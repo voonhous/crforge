@@ -29,6 +29,9 @@ import org.crforge.core.pathfinding.GridEntityState;
  *       GridEntity#besideAnotherBuilding()}).
  * </ul>
  *
+ * <p>Asked with the state clauses left out ({@link #collidesInAnyState}), the answer keeps the
+ * flag, the attachment and the building clauses only.
+ *
  * <p>The avoidance answer is 0 in either following-removed state and under the no-check-avoidance
  * flag, and the collision answer otherwise.
  *
@@ -55,7 +58,12 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " unnamed, is supplied clear, as for every unit the standard game makes. A building"
             + " of the characters table beside another building taking no part, pushing nobody,"
             + " is held by the recorded battles of a Skeleton Balloon's container dropped beside"
-            + " an evolved Cannon or Goblin Cage, not yet in the reference set.")
+            + " an evolved Cannon or Goblin Cage, not yet in the reference set. The answer with"
+            + " the state clauses left out, which a travelling body asks of a character, sparing"
+            + " the Little Prince's guard under its no-check-collisions tag while it deploys and"
+            + " charges, is held by recorded battles of Logs, axes, boulders and arrows over the"
+            + " guard, not yet in the reference set; its attachment and building clauses by no"
+            + " recording.")
 public final class ContactRule {
 
   /** The states in which an entity takes no part in collision: dashing, jumping, hooked away. */
@@ -93,6 +101,20 @@ public final class ContactRule {
       return 0;
     }
     return 1;
+  }
+
+  /**
+   * The contact answer asked with the state clauses left out, as a travelling body's hit asks it of
+   * a character before anything else: 0 under the no-check-collisions flag, while attached to a
+   * parent, and for a building of the characters table beside another building; 1 otherwise, in any
+   * state.
+   */
+  public static int collidesInAnyState(GridEntity entity) {
+    if ((entity.getFlags() & entity.getFlagBits().noCheckCollisions()) != 0
+        || entity.isAttached()) {
+      return 0;
+    }
+    return entity.besideAnotherBuilding() ? 0 : 1;
   }
 
   /** 1 when the entity is a neighbour the avoidance handler steers around. */
