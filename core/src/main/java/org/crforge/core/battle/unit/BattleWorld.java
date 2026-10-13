@@ -5259,9 +5259,14 @@ public class BattleWorld implements HolderPasses {
    * With no spawn radius - the Phoenix - the projectile is aimed at its own start. Each has its id
    * at once, joins the live list at the tick's closing cleanup and runs its registration pass.
    *
+   * <p>A clone launches them as any unit: the game marks each a clone's projectile, which only what
+   * the projectile spawns reads, so a row that only deals its damage (see {@link
+   * ProjectileData#dealsOnlyDamage()}), as the Goblin Demolisher's, lands as the original's would.
+   *
    * <p>Refused rather than guessed: a least radius, which draws each radius from the battle's
-   * random source; a row with a spawner limit, whose count is what the limit has left; and a clone,
-   * whose projectiles carry its clone answer to what their impacts make.
+   * random source; a row with a spawner limit, whose count is what the limit has left; and a
+   * clone's row that spawns, runs an action, applies a buff or hops on, as the Phoenix's, whose egg
+   * would be a clone.
    */
   private void deathProjectiles(WorldEntity dying, UnitData data) {
     ProjectileData row = data.deathSpawnProjectile();
@@ -5273,8 +5278,10 @@ public class BattleWorld implements HolderPasses {
       refused = "draws each one's radius";
     } else if (data.spawnLimit() > 0) {
       refused = "counts them by what its spawner's limit has left";
-    } else if (dying instanceof CharacterEntity character && character.isClone()) {
-      refused = "is a clone, whose projectiles carry it";
+    } else if (dying instanceof CharacterEntity character
+        && character.isClone()
+        && !row.dealsOnlyDamage()) {
+      refused = "is a clone, whose projectiles carry it to what they spawn";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(

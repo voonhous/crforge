@@ -24,6 +24,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
@@ -101,6 +102,8 @@ class BattleCloneTest {
     final List<String> gate = new ArrayList<>();
     final List<String> hooks = new ArrayList<>();
     final List<String> chargeResets = new ArrayList<>();
+    final List<String> deathProjectiles = new ArrayList<>();
+    final GameTables tables;
     AreaEffectEntity area;
     int tick;
 
@@ -109,6 +112,7 @@ class BattleCloneTest {
     }
 
     Scene(GameTables tables) {
+      this.tables = tables;
       match = new Standard1v1Battle(tables, LEVEL, false);
       match
           .getWorld()
@@ -167,6 +171,12 @@ class BattleCloneTest {
                 }
 
                 @Override
+                public void deathProjectileLaunched(
+                    int t, WorldEntity dying, ProjectileEntity projectile) {
+                  deathProjectiles.add(dying.name() + " " + projectile.getData().name());
+                }
+
+                @Override
                 public void buffChargeReset(
                     int t, CharacterEntity unit, BuffInstance instance, int before, int after) {
                   chargeResets.add(unit.name() + " " + instance.getBuff().name());
@@ -194,6 +204,14 @@ class BattleCloneTest {
 
     CharacterEntity still(int at, int side, String row, int level, int x, int y, String name) {
       CharacterEntity unit = match.deploy(at, GameData.unit(row), level, side, x, y, name);
+      unit.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+      return unit;
+    }
+
+    /** As {@link #still(int, int, String, int, int, String)}, of the scene's own tables' row. */
+    CharacterEntity stillOfTables(int at, int side, String row, int x, int y, String name) {
+      CharacterEntity unit =
+          match.deploy(at, new BattleRecords(tables).unit(row), LEVEL, side, x, y, name);
       unit.setActive(CharacterEntity.MOVEMENT_SLOT, false);
       return unit;
     }
@@ -507,18 +525,116 @@ class BattleCloneTest {
 
   @Test
   @DisplayName(
-      "a unit whose hit destroys it and launches a projectile, and a building with hit points a"
-          + " clone spawns, are refused as clones")
+      "a clone whose hit destroys it launches its projectile as the original does: the target"
+          + " takes the same damage from each")
+  void aSpiritsCloneLaunchesItsProjectile() {
+    // The target, which cannot reach the spirits, takes the original's hit alone without a Clone.
+    int alone = spiritHits(false);
+    assertThat(alone).isPositive();
+    assertThat(spiritHits(true)).isEqualTo(2 * alone);
+  }
+
+  /**
+   * Places a Fire Spirit of side 0 and, once the Clone (if cast) has landed, an enemy Knight held
+   * still at the spirit's range, and steps until every spirit has hit and left.
+   *
+   * @return the hit points the Knight lost
+   */
+  private static int spiritHits(boolean cloned) {
+    Scene scene = new Scene();
+    UnitData spirits = GameData.unit("FireSpirits");
+    assertThat(spirits.kamikaze()).isTrue();
+    assertThat(spirits.projectile().dealsOnlyDamage()).isTrue();
+    scene.still(0, 0, "FireSpirits", X, Y, "spirit");
+    if (cloned) {
+      scene.clone(CAST_TICK);
+      CharacterEntity clone = scene.named("spirit_clone0");
+      assertThat(clone.isClone()).isTrue();
+      assertThat(clone.getHitPoints().getMaximum()).isEqualTo(1);
+    } else {
+      scene.step(CAST_TICK + 1);
+    }
+    CharacterEntity knight = scene.still(scene.tick, 1, "Knight", X, Y + spirits.range(), "knight");
+    int before = knight.getHitPoints().getMaximum();
+    for (int i = 0; i < 400 && (present(scene, "spirit") || present(scene, "spirit_clone0")); i++) {
+      scene.step(1);
+    }
+    assertThat(present(scene, "spirit")).isFalse();
+    assertThat(present(scene, "spirit_clone0")).isFalse();
+    scene.step(40);
+    assertThat(scene.refused).isEmpty();
+    return before - knight.getHitPoints().getHitPoints();
+  }
+
+  @Test
+  @DisplayName(
+      "a clone launches its death projectile as any unit when the projectile only deals damage;"
+          + " one that hops on is refused")
+  void aClonesDeathProjectile(@TempDir Path folder) throws IOException {
+    String projectile = GameData.unit("FireSpirits").projectile().name();
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("DeathSpawnProjectile", projectile)
+                .put("DeathSpawnCount", 1));
+    Scene scene = new Scene(GameTables.load(folder));
+    scene.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("knight_clone0");
+    assertThat(clone.isClone()).isTrue();
+    scene.step(15);
+    scene.match.getWorld().kill(clone, null);
+    scene.step(2);
+    assertThat(scene.deathProjectiles).containsExactly("knight_clone0 " + projectile);
+
+    // The same projectile written to hop on to a second target.
+    Path hops = folder.resolve("hops");
+    withClone(hops, rows -> {});
+    GameData.alterLoaded(
+        hops,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("DeathSpawnProjectile", projectile)
+                .put("DeathSpawnCount", 1));
+    GameData.alterLoaded(
+        hops, "projectiles", rows -> GameData.columns(rows, projectile).put("ChainedHitCount", 2));
+    Scene hopping = new Scene(GameTables.load(hops));
+    hopping.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    hopping.clone(CAST_TICK);
+    CharacterEntity hoppingClone = hopping.named("knight_clone0");
+    hopping.step(15);
+    hopping.match.getWorld().kill(hoppingClone, null);
+    assertThatThrownBy(() -> hopping.step(2))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("is a clone, whose projectiles carry it to what they spawn");
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose hit destroys it and launches a projectile that hops on, and a building with"
+          + " hit points a clone spawns, are refused as clones")
   void theCloneRefusals(@TempDir Path folder) throws IOException {
-    Scene spirits = new Scene();
-    spirits.still(0, 0, "FireSpirits", X, Y, "spirit");
+    // A Fire Spirit whose projectile is written to hop on to a second target.
+    Path hops = folder.resolve("hops");
+    withClone(hops, rows -> {});
+    String projectile = GameData.unit("FireSpirits").projectile().name();
+    GameData.alterLoaded(
+        hops, "projectiles", rows -> GameData.columns(rows, projectile).put("ChainedHitCount", 2));
+    Scene spirits = new Scene(GameTables.load(hops));
+    spirits.stillOfTables(0, 0, "FireSpirits", X, Y, "spirit");
     assertThatThrownBy(
             () -> {
               spirits.clone(CAST_TICK);
               spirits.step(3);
             })
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a unit whose hit destroys it and launches a projectile");
+        .hasMessageContaining(
+            "a unit whose hit destroys it and launches a projectile that spawns, runs an action,"
+                + " applies a buff or hops on");
 
     // The Skeleton Balloon's barrel spawning a Cannon as it dies: a clone barrel's Cannon would be
     // a clone with hit points.
