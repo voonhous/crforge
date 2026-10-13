@@ -220,7 +220,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * The attack keys a reflecting entity has dealt its damage back for, never cleared: each the
-   * attacker's attack count and its id.
+   * attack count and id of the one it struck back, the attacker or the parent it rides on.
    */
   private final List<Long> reflectedKeys = new ArrayList<>();
 
@@ -516,12 +516,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Lists the attack a hit on this reflecting entity came from, by its source's attack count and
-   * id: true the first time, when the reflect deals its damage, and false for every later hit of
-   * the same attack.
+   * Lists the attack a hit on this reflecting entity came from, by the attack count and id of the
+   * one struck back - the source, or the parent it rides on, so every shot of a parent's riders is
+   * the parent's current attack: true the first time, when the reflect deals its damage, and false
+   * for every later hit of the same attack.
    */
-  boolean reflectOnce(WorldEntity source) {
-    long key = ((long) source.getAttackCount() << 32) | (source.getId() & 0xffffffffL);
+  boolean reflectOnce(WorldEntity struck) {
+    long key = ((long) struck.getAttackCount() << 32) | (struck.getId() & 0xffffffffL);
     if (reflectedKeys.contains(key)) {
       return false;
     }

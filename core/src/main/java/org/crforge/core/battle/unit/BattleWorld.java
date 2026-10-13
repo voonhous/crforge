@@ -1090,11 +1090,11 @@ public class BattleWorld implements HolderPasses {
    * launched are never struck back. A source riding on a parent is replaced by the parent. The one
    * struck must not be untouchable, must be of the other team, and must stand strictly inside the
    * reflect radius plus both collision radii. It takes the reflect's buff, at the unit's level and
-   * for its side, on every reflected hit; and once per attack - the source's attack count and id,
-   * listed on the unit and never cleared - the reflected damage at the unit's level, its crown
-   * tower column against a crown tower, through the damage entry with the unit as the attacker, the
-   * battle's holds and the hidden test lifted. A death it causes runs at once, before the unit's
-   * own.
+   * for its side, on every reflected hit; and once per attack - the struck one's attack count and
+   * id, so the shots of riders share their parent's key until the parent attacks itself, listed on
+   * the unit and never cleared - the reflected damage at the unit's level, its crown tower column
+   * against a crown tower, through the damage entry with the unit as the attacker, the battle's
+   * holds and the hidden test lifted. A death it causes runs at once, before the unit's own.
    */
   private void reflect(
       WorldEntity target,
@@ -1161,7 +1161,9 @@ public class BattleWorld implements HolderPasses {
             level,
             target,
             target.side());
-    if (struck.getHitPoints() == null || !target.reflectOnce(source)) {
+    // The once-per-attack key is the struck one's, after the swap to the parent: a rider's shots
+    // all count as its parent's current attack.
+    if (struck.getHitPoints() == null || !target.reflectOnce(struck)) {
       reflected(
           new Reflection(
               target,
