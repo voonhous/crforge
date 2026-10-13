@@ -137,6 +137,15 @@ public final class SpawnProjectile extends RowAction {
     this.startOffset = startOffset;
   }
 
+  /**
+   * A row that takes its owner as the source reads nothing of its cause, as for a character spawn:
+   * the launch is made from the owner's own reference.
+   */
+  @Override
+  public boolean readsCause() {
+    return !parentGoAsSource;
+  }
+
   @Override
   public ActionInstance start(ActionHolder holder) {
     return start(holder, null);

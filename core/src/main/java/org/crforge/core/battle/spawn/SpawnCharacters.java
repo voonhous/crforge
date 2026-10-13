@@ -101,4 +101,14 @@ public final class SpawnCharacters extends RowAction {
     }
     return null;
   }
+
+  /**
+   * A row that takes its owner as the source reads nothing of its cause: the perform makes the
+   * source from the owner and every read of the block - the point, the level, the side - is the
+   * owner's. A row without ParentGOAsSource reads the cause's side and level for the block.
+   */
+  @Override
+  public boolean readsCause() {
+    return !spawn.parentGoAsSource();
+  }
 }
