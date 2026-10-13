@@ -103,6 +103,7 @@ import org.crforge.core.pathfinding.index.ShapeTests;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.math.FixedMath;
+import org.crforge.core.pathfinding.move.ContactRule;
 import org.crforge.core.pathfinding.move.MovementGlobals;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
@@ -4961,22 +4962,25 @@ public class BattleWorld implements HolderPasses {
    * push itself. Held by the Log's and the Bowler's over a jumping Mega Knight: a dash under a row
    * with a jump height spared, and the Log's hit once the Mega Knight has landed under it. In
    * order: none on its own side when it hits enemies only, none on an entity it has hit already; a
-   * character in its dash under a row with a dash immunity is spared without being listed, as the
-   * recorded Hunter pellets over a Golden Knight in its chain show; any other untouchable character
-   * - one protected by the immunity left after its dash among them - is listed as hit and spared; a
-   * character on a layer the projectile does not reach, in the air, or, for a projectile that does
-   * not reach the air, in a jump or in a dash under a row with a jump height, is spared without
-   * being listed. An entity with hit points takes the projectile's damage at its level, or its
-   * crown-tower share, never a deflected share - a deflected body hits a crown tower for the whole
-   * of it, as the Bowler's ball rolled back into its own princess tower does - as the listening
-   * runs of a projectile with an action holder change it - the evolved Executioner's controller in
-   * place of it - from the direction of the pass's centre, and is listed as hit, a carrier whose
-   * row attaches its riders with the ids of its riders (held by the Bowler's over a Goblin Giant,
-   * whose riders' Spear Goblins it then passes over); then a character whose movement is still on
-   * is pushed the row's pushback away from the projectile, the row's push-all lifting the gates. A
-   * projectile that stops at collisions is finished by a hit that landed on an entity with hit
-   * points left, and the pass ends; held by the Hunter's pellets in the reference battle
-   * card_Hunter.
+   * character that takes no part in contact in any state - under the no-check-collisions tag, as
+   * the Little Prince's guard is while it deploys and charges, attached to a parent, or a building
+   * of the characters table beside another building - is spared without being listed, as the
+   * recorded Logs and bodies over a deploying guard show; a character in its dash under a row with
+   * a dash immunity is spared without being listed, as the recorded Hunter pellets over a Golden
+   * Knight in its chain show; any other untouchable character - one protected by the immunity left
+   * after its dash among them - is listed as hit and spared; a character on a layer the projectile
+   * does not reach, in the air, or, for a projectile that does not reach the air, in a jump or in a
+   * dash under a row with a jump height, is spared without being listed. An entity with hit points
+   * takes the projectile's damage at its level, or its crown-tower share, never a deflected share -
+   * a deflected body hits a crown tower for the whole of it, as the Bowler's ball rolled back into
+   * its own princess tower does - as the listening runs of a projectile with an action holder
+   * change it - the evolved Executioner's controller in place of it - from the direction of the
+   * pass's centre, and is listed as hit, a carrier whose row attaches its riders with the ids of
+   * its riders (held by the Bowler's over a Goblin Giant, whose riders' Spear Goblins it then
+   * passes over); then a character whose movement is still on is pushed the row's pushback away
+   * from the projectile, the row's push-all lifting the gates. A projectile that stops at
+   * collisions is finished by a hit that landed on an entity with hit points left, and the pass
+   * ends; held by the Hunter's pellets in the reference battle card_Hunter.
    *
    * @return true when the hit finished the projectile
    */
@@ -4995,6 +4999,12 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     GridEntity view = entity.getView();
+    // A character first answers whether it takes part in contact, the state clauses left out: one
+    // under the no-check-collisions tag - the Little Prince's guard from its run's start to its
+    // finish, its deploy included - or attached to a parent is spared without being listed.
+    if (entity instanceof CharacterEntity && ContactRule.collidesInAnyState(view) == 0) {
+      return false;
+    }
     // A character in its dash under a row with a dash immunity is spared without being listed, so
     // the body can still hit it once its dash and the immunity left after it are over.
     if (entity instanceof CharacterEntity
