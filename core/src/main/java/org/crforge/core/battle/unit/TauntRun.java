@@ -53,7 +53,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " Ice Wizards. The arming's air rule, an object in the air judged by the owner's"
             + " air attack unless FORCE_IS_AIR holds it there, is settled line for line; recorded"
             + " battles of the Goblin Demolisher taunted onto itself as an uppercut lifts it play"
-            + " on with it, though they do not tell it from the ground rule.")
+            + " on with it, though they do not tell it from the ground rule. The step that lets"
+            + " an underground owner go is settled line for line and held by recorded battles of"
+            + " a taunted Mighty Miner switching lanes; a unit routing across visible is refused.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -154,34 +156,39 @@ final class TauntRun extends ActionInstance {
   }
 
   /**
-   * One step. An owner in its spawn pathfinding state is let go at once. Otherwise the duration
-   * loses 50 ms; once it has run out, the falloff loses as much when the row ends the run as the
-   * duration expires, and with that gone too the re-selection wait is cleared and, unless the owner
-   * is attacking, its reference is given up, keeping its wind-up; then the run finishes. While the
-   * duration lasts: a forced object no longer alive lets the owner go; a captured one stops being
-   * its reference; and a building owner that reaches the object has its reference forced again when
-   * the row allows building retargeting and its falloff reloaded when the row tests the reach by
-   * distance, while one that does not reach it loses falloff, let go once that is spent, and gives
-   * up the reference under building retargeting. A unit's step is {@link #stepUnit}. A reference on
-   * the forced object locks the selector again.
+   * One step. An owner underground is let go at once: in its spawn pathfinding state, or in its
+   * in-game pathfinding state (routing across to where its ability sent it, as a Mighty Miner
+   * switching lanes) while its row does not keep it visible there. A unit routing across visible is
+   * refused: its step is settled by the same reading, the unit's own steps below, but no recording
+   * holds it. Otherwise the duration loses 50 ms; once it has run out, the falloff loses as much
+   * when the row ends the run as the duration expires, and with that gone too the re-selection wait
+   * is cleared and, unless the owner is attacking, its reference is given up, keeping its wind-up;
+   * then the run finishes. While the duration lasts: a forced object no longer alive lets the owner
+   * go; a captured one stops being its reference; and a building owner that reaches the object has
+   * its reference forced again when the row allows building retargeting and its falloff reloaded
+   * when the row tests the reach by distance, while one that does not reach it loses falloff, let
+   * go once that is spent, and gives up the reference under building retargeting. A unit's step is
+   * {@link #stepUnit}. A reference on the forced object locks the selector again.
    */
   @Override
   protected void update(ActionHolder holder) {
     int state = owner.getView().getState();
     boolean unit = !owner.getTargetView().building();
-    if (unit
-        && (state == GridEntityState.SPAWN_PATHFIND || state == GridEntityState.INGAME_PATHFIND)) {
+    List<String> calls = new ArrayList<>();
+    // The owner's own underground test lets it go before anything else: a unit tunnelling to its
+    // placement, or routing across to where its ability sent it (a Mighty Miner switching lanes)
+    // unless its row keeps it visible there.
+    if (owner.underground() || state == GridEntityState.SPAWN_PATHFIND) {
+      drop(calls);
+      report(calls);
+      return;
+    }
+    if (unit && state == GridEntityState.INGAME_PATHFIND) {
       throw new UnsupportedOperationException(
           taunt.name()
               + " steps on "
               + owner.name()
-              + " while it pathfinds, which is not modelled");
-    }
-    List<String> calls = new ArrayList<>();
-    if (state == GridEntityState.SPAWN_PATHFIND) {
-      drop(calls);
-      report(calls);
-      return;
+              + " while it routes across visible, which is not modelled");
     }
     durationMs -= STEP_MS;
     if (durationMs <= 0) {

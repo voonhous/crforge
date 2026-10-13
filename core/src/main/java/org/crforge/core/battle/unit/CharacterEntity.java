@@ -1466,7 +1466,9 @@ public class CharacterEntity extends WorldEntity {
    *
    * <p>Refused rather than guessed: a unit or one of its riders in a pathfinding state, a rider
    * that already lists a run of the same row, and an object to force onto that is not in the
-   * battle.
+   * battle. The arming reads no pathfinding state, and a run's step lets an underground unit go at
+   * once (see {@link TauntRun#update}), but no recording holds a taunt that starts on a unit in
+   * either pathfinding state; the hero Knight's taunting area passes underground units by.
    */
   @Override
   public ActionInstance taunt(Taunt action, ActionOwner instigator, ActionOwner forced, int phase) {
