@@ -33,10 +33,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * evolution slot's card resets its count after an evolved or hero play, and otherwise adds one
  * while the count is below its evolved row's DarkElixirCost. A play's item is evolved once the
  * count has reached that cost, so a Knight whose evolved row costs 2 is played plain twice, evolved
- * on its third play and plain again on its fourth. A hero slot's card is played in its hero form
- * whenever it is not evolved. The play spends the cost of the row it is cast as and starts that
- * row's production stop; the last card kept is the deck card, and the field it was played with
- * decides what a Mirror repeats.
+ * on its third play and plain again on its fourth. The count is the one the player's client builds
+ * its items from, and its client counts every play it gave: a play the match's gates refuse at its
+ * run moves the count as a placed play does. A hero slot's card is played in its hero form whenever
+ * it is not evolved. The play spends the cost of the row it is cast as and starts that row's
+ * production stop; the last card kept is the deck card, and the field it was played with decides
+ * what a Mirror repeats.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -48,7 +50,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " cg_elixir_collector_played and card_ElixirGolem. The last card and its copy are"
             + " held by golden-gaps-v1/mirror_after_troop and mirror_after_spell. The slot flags,"
             + " the counts and each play's item are held by knight_evolved_third_play and the"
-            + " hero reference battles (hero_giant, deck_hero_and_champion); a Mirror of an"
+            + " hero reference battles (hero_giant, deck_hero_and_champion), and the count a"
+            + " play refused at its run moves by captured Ladder battles; a Mirror of an"
             + " evolved play is not held by a recorded battle. Not modelled: a boost's scaled"
             + " rate and a paused regeneration, which no Ladder battle has, and the views'"
             + " counters.")
@@ -109,6 +112,12 @@ public final class MatchSide {
   /** The king's count per deck index, which an evolution slot's plays move. */
   private final int[] evolutionCounts;
 
+  /**
+   * The deck indices of evolution slot's cards with a play refused at its placement, after which
+   * the count the player's client builds its next item from is not established.
+   */
+  private final boolean[] countsUnknown;
+
   MatchSide(List<MatchCard> deck, int startingElixir) {
     this(deck, startingElixir, new int[deck.size()]);
   }
@@ -125,6 +134,7 @@ public final class MatchSide {
     this.elixir = startingElixir * SCALE;
     this.slotFlags = slotFlags.clone();
     this.evolutionCounts = new int[deck.size()];
+    this.countsUnknown = new boolean[deck.size()];
   }
 
   /**
@@ -144,6 +154,17 @@ public final class MatchSide {
    */
   public int evolutionCount(int index) {
     return evolutionCounts[index];
+  }
+
+  /**
+   * Whether the count for a deck index is not established: a play of the evolution slot's card was
+   * refused at its placement, which no recorded battle holds, and the player's client may or may
+   * not have counted it.
+   *
+   * @param index the card's deck index
+   */
+  public boolean evolutionCountUnknown(int index) {
+    return countsUnknown[index];
   }
 
   /**
@@ -281,17 +302,51 @@ public final class MatchSide {
   void play(EvolutionItem item) {
     int index = item.index();
     play(index, item.cost(), item.spell().elixirProductionStopTimeMs());
-    if ((slotFlags[index] & EVOLUTION_SLOT) != 0) {
-      if (item.field() != 0) {
-        evolutionCounts[index] = 0;
-      } else if (evolutionCounts[index]
-          < deck.get(index).formRow(MatchCard.EVO_FORM).darkElixirCost()) {
-        evolutionCounts[index]++;
-      }
-    }
+    count(item);
     lastPlayed = deck.get(index);
     lastPlayedField = item.field();
     lastPlayedOption = -1;
+  }
+
+  /**
+   * A play of a deck card the match's gates refused at its run: nothing is spent or cycled, but the
+   * count of an evolution slot's card moves as a placed play's does. The count is the player's
+   * client's, which builds the items from it, and the client counts every play it gave: it gave
+   * this one from a hand and elixir of its own that let the play through.
+   *
+   * @param item the item the play carried
+   */
+  void refused(EvolutionItem item) {
+    count(item);
+  }
+
+  /**
+   * A play of a deck card that passed the match's gates and was refused at its placement: the count
+   * of an evolution slot's card is no longer established (see {@link #evolutionCountUnknown}).
+   *
+   * @param item the item the play carried
+   */
+  void placementRefused(EvolutionItem item) {
+    if ((slotFlags[item.index()] & EVOLUTION_SLOT) != 0) {
+      countsUnknown[item.index()] = true;
+    }
+  }
+
+  /**
+   * Moves the count of an evolution slot's card for a play with the given item: to 0 after an
+   * evolved or hero play, else one more while it is below the evolved row's DarkElixirCost.
+   */
+  private void count(EvolutionItem item) {
+    int index = item.index();
+    if ((slotFlags[index] & EVOLUTION_SLOT) == 0) {
+      return;
+    }
+    if (item.field() != 0) {
+      evolutionCounts[index] = 0;
+    } else if (evolutionCounts[index]
+        < deck.get(index).formRow(MatchCard.EVO_FORM).darkElixirCost()) {
+      evolutionCounts[index]++;
+    }
   }
 
   /**

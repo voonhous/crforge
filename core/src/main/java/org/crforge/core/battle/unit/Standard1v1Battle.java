@@ -80,7 +80,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " card outside a match, run"
             + " before tick 22, or given while another play of its side is pending, whose cost"
             + " the pick would set aside; a play of an evolution slot's card given while another"
-            + " play of it is due, whose item the client builds from the count before that play."
+            + " play of it is due, whose item the client builds from the count before that play,"
+            + " and one after a play of it refused at its placement, which the client may or may"
+            + " not have counted. Held by captured Ladder battles: a play of an evolution slot's"
+            + " card the match's gates refuse at its run moves the count its client builds the"
+            + " next item from, as a placed play does."
             + " Supplied: the step a variant's option is picked after, the last the client can"
             + " have seen before it gives the play; the level of the option's units, the level"
             + " the play is given, as for every card.")
@@ -1042,10 +1046,14 @@ public class Standard1v1Battle {
       int deckIndex = match.deckIndex(side, card.name());
       if ((match.side(side).slotFlags(deckIndex) & MatchSide.EVOLUTION_SLOT) != 0) {
         checkNoneDue(target.getTick(), side, card.name(), name);
+        checkCountKnown(side, deckIndex, card.name(), name);
       }
       item = match.item(side, deckIndex);
       int code = match.gate(side, deckIndex, item.cost());
       if (code != 0) {
+        // The player's client counts the play it gave all the same: an evolution slot's count
+        // moves as for a placed play.
+        match.refused(side, item);
         plays.add(
             new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, null, item));
         return;
@@ -1059,6 +1067,22 @@ public class Standard1v1Battle {
       }
     }
     place(target, cast, level, side, x, y, name, pay, null, null, item);
+  }
+
+  /**
+   * Refuses a play of an evolution slot's card after a play of it that passed the gates was refused
+   * at its placement, which no recorded battle holds: whether the player's client counted that play
+   * in the count it builds this item from is not established.
+   */
+  private void checkCountKnown(int side, int deckIndex, String card, String name) {
+    if (match.side(side).evolutionCountUnknown(deckIndex)) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a play of "
+              + card
+              + ", an evolution slot's card, after a play of it refused at its placement, whose"
+              + " count the client may or may not have moved, is not modelled");
+    }
   }
 
   /**
@@ -1118,6 +1142,10 @@ public class Standard1v1Battle {
     // A play placed or cast pays for itself and cycles its card before anything is made.
     if (pay != null && result.placed()) {
       pay.run();
+    }
+    // A play of a deck card refused at its placement leaves an evolution slot's count unknown.
+    if (evolution != null && !result.placed()) {
+      match.placementRefused(side, evolution);
     }
     // The cast comes before the units are made: a troop card's projectile is queued ahead of them.
     if (card.casts() && result.placed()) {
