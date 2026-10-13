@@ -99,6 +99,8 @@ class BattleCloneTest {
     final List<String> moves = new ArrayList<>();
     final List<String> copied = new ArrayList<>();
     final List<String> gate = new ArrayList<>();
+    final List<String> hooks = new ArrayList<>();
+    final List<String> chargeResets = new ArrayList<>();
     AreaEffectEntity area;
     int tick;
 
@@ -150,6 +152,24 @@ class BattleCloneTest {
                     int t, WorldEntity original, WorldEntity clone, BuffInstance copy) {
                   copied.add(
                       clone.name() + " " + copy.getBuff().name() + " " + copy.getRemaining());
+                }
+
+                @Override
+                public void buffHookScheduled(
+                    int t, WorldEntity carrier, BuffInstance buff, String action, boolean start) {
+                  hooks.add(
+                      "%s %s %s %s"
+                          .formatted(
+                              carrier.name(),
+                              buff.getBuff().name(),
+                              action,
+                              start ? "start" : "other"));
+                }
+
+                @Override
+                public void buffChargeReset(
+                    int t, CharacterEntity unit, BuffInstance instance, int before, int after) {
+                  chargeResets.add(unit.name() + " " + instance.getBuff().name());
                 }
 
                 @Override
@@ -728,6 +748,79 @@ class BattleCloneTest {
         .extracting(instance -> instance.getBuff().name())
         .containsExactly("Clone");
     assertThat(clone.getBuffs().invisibleCount()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "the copies of a unit's buffs run no start action and reset no charge; then each copy of a"
+          + " row that is not cloned comes off the clone, its remove action run, the walk going on"
+          + " at the next index; a copy that runs out on the clone runs its remove action")
+  void theCopiesRunNoStartActionAndANotClonedCopyComesOff(@TempDir Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    // An effect row as every hook's action: it changes nothing a step reads.
+    String effect = "ChefTower_levelup_effect";
+    GameData.alterLoaded(
+        folder,
+        "character_buffs",
+        rows -> {
+          GameData.columns(rows, "Rage")
+              .put("OnStartAction", effect)
+              .put("OnStackedAction", effect)
+              .put("OnRemoveAction", effect);
+          GameData.columns(rows, "Invisibility")
+              .put("NotCloned", true)
+              .put("OnStartAction", effect)
+              .put("OnRemoveAction", effect);
+          GameData.columns(rows, "Freeze").put("NotCloned", true).put("OverrideChargeRange", 250);
+        });
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    scene.step(CAST_TICK - 1);
+    BattleWorld world = scene.match.getWorld();
+    BuffComponent buffs = knight.getBuffs();
+    buffs.apply(world.buffData("Rage"), 2000, knight.getPackedLevel(), null, 0);
+    buffs.apply(world.buffData("Invisibility"), 60000, knight.getPackedLevel(), null, 0);
+    buffs.apply(world.buffData("Freeze"), 60000, knight.getPackedLevel(), null, 0);
+    assertThat(scene.hooks)
+        .containsExactly(
+            "knight Rage %s start".formatted(effect),
+            "knight Invisibility %s start".formatted(effect));
+    assertThat(scene.chargeResets).containsExactly("knight Freeze");
+    scene.clone(CAST_TICK);
+
+    // The copies are listed with no start action and no charge reset; the walk takes the
+    // Invisibility copy off (its remove action scheduled on the clone), and the Freeze copy,
+    // moved down onto the index just walked, stays.
+    CharacterEntity clone = scene.named("knight_clone0");
+    assertThat(clone.getBuffs().items())
+        .extracting(instance -> instance.getBuff().name())
+        .containsExactly("Rage", "Freeze", "Clone");
+    assertThat(clone.getBuffs().invisibleCount()).isZero();
+    assertThat(scene.hooks)
+        .containsExactly(
+            "knight Rage %s start".formatted(effect),
+            "knight Invisibility %s start".formatted(effect),
+            "knight_clone0 Invisibility %s other".formatted(effect));
+    assertThat(scene.chargeResets).containsExactly("knight Freeze");
+    // The unit keeps its own.
+    assertThat(buffs.items())
+        .extracting(instance -> instance.getBuff().name())
+        .containsExactly("Rage", "Invisibility", "Freeze", "Clone");
+
+    // The Rage copy runs out on the clone with the unit's own, in the same visit, each running its
+    // remove action.
+    // Its 2000 ms are 40 visits from the apply, two of them in the Clone's.
+    scene.hooks.clear();
+    scene.step(37);
+    assertThat(scene.hooks).isEmpty();
+    scene.step(1);
+    assertThat(scene.hooks)
+        .containsExactly(
+            "knight Rage %s other".formatted(effect),
+            "knight_clone0 Rage %s other".formatted(effect));
   }
 
   @Test

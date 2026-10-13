@@ -294,19 +294,6 @@ class BattleBuffAfterHitsTest {
     assertThat(scene.hooks).isEmpty();
   }
 
-  @Test
-  @DisplayName("a clone of a carrier of a buff with a start or remove action is refused")
-  void aCloneOfAHookCarrierIsRefused() {
-    Scene scene = new Scene();
-    CharacterEntity knight = scene.still(0, GameData.unit("Knight"), 3500, 10000, "k");
-    CharacterEntity other = scene.still(0, GameData.unit("Knight"), 5500, 10000, "o");
-    knight.getBuffs().apply(GameData.records().buff("BatsEV1_Heal"), 1000, LEVEL, knight, 0);
-
-    assertThatThrownBy(() -> other.getBuffs().copyFrom(knight.getBuffs()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("runs an action as it is listed or removed");
-  }
-
   /**
    * An evolved Royal Ghost and a Knight it reaches; the evolved Royal Ghost itself is held by the
    * reference battles evo_ghost_vs_musketeer and cg_ghost_evo_cloned.
