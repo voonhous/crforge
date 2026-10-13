@@ -25,5 +25,6 @@
     "unsupported: proj_# (GoblinBarrelSpell) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1,
     "unsupported: proj_# hooks cmd#, which another holds, not modelled": 1
   },
-  "set": "bb3808097b85b700"
+  "set": "bb3808097b85b700",
+  "commit": "b4bac956a9cc8c8c27d739d278d64e12c4253af7"
 }
