@@ -1,23 +1,23 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 89.5,
-  "ticks_agreed": 95.6,
+  "to_the_end": 90.4,
+  "ticks_agreed": 96.0,
   "outcomes": {
-    "diagnostic_match": 8958,
-    "invalid": 5,
-    "mismatch": 1013,
+    "diagnostic_match": 9040,
+    "invalid": 4,
+    "mismatch": 932,
     "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].x": 394,
-    "mismatch $.entities[].hp": 222,
-    "mismatch $.entities[].state": 198,
-    "mismatch $.entities.length": 136,
+    "mismatch $.entities[].x": 354,
+    "mismatch $.entities[].hp": 224,
+    "mismatch $.entities[].state": 155,
+    "mismatch $.entities.length": 137,
     "mismatch $.entities[].id": 33,
-    "mismatch $.entities[].y": 21,
+    "mismatch $.entities[].y": 20,
     "mismatch $.entities[].row": 6,
-    "invalid": 5,
+    "invalid": 4,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2,
@@ -27,5 +27,5 @@
     "unsupported: proj_# rolls beside a deflecting area effect, which is not modelled": 2
   },
   "set": "296000195c872c7d",
-  "commit": "3fd03febfcbde7b6da285e04912ed3aab1bc7671"
+  "commit": "a986fdde3b0292195f66b81b8314ab38f7e3fa8c"
 }
