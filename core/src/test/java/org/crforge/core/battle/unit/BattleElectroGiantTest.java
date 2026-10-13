@@ -570,6 +570,40 @@ class BattleElectroGiantTest {
   }
 
   @Test
+  @DisplayName(
+      "the riders' shots are keyed by the Goblin Giant they ride on: until the Giant attacks"
+          + " itself, only the first of them deals the reflected damage, every one hands the buff")
+  void ridersShareTheParentsKey() {
+    Scene scene = new Scene();
+    scene.match.play(0, GameData.card("GoblinGiant"), LEVEL, 1, X, Y + 2500, "goblin");
+
+    // Until a shot of each rider is struck back with the buff. The loop guard is a battle's whole
+    // length, which the scene's walk and first shots never near.
+    int guard = Shipped.battleTicks();
+    while (struckRiders(scene) < 2 && scene.tick < guard) {
+      scene.step(1);
+    }
+    List<Reflection> shots = riderShots(scene);
+    CharacterEntity giant = (CharacterEntity) shots.get(0).struck();
+    // The Giant takes buildings only: it has made no attack of its own, so its key never changed.
+    assertThat(giant.getAttackCount()).isZero();
+    assertThat(shots).allSatisfy(r -> assertThat(r.buff()).isEqualTo(BUFF));
+    assertThat(shots.stream().filter(r -> r.damage() > 0)).hasSize(1);
+  }
+
+  /** The reflects of a rider's shot that handed the buff. */
+  private static List<Reflection> riderShots(Scene scene) {
+    return scene.reflections.stream()
+        .filter(r -> r.attacker() instanceof ProjectileEntity && r.buff() != null)
+        .toList();
+  }
+
+  /** How many riders have had a shot struck back with the buff. */
+  private static long struckRiders(Scene scene) {
+    return riderShots(scene).stream().map(Reflection::source).distinct().count();
+  }
+
+  @Test
   @DisplayName("a shot whose row ignores the reflect is not struck back")
   void aShotIgnoringTheReflect(@TempDir Path folder) throws IOException {
     Scene scene =
