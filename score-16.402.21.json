@@ -1,29 +1,29 @@
 {
   "content_version" : "16.402.21",
   "battles" : 10000,
-  "to_the_end" : 83.7,
-  "ticks_agreed" : 90.8,
+  "to_the_end" : 83.8,
+  "ticks_agreed" : 91.0,
   "outcomes" : {
-    "diagnostic_match" : 8375,
+    "diagnostic_match" : 8388,
     "invalid" : 6,
-    "mismatch" : 1295,
-    "unsupported" : 324
+    "mismatch" : 1296,
+    "unsupported" : 310
   },
   "first_failures" : {
     "mismatch $.entities[].x" : 586,
     "mismatch $.entities[].state" : 291,
-    "mismatch $.entities[].hp" : 227,
+    "mismatch $.entities[].hp" : 228,
     "mismatch $.entities.length" : 129,
     "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled" : 35,
     "mismatch $.entities[].id" : 34,
     "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled" : 22,
     "unsupported: proj_# (RoyalGiantProjectile) flies by a deflecting area effect, whose deflection of it is not modelled" : 22,
     "mismatch $.entities[].y" : 20,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 19,
-    "unsupported: cmd#: a variant play given while an ability command of its side may hold back its cost, is not modelled" : 15,
+    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 20,
     "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled" : 15,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 14,
     "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled" : 13,
-    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 13
+    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 13,
+    "unsupported: proj_# (RoyalGiantProjectile_EV1) flies by a deflecting area effect, whose deflection of it is not modelled" : 12
   }
 }
