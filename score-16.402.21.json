@@ -1,19 +1,19 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 84.8,
-  "ticks_agreed": 92.2,
+  "to_the_end": 84.9,
+  "ticks_agreed": 92.3,
   "outcomes": {
-    "diagnostic_match": 8488,
+    "diagnostic_match": 8496,
     "invalid": 6,
-    "mismatch": 1326,
-    "unsupported": 180
+    "mismatch": 1327,
+    "unsupported": 171
   },
   "first_failures": {
     "mismatch $.entities[].x": 602,
     "mismatch $.entities[].state": 295,
     "mismatch $.entities[].hp": 231,
-    "mismatch $.entities.length": 135,
+    "mismatch $.entities.length": 136,
     "mismatch $.entities[].id": 35,
     "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 22,
     "mismatch $.entities[].y": 20,

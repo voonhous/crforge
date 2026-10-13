@@ -1,12 +1,12 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 91.0,
-  "ticks_agreed": 94.8,
+  "to_the_end": 91.1,
+  "ticks_agreed": 94.9,
   "outcomes": {
-    "diagnostic_match": 1578,
+    "diagnostic_match": 1580,
     "mismatch": 124,
-    "unsupported": 31
+    "unsupported": 29
   },
   "first_failures": {
     "mismatch $.entities[].x": 65,
@@ -23,7 +23,7 @@
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "mismatch $.sides[].elixir": 1,
     "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 1,
-    "unsupported: Vines_Air_To_Ground holds SkeletonKingGraveyard_3000000_3, a clone or a rider, which is not modelled": 1
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1
   },
   "set": "bb3808097b85b700"
 }
