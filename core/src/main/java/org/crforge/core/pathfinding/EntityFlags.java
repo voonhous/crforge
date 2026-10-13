@@ -72,6 +72,7 @@ public final class EntityFlags {
   private final long captured;
   private final long disablePhysical;
   private final long castingAbility;
+  private final long abilityCasted;
   private final long untargetable;
   private final long noPushedByAlly;
   private final long avoidanceAsObstacle;
@@ -124,6 +125,7 @@ public final class EntityFlags {
     captured = bit(tags, "CAPTURED");
     disablePhysical = bit(tags, "DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS");
     castingAbility = bit(tags, "CASTING_ABILITY");
+    abilityCasted = bit(tags, "ABILITY_CASTED");
     untargetable = bit(tags, "UNTARGETABLE");
     noPushedByAlly = bit(tags, "NO_PUSHED_BY_ALLY");
     avoidanceAsObstacle = bit(tags, "AVOIDANCE_AS_OBSTACLE");
@@ -337,6 +339,14 @@ public final class EntityFlags {
   /** The entity is casting an ability. */
   public long castingAbility() {
     return castingAbility;
+  }
+
+  /**
+   * An ability request started the entity's cast at once: raised for one step by the request, not
+   * by a pending ability that enters its cast later. Only the data's expressions read it.
+   */
+  public long abilityCasted() {
+    return abilityCasted;
   }
 
   /** Nothing may take this entity as a target. */

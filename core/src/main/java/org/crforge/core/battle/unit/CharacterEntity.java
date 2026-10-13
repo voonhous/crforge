@@ -3654,11 +3654,13 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Requests the unit's ability, as a friend collector does: with the gate open the unit enters the
-   * casting state now, through its setter; shut, the ability is left pending, which the state
-   * visit's pending branch turns into the cast on the first visit the gate opens. A unit without an
-   * ability does nothing. An ability whose columns the battle does not model, or that keeps a buff
-   * on a unit waiting to cast, is refused, and so is a lane switch for a row that stays visible
-   * while it routes across, which no reference holds.
+   * casting state now, through its setter, and is tagged ABILITY_CASTED for one step (read from the
+   * next tag recompute, so on its own step when the request comes in the command pass); shut, the
+   * ability is left pending, which the state visit's pending branch turns into the cast on the
+   * first visit the gate opens, without that tag. A unit without an ability does nothing. An
+   * ability whose columns the battle does not model, or that keeps a buff on a unit waiting to
+   * cast, is refused, and so is a lane switch for a row that stays visible while it routes across,
+   * which no reference holds.
    */
   public void requestAbility() {
     AbilityData ability = getData().ability();
@@ -3687,6 +3689,9 @@ public class CharacterEntity extends WorldEntity {
     world.abilityRequested(this, now);
     if (now) {
       setter.setState(getView(), GridEntityState.CASTING);
+      // Only the data reads it: the hero Mini Pekka's level timer stops on it.
+      getView()
+          .setPendingFlags(getView().getPendingFlags() | getView().getFlagBits().abilityCasted());
       return;
     }
     // Left pending, a dash ability puts its pending buff on the unit until its gate opens.
