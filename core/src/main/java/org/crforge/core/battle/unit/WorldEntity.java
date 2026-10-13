@@ -1936,6 +1936,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               + " at a flying height or hovering, which no reference holds");
     }
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
+    if (run.startsOnTheGround() && action.getOnGround() != null) {
+      // A unit already on the ground as the run starts, as an evolved Royal Hog Vines holds is
+      // when a hit makes it fall, has the action once on the ground scheduled at once, itself its
+      // cause, as the end of a descent schedules it. The game asks a clone whether the row lets a
+      // clone run it, a column read for nothing else, so a clone stays refused.
+      if (this instanceof CharacterEntity unit && unit.isClone()) {
+        throw new UnsupportedOperationException(
+            action.name()
+                + " starts on the ground on the clone "
+                + name()
+                + ", scheduling its action once on the ground, which is not modelled");
+      }
+      actionHolder().schedule(action.getOnGround(), ActionHolder.OWN_DELAY, false, actionHolder());
+    }
     return run;
   }
 

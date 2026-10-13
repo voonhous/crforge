@@ -17,10 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.grid.Route;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +35,8 @@ import org.junit.jupiter.api.io.TempDir;
  * without the row's flag; a Goblin Giant held like any ground unit while its riders are left alone;
  * a hovering unit, held from the start for the whole run; and a clone on the ground, as the
  * Skeleton King's graveyard makes each skeleton, held like any other ground unit, while a clone in
- * the air and one whose run's cause runs the row too are refused.
+ * the air and one whose run's cause runs the row too are refused; and an evolved Royal Hog Vines
+ * already holds on the ground, whose fall starts held and lands it at once.
  *
  * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
  * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
@@ -46,6 +49,9 @@ class BattleAirToGroundTest {
   private static final int X = 9000;
 
   private static final int Y = 20000;
+
+  /** The evolved Royal Hog's fall, an air-to-ground row with an action once on the ground. */
+  private static final String FALL = "RoyalHog_EV1_To_Ground";
 
   /**
    * The configured tables with Vines' area effect and its air-to-ground run written with the
@@ -360,5 +366,89 @@ class BattleAirToGroundTest {
     assertThatThrownBy(() -> scene.steps(19))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("holds the clone cloned dragon at a flying height or hovering");
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Royal Hog Vines holds on the ground, hit, starts its fall held and has its"
+          + " action once on the ground at once: it takes its grounded row and makes its landing"
+          + " area in the step the fall starts, and the fall never lands it again")
+  void anEvolvedRoyalHogHeldFallsAtOnce(@TempDir Path folder) throws IOException {
+    GameTables tables = vines(folder, fields -> {});
+    Scene scene = new Scene(tables);
+    CharacterEntity hog =
+        scene.match.deploy(
+            0, scene.match.getWorld().getRecords().unit("RoyalHog_EV1"), LEVEL, 1, X, Y, "hog");
+    List<String> seen = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void airToGroundStarted(
+                  int tick,
+                  WorldEntity unit,
+                  String action,
+                  int phase,
+                  int runPhase,
+                  int counter,
+                  int height) {
+                seen.add("%d %s phase %d counter %d".formatted(tick, action, runPhase, counter));
+              }
+
+              @Override
+              public void areaEffectSpawned(
+                  int tick,
+                  SpawnHost owner,
+                  String action,
+                  int phase,
+                  SpawnHost source,
+                  AreaEffectEntity areaEffect) {
+                if (owner == hog) {
+                  seen.add("%d %s as %s".formatted(tick, action, hog.getData().name()));
+                }
+              }
+            });
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(80);
+    // Vines pulls the flying hog down and holds it; the snare's first damage takes it under the
+    // share its fall waits for while it is held on the ground layer.
+    assertThat(seen).hasSize(3);
+    assertThat(seen.get(0)).isEqualTo("18 Vines_Air_To_Ground phase 1 counter 50");
+    int fallAt = Integer.parseInt(seen.get(1).split(" ")[0]);
+    assertThat(fallAt).as("after the pull down, while held").isGreaterThan(20).isLessThan(59);
+    int held = Shipped.number(FALL, "TotalDuration") - Shipped.number(FALL, "TransitionDuration");
+    // On the ground already, the fall starts held, at its flying height, with no descent ...
+    assertThat(seen.get(1)).isEqualTo("%d %s phase 2 counter %d".formatted(fallAt, FALL, held));
+    // ... and its action once on the ground runs in the same step: the swap, then the landing area.
+    assertThat(seen.get(2))
+        .isEqualTo(
+            "%d RoyalHog_EV1_Spawn_Landing_Damage_Area as RoyalHog_EV1_Grounded".formatted(fallAt));
+    // Vines lets go and climbs, but the fall holds the hog on the ground, never landing it again.
+    assertThat(scene.runs).last().isEqualTo("60 phase 3 3 counter 0 0 done true pushes [0]");
+    assertThat(hog.getData().name()).isEqualTo("RoyalHog_EV1_Grounded");
+    assertThat(hog.getView().isAir()).isFalse();
+    assertThat(hog.getTargetView().z()).as("its live height").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a run starting on the ground on a clone, with an action once on the ground, which the game"
+          + " gates on a column read for nothing else, is refused")
+  void aCloneOnTheGroundWithAnActionOnGroundIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene =
+        new Scene(
+            vines(
+                folder,
+                fields ->
+                    fields.putObject("ActionOnGround").put("action", "Vines_Select_Buff_Size")));
+    CharacterEntity knight =
+        scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "cloned knight");
+    knight.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    assertThatThrownBy(() -> scene.steps(19))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("starts on the ground on the clone cloned knight");
   }
 }
