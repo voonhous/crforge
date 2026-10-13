@@ -1,0 +1,27 @@
+{
+  "content_version": "16.402.19",
+  "battles": 1733,
+  "to_the_end": 92.2,
+  "ticks_agreed": 96.2,
+  "outcomes": {
+    "diagnostic_match": 1599,
+    "mismatch": 128,
+    "unsupported": 6
+  },
+  "first_failures": {
+    "mismatch $.entities[].x": 67,
+    "mismatch $.entities[].state": 21,
+    "mismatch $.entities[].hp": 20,
+    "mismatch $.entities.length": 17,
+    "mismatch $.entities[].y": 2,
+    "mismatch $.sides[].elixir": 1,
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
+    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
+    "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it to what they spawn, not modelled": 1,
+    "unsupported: proj_# (FishermanProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1,
+    "unsupported: proj_# (GoblinBarrelSpell) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1,
+    "unsupported: proj_# hooks cmd#, which another holds, not modelled": 1
+  },
+  "set": "bb3808097b85b700",
+  "commit": "5aebbc2f5cbdb3411bcf945d126d59241b8e6a95"
+}
