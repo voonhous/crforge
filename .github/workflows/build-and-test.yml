@@ -271,7 +271,9 @@ jobs:
         run: |
           set -euo pipefail
           base="https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$VERSION"
-          get() { curl -fsS --retry 3 -H "Authorization: Bearer $TOKEN" -o "$2" "$base/$1"; }
+          # A large file answers with a redirect to the dataset's storage: follow it (curl sends the
+          # token to the dataset's host only).
+          get() { curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" -o "$2" "$base/$1"; }
           mkdir -p coverage/corpora
           get corpus.json coverage/corpus.json
           jq -r '.parts[] | .file + " " + .sha256' coverage/corpus.json | while read -r file sha; do
