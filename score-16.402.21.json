@@ -4,15 +4,15 @@
   "to_the_end": 95.4,
   "ticks_agreed": 98.0,
   "outcomes": {
-    "diagnostic_match": 9540,
+    "diagnostic_match": 9544,
     "invalid": 4,
-    "mismatch": 432,
+    "mismatch": 428,
     "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].hp": 142,
+    "mismatch $.entities[].hp": 141,
     "mismatch $.entities[].x": 113,
-    "mismatch $.entities.length": 107,
+    "mismatch $.entities.length": 104,
     "mismatch $.entities[].state": 53,
     "mismatch $.entities[].y": 8,
     "mismatch $.entities[].row": 6,
@@ -27,5 +27,5 @@
     "mismatch $.entities[].side": 1
   },
   "set": "296000195c872c7d",
-  "commit": "48c7c9ef3c2e3273d8f3642b6f3fbcb3d850373e"
+  "commit": "02680e8075fdf71c16c6fd6df3659534dc70cfee"
 }

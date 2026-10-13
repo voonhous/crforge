@@ -1,0 +1,31 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 95.4,
+  "ticks_agreed": 98.0,
+  "outcomes": {
+    "diagnostic_match": 9544,
+    "invalid": 4,
+    "mismatch": 428,
+    "unsupported": 24
+  },
+  "first_failures": {
+    "mismatch $.entities[].hp": 141,
+    "mismatch $.entities[].x": 113,
+    "mismatch $.entities.length": 104,
+    "mismatch $.entities[].state": 53,
+    "mismatch $.entities[].y": 8,
+    "mismatch $.entities[].row": 6,
+    "invalid": 4,
+    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
+    "mismatch $.sides[].elixir": 2,
+    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2,
+    "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it to what they spawn, not modelled": 2,
+    "unsupported: proj_# (BombSkeletonProjectile_EV1) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
+    "unsupported: proj_# (Hunter_EV1_bear_trap_projectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
+    "unsupported: proj_# rolls beside a deflecting area effect, which is not modelled": 2,
+    "mismatch $.entities[].side": 1
+  },
+  "set": "296000195c872c7d",
+  "commit": "02680e8075fdf71c16c6fd6df3659534dc70cfee"
+}
