@@ -1,28 +1,29 @@
 {
-  "content_version" : "16.402.19",
-  "battles" : 1733,
-  "to_the_end" : 89.7,
-  "ticks_agreed" : 93.3,
-  "outcomes" : {
-    "diagnostic_match" : 1555,
-    "mismatch" : 119,
-    "unsupported" : 59
+  "content_version": "16.402.19",
+  "battles": 1733,
+  "to_the_end": 90.0,
+  "ticks_agreed": 93.6,
+  "outcomes": {
+    "diagnostic_match": 1560,
+    "mismatch": 119,
+    "unsupported": 54
   },
-  "first_failures" : {
-    "mismatch $.entities[].x" : 64,
-    "mismatch $.entities[].hp" : 19,
-    "mismatch $.entities[].state" : 19,
-    "mismatch $.entities.length" : 14,
-    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled" : 9,
-    "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled" : 5,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled" : 5,
-    "unsupported: cmd# is cloned with a deploy countdown, which is not modelled" : 4,
-    "unsupported: cmd#: a Mirror given while another play of its side is pending, which the client may repeat in place of the last card, is not modelled" : 4,
-    "unsupported: target_is_ground on cmd#, which carries FORCE_IS_GROUND, not modelled" : 3,
-    "mismatch $.entities[].y" : 2,
-    "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled" : 2,
-    "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled" : 2,
-    "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled" : 2,
-    "unsupported: cmd#_clone#_0 would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled" : 2
-  }
+  "first_failures": {
+    "mismatch $.entities[].x": 64,
+    "mismatch $.entities[].hp": 19,
+    "mismatch $.entities[].state": 19,
+    "mismatch $.entities.length": 14,
+    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled": 9,
+    "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled": 5,
+    "unsupported: cmd#: a Mirror given while another play of its side is pending, which the client may repeat in place of the last card, is not modelled": 5,
+    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 5,
+    "unsupported: target_is_ground on cmd#, which carries FORCE_IS_GROUND, not modelled": 3,
+    "mismatch $.entities[].y": 2,
+    "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled": 2,
+    "unsupported: cmd# died with no attacker; the cause its killed action would carry, a side alone, is not modelled": 2,
+    "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
+    "unsupported: cmd#_clone#_0 would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
+    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2
+  },
+  "set": "bb3808097b85b700"
 }
