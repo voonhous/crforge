@@ -407,12 +407,18 @@ jobs:
             conformance/build/coverage/badge-*.json
           if-no-files-found: error
 
-  # Publishes each version's score and its shields.io badge (the README's coverage badges) to the
-  # badges branch, after a push to battle_core only, then fails when a version's share of battles
-  # reproduced to the end dropped since the last published score of the same set, or when a version
-  # coverage.lock lists got no score (a part not scored), so a regression or a set that cannot be
-  # scored shows as a failed run on battle_core (the scores are published first: the badge shows
-  # the drop until a fix lands). The only coverage job that can fail the run.
+  # Records each version's score of this commit on the badges branch (history/<commit>/), after a
+  # push to battle_core only, and checks it against the scored commits next to it in battle_core's
+  # history: the nearest older one and, when this run finishes after a newer commit's, the nearest
+  # newer one. So every pair of neighbouring scored commits is compared, whichever run finishes
+  # last, and a rerun of a commit left unscored (a failed run) closes the gap and checks both of its
+  # sides. A pair across unscored commits is named in a notice. The run fails when a version's share
+  # of battles reproduced to the end dropped between two scored commits of the same set, or when a
+  # version coverage.lock lists got no score (a part not scored), so a regression or a set that
+  # cannot be scored shows as a failed run on battle_core. The scores and shields.io badges at the
+  # branch's root (the README's coverage badges) are always those of the newest scored commit, so a
+  # late run or a rerun of an older commit never takes them back. The only coverage job that can
+  # fail the run.
   badges:
     needs: [ lock, coverage-merge ]
     if: >-
@@ -421,9 +427,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    concurrency:
-      group: badges
-      cancel-in-progress: false
+    # No concurrency group: GitHub keeps one waiting job of a group and cancels the others, which
+    # would leave commits of a backlog unscored. Runs that publish at the same time retry the push
+    # on the moved branch instead.
 
     steps:
       - uses: actions/download-artifact@v7
@@ -432,51 +438,119 @@ jobs:
           merge-multiple: true
           path: scores
 
-      - name: Publish the scores and badges
+      - name: Record the scores and check them against their neighbours
         env:
           TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           SETS: ${{ needs.lock.outputs.coverage-sets }}
           VERSIONS: ${{ needs.lock.outputs.coverage-versions }}
         run: |
           set -euo pipefail
           shopt -s nullglob
+          short() { echo "${1::8}"; }
           dropped=0
           for version in $(jq -r '.[]' <<< "$VERSIONS"); do
             if [ ! -f "scores/score-$version.json" ]; then
-              echo "::error::coverage of $version: no score this run (a part was not scored)"
+              echo "::error::coverage of $version: no score at $(short "$GITHUB_SHA") (a part was not scored)"
               dropped=1
             fi
           done
+          # This commit's record: each score naming its set and commit, and its badge.
+          mkdir record
+          for score in scores/score-*.json; do
+            version=$(jq -r .content_version "$score")
+            set_id=$(jq -r --arg v "$version" '.[$v] // ""' <<< "$SETS")
+            jq --arg set "$set_id" --arg commit "$GITHUB_SHA" '. + {set: $set, commit: $commit}' "$score" > "record/score-$version.json"
+            cp "scores/badge-$version.json" record/
+          done
+          # Checks the version's score file $2 (named $4) against the older $1 (named $3), $5 unscored
+          # commits between them.
+          check() {
+            local set before now
+            set=$(jq -r '.set // ""' "$1")
+            if [ -z "$set" ] || [ "$set" != "$(jq -r '.set // ""' "$2")" ]; then
+              echo "::notice::coverage of $version: $4 is of another set than $3 (or names none); not compared"
+              return
+            fi
+            before=$(jq -r .to_the_end "$1")
+            now=$(jq -r .to_the_end "$2")
+            if [ "$(jq -n --argjson now "$now" --argjson before "$before" '$now < $before')" = true ]; then
+              echo "::error::coverage of $version dropped at $4: $before% at $3 -> $now% of battles reproduced to the end$( [ "$5" -eq 0 ] || echo " (in one of the $(($5 + 1)) commits after $3: rerun the unscored ones to find it)")"
+            elif [ "$5" -gt 0 ]; then
+              echo "::notice::coverage of $version: $4 compared with $3 across $5 unscored commit$( [ "$5" -eq 1 ] || echo s); rerun their runs to check each"
+            fi
+          }
+          # Checks the version's scores of two scored commits, $1 older than $2, in commits order.
+          compare() {
+            local gap
+            gap=$(sed -n "/^$2\$/,/^$1\$/p" ../commits | sed '1d;$d' | grep -c . || true)
+            check "history/$1/score-$version.json" "history/$2/score-$version.json" "$(short "$1")" "$(short "$2")" "$gap"
+          }
           git init -q badges
           cd badges
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote add origin "https://x-access-token:$TOKEN@github.com/$REPOSITORY.git"
-          if git fetch -q --depth 1 origin badges; then git checkout -q -b badges FETCH_HEAD; else git checkout -q --orphan badges; fi
-          for score in ../scores/score-*.json; do
-            name=$(basename "$score")
-            version=$(jq -r .content_version "$score")
-            now=$(jq -r .to_the_end "$score")
-            set_id=$(jq -r --arg v "$version" '.[$v] // ""' <<< "$SETS")
-            if [ -f "$name" ] && [ -n "$set_id" ] && [ "$(jq -r '.set // ""' "$name")" = "$set_id" ]; then
-              before=$(jq -r .to_the_end "$name")
-              if [ "$(jq -n --argjson now "$now" --argjson before "$before" '$now < $before')" = true ]; then
-                echo "::error::coverage of $version dropped: $before% -> $now% of battles reproduced to the end"
-                dropped=1
-              fi
-            elif [ -f "$name" ]; then
-              echo "::notice::coverage of $version: the last published score is of another set (or names none); not compared"
+          for attempt in 1 2 3 4 5; do
+            if git fetch -q --depth 1 origin badges; then
+              git checkout -q -f -B badges FETCH_HEAD
+            else
+              git checkout -q --orphan "badges-$attempt" && git read-tree --empty
             fi
-            echo "$version: $now% of battles reproduced to the end"
-            jq --arg set "$set_id" '. + {set: $set}' "$score" > "$name"
-            cp "../scores/badge-$version.json" .
+            git clean -qfdx
+            # The root's scores as published before this run: those of before the history began
+            # name no commit.
+            rm -rf ../published && mkdir ../published
+            cp score-*.json ../published/ 2>/dev/null || true
+            mkdir -p "history/$GITHUB_SHA"
+            cp ../record/* "history/$GITHUB_SHA/" 2>/dev/null || true
+            # battle_core's recent commits, newest first (squash merges: one line of history).
+            gh api "repos/$REPOSITORY/commits?sha=battle_core&per_page=100" --jq '.[].sha' > ../commits
+            : > ../messages
+            if ! grep -qxF "$GITHUB_SHA" ../commits; then
+              echo "::notice::$(short "$GITHUB_SHA") is not among the last 100 commits of battle_core; its scores are neither compared nor kept" >> ../messages
+            fi
+            for version in $(jq -r '.[]' <<< "$VERSIONS"); do
+              scored=()
+              while read -r sha; do
+                if [ -f "history/$sha/score-$version.json" ]; then scored+=("$sha"); fi
+              done < ../commits
+              if [ "${#scored[@]}" -eq 0 ]; then continue; fi
+              # The root's score and badge: the newest scored commit's.
+              cp "history/${scored[0]}/score-$version.json" "history/${scored[0]}/badge-$version.json" .
+              for i in "${!scored[@]}"; do
+                if [ "${scored[$i]}" != "$GITHUB_SHA" ]; then continue; fi
+                if [ "$((i + 1))" -lt "${#scored[@]}" ]; then
+                  compare "${scored[$((i + 1))]}" "$GITHUB_SHA" >> ../messages
+                elif [ -f "../published/score-$version.json" ] && [ -z "$(jq -r '.commit // ""' "../published/score-$version.json")" ]; then
+                  # The first scored commit of the history: the score published before it is the older one.
+                  check "../published/score-$version.json" "history/$GITHUB_SHA/score-$version.json" "the last published score" "$(short "$GITHUB_SHA")" 0 >> ../messages
+                else
+                  echo "::notice::coverage of $version: no older scored commit among the last 100 of battle_core; not compared" >> ../messages
+                fi
+                if [ "$i" -gt 0 ]; then compare "$GITHUB_SHA" "${scored[$((i - 1))]}" >> ../messages; fi
+              done
+            done
+            # Only the records of the last 100 commits are kept, the ones a run compares; each run is
+            # a commit of this branch, so an older score stays in its history.
+            for record in history/*/; do
+              if ! grep -qxF "$(basename "$record")" ../commits; then rm -rf "$record"; fi
+            done
+            git add -A
+            if git diff --cached --quiet; then
+              echo "no change"
+              break
+            fi
+            git commit -q -m "Coverage scores of $(short "$GITHUB_SHA")"
+            if git push -q origin HEAD:badges; then break; fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::the badges branch kept moving; nothing published"
+              exit 1
+            fi
+            echo "the badges branch moved; trying again"
+            sleep $((attempt * 5))
           done
-          git add -A
-          if git diff --cached --quiet; then
-            echo "no change"
-          else
-            git commit -q -m "Coverage scores of ${GITHUB_SHA::8}"
-            git push -q origin HEAD:badges
-          fi
+          cat ../messages
+          if grep -q '^::error::' ../messages; then dropped=1; fi
           exit "$dropped"
