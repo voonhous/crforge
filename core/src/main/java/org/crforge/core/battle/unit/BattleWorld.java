@@ -2981,16 +2981,17 @@ public class BattleWorld implements HolderPasses {
    * the next pending pass of the same tick: phase 2 after a hit in a component pass, phase 3 after
    * an impact or a typed hit, and at once after a kill inside a pending pass.
    *
-   * <p>A death with a killing side and no attacker - a buff's damage over time, which the battle
-   * deals with no attacker for the side its buff was applied for - is handed in the game a cause
-   * the battle does not hold: the buff's source as it was when the hit was queued, or with no
-   * source a cause that carries the side alone. The battle schedules the killed action with no
+   * <p>A buff's damage over time kills with the buff's source as the attacker, for the side the
+   * buff was applied for (see {@link #dealBuffDamageNow}). A death with a killing side and no
+   * attacker - the damage of a buff with no source - is handed in the game a cause that carries the
+   * side alone, which the battle does not hold. The battle schedules the killed action with no
    * cause when no action of its chain reads its cause (see {@link BattleAction#readsCause}), as the
    * evolved Wall Breaker's spawn, whose source is its owner.
    *
-   * <p>Refused rather than guessed: a killed action with no attacker whose chain reads its cause,
-   * and a death hook scheduled after the tick's last pending pass, which would leave with the
-   * entity. The cause is the attacker's own holder, where the game hands the hook a copy of the
+   * <p>Refused rather than guessed: a killed action with no attacker whose chain reads its cause, a
+   * killed action whose attacker is an object of another kind than a unit, a projectile or an area
+   * effect, and a death hook scheduled after the tick's last pending pass, which would leave with
+   * the entity. The cause is the attacker's own holder, where the game hands the hook a copy of the
    * attacker made at the kill; a hook reads no more of it than its presence and its row, which the
    * copy shares.
    *
@@ -3115,10 +3116,10 @@ public class BattleWorld implements HolderPasses {
    * The death handler's hook: the dying unit's killed action alone, with what killed it as the
    * cause; the death slot schedules the death action (see {@link #slotDeathAction}). None when the
    * row has no killed action, when the death has no killing side, or when the unit killed itself on
-   * the killing side. With no attacker the action is scheduled with no cause when no action of its
-   * chain reads its cause. Refused rather than guessed: a killed action with no attacker whose
-   * chain reads its cause, which would be the buff's source or a side alone, and one scheduled
-   * after the tick's last pending pass.
+   * the killing side. With no attacker - a buff with no source - the action is scheduled with no
+   * cause when no action of its chain reads its cause. Refused rather than guessed: a killed action
+   * with no attacker whose chain reads its cause, which would be a side alone, one whose attacker
+   * is an object of another kind, and one scheduled after the tick's last pending pass.
    *
    * @param dying the entity that died
    * @param attacker what killed it, or null for nothing
@@ -3148,11 +3149,17 @@ public class BattleWorld implements HolderPasses {
     } else if (attacker instanceof AreaEffectEntity areaEffect) {
       cause = areaEffect.actionHolder();
       side = areaEffect.side();
+    } else if (attacker == null) {
+      throw new UnsupportedOperationException(
+          dying.name()
+              + " died with no attacker and its killed action reads its cause, which would be a"
+              + " side alone, not modelled");
     } else {
       throw new UnsupportedOperationException(
           dying.name()
-              + " died with no attacker and its killed action reads its cause, which would be the"
-              + " buff's source or a side alone, not modelled");
+              + " was killed by "
+              + attacker.getClass().getSimpleName()
+              + ", whose cause its killed action would read, not modelled");
     }
     if (attacker == dying && side == killingSide) {
       return;
@@ -9041,7 +9048,12 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Deals one hit of a buff's damage over time at the drain, tells the observers, and runs the
-   * death it causes, with nothing as what killed it.
+   * death it causes. The game hands the hit-points chain the buff's source as the instance held it
+   * when the hit was queued, as it hands a direct hit its attacker: the source is what killed the
+   * carrier, for the side the buff was applied for, so its killer's hook and the carrier's killed
+   * action see the source (see {@link #entityDied}); a hit that lands and does not kill reaches the
+   * source's reference drop as any other hit does (see {@link #referenceDrop}). A buff with no
+   * source kills with nothing as what killed it.
    *
    * @param due the queued hit
    */
@@ -9063,9 +9075,13 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.buffDamaged(tick, target, due.buff(), due.damage(), before, result);
     }
+    // Every object a buff's source can be is a battle entity; with no source, nothing.
+    BattleEntity attacker = (BattleEntity) source;
     if (result.died()) {
       // The killing side is the one the buff was applied for.
-      target.die(null, due.side());
+      target.die(attacker, due.side());
+    } else if (result.landed()) {
+      referenceDrop(attacker, target, false);
     }
   }
 
