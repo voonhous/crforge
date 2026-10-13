@@ -5523,8 +5523,15 @@ public class CharacterEntity extends WorldEntity {
       SelectionChain selection = unit.selection();
       selection.beginTick();
       boolean loading = unit.targeting().isSpecialLoadPending();
+      // The visit reads the movement component only while it is switched on. One that is off or
+      // freed, as a Moving Cannon's once it breaks down into a building, is not read at all: a
+      // push it was left under way, which no movement visit ends any more, holds no attack.
       TargetingVisit.targetingVisit(
-          unit.targeting(), getView(), unit.movement(), selection, selection.getOutcome());
+          unit.targeting(),
+          getView(),
+          isActive(MOVEMENT_SLOT) ? unit.movement() : null,
+          selection,
+          selection.getOutcome());
       if (!loading && unit.targeting().isSpecialLoadPending()) {
         specialArmed();
       }

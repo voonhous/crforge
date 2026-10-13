@@ -33,7 +33,9 @@ import org.junit.jupiter.api.io.TempDir;
  * A character taking another row, in the cases the reference battle card_ElixirGolem does not
  * reach: hit points kept above a smaller maximum, a target given up by the row and the attack
  * timing it leaves, a target kept on the new row's columns, the new row as the unit's attackers
- * read it, the swaps that are refused, and the hit-point functions the swap's rows read.
+ * read it, a walking unit broken down into a building that attacks with a push left on the movement
+ * component it no longer has, the swaps that are refused, and the hit-point functions the swap's
+ * rows read.
  */
 class BattleChangeDataTest {
 
@@ -263,6 +265,43 @@ class BattleChangeDataTest {
       states.add(tower.getView().getState());
     }
     return states;
+  }
+
+  @Test
+  @DisplayName(
+      "a walking unit that breaks down into a building attacks the first enemy in its range, a"
+          + " push still under way on the movement component it no longer has included")
+  void aBuildingRowAttacksThroughThePushOfItsFreedMovement() {
+    for (boolean pushed : new boolean[] {false, true}) {
+      Scene scene = new Scene("MovingCannon");
+      CharacterEntity cart = scene.knight;
+      assertThat(cart.getView().getState()).as("it walks").isEqualTo(GridEntityState.MOVING);
+      if (pushed) {
+        // As a hit's push leaves the movement component on the step the cart breaks down.
+        cart.getUnit().movement().setPushbackInFlight(1);
+      }
+      cart.changeData("BrokenCannon", false);
+      assertThat(cart.isActive(CharacterEntity.MOVEMENT_SLOT)).as("freed").isFalse();
+      // An enemy well inside the broken cannon's range, deployed on the next step.
+      CharacterEntity enemy =
+          scene.match.deploy(
+              scene.battle.getTick() + 1,
+              records.unit("Knight"),
+              11,
+              1,
+              cart.getView().getX(),
+              cart.getView().getY() + records.unit("BrokenCannon").range() / 2,
+              "Enemy");
+      List<Integer> states = new ArrayList<>();
+      for (int step = 0; step < 5; step++) {
+        scene.battle.step();
+        states.add(cart.getView().getState());
+      }
+      assertThat(cart.getTargeting().getReference())
+          .as("pushed " + pushed)
+          .isSameAs(enemy.getTargetView());
+      assertThat(states).as("pushed " + pushed).contains(GridEntityState.ATTACKING);
+    }
   }
 
   @Test
