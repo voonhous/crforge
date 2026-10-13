@@ -95,7 +95,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " whose evolved Cannon's bombs it turns there and sends back at their own area"
             + " effects, landing where they fell; a spell passing outside it by the same run. A"
             + " cast spell it turns sent at the enemy crown tower nearest the Deflect, and the"
-            + " gate on a deflected spell near its owner, by SpellDeflectTest. The pass over a body's"
+            + " gate on a deflected spell near its owner, by SpellDeflectTest. Arrows' arrows"
+            + " measured at their arrival at their ring points, the Deflect also overlapping the"
+            + " wave's circle, sent as a cast spell is, the parent taking each wave's damage once,"
+            + " by ArrowsDeflectTest. The pass over a body's"
             + " cells beside a deflecting area effect the index does not list, by"
             + " random_battle16_s0048. The pass over a pingpong projectile's body on its sweep"
             + " turning it around, after which it flies on its speed to its aim and lands there"
@@ -407,7 +410,7 @@ final class ProjectileFlight {
    * at a target that kept out of the hook, its arrival is the ordinary one.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world, boolean hookable) {
-    if (world.deflectPass(p, p.getAimX(), p.getAimY(), p.getAimZ())) {
+    if (world.arrivalPass(p)) {
       return;
     }
     if (p.getData().checkCollisions()) {
@@ -457,7 +460,9 @@ final class ProjectileFlight {
     int damage = p.listenedDamage(p.damage(), hitId, false, p.getTarget());
     int towerDamage = p.listenedDamage(p.towerDamage(), hitId, true, p.getTarget());
     ProjectileChain chain = p.getChain();
-    boolean onRing = chain != null && chain.isRingPoints();
+    // A deflected projectile of a chain lands at its aim, the point it was sent at, not its ring
+    // point.
+    boolean onRing = chain != null && chain.isRingPoints() && p.getDeflections() == 0;
     int px = onRing ? p.getRingX() : p.getAimX();
     int py = onRing ? p.getRingY() : p.getAimY();
     // The row's on-hit action goes onto the target before the hit, the projectile as its cause.
@@ -559,13 +564,16 @@ final class ProjectileFlight {
             data.pushback(),
             px,
             py);
-    // A chain's victims must also stand in its circle, and none is hit twice by it.
+    // A chain's victims must also stand in its circle, and none is hit twice by it. A deflected
+    // projectile of a chain keeps only the chain's list: its victims need not stand in the circle.
     ProjectileChain chain = p.getChain();
     AreaDamage.Chain shared =
         chain == null
             ? null
-            : new AreaDamage.Chain(
-                chain.getX(), chain.getY(), chain.getRadius(), chain.getHitIds());
+            : p.getDeflections() != 0
+                ? new AreaDamage.Chain(0, 0, 0, chain.getHitIds())
+                : new AreaDamage.Chain(
+                    chain.getX(), chain.getY(), chain.getRadius(), chain.getHitIds());
     AreaDamage.damage(
         p.areaOwner(),
         entities,
