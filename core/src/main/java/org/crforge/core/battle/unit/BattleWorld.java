@@ -4171,6 +4171,28 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The deflection pass at a projectile's arrival: at its aim and the aim's height. A projectile
+   * measured only at its target's point and not deflected yet, as Arrows' arrows are, is measured
+   * at its ring point instead, the unjittered point of the spell's ring its cast gave it, at the
+   * aim's height (see {@link #deflectPass}).
+   *
+   * @param projectile the arriving projectile
+   * @return true when a deflecting area effect turned the projectile around
+   */
+  public boolean arrivalPass(ProjectileEntity projectile) {
+    ProjectileChain chain = projectile.getChain();
+    if ((projectile.getData().deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) != 0
+        && projectile.getDeflections() == 0
+        && chain != null
+        && chain.isRingPoints()) {
+      return deflectPass(
+          projectile, projectile.getRingX(), projectile.getRingY(), projectile.getAimZ());
+    }
+    return deflectPass(
+        projectile, projectile.getAimX(), projectile.getAimY(), projectile.getAimZ());
+  }
+
+  /**
    * The deflection pass of a flying projectile, at a point and height: after each move, at its new
    * position, and at its arrival, at its aim. A projectile that never deflects passes untouched.
    * Every other is measured in three dimensions against every area effect of the live list, in its
@@ -4185,9 +4207,15 @@ public class BattleWorld implements HolderPasses {
    * effect's team - lets the pass go on. A projectile that no deflection turns around passes
    * untouched.
    *
-   * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
-   * only at its target's point (whose arrival is measured at a stored point, not at the aim); a
-   * pingpong projectile not deflected before, met at its aim on its arrival (see {@link
+   * <p>A projectile measured only at its target's point, as Arrows' arrows are, is asked here only
+   * at its arrival until it is deflected (see {@link #arrivalPass}), and then a touching area
+   * effect turns it only when its circle - its deflection radius - also overlaps the circle of the
+   * projectile's chain: the spell's placed point and radius. Once deflected it is measured as any
+   * other.
+   *
+   * <p>Refused rather than guessed, once a deflecting area effect is listed: such a projectile not
+   * deflected before that has no chain, or belongs to a volley's group, whose circle no recording
+   * holds; a pingpong projectile not deflected before, met at its aim on its arrival (see {@link
    * #refuseAtAim}); and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
@@ -4208,12 +4236,20 @@ public class BattleWorld implements HolderPasses {
     // The shape's radii: the projectile's deflect radius, or its body's without one.
     int rx = data.deflectRadius() >= 1 ? data.deflectRadius() : data.projectileRadius();
     int ry = data.deflectRadius() >= 1 ? 0 : data.projectileRadiusY();
-    if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) != 0) {
-      throw new UnsupportedOperationException(
-          projectile.name()
-              + " ("
-              + data.name()
-              + ") flies by a deflecting area effect, whose deflection of it is not modelled");
+    // Measured only at its target's point and not deflected yet: the area effect must also overlap
+    // the circle of its chain.
+    ProjectileChain gate = null;
+    if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) != 0
+        && projectile.getDeflections() == 0) {
+      gate = projectile.getChain();
+      if (gate == null || projectile.isGrouped()) {
+        throw new UnsupportedOperationException(
+            projectile.name()
+                + " ("
+                + data.name()
+                + ") flies by a deflecting area effect, measured at its target's point without"
+                + " a chain's circle, which is not modelled");
+      }
     }
     // A row measured on the ground plane leaves its height out: the same shapes, flat.
     int height = (data.deflectBehaviour() & ProjectileData.IGNORE_HEIGHT) != 0 ? 0 : z;
@@ -4223,7 +4259,15 @@ public class BattleWorld implements HolderPasses {
       if (deflector.getCountdown() < 0) {
         continue;
       }
-      if (touches(deflector, x, y, height, rx, ry)) {
+      if (touches(deflector, x, y, height, rx, ry)
+          && (gate == null
+              || ShapeTests.withinCircle(
+                  deflector.getX(),
+                  deflector.getY(),
+                  deflector.deflectRadius(),
+                  gate.getX(),
+                  gate.getY(),
+                  gate.getRadius()))) {
         refuseAtAim(deflector, projectile);
         if (deflect(deflector, projectile)) {
           return true;
@@ -4323,9 +4367,9 @@ public class BattleWorld implements HolderPasses {
    * at its impact, as the Goblin Barrel, which no recording holds; one that hops, flies to a point,
    * homes for a time, waits a random delay, hooks or stops at collisions; one whose impact spawns a
    * chain of projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that
-   * belongs to a chain, or to a volley's group that a deflection does not turn around as one, as
-   * the Hunter's pellets. A spell such as the Fireball, whose deflection behaviour sends it at the
-   * enemy nearest the area effect without a target, is among them.
+   * belongs to a chain and is not spell-like, or to a volley's group that a deflection does not
+   * turn around as one, as the Hunter's pellets. A spell such as the Fireball, whose deflection
+   * behaviour sends it at the enemy nearest the area effect without a target, is among them.
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -4349,7 +4393,8 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>A spell-like projectile is modelled too: one whose only deflection behaviour is the spells'
    * tower share, with a deflect radius of its own and no body, as the Fireball, the Rocket, the
-   * Snowball and the evolved Cannon's bombs are (see {@link #deflect}).
+   * Snowball and the evolved Cannon's bombs are (see {@link #deflect}); and so is one also measured
+   * only at its target's point, of a chain, as Arrows' arrows are, each wave a chain.
    *
    * <p>And a rolling body: one whose deflection behaviour inverts its direction, with a round or a
    * box body and no deflect radius, that flies to a point, as the Bowler's ball, the rolling logs
@@ -4380,7 +4425,7 @@ public class BattleWorld implements HolderPasses {
         || data.dragBackSpeed() >= 1
         || data.checkCollisions()
         || (data.spawnProjectile() != null && data.spawnChain() >= 2)
-        || projectile.getChain() != null
+        || (projectile.getChain() != null && !spellLike)
         || (projectile.isGrouped()
             && (projectile.getGroup() == null || !projectile.getGroup().deflectsAsOne()))) {
       throw new UnsupportedOperationException(
@@ -4411,11 +4456,12 @@ public class BattleWorld implements HolderPasses {
    * owner, a character, stands within DOUBLEDEFLECT_SPELL_MIN_DISTANCE of the area effect is not
    * deflected at all: it passes on untouched. One without a target - a cast spell - is sent at a
    * point instead of its root owner: the position of the crown tower of the other team than the
-   * area effect's nearest the area effect (see {@link #nearestEnemyCrownTower}), with no target;
-   * with no such tower it is sent back at its root owner after all. A bomb a barrage drops onto its
-   * area effect has that area effect as its root and its target while the area effect is in the
-   * battle: it is sent back at it, at its point, which it keeps as what it was dropped onto. The
-   * parent takes the projectile's damage either way, before the redirect.
+   * area effect's nearest the area effect (see {@link #nearestEnemyCrownTower}), with no target, as
+   * a cast Fireball or an arrow of Arrows is; with no such tower it is sent back at its root owner
+   * after all. A bomb a barrage drops onto its area effect has that area effect as its root and its
+   * target while the area effect is in the battle: it is sent back at it, at its point, which it
+   * keeps as what it was dropped onto. The parent takes the projectile's damage either way, before
+   * the redirect.
    *
    * <p>A rolling body (see {@link #rollingBody}) inverts its direction instead, whatever its root:
    * no gate and no search. The parent takes its damage as above, and it is sent on, with no target,
@@ -4432,7 +4478,10 @@ public class BattleWorld implements HolderPasses {
    * first and the deflected one among them, and then the deflected one once more, so it counts two
    * deflections; without a root owner, the others are turned at the deflected one's start and fly
    * on, only the deflected one's flight is ended. A parent the group lists takes no damage from it;
-   * the parent is listed after the damage either way.
+   * the parent is listed after the damage either way. A chain's list of the entities it has hit is
+   * that list for a projectile of a chain, as an arrow of one wave of Arrows: the wave deals the
+   * parent its damage once, by its first arrow turned or landed on it, and its arrows turned after
+   * pass the parent over, as its arrows landing after do.
    *
    * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
@@ -4569,11 +4618,19 @@ public class BattleWorld implements HolderPasses {
             projectile.listenedDamage(damage, hitId, parent.getTargetView().crownTower(), parent);
       }
       // A parent its group lists takes no damage from the group's projectiles; it is listed after.
-      if (group == null || !group.dooms(parent.getId())) {
+      // A chain's list of what it has hit is its group's list, as Arrows' wave shares one.
+      ProjectileChain chain = projectile.getChain();
+      boolean listed =
+          (group != null && group.dooms(parent.getId()))
+              || (chain != null && chain.getHitIds().contains(parent.getId()));
+      if (!listed) {
         queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
       }
       if (group != null) {
         group.doom(parent.getId());
+      }
+      if (chain != null && !chain.getHitIds().contains(parent.getId())) {
+        chain.getHitIds().add(parent.getId());
       }
     }
     WorldEntity sentAt = null;
@@ -4636,10 +4693,13 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Whether a projectile is spell-like as a deflection reads it: its only deflection behaviour is
-   * the spells' tower share, and it has no body, so it is measured by its deflect radius.
+   * the spells' tower share - with or without being measured only at its target's point, as Arrows'
+   * arrows are, which changes the deflection pass alone (see {@link #deflectPass}) and nothing the
+   * deflection reads - and it has no body, so it is measured by its deflect radius.
    */
   private static boolean spellLike(ProjectileData data) {
-    return data.deflectBehaviour() == ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL
+    int behaviour = data.deflectBehaviour() & ~ProjectileData.CHECK_ONLY_TARGET_POSITION;
+    return behaviour == ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL
         && data.projectileRadius() == 0
         && data.projectileRadiusY() == 0;
   }
