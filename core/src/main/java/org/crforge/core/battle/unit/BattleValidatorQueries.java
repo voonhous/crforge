@@ -16,8 +16,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
 
 /**
  * The validator's questions about a target that only the battle can answer: the four the
- * pending-damage rule asks of a target with damage on its way. Every other question keeps the
- * standard answer of a one-against-one battle.
+ * pending-damage rule asks of a target with damage on its way, and the attack sequence test. Every
+ * other question keeps the standard answer of a one-against-one battle.
  *
  * <p>The rule refuses a projectile attacker a target the damage on its way will kill: the lethal
  * test must hold, and the damage must land soon enough. It keeps the target all the same when the
@@ -34,7 +34,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " the dash and healing tests by no run; the damage reduction of the target's buffs"
             + " on the amount by BattleMonkTest alone, since no damage on its way to a Monk"
             + " under its ability is lethal in the references. An unkillable target spared the"
-            + " rule: translated, held by no run.")
+            + " rule: translated, held by no run. The attack sequence test (an untouchable target"
+            + " refused) by the coverage battles where an Inferno or Mighty Miner lets a dashing"
+            + " Bandit, Boss Bandit or Golden Knight go, and by BattleDashTargetHoldTest.")
 final class BattleValidatorQueries implements ValidatorQueries {
 
   private final BattleWorld world;
@@ -74,6 +76,19 @@ final class BattleValidatorQueries implements ValidatorQueries {
     }
     int windup = entity.getTargeting().getDashWindupMs();
     return windup > 0 && entity.getData().dashImmuneToDamageTimeMs() >= 1 && windup <= duration;
+  }
+
+  /**
+   * The attack sequence test: a unit whose row runs an attack sequence (a continuous-damage
+   * attacker such as an Inferno Tower or Inferno Dragon, or a unit with an AttackSequence column)
+   * neither takes nor keeps a target that is untouchable, the immunity left after a dash counted.
+   * So such an attacker lets a Bandit, Boss Bandit or Golden Knight go once its dash has started,
+   * takes none still dashing or immune after its dash, and takes it again after; an ordinary
+   * attacker keeps it through the dash.
+   */
+  @Override
+  public boolean attackSequenceRejects(TargetView target) {
+    return world.entityOf(target.getEntity()).untouchable(true);
   }
 
   /** The target's tag word holds UNKILLABLE, as a buff of the Berserker hero form sets it. */
