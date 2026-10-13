@@ -40,7 +40,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " the dedupe list, the shield before the hit points, the overkill removed from the"
             + " amount reported, the death test and the clamp to zero. Held by every hit of the"
             + " reference battles; a kill as that hit of the whole hit points ignoring the holds,"
-            + " held by the worked kills; a typed hit's entry, its refusals, its id listed"
+            + " held by the worked kills; a queued kill's amount, the hit points as it was"
+            + " queued, lowered at the entry by the target's damage reduction, held by battles of"
+            + " the coverage sets (a tiebreaker's clearing on reduced and healed units); a typed hit's entry, its refusals, its id listed"
             + " without a refresh and what it answers; the tiebreaker's drain passing the holds,"
             + " held by the reference battle timeline_tiebreak_tower_hp; a Kamikaze drain,"
             + " refused where damage is forbidden and passing the holds, held by"
@@ -140,17 +142,32 @@ public final class DamageApplication {
   }
 
   /**
-   * Kills a hit-points object: an ordinary hit of its whole hit points that ignores the battle's
-   * holds and lists no dedupe id. A shield that is up takes it and the object lives; otherwise it
-   * dies. Only an untouchable entity, such as one attached to a parent, is spared.
+   * Kills a hit-points object with its whole hit points as they are now, as {@link #kill(HitPoints,
+   * int, DamageQueries)} deals a kill queued with them.
    *
    * @param hitPoints the object
    * @param queries what the chain asks about the target and the battle
    */
   public static DamageResult kill(HitPoints hitPoints, DamageQueries queries) {
+    return kill(hitPoints, hitPoints.getHitPoints(), queries);
+  }
+
+  /**
+   * Deals a queued kill: an ordinary hit of the hit points the object had as the kill was queued,
+   * which ignores the battle's holds and lists no dedupe id. The damage entry every queued hit
+   * passes lowers the amount by the target's damage reduction and floors it at 1, as it lowers any
+   * other, so an object with a reduction listed lives through a kill, and so does one healed since
+   * the kill was queued, by what the heal gave. A shield that is up takes it and the object lives.
+   * Only an untouchable entity, such as one attached to a parent, is spared.
+   *
+   * @param hitPoints the object
+   * @param amount the hit points the object had as the kill was queued
+   * @param queries what the chain asks about the target and the battle
+   */
+  public static DamageResult kill(HitPoints hitPoints, int amount, DamageQueries queries) {
     queries.hitCounted();
     // A kill pierces immunity: an unkillable object dies of it all the same.
-    return subtract(hitPoints, hitPoints.getHitPoints(), 0, 0, queries, true, true);
+    return subtract(hitPoints, entryReduction(amount, queries), 0, 0, queries, true, true);
   }
 
   /**

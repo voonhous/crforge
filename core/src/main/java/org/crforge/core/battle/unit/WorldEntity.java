@@ -3128,18 +3128,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @return what the kill did; the death it causes is the battle's to run
    */
   DamageResult takeKill() {
-    return takeKill(null, null);
+    return takeKill(killAmount(), null, null);
   }
 
   /**
-   * Takes a kill, counted by the one that dealt it.
+   * Takes a kill, counted by the one that dealt it. The kill's amount is the hit points it was
+   * queued with, which a heal since may have left short of the hit points now; the damage entry
+   * lowers it by the entity's damage reduction (see {@link DamageApplication#kill}).
    *
+   * @param amount the hit points the entity had as the kill was queued
    * @param dealer what counts the kill as its hit: a Kamikaze unit killing itself; null for none
    * @param cause what the kill came from, which a shield it breaks names as the cause of its
    *     action; null for none
    * @return what the kill did; the death it causes is the battle's to run
    */
-  DamageResult takeKill(WorldEntity dealer, SpawnHost cause) {
+  DamageResult takeKill(int amount, WorldEntity dealer, SpawnHost cause) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -3151,12 +3154,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       refuseReflect("a kill");
     }
     int shieldBefore = hitPoints.getShield();
-    int whole = hitPoints.getHitPoints();
-    DamageResult result = DamageApplication.kill(hitPoints, damageQueries(false, dealer, true));
-    shieldHit(whole, shieldBefore, cause);
+    DamageResult result =
+        DamageApplication.kill(hitPoints, amount, damageQueries(false, dealer, true));
+    shieldHit(amount, shieldBefore, cause);
     refreshHitPoints();
 
     return result;
+  }
+
+  /**
+   * The amount a kill queued now carries: the entity's hit points as they are, or 0 for an entity
+   * without any.
+   */
+  int killAmount() {
+    return hitPoints == null ? 0 : hitPoints.getHitPoints();
   }
 
   /**

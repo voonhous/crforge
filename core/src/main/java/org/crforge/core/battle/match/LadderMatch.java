@@ -111,7 +111,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " towers attacking, a Barbarian Hut, a Balloon, a Witch's Skeletons and a walking"
             + " Knight alive as the tiebreaker begins: the clearing's kill queued for the damage"
             + " drain of the update it runs, the killed unit's step in that update, the towers'"
-            + " attacks on it and the place of its death spawns; by cg_elixir_collector_played and"
+            + " attacks on it and the place of its death spawns; by battles of the coverage"
+            + " sets: the clearing's kill lowered by a damage reduction (the evolved Knight,"
+            + " the hero Valkyrie, the Monk) and short of a heal since (the evolved Bats), so the"
+            + " unit lives on; by cg_elixir_collector_played and"
             + " card_ElixirGolem: the kings' elixir a collector and a death pay into; by"
             + " golden-gaps-v1/mirror_after_troop and"
             + " mirror_after_spell: the Mirror's item, its gates, its spend and its cycle, the"
@@ -476,10 +479,13 @@ public final class LadderMatch implements BattleMode {
    * object of the area-effect kind's band. A projectile is removed from the holder at once; an area
    * effect has its life ended and is removed at once; a character without hit points is removed at
    * once; a crown tower is left standing; every other character is resumed at once and its kill,
-   * with no attacker, queued for the damage drain of the update the clearing runs: it lives through
-   * that update's passes, dies at its drain and leaves at its cleanup. A removal moves every object
-   * after it up one place while the walk still steps on, so the object right after a removed one is
-   * not reached in this step and waits for the next.
+   * its hit points as the walk reaches it with no attacker, queued for the damage drain of the
+   * update the clearing runs: it lives through that update's passes, dies at its drain and leaves
+   * at its cleanup. The drain's damage entry lowers the kill by the character's damage reduction,
+   * and a heal landing in the update is not in it, so such a character lives on until a later
+   * step's clearing kills it. A removal moves every object after it up one place while the walk
+   * still steps on, so the object right after a removed one is not reached in this step and waits
+   * for the next.
    *
    * <p>A character of the neutral side, which the clearing only counts, and the stand-in owner of
    * actions, which stands for an object the battle does not have, are refused.
