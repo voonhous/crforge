@@ -25,23 +25,27 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * from the step its share reaches the threshold until it has come up again. Positions are kept in
  * half tiles (500 game units), as the ring is laid out.
  *
- * <p>A building on no ring point of an enemy tower keeps index -1 and no walking direction: each
- * hide moves it to the half tile it stood on as the run started, with no ring step.
+ * <p>The rings walked are those of the enemy side's princess towers still listed, in the side's
+ * order; the king's is not among them. A destroyed princess tower leaves that list in the cleanup
+ * that takes it out of the battle, so a building that surfaces on its ring afterwards stands on no
+ * ring point.
  *
- * <p>Refused as it starts rather than guessed: a building on no ring point of a standing tower
- * while a tower of that side is already destroyed (it may stand on the destroyed tower's ring), the
- * quarter rule of a row without distance-based positioning and a choice with no enemy king, none of
- * which a reference holds.
+ * <p>A building on no ring point of an enemy princess tower keeps index -1 and no walking
+ * direction: each hide moves it to the half tile it stood on as the run started, with no ring step.
+ *
+ * <p>Refused as it starts rather than guessed: the quarter rule of a row without distance-based
+ * positioning and a choice with no enemy king, neither of which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
         "Settled line for line: the start's first-appear action and ring index, each update's"
             + " threshold test, hide, timer, spawner hold, move two steps before the end and"
-            + " reappear, the backward walk and the start on no ring point. Held by"
-            + " evo_goblindrill_vs_musketeer; the backward walk and the start on no ring point by"
-            + " recorded battles not yet in the reference set. Refused: a destroyed tower's ring,"
-            + " the quarter rule and no enemy king.")
+            + " reappear, the backward walk, the start on no ring point and the rings looked at (the"
+            + " enemy princess towers still listed, a destroyed one gone). Held by"
+            + " evo_goblindrill_vs_musketeer; the backward walk, the start on no ring point and the"
+            + " ring of a destroyed tower by recorded battles not yet in the reference set."
+            + " Refused: the quarter rule and no enemy king.")
 final class GoblinDrillRelocateRun extends ActionInstance {
 
   /** Game units in one half tile, the ring's unit. */
@@ -97,8 +101,8 @@ final class GoblinDrillRelocateRun extends ActionInstance {
 
   /**
    * The start: the first-appear action scheduled on the building, the building as its cause; then
-   * its own point in half tiles, that point's index on the ring of the enemy tower it stands by,
-   * and, when it stands on one, the walking direction.
+   * its own point in half tiles, that point's index on the ring of the enemy princess tower it
+   * stands by, and, when it stands on one, the walking direction.
    *
    * @param row the relocation
    * @param unit the building it runs on
@@ -115,7 +119,7 @@ final class GoblinDrillRelocateRun extends ActionInstance {
     x = view.getX() / HALF_TILE;
     y = view.getY() / HALF_TILE;
     int enemy = 1 - (unit.side() & 1);
-    index = ringIndex(unit.world().towers(enemy), x, y);
+    index = ringIndex(unit.world().princessTowers(enemy), x, y);
     // On no ring point: no direction is chosen, and each hide comes up on the point itself.
     if (index >= 0) {
       backward = backward(unit.world().kingTower(enemy));
@@ -126,7 +130,8 @@ final class GoblinDrillRelocateRun extends ActionInstance {
    * The index of a point on the ring of the first tower of the list whose ring holds it, or -1.
    * Each tower's ring is a square of ten half tiles a side around its own half tile.
    *
-   * @param towers the enemy side's towers, in the holder's order
+   * @param towers the enemy side's princess towers still listed, in the side's order: a destroyed
+   *     one until the cleanup that removes it, the king never
    * @param x the point's half tile along the width
    * @param y the point's half tile along the length
    */
@@ -140,12 +145,7 @@ final class GoblinDrillRelocateRun extends ActionInstance {
         }
       }
     }
-    // A destroyed tower stays on its side's list natively, where the lookup would still find its
-    // ring; the holder here no longer lists it.
-    if (towers.size() < 3) {
-      throw new UnsupportedOperationException(
-          getAction().name() + " looks for a ring around a destroyed tower, which is not modelled");
-    }
+    // On no listed tower's ring, a destroyed tower's included once it has left the list.
     return -1;
   }
 

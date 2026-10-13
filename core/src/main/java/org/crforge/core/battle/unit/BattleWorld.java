@@ -2177,20 +2177,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Every tower of a side still in the battle, in the order the holder lists them: the side's list
-   * of map objects. A destroyed one is listed until the cleanup that removes it.
-   */
-  List<TowerEntity> towers(int side) {
-    List<TowerEntity> out = new ArrayList<>();
-    for (BattleEntity entity : holder.entities()) {
-      if (entity instanceof TowerEntity tower && tower.side() == side) {
-        out.add(tower);
-      }
-    }
-    return out;
-  }
-
-  /**
    * The princess towers of a side still in the battle, in the order the holder lists them: the
    * side's list of map objects. A destroyed one is listed until the cleanup that removes it.
    */
