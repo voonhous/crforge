@@ -22,6 +22,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
  * drain of the hit's own tick, at the musketeer's level and with no crown-tower share. What the
  * references do not reach is held here: the buff on damage after a bayonet, target_is_ground with
  * the targeting off and on a target whose layer a tag forces, and the refusals around an entry's
- * action.
+ * action and a forced target that is not a character.
  */
 class BattleThreeMusketeersTest {
 
@@ -52,6 +53,7 @@ class BattleThreeMusketeersTest {
     final List<String> typed = new ArrayList<>();
     final List<String> buffs = new ArrayList<>();
     final List<String> launches = new ArrayList<>();
+    final List<String> ownLaunches = new ArrayList<>();
     final CharacterEntity musketeer;
     int tick;
 
@@ -80,6 +82,9 @@ class BattleThreeMusketeersTest {
                 @Override
                 public void projectileLaunched(int t, ProjectileEntity projectile) {
                   launches.add(t + " " + projectile.getData().name());
+                  if (projectile.side() == 0) {
+                    ownLaunches.add(t + " " + projectile.getData().name());
+                  }
                 }
               });
       musketeer = still(0, MUSKETEER, X, Y, "M");
@@ -154,8 +159,9 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "target_is_ground answers 0 while the targeting is off, and refuses a target whose layer a"
-          + " tag forces")
+      "target_is_ground answers 0 while the targeting is off, and reads a character target's force"
+          + " tags before its row: FORCE_IS_GROUND ground, FORCE_IS_AIR not, both its live"
+          + " height 0")
   void targetIsGround() {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity knight = scene.still(1, "Knight", X, Y + 2000, "K");
@@ -170,11 +176,63 @@ class BattleThreeMusketeersTest {
     assertThat(evaluate("target_is_ground", environment)).as("targeting off").isZero();
     scene.musketeer.setActive(CharacterEntity.TARGETING_SLOT, true);
 
-    long forced = world.gameTagMask(world.gameTagIndex("FORCE_IS_AIR"));
-    knight.getView().setFlags(knight.getView().getFlags() | forced);
+    GridEntity view = knight.getView();
+    long untagged = view.getFlags();
+    view.setFlags(untagged | world.forceIsAir());
+    assertThat(evaluate("target_is_ground", environment)).as("FORCE_IS_AIR").isZero();
+    view.setFlags(untagged | world.forceIsGround());
+    assertThat(evaluate("target_is_ground", environment)).as("FORCE_IS_GROUND").isEqualTo(1);
+    view.setFlags(untagged | world.forceIsAir() | world.forceIsGround());
+    assertThat(evaluate("target_is_ground", environment)).as("both at height 0").isEqualTo(1);
+    view.setHeightOffset(view.getHeightOffset() + 1);
+    assertThat(evaluate("target_is_ground", environment)).as("both above height 0").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a Minion an air-to-ground hold keeps under FORCE_IS_GROUND takes the bayonet inside its"
+          + " reach; a Knight a knock keeps under FORCE_IS_AIR takes shots")
+  void theForceTagsChooseTheAttack() {
+    Scene air = new Scene(GameData.tables());
+    CharacterEntity minion = air.still(1, "Minion", X, Y + 1500, "A");
+    for (int i = 0; i < 80; i++) {
+      minion.raiseForceIsGround();
+      air.step(1);
+    }
+    assertThat(air.typed).isNotEmpty().allMatch(hit -> hit.contains(" M A "));
+    assertThat(air.ownLaunches).as("the musketeer's shots").isEmpty();
+
+    Scene ground = new Scene(GameData.tables());
+    CharacterEntity knight = ground.still(1, "Knight", X, Y + 2000, "K");
+    BattleWorld world = ground.match.getWorld();
+    for (int i = 0; i < 80; i++) {
+      knight.raiseWatched(world.forceIsAir());
+      ground.step(1);
+    }
+    assertThat(ground.typed).isEmpty();
+    assertThat(ground.ownLaunches).as("the musketeer's shots").isNotEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "target_is_ground on a target that is not a character and carries a force tag is refused")
+  void aForcedTowerIsRefused() {
+    Scene scene = new Scene(GameData.tables());
+    TowerEntity tower = scene.match.getWorld().princessTowers(1).get(0);
+    CharacterEntity musketeer =
+        scene.still(0, MUSKETEER, tower.getView().getX(), tower.getView().getY() - 4000, "N");
+    int ticks = 0;
+    while (musketeer.getTargeting().getReference() != tower.getTargetView() && ticks++ < 100) {
+      scene.step(1);
+    }
+    assertThat(musketeer.getTargeting().getReference()).isSameAs(tower.getTargetView());
+    BattleWorld world = scene.match.getWorld();
+    BattleExpressionEnvironment environment = new BattleExpressionEnvironment(musketeer, world);
+    assertThat(evaluate("target_is_ground", environment)).isEqualTo(1);
+    tower.getView().setFlags(tower.getView().getFlags() | world.forceIsAir());
     assertThatThrownBy(() -> evaluate("target_is_ground", environment))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("FORCE_IS_AIR");
+        .hasMessageContaining("which is not a character and carries FORCE_IS_AIR");
   }
 
   @Test
