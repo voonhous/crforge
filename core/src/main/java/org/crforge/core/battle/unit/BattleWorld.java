@@ -4160,15 +4160,18 @@ public class BattleWorld implements HolderPasses {
    * order, that deflects projectiles and that the cleanup would not remove - its countdown not
    * below 0, so one on its last step, at 0, still counts: as a point, within the area effect's
    * deflection radius widened by the projectile's own deflect radius, or its body radius without
-   * one; or, with a box body and no deflect radius, as that box (see {@link #touches}). The first
-   * that touches it and deflects it ends the pass; one that touches it but answers no - it has
-   * arrived, or is on the area effect's team - lets the pass go on. A projectile that no deflection
-   * turns around passes untouched.
+   * one; or, with a box body and no deflect radius, as that box (see {@link #touches}). A row whose
+   * deflection behaviour ignores the height, as the Royal Giant's shot, is measured by the same
+   * shapes on the ground plane: its height left out, so a shot flying at its constant height over
+   * the area effect is reached as if it flew on the ground. The first that touches it and deflects
+   * it ends the pass; one that touches it but answers no - it has arrived, or is on the area
+   * effect's team - lets the pass go on. A projectile that no deflection turns around passes
+   * untouched.
    *
    * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
-   * on the ground plane, or only at its target's point (whose arrival is measured at a stored
-   * point, not at the aim); a pingpong projectile not deflected before, met at its aim on its
-   * arrival (see {@link #refuseAtAim}); and every deflection {@link #deflect} does not model.
+   * only at its target's point (whose arrival is measured at a stored point, not at the aim); a
+   * pingpong projectile not deflected before, met at its aim on its arrival (see {@link
+   * #refuseAtAim}); and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
    * @param x the point along the width
@@ -4188,22 +4191,22 @@ public class BattleWorld implements HolderPasses {
     // The shape's radii: the projectile's deflect radius, or its body's without one.
     int rx = data.deflectRadius() >= 1 ? data.deflectRadius() : data.projectileRadius();
     int ry = data.deflectRadius() >= 1 ? 0 : data.projectileRadiusY();
-    if ((data.deflectBehaviour()
-            & (ProjectileData.IGNORE_HEIGHT | ProjectileData.CHECK_ONLY_TARGET_POSITION))
-        != 0) {
+    if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) != 0) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
               + data.name()
               + ") flies by a deflecting area effect, whose deflection of it is not modelled");
     }
+    // A row measured on the ground plane leaves its height out: the same shapes, flat.
+    int height = (data.deflectBehaviour() & ProjectileData.IGNORE_HEIGHT) != 0 ? 0 : z;
     for (AreaEffectEntity deflector : deflectors) {
       // Only an area effect the cleanup would remove, its countdown below 0, is passed over: one on
       // its last step, its countdown at 0, still deflects.
       if (deflector.getCountdown() < 0) {
         continue;
       }
-      if (touches(deflector, x, y, z, rx, ry)) {
+      if (touches(deflector, x, y, height, rx, ry)) {
         refuseAtAim(deflector, projectile);
         if (deflect(deflector, projectile)) {
           return true;
@@ -4299,11 +4302,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
-   * one with a deflection behaviour, a deflect radius or an action on its deflector, a body; one
-   * that hops, flies to a point, homes for a time, waits a random delay, hooks or stops at
+   * one with a deflection behaviour, a deflect radius or an action on its deflector, a box body;
+   * one that hops, flies to a point, homes for a time, waits a random delay, hooks or stops at
    * collisions; one that spawns a projectile, belongs to a chain or a volley's group. A spell such
    * as the Fireball, whose deflection behaviour sends it at the enemy nearest the area effect
    * without a target, is among them.
+   *
+   * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
+   * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the
+   * deflection itself reads. Nor is a round body on a projectile that does not fly to a point, as
+   * the evolved Royal Giant's homing shot has: the deflection reads the body only through the
+   * flight to a point, so such a shot is sent back at its root owner as one without a body.
    *
    * <p>A pingpong projectile on its sweep is modelled, its round body and its flight to a point
    * with it, as the Executioner's axe is: the pass over its body's cells turns it around on its
@@ -4330,10 +4339,11 @@ public class BattleWorld implements HolderPasses {
     boolean pingpong = data.pingpongVisualTimeMs() >= 1;
     boolean spellLike = spellLike(data);
     boolean rolling = rollingBody(data);
-    if ((data.deflectBehaviour() != 0 && !spellLike && !rolling)
+    // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
+    int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
+    if ((behaviour != 0 && !spellLike && !rolling)
         || (data.deflectRadius() != 0 && !spellLike)
         || data.actionOnDeflector() != null
-        || (data.projectileRadius() != 0 && !pingpong && !rolling)
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
