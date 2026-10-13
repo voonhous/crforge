@@ -31,6 +31,8 @@ class StubMovementQueries implements MovementQueries {
   int air;
   int ground = 1;
   int referenceAvailable = 1;
+  int referenceInRange;
+  int[] specialWaypoint = {0, 0};
   int gridWidth = 36;
   int cellTest;
   int relocate;
@@ -127,6 +129,16 @@ class StubMovementQueries implements MovementQueries {
   @Override
   public int referenceAvailable() {
     return referenceAvailable;
+  }
+
+  @Override
+  public int referenceInRange() {
+    return referenceInRange;
+  }
+
+  @Override
+  public int[] specialWaypoint() {
+    return specialWaypoint.clone();
   }
 
   @Override
