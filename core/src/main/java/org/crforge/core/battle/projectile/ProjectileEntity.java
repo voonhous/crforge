@@ -859,6 +859,11 @@ public class ProjectileEntity extends BattleEntity
    * homes for a time homes on the source again when it stands farther than the row's least homing
    * distance, and its flight is then measured from the deflector, as from a launcher.
    *
+   * <p>A hooking projectile, as the Fisherman's hook, is not redirected at all: after its action on
+   * the deflector its flight ends where it is, as a release ends it (its action on reaching its
+   * target scheduled, a damage still registered on its target handed back), with its target, root,
+   * owner, side and count of deflections as they were.
+   *
    * <p>A pingpong projectile not deflected before first lets its owner's targeting go on, whether
    * the component is on or off, and its sweep time starts over; the relaunch sets no hold on the
    * deflector. Deflected, it no longer sweeps (see {@link ProjectileFlight}).
@@ -911,6 +916,13 @@ public class ProjectileEntity extends BattleEntity
     if (data.customDeflectAction() != null) {
       throw new UnsupportedOperationException(
           name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
+    }
+    if (data.dragBackSpeed() >= 1) {
+      // A hooking projectile, as the Fisherman's hook, is not turned: its flight ends where it is,
+      // as one turned past the most a projectile takes ends. Its target, side, owner and count of
+      // deflections stay as they were.
+      finishOverDeflected();
+      return;
     }
     if (data.pingpongVisualTimeMs() >= 1 && deflections == 0 && owner != null) {
       owner.pingpongDeflected(this);
