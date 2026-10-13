@@ -31,12 +31,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>On success the row's action on the cause is scheduled on the cause, the owner its cause; then
  * the row's success action on the owner, the cause its cause; and, when the row resets avoidance,
  * the owner's push blend is cleared. On failure the row's failure action on the cause is scheduled
- * on the cause, the owner its cause.
+ * on the cause, the owner its cause. A run let go before its due tick, as its owner leaves the
+ * battle, schedules the row's failure action on the cause too, the cause its own cause; a run let
+ * go on or after its due tick does nothing.
  *
  * <p>Refused as the row is built: a push with no delay, which the action's perform makes at once; a
  * mode other than toward the horizontal centre from the cause; the push that skips the request's
- * checks; and a failure action on the owner. Refused as it runs: a cause that has left the battle
- * by the push, and a run let go before its push, whose failure is not modelled.
+ * checks; and a failure action on the owner. Refused as it runs: a cause dead but still listed at
+ * the push, a cause that moved after the run started and then left, and a run let go before its
+ * push while its cause is dead or gone.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -45,9 +48,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " test, the three failures, the point for the mode toward the horizontal centre"
             + " from the cause, the request's five switches and the order of the success's"
             + " schedules and the blend reset; held by ability_hero_giant_slap, a Knight pushed"
-            + " along the width by the Giant hero form's slap. Refused: no delay, the other three"
-            + " modes, the unchecked push, a failure action on the owner, a cause gone by the"
-            + " push and a run let go before it.")
+            + " along the width by the Giant hero form's slap; the failure of a run let go before"
+            + " its push held by recorded battles. Refused: no delay, the other three modes, the"
+            + " unchecked push, a failure action on the owner, a cause dead or moved and gone by"
+            + " the push, and a run let go before it with its cause dead or gone.")
 public final class DoPushbackFromInstigator extends RowAction {
 
   /**

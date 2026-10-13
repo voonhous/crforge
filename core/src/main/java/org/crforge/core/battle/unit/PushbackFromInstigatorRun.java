@@ -24,9 +24,11 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled from the listing: the due tick from the start, the exact test, the push and"
             + " its schedules; held by ability_hero_giant_slap. A cause that left before the push:"
             + " the push still runs, its direction from where the cause stood, the schedules on the"
-            + " cause skipped and the success action taken with the cause kept. Refused: a cause"
-            + " dead but still listed at the push, a cause that moved after the run started and"
-            + " then left, and a run let go before its push.")
+            + " cause skipped and the success action taken with the cause kept. A run let go"
+            + " before its due tick, as the unit leaves: the failure action on the cause, held by"
+            + " recorded battles where the hero Giant slaps again. Refused: a cause dead but still"
+            + " listed at the push, a cause that moved after the run started and then left, and a"
+            + " run let go before its push while its cause is dead or gone.")
 final class PushbackFromInstigatorRun extends ActionInstance {
 
   private final DoPushbackFromInstigator row;
@@ -127,11 +129,27 @@ final class PushbackFromInstigatorRun extends ActionInstance {
     }
   }
 
+  /**
+   * As the unit leaves before the push is due: the failure action on the cause runs, with the cause
+   * as its own cause, as when the push fails. A run let go on or after its due tick does nothing. A
+   * cause dead, gone or leaving with the unit is refused: no recording holds it.
+   */
   @Override
   protected void stop(ActionHolder holder) {
-    if (!isFinished()) {
-      throw new UnsupportedOperationException(
-          row.name() + " on " + unit.name() + " was let go before its push, not modelled");
+    if (unit.world().tick() >= due) {
+      return;
     }
+    if (causeGone
+        || !instigator.actionAlive()
+        || unit.world().liveOrQueued(instigator.getId()) != instigator) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " on "
+              + unit.name()
+              + " was let go before its push with its cause "
+              + instigator.name()
+              + " dead or gone, not modelled");
+    }
+    schedule(instigator, instigator, row.getColumns().failureOnInstigator());
   }
 }
