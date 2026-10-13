@@ -4156,18 +4156,19 @@ public class BattleWorld implements HolderPasses {
   /**
    * The deflection pass of a flying projectile, at a point and height: after each move, at its new
    * position, and at its arrival, at its aim. A projectile that never deflects passes untouched.
-   * Every other is measured as a point, standing on the ground, in three dimensions, against every
-   * area effect of the live list, in its order, that deflects projectiles and that the cleanup
-   * would not remove - its countdown not below 0, so one on its last step, at 0, still counts:
-   * within the area effect's deflection radius widened by the projectile's own deflect radius, or
-   * its body radius without one. The first that touches it and deflects it ends the pass; one that
-   * touches it but answers no - it has arrived, or is on the area effect's team - lets the pass go
-   * on. A projectile that no deflection turns around passes untouched.
+   * Every other is measured in three dimensions against every area effect of the live list, in its
+   * order, that deflects projectiles and that the cleanup would not remove - its countdown not
+   * below 0, so one on its last step, at 0, still counts: as a point, within the area effect's
+   * deflection radius widened by the projectile's own deflect radius, or its body radius without
+   * one; or, with a box body and no deflect radius, as that box (see {@link #touches}). The first
+   * that touches it and deflects it ends the pass; one that touches it but answers no - it has
+   * arrived, or is on the area effect's team - lets the pass go on. A projectile that no deflection
+   * turns around passes untouched.
    *
    * <p>Refused rather than guessed, once a deflecting area effect is listed: a projectile measured
-   * on the ground plane, by a box, or only at its target's point (whose arrival is measured at a
-   * stored point, not at the aim); a pingpong projectile not deflected before, met at its aim on
-   * its arrival (see {@link #refuseAtAim}); and every deflection {@link #deflect} does not model.
+   * on the ground plane, or only at its target's point (whose arrival is measured at a stored
+   * point, not at the aim); a pingpong projectile not deflected before, met at its aim on its
+   * arrival (see {@link #refuseAtAim}); and every deflection {@link #deflect} does not model.
    *
    * @param projectile the projectile
    * @param x the point along the width
@@ -4188,9 +4189,8 @@ public class BattleWorld implements HolderPasses {
     int rx = data.deflectRadius() >= 1 ? data.deflectRadius() : data.projectileRadius();
     int ry = data.deflectRadius() >= 1 ? 0 : data.projectileRadiusY();
     if ((data.deflectBehaviour()
-                & (ProjectileData.IGNORE_HEIGHT | ProjectileData.CHECK_ONLY_TARGET_POSITION))
-            != 0
-        || ry > 0) {
+            & (ProjectileData.IGNORE_HEIGHT | ProjectileData.CHECK_ONLY_TARGET_POSITION))
+        != 0) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
@@ -4203,13 +4203,7 @@ public class BattleWorld implements HolderPasses {
       if (deflector.getCountdown() < 0) {
         continue;
       }
-      int reach = deflector.deflectRadius() + rx;
-      int squared =
-          FixedMath.guardedSumOfSquares(
-              FixedMath.s32((long) x - deflector.getX()),
-              FixedMath.s32((long) y - deflector.getY()),
-              z);
-      if (squared < reach * reach) {
+      if (touches(deflector, x, y, z, rx, ry)) {
         refuseAtAim(deflector, projectile);
         if (deflect(deflector, projectile)) {
           return true;
@@ -4217,6 +4211,55 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return false;
+  }
+
+  /**
+   * Whether a deflecting area effect touches a projectile in the deflection pass, in three
+   * dimensions, the area effect standing on the ground. A projectile without a half height is a
+   * point, touched strictly within the area effect's deflection radius widened by the projectile's
+   * radius. One with a half height, a box body as the rolling logs have, is a box around its point:
+   * its radius across the width and up the height, its half height along the length; it is touched
+   * when the point of the box nearest the area effect lies strictly within the deflection radius,
+   * each of the three offsets first held within the radius either way.
+   *
+   * @param rx the projectile's radius: its deflect radius, or its body's without one
+   * @param ry its half height along the length: its body's, without a deflect radius, or 0
+   */
+  private static boolean touches(AreaEffectEntity deflector, int x, int y, int z, int rx, int ry) {
+    int radius = deflector.deflectRadius();
+    if (ry <= 0) {
+      int reach = radius + rx;
+      int squared =
+          FixedMath.guardedSumOfSquares(
+              FixedMath.s32((long) x - deflector.getX()),
+              FixedMath.s32((long) y - deflector.getY()),
+              z);
+      return squared < reach * reach;
+    }
+    int dx = nearestOffset(deflector.getX(), x, rx);
+    if (dx > radius || dx < -radius) {
+      return false;
+    }
+    int dy = nearestOffset(deflector.getY(), y, ry);
+    if (dy > radius || dy < -radius) {
+      return false;
+    }
+    // The area effect stands on the ground; the box reaches its radius up and down.
+    int dz = nearestOffset(0, z, rx);
+    if (dz > radius || dz < -radius) {
+      return false;
+    }
+    return dx * dx + dy * dy + dz * dz < radius * radius;
+  }
+
+  /**
+   * The offset from a centre to the point of a span nearest it: the centre held within the span's
+   * centre less and plus its half extent, less the centre.
+   */
+  private static int nearestOffset(int centre, int at, int half) {
+    int nearest = centre < at + half ? centre : at + half;
+    nearest = centre > at - half ? nearest : at - half;
+    return nearest - centre;
   }
 
   /**
@@ -4276,10 +4319,11 @@ public class BattleWorld implements HolderPasses {
    * tower share, with a deflect radius of its own and no body, as the Fireball, the Rocket, the
    * Snowball and the evolved Cannon's bombs are (see {@link #deflect}).
    *
-   * <p>And a rolling body: one whose only deflection behaviour inverts its direction, with a round
-   * body and no deflect radius, that flies to a point, as the Bowler's ball does (see {@link
-   * #rollingBody}). Refused: such a row with a least distance or a constant height, as the
-   * Firecracker's sparks, which no recording holds.
+   * <p>And a rolling body: one whose deflection behaviour inverts its direction, with a round or a
+   * box body and no deflect radius, that flies to a point, as the Bowler's ball and the rolling
+   * logs do (see {@link #rollingBody}). Refused: such a row with a constant height, as the
+   * Firecracker's sparks, which no recording holds, and one with a starting action, as the hero
+   * Barbarian Barrel's, which sets its owner's ability button while it rolls.
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
@@ -4290,7 +4334,8 @@ public class BattleWorld implements HolderPasses {
         || (data.deflectRadius() != 0 && !spellLike)
         || data.actionOnDeflector() != null
         || (data.projectileRadius() != 0 && !pingpong && !rolling)
-        || data.projectileRadiusY() != 0
+        || (data.projectileRadiusY() != 0 && !rolling)
+        || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling)
         || data.homingTimeMs() >= 1
@@ -4468,17 +4513,18 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Whether a projectile is a rolling body as a deflection reads it: its only deflection behaviour
-   * inverts its direction, it flies to a point with a round body, not sweeping out and back, and it
-   * has no deflect radius, no least distance and no constant height, as the Bowler's ball.
+   * Whether a projectile is a rolling body as a deflection reads it: its deflection behaviour
+   * inverts its direction, alone or with the spells' tower share, which the inverting deflection
+   * never reads; it flies to a point with a body, round as the Bowler's ball or a box as the
+   * rolling logs, not sweeping out and back, and it has no deflect radius and no constant height. A
+   * least distance is no bar: a deflected launch is never held to it.
    */
   private static boolean rollingBody(ProjectileData data) {
-    return data.deflectBehaviour() == ProjectileData.INVERT_DIRECTION
+    return (data.deflectBehaviour() & ~ProjectileData.USE_SPELLS_TOWER_DAMAGE_MUL)
+            == ProjectileData.INVERT_DIRECTION
         && data.homingLike()
         && data.pingpongVisualTimeMs() < 1
-        && data.projectileRadiusY() == 0
         && data.deflectRadius() == 0
-        && data.minDistance() == 0
         && data.constantHeight() == 0;
   }
 
