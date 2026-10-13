@@ -2,15 +2,15 @@
   "content_version": "16.402.21",
   "battles": 10000,
   "to_the_end": 96.5,
-  "ticks_agreed": 98.3,
+  "ticks_agreed": 98.4,
   "outcomes": {
-    "diagnostic_match": 9650,
+    "diagnostic_match": 9657,
     "invalid": 4,
-    "mismatch": 322,
+    "mismatch": 315,
     "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].hp": 139,
+    "mismatch $.entities[].hp": 132,
     "mismatch $.entities.length": 60,
     "mismatch $.entities[].x": 56,
     "mismatch $.entities[].state": 53,
@@ -27,5 +27,5 @@
     "mismatch $.entities[].side": 1
   },
   "set": "296000195c872c7d",
-  "commit": "dbe84a2cf2a6c26e870e065ed06ac0f0dba9f54a"
+  "commit": "6c86c837c9ded80b2b9b39f7a0f9bd09e044de67"
 }
