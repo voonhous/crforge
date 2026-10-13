@@ -83,6 +83,16 @@ public interface BattleAction {
   }
 
   /**
+   * Whether a run of the action reads anything of its cause: the object it carries, or the side,
+   * level or point it holds. A class that answers false runs the same whatever its cause, so it may
+   * run where the battle does not know the cause. True unless the class says otherwise, so an
+   * unknown cause is refused for every class not shown to leave it unread.
+   */
+  default boolean readsCause() {
+    return true;
+  }
+
+  /**
    * Runs every time the action is scheduled, whether it starts at once or is queued. The actions
    * that schedule other actions when they are scheduled do their work here.
    *

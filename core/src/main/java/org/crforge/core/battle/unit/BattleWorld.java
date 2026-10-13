@@ -9,6 +9,7 @@ package org.crforge.core.battle.unit;
 import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -2992,11 +2993,18 @@ public class BattleWorld implements HolderPasses {
    * the next pending pass of the same tick: phase 2 after a hit in a component pass, phase 3 after
    * an impact or a typed hit, and at once after a kill inside a pending pass.
    *
-   * <p>Refused rather than guessed: a death hook with no cause, which the game gives a cause that
-   * carries only a side, and one scheduled after the tick's last pending pass, which would leave
-   * with the entity. The cause is the attacker's own holder, where the game hands the hook a copy
-   * of the attacker made at the kill; a hook reads no more of it than its presence and its row,
-   * which the copy shares.
+   * <p>A death with a killing side and no attacker - a buff's damage over time, which the battle
+   * deals with no attacker for the side its buff was applied for - is handed in the game a cause
+   * the battle does not hold: the buff's source as it was when the hit was queued, or with no
+   * source a cause that carries the side alone. The battle schedules the killed action with no
+   * cause when no action of its chain reads its cause (see {@link BattleAction#readsCause}), as the
+   * evolved Wall Breaker's spawn, whose source is its owner.
+   *
+   * <p>Refused rather than guessed: a killed action with no attacker whose chain reads its cause,
+   * and a death hook scheduled after the tick's last pending pass, which would leave with the
+   * entity. The cause is the attacker's own holder, where the game hands the hook a copy of the
+   * attacker made at the kill; a hook reads no more of it than its presence and its row, which the
+   * copy shares.
    *
    * <p>After the hooks, the death handler's reward: in a match, a player's unit that gives elixir
    * on its death pays it to the king of the killing side, ten times its column in ten-thousandths;
@@ -3119,8 +3127,10 @@ public class BattleWorld implements HolderPasses {
    * The death handler's hook: the dying unit's killed action alone, with what killed it as the
    * cause; the death slot schedules the death action (see {@link #slotDeathAction}). None when the
    * row has no killed action, when the death has no killing side, or when the unit killed itself on
-   * the killing side. Refused rather than guessed: a killed action with no attacker, whose cause
-   * would carry a side alone, and one scheduled after the tick's last pending pass.
+   * the killing side. With no attacker the action is scheduled with no cause when no action of its
+   * chain reads its cause. Refused rather than guessed: a killed action with no attacker whose
+   * chain reads its cause, which would be the buff's source or a side alone, and one scheduled
+   * after the tick's last pending pass.
    *
    * @param dying the entity that died
    * @param attacker what killed it, or null for nothing
@@ -3132,9 +3142,16 @@ public class BattleWorld implements HolderPasses {
     if (data.onKilledAction() == null || killingSide == -1) {
       return;
     }
+    // Built here for a death with no attacker, whose chain is asked whether it reads its cause.
+    BattleAction killed =
+        attacker == null ? actions.build(data.onKilledAction(), binding(dying)) : null;
     ActionHolder cause;
     int side;
-    if (attacker instanceof WorldEntity entity) {
+    if (killed != null && !chainReadsCause(killed)) {
+      // No action of the chain reads the cause, which the battle does not hold here.
+      cause = null;
+      side = killingSide;
+    } else if (attacker instanceof WorldEntity entity) {
       cause = entity.actionHolder();
       side = entity.side();
     } else if (attacker instanceof ProjectileEntity projectile) {
@@ -3146,8 +3163,8 @@ public class BattleWorld implements HolderPasses {
     } else {
       throw new UnsupportedOperationException(
           dying.name()
-              + " died with no attacker; the cause its killed action would carry, a side alone, is"
-              + " not modelled");
+              + " died with no attacker and its killed action reads its cause, which would be the"
+              + " buff's source or a side alone, not modelled");
     }
     if (attacker == dying && side == killingSide) {
       return;
@@ -3163,13 +3180,25 @@ public class BattleWorld implements HolderPasses {
     for (WorldObserver observer : observers) {
       observer.deathHooksScheduled(tick, dying, attacker, side, hooks, inPendingPass);
     }
-    dying
-        .actionHolder()
-        .schedule(
-            actions.build(data.onKilledAction(), binding(dying)),
-            ActionHolder.OWN_DELAY,
-            false,
-            cause);
+    if (killed == null) {
+      killed = actions.build(data.onKilledAction(), binding(dying));
+    }
+    dying.actionHolder().schedule(killed, ActionHolder.OWN_DELAY, false, cause);
+  }
+
+  /**
+   * Whether an action or any action chained after it, each scheduled with the same cause, reads its
+   * cause. A chain that comes back to an action already asked has been asked in full. asked in
+   * full.
+   */
+  private static boolean chainReadsCause(BattleAction action) {
+    Set<BattleAction> asked = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (BattleAction step = action; step != null && asked.add(step); step = step.nextAction()) {
+      if (step.readsCause()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

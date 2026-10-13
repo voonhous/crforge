@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -23,6 +24,7 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Kill;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,9 @@ import org.junit.jupiter.api.io.TempDir;
 class BattleDeathHookTest {
 
   private static final String DEATH = "IceGolemiteDeathExplosion";
+
+  /** The packed level the poison is applied at. */
+  private static final int POISON_LEVEL = 10;
 
   /** The Knight's collision radius, written into its row. */
   private static final int KNIGHT_RADIUS = 500;
@@ -212,6 +217,74 @@ class BattleDeathHookTest {
 
     assertThat(s.scheduled)
         .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
+  }
+
+  /**
+   * Gives the Setup's unit 1 hit point and a Poison applied for the top side with no source, and
+   * steps until the poison has killed it.
+   */
+  private static void poisonToDeath(Setup s) {
+    s.tombstone.getHitPoints().setHitPoints(1);
+    s.tombstone
+        .getBuffs()
+        .apply(s.match.getWorld().getRecords().buff("Poison"), 5000, POISON_LEVEL, null, 1);
+    for (int i = 0; i < 60 && HitPoints.alive(s.tombstone.getHitPoints()); i++) {
+      s.battle.step();
+    }
+    assertThat(HitPoints.alive(s.tombstone.getHitPoints())).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit a buff's damage over time kills schedules its killed action for the buff's side with"
+          + " no cause, when its chain spawns from its owner and reads none; the spawn runs for"
+          + " the dying unit's side")
+  void aSideAloneKillRunsAChainThatReadsNoCause() {
+    // The evolved Wall Breaker's own row: its killed action spawns from its owner, and so does the
+    // action chained after it.
+    UnitData wallBreaker = GameData.unit("Wallbreaker_EV1");
+    Setup s = new Setup(wallBreaker, 3500, 25000);
+    List<String> made = new ArrayList<>();
+    s.match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void characterSpawned(
+                  int tick, SpawnHost source, CharacterEntity child, int x, int y) {
+                made.add("%s side %d".formatted(child.getData().name(), child.side()));
+              }
+            });
+
+    poisonToDeath(s);
+    s.battle.step();
+
+    assertThat(s.scheduled)
+        .containsExactly(
+            "Tombstone by none side 1 [%s] pending false".formatted(wallBreaker.onKilledAction()));
+    assertThat(s.runs).contains(wallBreaker.onKilledAction() + " 3");
+    assertThat(made).isNotEmpty().allMatch(child -> child.endsWith(" side 0"));
+  }
+
+  @Test
+  @DisplayName(
+      "a killed action that reads its cause stays refused for a death with no attacker, whose"
+          + " cause would be the buff's source or a side alone: a spawn from its cause and a check"
+          + " of its killer")
+  void aKilledActionThatReadsItsCauseIsRefusedWithNoAttacker() {
+    // The death action spawns its area effect from its cause, as it has no ParentGOAsSource.
+    Setup spawn = new Setup(tombstoneKilledToo(), 3500, 25000);
+    assertThatThrownBy(() -> poisonToDeath(spawn))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("died with no attacker")
+        .hasMessageContaining("reads its cause");
+
+    // The Boss Bandit's own row: its killed action checks whether its killer is a Bandit.
+    Setup check = new Setup(GameData.unit("BossBandit"), 3500, 25000);
+    assertThatThrownBy(() -> poisonToDeath(check))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("died with no attacker")
+        .hasMessageContaining("reads its cause");
   }
 
   @Test
