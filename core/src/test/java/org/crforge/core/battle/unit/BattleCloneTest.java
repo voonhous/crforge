@@ -21,6 +21,7 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -519,14 +520,95 @@ class BattleCloneTest {
   }
 
   @Test
-  @DisplayName("a unit still deploying as the Clone reaches it is refused")
-  void aDeployingUnitIsRefused() {
-    Scene scene = new Scene();
-    scene.still(CAST_TICK, 0, "Knight", X, Y, "late");
+  @DisplayName(
+      "a unit still deploying is cloned with its countdown: both are set up as clones, the"
+          + " countdowns run down in the setup without a resume, and each move apart past its"
+          + " duration holds its unit still with NO_MOVE until the countdown has ended, then"
+          + " resumes it")
+  void aDeployingUnitIsClonedWithItsCountdown(@TempDir Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    // A deploy time well past the move apart's duration, so that the move apart waits.
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("DeployTime", 1500));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(
+            CAST_TICK, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "late");
+    scene.clone(CAST_TICK + 2);
+
+    CharacterEntity clone = scene.named("late_clone0");
+    List<CharacterEntity> pair = List.of(knight, clone);
+    int countdown = knight.getView().getDeployCountdown();
+    assertThat(countdown).isPositive();
+    assertThat(clone.getView().getDeployCountdown()).isEqualTo(countdown);
+    int durationMs = cloneDuration(clone);
+    assertThat(countdown).isGreaterThan(durationMs + 100);
+    for (CharacterEntity unit : pair) {
+      assertThat(unit.getView().getState()).as(unit.name()).isEqualTo(GridEntityState.CLONE_SETUP);
+    }
+    assertThat(clone.isClone()).isTrue();
+    assertThat(clone.getHitPoints().getHitPoints()).isEqualTo(1);
+
+    // 50 ms a visit, in the setup all along: the move apart reaches its duration first and then
+    // holds each unit still, NO_MOVE set, until the countdown has ended.
+    long noMove = clone.getView().getFlagBits().noMove();
+    int[] heldAt = null;
+    int visit = 0;
+    while (clone.getView().getDeployCountdown() > 0) {
+      scene.step(1);
+      visit++;
+      int left = Math.max(countdown - 50 * visit, 0);
+      for (CharacterEntity unit : pair) {
+        assertThat(unit.getView().getDeployCountdown()).as(unit.name()).isEqualTo(left);
+        if (left > 0) {
+          assertThat(unit.getView().getState())
+              .as("%s visit %d", unit.name(), visit)
+              .isEqualTo(GridEntityState.CLONE_SETUP);
+        }
+      }
+      if (visit * 50 > durationMs) {
+        assertThat(clone.actionHolder().tags() & noMove).as("visit %d", visit).isEqualTo(noMove);
+        assertThat(knight.actionHolder().tags() & noMove).as("visit %d", visit).isEqualTo(noMove);
+        int[] at = {clone.getView().getX(), clone.getView().getY()};
+        if (heldAt != null) {
+          assertThat(at).as("visit %d", visit).isEqualTo(heldAt);
+        }
+        heldAt = at;
+      }
+    }
+    assertThat(heldAt).isNotNull();
+    // The countdown's end resumes neither: the move apart does, at its next step.
+    scene.step(2);
+    for (CharacterEntity unit : pair) {
+      assertThat(unit.getView().getState())
+          .as(unit.name())
+          .isNotIn(GridEntityState.CLONE_SETUP, GridEntityState.DEPLOYING);
+      assertThat(unit.isClone()).isEqualTo(unit == clone);
+    }
+  }
+
+  /** The duration of the move apart the Clone gave a unit, from its listed run. */
+  private static int cloneDuration(CharacterEntity unit) {
+    for (ActionInstance run : unit.actionHolder().running()) {
+      if (run.getAction() instanceof Clone clone) {
+        return clone.getCloneDurationMs();
+      }
+    }
+    throw new IllegalStateException(unit.name() + " has no move apart");
+  }
+
+  @Test
+  @DisplayName("a carrier still deploying as the Clone reaches it is refused")
+  void aDeployingCarrierIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables = carrierTables(folder);
+    Scene scene = new Scene(tables);
+    scene.match.play(
+        CAST_TICK, new BattleRecords(tables).card("GoblinGiant"), LEVEL, 0, X, Y, "GoblinGiant");
 
     assertThatThrownBy(() -> scene.clone(CAST_TICK + 2))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("deploy countdown");
+        .hasMessageContaining("is cloned with a deploy countdown and carries riders");
   }
 
   @Test
