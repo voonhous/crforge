@@ -6,6 +6,7 @@
 
 package org.crforge.core.pathfinding;
 
+import java.util.function.BooleanSupplier;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -123,6 +124,13 @@ public class GridEntity {
 
   /** True for a building, which stands still and occludes cells. */
   private boolean building;
+
+  /**
+   * Whether another building stands within 500 of the entity edge to edge, as a building whose row
+   * is in the characters table asks it of the battle each time its contact is asked; null for every
+   * other entity, which never asks. See {@link #besideAnotherBuilding()}.
+   */
+  private BooleanSupplier besideBuildingQuery;
 
   /** True for an air unit, which ignores water and ground obstacles when routing. */
   private boolean air;
@@ -247,4 +255,12 @@ public class GridEntity {
    * The validator ignores pending damage that lands later than a global limit.
    */
   private int pendingDamageDurationMs;
+
+  /**
+   * True when the entity is a building of the characters table with another building within 500 of
+   * it edge to edge, which takes it out of contact; false for every other entity.
+   */
+  public boolean besideAnotherBuilding() {
+    return besideBuildingQuery != null && besideBuildingQuery.getAsBoolean();
+  }
 }

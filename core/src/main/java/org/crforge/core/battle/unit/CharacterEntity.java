@@ -595,6 +595,10 @@ public class CharacterEntity extends WorldEntity {
     this.spawnsLeft = data.spawnLimit();
 
     GridEntity view = getView();
+    // A building of the characters table asks the battle, each time its contact is asked, whether
+    // another building stands beside it.
+    view.setBesideBuildingQuery(
+        () -> getData().characterBuilding() && world.besideAnotherBuilding(this));
     TargetingState targeting = getTargeting();
     targeting.setMovementComponentActive(data.hasMovementComponent());
     this.unit =
