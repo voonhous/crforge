@@ -26,9 +26,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The Mirror where the reference runs do not take it: a Mirror after a Mirror, a Mirror with
- * nothing to repeat, a Mirror of a card that staggers its units, and the plays it refuses - outside
- * a match and with another play of its side pending - and a Mirror of a champion, by a card or a
- * hero play, whose copy the champion's slot follows.
+ * nothing to repeat, a Mirror of a card that staggers its units, a Mirror given while another play
+ * of its side is pending or after one refused at its run, and the plays it refuses - outside a
+ * match, in the tick of another play of its side or the tick after, and about the tick a refused
+ * play's promise is dropped - and a Mirror of a champion, by a card or a hero play, whose copy the
+ * champion's slot follows.
  */
 class BattleMirrorTest {
 
@@ -52,6 +54,10 @@ class BattleMirrorTest {
   /** The same with Skeletons, for 1 elixir, in place of the Knight. */
   private static final List<String> SKELETON_MIRRORS =
       List.of("Skeletons", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  /** The same with a Giant, which the elixir a Knight leaves at the start does not cover. */
+  private static final List<String> GIANT_MIRRORS =
+      List.of("Knight", "Giant", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
 
   /** The same with Goblins, which stagger their units, in place of the Knight. */
   private static final List<String> GOBLIN_MIRRORS =
@@ -77,7 +83,7 @@ class BattleMirrorTest {
   private static final int MAX_MANA =
       Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
 
-  /** The ticks a Mirror runs after the play before it at the soonest, past its pending window. */
+  /** The ticks a Mirror runs after the play before it in the tests that leave nothing pending. */
   private static final int AFTER_A_PLAY = 22;
 
   @Test
@@ -188,30 +194,112 @@ class BattleMirrorTest {
 
   @Test
   @DisplayName(
-      "a Mirror with another play of its side due in the 21 ticks up to its own is refused, and"
-          + " one a tick later is played")
-  void aMirrorWithAPlayPendingIsRefused() {
-    // Skeletons for 1, so that the Mirror's 2 is covered a tick after the window.
-    Standard1v1Battle pending = new Standard1v1Battle(GameData.tables());
-    pending.startLadderMatch(SKELETON_MIRRORS, KNIGHTS, 0, 0);
-    pending.play(20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
-    pending.playMirror(41, "Mirror", LEVEL, 0, 14500, 10000, "m");
+      "a Mirror given while another play of its side is pending repeats that play, which its"
+          + " player's client lists as promised, not the last card the king holds then")
+  void aMirrorGivenWhileAPlayIsPendingRepeatsThatPlay() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
+    int archerCost = Shipped.cost("Archer");
+    int mirrorCost = Math.min(archerCost + Shipped.cost("Mirror"), MAX_MANA);
+    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, 20);
+    // The Archers run on a tick the elixir covers them and the Mirror after; the Mirror is given
+    // ten ticks after them, while they are still pending and the Knight is the last card.
+    int archers = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, archerCost + mirrorCost));
+    battle.play(archers, GameData.card("Archer"), LEVEL, 0, 3500, 10000, "a");
+    battle.playMirror(archers + 10, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, archers - 1);
+    assertThat(match.side(0).lastPlayed().name()).isEqualTo("Knight");
+    run(battle, archers + 10);
 
-    assertThatThrownBy(() -> run(pending, 41))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "m: a Mirror given while another play of its side is pending, which the client may"
-                + " repeat in place of the last card, is not modelled");
+    Standard1v1Battle.Play mirror = battle.getPlays().get(2);
+    assertThat(mirror.matchCode()).isZero();
+    assertThat(mirror.mirror().repeats().name()).isEqualTo("Archer");
+    assertThat(mirror.mirror().cost()).isEqualTo(mirrorCost);
+    assertThat(mirror.units()).hasSameSizeAs(battle.getPlays().get(1).units());
+    assertThat(mirror.units()).allMatch(unit -> unit.getData().name().equals("Archer"));
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror given in the tick of another play of its side or the tick after is refused, and"
+          + " one two ticks after repeats that play")
+  void aMirrorGivenInThePlaysTickOrTheTickAfterIsRefused() {
+    for (int mirror : new int[] {20, 21}) {
+      Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+      battle.startLadderMatch(SKELETON_MIRRORS, KNIGHTS, 0, 0);
+      battle.play(20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
+      battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
+
+      assertThatThrownBy(() -> run(battle, mirror))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessage(
+              "m: a Mirror given in the tick of another play of its side or the tick after, which"
+                  + " the player's client may not yet repeat, is not modelled");
+    }
 
     Standard1v1Battle later = new Standard1v1Battle(GameData.tables());
     later.startLadderMatch(SKELETON_MIRRORS, KNIGHTS, 0, 0);
     later.play(20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
-    later.playMirror(42, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(later, 42);
-    Standard1v1Battle.Play mirror = later.getPlays().get(1);
-    assertThat(mirror.matchCode()).isZero();
-    assertThat(mirror.mirror().repeats().name()).isEqualTo("Skeletons");
-    assertThat(mirror.units()).hasSameSizeAs(later.getPlays().get(0).units());
+    later.playMirror(22, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(later, 22);
+    assertThat(later.getPlays().get(1).mirror().repeats().name()).isEqualTo("Skeletons");
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror given while a play of its side is pending that the match refuses at its run"
+          + " repeats that play, which its client still lists, not the last card")
+  void aMirrorRepeatsAPendingPlayRefusedAtItsRun() {
+    Standard1v1Battle battle = refusedGiant();
+    // Given on tick 11, while the Giant given on 1 is pending.
+    battle.playMirror(31, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, 31);
+
+    Standard1v1Battle.Play mirror = battle.getPlays().get(2);
+    assertThat(mirror.mirror().repeats().name()).isEqualTo("Giant");
+    assertThat(mirror.mirror().cost())
+        .isEqualTo(Math.min(Shipped.cost("Giant") + Shipped.cost("Mirror"), MAX_MANA));
+    assertThat(battle.getMatch().side(0).lastPlayed().name()).isEqualTo("Knight");
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror repeats a play of its side the match refused at its run while its client lists"
+          + " the play's promise, up to 60 ticks after its giving, is refused about the tick it is"
+          + " dropped, and repeats the last card after")
+  void aMirrorRepeatsARefusedPlayWhileItsPromiseIsListed() {
+    // The Giant was given on tick 1: its promise is dropped about tick 61.
+    Standard1v1Battle listed = refusedGiant();
+    listed.playMirror(79, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(listed, 79);
+    assertThat(listed.getPlays().get(2).mirror().repeats().name()).isEqualTo("Giant");
+
+    for (int mirror : new int[] {80, 83}) {
+      Standard1v1Battle uncertain = refusedGiant();
+      uncertain.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
+      assertThatThrownBy(() -> run(uncertain, mirror))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessage(
+              "m: a Mirror given about the tick the promise of a play of its side refused at its"
+                  + " run is dropped, which the client may still repeat, is not modelled");
+    }
+
+    Standard1v1Battle dropped = refusedGiant();
+    dropped.playMirror(84, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(dropped, 84);
+    assertThat(dropped.getPlays().get(2).mirror().repeats().name()).isEqualTo("Knight");
+  }
+
+  /** A Knight on tick 20 and a Giant on 21, which the elixir left does not cover. */
+  private static Standard1v1Battle refusedGiant() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(GIANT_MIRRORS, KNIGHTS, 0, 0);
+    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    battle.play(21, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, 21);
+    assertThat(battle.getPlays().get(1).matchCode()).isNotZero();
+    return battle;
   }
 
   @Test
