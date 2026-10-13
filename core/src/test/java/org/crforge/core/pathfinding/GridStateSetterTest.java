@@ -425,6 +425,11 @@ class GridStateSetterTest {
           public void movementOn() {}
 
           @Override
+          public boolean targetingOn() {
+            return false;
+          }
+
+          @Override
           public void dropReferenceOutOfRange() {}
 
           @Override

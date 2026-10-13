@@ -36,9 +36,9 @@ import org.junit.jupiter.api.io.TempDir;
  * bounds counted from its reference's radius; the load slowed by a buff; the hook on a building,
  * which drags him at the self-drag speed; the pull of a slow troop at no less than 60 of its speed;
  * a hook whose owner leaves, or is stunned, or whose target leaves or dies, before or during the
- * pull; a troop let go on the river, and the Fisherman dragged onto it; a hook at a dashing troop,
- * which the untouchable test may keep out of it, and at one in a jump, which is put down; and the
- * hooks and specials the battle refuses.
+ * pull; a troop let go mid-attack, which attacks on; a troop let go on the river, and the Fisherman
+ * dragged onto it; a hook at a dashing troop, which the untouchable test may keep out of it, and at
+ * one in a jump, which is put down; and the hooks and specials the battle refuses.
  */
 class BattleFishermanTest {
 
@@ -303,6 +303,76 @@ class BattleFishermanTest {
     int wait = Shipped.number(golemRow, "WaitMS");
     int loaded = (wait + walk) * 1000 / walk * 60 / 1000;
     assertThat(from - pull.getY()).isEqualTo(drag * Math.max(PULL_FLOOR, loaded) / 100);
+  }
+
+  @Test
+  @DisplayName(
+      "a troop let go keeps the reference it was attacking however far the pull took it, and its"
+          + " attack goes on from where the hook stopped it")
+  void aPulledAttackerAttacksOn() {
+    GameRow giantRow = Shipped.unitRow("Giant");
+    int giantRadius = Shipped.number(giantRow, "CollisionRadius");
+    // The Fisherman in the middle, a Giant in his ring below him, and below the Giant, within half
+    // its range, a Cannon of the Fisherman's side, the only building near it, which it attacks.
+    int x = 9000;
+    int fy = 13000;
+    int gy = fy - giantRadius - Shipped.number(FISHERMAN, "SpecialMinRange") - 1500;
+    int cy =
+        gy
+            - giantRadius
+            - Shipped.number(Shipped.unitRow("Cannon"), "CollisionRadius")
+            - Shipped.number(giantRow, "Range") / 2;
+    Scene scene = new Scene(GameData.tables(), x, fy);
+    CharacterEntity cannon = scene.still(0, 0, "Cannon", x, cy, "C");
+    CharacterEntity giant = scene.still(0, 1, "Giant", x, gy, "G");
+    scene.stepToTheHook();
+    assertThat(giant.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    // Hooked in range, mid-way through a hit: the reference is kept, and the attack timer stands.
+    assertThat(giant.getTargeting().getReference().id()).isEqualTo(cannon.getId());
+    int timer = giant.getTargeting().getAttackTimerMs();
+    assertThat(timer % Shipped.number(giantRow, "HitSpeed")).isGreaterThan(50);
+    while (giant.getView().getState() == GridEntityState.FOLLOWING_REMOVED && scene.tick < 200) {
+      scene.step(1);
+    }
+    // Let go far out of its range, it still holds the Cannon: its targeting component was off in
+    // the pulled state, so the reference check of the exit did not run.
+    assertThat(giant.getView().getState()).isEqualTo(GridEntityState.STANDING);
+    assertThat(giant.getView().getY()).isGreaterThan(gy + 1500);
+    assertThat(giant.getTargeting().getReference().id()).isEqualTo(cannon.getId());
+    assertThat(giant.getTargeting().getAttackTimerMs()).isEqualTo(timer);
+    // The step after, it attacks on where it stands, its timer going on from where it stood.
+    scene.step(1);
+    assertThat(giant.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
+    assertThat(giant.getTargeting().getReference().id()).isEqualTo(cannon.getId());
+    assertThat(giant.getTargeting().getAttackTimerMs()).isEqualTo(timer + 50);
+  }
+
+  @Test
+  @DisplayName(
+      "a troop stunned as the hook pulls it loses its reference, though its targeting component is"
+          + " off")
+  void aPulledAttackerStunned() {
+    GameRow giantRow = Shipped.unitRow("Giant");
+    int giantRadius = Shipped.number(giantRow, "CollisionRadius");
+    int x = 9000;
+    int fy = 13000;
+    int gy = fy - giantRadius - Shipped.number(FISHERMAN, "SpecialMinRange") - 1500;
+    int cy =
+        gy
+            - giantRadius
+            - Shipped.number(Shipped.unitRow("Cannon"), "CollisionRadius")
+            - Shipped.number(giantRow, "Range") / 2;
+    Scene scene = new Scene(GameData.tables(), x, fy);
+    CharacterEntity cannon = scene.still(0, 0, "Cannon", x, cy, "C");
+    CharacterEntity giant = scene.still(0, 1, "Giant", x, gy, "G");
+    scene.stepToTheHook();
+    assertThat(giant.getTargeting().getReference().id()).isEqualTo(cannon.getId());
+    assertThat(giant.isActive(CharacterEntity.TARGETING_SLOT)).isFalse();
+    giant.getBuffs().apply(GameData.records().buff("ZapFreeze"), 500, LEVEL, null, 0);
+    scene.step(1);
+    assertThat(giant.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    // The gate at the tail of its state visit finds the stun and drops the reference.
+    assertThat(giant.getTargeting().getReference()).isNull();
   }
 
   @Test
@@ -723,8 +793,8 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a troop let go has its charge, its pushback's bytes and the point it aimed at reset, and a"
-          + " reference the pull took it out of range of dropped")
+      "a troop let go has its charge, its pushback's bytes and the point it aimed at reset, and"
+          + " keeps a reference the pull took it out of range of")
   void aTroopLetGo() {
     Scene scene = new Scene();
     CharacterEntity prince = scene.still(0, 1, "Prince", X, Y + IN_RING, "P");
@@ -746,7 +816,9 @@ class BattleFishermanTest {
     assertThat(movement.getAttackPushback()).isZero();
     assertThat(movement.getExplicitX()).isEqualTo(-1);
     assertThat(movement.getExplicitY()).isEqualTo(-1);
-    assertThat(prince.getTargeting().getReference()).isNull();
+    // Its targeting component was off while it was pulled, so the exit's reference check did not
+    // run.
+    assertThat(prince.getTargeting().getReference().name()).isEqualTo("bait");
   }
 
   @Test

@@ -2063,6 +2063,11 @@ public class CharacterEntity extends WorldEntity {
       switchComponent(MOVEMENT_SLOT, true);
     }
 
+    @Override
+    public boolean targetingOn() {
+      return isActive(TARGETING_SLOT);
+    }
+
     /** The raw clear of a reference the range test no longer passes: no setter, no resume. */
     @Override
     public void dropReferenceOutOfRange() {
