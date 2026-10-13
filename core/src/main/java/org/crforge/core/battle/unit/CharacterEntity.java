@@ -1000,7 +1000,11 @@ public class CharacterEntity extends WorldEntity {
    * <p>The setter asks nothing of the row: a building and a unit whose hit destroys it are set up
    * as any unit. A building without hit points, as the barrel a Skeleton Balloon drops, keeps none:
    * only its mark is set, and what it spawns as a clone is a clone too. A unit whose hit destroys
-   * it without a projectile, as the Skeleton Balloon itself, ends its hit as any such unit.
+   * it without a projectile, as the Skeleton Balloon itself, ends its hit as any such unit. One
+   * whose hit launches a projectile, as the Fire Spirit or the Wall Breaker, launches it at its own
+   * level as any such unit does: the game marks that projectile a clone's, and only what the
+   * projectile spawns reads the mark, so a projectile that only deals its damage lands as the
+   * original's would (see {@link ProjectileData#dealsOnlyDamage()}).
    *
    * <p>A champion, a hero form among them, is cloned as any unit: its clone keeps the champion's
    * row and ability, but the champion slots follow no clone, so no tap reaches it and a paid
@@ -1009,7 +1013,8 @@ public class CharacterEntity extends WorldEntity {
    *
    * <p>Refused rather than guessed: a building with hit points, whose lifetime the hit points'
    * visit counts differently for a clone; and a unit whose hit destroys it and launches a
-   * projectile, whose projectile's spawns would be clones.
+   * projectile that spawns, runs an action, applies a buff or hops on, whose spawns would be clones
+   * and whose buff, action and hop no recording shows for a clone.
    *
    * @param original the unit it stands for, or null for none
    */
@@ -1018,8 +1023,10 @@ public class CharacterEntity extends WorldEntity {
     String refused = null;
     if (data.building() && getHitPoints() != null) {
       refused = "a building with hit points";
-    } else if (data.kamikaze() && data.hasProjectile()) {
-      refused = "a unit whose hit destroys it and launches a projectile";
+    } else if (data.kamikaze() && data.hasProjectile() && !data.projectile().dealsOnlyDamage()) {
+      refused =
+          "a unit whose hit destroys it and launches a projectile that spawns, runs an action,"
+              + " applies a buff or hops on";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(

@@ -253,6 +253,30 @@ public record ProjectileData(
   }
 
   /**
+   * True for a projectile that only deals its damage and push: it spawns no character, area effect
+   * or projectile, deflected or not, runs no action, applies no target buff and hops to no further
+   * target. The game marks a clone's projectile in two cases - the hit of a clone whose hit
+   * destroys it, and a clone's death projectile - and only what the projectile spawns reads that
+   * mark: its character spawn is made a clone by it and its area effect carries it. Such a
+   * projectile flies and lands as any other; the battle models a clone's projectile of this kind
+   * only, a buff, an action or a hop having no recording that shows what a clone's mark changes of
+   * them.
+   */
+  public boolean dealsOnlyDamage() {
+    return spawnCharacter == null
+        && deflectedCharacterSpawn == null
+        && spawnProjectile == null
+        && spawnAreaEffectObject == null
+        && onStartingAction == null
+        && onHitTargetAction == null
+        && onTargetReachedAction == null
+        && actionOnDeflector == null
+        && customDeflectAction == null
+        && targetBuff == null
+        && chainedHitCount == 0;
+  }
+
+  /**
    * How long the target buff lasts for a projectile at a level: the first level's time plus the
    * increase for each step, the steps being the packed level's low byte.
    *
