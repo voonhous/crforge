@@ -107,7 +107,7 @@ tasks.register<JavaExec>("coverageScore") {
     description =
         "Plays every battle of a data version's coverage set (-Pcrforge.coverage) and writes the " +
             "share the battle core reproduces, with its badge, to build/coverage/ (a measurement, " +
-            "never a gate)."
+            "never a gate); with -Pcrforge.coverage.part=K only part K's battles, into their tally."
     group = "verification"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("org.crforge.conformance.CoverageScore")
@@ -116,11 +116,20 @@ tasks.register<JavaExec>("coverageScore") {
     val version = rootProject.extra["crforge.dataVersion"] as String
     systemProperty("crforge.gameTables", "${rootProject.extra["crforge.builtTablesRoot"]}/$version")
     setting("crforge.coverage")?.let { systemProperty("crforge.coverage", it) }
-    val out = layout.buildDirectory.dir("coverage").get().asFile
-    args(
-        "--out", out.resolve("score-$version.json").absolutePath,
-        "--badge", out.resolve("badge-$version.json").absolutePath,
-    )
+    args("--out-dir", layout.buildDirectory.dir("coverage").get().asFile.absolutePath)
+    setting("crforge.coverage.part")?.let { args("--part", it) }
+    outputs.upToDateWhen { false }
+}
+
+tasks.register<JavaExec>("coverageMerge") {
+    description =
+        "Sums the tallies of a coverage set's parts (-Pcrforge.coverage.tallies, a folder of " +
+            "tally-*.json) into the set's score and badge in build/coverage/, as one run would."
+    group = "verification"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.crforge.conformance.CoverageScore")
+    args("--out-dir", layout.buildDirectory.dir("coverage").get().asFile.absolutePath)
+    setting("crforge.coverage.tallies")?.let { args("--merge", it) }
     outputs.upToDateWhen { false }
 }
 
