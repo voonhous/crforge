@@ -20,8 +20,8 @@ jobs:
       # fork, which gets no secrets.
       # Only whether the key is set, not the key: every step sees the job's environment.
       HAS_GAME_TABLES_KEY: ${{ secrets.GAME_TABLES_KEY != '' }}
-      # The same for the coverage dataset (the coverage job): its name and a read token, both secrets.
-      HAS_COVERAGE: ${{ secrets.COVERAGE_TOKEN != '' && secrets.COVERAGE_DATASET != '' }}
+      # The same for the coverage dataset's read token (the coverage job).
+      HAS_COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN != '' }}
 
     outputs:
       commit: ${{ steps.lock.outputs.commit }}
@@ -67,7 +67,7 @@ jobs:
         run: |
           echo "revision=$(sed -n 's/^revision=//p' coverage.lock)" >> "$GITHUB_OUTPUT"
           echo "versions=$(sed -n 's/^versions=//p' coverage.lock | tr ' ' '\n' | grep . | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
-          echo "available=${{ env.HAS_COVERAGE }}" >> "$GITHUB_OUTPUT"
+          echo "available=${{ env.HAS_COVERAGE_TOKEN == 'true' && vars.COVERAGE_DATASET != '' }}" >> "$GITHUB_OUTPUT"
 
   # The address check, the build with its checks, and the unit tests on the tables of the lock's
   # version.
@@ -265,7 +265,7 @@ jobs:
       - name: Download the coverage set
         env:
           TOKEN: ${{ secrets.COVERAGE_TOKEN }}
-          DATASET: ${{ secrets.COVERAGE_DATASET }}
+          DATASET: ${{ vars.COVERAGE_DATASET }}
           REVISION: ${{ needs.lock.outputs.coverage-revision }}
           VERSION: ${{ matrix.version }}
         run: |
