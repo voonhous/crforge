@@ -476,10 +476,16 @@ public final class GridStateSetter implements StateSetter {
 
   /**
    * Leaving a pulled state: both components switched on and, with a movement component, the point
-   * the unit aimed at, the charge and the pushback's bytes reset and a reference out of range
-   * dropped; then the standing test on the unit's cell, which moves it off a cell it may not stand
-   * on. The route the standard game empties here too is emptied, or prepared afresh, by the entry
-   * of the standing or the moving state, the only two a pulled unit is asked into.
+   * the unit aimed at, the move time and its copy, the charge and the pushback's bytes reset and a
+   * reference out of range dropped; then the standing test on the unit's cell, which moves it off a
+   * cell it may not stand on. The route the standard game empties here too is emptied, or prepared
+   * afresh, by the entry of the standing or the moving state, the only two a pulled unit is asked
+   * into.
+   *
+   * <p>The move time starting again from 0 gives a unit that walks and waits by turns (a row with a
+   * stop-movement-after time) a whole stretch of walking after the release: it walks on the first
+   * step it is moving again, wherever in its stretch the hook caught it, and its next wait falls a
+   * whole stretch later.
    *
    * <p>The reference check reads the targeting component as it was when the change was asked,
    * before the switch: a pulled troop's is off, so the troop keeps its reference however far the
@@ -492,6 +498,8 @@ public final class GridStateSetter implements StateSetter {
     if (movement != null) {
       movement.setExplicitX(-1);
       movement.setExplicitY(-1);
+      movement.setMoveTimeMs(0);
+      movement.setMoveTimeMsCopy(0);
       resetCharge();
       movement.stopPushback();
       if (targetingWasOn) {

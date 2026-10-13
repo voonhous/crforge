@@ -793,8 +793,8 @@ class BattleFishermanTest {
 
   @Test
   @DisplayName(
-      "a troop let go has its charge, its pushback's bytes and the point it aimed at reset, and"
-          + " keeps a reference the pull took it out of range of")
+      "a troop let go has its charge, its pushback's bytes, the point it aimed at and its walk's"
+          + " move time reset, and keeps a reference the pull took it out of range of")
   void aTroopLetGo() {
     Scene scene = new Scene();
     CharacterEntity prince = scene.still(0, 1, "Prince", X, Y + IN_RING, "P");
@@ -808,10 +808,16 @@ class BattleFishermanTest {
     movement.setAttackPushback(1);
     movement.setExplicitX(100);
     movement.setExplicitY(100);
+    // Part way through a walk's stretch, as a unit that walks and waits by turns may be hooked.
+    movement.setMoveTimeMs(300);
+    movement.setMoveTimeMsCopy(300);
     while (prince.getView().getState() == GridEntityState.FOLLOWING_REMOVED && scene.tick < 200) {
       scene.step(1);
     }
     assertThat(movement.getChargeProgress()).isZero();
+    // The move time and its copy start again from 0: the walk's next stretch is a whole one.
+    assertThat(movement.getMoveTimeMs()).isZero();
+    assertThat(movement.getMoveTimeMsCopy()).isZero();
     assertThat(movement.getPushbackInFlight()).isZero();
     assertThat(movement.getAttackPushback()).isZero();
     assertThat(movement.getExplicitX()).isEqualTo(-1);
