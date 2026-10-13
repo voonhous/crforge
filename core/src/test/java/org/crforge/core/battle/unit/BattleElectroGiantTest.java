@@ -468,6 +468,42 @@ class BattleElectroGiantTest {
 
   @Test
   @DisplayName(
+      "an attacker whose tags forbid damage takes the reflect's buff but none of the reflected"
+          + " damage, as an evolved Skeleton Army's spectral soldier takes none")
+  void anAttackerThatTakesNoDamage() {
+    Scene scene = new Scene();
+    CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + 1500, "knight");
+    // A buff that sets only the NO_DAMAGE tag, as the evolved Minion Horde's ghost buff sets it.
+    knight
+        .getBuffs()
+        .apply(
+            BuffData.builder()
+                .name("spectral")
+                .rarity(GameData.records().buff("Rage").rarity())
+                .gameTagsToSet(knight.getView().getFlagBits().noDamage())
+                .build(),
+            1000000,
+            knight.getPackedLevel(),
+            null,
+            1);
+    scene.step(1);
+    int full = knight.getHitPoints().getHitPoints();
+    int guard = scene.tick + 200;
+    while (scene.from("knight").stream().noneMatch(r -> r.damage() > 0) && scene.tick < guard) {
+      scene.step(1);
+    }
+
+    Reflection struck =
+        scene.from("knight").stream().filter(r -> r.damage() > 0).findFirst().orElseThrow();
+    assertThat(struck.buff()).isEqualTo(BUFF);
+    assertThat(knight.getBuffs().carries(BUFF)).isTrue();
+    assertThat(struck.hitPointsBefore()).isEqualTo(full);
+    assertThat(struck.hitPointsAfter()).isEqualTo(full);
+    assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(full);
+  }
+
+  @Test
+  @DisplayName(
       "a reflect from a unit whose buffs scale its damage, which no Ladder card gives an Electro"
           + " Giant, is refused")
   void aReflectWithADamagePercentIsRefused() {
