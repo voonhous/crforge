@@ -136,9 +136,13 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " for an object the battle does not have; a Mirror of a"
             + " variant card as the card itself, and of an evolved play as its evolved row, which"
             + " no row sets; slot flags on a spell, a building, the Mirror or a variant card, and"
-            + " two copies of an evolution slot's card in a deck, which no reference holds; and a"
+            + " two copies of an evolution slot's card in a deck, which no reference holds; a"
             + " play of an evolution slot's card while another play of it is due, whose item the"
-            + " client builds from the count before that play runs. Unreachable: an item's cost"
+            + " client builds from the count before that play runs; and a play of an evolution"
+            + " slot's card after a play of it refused at its placement, whose count the client"
+            + " may or may not have moved. Held by captured Ladder battles: the count a play the"
+            + " gates refuse at its run moves as a placed play's, as the client that gave it"
+            + " counts it. Unreachable: an item's cost"
             + " held to the most elixir, which no shipped card reaches. Not carried: the flag set"
             + " when a fallen king's two towers stand whole, whose readers are not established;"
             + " the marks an evolved or hero play leaves on its objects and its king, which no"
@@ -1038,6 +1042,29 @@ public final class LadderMatch implements BattleMode {
    */
   public void play(int side, EvolutionItem item) {
     sides.get(side).play(item);
+  }
+
+  /**
+   * A play of a deck card the match's gates refused at its run, with the item it carried: nothing
+   * spent or cycled, but the count of an evolution slot's card moved as a placed play moves it, as
+   * the player's client that gave the play counts it.
+   *
+   * @param side the playing side
+   * @param item the item the play carried
+   */
+  public void refused(int side, EvolutionItem item) {
+    sides.get(side).refused(item);
+  }
+
+  /**
+   * A play of a deck card that passed the gates and was refused at its placement, with the item it
+   * carried: the count of an evolution slot's card is no longer established.
+   *
+   * @param side the playing side
+   * @param item the item the play carried
+   */
+  public void placementRefused(int side, EvolutionItem item) {
+    sides.get(side).placementRefused(item);
   }
 
   /**

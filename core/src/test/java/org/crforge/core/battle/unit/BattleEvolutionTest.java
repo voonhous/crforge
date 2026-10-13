@@ -49,6 +49,10 @@ class BattleEvolutionTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
+  /** The Knight and the Giant in the opening hand, with the Mirrors held back as above. */
+  private static final List<String> KNIGHT_GIANT_MIRRORS =
+      List.of("Knight", "Giant", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
   private static final int[] NO_SLOTS = new int[8];
 
   /** Eight different cards of at most three elixir: a spell and a building first. */
@@ -385,6 +389,107 @@ class BattleEvolutionTest {
     assertThatThrownBy(() -> run(battle, 30))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("k2: a play of Knight, an evolution slot's card");
+  }
+
+  @Test
+  @DisplayName(
+      "a play of an evolution slot's card the elixir does not cover at its run is refused, spends"
+          + " nothing and stays in the hand, but its count moves as a placed play's: the player's"
+          + " client counts the play it gave")
+  void aPlayRefusedForElixirMovesTheCount() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match =
+        battle.startLadderMatch(
+            KNIGHT_GIANT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
+    MatchSide side = match.side(0);
+    // The Giant leaves too little elixir for the Knight a tick later.
+    assertThat(cost("spells_characters", "Giant") + cost("spells_characters", "Knight"))
+        .isGreaterThan(side.wholeElixir() + 1);
+    battle.play(20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    battle.play(21, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, 21);
+
+    Standard1v1Battle.Play knight = battle.getPlays().get(1);
+    assertThat(knight.matchCode()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
+    assertThat(knight.units()).isEmpty();
+    assertThat(knight.evolution().count()).isZero();
+    assertThat(side.getSpent()).isEqualTo(cost("spells_characters", "Giant") * MatchSide.SCALE);
+    assertThat(side.getHand().slotOf(0)).isNotNegative();
+    // The refused play counts: the next play of the Knight carries a count of 1.
+    assertThat(side.evolutionCount(0)).isEqualTo(1);
+    assertThat(match.item(0, 0).count()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved play the elixir does not cover at its run resets its count as a placed evolved"
+          + " play does, so the card's next play is plain")
+  void anEvolvedPlayRefusedForElixirResetsTheCount() {
+    Standard1v1Battle battle = new Standard1v1Battle(evolving);
+    int[] slots = new int[8];
+    slots[0] = MatchSide.EVOLUTION_SLOT;
+    LadderMatch match = battle.startLadderMatch(CHEAP_DECK, KNIGHTS, 0, 0, slots, NO_SLOTS);
+    MatchSide side = match.side(0);
+    // The Zap played plain until its count reaches the evolved row's cost.
+    playThrough(battle, match, EVOLUTION_COST, new ArrayList<>(), new ArrayList<>());
+    assertThat(side.evolutionCount(0)).isEqualTo(EVOLUTION_COST);
+    int zapCost = match.item(0, 0).cost();
+    // Every tick: the Zap once it is in the hand and the elixir no longer covers it, else the
+    // cheapest other card in the hand.
+    Standard1v1Battle.Play zap = null;
+    int start = battle.getBattle().getTick() + 1;
+    for (int tick = start; zap == null; tick++) {
+      assertThat(tick).isLessThan(start + 2000);
+      run(battle, tick - 1);
+      boolean zapInHand = side.getHand().slotOf(0) >= 0;
+      int pick = -1;
+      if (zapInHand && side.wholeElixir() < zapCost) {
+        pick = 0;
+      } else {
+        for (int index : side.getHand().slots()) {
+          if (index > 0
+              && (pick < 0 || side.deck().get(index).cost() < side.deck().get(pick).cost())) {
+            pick = index;
+          }
+        }
+      }
+      DeployCard card = battle.getWorld().getRecords().card(side.deck().get(pick).name());
+      boolean spell = card.spell();
+      battle.play(tick, card, LEVEL, 0, spell ? 9000 : 3500, spell ? 9000 : 10000, "p" + tick);
+      run(battle, tick);
+      if (pick == 0) {
+        zap = battle.getPlays().get(battle.getPlays().size() - 1);
+      }
+    }
+
+    assertThat(zap.matchCode()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
+    assertThat(zap.evolution().field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(side.evolutionCount(0)).isZero();
+    assertThat(match.item(0, 0).field()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a play of an evolution slot's card after a play of it refused at its placement, which the"
+          + " client may or may not have counted, is refused")
+  void aPlayAfterOneRefusedAtItsPlacementIsRefused() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match =
+        battle.startLadderMatch(
+            KNIGHT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
+    // Left of the map: the map check refuses it after the gates let it through.
+    battle.play(20, GameData.card("Knight"), LEVEL, 0, -1000, 10000, "k1");
+    run(battle, 20);
+    assertThat(battle.getPlays().get(0).matchCode()).isZero();
+    assertThat(battle.getPlays().get(0).result().placed()).isFalse();
+    assertThat(match.side(0).evolutionCountUnknown(0)).isTrue();
+
+    // Given after the first one's run, so that it is not due any more.
+    battle.play(41, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k2");
+    assertThatThrownBy(() -> run(battle, 41))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("k2: a play of Knight, an evolution slot's card, after a play of it")
+        .hasMessageContaining("refused at its placement");
   }
 
   /**
