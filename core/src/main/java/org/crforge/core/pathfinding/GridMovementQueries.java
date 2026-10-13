@@ -68,6 +68,13 @@ public final class GridMovementQueries implements MovementQueries {
   private final Function<GridEntity, GridUnitState> neighbourStates;
   private final ReferencePoint reference;
 
+  /**
+   * Whether the unit's targeting component is on. The speed budget and the three gates look the
+   * component up through its active bit, so while it is off (a stun, a freeze, a deploy) they read
+   * none of its fields: a dash wind-up it keeps neither stops the unit nor shuts its gates.
+   */
+  private final boolean targetingOn;
+
   /** The speed percents of the unit's buffs, which the speed budget scales by. */
   private int[] speedPercents = new int[0];
 
@@ -125,6 +132,7 @@ public final class GridMovementQueries implements MovementQueries {
     this.grid = grid;
     this.costs = costs;
     this.neighbourStates = neighbourStates;
+    this.targetingOn = targetingOn;
     TargetView target = targetingOn ? unit.targeting().getReference() : null;
     this.reference = target == null ? null : new ReferencePoint(target.x(), target.y());
   }
@@ -251,9 +259,11 @@ public final class GridMovementQueries implements MovementQueries {
    * so reading them live gives the same answers; a pass that started writing them mid-visit would
    * make the two differ.
    *
-   * <p>Two of the inputs are supplied rather than read: the entity is always said to carry a
-   * targeting component and a movement component. Both are true of every unit these answers are
-   * built for, and a unit for which either was false would have to say so here.
+   * <p>Two of the inputs are supplied rather than read. The entity is said to carry a targeting
+   * component only while that component is on, as the lookup the budget and the gates make skips a
+   * component switched off: a jumping dasher stunned or frozen in its wind-up keeps the wind-up but
+   * is pushed, and walks on the step its stun ends. It is always said to carry a movement
+   * component, which is true of every unit these answers are built for.
    */
   private SpeedInputs speedInputs() {
     GridEntity entity = unit.entity();
@@ -262,7 +272,7 @@ public final class GridMovementQueries implements MovementQueries {
         entity.getFlags(),
         entity.getFlagBits(),
         entity.getState(),
-        true,
+        targetingOn,
         targeting.getDashWindupMs(),
         targeting.getAttackBlockTimerMs(),
         targeting.isSpecialLoadPending() ? 1 : 0,
