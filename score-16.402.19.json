@@ -1,12 +1,12 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 91.6,
-  "ticks_agreed": 95.5,
+  "to_the_end": 91.8,
+  "ticks_agreed": 95.7,
   "outcomes": {
-    "diagnostic_match": 1588,
+    "diagnostic_match": 1591,
     "mismatch": 126,
-    "unsupported": 19
+    "unsupported": 16
   },
   "first_failures": {
     "mismatch $.entities[].x": 67,
@@ -17,13 +17,13 @@
     "unsupported: a reflected attack from cmd# on cmd#, with a damage percent or an unkillable target, is not modelled": 2,
     "unsupported: cmd#_clone# would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
     "unsupported: cmd#_clone#_0 would be a clone of a unit whose hit destroys it and launches a projectile, which is not modelled": 2,
-    "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 2,
     "mismatch $.sides[].elixir": 1,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
     "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
     "unsupported: cmd#_clone# launches GoblinDemolisherDeathProjectile as it dies and is a clone, whose projectiles carry it, not modelled": 1,
-    "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it, not modelled": 1
+    "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it, not modelled": 1,
+    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700"
 }
