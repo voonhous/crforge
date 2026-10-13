@@ -46,6 +46,7 @@ A trace belongs to the tables it was made with. When a new data version changes 
 - `SmokeObserver`, `SmokeSchema`: what one observation holds and the schemas a run can be made in.
 - `ReferenceComparison`: the first-divergence comparison of a run's trace with a reference trace.
 - `ReferenceSuite`: runs every case of a references folder and holds each outcome to `reference-expectations/<version>.json`.
+- `CoverageScore`: plays a coverage set (below) and sums up how much of it the battle core reproduces.
 
 ## What does not belong here
 
@@ -83,6 +84,27 @@ The expectations file records the outcome every case has today, mismatches inclu
 The tables are the ones the build makes from the asset source (the Gradle property `crforge.assetSource`, for example `file://<data checkout>/cdn/`; see [Building the game tables](../docs/game-tables.md#building-the-game-tables)), for the data version `-Pcrforge.dataVersion` names.
 
 `./gradlew test` runs this module's own unit tests but never the reference battles. The tables and the references must be of the same data version. CI runs the reference battles of every data version the lock lists in `compatible` that has them, each version split into shards and held to its own expectations file.
+
+## Coverage
+
+The reference battles are chosen cases, each held to its expected outcome. Coverage asks a wider question: of the game's real battles of a data version, how many does the battle core reproduce? A coverage set is a large sample of them, up to 10,000 battles of one data version, each with the game's own trace, in the layout of a references folder (a corpus listing under `corpora/` and its `battles/`). The sets are not in this repository or the game data repository: they live in the coverage dataset, and `coverage.lock` pins its revision and lists the data versions that have a set.
+
+`CoverageScore` runs every battle of a set as `ReferenceSuite` runs a case and writes only totals, never a battle:
+
+- `to_the_end`: the share of battles the battle core matches on every observation;
+- `ticks_agreed`: the share of all the battles' ticks it matches before each battle's first divergence (all of a match, the ticks before the first divergent observation of a mismatch, none of an unsupported or invalid battle);
+- `outcomes`: the battles in each outcome;
+- `first_failures`: the most frequent first failures, a refusal by its kind (the battle's own object ids and command numbers left out) and a mismatch by the field that differed first, list indices left out (`$.entities[].hp`).
+
+```bash
+# The score of one data version's coverage set, unpacked into <set folder> (corpora/ and battles/)
+./gradlew :conformance:coverageScore \
+  -Pcrforge.dataVersion=<version> \
+  -Pcrforge.coverage=<set folder>
+# -> conformance/build/coverage/score-<version>.json and badge-<version>.json
+```
+
+Coverage is a measurement, never a gate. CI scores every version `coverage.lock` lists on each run, in a job that cannot fail the run; after a push to `battle_core` it publishes each score and its shields.io badge (the badges at the top of the README) to the `badges` branch, and warns when a version's share of battles reproduced to the end dropped since the last published score. A first failure worth porting becomes a reference case, recorded and held to its outcome like any other.
 
 ## Moving to a new data version
 
