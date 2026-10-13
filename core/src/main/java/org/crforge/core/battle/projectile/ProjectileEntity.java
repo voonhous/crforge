@@ -262,6 +262,12 @@ public class ProjectileEntity extends BattleEntity
    */
   @Getter private boolean hooked;
 
+  /**
+   * True once a hooking projectile, before it hooked, found its target held by someone else's lock
+   * on one of its steps: an arrival after the lock is gone is refused, as no reference holds it.
+   */
+  @Getter private boolean targetHeldInFlight;
+
   /** True until the first flight step has run. */
   private boolean firstVisit = true;
 
@@ -932,6 +938,11 @@ public class ProjectileEntity extends BattleEntity
     x = newX;
     y = newY;
     z = newZ;
+  }
+
+  /** Notes that the target was held by someone else's lock on a step before the hook. */
+  void markTargetHeldInFlight() {
+    targetHeldInFlight = true;
   }
 
   /** Marks the projectile as having hooked its target. */

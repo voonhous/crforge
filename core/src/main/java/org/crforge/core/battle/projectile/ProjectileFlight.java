@@ -189,20 +189,32 @@ final class ProjectileFlight {
     // Whether an arrival on this step may hook: not when the target keeps out of the hook.
     boolean hookable = true;
     if (drags) {
-      world.refuseLockedHook(p);
       WorldEntity target = p.getTarget();
+      // A target someone else holds a lock on keeps out of the hook too: arriving on this step the
+      // projectile does not hook it but ends as an ordinary arrival. The lock is asked again on
+      // each step; only the arrival's and a hooked step's answer count.
+      boolean held = world.hookTargetHeld(p);
+      if (held && !p.isHooked()) {
+        p.markTargetHeldInFlight();
+      }
       if (p.isHooked()) {
         if (p.getOwner().getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
           // A hook on a building stands and drags its owner instead.
           speed = 0;
           dragsOwner = true;
-        } else if (target != null && data.dragBackAsAttractor()) {
-          speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
+        } else {
+          if (held) {
+            // A pulled target someone else now holds is let go at once.
+            world.refuseLockedHook(p);
+          }
+          if (target != null && data.dragBackAsAttractor()) {
+            speed = attracted(target, speed, BattleWorld.HOOK_PULL_SPEED_FLOOR);
+          }
         }
       }
       // A dashing target the untouchable test passes by keeps out of the hook: the projectile
       // still flies at it, but arriving on this step it does not hook.
-      hookable = !world.hookKeptOff(p);
+      hookable = !held && !world.hookKeptOff(p);
     }
     if (data.pingpongVisualTimeMs() >= 1 && p.getDeflections() == 0) {
       // A pingpong projectile sweeps on its time, not its speed, and arrives on the step after
@@ -432,6 +444,11 @@ final class ProjectileFlight {
         p.release();
         impact(p, world);
       } else {
+        if (p.isTargetHeldInFlight()) {
+          // Held on an earlier step and no longer: the hook would take it, but no reference
+          // holds an arrival after the lock is gone.
+          world.refuseHookAfterLock(p);
+        }
         hook(p, world);
       }
       return;
