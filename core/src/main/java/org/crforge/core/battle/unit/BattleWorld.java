@@ -588,6 +588,16 @@ public class BattleWorld implements HolderPasses {
    */
   private final List<QueuedHit> queuedHits = new ArrayList<>();
 
+  /**
+   * Where each entity's queued total starts in {@link #queuedHits}: the number of hits queued when
+   * its hit points' own visit, in the third component pass, emptied its total this tick. A hit
+   * queued for it before that visit - a direct hit of a targeting visit, an area's share - is still
+   * dealt at the drain, but no longer counted in the total a travelling hit asks about. Emptied
+   * with the queue at the drain, which empties every total; an entity without an entry counts every
+   * hit queued for it since.
+   */
+  private final Map<WorldEntity, Integer> queuedTotalStarts = new IdentityHashMap<>();
+
   /** The game tags the battle's expressions may name, by name, each with its index. */
   private final Map<String, Integer> gameTagIndex = new HashMap<>();
 
@@ -982,6 +992,18 @@ public class BattleWorld implements HolderPasses {
   public void dealDirectHit(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
     queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
+  }
+
+  /**
+   * Empties an entity's queued total, as its hit points' own visit does first, in the third
+   * component pass, in every state: from here on only the hits queued for it after this point count
+   * against its hit points when a travelling hit asks whether the queued damage kills it (see
+   * {@link #queuedKill}). The hits already queued stay in the queue and are dealt at the drain.
+   *
+   * @param entity the entity whose hit points take their visit
+   */
+  public void emptyQueuedTotal(WorldEntity entity) {
+    queuedTotalStarts.put(entity, queuedHits.size());
   }
 
   /**
@@ -4874,7 +4896,12 @@ public class BattleWorld implements HolderPasses {
    * entity's queued total and the drain empties: travelling hits, direct hits, a projectile's hit
    * on its one target, the shares of a character's or a projectile's area and the hits of a buff's
    * damage over time. A damage-taking action's hit is queued by an entry of its own, which adds
-   * nothing to the total: its amount is worked out only at the drain, so it never counts here.
+   * nothing to the total: its amount is worked out only at the drain, so it never counts here. The
+   * entity's hit points' own visit empties the total in the third component pass (see {@link
+   * #emptyQueuedTotal}), so a hit queued before it in the tick - a targeting visit's direct hit, an
+   * area's share - is not counted by a travelling hit flying in the post-hooks, though it is dealt
+   * at the drain all the same; held by crawled battles where a Hunter's volley met a target another
+   * unit's hit kills on the same step, each pellet that reaches it then stopping at it.
    *
    * <p>Refused rather than guessed: the global clear, where the one hit's damage alone is held
    * against the entity's hit points, which no data version holds.
@@ -4890,7 +4917,8 @@ public class BattleWorld implements HolderPasses {
     }
     HitPoints hitPoints = entity.getHitPoints();
     int queued = 0;
-    for (QueuedHit hit : queuedHits) {
+    int start = queuedTotalStarts.getOrDefault(entity, 0);
+    for (QueuedHit hit : queuedHits.subList(start, queuedHits.size())) {
       if (hit instanceof TravellingHitDue travelling && travelling.target() == entity) {
         queued += travelling.damage();
       } else if (hit instanceof DirectHitDue direct
@@ -5943,6 +5971,7 @@ public class BattleWorld implements HolderPasses {
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
     queuedHits.clear();
+    queuedTotalStarts.clear();
     for (QueuedHit queued : due) {
       if (queued instanceof DirectHitDue direct) {
         DamageResult result =
