@@ -104,10 +104,15 @@ class BattleDeathHookTest {
     final List<String> runs = new ArrayList<>();
 
     Setup(UnitData tombstoneData, int knightX, int knightY) {
+      this(tombstoneData, "Knight", knightX, knightY);
+    }
+
+    /** The same, with the far unit of the top side of the given row, named by it. */
+    Setup(UnitData tombstoneData, String knightRow, int knightX, int knightY) {
       tombstone = match.deploy(0, tombstoneData, 1, 0, 14500, 17600, "Tombstone");
       knight =
           match.deploy(
-              0, match.getWorld().getRecords().unit("Knight"), 11, 1, knightX, knightY, "Knight");
+              0, match.getWorld().getRecords().unit(knightRow), 11, 1, knightX, knightY, knightRow);
       match
           .getWorld()
           .addObserver(
@@ -224,10 +229,18 @@ class BattleDeathHookTest {
    * steps until the poison has killed it.
    */
   private static void poisonToDeath(Setup s) {
+    poisonToDeath(s, null, 1);
+  }
+
+  /**
+   * Gives the Setup's unit 1 hit point and a Poison applied by the given source for the given side,
+   * and steps until the poison has killed it.
+   */
+  private static void poisonToDeath(Setup s, SpawnHost source, int side) {
     s.tombstone.getHitPoints().setHitPoints(1);
     s.tombstone
         .getBuffs()
-        .apply(s.match.getWorld().getRecords().buff("Poison"), 5000, POISON_LEVEL, null, 1);
+        .apply(s.match.getWorld().getRecords().buff("Poison"), 5000, POISON_LEVEL, source, side);
     for (int i = 0; i < 60 && HitPoints.alive(s.tombstone.getHitPoints()); i++) {
       s.battle.step();
     }
@@ -268,9 +281,61 @@ class BattleDeathHookTest {
 
   @Test
   @DisplayName(
-      "a killed action that reads its cause stays refused for a death with no attacker, whose"
-          + " cause would be the buff's source or a side alone: a spawn from its cause and a check"
-          + " of its killer")
+      "a unit a buff's damage over time kills has the buff's source for its killer: its killed"
+          + " action is scheduled with the source as the cause, for the source's side")
+  void aBuffKillHasTheBuffsSourceForItsKiller() {
+    Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
+    poisonToDeath(s, s.knight, 1);
+    s.battle.step();
+
+    assertThat(s.scheduled)
+        .containsExactly(
+            "Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH),
+            "Tombstone by Knight side 1 [%s] pending false".formatted(DEATH));
+    assertThat(s.runs).containsExactly(DEATH + " 3", DEATH + " 3");
+  }
+
+  @Test
+  @DisplayName(
+      "a unit a buff it applied itself, for its own side, kills is no killer of its own: its death"
+          + " action runs alone")
+  void aBuffKillByItsOwnBuffIsNoKill() {
+    Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
+    poisonToDeath(s, s.tombstone, 0);
+    s.battle.step();
+
+    assertThat(s.scheduled)
+        .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
+  }
+
+  @Test
+  @DisplayName(
+      "the Boss Bandit a buff's damage over time kills checks the buff's source as its killer:"
+          + " its voice line runs when the source is a Bandit, and not for another source")
+  void theBossBanditChecksTheBuffsSource() {
+    UnitData bossBandit = GameData.unit("BossBandit");
+    String voiceLine = "BossBandit_defeated_by_bandit_voiceline";
+
+    // The Bandit's row is Assassin, the name the check matches.
+    Setup byBandit = new Setup(bossBandit, "Assassin", 3500, 25000);
+    poisonToDeath(byBandit, byBandit.knight, 1);
+    byBandit.battle.step();
+    assertThat(byBandit.runs)
+        .contains(bossBandit.onKilledAction() + " 3")
+        .anyMatch(run -> run.startsWith(voiceLine + " "));
+
+    Setup byKnight = new Setup(bossBandit, 3500, 25000);
+    poisonToDeath(byKnight, byKnight.knight, 1);
+    byKnight.battle.step();
+    assertThat(byKnight.runs)
+        .contains(bossBandit.onKilledAction() + " 3")
+        .noneMatch(run -> run.startsWith(voiceLine + " "));
+  }
+
+  @Test
+  @DisplayName(
+      "a killed action that reads its cause stays refused for a buff with no source, whose cause"
+          + " would be a side alone: a spawn from its cause and a check of its killer")
   void aKilledActionThatReadsItsCauseIsRefusedWithNoAttacker() {
     // The death action spawns its area effect from its cause, as it has no ParentGOAsSource.
     Setup spawn = new Setup(tombstoneKilledToo(), 3500, 25000);
