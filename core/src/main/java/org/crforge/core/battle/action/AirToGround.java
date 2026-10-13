@@ -20,7 +20,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * the run's phase over.
  *
  * <p>An air unit that lands at the end of its descent has the row's action once on the ground
- * scheduled on it, with itself as the cause, as the evolved Royal Hog's fall does.
+ * scheduled on it, with itself as the cause, as the evolved Royal Hog's fall does. A unit already
+ * on the ground as the run starts has it scheduled the same way at the start, and only then: an
+ * evolved Royal Hog Vines or an evolved Hunter's net already holds, hit, turns into its grounded
+ * form at once.
  *
  * <p>A clone on the ground is held as any other ground unit is, unless the entity that caused the
  * run is a character or a tower whose own holder lists a run of the same row: the run then takes
@@ -29,7 +32,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Refused as the row is built: the landing and landing end actions, a path reset at landing and
  * a next action. As it starts: an owner that rides another, a clone whose cause lists a run of the
  * row, a clone at a flying height or hovering, a hovering owner a force tag already holds, and an
- * action once on the ground for a run that starts on the ground, none of which a reference holds.
+ * action once on the ground for a clone, none of which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -42,11 +45,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " (BattleShapeSelectorTest, by a selector written in Vines' form) and the climb's"
             + " one step (BattleAirToGroundTest); the re-trigger of a hold in the air or of a"
             + " climb is translated but held by nothing. The action once on the ground at the end"
-            + " of a descent, and the row's tags, held by evo_royalhogs_vs_musketeer. A hovering"
+            + " of a descent, and the row's tags, held by evo_royalhogs_vs_musketeer; at the start on a"
+            + " unit already held on the ground, by BattleAirToGroundTest and recorded battles"
+            + " of evolved Royal Hogs under Vines and an evolved Hunter's net. A hovering"
             + " owner held from the start, by BattleAirToGroundTest and recorded Vines battles on"
             + " the Ghost and its evolution, a push off the river at the hold's last step"
             + " among them. Refused: the landing and landing end actions, a path reset at"
-            + " landing, a next action, the action once on the ground at the start, a riding"
+            + " landing, a next action, the action once on the ground for a clone, a riding"
             + " owner, a clone whose cause lists a run of the row, a clone at a flying height or"
             + " hovering, and a hovering owner a force tag already holds. A clone on the ground"
             + " held as any ground unit is, by BattleAirToGroundTest; recorded battles of"

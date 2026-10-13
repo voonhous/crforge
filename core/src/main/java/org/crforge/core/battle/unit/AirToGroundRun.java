@@ -19,11 +19,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * ground (phase 0) the unit is held for the whole duration; an air unit descends (1) for the
  * transition, is held on the ground (2) for the whole less two transitions, and climbs (3) for the
  * transition; a hovering unit is held (2) from the start for the whole duration and finishes there,
- * with no climb. Each step of a phase pushes the height change of that step, for a unit with a
- * movement component, and every held step raises FORCE_IS_GROUND, on the ground only when the row
- * asks for it. The run's finish resets the path of a unit that started at a flying height, when the
- * row asks for it. Each start, phase change, finish and re-trigger is told to the battle's
- * observers.
+ * with no climb. The row's action once on the ground is scheduled on the unit, the unit its cause,
+ * once: at the end of the descent for an air unit, or at the start for a unit that starts on the
+ * ground; a hold that starts on the ground never descends, so it never schedules it again. Each
+ * step of a phase pushes the height change of that step, for a unit with a movement component, and
+ * every held step raises FORCE_IS_GROUND, on the ground only when the row asks for it. The run's
+ * finish resets the path of a unit that started at a flying height, when the row asks for it. Each
+ * start, phase change, finish and re-trigger is told to the battle's observers.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -97,15 +99,15 @@ final class AirToGroundRun extends ActionInstance {
       phase = GROUND;
       counter = row.getTotalDurationMs();
     }
-    // The start schedules the action once on the ground at once unless the unit descends; no
-    // reference holds a run with that action that starts on the ground.
-    if (phase != DESCENDING && row.getOnGround() != null) {
-      throw new UnsupportedOperationException(
-          row.name()
-              + " starts on the ground on "
-              + unit.name()
-              + ", scheduling its action once on the ground at the start, which is not modelled");
-    }
+  }
+
+  /**
+   * Whether the run starts with its unit on the ground already (held where it is, held at a flying
+   * height on the ground layer, or hovering), so that the start, not the end of a descent, has the
+   * action once on the ground scheduled.
+   */
+  boolean startsOnTheGround() {
+    return phase != DESCENDING;
   }
 
   int phase() {
