@@ -4403,9 +4403,10 @@ public class BattleWorld implements HolderPasses {
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
-   * at its impact, as the Goblin Barrel, which no recording holds; one that hops, homes for a time
-   * or hooks; one that flies to a point and does not stop at collisions with a least distance, a
-   * box body or a deflect radius, which no recording holds; one whose impact spawns a chain of
+   * at its impact, as the Goblin Barrel, which no recording holds; one that hops or homes for a
+   * time; a hook already pulling what it hooked, which a deflection would let go, as no recording
+   * holds; one that flies to a point and does not stop at collisions with a least distance, a box
+   * body or a deflect radius, which no recording holds; one whose impact spawns a chain of
    * projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that belongs to
    * a chain and is not spell-like, or that its launcher marks as grouped without a volley's group.
    * A spell such as the Fireball, whose deflection behaviour sends it at the enemy nearest the area
@@ -4424,6 +4425,10 @@ public class BattleWorld implements HolderPasses {
    * stretches its aim to its range from where it stands toward its root owner, forgetting the
    * target, and a row that homes for a time homes on the root owner again (see {@link
    * ProjectileEntity#deflect}); turned, it hits what its body passes on its way back.
+   *
+   * <p>So is a hook on its way to its target, as the Fisherman's: a deflection does not turn it but
+   * ends its flight where it is (see {@link ProjectileEntity#deflect}), so the time it homes for is
+   * never read again.
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -4467,6 +4472,8 @@ public class BattleWorld implements HolderPasses {
     boolean spellLike = spellLike(data);
     boolean rolling = rollingBody(data);
     boolean piercing = piercingBody(data);
+    // A hooking projectile is not relaunched: the time it homes for is never read again.
+    boolean hooking = data.dragBackSpeed() >= 1;
     // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
@@ -4475,8 +4482,8 @@ public class BattleWorld implements HolderPasses {
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
-        || (data.homingTimeMs() >= 1 && !piercing)
-        || data.dragBackSpeed() >= 1
+        || (data.homingTimeMs() >= 1 && !piercing && !hooking)
+        || (hooking && projectile.isHooked())
         || (data.spawnProjectile() != null && data.spawnChain() >= 2)
         || (projectile.getChain() != null && !spellLike)
         || (projectile.isGrouped() && projectile.getGroup() == null)) {
@@ -4539,6 +4546,12 @@ public class BattleWorld implements HolderPasses {
    * is deflected on its own, whichever of the group it is, and only it is turned. The group's list
    * holds for it all the same: the first of the group a deflection reaches deals the parent its
    * damage and lists it, and the group's pellets turned after deal it nothing.
+   *
+   * <p>A hooking projectile on its way to its target, the Fisherman's hook, is not sent back: the
+   * parent takes its damage as above (it has none), and its flight ends where it is, still its
+   * owner's, for his side and aimed at its target, its deflections uncounted. It leaves at the next
+   * cleanup without hooking anything; its action on reaching its target is scheduled, as a release
+   * schedules it. The observers hear of it as sent at nothing.
    *
    * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
@@ -4712,7 +4725,8 @@ public class BattleWorld implements HolderPasses {
       turn = p -> p.deflectAt(parent, areaSource.getX(), areaSource.getY());
     } else {
       turn = p -> p.deflect(parent, source);
-      sentAt = source;
+      // A hooking projectile is not sent back: the redirect ends its flight where it is.
+      sentAt = projectile.getData().dragBackSpeed() >= 1 ? null : source;
     }
     // A group turned around as one: every projectile of it still in the battle, the first launched
     // first - the deflected one among them - and then the deflected one once more.
