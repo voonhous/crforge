@@ -133,7 +133,7 @@ class BattleSessionTest {
       "a step the battle core refuses to finish halts the session with its message, and no"
           + " further step runs")
   void aRefusedStepHalts() {
-    // A Mirror given while another play of its side is pending is refused inside the step.
+    // A Mirror given in the tick of another play of its side is refused inside the step.
     List<String> mirrors =
         List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
     BattleSession session =

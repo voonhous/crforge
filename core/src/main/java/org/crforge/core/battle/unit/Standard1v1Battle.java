@@ -61,7 +61,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " every reference battle's hands and elixir and by timeline_spells_through_rates,"
             + " card_Pekka_until_stop, timeline_tiebreak_tower_hp, timeline_tiebreak_equal_arrows"
             + " and timeline_overtime_crown; a Mirror's play, its item built as it runs, held by"
-            + " golden-gaps-v1/mirror_after_troop and mirror_after_spell; a variant card's play,"
+            + " golden-gaps-v1/mirror_after_troop and mirror_after_spell, and given while a play"
+            + " of its side is pending or after one the match refused, its item repeating that"
+            + " play while its client lists the play as promised, held by captured Ladder"
+            + " battles; a variant card's play,"
             + " its option picked from the elixir after the step 21 before its run, held by"
             + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot; a play of a"
             + " deck card with slots, its item built as it runs and its evolved or hero row"
@@ -70,8 +73,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " battle's random source before the decks are dealt, bounded by the number of its"
             + " choices, held by the recorded Knight battle's opening hands. Not established:"
             + " what the choices of a player's data are. Not modelled, and refused: a Mirror"
-            + " outside a match, and one given while another play of its side is pending, which"
-            + " the player's client may repeat in its place; a variant card outside a match, run"
+            + " outside a match, one given in the tick of another play of its side or the tick"
+            + " after, one given within two ticks of the drop of a refused play's promise, and one"
+            + " whose client would repeat a Mirror's play or a refused variant play; a variant"
+            + " card outside a match, run"
             + " before tick 21, or given while another play of its side is pending, whose cost"
             + " the pick would set aside; a play of an evolution slot's card given while another"
             + " play of it is due, whose item the client builds from the count before that play."
@@ -238,8 +243,8 @@ public class Standard1v1Battle {
     VARIANT
   }
 
-  /** A card play queued: the tick it runs on, its side, its card and what it plays. */
-  private record QueuedPlay(int tick, int side, String card, PlayKind kind) {}
+  /** A card play queued: the tick it runs on, its side, its card, what it plays and its name. */
+  private record QueuedPlay(int tick, int side, String card, PlayKind kind, String name) {}
 
   /**
    * An ability command queued: the tick it runs on, its side, and the unit it names, by the name a
@@ -259,12 +264,6 @@ public class Standard1v1Battle {
 
   /** Every ability command queued so far, which a variant card's pick is checked against. */
   private final List<QueuedAbility> queuedAbilities = new ArrayList<>();
-
-  /**
-   * How many ticks before a Mirror's own run another play of its side would be pending as the
-   * player gives the Mirror: the play delay and the step it is given in.
-   */
-  private static final int MIRROR_PENDING_TICKS = PLAY_DELAY_TICKS + 1;
 
   /**
    * How many ticks before its own run a variant card's option is picked: after the step this many
@@ -537,7 +536,7 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
-    queuedPlays.add(new QueuedPlay(tick, side, card.name(), PlayKind.CARD));
+    queuedPlays.add(new QueuedPlay(tick, side, card.name(), PlayKind.CARD, name));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -560,10 +559,12 @@ public class Standard1v1Battle {
    * stagger, so every unit deploys on the tick the play runs.
    *
    * <p>The item the play carries is built from the side's last card as the play runs. The player's
-   * client builds it as the play is given, from that card or from a play of its side it has given
-   * and not yet seen run; with no other play of the side due in the ticks between, the two agree. A
-   * Mirror with another play of its side due then is refused, and so is a Mirror outside a match,
-   * which has no last card.
+   * client builds it as the play is given, from the last play of its side it has given and not yet
+   * seen placed, else from the king's copy of the last card: a play given two ticks or more before
+   * the Mirror is the last card by the Mirror's run once it is placed, so the two agree; a listed
+   * play the match refused at its run is repeated instead ({@link #mirrorSource}). Where the
+   * client's moment decides, the Mirror is refused, and so is a Mirror outside a match, which has
+   * no last card.
    *
    * <p>A Mirror of a champion's card, or of a hero play, which it repeats as the hero row, places a
    * copy one level up even while the first copy lives, and the champion slots hear the play as a
@@ -584,7 +585,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           "the Mirror outside a match, which keeps no last card to play again");
     }
-    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.MIRROR);
+    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.MIRROR, name);
     queuedPlays.add(queued);
     battle.queue(
         new BattleCommand() {
@@ -603,19 +604,12 @@ public class Standard1v1Battle {
   private void runMirror(
       Battle target, QueuedPlay queued, String card, int level, int x, int y, String name) {
     int side = queued.side();
-    for (QueuedPlay other : queuedPlays) {
-      if (other != queued
-          && other.side() == side
-          && other.tick() >= queued.tick() - MIRROR_PENDING_TICKS
-          && other.tick() <= queued.tick()) {
-        throw new UnsupportedOperationException(
-            name
-                + ": a Mirror given while another play of its side is pending, which the client"
-                + " may repeat in place of the last card, is not modelled");
-      }
-    }
+    Play refusedSource = mirrorSource(queued, name);
     int deckIndex = match.deckIndex(side, card);
-    MirrorItem item = match.mirrorItem(side, deckIndex, level);
+    MirrorItem item =
+        refusedSource == null
+            ? match.mirrorItem(side, deckIndex, level)
+            : match.mirrorItemOf(side, deckIndex, level, refusedSource.evolution());
     // The gates read the Mirror's own hand slot and the item's cost; a refused play changes
     // nothing.
     int code = match.gate(side, deckIndex, item.cost());
@@ -664,6 +658,99 @@ public class Standard1v1Battle {
   }
 
   /**
+   * The play of its side a Mirror's item repeats in place of the last card, as its player's client
+   * builds the item when the player gives the Mirror: from the play of its side given last of those
+   * it still lists as promised, else from the king's copy of the last card. A play is listed from
+   * the step after it is given until its run places it, or, refused at its run, until {@value
+   * #PROMISE_TICKS} ticks after its giving; an ability command's promise names no card and is
+   * passed over.
+   *
+   * <p>A listed play the match placed at its run is the last card by the Mirror's run, two ticks or
+   * more later, so the item is built from the last card as the Mirror runs. A listed play the match
+   * refused at its run is not, and the item repeats it: its card and the evolution field it
+   * carried. Refused: a Mirror given in the tick of another play of its side or the tick after, at
+   * a moment of the client's that decides whether it lists that play yet; one given within two
+   * ticks of the tick a refused play's promise is dropped, which is not traced to the tick; one
+   * whose listed play is a Mirror's, or a variant card's the match refused, which no reference
+   * holds.
+   *
+   * @return the listed play the match refused at its run, which the item repeats, or null for an
+   *     item built from the last card
+   */
+  private Play mirrorSource(QueuedPlay queued, String name) {
+    int side = queued.side();
+    int given = queued.tick() - PLAY_DELAY_TICKS;
+    QueuedPlay last = null;
+    Play lastRun = null;
+    boolean lastUncertain = false;
+    for (QueuedPlay other : queuedPlays) {
+      if (other == queued || other.side() != side || other.tick() > queued.tick()) {
+        continue;
+      }
+      int otherGiven = other.tick() - PLAY_DELAY_TICKS;
+      if (otherGiven >= given - 1) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a Mirror given in the tick of another play of its side or the tick after,"
+                + " which the player's client may not yet repeat, is not modelled");
+      }
+      // Run two ticks or more before the Mirror's run.
+      Play run = playNamed(other.name());
+      boolean refused = run.matchCode() != 0 || run.result() == null || !run.result().placed();
+      // Pending after the step before the giving, the last the client has seen; or refused and
+      // its promise not yet dropped, which the first step whose tick reaches its due tick does,
+      // within two ticks either way.
+      int due = otherGiven + PROMISE_TICKS;
+      boolean listed = other.tick() >= given || (refused && due >= given + 2);
+      boolean uncertain = !listed && refused && due >= given - 2;
+      // Of two plays given in one tick the one queued later is listed later.
+      if ((listed || uncertain) && (last == null || otherGiven >= last.tick() - PLAY_DELAY_TICKS)) {
+        last = other;
+        lastRun = run;
+        lastUncertain = uncertain;
+      }
+    }
+    if (last == null) {
+      return null;
+    }
+    if (lastUncertain) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a Mirror given about the tick the promise of a play of its side refused at its"
+              + " run is dropped, which the client may still repeat, is not modelled");
+    }
+    if (last.kind() == PlayKind.MIRROR) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a Mirror given while its client lists a Mirror's play of its side as promised,"
+              + " whose item it would repeat, is not modelled");
+    }
+    boolean refused =
+        lastRun.matchCode() != 0 || lastRun.result() == null || !lastRun.result().placed();
+    if (!refused) {
+      return null;
+    }
+    if (last.kind() != PlayKind.CARD) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a Mirror given while its client lists a variant play of its side the match"
+              + " refused at its run, which it would repeat as the option played, is not"
+              + " modelled");
+    }
+    return lastRun;
+  }
+
+  /** The play run under the given name. */
+  private Play playNamed(String name) {
+    for (Play play : plays) {
+      if (play.name().equals(name)) {
+        return play;
+      }
+    }
+    throw new IllegalStateException(name + " has not run");
+  }
+
+  /**
    * Queues a variant card's play to run on the given tick, in a match: it is played as the option
    * its player's client picks from the king's elixir as it gives the play, for that option's cost,
    * and the variant card goes to the back of the queue. The option's card is placed and cast as any
@@ -702,7 +789,7 @@ public class Standard1v1Battle {
             name
                 + ": a variant play runs on tick 21 or later, its option picked after the step 21"
                 + " ticks before");
-    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT);
+    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before

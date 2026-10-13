@@ -883,14 +883,43 @@ public final class LadderMatch implements BattleMode {
    */
   public MirrorItem mirrorItem(int side, int index, int level) {
     MatchSide matchSide = sides.get(side);
+    return mirrorItem(
+        side,
+        index,
+        level,
+        matchSide.lastPlayedCopy(),
+        matchSide.lastPlayedCopyField(),
+        matchSide.lastPlayedCopyOption());
+  }
+
+  /**
+   * The item a Mirror's play carries when the player's client builds it from a play of its side the
+   * match refused at its run, whose promise it still lists: that play's card and evolution field,
+   * as {@link #mirrorItem(int, int, int)} builds it from the last card.
+   *
+   * @param side the playing side
+   * @param index the Mirror's deck index
+   * @param level the level the Mirror is played at, counted from 1
+   * @param played the item the refused play carried, a deck card's
+   */
+  public MirrorItem mirrorItemOf(int side, int index, int level, EvolutionItem played) {
+    MatchCard card = sides.get(side).deck().get(played.index());
+    checkArgument(
+        !card.mirror() && card.variant() == null,
+        () -> card.name() + " is the Mirror or a variant card, whose item is not a deck card's");
+    return mirrorItem(side, index, level, card, played.field(), -1);
+  }
+
+  private MirrorItem mirrorItem(
+      int side, int index, int level, MatchCard last, int field, int option) {
+    MatchSide matchSide = sides.get(side);
     MatchCard mirror = matchSide.deck().get(index);
     checkArgument(mirror.mirror(), () -> mirror.name() + " is not a Mirror");
     int mirrorLevelField = level - 1;
-    MatchCard last = matchSide.lastPlayedCopy();
     if (last == null) {
       return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
     }
-    MatchCard source = repeatedCard(last, matchSide);
+    MatchCard source = repeatedCard(last, field, option);
     // The level is not capped at the card's last: a level past it reads past its level tables.
     int levelField = Math.max(mirrorLevelField + mirrorLevelOffset, 0);
     checkArgument(
@@ -911,10 +940,10 @@ public final class LadderMatch implements BattleMode {
    * a variant card's play, the option it was played as.
    *
    * @param last the copy of the side's last card
-   * @param matchSide the side, which keeps the field and the option it was played with
+   * @param field the evolution field it was played with
+   * @param played the option it was played as, for a variant card; -1 for any other card
    */
-  private static MatchCard repeatedCard(MatchCard last, MatchSide matchSide) {
-    int field = matchSide.lastPlayedCopyField();
+  private static MatchCard repeatedCard(MatchCard last, int field, int played) {
     if (field == EvolutionItem.HERO) {
       return last.formRow(MatchCard.HERO_FORM);
     }
@@ -926,7 +955,6 @@ public final class LadderMatch implements BattleMode {
                 + " as the card itself, whose row casts no option, which no row sets");
       }
       // The option's row, which the item casts and whose cost it adds.
-      int played = matchSide.lastPlayedCopyOption();
       checkState(played >= 0, () -> last.name() + " was played as no option");
       SpellVariant.Option option = last.variant().options().get(played);
       return new MatchCard(
