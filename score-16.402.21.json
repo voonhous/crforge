@@ -1,30 +1,30 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 84.7,
-  "ticks_agreed": 92.0,
+  "to_the_end": 84.8,
+  "ticks_agreed": 92.2,
   "outcomes": {
-    "diagnostic_match": 8474,
+    "diagnostic_match": 8488,
     "invalid": 6,
-    "mismatch": 1323,
-    "unsupported": 197
+    "mismatch": 1326,
+    "unsupported": 180
   },
   "first_failures": {
-    "mismatch $.entities[].x": 601,
-    "mismatch $.entities[].state": 294,
-    "mismatch $.entities[].hp": 230,
+    "mismatch $.entities[].x": 602,
+    "mismatch $.entities[].state": 295,
+    "mismatch $.entities[].hp": 231,
     "mismatch $.entities.length": 135,
     "mismatch $.entities[].id": 35,
     "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 22,
     "mismatch $.entities[].y": 20,
     "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 18,
-    "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled": 14,
     "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: GiantHero_Slap_Pushback on cmd# was let go before its push, not modelled": 10,
     "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 10,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 9,
-    "invalid": 6
+    "invalid": 6,
+    "mismatch $.entities[].row": 6
   },
   "set": "296000195c872c7d"
 }
