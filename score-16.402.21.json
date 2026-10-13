@@ -1,30 +1,30 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 84.3,
-  "ticks_agreed": 91.6,
+  "to_the_end": 84.6,
+  "ticks_agreed": 91.9,
   "outcomes": {
-    "diagnostic_match": 8437,
+    "diagnostic_match": 8462,
     "invalid": 6,
-    "mismatch": 1312,
-    "unsupported": 245
+    "mismatch": 1322,
+    "unsupported": 210
   },
   "first_failures": {
-    "mismatch $.entities[].x": 596,
-    "mismatch $.entities[].state": 291,
+    "mismatch $.entities[].x": 601,
+    "mismatch $.entities[].state": 293,
     "mismatch $.entities[].hp": 230,
-    "mismatch $.entities.length": 132,
-    "unsupported: Deflect_# deflects proj_# without a root owner or from a king tower without a target, which is not modelled": 37,
+    "mismatch $.entities.length": 135,
     "mismatch $.entities[].id": 35,
-    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 21,
+    "unsupported: proj_# (PrincessProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 22,
     "mismatch $.entities[].y": 20,
-    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 17,
+    "unsupported: proj_# (ArrowsSpell) flies by a deflecting area effect, whose deflection of it is not modelled": 18,
     "unsupported: MegaKnight_EV1_uppercut_send_flying runs on cmd#, a clone, a rider or a carrier, not modelled": 14,
     "unsupported: proj_# (FirecrackerProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: proj_# (HunterProjectile) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 14,
     "unsupported: cmd#: a Mirror given while another play of its side is pending, which the client may repeat in place of the last card, is not modelled": 12,
     "unsupported: GiantHero_Slap_Pushback on cmd# was let go before its push, not modelled": 10,
-    "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 10
+    "unsupported: GoblinDrill_EV1_relocate looks for a ring around a destroyed tower, which is not modelled": 10,
+    "unsupported: a play whose packed item is not the item the simulator builds as it runs": 9
   },
   "set": "296000195c872c7d"
 }
