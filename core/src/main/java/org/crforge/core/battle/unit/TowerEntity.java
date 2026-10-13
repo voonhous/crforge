@@ -90,6 +90,9 @@ public class TowerEntity extends WorldEntity {
   /** Slot of the targeting component, the same slot a troop's is in. */
   public static final int TARGETING_SLOT = 0;
 
+  /** The slot of the hit points' own visit, in the third component pass, as a character's. */
+  public static final int HIT_POINTS_SLOT = 2;
+
   /** Applies every state change the tower asks for; a tower has no route to act on. */
   private final GridStateSetter setter;
 
@@ -140,6 +143,7 @@ public class TowerEntity extends WorldEntity {
     selection.setStateSetter(setter);
     selection.getOutcome().setRoutePreparer(setter::prepareRoute);
     attach(new TargetingComponent());
+    attach(new HitPointsComponent());
 
     refuseAttack(data);
     if (data.onStartingAction() != null) {
@@ -699,6 +703,23 @@ public class TowerEntity extends WorldEntity {
         return (WorldEntity) world.liveObject(id);
       }
     };
+  }
+
+  /**
+   * The hit points' own visit, in the third component pass, as a character's: it empties the
+   * tower's queued total (see {@link BattleWorld#emptyQueuedTotal}). A tower has no lifetime decay.
+   */
+  private final class HitPointsComponent implements BattleComponent {
+
+    @Override
+    public int index() {
+      return HIT_POINTS_SLOT;
+    }
+
+    @Override
+    public void visit() {
+      world.emptyQueuedTotal(TowerEntity.this);
+    }
   }
 
   /** Chooses, keeps or drops the tower's target and decides whether it fires this tick. */

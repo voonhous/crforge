@@ -5555,7 +5555,8 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * The hit points' own visit, in the third component pass: outside the deploying, waiting and
+   * The hit points' own visit, in the third component pass: first, in every state, the queued total
+   * is emptied (see {@link BattleWorld#emptyQueuedTotal}); then, outside the deploying, waiting and
    * spawn-pathfinding states, and while it has hit points, the lifetime decay takes its step; the
    * step that takes the last hit point is a death of its own.
    */
@@ -5568,6 +5569,9 @@ public class CharacterEntity extends WorldEntity {
 
     @Override
     public void visit() {
+      // The queued total is emptied first: the hits queued so far this tick no longer count
+      // against the hit points when a travelling hit asks whether the queued damage kills.
+      world.emptyQueuedTotal(CharacterEntity.this);
       // A shield that is up is tagged in every state and at any hit points, from the next step.
       if (getHitPoints().getShield() >= 1) {
         getView()
