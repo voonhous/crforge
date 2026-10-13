@@ -4364,12 +4364,22 @@ public class BattleWorld implements HolderPasses {
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
-   * at its impact, as the Goblin Barrel, which no recording holds; one that hops, flies to a point,
-   * homes for a time, waits a random delay, hooks or stops at collisions; one whose impact spawns a
-   * chain of projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that
-   * belongs to a chain and is not spell-like, or to a volley's group that a deflection does not
-   * turn around as one, as the Hunter's pellets. A spell such as the Fireball, whose deflection
-   * behaviour sends it at the enemy nearest the area effect without a target, is among them.
+   * at its impact, as the Goblin Barrel, which no recording holds; one that hops, homes for a time
+   * or hooks; one that flies to a point and does not stop at collisions, as the Magic Archer's
+   * arrow, whose relaunch stretches its aim to its range from where it stands; one whose impact
+   * spawns a chain of projectiles two links or more long, as the evolved Bomber's bouncing bomb;
+   * one that belongs to a chain and is not spell-like, or that its launcher marks as grouped
+   * without a volley's group. A spell such as the Fireball, whose deflection behaviour sends it at
+   * the enemy nearest the area effect without a target, is among them.
+   *
+   * <p>A projectile that flies to a point and stops at collisions is modelled, as the Hunter's
+   * pellets are: its relaunch aims at its root owner's position itself, not stretched to its range,
+   * and keeps the root owner as its target, as every deflected relaunch does; it draws a fresh
+   * random delay for a row that has one (see {@link ProjectileEntity#deflect}); and nothing of the
+   * deflection reads the collisions, so, turned, it hits what its body passes on its way back and
+   * stops at the first hit as before. A volley's group that a deflection does not turn around as
+   * one, as the Hunter's pellets leave it (DeflectGroup False), is no bar either: each projectile
+   * of it is deflected on its own (see {@link #deflect}).
    *
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
@@ -4419,15 +4429,12 @@ public class BattleWorld implements HolderPasses {
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
-        || (data.homingLike() && !pingpong && !rolling)
+        || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions())
         || data.homingTimeMs() >= 1
-        || data.randomDelayMs() >= 1
         || data.dragBackSpeed() >= 1
-        || data.checkCollisions()
         || (data.spawnProjectile() != null && data.spawnChain() >= 2)
         || (projectile.getChain() != null && !spellLike)
-        || (projectile.isGrouped()
-            && (projectile.getGroup() == null || !projectile.getGroup().deflectsAsOne()))) {
+        || (projectile.isGrouped() && projectile.getGroup() == null)) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
@@ -4482,6 +4489,11 @@ public class BattleWorld implements HolderPasses {
    * that list for a projectile of a chain, as an arrow of one wave of Arrows: the wave deals the
    * parent its damage once, by its first arrow turned or landed on it, and its arrows turned after
    * pass the parent over, as its arrows landing after do.
+   *
+   * <p>A projectile of a volley's group not turned around as one, as each of the Hunter's pellets,
+   * is deflected on its own, whichever of the group it is, and only it is turned. The group's list
+   * holds for it all the same: the first of the group a deflection reaches deals the parent its
+   * damage and lists it, and the group's pellets turned after deal it nothing.
    *
    * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.

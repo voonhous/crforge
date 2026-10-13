@@ -831,7 +831,9 @@ public class ProjectileEntity extends BattleEntity
    * hands the damage registered on it back; the target and the root are forgotten, the deflections
    * counted, and the projectile takes the deflector's side. It is launched again from where it
    * stands, at its height, at the source and its position, the deflector its launcher and owner, at
-   * its own level, and registers its damage, now the deflected share, on the source.
+   * its own level, and registers its damage, now the deflected share, on the source. A row with a
+   * random delay draws a fresh one from the battle's random source, as every launch with a launcher
+   * does, so the turned projectile waits where it was turned before it flies back.
    *
    * <p>A pingpong projectile not deflected before first lets its owner's targeting go on, whether
    * the component is on or off, and its sweep time starts over; the relaunch sets no hold on the
@@ -899,6 +901,11 @@ public class ProjectileEntity extends BattleEntity
     side = deflector.side();
     GridEntity from = deflector.getView();
     place(deflector, deflector, source, packedLevel, x, y, z, px, py, from.getX(), from.getY());
+    if (data.randomDelayMs() >= 1) {
+      // The relaunch draws a fresh random delay, as every launch with a launcher does: the turned
+      // projectile waits it out where it was turned before it flies on.
+      delayMs = world.getRandom().next(data.randomDelayMs());
+    }
     registerPending();
   }
 
