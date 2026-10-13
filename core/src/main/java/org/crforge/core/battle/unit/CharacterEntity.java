@@ -2549,17 +2549,23 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Starts the evolved Mega Knight's uppercut on the character. A clone, a rider and a carrier are
-   * refused.
+   * Starts the evolved Mega Knight's uppercut on the character. A clone and a rider are refused; a
+   * carrier is uppercut as any unit, its riders going along with it (see {@link #knockback}).
    */
   @Override
   public ActionInstance uppercut(MegaKnightUppercut action, int phase, ActionOwner instigator) {
-    refuseRun(action.name());
+    refuseCloneOrRider(action.name());
     return new UppercutRun(action, this, phase, instigator(instigator));
   }
 
   /**
-   * Knocks the character into the air. A clone, a rider and a carrier are refused.
+   * Knocks the character into the air. A clone and a rider are refused.
+   *
+   * <p>A carrier is knocked as any unit: neither the knock's start nor its update asks whether the
+   * unit carries riders, and the riders, which never move on their own, are put back on their ring
+   * around the carrier on each movement visit, so they go up, along and down with it and keep
+   * attacking from there. Nothing is started on them. A rider knocked alone, whose movement visit
+   * puts it back beside its carrier, is held by no recording and stays refused.
    *
    * <p>A unit with an ability is knocked as any other: the run postpones the ability while it is
    * listed, which the ability gate alone reads, so a request in the air is left pending and cast
@@ -2572,7 +2578,7 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
-    refuseRun(action.name());
+    refuseCloneOrRider(action.name());
     return new KnockbackRun(action, this, phase, instigator(instigator));
   }
 
@@ -2619,13 +2625,14 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Starts a push of the character away from what caused it. A clone, a rider and a carrier are
-   * refused, as is a cause that is not an object of the battle.
+   * Starts a push of the character away from what caused it. A clone and a rider are refused, as is
+   * a cause that is not an object of the battle; a carrier is pushed as any unit, its riders going
+   * along with it (see {@link #knockback}).
    */
   @Override
   public ActionInstance pushbackFromInstigator(
       DoPushbackFromInstigator action, int phase, ActionOwner instigator) {
-    refuseRun(action.name());
+    refuseCloneOrRider(action.name());
     WorldEntity cause = instigator(instigator);
     if (cause == null) {
       throw new UnsupportedOperationException(
@@ -2742,6 +2749,17 @@ public class CharacterEntity extends WorldEntity {
     if (isClone() || getParent() != null || !riders().isEmpty()) {
       throw new UnsupportedOperationException(
           action + " runs on " + name() + ", a clone, a rider or a carrier, not modelled");
+    }
+  }
+
+  /**
+   * Refuses a knock, an uppercut or a push away from the cause on a clone or a rider, which no
+   * recording holds. A carrier takes them as any unit.
+   */
+  private void refuseCloneOrRider(String action) {
+    if (isClone() || getParent() != null) {
+      throw new UnsupportedOperationException(
+          action + " runs on " + name() + ", a clone or a rider, not modelled");
     }
   }
 
