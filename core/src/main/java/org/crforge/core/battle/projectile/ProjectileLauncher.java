@@ -134,8 +134,10 @@ public final class ProjectileLauncher {
     // A row that links its volley's projectiles into one group: the first projectile makes it and
     // every further one joins it, before each is handed to the holder.
     ProjectileGroup group = unit.groupProjectiles() ? new ProjectileGroup() : null;
+    ProjectileData last = null;
     for (int k = 0; k < count; k++) {
       ProjectileData data = override != null ? override : first != null && k == 0 ? first : regular;
+      last = data;
       int[] offset = {0, 0};
       int fan = 0;
       if (k != 0) {
@@ -162,6 +164,11 @@ public final class ProjectileLauncher {
       }
       world.launch(projectile);
       launcher.launched(hx, hy);
+    }
+    // After the volley, the last projectile's row decides whether a deflection turns the group
+    // around as one: true for an empty column, as the Princess's arrows leave it.
+    if (group != null && last != null && last.deflectGroup()) {
+      group.deflectAsOne();
     }
   }
 

@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -287,24 +286,23 @@ class BattleMonkTest {
 
   @Test
   @DisplayName(
-      "a shot with a deflection radius of its own, the Princess's, is refused when the Deflect"
+      "a shot with a deflection radius of its own, the Princess's, is deflected when the Deflect"
           + " touches it")
-  void aDeflectionRadiusIsRefused() {
+  void aDeflectionRadiusIsDeflected() {
     Scene scene = new Scene();
     CharacterEntity princess =
         scene.match.deploy(0, GameData.unit("Princess"), LEVEL, 1, 3500, 18000);
     scene.request();
     princess.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     scene.followUp();
+    while (scene.deflected.isEmpty()) {
+      scene.step();
+      assertThat(scene.tick).as("a shot is deflected").isLessThan(TICKS);
+    }
 
-    assertThatThrownBy(
-            () -> {
-              for (int i = 0; i < 80; i++) {
-                scene.step();
-              }
-            })
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("flies within")
-        .hasMessageContaining("whose deflection of it is not modelled");
+    ProjectileEntity shot = scene.deflected.get(0);
+    assertThat(shot.getData().deflectRadius()).as("a deflection radius of its own").isPositive();
+    assertThat(shot.side()).as("turned for the Monk's side").isEqualTo(scene.monk.side());
+    assertThat(shot.getTarget()).as("sent back at the Princess").isSameAs(princess);
   }
 }

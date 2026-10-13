@@ -67,6 +67,7 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.projectile.ProjectileChain;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.projectile.ProjectileGroup;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.battle.spawn.SpawnArguments;
 import org.crforge.core.battle.spawn.SpawnHost;
@@ -4317,11 +4318,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
-   * one with a deflection behaviour, a deflect radius or an action on its deflector, a box body;
+   * one with a deflection behaviour or an action on its deflector, a box body; one with a deflect
+   * radius that spawns a character at its impact, as the Goblin Barrel, which no recording holds;
    * one that hops, flies to a point, homes for a time, waits a random delay, hooks or stops at
-   * collisions; one that spawns a projectile, belongs to a chain or a volley's group. A spell such
-   * as the Fireball, whose deflection behaviour sends it at the enemy nearest the area effect
-   * without a target, is among them.
+   * collisions; one that spawns a projectile, belongs to a chain, or belongs to a volley's group
+   * that a deflection does not turn around as one, as the Hunter's pellets. A spell such as the
+   * Fireball, whose deflection behaviour sends it at the enemy nearest the area effect without a
+   * target, is among them.
+   *
+   * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
+   * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
+   * volley's group that a deflection turns around as one (see {@link #deflect}).
    *
    * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
    * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the
@@ -4357,7 +4364,7 @@ public class BattleWorld implements HolderPasses {
     // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
-        || (data.deflectRadius() != 0 && !spellLike)
+        || (data.deflectRadius() != 0 && !spellLike && data.spawnCharacter() != null)
         || data.actionOnDeflector() != null
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
@@ -4369,7 +4376,8 @@ public class BattleWorld implements HolderPasses {
         || data.checkCollisions()
         || data.spawnProjectile() != null
         || projectile.getChain() != null
-        || projectile.isGrouped()) {
+        || (projectile.isGrouped()
+            && (projectile.getGroup() == null || !projectile.getGroup().deflectsAsOne()))) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
@@ -4412,18 +4420,28 @@ public class BattleWorld implements HolderPasses {
    * <p>A projectile a crown tower fired at the parent has the tower as its root and keeps its
    * target: it is sent back at the tower, a king tower as a princess tower, as from any root.
    *
+   * <p>A projectile of a volley's group turned around as one, as the Princess's arrows are (see
+   * {@link ProjectileGroup}), is deflected only when it is the first of the group still in the
+   * battle; the others pass on untouched. Its deflection turns every projectile of the group still
+   * flying the same way - at the same source or point, for the parent's side - the first launched
+   * first and the deflected one among them, and then the deflected one once more, so it counts two
+   * deflections; without a root owner, the others are turned at the deflected one's start and fly
+   * on, only the deflected one's flight is ended. A parent the group lists takes no damage from it;
+   * the parent is listed after the damage either way.
+   *
    * <p>A projectile without a root owner, its shooter gone - the Witch's or the Little Prince's
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
    * The parent takes its damage as above, it is turned at its start with no target, for the
    * parent's side, and its flight is ended: it takes no further step and leaves at the next
    * cleanup, without an impact on its target and without its action on reaching its target.
    *
-   * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
-   * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
-   * effect has left - or has an action on reaching its target, which no recording holds; one a king
-   * tower fired that is not spell-like and has lost its target, which searches for the nearest
-   * enemy instead, and one carrying copies that change its damage; a spell-like projectile the
-   * search would send at a king tower, which no recording holds; a projectile an area effect
+   * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, a projectile
+   * of a group turned around as one deflected before, whose count no recording holds, an area
+   * effect that follows nothing, a projectile without a root owner that is spell-like - a bomb
+   * whose area effect has left - or has an action on reaching its target, which no recording holds;
+   * one a king tower fired that is not spell-like and has lost its target, which searches for the
+   * nearest enemy instead, and one carrying copies that change its damage; a spell-like projectile
+   * the search would send at a king tower, which no recording holds; a projectile an area effect
    * launched that was not dropped onto it. A deflection past the most a projectile takes
    * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
@@ -4433,7 +4451,24 @@ public class BattleWorld implements HolderPasses {
     if (projectile.isReleased() || (deflector.side() & 1) == (projectile.side() & 1)) {
       return false;
     }
+    // Of a group turned around as one, only the first still in the battle is deflected: its
+    // deflection turns the others with it.
+    ProjectileGroup group = projectile.getGroup();
+    boolean asOne = group != null && group.deflectsAsOne();
+    if (asOne && group.first() != projectile) {
+      return false;
+    }
     refuseDeflection(deflector, projectile);
+    // Its deflection turns it twice, so a second one would meet a count no recording holds.
+    if (asOne && projectile.getDeflections() >= 1) {
+      throw new UnsupportedOperationException(
+          deflector.name()
+              + " deflects "
+              + projectile.name()
+              + " ("
+              + projectile.getData().name()
+              + ") once more, its volley turned around as one before, which is not modelled");
+    }
     boolean spellLike = spellLike(projectile.getData());
     WorldEntity source = projectile.getRoot();
     // A bomb dropped onto its area effect has that area effect as its root.
@@ -4528,31 +4563,46 @@ public class BattleWorld implements HolderPasses {
         damage =
             projectile.listenedDamage(damage, hitId, parent.getTargetView().crownTower(), parent);
       }
-      queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
+      // A parent its group lists takes no damage from the group's projectiles; it is listed after.
+      if (group == null || !group.dooms(parent.getId())) {
+        queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
+      }
+      if (group != null) {
+        group.doom(parent.getId());
+      }
     }
     WorldEntity sentAt = null;
+    Consumer<ProjectileEntity> turn;
     if (rolling) {
       // From where it stands, back by its flight from its start to its aim.
-      projectile.deflectAt(
-          parent,
-          projectile.getX() + projectile.getStartX() - projectile.getAimX(),
-          projectile.getY() + projectile.getStartY() - projectile.getAimY());
+      turn =
+          p ->
+              p.deflectAt(
+                  parent,
+                  p.getX() + p.getStartX() - p.getAimX(),
+                  p.getY() + p.getStartY() - p.getAimY());
     } else if (rootless) {
       // At its start, with no target: where it was launched from.
-      projectile.deflectAt(parent, projectile.getStartX(), projectile.getStartY());
+      int startX = projectile.getStartX();
+      int startY = projectile.getStartY();
+      turn = p -> p.deflectAt(parent, startX, startY);
     } else if (tower != null) {
-      projectile.deflectAt(parent, tower.getView().getX(), tower.getView().getY());
+      GridEntity at = tower.getView();
+      turn = p -> p.deflectAt(parent, at.getX(), at.getY());
     } else if (source == null) {
-      projectile.deflectAt(parent, areaSource.getX(), areaSource.getY());
+      turn = p -> p.deflectAt(parent, areaSource.getX(), areaSource.getY());
     } else {
-      projectile.deflect(parent, source);
+      turn = p -> p.deflect(parent, source);
       sentAt = source;
     }
-    // A deflection past the most a projectile takes still turns it around, and then ends its
-    // flight, as a release does.
-    if (projectile.getDeflections() > globalNumber("MAX_DEFLECTION_TIMES")) {
-      projectile.finishOverDeflected();
+    // A group turned around as one: every projectile of it still in the battle, the first launched
+    // first - the deflected one among them - and then the deflected one once more.
+    if (asOne) {
+      for (ProjectileEntity member : group.members()) {
+        turnOnce(member, turn);
+      }
     }
+    turnOnce(projectile, turn);
     // A projectile turned without a root owner is finished: it takes no further step and leaves at
     // the next cleanup, without an impact and without its action on reaching its target.
     if (rootless) {
@@ -4562,6 +4612,21 @@ public class BattleWorld implements HolderPasses {
       observer.projectileDeflected(tick, deflector, projectile, parent, sentAt);
     }
     return true;
+  }
+
+  /**
+   * One redirect of a deflection: nothing for a projectile whose flight has ended; otherwise it is
+   * turned, and a deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) still turns it
+   * around and then ends its flight, as a release does.
+   */
+  private void turnOnce(ProjectileEntity projectile, Consumer<ProjectileEntity> turn) {
+    if (projectile.isReleased()) {
+      return;
+    }
+    turn.accept(projectile);
+    if (projectile.getDeflections() > globalNumber("MAX_DEFLECTION_TIMES")) {
+      projectile.finishOverDeflected();
+    }
   }
 
   /**

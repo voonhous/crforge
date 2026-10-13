@@ -1392,7 +1392,8 @@ public class ProjectileEntity extends BattleEntity
   /**
    * The projectile's notice of a removal: a homing projectile whose target left pins its aim where
    * the target last stood; the target, the homing target, the owner, the root and the area effect
-   * that launched it are forgotten when they are the one that left.
+   * that launched it are forgotten when they are the one that left, and a projectile of its group
+   * that left leaves the group.
    */
   @Override
   protected void entityRemoved(BattleEntity removed) {
@@ -1401,6 +1402,10 @@ public class ProjectileEntity extends BattleEntity
     }
     if (removed == areaTarget) {
       areaTarget = null;
+    }
+    // A projectile of its group that left the battle leaves the group.
+    if (group != null && removed instanceof ProjectileEntity member && member.group == group) {
+      group.leave(member);
     }
     if (!(removed instanceof WorldEntity gone)) {
       return;
@@ -1473,6 +1478,7 @@ public class ProjectileEntity extends BattleEntity
    */
   public void joinGroup(ProjectileGroup group) {
     this.group = group;
+    group.join(this);
   }
 
   /** Whether the projectile has an action holder, whose runs listen to its hits. */
