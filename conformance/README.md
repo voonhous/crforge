@@ -102,9 +102,15 @@ The reference battles are chosen cases, each held to its expected outcome. Cover
   -Pcrforge.dataVersion=<version> \
   -Pcrforge.coverage=<set folder>
 # -> conformance/build/coverage/score-<version>.json and badge-<version>.json
+
+# The same, part by part: each part file's battles give a tally, and the tallies sum up to the score
+./gradlew :conformance:coverageScore ... -Pcrforge.coverage.part=<K>   # -> tally-<version>-<K>.json
+./gradlew :conformance:coverageMerge -Pcrforge.coverage.tallies=<folder of the tallies>
 ```
 
-Coverage is a measurement, never a gate. CI scores every version `coverage.lock` lists on each run, in a job that cannot fail the run; after a push to `battle_core` it publishes each score and its shields.io badge (the badges at the top of the README) to the `badges` branch, and warns when a version's share of battles reproduced to the end dropped since the last published score. A first failure worth porting becomes a reference case, recorded and held to its outcome like any other.
+A set is packed in part files of up to 1,000 battles. A tally holds the counts behind a score (battles, matches, agreed and recorded ticks, outcomes and every first failure), so the tallies of all parts sum to exactly the score one run over the whole set gives.
+
+Coverage is a measurement, never a gate. CI scores every version `coverage.lock` lists on each run: one job per part file, each downloading only its part, then one job per version that sums the tallies (and gives no score when a part is missing), none of which can fail the run. After a push to `battle_core` it publishes each score and its shields.io badge (the badges at the top of the README) to the `badges` branch, and warns when a version's share of battles reproduced to the end dropped since the last published score. A first failure worth porting becomes a reference case, recorded and held to its outcome like any other.
 
 ## Moving to a new data version
 

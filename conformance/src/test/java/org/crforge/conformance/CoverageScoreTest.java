@@ -7,6 +7,7 @@
 package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -159,6 +160,72 @@ class CoverageScoreTest {
     assertThat(badge.path("color").asText()).isEqualTo("brightgreen");
     assertThat(CoverageScore.color(74.9)).isEqualTo("yellow");
     assertThat(CoverageScore.color(39.9)).isEqualTo("red");
+  }
+
+  @Test
+  void talliesOfPartsMergeToTheScoreOfTheWholeSet() {
+    List<Battle> first =
+        List.of(match(1000), mismatch(2000, 500, "$.entities[3].hp"), unsupported(700, "f"));
+    List<Battle> second =
+        List.of(
+            match(3000), mismatch(900, 100, "$.entities[9].hp"), match(10), unsupported(5, "g"));
+    List<Battle> all = new ArrayList<>(first);
+    all.addAll(second);
+
+    ObjectNode merged =
+        CoverageScore.merge(
+            List.of(CoverageScore.tally("v", first), CoverageScore.tally("v", second)));
+
+    assertThat(CoverageScore.score(merged)).isEqualTo(CoverageScore.score("v", all));
+    assertThat(merged.path("failures").path("mismatch $.entities[].hp").asInt()).isEqualTo(2);
+  }
+
+  @Test
+  void mergeRefusesTalliesOfTwoVersionsAndNoTally() {
+    List<ObjectNode> mixed =
+        List.of(CoverageScore.tally("a", List.of(match(1))), CoverageScore.tally("b", List.of()));
+
+    assertThatThrownBy(() -> CoverageScore.merge(mixed))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> CoverageScore.merge(List.of()))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aPartIsTheBattlesAfterThoseOfTheEarlierParts() throws IOException {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode listing = mapper.createObjectNode();
+    listing.put("corpus", "coverage-v");
+    listing.put("content_version", "v");
+    listing.put("content_sha", "s");
+    listing
+        .putArray("parts")
+        .add(mapper.createObjectNode().put("battles", 2))
+        .add(mapper.createObjectNode().put("battles", 1));
+    for (int i = 0; i < 3; i++) {
+      listing
+          .withArray("cases")
+          .add(
+              mapper
+                  .createObjectNode()
+                  .put("id", "battle_" + i)
+                  .put("reference", "battles/battle_" + i)
+                  .put("scenario_sha256", "x")
+                  .put("ticks", 7000));
+    }
+    Files.createDirectories(folder.resolve("corpora"));
+    mapper.writeValue(folder.resolve("corpora/coverage-v.json").toFile(), listing);
+    // Only part 1 is unpacked, as in a CI job that downloaded that part alone.
+    Files.createDirectories(folder.resolve("battles/battle_2"));
+    ReferenceSuite.References references = ReferenceSuite.load(folder);
+
+    assertThat(CoverageScore.part(folder, references, 1))
+        .extracting(ReferenceSuite.Case::id)
+        .containsExactly("battle_2");
+    assertThatThrownBy(() -> CoverageScore.part(folder, references, 0))
+        .hasMessageContaining("not unpacked");
+    assertThatThrownBy(() -> CoverageScore.part(folder, references, 2))
+        .hasMessageContaining("no part 2");
   }
 
   @Test

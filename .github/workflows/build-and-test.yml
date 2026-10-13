@@ -30,6 +30,7 @@ jobs:
       others: ${{ steps.lock.outputs.others }}
       coverage-revision: ${{ steps.coverage.outputs.revision }}
       coverage-versions: ${{ steps.coverage.outputs.versions }}
+      coverage-parts: ${{ steps.parts.outputs.parts }}
       has-coverage: ${{ steps.coverage.outputs.available }}
 
     steps:
@@ -68,6 +69,26 @@ jobs:
           echo "revision=$(sed -n 's/^revision=//p' coverage.lock)" >> "$GITHUB_OUTPUT"
           echo "versions=$(sed -n 's/^versions=//p' coverage.lock | tr ' ' '\n' | grep . | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_COVERAGE_TOKEN == 'true' && vars.COVERAGE_DATASET != '' }}" >> "$GITHUB_OUTPUT"
+
+      # Each version's set is scored part by part, one coverage job per part file: its corpus.json
+      # (small) names the parts.
+      - name: List the coverage parts
+        id: parts
+        if: steps.coverage.outputs.available == 'true'
+        env:
+          TOKEN: ${{ secrets.COVERAGE_TOKEN }}
+          DATASET: ${{ vars.COVERAGE_DATASET }}
+          REVISION: ${{ steps.coverage.outputs.revision }}
+          VERSIONS: ${{ steps.coverage.outputs.versions }}
+        run: |
+          set -euo pipefail
+          parts='[]'
+          for version in $(jq -r '.[]' <<< "$VERSIONS"); do
+            count=$(curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" \
+              "https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$version/corpus.json" | jq '.parts | length')
+            parts=$(jq -c --arg v "$version" --argjson n "$count" '. + [range($n) | {version: $v, part: .}]' <<< "$parts")
+          done
+          echo "parts=$parts" >> "$GITHUB_OUTPUT"
 
   # The address check, the build with its checks, and the unit tests on the tables of the lock's
   # version.
@@ -232,20 +253,21 @@ jobs:
 
   # The coverage score of each data version coverage.lock names: every battle of its coverage set, a
   # large sample of the game's own recorded battles of that version, played on the battle core and
-  # compared tick by tick. A measurement, never a gate: the job cannot fail the run, and it prints
-  # and keeps the totals only, never a battle.
+  # compared tick by tick. A measurement, never a gate: these jobs cannot fail the run, and they
+  # print and keep the totals only, never a battle. Each job plays one part file of a set and keeps
+  # its tally; the coverage-merge job sums a version's tallies into its score.
   coverage:
     needs: lock
     if: >-
       needs.lock.outputs.has-game-data == 'true' && needs.lock.outputs.has-coverage == 'true'
-      && needs.lock.outputs.coverage-versions != '[]'
+      && needs.lock.outputs.coverage-parts != '[]'
     runs-on: ubuntu-latest
     continue-on-error: true
 
     strategy:
       fail-fast: false
       matrix:
-        version: ${{ fromJson(needs.lock.outputs.coverage-versions) }}
+        include: ${{ fromJson(needs.lock.outputs.coverage-parts) }}
 
     steps:
       - uses: actions/checkout@v7
@@ -260,14 +282,15 @@ jobs:
           path: game-tables
           sparse-checkout: cdn
 
-      # The set at the locked revision: corpus.json and its parts, each part checked against the
-      # sha256 corpus.json gives, unpacked into a references folder (corpora/ and battles/).
-      - name: Download the coverage set
+      # The set's corpus.json and this job's part at the locked revision, the part checked against
+      # the sha256 corpus.json gives, unpacked into a references folder (corpora/ and battles/).
+      - name: Download the coverage part
         env:
           TOKEN: ${{ secrets.COVERAGE_TOKEN }}
           DATASET: ${{ vars.COVERAGE_DATASET }}
           REVISION: ${{ needs.lock.outputs.coverage-revision }}
           VERSION: ${{ matrix.version }}
+          PART: ${{ matrix.part }}
         run: |
           set -euo pipefail
           base="https://huggingface.co/datasets/$DATASET/resolve/$REVISION/coverage/$VERSION"
@@ -276,14 +299,14 @@ jobs:
           get() { curl -fsSL --retry 3 -H "Authorization: Bearer $TOKEN" -o "$2" "$base/$1"; }
           mkdir -p coverage/corpora
           get corpus.json coverage/corpus.json
-          jq -r '.parts[] | .file + " " + .sha256' coverage/corpus.json | while read -r file sha; do
-            get "$file" "coverage/$file"
-            echo "$sha  coverage/$file" | sha256sum -c --quiet
-            tar -xf "coverage/$file" -C coverage
-            rm "coverage/$file"
-          done
+          file=$(jq -r --argjson k "$PART" '.parts[$k].file' coverage/corpus.json)
+          sha=$(jq -r --argjson k "$PART" '.parts[$k].sha256' coverage/corpus.json)
+          get "$file" "coverage/$file"
+          echo "$sha  coverage/$file" | sha256sum -c --quiet
+          tar -xf "coverage/$file" -C coverage
+          rm "coverage/$file"
           mv coverage/corpus.json "coverage/corpora/coverage-$VERSION.json"
-          echo "$(jq '.cases | length' "coverage/corpora/coverage-$VERSION.json") battles"
+          echo "part $PART: $(jq --argjson k "$PART" '.parts[$k].battles' "coverage/corpora/coverage-$VERSION.json") battles"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -297,27 +320,86 @@ jobs:
           gradle-version: wrapper
           cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
 
-      - name: Score the coverage set
+      - name: Score the coverage part
         run: >-
           ./gradlew :conformance:coverageScore
           -Pcrforge.dataVersion=${{ matrix.version }}
           -Pcrforge.assetSource=file://${{ github.workspace }}/game-tables/cdn/
           -Pcrforge.coverage=${{ github.workspace }}/coverage
+          -Pcrforge.coverage.part=${{ matrix.part }}
+
+      - name: Upload the tally
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-tally-${{ matrix.version }}-${{ matrix.part }}
+          path: conformance/build/coverage/tally-*.json
+          if-no-files-found: error
+
+  # Sums the tallies of each version's parts into its score and badge, as one run over the whole set
+  # would. A version missing a part's tally is not scored, so a partial score is never published.
+  coverage-merge:
+    needs: [ lock, coverage ]
+    if: always() && needs.coverage.result != 'skipped'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.lock.outputs.coverage-versions) }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: coverage-tally-${{ matrix.version }}-*
+          merge-multiple: true
+          path: tallies
+
+      - name: Check every part's tally is there
+        env:
+          PARTS: ${{ needs.lock.outputs.coverage-parts }}
+          VERSION: ${{ matrix.version }}
+        run: |
+          expected=$(jq --arg v "$VERSION" '[.[] | select(.version == $v)] | length' <<< "$PARTS")
+          found=$(ls tallies/tally-*.json 2>/dev/null | wc -l)
+          if [ "$found" -ne "$expected" ]; then
+            echo "::warning::coverage of $VERSION: $found of $expected parts scored; no score this run"
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+
+      - name: Sum the tallies
+        run: ./gradlew :conformance:coverageMerge -Pcrforge.coverage.tallies=${{ github.workspace }}/tallies
 
       - name: Upload the score
         uses: actions/upload-artifact@v7
         with:
           name: coverage-score-${{ matrix.version }}
-          path: conformance/build/coverage/
+          path: |
+            conformance/build/coverage/score-*.json
+            conformance/build/coverage/badge-*.json
           if-no-files-found: error
 
   # Publishes each version's score and its shields.io badge (the README's coverage badges) to the
   # badges branch, after a push to battle_core only, and warns when a version's share of battles
   # reproduced to the end dropped since the last published score.
   badges:
-    needs: coverage
+    needs: coverage-merge
     if: >-
-      always() && needs.coverage.result != 'skipped'
+      always() && needs.coverage-merge.result != 'skipped'
       && github.event_name == 'push' && github.ref == 'refs/heads/battle_core'
     runs-on: ubuntu-latest
     continue-on-error: true

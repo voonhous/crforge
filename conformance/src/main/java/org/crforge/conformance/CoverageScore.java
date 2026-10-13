@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.Stream;
+import org.crforge.conformance.ReferenceSuite.Case;
 import org.crforge.conformance.ReferenceSuite.CaseResult;
 import org.crforge.conformance.ReferenceSuite.References;
 import org.crforge.core.battle.data.GameTables;
@@ -47,10 +49,13 @@ import org.crforge.core.battle.data.GameTables;
  *       mismatch by the field that differed first, list indices left out ({@code $.entities[].hp}).
  * </ul>
  *
- * <p>It also writes the score as a shields.io endpoint badge ({@link #badge}).
+ * <p>It also writes the score as a shields.io endpoint badge ({@link #badge}). A large set is
+ * scored in parts, one per part file of the set ({@link #part}): each part's battles give a tally
+ * ({@link #tally}), the counts behind a score, and the tallies of all parts sum up ({@link #merge})
+ * to the score of the whole set, exactly as one run over all of it.
  *
- * <p>Arguments: {@code --out FILE --badge FILE [--threads N]}, with the coverage set ({@value
- * #PROPERTY}) and the game tables of its data version configured as system properties.
+ * <p>Arguments: see {@link #main}; the coverage set ({@value #PROPERTY}) and the game tables of its
+ * data version are configured as system properties.
  */
 public final class CoverageScore {
 
@@ -110,41 +115,115 @@ public final class CoverageScore {
   }
 
   /**
-   * The score of a data version's battles.
+   * A tally of battles: the counts a score is made of. Tallies of parts of one data version's set
+   * sum up ({@link #merge}) to the tally of the whole set, so a set can be scored in parts.
    *
    * @param version the data version
    * @param battles every battle's outcome
    */
-  static ObjectNode score(String version, List<Battle> battles) {
-    Map<String, Integer> outcomes = new TreeMap<>();
-    Map<String, Integer> failures = new LinkedHashMap<>();
+  static ObjectNode tally(String version, List<Battle> battles) {
+    Map<String, Long> outcomes = new TreeMap<>();
+    Map<String, Long> failures = new TreeMap<>();
     long agreed = 0;
     long recorded = 0;
-    int matched = 0;
+    long matched = 0;
     for (Battle battle : battles) {
-      outcomes.merge(battle.result().outcome(), 1, Integer::sum);
+      outcomes.merge(battle.result().outcome(), 1L, Long::sum);
       if (ReferenceComparison.DIAGNOSTIC_MATCH.equals(battle.result().outcome())) {
         matched++;
       }
       agreed += battle.agreedTicks();
       recorded += battle.executedTicks();
-      battle.firstFailure().ifPresent(failure -> failures.merge(failure, 1, Integer::sum));
+      battle.firstFailure().ifPresent(failure -> failures.merge(failure, 1L, Long::sum));
     }
+    ObjectNode tally = JSON.objectNode();
+    tally.put("content_version", version);
+    // Counts are longs, as merge() sums them, so a tally and a sum of tallies compare equal.
+    tally.put("battles", (long) battles.size());
+    tally.put("matched", matched);
+    tally.put("agreed_ticks", agreed);
+    tally.put("recorded_ticks", recorded);
+    outcomes.forEach(tally.putObject("outcomes")::put);
+    failures.forEach(tally.putObject("failures")::put);
+    return tally;
+  }
+
+  /**
+   * The sum of tallies of one data version.
+   *
+   * @throws IllegalArgumentException when there are none, or they are of more than one version
+   */
+  static ObjectNode merge(List<? extends JsonNode> tallies) {
+    if (tallies.isEmpty()) {
+      throw new IllegalArgumentException("no tally to merge");
+    }
+    String version = tallies.get(0).path("content_version").asText();
+    long battles = 0;
+    long matched = 0;
+    long agreed = 0;
+    long recorded = 0;
+    Map<String, Long> outcomes = new TreeMap<>();
+    Map<String, Long> failures = new TreeMap<>();
+    for (JsonNode tally : tallies) {
+      if (!version.equals(tally.path("content_version").asText())) {
+        throw new IllegalArgumentException(
+            "tallies of " + version + " and " + tally.path("content_version").asText());
+      }
+      battles += tally.path("battles").asLong();
+      matched += tally.path("matched").asLong();
+      agreed += tally.path("agreed_ticks").asLong();
+      recorded += tally.path("recorded_ticks").asLong();
+      tally
+          .path("outcomes")
+          .fields()
+          .forEachRemaining(e -> outcomes.merge(e.getKey(), e.getValue().asLong(), Long::sum));
+      tally
+          .path("failures")
+          .fields()
+          .forEachRemaining(e -> failures.merge(e.getKey(), e.getValue().asLong(), Long::sum));
+    }
+    ObjectNode sum = JSON.objectNode();
+    sum.put("content_version", version);
+    sum.put("battles", battles);
+    sum.put("matched", matched);
+    sum.put("agreed_ticks", agreed);
+    sum.put("recorded_ticks", recorded);
+    outcomes.forEach(sum.putObject("outcomes")::put);
+    failures.forEach(sum.putObject("failures")::put);
+    return sum;
+  }
+
+  /**
+   * The score of a tally: the shares in percent, the outcomes and the most frequent first failures.
+   */
+  static ObjectNode score(JsonNode tally) {
     ObjectNode score = JSON.objectNode();
-    score.put("content_version", version);
-    score.put("battles", battles.size());
-    score.put("to_the_end", percent(matched, battles.size()));
-    score.put("ticks_agreed", percent(agreed, recorded));
-    ObjectNode counts = score.putObject("outcomes");
-    outcomes.forEach(counts::put);
+    score.put("content_version", tally.path("content_version").asText());
+    score.put("battles", tally.path("battles").asLong());
+    score.put(
+        "to_the_end", percent(tally.path("matched").asLong(), tally.path("battles").asLong()));
+    score.put(
+        "ticks_agreed",
+        percent(tally.path("agreed_ticks").asLong(), tally.path("recorded_ticks").asLong()));
+    score.set("outcomes", tally.path("outcomes").deepCopy());
     ObjectNode first = score.putObject("first_failures");
-    failures.entrySet().stream()
+    List<Map.Entry<String, Long>> failures = new ArrayList<>();
+    tally
+        .path("failures")
+        .fields()
+        .forEachRemaining(e -> failures.add(Map.entry(e.getKey(), e.getValue().asLong())));
+    failures.stream()
         .sorted(
-            Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
+            Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder())
                 .thenComparing(Map.Entry.comparingByKey()))
         .limit(FIRST_FAILURES)
         .forEach(entry -> first.put(entry.getKey(), entry.getValue()));
     return score;
+  }
+
+  /** The score of a data version's battles. */
+  static ObjectNode score(String version, List<Battle> battles) {
+    return score(tally(version, battles));
   }
 
   /** A share in percent with one decimal, 0 of nothing. */
@@ -196,35 +275,109 @@ public final class CoverageScore {
         : json.path("ticks").asInt();
   }
 
-  /** Scores the configured coverage set and writes the score and its badge. */
+  /**
+   * The cases of one part of a set: the part's battles, in the listing's order. The listing under
+   * {@code corpora/} names the parts and how many battles each holds; part {@code k} holds the
+   * battles after those of the parts before it.
+   *
+   * @throws IllegalArgumentException when the set has no such part, or the part is not unpacked
+   */
+  static List<Case> part(Path folder, References references, int part) throws IOException {
+    List<Path> listings;
+    try (Stream<Path> files = Files.list(folder.resolve("corpora"))) {
+      listings = files.filter(p -> p.getFileName().toString().endsWith(".json")).toList();
+    }
+    if (listings.size() != 1) {
+      throw new IllegalArgumentException("a coverage set has one listing, not " + listings.size());
+    }
+    JsonNode parts = MAPPER.readTree(listings.get(0).toFile()).path("parts");
+    if (part < 0 || part >= parts.size()) {
+      throw new IllegalArgumentException("the set has no part " + part + " of " + parts.size());
+    }
+    int start = 0;
+    for (int k = 0; k < part; k++) {
+      start += parts.get(k).path("battles").asInt();
+    }
+    List<Case> cases =
+        references.cases().subList(start, start + parts.get(part).path("battles").asInt());
+    for (Case entry : cases) {
+      if (!Files.isDirectory(entry.reference())) {
+        throw new IllegalArgumentException("part " + part + " is not unpacked: " + entry.id());
+      }
+    }
+    return cases;
+  }
+
+  /**
+   * Scores the configured coverage set, a part of it, or the tallies of its parts, into a folder.
+   *
+   * <ul>
+   *   <li>{@code --out-dir DIR}: every battle of the set; writes {@code score-<version>.json} and
+   *       {@code badge-<version>.json};
+   *   <li>{@code --out-dir DIR --part K}: the battles of part K; writes its tally, {@code
+   *       tally-<version>-<K>.json};
+   *   <li>{@code --out-dir DIR --merge TALLIES}: no battle, the sum of the {@code tally-*.json} in
+   *       TALLIES; writes the score and the badge.
+   * </ul>
+   *
+   * <p>{@code --threads N} sets how many battles run at once.
+   */
   public static void main(String[] args) throws IOException {
     Map<String, String> options = new LinkedHashMap<>();
     for (int i = 0; i + 1 < args.length; i += 2) {
       options.put(args[i].replaceFirst("^--", ""), args[i + 1]);
     }
+    Path out = Files.createDirectories(Paths.get(required(options, "out-dir")));
+    if (options.containsKey("merge")) {
+      List<JsonNode> tallies = new ArrayList<>();
+      try (Stream<Path> files = Files.list(Paths.get(options.get("merge")))) {
+        for (Path file :
+            files
+                .filter(p -> p.getFileName().toString().matches("tally-.*\\.json"))
+                .sorted()
+                .toList()) {
+          tallies.add(MAPPER.readTree(file.toFile()));
+        }
+      }
+      write(out, score(merge(tallies)));
+      return;
+    }
     String folder = System.getProperty(PROPERTY);
     if (folder == null || folder.isBlank()) {
       throw new IllegalArgumentException("set the property " + PROPERTY);
     }
-    Path out = Paths.get(required(options, "out"));
-    Path badgeFile = Paths.get(required(options, "badge"));
     int threads =
         Integer.parseInt(
             options.getOrDefault(
                 "threads", String.valueOf(Runtime.getRuntime().availableProcessors())));
     References references = ReferenceSuite.load(Paths.get(folder));
+    List<Case> cases =
+        options.containsKey("part")
+            ? part(Paths.get(folder), references, Integer.parseInt(options.get("part")))
+            : references.cases();
     GameTables tables = GameTables.loadConfigured();
     ReferenceSuite.checkContent(references, tables);
-    List<CaseResult> results = ReferenceSuite.runAll(references.cases(), tables, threads);
+    List<CaseResult> results = ReferenceSuite.runAll(cases, tables, threads);
     List<Battle> battles = new ArrayList<>();
     for (int i = 0; i < results.size(); i++) {
-      battles.add(new Battle(results.get(i), executedTicks(references.cases().get(i).reference())));
+      battles.add(new Battle(results.get(i), executedTicks(cases.get(i).reference())));
     }
-    ObjectNode score = score(references.version(), battles);
-    Files.createDirectories(out.toAbsolutePath().getParent());
-    Files.createDirectories(badgeFile.toAbsolutePath().getParent());
-    MAPPER.writeValue(out.toFile(), score);
-    MAPPER.writeValue(badgeFile.toFile(), badge(score));
+    ObjectNode tally = tally(references.version(), battles);
+    if (options.containsKey("part")) {
+      Path file =
+          out.resolve("tally-" + references.version() + "-" + options.get("part") + ".json");
+      MAPPER.writeValue(file.toFile(), tally);
+      System.out.println(MAPPER.writeValueAsString(score(tally)));
+      return;
+    }
+    write(out, score(tally));
+  }
+
+  /** Writes a score and its badge into a folder, and prints the score. */
+  private static void write(Path out, ObjectNode score) throws IOException {
+    String version = score.path("content_version").asText();
+    MAPPER.writeValue(out.resolve("score-" + version + ".json").toFile(), score);
+    MAPPER.writeValue(out.resolve("badge-" + version + ".json").toFile(), badge(score));
     System.out.println(MAPPER.writeValueAsString(score));
   }
 
