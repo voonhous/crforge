@@ -55,12 +55,14 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " switch in the air ending the run on the next update, the pushback in flight"
             + " stopped, held by recorded witnesses outside the locked references. The start's"
             + " put-down of a unit in a jump or dashing under a row with a jump height, held by"
-            + " recorded witnesses outside the locked references. Refused: a unit already"
+            + " recorded witnesses outside the locked references. A carrier knocked as any unit,"
+            + " its riders put back around it on each movement visit, held by recorded battles"
+            + " outside the locked references. Refused: a unit already"
             + " switching lanes as the run starts, which the standard game finishes at once but"
             + " no recorded battle reaches; a unit dashing under a row with no jump height, which"
             + " the put-down leaves dashing and no reference holds; a unit following a removed"
             + " building, which the knock's own code does not test but whose pulled state under"
-            + " the knock no reference holds; a clone, a rider or carrier.")
+            + " the knock no reference holds; a clone or a rider.")
 final class KnockbackRun extends ActionInstance {
 
   /** Milliseconds one update takes off the counter. */
