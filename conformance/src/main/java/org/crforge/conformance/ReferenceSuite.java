@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -34,7 +33,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.zip.GZIPInputStream;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
 import org.crforge.core.battle.replay.ScenarioShape;
@@ -48,9 +46,10 @@ import org.crforge.core.battle.replay.ScenarioShape;
  * folder, the scenario's SHA-256 and the horizon) and the content the references were recorded
  * with, and one folder per reference battle: {@code scenario.json}, {@code reference.json} (the
  * schema, horizon, executed steps and termination, observation count and the digests of the trace
- * and the scenario) and {@code observations.jsonl.gz}. A listing may name the kind of scenario its
- * cases are ({@code scenario_shape}, {@link ScenarioShape}): {@code generated} for cases generated
- * in 14.593.1's replay shape; without it they are replays.
+ * and the scenario) and the trace, {@code observations.jsonl.zst} (zstd) or, in the earlier
+ * references, {@code observations.jsonl.gz} (gzip) ({@link TraceReader}). A listing may name the
+ * kind of scenario its cases are ({@code scenario_shape}, {@link ScenarioShape}): {@code generated}
+ * for cases generated in 14.593.1's replay shape; without it they are replays.
  *
  * <p>Each case is run in this process through {@link ReplaySmokeRun#runInProcess} and compared with
  * {@link ReferenceComparison}. Its outcome is {@code diagnostic_match}, {@code mismatch} (with the
@@ -279,12 +278,7 @@ public final class ReferenceSuite {
       throws IOException {
     JsonNode reference = MAPPER.readTree(entry.reference().resolve("reference.json").toFile());
     byte[] scenario = Files.readAllBytes(entry.reference().resolve("scenario.json"));
-    byte[] trace;
-    try (InputStream packed =
-        new GZIPInputStream(
-            Files.newInputStream(entry.reference().resolve("observations.jsonl.gz")))) {
-      trace = packed.readAllBytes();
-    }
+    byte[] trace = TraceReader.STANDARD.read(entry.reference());
     // The reference must be of the frozen input and horizon its corpus names, and of the corpus's
     // schema when the corpus declares one.
     String scenarioSha = sha256(scenario);
