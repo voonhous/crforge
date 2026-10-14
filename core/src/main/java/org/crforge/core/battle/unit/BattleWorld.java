@@ -504,7 +504,10 @@ public class BattleWorld implements HolderPasses {
    * A travelling hit of a projectile flying to a point waiting for the drain: dealt as {@link
    * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
    * from the direction of the pass's centre, with nothing after it. A deflection's hit on the
-   * deflector's parent goes to the same entry, without a direction.
+   * deflector's parent goes to the same entry, without a direction, and is followed by the
+   * projectile's after-damage target buff, as a queued impact is (see {@link
+   * #drainProjectileBuff}): the deflection queues the hit with the projectile as its source, and
+   * the drain buffs the victim of every hit it lets through whose source is a projectile.
    *
    * @param projectile the projectile whose body covered the entity
    * @param target the entity it covered
@@ -512,6 +515,8 @@ public class BattleWorld implements HolderPasses {
    * @param hitId the id the pass carries
    * @param directionX the entity's position less the pass's centre, along the width
    * @param directionY the same along the length
+   * @param deflection true for a deflection's hit on the deflector's parent, which the projectile's
+   *     after-damage target buff follows
    */
   private record TravellingHitDue(
       ProjectileEntity projectile,
@@ -519,7 +524,8 @@ public class BattleWorld implements HolderPasses {
       int damage,
       int hitId,
       int directionX,
-      int directionY)
+      int directionY,
+      boolean deflection)
       implements QueuedHit {}
 
   /**
@@ -4755,7 +4761,10 @@ public class BattleWorld implements HolderPasses {
           (group != null && group.dooms(parent.getId()))
               || (chain != null && chain.getHitIds().contains(parent.getId()));
       if (!listed) {
-        queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0));
+        // Queued with the projectile as the hit's source: the drain follows the damage with the
+        // projectile's after-damage target buff, as it does an impact's, though the projectile
+        // flies on to its new target.
+        queuedHits.add(new TravellingHitDue(projectile, parent, damage, hitId, 0, 0, true));
       }
       if (group != null) {
         group.doom(parent.getId());
@@ -5082,7 +5091,8 @@ public class BattleWorld implements HolderPasses {
     // the tick; then, should the entity's queued damage now kill it, it is doomed for the rest of
     // the volley.
     queuedHits.add(
-        new TravellingHitDue(projectile, entity, damage, hitId, view.getX() - x, view.getY() - y));
+        new TravellingHitDue(
+            projectile, entity, damage, hitId, view.getX() - x, view.getY() - y, false));
     if (projectile.getGroup() != null && queuedKill(entity)) {
       projectile.getGroup().doom(id);
     }
@@ -6073,13 +6083,17 @@ public class BattleWorld implements HolderPasses {
         continue;
       }
       if (queued instanceof TravellingHitDue hit) {
-        dealProjectileDamage(
-            hit.projectile(),
-            hit.target(),
-            hit.damage(),
-            hit.hitId(),
-            hit.directionX(),
-            hit.directionY());
+        DamageResult result =
+            dealProjectileDamage(
+                hit.projectile(),
+                hit.target(),
+                hit.damage(),
+                hit.hitId(),
+                hit.directionX(),
+                hit.directionY());
+        if (hit.deflection()) {
+          drainProjectileBuff(hit.projectile(), hit.target(), result);
+        }
         continue;
       }
       if (queued instanceof ActionDamageDue actionDamage) {
@@ -8796,9 +8810,12 @@ public class BattleWorld implements HolderPasses {
    * target buff and does not apply it before the damage, when the damage entry let the hit through
    * - a hit that kills included, and one after the battle's end, which the bookkeeping accepts
    * though it takes nothing. It reaches the victims of an area impact one by one, as the drain
-   * deals their shares, so only what the area damaged takes it. Applied with the projectile as the
-   * source, at its level and for its side, for the row's buff time at that level; the drain asks
-   * nothing of the victim's dash immunity, which the damage entry has answered already.
+   * deals their shares, so only what the area damaged takes it. A deflection's hit on the
+   * deflector's parent takes it too: the projectile is that hit's source, though it flies on to its
+   * new target, so the Monk takes the slow or the stun of a shot it turns. Applied with the
+   * projectile as the source, at its level and for its side, for the row's buff time at that level;
+   * the drain asks nothing of the victim's dash immunity, which the damage entry has answered
+   * already.
    *
    * <p>Being applied after every post-hook of the tick, the buff is first read by the victim's
    * combat gate on the next tick: a stun leaves the victim its targeting visit of that tick, under
