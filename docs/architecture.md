@@ -207,7 +207,7 @@ The replay workspace shares the playback toolbar, inspector, data header and ove
 
 `./gradlew :desktop:run --args="--replay <file>"` opens the replay viewer on a replay file instead of a Ladder battle, on the tables of the data the replay names (below). A replay file dropped on the debug visualizer's or the viewer's window opens the same way.
 
-A crawl's output opens the same way, given to `--replay` or dropped: a JSON Lines file (`.jsonl`, or gzip-compressed `.jsonl.gz`; several appended gzip members read as one) with one record a line. A record holds the replay as the server sent it, as a string, with the session and battle it was fetched in (`org.crforge.desktop.replay.ReplayArchive`):
+A crawl's output opens the same way, given to `--replay` or dropped: a JSON Lines file (`.jsonl`, or compressed: zstd `.jsonl.zst` as the crawl writes it, gzip `.jsonl.gz` as it did before; a compressed file is found by its first bytes, its format's magic number, and several frames or members one after another read as one; one strategy per format, `ArchiveCompression`, so another format is one more class) with one record a line. A record holds the replay as the server sent it, as a string, with the session and battle it was fetched in (`org.crforge.desktop.replay.ReplayArchive`):
 
 ```json
 {"format": 1, "channel_id": 162000038, "session": {"client_version": "16.402.17", "content_sha": "7e76...", "fetched_at": "2026-10-07T14:03:38Z"}, "battle": {"content_version": "16.402.19", "content_sha": "7e76...", "source": "tv_entry"}, "entry": {...}, "replay": "{\"battle\":{...},\"cmd\":[...],...}"}

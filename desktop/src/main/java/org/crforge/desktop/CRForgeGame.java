@@ -99,9 +99,9 @@ public class CRForgeGame extends Game {
    * Opens the first JSON file or crawl's output dropped on the window. A JSON file is read as a
    * replay, against the tables of the data its capture block names (the built version with its
    * content sha, which becomes current) or else the current tables, and described as {@code
-   * --replay} reads one. A crawl's output ({@code .jsonl} or {@code .jsonl.gz}) opens on its first
-   * readable replay, with the list of all of them. A file that cannot be read is logged and the
-   * screen kept.
+   * --replay} reads one. A crawl's output ({@code .jsonl}, {@code .jsonl.zst} or {@code .jsonl.gz})
+   * opens on its first readable replay, with the list of all of them. A file that cannot be read is
+   * logged and the screen kept.
    *
    * @param files the dropped files' paths
    */
@@ -133,7 +133,7 @@ public class CRForgeGame extends Game {
       }
       return;
     }
-    log.info("No .json, .jsonl or .jsonl.gz file among the dropped files");
+    log.info("No .json, .jsonl, .jsonl.zst or .jsonl.gz file among the dropped files");
   }
 
   /**
