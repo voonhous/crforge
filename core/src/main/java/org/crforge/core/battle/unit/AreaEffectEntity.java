@@ -1288,7 +1288,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   /**
    * The buff push of one pull on a unit: the given vector to the centre scaled by the buff's
    * attraction and lateral push, its push speed factor of the unit's configured speed and its mass
-   * factor of the unit's mass, added to the unit's push accumulators.
+   * factor of the unit's mass, added to the unit's push accumulators. Whether the pull keeps the
+   * unit off the water is asked of its layer as its tag word and live height give it, as the
+   * displacement that spends the push asks it, not of its row: a row that flies held on the ground
+   * by FORCE_IS_GROUND, as the evolved Royal Hog's grounded row after its fall, is kept off the
+   * water like any ground unit, and a hovering row under either force tag does not hover.
    *
    * @param unit the unit pulled
    * @param dx the centre less its position, along the width
@@ -1313,8 +1317,8 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         row.jumpHeight(),
         unit.side(),
         row.mass(),
-        row.air(),
-        row.hovering());
+        unit.layerAir(),
+        unit.layerHovering());
     return new Pull(unit, dx, dy, before, accumulators(movement));
   }
 

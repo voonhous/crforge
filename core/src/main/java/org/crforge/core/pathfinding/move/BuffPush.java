@@ -65,8 +65,8 @@ public final class BuffPush {
    * @param side the entity's side; one of an even side is pulled from the centre itself toward y 0,
    *     one of an odd side away from it
    * @param mass the entity's mass, read only under a positive mass factor
-   * @param air true for a flying entity
-   * @param hovering true for a hovering entity
+   * @param air true for an entity in the air, as its layer stands now rather than as its row says
+   * @param hovering true for a hovering entity, as its layer stands now
    */
   public static void push(
       MovementState component,
