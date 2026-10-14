@@ -61,6 +61,21 @@ jfrconv --cpu "$J" conformance/build/profile/cpu.html
 jfrconv --alloc "$J" conformance/build/profile/alloc.html
 ```
 
+## The coverage score (2026-10-14)
+
+`:conformance:coverageScore` plays every battle of a coverage set and compares each with the game's own trace, tick by tick; CI scores a set in parts of 1,000 battles, one job each on a four-core CI machine. Profile it the same way, with async-profiler as an agent of the scoring JVM instead of through JMH: run `org.crforge.conformance.CoverageScore` on the runtime classpath (`:conformance:installDist`) with `-agentpath:<libasyncProfiler>=start,event=cpu,interval=1ms,alloc,jfr,file=<file>.jfr`, the system properties `crforge.gameTables` and `crforge.coverage`, and `--out-dir <dir> --threads 4`, on a small set of a few hundred battles, then `jfrconv` as above.
+
+What the profile showed at 317facd4 (200 battles of 16.402.21, four threads, 3 GB heap): the battle steps were 15% of the CPU samples, the comparison's reading of both traces 16% and its field walk 8%, writing the Java trace 7%, garbage collection 26% and the compiler 21%. Of the 100 GB allocated, about half was the comparison (each line of both traces read as a value and all of them kept until the end, a path string per field visited) and a fifth writing the Java trace (each observation copied into maps first).
+
+Since then a reference line with the same bytes as the run's line of the same number, which is every agreeing observation as both sides are written the same way, is read once and is equal without a field walk; no observation is kept as a value once the checks have what they need; and the Java trace is written from the observation directly, its keys sorted, the same bytes as before. Every outcome is unchanged: the first divergent observation and its path of each case, and the trace of each run. Measured back to back, the same source before and after, 14 cores, load average 8.5 to 14:
+
+| Battles of 16.402.21 | Before: wall, CPU (user + sys), peak memory | After: wall, CPU, peak memory |
+|----------------------|---------------------------------------------|-------------------------------|
+| 200 (two runs each) | 17.7 s, 129 s; 16.6 s, 120 s; 3.4 GB | 9.9 s, 59 s; 9.8 s, 59 s; 1.0 GB |
+| 1,000 (part 0 of the set) | 81.3 s, 561 s, 3.4 GB | 41.4 s, 190 s, 1.0 GB |
+
+What is left at 200 battles: the compiler 35% (a short run; less of a part of 1,000), the battle steps 29%, the SHA-256 digests of the traces 17% (the reference's once, the Java trace's twice: when the run writes it and when the comparison checks it), reading the lines 6% and writing the Java trace 5%; garbage collection 1%. The tables a coverage job reads are of one data version, so it builds that one alone (`:tables:dataVersionTables`).
+
 ## Baseline (2026-10-11)
 
 The baseline to measure the next change against. Source `battle_core` a606c90c with the crowns counted without walking every entity and each unit row built once per battle (the fourth optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as above; score and error as JMH prints them. Load average 3.4 to 5.8 during the run, the four-thread workload's own threads included.

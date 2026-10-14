@@ -190,6 +190,77 @@ class ReferenceComparisonTest {
         .isTrue();
   }
 
+  @Test
+  void aTraceWrittenInAnotherKeyOrderMatchesAndStillFindsItsFirstDifference() throws IOException {
+    byte[] reference = trace(rows(5));
+    List<ObjectNode> run = rows(5);
+    ((ObjectNode) run.get(4).path("entities").get(0)).put("x", 1);
+    // The same values, each object's keys reversed: no line has the reference's bytes.
+    byte[] reordered = trace(run.stream().map(ReferenceComparisonTest::reversed).toList());
+    byte[] equal = trace(rows(5).stream().map(ReferenceComparisonTest::reversed).toList());
+
+    ReferenceComparison.Result match =
+        ReferenceComparison.compare(manifest(reference, 5), reference, manifest(equal, 5), equal);
+    ReferenceComparison.Result mismatch =
+        ReferenceComparison.compare(
+            manifest(reference, 5), reference, manifest(reordered, 5), reordered);
+
+    assertThat(match.outcome()).isEqualTo(ReferenceComparison.DIAGNOSTIC_MATCH);
+    assertThat(mismatch.firstDivergentTick()).isEqualTo(4);
+    assertThat(mismatch.difference().path("path").asText()).isEqualTo("$.entities[0].x");
+  }
+
+  @Test
+  void aBrokenLineAfterTheFirstDifferenceStillMakesTheComparisonInvalid() throws IOException {
+    List<ObjectNode> run = rows(5);
+    run.get(1).put("rng", 1);
+    byte[] java = trace(run);
+    byte[] broken = brokenAt(trace(rows(5)), 4);
+
+    ReferenceComparison.Result result =
+        ReferenceComparison.compare(manifest(broken, 5), broken, manifest(java, 5), java);
+
+    assertThat(result.outcome()).isEqualTo(ReferenceComparison.INVALID);
+    assertThat(result.error()).isEqualTo("the reference: an observation line is not JSON");
+  }
+
+  @Test
+  void aBrokenLineBothSidesShareIsTheReferencesErrorFirst() throws IOException {
+    byte[] reference = brokenAt(trace(rows(5)), 2);
+    byte[] java = brokenAt(trace(rows(5)), 2);
+
+    ReferenceComparison.Result result =
+        ReferenceComparison.compare(manifest(reference, 5), reference, manifest(java, 5), java);
+
+    assertThat(result.error()).isEqualTo("the reference: an observation line is not JSON");
+  }
+
+  /** A trace whose line {@code index} has lost its last character, so it is not JSON. */
+  private static byte[] brokenAt(byte[] trace, int index) {
+    List<String> lines =
+        new ArrayList<>(List.of(new String(trace, StandardCharsets.UTF_8).split("\n")));
+    String line = lines.get(index);
+    lines.set(index, line.substring(0, line.length() - 1));
+    return (String.join("\n", lines) + "\n").getBytes(StandardCharsets.UTF_8);
+  }
+
+  /** A copy of an object with its keys, and those of every object in it, in reverse order. */
+  private static ObjectNode reversed(ObjectNode row) {
+    ObjectNode copy = MAPPER.createObjectNode();
+    List<String> names = new ArrayList<>();
+    row.fieldNames().forEachRemaining(names::add);
+    for (int i = names.size() - 1; i >= 0; i--) {
+      JsonNode value = row.get(names.get(i));
+      if (value.isArray()) {
+        ArrayNode list = copy.putArray(names.get(i));
+        value.forEach(item -> list.add(item.isObject() ? reversed((ObjectNode) item) : item));
+      } else {
+        copy.set(names.get(i), value);
+      }
+    }
+    return copy;
+  }
+
   private static String sha256(byte[] bytes) {
     try {
       return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
