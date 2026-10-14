@@ -90,8 +90,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * nothing; every removal - the expiry, the not-attacking section's, an attack's, a parent leaving -
  * schedules its row's remove action before the counts drop, and a death removes nothing. Each goes
  * on the carrier's own holder with the carrier as its cause and the row's own delay, starting at
- * once only inside that holder's own pending pass. A clone's copy of an instance with either is
- * refused.
+ * once inside any pending pass of the battle, another entity's included (a rider handed a buff in
+ * its parent's pass runs the start action there), and queued anywhere else. A clone's copy of an
+ * instance with either is refused.
  *
  * <p><b>Tags.</b> The tags every listed instance's row sets join the carrier's tag word at its
  * pre-hook, from the one after the instance is listed to the last before it is removed.
@@ -659,9 +660,12 @@ public final class BuffComponent implements BattleComponent {
   /**
    * A buff's start action, as a new instance is listed, its remove action, as one is removed, or
    * its stacked action, as one is refreshed: scheduled on the carrier's own holder with the carrier
-   * as its cause and the row's own delay, starting at once only inside that holder's own pending
-   * pass. A refresh runs neither the start nor the remove action, and a death removes nothing, so
-   * it runs none.
+   * as its cause and the row's own delay, as any action with no request to start now is: at once
+   * inside any pending pass of the battle, whichever entity's pass it is, and queued anywhere else.
+   * The game asks the battle's one in-pass flag, set around each pending pass over every entity,
+   * not the carrier's own pass: a rider listed before its parent and handed a buff in the parent's
+   * pass runs the start action in that pass, on the parent's step. A refresh runs neither the start
+   * nor the remove action, and a death removes nothing, so it runs none.
    *
    * @param instance the instance listed, removed or refreshed
    * @param action the row, or null for none
@@ -675,7 +679,7 @@ public final class BuffComponent implements BattleComponent {
         hookRows.computeIfAbsent(
             action, name -> world.getActions().build(name, world.binding(entity)));
     world.buffHookScheduled(entity, instance, action, start);
-    entity.actionHolder().scheduleInOwnPass(row, entity.actionHolder());
+    entity.actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, entity.actionHolder());
   }
 
   /**

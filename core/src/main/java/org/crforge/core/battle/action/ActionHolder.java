@@ -174,9 +174,6 @@ public class ActionHolder implements EntityActions {
    */
   private final BooleanSupplier battleInPendingPass;
 
-  /** True while a buff's hook schedules: only this holder's own pending pass starts at once. */
-  private boolean ownPassOnly;
-
   /**
    * The context of what the holder is doing now - scheduling an action, starting one or stepping a
    * run - which an expression evaluated meanwhile reads; null for none.
@@ -414,33 +411,9 @@ public class ActionHolder implements EntityActions {
     return passPhase;
   }
 
-  /**
-   * Schedules an action as a buff's start or remove hook does, the cause going with it: with no
-   * delay it starts at once only inside this holder's own pending pass, and is queued anywhere
-   * else, another entity's pending pass included. What it schedules on this holder in turn - a
-   * group's parts, a next action alongside - follows the same rule.
-   *
-   * @param action the action
-   * @param instigator the holder of the entity that caused it, or null for none
-   */
-  public void scheduleInOwnPass(BattleAction action, ActionHolder instigator) {
-    boolean before = ownPassOnly;
-    ownPassOnly = true;
-    try {
-      schedule(action, OWN_DELAY, false, instigator);
-    } finally {
-      ownPassOnly = before;
-    }
-  }
-
-  /**
-   * Whether a pending pass is in progress: the battle's, or this holder's own outside a battle or
-   * while a buff's hook schedules.
-   */
+  /** Whether a pending pass is in progress: the battle's, or this holder's own outside a battle. */
   private boolean inPendingPass() {
-    return battleInPendingPass != null && !ownPassOnly
-        ? battleInPendingPass.getAsBoolean()
-        : passPhase != 0;
+    return battleInPendingPass != null ? battleInPendingPass.getAsBoolean() : passPhase != 0;
   }
 
   /** The tags of every listed instance, finished ones included. */
