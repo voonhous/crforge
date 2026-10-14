@@ -18,6 +18,6 @@
     "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1,
     "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it to what they spawn, not modelled": 1
   },
-  "set": "bb3808097b85b700",
-  "commit": "495bc732ac3cc7347fb81e7c0461e0d70ca162b4"
+  "set": "dcc19aa63a03c58e",
+  "commit": "9f9cceb9268f8af31199025fb4b4be76ab2926e9"
 }

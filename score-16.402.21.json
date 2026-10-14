@@ -26,6 +26,6 @@
     "mismatch $.entities[].y": 1,
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1
   },
-  "set": "296000195c872c7d",
-  "commit": "495bc732ac3cc7347fb81e7c0461e0d70ca162b4"
+  "set": "e6e3bccb191ecd17",
+  "commit": "9f9cceb9268f8af31199025fb4b4be76ab2926e9"
 }
