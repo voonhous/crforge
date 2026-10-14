@@ -1,19 +1,19 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 98.0,
-  "ticks_agreed": 99.0,
+  "to_the_end": 98.2,
+  "ticks_agreed": 99.1,
   "outcomes": {
-    "diagnostic_match": 9807,
+    "diagnostic_match": 9827,
     "invalid": 4,
-    "mismatch": 165,
+    "mismatch": 145,
     "unsupported": 24
   },
   "first_failures": {
-    "mismatch $.entities[].hp": 48,
-    "mismatch $.entities[].x": 45,
-    "mismatch $.entities.length": 36,
-    "mismatch $.entities[].state": 32,
+    "mismatch $.entities[].hp": 47,
+    "mismatch $.entities[].x": 42,
+    "mismatch $.entities.length": 35,
+    "mismatch $.entities[].state": 17,
     "invalid": 4,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
@@ -27,5 +27,5 @@
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1
   },
   "set": "296000195c872c7d",
-  "commit": "d65071224f5d82f907c4181c7de326a6af738805"
+  "commit": "90c0ac8e57c5ff3dcee8fe59fc7d80f470f41f7a"
 }
