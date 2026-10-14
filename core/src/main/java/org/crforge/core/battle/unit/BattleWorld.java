@@ -4525,14 +4525,15 @@ public class BattleWorld implements HolderPasses {
   /**
    * Refuses a projectile whose deflection is not modelled, once an area effect would deflect it:
    * one with a deflection behaviour, a box body; one with a deflect radius that spawns a character
-   * at its impact, as the Goblin Barrel, which no recording holds; one that hops or homes for a
-   * time; a hook already pulling what it hooked, which a deflection would let go, as no recording
-   * holds; one that flies to a point and does not stop at collisions with a least distance, a box
-   * body or a deflect radius, which no recording holds; one whose impact spawns a chain of
-   * projectiles two links or more long, as the evolved Bomber's bouncing bomb; one that belongs to
-   * a chain and is not spell-like, or that its launcher marks as grouped without a volley's group.
-   * A spell such as the Fireball, whose deflection behaviour sends it at the enemy nearest the area
-   * effect without a target, is among them.
+   * at its impact, as the Goblin Barrel, deflected before, whose turn-around back at the parent
+   * that turned it no recording holds; one that hops or homes for a time; a hook already pulling
+   * what it hooked, which a deflection would let go, as no recording holds; one that flies to a
+   * point and does not stop at collisions with a least distance, a box body or a deflect radius,
+   * which no recording holds; one whose impact spawns a chain of projectiles two links or more
+   * long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not spell-like,
+   * or that its launcher marks as grouped without a volley's group. A spell such as the Fireball,
+   * whose deflection behaviour sends it at the enemy nearest the area effect without a target, is
+   * among them.
    *
    * <p>A projectile that flies to a point and stops at collisions is modelled, as the Hunter's
    * pellets are: its relaunch aims at its root owner's position itself, not stretched to its range,
@@ -4555,6 +4556,11 @@ public class BattleWorld implements HolderPasses {
    * <p>A deflect radius is no bar otherwise: it widens the deflection pass's reach (see {@link
    * #deflectPass}) and nothing the deflection itself reads, as the Princess's arrows have. Nor is a
    * volley's group that a deflection turns around as one (see {@link #deflect}).
+   *
+   * <p>Nor is it on the Goblin Barrel's first deflection, the evolved one's and its decoy's too:
+   * the king tower that casts it is its root and it has no target, so it is sent at the enemy crown
+   * tower nearest the area effect (see {@link #deflect}), and its impact there makes its children
+   * for the deflector's side (see {@link #impactSpawn}).
    *
    * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
    * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the
@@ -4599,7 +4605,10 @@ public class BattleWorld implements HolderPasses {
     // Ignoring the height changes only the deflection pass's measure: nothing after it reads it.
     int behaviour = data.deflectBehaviour() & ~ProjectileData.IGNORE_HEIGHT;
     if ((behaviour != 0 && !spellLike && !rolling)
-        || (data.deflectRadius() != 0 && !spellLike && data.spawnCharacter() != null)
+        || (data.deflectRadius() != 0
+            && !spellLike
+            && data.spawnCharacter() != null
+            && projectile.getDeflections() >= 1)
         || (data.projectileRadiusY() != 0 && !rolling)
         || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
@@ -4652,6 +4661,13 @@ public class BattleWorld implements HolderPasses {
    * <p>A projectile a crown tower fired at the parent has the tower as its root and keeps its
    * target: it is sent back at the tower, a king tower as a princess tower, as from any root.
    *
+   * <p>A projectile whose root is a king tower and that has no target, not spell-like, goes the
+   * spell-like way all the same: sent at the enemy crown tower nearest the area effect, with no
+   * target, or back at the king when there is none. The king tower casts the Goblin Barrel, which
+   * has no target, so a deflection sends the barrel at a crown tower of its caster's side, where
+   * its children land for the deflector's side; no gate applies to it, the gate being the spells'
+   * own.
+   *
    * <p>A projectile of a volley's group turned around as one, as the Princess's arrows are (see
    * {@link ProjectileGroup}), is deflected only when it is the first of the group still in the
    * battle; the others pass on untouched. Its deflection turns every projectile of the group still
@@ -4685,11 +4701,11 @@ public class BattleWorld implements HolderPasses {
    * of a group turned around as one deflected before, whose count no recording holds, an area
    * effect that follows nothing, a projectile without a root owner that is spell-like - a bomb
    * whose area effect has left - or has an action on reaching its target, which no recording holds;
-   * one a king tower fired that is not spell-like and has lost its target, which searches for the
-   * nearest enemy instead, and one carrying copies that change its damage; a spell-like projectile
-   * the search would send at a king tower, which no recording holds; a projectile an area effect
-   * launched that was not dropped onto it. A deflection past the most a projectile takes
-   * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
+   * a homing shot a king tower fired that has lost its target, which searches for the nearest enemy
+   * crown tower instead, and one carrying copies that change its damage; a projectile the search
+   * would send at a king tower, which no recording holds; a projectile an area effect launched that
+   * was not dropped onto it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES)
+   * turns it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -4753,14 +4769,18 @@ public class BattleWorld implements HolderPasses {
               + (spellLike ? "a spell-like projectile" : "with an action on reaching its target")
               + ", which is not modelled");
     }
-    // One a king tower fired that has lost its target searches for the nearest enemy crown tower
-    // instead. One a king tower fired with its target still set is sent back at the king, as from
-    // any root.
-    if (!rolling
-        && !rootless
-        && !spellLike
-        && source.getData().king()
-        && projectile.getTarget() == null) {
+    // A projectile whose root is a king tower and that has no target searches for the nearest
+    // enemy crown tower, as a spell-like one does: a cast Goblin Barrel, which the king tower
+    // casts. A king tower's shot that has lost its target, which homes, would search the same way,
+    // which no recording holds: refused. One with its target still set is sent back at the king,
+    // as from any root.
+    boolean kingSearch =
+        !rolling
+            && !rootless
+            && !spellLike
+            && source.getData().king()
+            && projectile.getTarget() == null;
+    if (kingSearch && projectile.getData().homing()) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
@@ -4774,12 +4794,14 @@ public class BattleWorld implements HolderPasses {
           projectile.name() + " is deflected carrying copies that change its damage, not modelled");
     }
     // A spell-like projectile without a target is sent at the enemy crown tower nearest the area
-    // effect; one with a target, as a bomb on its area effect, goes back at its root.
+    // effect, and so is one whose root is a king tower without a target, the Goblin Barrel; one
+    // with a target, as a bomb on its area effect, goes back at its root.
     WorldEntity tower = null;
-    if (spellLike
-        && !rootless
-        && projectile.getTarget() == null
-        && projectile.getAreaTarget() == null) {
+    if ((spellLike
+            && !rootless
+            && projectile.getTarget() == null
+            && projectile.getAreaTarget() == null)
+        || kingSearch) {
       tower = nearestEnemyCrownTower(deflector, projectile);
       if (tower != null && tower.getData().king()) {
         throw new UnsupportedOperationException(
