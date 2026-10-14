@@ -426,7 +426,7 @@ public class ReplayGameScreen implements Screen {
           L     - Hide/show the list of a crawl's replays
           [ ]   - Open the crawl's previous/next replay
           Click - Inspect a unit
-          Drop a replay .json, or a crawl's .jsonl or .jsonl.gz, on the window to open it
+          Drop a replay .json, or a crawl's .jsonl, .jsonl.zst or .jsonl.gz, on the window to open it
         ===========================================""");
   }
 

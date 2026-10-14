@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.airlift.compress.zstd.ZstdOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import org.crforge.core.battle.data.GameTables;
@@ -38,10 +40,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * A crawl's output: one record a line, gzip-compressed or not, each holding a replay as a string
- * with the session and battle it was fetched in. The records are built from the synthetic Archer
- * Queen replay; the tables root's two versions are copies of the configured tables, the second with
- * another content sha in its headers.
+ * A crawl's output: one record a line, zstd- or gzip-compressed or not, each holding a replay as a
+ * string with the session and battle it was fetched in. The records are built from the synthetic
+ * Archer Queen replay; the tables root's two versions are copies of the configured tables, the
+ * second with another content sha in its headers.
  */
 class ReplayArchiveTest {
 
@@ -111,11 +113,30 @@ class ReplayArchiveTest {
     return MAPPER.writeValueAsString(record);
   }
 
-  /** Writes lines as one gzip member. */
-  private Path gzip(String name, List<String> lines) throws IOException {
+  /** Writes each list of lines as one gzip member, the members one after another. */
+  @SafeVarargs
+  private Path gzip(String name, List<String>... members) throws IOException {
     Path file = root.resolve(name);
-    try (OutputStream gz = new GZIPOutputStream(Files.newOutputStream(file))) {
-      gz.write((String.join("\n", lines) + "\n").getBytes(StandardCharsets.UTF_8));
+    for (List<String> lines : members) {
+      try (OutputStream gz =
+          new GZIPOutputStream(
+              Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.APPEND))) {
+        gz.write((String.join("\n", lines) + "\n").getBytes(StandardCharsets.UTF_8));
+      }
+    }
+    return file;
+  }
+
+  /** Writes each list of lines as one zstd frame, the frames one after another. */
+  @SafeVarargs
+  private Path zstd(String name, List<String>... frames) throws IOException {
+    Path file = root.resolve(name);
+    for (List<String> lines : frames) {
+      try (OutputStream zst =
+          new ZstdOutputStream(
+              Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.APPEND))) {
+        zst.write((String.join("\n", lines) + "\n").getBytes(StandardCharsets.UTF_8));
+      }
     }
     return file;
   }
@@ -129,8 +150,8 @@ class ReplayArchiveTest {
   void eachLineIsRead() throws IOException {
     String good = record(replayText(), version(), OTHER_SHA);
     Path file =
-        gzip(
-            "crawl.jsonl.gz",
+        zstd(
+            "crawl.jsonl.zst",
             List.of(
                 good,
                 "",
@@ -161,29 +182,41 @@ class ReplayArchiveTest {
   }
 
   @Test
-  @DisplayName("a file that is not compressed, and one of several gzip members, read the same")
-  void plainAndAppendedFiles() throws IOException {
+  @DisplayName(
+      "a plain file, one of several zstd frames and one of several gzip members read the same")
+  void eachCompression() throws IOException {
     String good = record(replayText(), version(), OTHER_SHA);
     Path plain = root.resolve("crawl.jsonl");
-    Files.writeString(plain, good + "\n" + good + "\n", StandardCharsets.UTF_8);
-    // A crawl appending to its output writes one member per write.
-    Path appended = gzip("appended.jsonl.gz", List.of(good));
-    try (OutputStream gz =
-        new GZIPOutputStream(Files.newOutputStream(appended, StandardOpenOption.APPEND))) {
-      gz.write((good + "\n").getBytes(StandardCharsets.UTF_8));
-    }
+    Files.writeString(plain, good + "\n\n" + good + "\n", StandardCharsets.UTF_8);
+    // A crawl appending to its output writes one frame or member per write.
+    Path zstd = zstd("crawl.jsonl.zst", List.of(good, ""), List.of(good));
+    Path gzip = gzip("crawl.jsonl.gz", List.of(good, ""), List.of(good));
 
-    assertThat(ReplayArchive.read(plain).readable()).isEqualTo(2);
-    assertThat(ReplayArchive.read(appended).readable()).isEqualTo(2);
-    assertThat(ReplayArchive.read(appended).entries())
-        .extracting(ReplayArchive.Entry::line)
-        .containsExactly(1, 2);
+    for (Path file : List.of(plain, zstd, gzip)) {
+      assertThat(ReplayArchive.read(file).entries())
+          .extracting(ReplayArchive.Entry::line)
+          .containsExactly(1, 3);
+      assertThat(ReplayArchive.read(file).entries().get(1).replay()).isEqualTo(replayText());
+    }
+  }
+
+  @Test
+  @DisplayName("a damaged compressed file is a read error, not records")
+  void damagedFiles() throws IOException {
+    String good = record(replayText(), version(), OTHER_SHA);
+    for (Path file :
+        List.of(zstd("crawl.jsonl.zst", List.of(good)), gzip("crawl.jsonl.gz", List.of(good)))) {
+      byte[] packed = Files.readAllBytes(file);
+      Files.write(file, Arrays.copyOf(packed, packed.length / 2));
+
+      assertThatThrownBy(() -> ReplayArchive.read(file)).isInstanceOf(IOException.class);
+    }
   }
 
   @Test
   @DisplayName("a replay is opened with the capture block its record names, the file unchanged")
   void theRecordNamesTheData() throws IOException {
-    Path file = gzip("crawl.jsonl.gz", List.of(record(replayText(), version(), OTHER_SHA)));
+    Path file = zstd("crawl.jsonl.zst", List.of(record(replayText(), version(), OTHER_SHA)));
     byte[] before = Files.readAllBytes(file);
     ReplayArchive archive = DesktopLauncher.openArchive(file, out, err);
 
@@ -196,11 +229,11 @@ class ReplayArchiveTest {
         .contains(
             new ReplayCapture(GameVersions.CLIENT_16_402_17, version(), OTHER_SHA, FETCHED_AT));
     assertThat(replay.line()).isEqualTo(1);
-    assertThat(replay.name()).isEqualTo("crawl.jsonl.gz line 1");
+    assertThat(replay.name()).isEqualTo("crawl.jsonl.zst line 1");
     assertThat(replay.describe())
         .contains("replay: " + file.toAbsolutePath().normalize() + ", line 1");
     assertThat(new ReplayPlayer(replay, versions.current()).statusLines(ViewOrientation.FLIPPED))
-        .contains("replay: crawl.jsonl.gz line 1");
+        .contains("replay: crawl.jsonl.zst line 1");
     assertThat(printed())
         .contains(
             "replays: " + file.toAbsolutePath().normalize() + ", 1 records, 1 readable",
@@ -213,8 +246,8 @@ class ReplayArchiveTest {
   void eachRecordOnItsData() throws IOException {
     String firstSha = versions.current().contentSha();
     Path file =
-        gzip(
-            "crawl.jsonl.gz",
+        zstd(
+            "crawl.jsonl.zst",
             List.of(
                 "{not json",
                 record(replayText(), version(), OTHER_SHA),
@@ -242,7 +275,7 @@ class ReplayArchiveTest {
     ObjectNode replay = (ObjectNode) MAPPER.readTree(replayText());
     replay.putObject("capture").put("content_sha", OTHER_SHA);
     Path file =
-        gzip("crawl.jsonl.gz", List.of(record(MAPPER.writeValueAsString(replay), "2.0.0", "x")));
+        zstd("crawl.jsonl.zst", List.of(record(MAPPER.writeValueAsString(replay), "2.0.0", "x")));
 
     ReplayArchive.Entry entry = ReplayArchive.read(file).entries().get(0);
 
@@ -273,8 +306,8 @@ class ReplayArchiveTest {
     // The second version's tables are a candidate's, and still the replay is not played on them.
     // The third names no candidate at all: a replay without a battle time.
     Path file =
-        gzip(
-            "crawl.jsonl.gz",
+        zstd(
+            "crawl.jsonl.zst",
             List.of(
                 unsureRecord(false, false), unsureRecord(true, false), unsureRecord(false, true)));
 
@@ -302,8 +335,9 @@ class ReplayArchiveTest {
   @DisplayName("the list gives each record's time, game mode, arena, ticks and data, or why not")
   void theListsRows() throws IOException {
     Path file =
-        gzip(
-            "crawl.jsonl.gz", List.of(record(replayText(), version(), OTHER_SHA), "", "{not json"));
+        zstd(
+            "crawl.jsonl.zst",
+            List.of(record(replayText(), version(), OTHER_SHA), "", "{not json"));
 
     List<String> rows = ReplayArchive.read(file).rows(versions.current());
 
@@ -318,8 +352,9 @@ class ReplayArchiveTest {
   }
 
   @Test
-  @DisplayName("a crawl's output is named .jsonl or .jsonl.gz")
+  @DisplayName("a crawl's output is named .jsonl, .jsonl.zst or .jsonl.gz")
   void theNames() {
+    assertThat(ReplayArchive.isArchive(Path.of("2026-10-07T140327Z-tv.jsonl.zst"))).isTrue();
     assertThat(ReplayArchive.isArchive(Path.of("2026-10-07T140327Z.jsonl.gz"))).isTrue();
     assertThat(ReplayArchive.isArchive(Path.of("CRAWL.JSONL"))).isTrue();
     assertThat(ReplayArchive.isArchive(Path.of("replay.json"))).isFalse();

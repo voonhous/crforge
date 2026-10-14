@@ -42,9 +42,10 @@ import org.crforge.desktop.replay.ReplayFile;
  * of the tables among them, and opens the window on that list rather than stopping. A replay file
  * dropped on the debug visualizer's window opens the same way.
  *
- * <p>A crawl's output ({@code .jsonl} or {@code .jsonl.gz}, see {@link ReplayArchive}) opens the
- * same way, given to {@code --replay} or dropped: the viewer lists its replays and opens the first
- * one that can be read, each on the data its record names ({@link #openEntry}).
+ * <p>A crawl's output ({@code .jsonl}, {@code .jsonl.zst} or {@code .jsonl.gz}, see {@link
+ * ReplayArchive}) opens the same way, given to {@code --replay} or dropped: the viewer lists its
+ * replays and opens the first one that can be read, each on the data its record names ({@link
+ * #openEntry}).
  */
 public class DesktopLauncher {
 

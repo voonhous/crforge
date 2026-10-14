@@ -24,15 +24,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.zip.GZIPInputStream;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.core.battle.replay.ReplayScenario;
 
 /**
- * A crawl's output: many replays in one JSON Lines file, gzip-compressed or not, one record a line.
- * A record holds the replay as the server sent it, as a string, with what the crawl knew of it:
+ * A crawl's output: many replays in one JSON Lines file, one record a line, plain or compressed in
+ * one of the {@link #COMPRESSIONS} (zstd as the crawl writes it, gzip as it did before). A record
+ * holds the replay as the server sent it, as a string, with what the crawl knew of it:
  *
  * <pre>
  * {"format": 1, "channel_id": 162000038,
@@ -58,6 +58,13 @@ public final class ReplayArchive {
   public static final int FORMAT = 1;
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  /**
+   * The compressions a crawl's output is read in, each found by its magic number: a file that
+   * starts with none of them is read as plain JSON Lines.
+   */
+  static final List<ArchiveCompression> COMPRESSIONS =
+      List.of(new ZstdCompression(), new GzipCompression());
 
   /** The battle time as a list row shows it, in UTC. */
   private static final DateTimeFormatter BATTLE_TIME =
@@ -142,15 +149,19 @@ public final class ReplayArchive {
     this.entries = List.copyOf(entries);
   }
 
-  /** Whether a file is named as a crawl's output: {@code .jsonl} or {@code .jsonl.gz}. */
+  /**
+   * Whether a file is named as a crawl's output: {@code .jsonl}, or a compression's suffix ({@code
+   * .jsonl.zst}, {@code .jsonl.gz}).
+   */
   public static boolean isArchive(Path file) {
     String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
-    return name.endsWith(".jsonl") || name.endsWith(".jsonl.gz");
+    return name.endsWith(".jsonl")
+        || COMPRESSIONS.stream().anyMatch(format -> name.endsWith(format.suffix()));
   }
 
   /**
-   * Reads a crawl's output. A gzip-compressed file is found by its first two bytes, not its name;
-   * blank lines are skipped.
+   * Reads a crawl's output. A compressed file is found by its first bytes (its format's magic
+   * number), not its name; blank lines are skipped.
    *
    * @param file the file
    * @return its records, those that cannot be read among them
@@ -173,14 +184,21 @@ public final class ReplayArchive {
     return new ReplayArchive(file, entries);
   }
 
-  /** The stream itself, or its gzip decompression when it starts with gzip's magic bytes. */
+  /**
+   * The decompressed stream of the compression whose magic number the file starts with, or the
+   * stream itself.
+   */
   private static InputStream decompressed(InputStream raw) throws IOException {
-    raw.mark(2);
-    int first = raw.read();
-    int second = raw.read();
+    int longest = COMPRESSIONS.stream().mapToInt(format -> format.magic().length).max().orElse(0);
+    raw.mark(longest);
+    byte[] head = raw.readNBytes(longest);
     raw.reset();
-    // A crawl that appends to its output writes one gzip member per write; the stream reads all.
-    return first == 0x1f && second == 0x8b ? new GZIPInputStream(raw) : raw;
+    for (ArchiveCompression format : COMPRESSIONS) {
+      if (format.recognizes(head)) {
+        return format.open(raw);
+      }
+    }
+    return raw;
   }
 
   /** One line's record, or why it cannot be read. */

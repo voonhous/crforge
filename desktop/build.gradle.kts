@@ -19,6 +19,9 @@ dependencies {
     // JSON (data selection and replay files)
     implementation(libs.jackson.databind)
 
+    // A crawl's output is zstd- or gzip-compressed (ReplayArchive): a pure-Java zstd decoder
+    implementation(libs.aircompressor)
+
     // LibGDX
     implementation(libs.gdx)
     implementation(libs.gdx.backend.lwjgl3)
