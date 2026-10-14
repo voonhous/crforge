@@ -8,7 +8,7 @@
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment will be rebuilt on the battle core.
 
-- **Tick-exact**: 599 of 599 recorded reference battles match the game tick for tick, with no tolerance, on data versions 16.402.19 and 16.402.21 (598 of 599 on 16.402.18) ([conformance](conformance/README.md))
+- **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports; CI replays all of them on each change and fails if any outcome moves, and the outcome of each is listed in [conformance/reference-expectations](conformance/reference-expectations/) ([conformance](conformance/README.md))
 - **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
 
 <p align="center">
