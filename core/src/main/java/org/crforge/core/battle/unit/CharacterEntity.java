@@ -3507,8 +3507,9 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The drain of a Kamikaze row with a time, once its hit has ended: each state visit takes its
    * maximum hit points over its time in visits, at least one, with itself as the attacker, until it
-   * dies, which runs its death as its own killer. A row without hit points would be removed instead
-   * and one carrying a shield would have it taken first; no row does either, so both are refused.
+   * dies, which runs its death as its own killer. Each step is queued for the tick's damage drain,
+   * where it lands and where the death runs. A row without hit points would be removed instead and
+   * one carrying a shield would have it taken first; no row does either, so both are refused.
    */
   private void kamikazeDrain() {
     if (getData().kamikazeTimeMs() < 1 || !kamikazeHitEnded) {

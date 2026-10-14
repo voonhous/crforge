@@ -453,6 +453,14 @@ public class BattleWorld implements HolderPasses {
   private record KamikazeKillDue(WorldEntity unit, int amount) implements QueuedHit {}
 
   /**
+   * One step of a Kamikaze unit's drain over its time waiting for the drain, where it is dealt.
+   *
+   * @param unit the unit whose hit ended
+   * @param damage the step
+   */
+  private record KamikazeDrainDue(WorldEntity unit, int damage) implements QueuedHit {}
+
+  /**
    * A kill action's kill of its owner waiting for the drain, where it is dealt.
    *
    * @param target the kill action's owner
@@ -473,8 +481,8 @@ public class BattleWorld implements HolderPasses {
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
    * share of a character's or a projectile's area, a projectile's hit on its one target, a hit of a
-   * buff's damage over time, a capture's hit, a circle's kill, a Kamikaze unit's kill, a kill
-   * action's kill or a tiebreaker's clearing's kill.
+   * buff's damage over time, a capture's hit, a circle's kill, a Kamikaze unit's kill, a step of a
+   * Kamikaze unit's drain, a kill action's kill or a tiebreaker's clearing's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
@@ -488,6 +496,7 @@ public class BattleWorld implements HolderPasses {
           CaptureHitDue,
           CircleKillDue,
           KamikazeKillDue,
+          KamikazeDrainDue,
           ActionKillDue,
           ClearingKillDue {}
 
@@ -590,6 +599,11 @@ public class BattleWorld implements HolderPasses {
    * dies of it, at the drain. So a carrier the damage kills is still alive for the rest of the buff
    * pass and for the post-hooks, and what a later carrier's buff makes in that pass - a spawner
    * buff's child - is made before what the dying carrier's death leaves.
+   *
+   * <p>Each step of a Kamikaze unit's drain over its time goes the same way (see {@link
+   * #kamikazeDrain(WorldEntity, int)}): the unit's state visit queues it, and the step that takes
+   * its last hit point kills it at the drain. So its death spawn is made after every state visit of
+   * that tick, and a spawner listed after it that fires on that tick makes its child first.
    *
    * <p>The evolved Dart Goblin's poison damage goes the same way (see {@link
    * #dealQueuedDamage(TargetView, int, int, int)}): its run, in the action pass, hands each hit to
@@ -1972,12 +1986,23 @@ public class BattleWorld implements HolderPasses {
   /**
    * Deals one step of a Kamikaze unit's drain over its time, with itself as the attacker on its own
    * side: refused where damage is forbidden, passing the battle's holds, so that a step that takes
-   * the last hit point runs its death as its own killer. Every observer is told of the step.
+   * the last hit point runs its death as its own killer. The step is queued for the damage drain,
+   * as a buff's damage over time is, and the unit stays alive until the drain of the tick (see
+   * {@link #queuedHits}).
    *
    * @param unit the unit
    * @param damage the step
    */
   void kamikazeDrain(WorldEntity unit, int damage) {
+    queuedHits.add(new KamikazeDrainDue(unit, damage));
+  }
+
+  /**
+   * The step of a Kamikaze unit's drain, dealt at the damage drain: every observer is told of it,
+   * and a step that takes the last hit point runs the unit's death there, after every state visit
+   * of the tick.
+   */
+  private void kamikazeDrainNow(WorldEntity unit, int damage) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKamikazeDrain(damage);
     for (WorldObserver observer : observers) {
@@ -4944,6 +4969,8 @@ public class BattleWorld implements HolderPasses {
         queued += share.damage();
       } else if (hit instanceof BuffHitDue buffHit && buffHit.target() == entity) {
         queued += buffHit.damage();
+      } else if (hit instanceof KamikazeDrainDue drain && drain.unit() == entity) {
+        queued += drain.damage();
       } else if (hit instanceof CaptureHitDue capture && capture.unit() == entity) {
         queued += capture.damage();
       } else if (hit instanceof ProjectileHitDue single && single.target() == entity) {
@@ -6073,6 +6100,10 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof KamikazeKillDue kamikaze) {
         kamikazeKillNow(kamikaze.unit(), kamikaze.amount());
+        continue;
+      }
+      if (queued instanceof KamikazeDrainDue drain) {
+        kamikazeDrainNow(drain.unit(), drain.damage());
         continue;
       }
       if (queued instanceof ActionKillDue kill) {

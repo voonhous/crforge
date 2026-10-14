@@ -984,7 +984,8 @@ public interface WorldObserver {
   default void berserked(int tick, WorldEntity unit, Berserk.Event event, int before, int index) {}
 
   /**
-   * One step of a Kamikaze unit's drain landed on it, in its state visit.
+   * One step of a Kamikaze unit's drain landed on it: queued in its state visit, dealt at the
+   * damage drain of the same tick.
    *
    * @param tick the battle tick
    * @param unit the unit, its own attacker
