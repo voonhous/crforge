@@ -24,6 +24,9 @@ dependencies {
     // The scenario, the observations and the manifest are JSON
     implementation(libs.jackson.databind)
 
+    // A reference battle's trace is zstd- or gzip-compressed (TraceReader): a pure-Java zstd decoder
+    implementation(libs.aircompressor)
+
     // The synthetic replay scenarios of the core's test fixtures
     testImplementation(testFixtures(project(":core")))
 

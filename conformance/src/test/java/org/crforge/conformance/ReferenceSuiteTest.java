@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.airlift.compress.zstd.ZstdOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -161,6 +162,38 @@ class ReferenceSuiteTest {
   }
 
   @Test
+  void aReferenceTraceIsReadWhetherItIsZstdOrGzipCompressed() throws IOException {
+    GameTables tables = GameTables.loadConfigured();
+    byte[] scenario = MAPPER.writeValueAsBytes(ScenarioItems.fitted(Scenarios.knight(), tables));
+    ReplaySmokeRun.InProcessRun recorded =
+        ReplaySmokeRun.runInProcess(SmokeSchema.V1, 260, scenario, tables);
+    writeReference("zstd", scenario, recorded.trace(), Packing.ZSTD);
+    writeReference("gzip", scenario, recorded.trace(), Packing.GZIP);
+    ObjectNode corpus = MAPPER.createObjectNode();
+    corpus.put("corpus", "knight");
+    corpus.put(ContentFields.CONTENT_VERSION, tables.version());
+    corpus.put(ContentFields.CONTENT_SHA, tables.contentSha());
+    for (String name : List.of("zstd", "gzip")) {
+      corpus
+          .withArray("cases")
+          .addObject()
+          .put("id", name)
+          .put("reference", "battles/" + name)
+          .put("scenario_sha256", sha256(scenario))
+          .put("ticks", 260);
+    }
+    Files.createDirectories(folder.resolve("corpora"));
+    MAPPER.writeValue(folder.resolve("corpora/knight.json").toFile(), corpus);
+
+    List<CaseResult> results =
+        ReferenceSuite.runAll(ReferenceSuite.load(folder).cases(), tables, 1);
+
+    assertThat(results)
+        .extracting(CaseResult::expectation)
+        .containsExactly(outcome("diagnostic_match"), outcome("diagnostic_match"));
+  }
+
+  @Test
   void aCorpusOfGeneratedCasesNamesTheirShapeAndItsCasesAreReadAsSuch() throws IOException {
     GameTables tables = GameTables.loadConfigured();
     byte[] scenario =
@@ -200,12 +233,34 @@ class ReferenceSuiteTest {
         .contains("the scenario has no srq");
   }
 
-  /** Writes a reference battle folder: its scenario, its minimal manifest and its packed trace. */
+  /** How a test reference's trace is packed: either way a reference battle may be published. */
+  private enum Packing {
+    GZIP("observations.jsonl.gz"),
+    ZSTD("observations.jsonl.zst");
+
+    private final String fileName;
+
+    Packing(String fileName) {
+      this.fileName = fileName;
+    }
+
+    OutputStream open(Path battle) throws IOException {
+      OutputStream file = Files.newOutputStream(battle.resolve(fileName));
+      return this == GZIP ? new GZIPOutputStream(file) : new ZstdOutputStream(file);
+    }
+  }
+
+  /** Writes a reference battle folder: its scenario, its minimal manifest and its gzipped trace. */
   private void writeReference(String name, byte[] scenario, byte[] trace) throws IOException {
+    writeReference(name, scenario, trace, Packing.GZIP);
+  }
+
+  /** Writes a reference battle folder: its scenario, its minimal manifest and its packed trace. */
+  private void writeReference(String name, byte[] scenario, byte[] trace, Packing packing)
+      throws IOException {
     Path battle = Files.createDirectories(folder.resolve("battles").resolve(name));
     Files.write(battle.resolve("scenario.json"), scenario);
-    try (OutputStream out =
-        new GZIPOutputStream(Files.newOutputStream(battle.resolve("observations.jsonl.gz")))) {
+    try (OutputStream out = packing.open(battle)) {
       out.write(trace);
     }
     ObjectNode reference = MAPPER.createObjectNode();
