@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -30,13 +29,6 @@ class TraceReaderTest {
       "{\"tick\":0}\n{\"tick\":1}\n".getBytes(StandardCharsets.UTF_8);
 
   @TempDir Path folder;
-
-  @Test
-  void aGzipTraceIsReadFromItsGzFile() throws IOException {
-    Files.write(folder.resolve("observations.jsonl.gz"), gzip(TRACE));
-
-    assertThat(TraceReader.STANDARD.read(folder)).isEqualTo(TRACE);
-  }
 
   @Test
   void aZstdTraceIsReadFromItsZstFile() throws IOException {
@@ -68,25 +60,35 @@ class TraceReaderTest {
 
   @Test
   void aFolderWithoutATraceIsRefusedNamingEveryFileItLookedFor() {
-    assertThatThrownBy(() -> TraceReader.STANDARD.read(folder))
+    assertThatThrownBy(() -> new TraceReader(List.of(new ZstdCompression(), STORED)).read(folder))
         .isInstanceOf(NoSuchFileException.class)
         .hasMessageContaining("observations.jsonl.zst")
-        .hasMessageContaining("observations.jsonl.gz");
+        .hasMessageContaining("observations.jsonl.stored");
+  }
+
+  @Test
+  void aGzipTraceIsNoLongerRead() throws IOException {
+    // the references were repacked in zstd; a gzip trace left behind is not a trace file
+    Files.write(folder.resolve("observations.jsonl.gz"), TRACE);
+
+    assertThatThrownBy(() -> TraceReader.STANDARD.read(folder))
+        .isInstanceOf(NoSuchFileException.class)
+        .hasMessageContaining("observations.jsonl.zst");
   }
 
   @Test
   void aFolderWithTwoTracesIsRefused() throws IOException {
-    Files.write(folder.resolve("observations.jsonl.gz"), gzip(TRACE));
+    Files.write(folder.resolve("observations.jsonl.stored"), TRACE);
     Files.write(folder.resolve("observations.jsonl.zst"), zstd(TRACE));
 
-    assertThatThrownBy(() -> TraceReader.STANDARD.read(folder))
+    assertThatThrownBy(() -> new TraceReader(List.of(new ZstdCompression(), STORED)).read(folder))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("two trace files");
   }
 
   @Test
   void aFileNotInItsNamedFormatIsRefused() throws IOException {
-    Files.write(folder.resolve("observations.jsonl.zst"), gzip(TRACE));
+    Files.write(folder.resolve("observations.jsonl.zst"), TRACE);
 
     assertThatThrownBy(() -> TraceReader.STANDARD.read(folder))
         .isInstanceOf(IOException.class)
@@ -104,18 +106,37 @@ class TraceReaderTest {
   @Test
   void theReaderTriesOnlyTheFormatsItIsGiven() throws IOException {
     Files.write(folder.resolve("observations.jsonl.zst"), zstd(TRACE));
-    TraceReader gzipOnly = new TraceReader(List.of(new GzipCompression()));
+    TraceReader storedOnly = new TraceReader(List.of(STORED));
 
-    assertThatThrownBy(() -> gzipOnly.read(folder)).isInstanceOf(NoSuchFileException.class);
+    assertThatThrownBy(() -> storedOnly.read(folder)).isInstanceOf(NoSuchFileException.class);
   }
 
-  private static byte[] gzip(byte[] trace) throws IOException {
-    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-    try (OutputStream out = new GZIPOutputStream(bytes)) {
-      out.write(trace);
-    }
-    return bytes.toByteArray();
-  }
+  /**
+   * A second format for the reader's rules between formats: the trace stored as is, under its own
+   * file name, every file recognized.
+   */
+  private static final TraceCompression STORED =
+      new TraceCompression() {
+        @Override
+        public String name() {
+          return "stored";
+        }
+
+        @Override
+        public String fileName() {
+          return "observations.jsonl.stored";
+        }
+
+        @Override
+        public boolean recognizes(byte[] packed) {
+          return true;
+        }
+
+        @Override
+        public byte[] decompress(byte[] packed) {
+          return packed;
+        }
+      };
 
   private static byte[] zstd(byte[] trace) throws IOException {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
