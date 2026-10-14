@@ -13,10 +13,11 @@ This page is the index of the docs, the module and package layout, and the debug
 | [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, the tests and the game data, what is covered, the roadmap and the assumptions carried |
 | [Troop Pathfinding](pathfinding.md) | The movement, targeting and state rules the battle core runs: the routing grid, cell costs, the route search, endpoints and lanes, assumptions and what is still unvalidated |
 | [Game Tables and Reference Battles](game-tables.md) | The game tables the battle core reads, how they are named, the recorded reference battles and the records built from the rows |
-| [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, moving to a new data version |
+| [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, the coverage score and what it costs, moving to a new data version |
 | [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
-| [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures and the recorded baseline |
+| [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures, how to profile and the current baseline |
+| [Performance History](performance-history.md) | The earlier benchmark baselines and each round of optimisations, with their numbers and profiles |
 | [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 
 ---
