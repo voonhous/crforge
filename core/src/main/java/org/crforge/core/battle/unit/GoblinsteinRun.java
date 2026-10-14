@@ -41,8 +41,9 @@ import org.crforge.core.pathfinding.index.SegmentTests;
  * <p>A damage pass runs along the segment from the area effect to the connected object, when there
  * is one. Each character the segment query answers that is touchable and has hit points takes the
  * tether's damage, or its crown tower damage on a crown tower, scaled at the area effect's level
- * and rarity, with the area effect as attacker; the hit action is scheduled on it at every pass
- * when the two intervals are equal, else once for each emptying of the list.
+ * and rarity, with the area effect as attacker, the hit queued for the damage drain after the
+ * post-hooks; the hit action is scheduled on it at every pass when the two intervals are equal,
+ * else once for each emptying of the list.
  *
  * <p>When the connected object leaves, the run forgets it and, the first time, makes the row's
  * death area at its point, for the area effect's side and at its level, the area effect its parent
@@ -60,9 +61,10 @@ import org.crforge.core.pathfinding.index.SegmentTests;
             + " connected object's point as it leaves, held in its place, and ended as the area"
             + " effect leaves; held by the reference battles ability_goblinstein,"
             + " card_Goblinstein and random_battle16_s0009; the hit's hidden test lifted, which"
-            + " no run reaches, is translated as the game's. The tags set on both ends each"
-            + " tether update are not set, as no battle code reads them; the presentation of the"
-            + " beam and its targets is not modelled.")
+            + " no run reaches, is translated as the game's; the hit queued for the drain, held by"
+            + " recorded battles where the tether kills an evolved Skeleton Army general. The tags"
+            + " set on both ends each tether update are not set, as no battle code reads them;"
+            + " the presentation of the beam and its targets is not modelled.")
 final class GoblinsteinRun extends ActionInstance {
 
   /** The first step, which connects. */

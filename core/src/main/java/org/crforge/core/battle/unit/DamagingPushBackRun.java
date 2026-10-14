@@ -28,8 +28,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * centre along the facing, nudged ten units along the width when it stands on that line. Then a
  * character that may not be touched, a damage below 1 and an object without hit points are passed
  * over; anything else is listed and hit for the push damage at the character's level, handed
- * through the character's listening actions with the run's hit id first, the hidden test lifted.
- * The first hit of an update tells the listening actions an attack ended.
+ * through the character's listening actions with the run's hit id first, the hidden test lifted,
+ * and queued for the damage drain after the post-hooks. The first hit of an update tells the
+ * listening actions an attack ended.
  *
  * <p>The update never finishes the run: the row's stop gate does, as the runtime asks it before
  * each update.
@@ -41,7 +42,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " centre in 32-bit arithmetic with a division by zero answering 0, the list checked"
             + " before the push, the push filter, the side point with its 64-bit division and its"
             + " tie nudged by the width in cells, the push through the entry, the damage through"
-            + " the listeners, the hit with the hidden test lifted and the ended-attack notice once"
+            + " the listeners, the hit with the hidden test lifted, queued for the drain (held by"
+            + " a recorded battle where the push kills an evolved Skeleton Army general), and the"
+            + " ended-attack notice once"
             + " per update. Held up to the ram's first hit by"
             + " battle_ram_evolved_knight_after_20, battle_ram_evolved_knight_after_50 and"
             + " battle_ram_evolved_knight_after_80, which then part over the ram's own recoil"
