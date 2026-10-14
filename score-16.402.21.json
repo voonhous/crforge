@@ -2,12 +2,12 @@
   "content_version": "16.402.21",
   "battles": 10000,
   "to_the_end": 98.2,
-  "ticks_agreed": 99.1,
+  "ticks_agreed": 99.2,
   "outcomes": {
-    "diagnostic_match": 9827,
+    "diagnostic_match": 9828,
     "invalid": 4,
     "mismatch": 145,
-    "unsupported": 24
+    "unsupported": 23
   },
   "first_failures": {
     "mismatch $.entities[].hp": 47,
@@ -27,5 +27,5 @@
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1
   },
   "set": "296000195c872c7d",
-  "commit": "317facd4891e76509a00a8647f5765400f88d8dc"
+  "commit": "7c661e62d31a8a4f65eb206c691b789a0c1421ac"
 }
