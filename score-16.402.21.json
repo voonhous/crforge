@@ -27,5 +27,5 @@
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1
   },
   "set": "296000195c872c7d",
-  "commit": "291d331478543cfa2242a84fdd467d6b6afc7935"
+  "commit": "317facd4891e76509a00a8647f5765400f88d8dc"
 }
