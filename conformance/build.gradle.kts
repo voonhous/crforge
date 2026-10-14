@@ -95,8 +95,9 @@ tasks.register<JavaExec>("updateReferenceExpectations") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("org.crforge.conformance.ReferenceSuite")
     maxHeapSize = "3g"
-    // the tables the build makes for the data version, as the test tasks read them (root build)
-    dependsOn(":tables:gameTables")
+    // the tables the build makes for the data version, as the test tasks read them (root build);
+    // no other version's
+    dependsOn(":tables:dataVersionTables")
     systemProperty(
         "crforge.gameTables",
         "${rootProject.extra["crforge.builtTablesRoot"]}/${rootProject.extra["crforge.dataVersion"]}",
@@ -115,7 +116,8 @@ tasks.register<JavaExec>("coverageScore") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("org.crforge.conformance.CoverageScore")
     maxHeapSize = "3g"
-    dependsOn(":tables:gameTables")
+    // the data version's tables alone: the set is of that version
+    dependsOn(":tables:dataVersionTables")
     val version = rootProject.extra["crforge.dataVersion"] as String
     systemProperty("crforge.gameTables", "${rootProject.extra["crforge.builtTablesRoot"]}/$version")
     setting("crforge.coverage")?.let { systemProperty("crforge.coverage", it) }
@@ -146,8 +148,9 @@ tasks.register<JavaExec>("tickBenchmark") {
     classpath = jmh.runtimeClasspath
     mainClass.set("org.openjdk.jmh.Main")
     maxHeapSize = "3g"
-    // the tables the build makes for the data version, as the test tasks read them (root build)
-    dependsOn(":tables:gameTables")
+    // the tables the build makes for the data version, as the test tasks read them (root build);
+    // no other version's
+    dependsOn(":tables:dataVersionTables")
     // JMH's forks are started with this JVM's arguments, the two folders included.
     systemProperty(
         "crforge.gameTables",

@@ -22,6 +22,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
@@ -282,6 +283,34 @@ class ReplaySmokeRunTest {
     assertThat(first.path("rng").asLong()).isEqualTo(4153772180L);
     assertThat(MAPPER.readTree(lines.get(30)).path("tick").asInt()).isEqualTo(30);
     assertThat(first.has("stopped")).isFalse();
+  }
+
+  @Test
+  void eachObservationIsOneLineWithEveryObjectsKeysInOrderAndNoSpaces() throws IOException {
+    Path out = folder.resolve("run");
+
+    run(fit(Scenarios.knight()), out, identity, 30);
+
+    // Each line is what writing its value as plain maps and lists, every map's keys sorted, gives:
+    // the bytes two runs of one battle and a recorded reference share.
+    ObjectMapper plain = new ObjectMapper();
+    for (String line : Files.readAllLines(out.resolve("observations.jsonl"))) {
+      Object value = plain.readValue(line, Object.class);
+      assertThat(plain.writeValueAsString(sorted(value))).isEqualTo(line);
+    }
+  }
+
+  /** A JSON value of maps and lists with every map's keys in order. */
+  private static Object sorted(Object value) {
+    if (value instanceof Map<?, ?> map) {
+      Map<String, Object> keys = new TreeMap<>();
+      map.forEach((k, v) -> keys.put((String) k, sorted(v)));
+      return keys;
+    }
+    if (value instanceof List<?> list) {
+      return list.stream().map(ReplaySmokeRunTest::sorted).toList();
+    }
+    return value;
   }
 
   @Test

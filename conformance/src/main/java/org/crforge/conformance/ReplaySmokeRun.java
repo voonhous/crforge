@@ -9,7 +9,9 @@ package org.crforge.conformance;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -78,6 +80,10 @@ public final class ReplaySmokeRun {
       new ObjectMapper()
           .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
           .configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
+
+  /** Writes an observation on one line, every object's fields in key order. */
+  private static final ObjectWriter OBSERVATION_WRITER =
+      MAPPER.writer().with(JsonNodeFeature.WRITE_PROPERTIES_SORTED);
 
   private ReplaySmokeRun() {
     // Entry point
@@ -382,24 +388,11 @@ public final class ReplaySmokeRun {
               + observation.path("tick").asInt()
               + ": the battle has stopped stepping");
     }
-    // Keys sorted and no spaces, so two runs of one battle are the same bytes.
-    Object sorted = MAPPER.treeToValue(observation, Object.class);
-    trace.write(MAPPER.writeValueAsBytes(sort(sorted)));
+    // Keys sorted and no spaces, so two runs of one battle are the same bytes. The observation is
+    // written as it is, each object's fields in key order.
+    OBSERVATION_WRITER.writeValue(trace, observation);
     trace.write('\n');
     return 1;
-  }
-
-  /** A JSON value with every object's keys in order. */
-  private static Object sort(Object value) {
-    if (value instanceof Map<?, ?> map) {
-      Map<String, Object> sorted = new TreeMap<>();
-      map.forEach((k, v) -> sorted.put((String) k, sort(v)));
-      return sorted;
-    }
-    if (value instanceof List<?> list) {
-      return list.stream().map(ReplaySmokeRun::sort).toList();
-    }
-    return value;
   }
 
   /** The SHA-256 of every table file the run could read, by file name. */
