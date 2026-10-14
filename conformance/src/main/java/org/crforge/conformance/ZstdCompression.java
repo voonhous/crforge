@@ -38,7 +38,7 @@ final class ZstdCompression implements TraceCompression {
     try (InputStream trace = new ZstdInputStream(new ByteArrayInputStream(packed))) {
       return trace.readAllBytes();
     } catch (MalformedInputException e) {
-      // the decoder reports a damaged frame unchecked; a damaged file is a read error like gzip's
+      // the decoder reports a damaged frame unchecked; a damaged file is a read error
       throw new IOException("not a valid zstd file: " + e.getMessage(), e);
     }
   }

@@ -46,7 +46,7 @@ A trace belongs to the tables it was made with. When a new data version changes 
 - `SmokeObserver`, `SmokeSchema`: what one observation holds and the schemas a run can be made in.
 - `ReferenceComparison`: the first-divergence comparison of a run's trace with a reference trace.
 - `ReferenceSuite`: runs every case of a references folder and holds each outcome to `reference-expectations/<version>.json`.
-- `TraceReader`: reads a reference battle's trace in either format it is published in, one `TraceCompression` strategy per format (`ZstdCompression` for `observations.jsonl.zst`, `GzipCompression` for `observations.jsonl.gz`); a folder with no trace, two traces, or a file not in its named format is refused, so the case is invalid with the reason.
+- `TraceReader`: reads a reference battle's trace in the format it is published in, one `TraceCompression` strategy per format (today `ZstdCompression`, for `observations.jsonl.zst`; another format is one more strategy); a folder with no trace, two traces, or a file not in its named format is refused, so the case is invalid with the reason.
 - `CoverageScore`: plays a coverage set (below) and sums up how much of it the battle core reproduces.
 
 ## What does not belong here

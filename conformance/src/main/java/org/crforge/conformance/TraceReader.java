@@ -24,9 +24,8 @@ import java.util.stream.Collectors;
  */
 final class TraceReader {
 
-  /** Every format a reference's trace is published in: zstd, and gzip for the earlier ones. */
-  static final TraceReader STANDARD =
-      new TraceReader(List.of(new ZstdCompression(), new GzipCompression()));
+  /** Every format a reference's trace is published in: zstd. */
+  static final TraceReader STANDARD = new TraceReader(List.of(new ZstdCompression()));
 
   private final List<TraceCompression> formats;
 
