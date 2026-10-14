@@ -19,5 +19,5 @@
     "unsupported: cmd#_clone# launches PhoenixFireball as it dies and is a clone, whose projectiles carry it to what they spawn, not modelled": 1
   },
   "set": "bb3808097b85b700",
-  "commit": "7c661e62d31a8a4f65eb206c691b789a0c1421ac"
+  "commit": "0535ccac4cac0828777cbf98b2cc8ab2449291e2"
 }
