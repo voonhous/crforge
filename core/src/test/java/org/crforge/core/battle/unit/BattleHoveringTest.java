@@ -16,6 +16,7 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -222,6 +223,81 @@ class BattleHoveringTest {
     }
     assertThat(ghost.getTargeting().getReference()).isSameAs(knight.getTargetView());
     return -1;
+  }
+
+  @Test
+  @DisplayName(
+      "a Ghost's hit cancelled for distance, a Tornado having pulled it away from the crown tower"
+          + " it began to attack, leaves it invisible; a hit that lands takes its buff off")
+  void aHitCancelledForDistanceLeavesTheGhostInvisible() {
+    GhostAttack pulled = ghostAttackOnATower(true);
+    assertThat(pulled.towerHitPointsLost).as("the hit was cancelled").isZero();
+    assertThat(pulled.visibleAfterItsHit).isFalse();
+
+    GhostAttack still = ghostAttackOnATower(false);
+    assertThat(still.towerHitPointsLost).as("the hit landed").isPositive();
+    assertThat(still.visibleAfterItsHit).isTrue();
+  }
+
+  /** What became of a Ghost's first attack on a crown tower: the tower's loss, its visibility. */
+  private record GhostAttack(int towerHitPointsLost, boolean visibleAfterItsHit) {}
+
+  /**
+   * A Ghost of the top side deployed within its attack range of the bottom side's left crown tower,
+   * the towers passive, run until the step after its first attack ends; with a pull, a Tornado of
+   * the bottom side lands to the tower's right as the Ghost starts that attack and drags it beyond
+   * the attack range and the cancel's allowance before the hit.
+   */
+  private static GhostAttack ghostAttackOnATower(boolean pull) {
+    Standard1v1Battle match = passiveTowers();
+    // The towers are present from the first step on.
+    match.getBattle().step();
+    TowerEntity tower = leftCrownTower(match, 0);
+    GridEntity towerView = tower.getView();
+    // Inside the attack range of its row, its own radius and the tower's, up and to the right of
+    // the tower, where the Tornado's centre further on that line drags it straight away.
+    CharacterEntity ghost =
+        match.deploy(
+            match.getBattle().getTick(),
+            GameData.unit("Ghost"),
+            LEVEL,
+            1,
+            towerView.getX() + 1900,
+            towerView.getY() + 1900,
+            "Ghost");
+    int before = tower.getHitPoints().getHitPoints();
+    int guard = Shipped.battleTicks();
+    while (ghost.getView().getState() != GridEntityState.ATTACKING) {
+      assertThat(match.getBattle().getTick()).isLessThan(guard);
+      match.getBattle().step();
+    }
+    assertThat(ghost.invisible()).as("invisible as it starts to attack").isTrue();
+    if (pull) {
+      match.placeAreaEffect(
+          match.getBattle().getTick(),
+          "Tornado",
+          LEVEL,
+          0,
+          towerView.getX() + 5400,
+          towerView.getY() + 5400,
+          "Tornado");
+    }
+    while (ghost.getView().getState() == GridEntityState.ATTACKING) {
+      assertThat(match.getBattle().getTick()).isLessThan(guard);
+      match.getBattle().step();
+    }
+    match.getBattle().step();
+    return new GhostAttack(before - tower.getHitPoints().getHitPoints(), !ghost.invisible());
+  }
+
+  /** The crown tower of a side on the arena's left. */
+  private static TowerEntity leftCrownTower(Standard1v1Battle match, int side) {
+    return match.getWorld().present().stream()
+        .filter(e -> e instanceof TowerEntity t && t.side() == side)
+        .map(TowerEntity.class::cast)
+        .filter(t -> t != match.getWorld().kingTower(side))
+        .min((a, b) -> Integer.compare(a.getView().getX(), b.getView().getX()))
+        .orElseThrow();
   }
 
   @Test

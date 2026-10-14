@@ -790,9 +790,10 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The state visit's section for a row with a buff while it is not attacking. While it attacks, a
    * countdown a hit set is counted down and at 0 the buff's instances are taken off: a hitting unit
-   * loses the buff in the state visit of its hit's tick. Otherwise, unless its reference is within
-   * its attack range, the countdown runs while the buff is not listed - on its first visit too -
-   * and at 0 the buff is applied for 180,000 ms, from the character itself at its level.
+   * loses the buff in the state visit of its hit's tick, unless that hit was cancelled for
+   * distance, which sets no countdown. Otherwise, unless its reference is within its attack range,
+   * the countdown runs while the buff is not listed - on its first visit too - and at 0 the buff is
+   * applied for 180,000 ms, from the character itself at its level.
    */
   private void notAttackingSection() {
     String buff = getData().buffWhenNotAttacking();
@@ -833,7 +834,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * A hit its tags let through sets the countdown of a row's buff while not attacking to a tick.
+   * A hit its tags let through and not cancelled for distance sets the countdown of a row's buff
+   * while not attacking to a tick; a hit cancelled for distance leaves the countdown, and the buff,
+   * as they were.
    */
   @Override
   protected void hitAllowed() {

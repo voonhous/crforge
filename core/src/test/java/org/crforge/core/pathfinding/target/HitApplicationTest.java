@@ -37,6 +37,14 @@ class HitApplicationTest {
     private int charge = NO_CHARGE;
     private int resets;
 
+    /** How many hits told the owner they were let through. */
+    private int allowed;
+
+    @Override
+    public void hitAllowed() {
+      allowed++;
+    }
+
     @Override
     public int damage() {
       return DAMAGE;
@@ -230,6 +238,29 @@ class HitApplicationTest {
     assertThat(queries.order)
         .as("at the launch")
         .containsExactly("launch", "attack action on target");
+  }
+
+  @Test
+  @DisplayName(
+      "a hit not cancelled for distance tells the owner it was let through, a hit on nothing"
+          + " included; a hit cancelled for distance does not")
+  void onlyAHitNotCancelledIsLetThrough() {
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.allowed).isEqualTo(1);
+
+    HitApplication.apply(t, targetAt(3300), queries);
+    assertThat(queries.allowed).as("a hit cancelled for distance").isEqualTo(1);
+
+    HitApplication.apply(t, null, queries);
+    assertThat(queries.allowed).as("a hit on nothing").isEqualTo(2);
+
+    t.setConfig(t.getConfig().toBuilder().isBuilding(true).build());
+    HitApplication.apply(t, targetAt(30000), queries);
+    assertThat(queries.allowed).as("a building, which never cancels").isEqualTo(3);
+
+    queries.forbidden = true;
+    HitApplication.apply(t, target, queries);
+    assertThat(queries.allowed).as("a forbidden attack").isEqualTo(3);
   }
 
   @Test
