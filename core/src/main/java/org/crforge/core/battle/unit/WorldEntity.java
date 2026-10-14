@@ -977,7 +977,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
   }
 
-  /** Each of the entity's hits its tags let through; a tower's does nothing. */
+  /**
+   * Each of the entity's hits its tags let through and not cancelled for distance; a tower's does
+   * nothing.
+   */
   protected void hitAllowed() {
     // A tower takes no buff while it is not attacking.
   }

@@ -22,6 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>the long-distance cancel: a target that has left the attack range, widened by the published
  *       allowance, during the wind-up is missed, and the hit lands on nothing. A building never
  *       cancels, nor does a dasher that is immune after its dash;
+ *   <li>a hit not cancelled for distance tells the owner it was let through, which restarts the
+ *       countdown of a row's buff while it is not attacking; a missed hit does not;
  *   <li>the load countdown is reloaded with the load time, unless a wind-up-first unit's hit missed
  *       and the match keeps such a unit loaded;
  *   <li>the special-hit decision, after which a special hit clears the charge and an ordinary hit
@@ -134,8 +136,12 @@ public final class HitApplication {
     if (queries.attackForbidden()) {
       return true;
     }
-    queries.hitAllowed();
     boolean missed = cancelledForDistance(t, target, cfg, globals);
+    // Only a hit not cancelled for distance tells the owner it was let through: a row with a buff
+    // while it is not attacking restarts that countdown here, so a missed hit leaves it as it was.
+    if (!missed) {
+      queries.hitAllowed();
+    }
     if (!(cfg.loadFirstHit() && globals.loadFirstHitKeepLoadedAfterDiscard() && missed)) {
       t.setLoadTimerMs(cfg.loadTime());
     }

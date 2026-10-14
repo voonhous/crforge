@@ -51,8 +51,9 @@ public interface HitQueries {
   default void resetCharge() {}
 
   /**
-   * Told once the owner's tags let the hit through, before the cancel for distance: a row with a
-   * buff while it is not attacking restarts that countdown at one tick here, on every hit.
+   * Told once the owner's tags let the hit through and the hit is not cancelled for distance: a row
+   * with a buff while it is not attacking restarts that countdown at one tick here, on every such
+   * hit, a hit on nothing included. A hit cancelled for distance leaves the countdown alone.
    */
   default void hitAllowed() {}
 
