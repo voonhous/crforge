@@ -1,17 +1,17 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 98.4,
-  "ticks_agreed": 99.1,
+  "to_the_end": 98.6,
+  "ticks_agreed": 99.2,
   "outcomes": {
-    "diagnostic_match": 1707,
-    "mismatch": 22,
+    "diagnostic_match": 1710,
+    "mismatch": 19,
     "unsupported": 4
   },
   "first_failures": {
-    "mismatch $.entities[].x": 11,
-    "mismatch $.entities[].hp": 7,
-    "mismatch $.entities.length": 2,
+    "mismatch $.entities[].x": 10,
+    "mismatch $.entities[].hp": 6,
+    "mismatch $.entities.length": 1,
     "mismatch $.entities[].state": 1,
     "mismatch $.sides[].elixir": 1,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
@@ -20,5 +20,5 @@
     "unsupported: proj_# (GoblinBarrelSpell) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700",
-  "commit": "9f7f9bcd00d3c6aedee5056b713cef61a351c909"
+  "commit": "1b791f3e5e84947b2b5924a5b732e5b36502e544"
 }

@@ -4,16 +4,16 @@
   "to_the_end": 97.6,
   "ticks_agreed": 98.8,
   "outcomes": {
-    "diagnostic_match": 9760,
+    "diagnostic_match": 9768,
     "invalid": 4,
-    "mismatch": 212,
+    "mismatch": 204,
     "unsupported": 24
   },
   "first_failures": {
     "mismatch $.entities[].hp": 64,
     "mismatch $.entities.length": 54,
-    "mismatch $.entities[].x": 52,
-    "mismatch $.entities[].state": 33,
+    "mismatch $.entities[].x": 45,
+    "mismatch $.entities[].state": 32,
     "mismatch $.entities[].row": 5,
     "invalid": 4,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
@@ -27,5 +27,5 @@
     "mismatch $.entities[].y": 1
   },
   "set": "296000195c872c7d",
-  "commit": "9f7f9bcd00d3c6aedee5056b713cef61a351c909"
+  "commit": "1b791f3e5e84947b2b5924a5b732e5b36502e544"
 }
