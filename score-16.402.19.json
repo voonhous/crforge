@@ -1,16 +1,16 @@
 {
   "content_version": "16.402.19",
   "battles": 1733,
-  "to_the_end": 98.7,
-  "ticks_agreed": 99.2,
+  "to_the_end": 98.8,
+  "ticks_agreed": 99.3,
   "outcomes": {
-    "diagnostic_match": 1711,
-    "mismatch": 18,
+    "diagnostic_match": 1713,
+    "mismatch": 16,
     "unsupported": 4
   },
   "first_failures": {
-    "mismatch $.entities[].x": 10,
-    "mismatch $.entities[].hp": 5,
+    "mismatch $.entities[].x": 9,
+    "mismatch $.entities[].hp": 4,
     "mismatch $.entities.length": 1,
     "mismatch $.entities[].state": 1,
     "mismatch $.sides[].elixir": 1,
@@ -20,5 +20,5 @@
     "unsupported: proj_# (GoblinBarrelSpell) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1
   },
   "set": "bb3808097b85b700",
-  "commit": "8e1c6fb8c29c527b81f293bc74d38a18249a423b"
+  "commit": "d65071224f5d82f907c4181c7de326a6af738805"
 }
