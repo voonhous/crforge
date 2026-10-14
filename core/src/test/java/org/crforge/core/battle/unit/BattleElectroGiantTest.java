@@ -33,8 +33,9 @@ import org.junit.jupiter.api.io.TempDir;
  * damage; an area hit struck back; nothing for its own side or a shot whose row ignores the
  * reflect; a death the reflected damage causes running at once; a rider's shot struck back at its
  * parent; a damage-taking action's hit struck back at the character that caused it and never at an
- * area effect; an unkillable attacker held at 1 hit point by the reflected damage; and the hits the
- * battle refuses.
+ * area effect; an unkillable attacker held at 1 hit point by the reflected damage; an evolved
+ * Giant's pulse debuff, handed to a Goblin Giant's riders, lowering them on the Giant's step; and
+ * the hits the battle refuses.
  */
 class BattleElectroGiantTest {
 
@@ -589,6 +590,63 @@ class BattleElectroGiantTest {
     assertThat(giant.getAttackCount()).isZero();
     assertThat(shots).allSatisfy(r -> assertThat(r.buff()).isEqualTo(BUFF));
     assertThat(shots.stream().filter(r -> r.damage() > 0)).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Electro Giant's pulse debuff handed by a Goblin Giant to its riders lowers each"
+          + " rider's level on the step it lowers the Giant's, the riders listed before it")
+  void aHandedPulseDebuffLowersTheRidersOnTheSameStep() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    CharacterEntity evolved =
+        match.deploy(
+            0, match.getWorld().getRecords().unit("ElectroGiant_EV1"), LEVEL, 0, X, Y, "evolved");
+    evolved.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    evolved.setActive(CharacterEntity.TARGETING_SLOT, false);
+    // Played for the top side, it walks down into the pulse's reach.
+    match.play(0, GameData.card("GoblinGiant"), LEVEL, 1, X, TOP_Y, "goblin");
+    // The debuff the pulse's hit group puts on what it hits; its start action lowers the level.
+    String debuff = Shipped.fields("ElectroGiant_EV_Apply_Pulse_Debuff").path("SpawnData").asText();
+
+    // Step until the Goblin Giant's maximum hit points first drop: the debuff's start action ran on
+    // it. The loop guard is a battle's whole length, which the walk and the pulse never near.
+    int guard = Shipped.battleTicks();
+    CharacterEntity giant = null;
+    List<Integer> riderMaxima = List.of();
+    int giantMaximum = 0;
+    for (int tick = 0; tick < guard; tick++) {
+      if (giant == null && !match.getPlays().isEmpty()) {
+        giant =
+            match.getPlays().get(0).units().stream()
+                .filter(unit -> unit.getData().name().equals("GoblinGiant"))
+                .findFirst()
+                .orElse(null);
+      }
+      if (giant != null) {
+        giantMaximum = giant.getHitPoints().getMaximum();
+        riderMaxima = giant.riders().stream().map(r -> r.getHitPoints().getMaximum()).toList();
+      }
+      match.getBattle().step();
+      if (giant != null && giant.getHitPoints().getMaximum() < giantMaximum) {
+        break;
+      }
+    }
+
+    assertThat(giant).isNotNull();
+    CharacterEntity carrier = giant;
+    assertThat(carrier.getBuffs().carries(debuff)).isTrue();
+    assertThat(carrier.getHitPoints().getMaximum()).isLessThan(giantMaximum);
+    // Each rider, listed before the Giant, was handed the debuff and lowered on the same step.
+    List<CharacterEntity> riders = carrier.riders();
+    assertThat(riders)
+        .hasSize(Shipped.number(Shipped.unitRow("GoblinGiant"), "SpawnNumber"))
+        .allSatisfy(rider -> assertThat(rider.getId()).isLessThan(carrier.getId()));
+    for (int i = 0; i < riders.size(); i++) {
+      assertThat(riders.get(i).getBuffs().carries(debuff)).isTrue();
+      assertThat(riders.get(i).getHitPoints().getMaximum())
+          .as("rider %d's maximum", i)
+          .isLessThan(riderMaxima.get(i));
+    }
   }
 
   /** The reflects of a rider's shot that handed the buff. */

@@ -87,11 +87,12 @@ class ActionHolderTest {
 
   @Test
   @DisplayName(
-      "a buff's hook with no delay starts at once only inside its holder's own pending pass, and"
-          + " waits inside another entity's")
-  void aBuffHookStartsAtOnceOnlyInItsOwnPass() {
-    // A battle's holder: the battle answers that a pending pass is running for every entity.
-    ActionHolder holder = new ActionHolder(null, () -> true);
+      "a battle's holder starts an action with no delay at once inside another entity's pending"
+          + " pass, as a buff's hook on a rider in its parent's pass does, and queues it outside one")
+  void aBattleHolderStartsAtOnceInAnotherEntitysPass() {
+    // A battle's holder: the battle answers whether a pending pass over every entity is running.
+    boolean[] inPass = {true};
+    ActionHolder holder = new ActionHolder(null, () -> inPass[0]);
     holder.setListener(
         new ActionHolder.Listener() {
           @Override
@@ -101,32 +102,18 @@ class ActionHolderTest {
         });
     BattleAction hook = new InertAction(ActionRow.named("hook"));
 
-    holder.scheduleInOwnPass(hook, null);
-    assertThat(started).as("another entity's pass: queued").isEmpty();
-    holder.schedule(new InertAction(ActionRow.named("plain")), 0);
-    assertThat(started).as("a plain schedule starts in any pass").containsExactly("plain@0");
+    // Another entity's pass: this holder's own pass phase is 0, yet the action starts at once.
+    holder.schedule(hook, ActionHolder.OWN_DELAY, false, holder);
+    assertThat(started).as("another entity's pass: at once").containsExactly("hook@0");
 
+    // Outside every pending pass it is queued for the holder's next one.
     started.clear();
-    BattleAction scheduler =
-        new BattleAction() {
-          @Override
-          public String name() {
-            return "scheduler";
-          }
-
-          @Override
-          public ActionInstance start(ActionHolder h) {
-            h.scheduleInOwnPass(hook, null);
-            return null;
-          }
-        };
-    holder.schedule(scheduler, 100);
-    holder.endOfTick();
-    holder.endOfTick();
+    inPass[0] = false;
+    holder.schedule(hook, ActionHolder.OWN_DELAY, false, holder);
+    assertThat(started).as("outside a pass: queued").isEmpty();
+    inPass[0] = true;
     holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
-    assertThat(started)
-        .as("the queued hook and, inside its own pass, the second at once")
-        .containsExactly("hook@1", "hook@1", "scheduler@1");
+    assertThat(started).containsExactly("hook@1");
   }
 
   @Test
