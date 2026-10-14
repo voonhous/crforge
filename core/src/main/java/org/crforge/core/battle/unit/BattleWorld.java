@@ -374,6 +374,34 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
+   * A tether's hit on one object waiting for the drain: dealt there as {@link
+   * #tetherHitNow(AreaEffectEntity, WorldEntity, int, int, int)} deals it.
+   *
+   * @param owner the area effect the tether runs on
+   * @param victim the object hit
+   * @param damage hit points the hit deals, before the object's guards and the clamp to zero
+   * @param directionX the hit's direction along the width
+   * @param directionY the hit's direction along the length
+   */
+  private record TetherHitDue(
+      AreaEffectEntity owner, WorldEntity victim, int damage, int directionX, int directionY)
+      implements QueuedHit {}
+
+  /**
+   * A carried push's hit on one object waiting for the drain: dealt there as a direct hit is dealt,
+   * past the hidden test, with nothing after it.
+   *
+   * @param attacker the entity carrying the push
+   * @param target the view of the object hit, as the hit was queued
+   * @param damage hit points the hit deals, before the object's guards and the clamp to zero
+   * @param directionX direction of the hit along the arena's width
+   * @param directionY direction of the hit along the arena's length
+   */
+  private record CarriedPushHitDue(
+      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY)
+      implements QueuedHit {}
+
+  /**
    * One victim's share of a projectile's area impact waiting for the drain: dealt as {@link
    * #dealProjectileDamage(ProjectileEntity, WorldEntity, int, int, int, int)} deals it at once,
    * without a direction.
@@ -480,14 +508,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * A hit the damage drain deals: a typed hit, a damage-taking action's hit, or a direct hit, a
-   * share of a character's or a projectile's area, a projectile's hit on its one target, a hit of a
-   * buff's damage over time, a capture's hit, a circle's kill, a Kamikaze unit's kill, a step of a
-   * Kamikaze unit's drain, a kill action's kill or a tiebreaker's clearing's kill.
+   * share of a character's or a projectile's area, a tether's or a carried push's hit, a
+   * projectile's hit on its one target, a hit of a buff's damage over time, a capture's hit, a
+   * circle's kill, a Kamikaze unit's kill, a step of a Kamikaze unit's drain, a kill action's kill
+   * or a tiebreaker's clearing's kill.
    */
   private sealed interface QueuedHit
       permits TypedHit,
           DirectHitDue,
           AreaHitDue,
+          TetherHitDue,
+          CarriedPushHitDue,
           ProjectileAreaHitDue,
           ProjectileHitDue,
           TravellingHitDue,
@@ -610,6 +641,15 @@ public class BattleWorld implements HolderPasses {
    * #kamikazeDrain(WorldEntity, int)}): the unit's state visit queues it, and the step that takes
    * its last hit point kills it at the drain. So its death spawn is made after every state visit of
    * that tick, and a spawner listed after it that fires on that tick makes its child first.
+   *
+   * <p>A Goblinstein tether's hit (see {@link #tetherHit(AreaEffectEntity, WorldEntity, int, int,
+   * int)}) and an evolved Battle Ram's carried push's hit (see {@link
+   * #dealCarriedPushDamage(WorldEntity, WorldEntity, int, int, int)}) go the same way: each run, in
+   * the run pass, hands its hit to the damage entry, so an object either kills is still alive for
+   * the second pending pass and the post-hooks and dies at the drain, and its death action runs in
+   * the third pending pass. A kill that death action hands on - the evolved Skeleton Army general's
+   * kill of the spectral skeletons of its chain - is queued after the drain and lands at the next
+   * tick's, as the recorded battles show.
    *
    * <p>The evolved Dart Goblin's poison damage goes the same way (see {@link
    * #dealQueuedDamage(TargetView, int, int, int)}): its run, in the action pass, hands each hit to
@@ -1052,19 +1092,22 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals the damage of a carried push's hit to an entity, as {@link #dealDamage(WorldEntity,
-   * TargetView, int, int, int)} deals a direct hit's, but past the hidden test.
+   * Deals the damage of a carried push's hit to an entity, as the push's run hands it to the damage
+   * entry: queued for the damage drain, in the order hits are dealt (see {@link #queuedHits}),
+   * where it is dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)} deals a direct
+   * hit's, but past the hidden test. So an entity the push kills dies at the drain, after the run
+   * pass and the post-hooks, and its death action runs in the tick's last pending pass.
    *
    * @param attacker the entity carrying the push
    * @param target the entity hit
    * @param damage hit points the hit deals, before the target's guards and the clamp to zero
    * @param directionX direction of the hit along the arena's width
    * @param directionY direction of the hit along the arena's length
-   * @return what the damage did to the target
    */
-  public DamageResult dealCarriedPushDamage(
+  public void dealCarriedPushDamage(
       WorldEntity attacker, WorldEntity target, int damage, int directionX, int directionY) {
-    return dealDamage(attacker, target.getTargetView(), damage, directionX, directionY, true);
+    queuedHits.add(
+        new CarriedPushHitDue(attacker, target.getTargetView(), damage, directionX, directionY));
   }
 
   private DamageResult dealDamage(
@@ -2880,8 +2923,11 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A tether's hit: an area effect's hit, the area effect the attacker, with the damage entry's
-   * hidden test lifted and the hit's direction carried to a death.
+   * A tether's hit, as its damage pass hands it to the damage entry: queued for the damage drain,
+   * in the order hits are dealt (see {@link #queuedHits}), where it is dealt as {@link
+   * #tetherHitNow(AreaEffectEntity, WorldEntity, int, int, int)} deals it. So an object the tether
+   * kills dies at the drain, after the run pass and the post-hooks, and its death action runs in
+   * the tick's last pending pass: a kill that action hands on lands at the next tick's drain.
    *
    * @param owner the area effect the tether runs on
    * @param victim the object hit
@@ -2890,6 +2936,15 @@ public class BattleWorld implements HolderPasses {
    * @param directionY the hit's direction along the length
    */
   void tetherHit(
+      AreaEffectEntity owner, WorldEntity victim, int damage, int directionX, int directionY) {
+    queuedHits.add(new TetherHitDue(owner, victim, damage, directionX, directionY));
+  }
+
+  /**
+   * A tether's hit at the drain: an area effect's hit, the area effect the attacker, with the
+   * damage entry's hidden test lifted and the hit's direction carried to a death.
+   */
+  private void tetherHitNow(
       AreaEffectEntity owner, WorldEntity victim, int damage, int directionX, int directionY) {
     int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true, null, owner);
@@ -4974,6 +5029,11 @@ public class BattleWorld implements HolderPasses {
         queued += direct.damage();
       } else if (hit instanceof AreaHitDue area && area.victim() == entity) {
         queued += area.damage();
+      } else if (hit instanceof TetherHitDue tether && tether.victim() == entity) {
+        queued += tether.damage();
+      } else if (hit instanceof CarriedPushHitDue push
+          && known.get(push.target().getEntity()) == entity) {
+        queued += push.damage();
       } else if (hit instanceof ProjectileAreaHitDue share && share.victim() == entity) {
         queued += share.damage();
       } else if (hit instanceof BuffHitDue buffHit && buffHit.target() == entity) {
@@ -6038,10 +6098,10 @@ public class BattleWorld implements HolderPasses {
    * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
    * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
    * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit, a share of a character's or a projectile's area, a projectile's hit on its one
-   * target, or a capture's hit: the damage dealt, with its reflect, its observers, its death or the
-   * reference drop; a hit of a buff's damage over time; a circle's, a Kamikaze unit's, a kill
-   * action's or a tiebreaker's clearing's kill.
+   * direct hit, a share of a character's or a projectile's area, a tether's or a carried push's
+   * hit, a projectile's hit on its one target, or a capture's hit: the damage dealt, with its
+   * reflect, its observers, its death or the reference drop; a hit of a buff's damage over time; a
+   * circle's, a Kamikaze unit's, a kill action's or a tiebreaker's clearing's kill.
    */
   private void drainTypedHits() {
     List<QueuedHit> due = new ArrayList<>(queuedHits);
@@ -6061,6 +6121,25 @@ public class BattleWorld implements HolderPasses {
       }
       if (queued instanceof AreaHitDue area) {
         dealAreaDamageNow(area.attacker(), area.victim(), area.damage(), area.hitId());
+        continue;
+      }
+      if (queued instanceof TetherHitDue tether) {
+        tetherHitNow(
+            tether.owner(),
+            tether.victim(),
+            tether.damage(),
+            tether.directionX(),
+            tether.directionY());
+        continue;
+      }
+      if (queued instanceof CarriedPushHitDue push) {
+        dealDamage(
+            push.attacker(),
+            push.target(),
+            push.damage(),
+            push.directionX(),
+            push.directionY(),
+            true);
         continue;
       }
       if (queued instanceof ProjectileAreaHitDue share) {
