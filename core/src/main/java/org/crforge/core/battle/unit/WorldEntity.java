@@ -1013,7 +1013,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * The area of one of the entity's hits: every arena entity in the circle that the entity's own
    * targeting may hit, its own side spared, takes the damage or the crown-tower damage, with no
-   * limit and no split.
+   * limit and no split. It passes by the victims {@link #passedByAreaCollection()} names, tested as
+   * it collects: a dasher whose immunity after its dash still counts takes no share, even when its
+   * own visit of the tick counts the immunity to 0 before the damage drain.
    */
   private void damageArea(int x, int y, int radius, int damage, int towerDamage, int hitId) {
     List<TargetView> entities = new ArrayList<>();
@@ -1029,9 +1031,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             area,
             ValidatorQueries.standard1v1(),
             new AreaDamage.Queries() {
+              // A hidden victim, and one the area's state gate refuses as it collects.
               @Override
               public boolean untouchable(TargetView victim) {
-                return world.entityOf(victim.getEntity()).passedBy(false);
+                return world.entityOf(victim.getEntity()).passedByAreaCollection();
               }
 
               @Override
@@ -1314,12 +1317,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Whether a projectile's area or a dash landing's area passes the entity by as it collects its
-   * victims: while it is hidden, or when the area's state gate refuses it - the untouchable test
-   * with the immunity left after a dash counted, which a tower never fails. The gate is tested as
-   * the area collects, at the impact or the landing, and not again when the damage drain deals the
-   * shares: a dasher whose own visit of the tick counts its immunity down to 0 after the impact is
-   * still passed by. The direct hit's area and the death damage pass by a hidden entity only.
+   * Whether a projectile's area, a dash landing's area or the area of a direct hit passes the
+   * entity by as it collects its victims: while it is hidden, or when the area's state gate refuses
+   * it - the untouchable test with the immunity left after a dash counted, which a tower never
+   * fails. The gate is tested as the area collects, at the impact, the landing or the hit, and not
+   * again when the damage drain deals the shares: a dasher whose own visit of the tick counts its
+   * immunity down to 0 after the area is still passed by. The death damage passes by a hidden
+   * entity only.
    */
   public boolean passedByAreaCollection() {
     return passedBy(false) || untouchable(true);
