@@ -1,20 +1,19 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 99.5,
+  "to_the_end": 99.6,
   "ticks_agreed": 99.7,
   "outcomes": {
-    "diagnostic_match": 9959,
-    "mismatch": 24,
-    "unsupported": 17
+    "diagnostic_match": 9960,
+    "mismatch": 25,
+    "unsupported": 15
   },
   "first_failures": {
+    "mismatch $.entities[].x": 8,
     "mismatch $.entities[].hp": 7,
-    "mismatch $.entities[].x": 7,
     "mismatch $.entities[].state": 6,
     "mismatch $.entities.length": 3,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
-    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2,
     "unsupported: proj_# rolls beside a deflecting area effect, which is not modelled": 2,
     "mismatch $.entities[].side": 1,
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1,
@@ -23,8 +22,9 @@
     "unsupported: MegaMinion_hero_return_action warps cmd# with proj_# aimed at it, whose row keeps its target through the reset, not modelled": 1,
     "unsupported: SkeletonTrooper_Landing spawns SkeletonTrooper_Landing_AEO from a clone, which is not modelled": 1,
     "unsupported: WizardHero_ground_to_air lifts cmd#, already in the air, which is not modelled": 1,
-    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1
+    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1,
+    "unsupported: goblinstein_doctor_OnStartingAction spawns AOE_goblinstein_ability from a clone, which is not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "554da81df4f530cc6c7abc91bbe44be655ca5d11"
+  "commit": "0a9e0d64e35fd6d2f5c433ac2499dd3ad090739f"
 }

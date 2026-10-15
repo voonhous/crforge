@@ -2,17 +2,16 @@
   "content_version": "16.402.19",
   "battles": 1733,
   "to_the_end": 99.8,
-  "ticks_agreed": 99.8,
+  "ticks_agreed": 99.9,
   "outcomes": {
-    "diagnostic_match": 1730,
+    "diagnostic_match": 1731,
     "mismatch": 1,
-    "unsupported": 2
+    "unsupported": 1
   },
   "first_failures": {
     "mismatch $.entities[].x": 1,
-    "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 1,
     "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1
   },
   "set": "dcc19aa63a03c58e",
-  "commit": "554da81df4f530cc6c7abc91bbe44be655ca5d11"
+  "commit": "0a9e0d64e35fd6d2f5c433ac2499dd3ad090739f"
 }
