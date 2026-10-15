@@ -4,13 +4,12 @@
   "to_the_end": 99.8,
   "ticks_agreed": 99.8,
   "outcomes": {
-    "diagnostic_match": 9986,
-    "mismatch": 6,
+    "diagnostic_match": 9987,
+    "mismatch": 5,
     "unsupported": 8
   },
   "first_failures": {
     "mismatch $.entities[].hp": 3,
-    "mismatch $.entities.length": 1,
     "mismatch $.entities[].state": 1,
     "mismatch $.entities[].x": 1,
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1,
@@ -23,5 +22,5 @@
     "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "31301c4f5db5f0f91fbffdd91c1412555363658c"
+  "commit": "832174461b02011ca3de274998e706c943cb2494"
 }
