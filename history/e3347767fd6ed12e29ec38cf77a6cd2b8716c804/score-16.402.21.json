@@ -1,0 +1,17 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 9997,
+    "unsupported": 3
+  },
+  "first_failures": {
+    "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1,
+    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1,
+    "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
+  },
+  "set": "e6e3bccb191ecd17",
+  "commit": "e3347767fd6ed12e29ec38cf77a6cd2b8716c804"
+}
