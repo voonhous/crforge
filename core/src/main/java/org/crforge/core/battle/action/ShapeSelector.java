@@ -47,13 +47,13 @@ import org.crforge.core.fidelity.FidelityStatus;
  * largest int with the bits of its guarded squared distance from the owner flipped, so the nearest
  * wins and a tie goes, as any, to the lower id. The run's finish - the step's own, or a stop gate's
  * - schedules the row's finishing action on the owner, the owner its cause, with the run's context,
- * once.
+ * once. An owner that leaves while the run is listed unfinished lets it go as it is: the run is not
+ * finished then, so its finishing action is never scheduled.
  *
  * <p>Refused as the row is built: a longest wait, the modes by maximum hit points, fewer actions
  * than delays, a singleton and a next action, none of which a reference holds; and a row without a
  * filter, or whose shape is not a circle. As it starts: an owner other than an area effect or a
- * character. As the owner leaves: a run with a finishing action that has not finished, whose finish
- * on a leaving owner is not modelled.
+ * character.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -70,12 +70,15 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the row's tags on a character, held by ability_hero_giant_slap. The action on the"
             + " owner whatever the side, the owner as the cause of the actions on itself, the"
             + " Closest mode, the run's context on every schedule and the finishing action, held"
-            + " by hero_balloon and BattleBalloonHeroTest. The circle's CheckOrigin narrowing,"
+            + " by hero_balloon and BalloonHeroAbilityTest. The run an owner leaves unfinished"
+            + " let go with no finish, its finishing action never scheduled, held by"
+            + " balloonhero-seeker-left-v1 (the Balloon hero killed within two steps of its tap,"
+            + " with and without an enemy in the circle, and two controls) and"
+            + " BalloonHeroAbilityTest. The circle's CheckOrigin narrowing,"
             + " held by tv_replay_017 (the Valkyrie hero form's tap with a princess tower whose"
             + " square alone reaches the circle) and BattleShapeSelectorTest. Refused: a longest"
-            + " wait, the modes by maximum, a singleton, a next action, a missing filter, a shape"
-            + " other than a circle and a finishing action on an owner that leaves before the run"
-            + " finishes.")
+            + " wait, the modes by maximum, a singleton, a next action, a missing filter and a"
+            + " shape other than a circle.")
 public final class ShapeSelector extends RowAction {
 
   /** The mode that scores an object by its hit points. */
@@ -215,19 +218,11 @@ public final class ShapeSelector extends RowAction {
     }
 
     /**
-     * The owner leaves: a finishing action of a run that has not finished would run on a leaving
-     * owner, which is not modelled.
+     * The owner leaves: the run is let go as it is. A run not finished by then stays unfinished, so
+     * its finishing action is never scheduled; the release does nothing else.
      */
     @Override
-    protected void stop(ActionHolder holder) {
-      if (!isFinished() && columns.onFinishedAction() != null) {
-        throw new UnsupportedOperationException(
-            name()
-                + " is listed unfinished as its owner leaves, whose finishing action "
-                + columns.onFinishedAction()
-                + " is not modelled there");
-      }
-    }
+    protected void stop(ActionHolder holder) {}
 
     @Override
     protected void update(ActionHolder holder) {
