@@ -5119,19 +5119,24 @@ public class BattleWorld implements HolderPasses {
    * recorded Logs and bodies over a deploying guard show; a character in its dash under a row with
    * a dash immunity is spared without being listed, as the recorded Hunter pellets over a Golden
    * Knight in its chain show; any other untouchable character - one protected by the immunity left
-   * after its dash among them - is listed as hit and spared; a character on a layer the projectile
-   * does not reach, in the air, or, for a projectile that does not reach the air, in a jump or in a
-   * dash under a row with a jump height, is spared without being listed. An entity with hit points
-   * takes the projectile's damage at its level, or its crown-tower share, never a deflected share -
-   * a deflected body hits a crown tower for the whole of it, as the Bowler's ball rolled back into
-   * its own princess tower does - as the listening runs of a projectile with an action holder
-   * change it - the evolved Executioner's controller in place of it - from the direction of the
-   * pass's centre, and is listed as hit, a carrier whose row attaches its riders with the ids of
-   * its riders (held by the Bowler's over a Goblin Giant, whose riders' Spear Goblins it then
-   * passes over); then a character whose movement is still on is pushed the row's pushback away
-   * from the projectile, the row's push-all lifting the gates. A projectile that stops at
-   * collisions is finished by a hit that landed on an entity with hit points left, and the pass
-   * ends; held by the Hunter's pellets in the reference battle card_Hunter.
+   * after its dash among them - is listed as hit and spared, but for one tunnelling to its
+   * placement, which is no exception here: it is listed, takes the hit into its queue, which the
+   * damage entry then refuses at the drain, and stops a projectile that stops at collisions, as the
+   * recorded Hunter pellets over a tunnelling Miner or a relocating evolved Goblin Drill show; a
+   * character on a layer the projectile does not reach, in the air, or, for a projectile that does
+   * not reach the air, in a jump or in a dash under a row with a jump height, is spared without
+   * being listed. An entity with hit points takes the projectile's damage at its level, or its
+   * crown-tower share, never a deflected share - a deflected body hits a crown tower for the whole
+   * of it, as the Bowler's ball rolled back into its own princess tower does - as the listening
+   * runs of a projectile with an action holder change it - the evolved Executioner's controller in
+   * place of it - from the direction of the pass's centre, and is listed as hit, a carrier whose
+   * row attaches its riders with the ids of its riders (held by the Bowler's over a Goblin Giant,
+   * whose riders' Spear Goblins it then passes over); then a character whose movement is still on
+   * is pushed the row's pushback away from the projectile, the row's push-all lifting the gates but
+   * for the hidden one: a hidden character, a tunnelling one among them, is not pushed. A
+   * projectile that stops at collisions is finished by a hit that landed on an entity with hit
+   * points left, and the pass ends; held by the Hunter's pellets in the reference battle
+   * card_Hunter.
    *
    * @return true when the hit finished the projectile
    */
@@ -5163,7 +5168,9 @@ public class BattleWorld implements HolderPasses {
         && entity.getData().dashImmuneToDamageTimeMs() > 0) {
       return false;
     }
-    if (entity.untouchable()) {
+    // A character tunnelling to its placement is not spared here: the hit is queued for it, and the
+    // damage entry refuses it at the drain, but a projectile that stops at collisions stops at it.
+    if (entity.untouchable() && !entity.tunnelling()) {
       projectile.getHitIds().add(id);
       return false;
     }
