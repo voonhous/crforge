@@ -26,6 +26,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,8 @@ import org.junit.jupiter.api.io.TempDir;
  * speed override its variable feeds, and where it lands a Skeleton Trooper is spawned, whose
  * landing area effect hurts what stands there. With nobody in the circle the selector finishes
  * without a pick, and its finishing action's failsafe launches the projectile with no context, at
- * no target.
+ * no target. A hero that leaves before the selector's first step lets it go unfinished, and nothing
+ * is launched.
  *
  * <p>Each scene plays one hero, the hero form's summon count written to one, and the speed-up rows
  * the projectile's interval runs are written by the test, so the overrides it pins are the ones it
@@ -313,6 +315,34 @@ class BalloonHeroAbilityTest {
     assertThat(launch.target()).isNull();
     assertThat(launch.x()).isEqualTo(launch.ownerX());
     assertThat(launch.y()).isEqualTo(launch.ownerY());
+  }
+
+  @Test
+  @DisplayName(
+      "a hero that leaves while its selector waits for its first step lets the selector go"
+          + " unfinished: neither the trooper's projectile nor the failsafe's is launched, and the"
+          + " battle runs on")
+  void aHeroLeavingBeforeThePickLaunchesNothing(@TempDir Path folder) throws IOException {
+    GameTables tables = tables(folder);
+    BattleRecords records = new BattleRecords(tables);
+    List<Launch> launches = new ArrayList<>();
+    Standard1v1Battle battle = battle(tables, launches);
+    battle.play(220, records.card("Balloon"), LEVEL, 0, 3500, 14000, "g");
+    // A Knight in the circle, which the selector would pick on its first step.
+    battle.play(225, records.card("Knight"), LEVEL, 1, 3500, 21000, "k");
+    stepTo(battle, EARLY_CAST - 20);
+    CharacterEntity hero = named(battle, "BalloonHero").get(0);
+    battle.useAbility(EARLY_CAST, 0, hero.name(), "a");
+    stepTo(battle, EARLY_CAST);
+    // The kill lands at the damage drain of the step after the tap's, before the selector's first
+    // step is due: the hero leaves with its selector listed and unfinished.
+    battle.getWorld().kill(hero, null);
+    stepTo(battle, EARLY_CAST + 80);
+    assertThat(battle.getAbilityUses()).hasSize(1);
+    assertThat(HitPoints.alive(hero.getHitPoints())).isFalse();
+    assertThat(named(battle, "BalloonHero")).isEmpty();
+    assertThat(launches).isEmpty();
+    assertThat(named(battle, TROOPER)).isEmpty();
   }
 
   /** Slot flags with the first card in the hero slot. */
