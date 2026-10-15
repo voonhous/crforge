@@ -4614,6 +4614,15 @@ public class BattleWorld implements HolderPasses {
    * impact spawns projectiles one link long, as the rocket's sparks: the impact reads nothing of
    * the deflection but the side and the start the redirect gave it, so the sparks fan out, for the
    * deflector's side, along the line from where the rocket was turned to its new aim.
+   *
+   * <p>Nor is a chain of more links, as the evolved Bomber's bouncing bomb: the relaunch counts its
+   * chain from the row's spawn chain again, as every launch does, so a turned bomb bounces on from
+   * where it lands for the deflector's side, the deflector's parent its root, along the line from
+   * where it was turned, and a turned bounce, which has a range and no body, is aimed its range
+   * from where it stands toward its root owner, forgetting any target (see {@link
+   * ProjectileEntity#deflect}), and bounces on as often from where it lands. Refused: a projectile
+   * whose impact spawns along the length, by its side's forward, as the Fire Wall's, which a turn
+   * hands to the other side and no recording holds.
    */
   private static void refuseDeflection(AreaEffectEntity deflector, ProjectileEntity projectile) {
     ProjectileData data = projectile.getData();
@@ -4636,7 +4645,7 @@ public class BattleWorld implements HolderPasses {
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
         || (data.homingTimeMs() >= 1 && !piercing && !hooking)
         || (hooking && projectile.isHooked())
-        || (data.spawnProjectile() != null && data.spawnChain() >= 2)
+        || (data.spawnProjectile() != null && data.spawnAxisY())
         || (projectile.getChain() != null && !spellLike)
         || (projectile.isGrouped() && projectile.getGroup() == null)) {
       throw new UnsupportedOperationException(
