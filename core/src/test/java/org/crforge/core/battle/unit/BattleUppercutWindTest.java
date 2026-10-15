@@ -924,18 +924,31 @@ class BattleUppercutWindTest {
 
   @Test
   @DisplayName(
-      "a knock started on a unit dashing under a row with no jump height is refused: the put-down"
-          + " leaves it dashing, which no reference holds")
-  void aKnockOnADashWithNoHeightIsRefused() {
+      "a knock started on a unit dashing under a row with no jump height (a Bandit's dash) leaves"
+          + " it dashing: the put-down does nothing for it, and the knock lifts it in its dash")
+  void aKnockOnADashWithNoHeightLeavesItDashing() {
     Scene scene = new Scene();
-    CharacterEntity knight = scene.unit(1, "Knight", 3500, 22000, "k");
-    assertThat(knight.getData().jumpHeight()).as("a row with no jump height").isLessThan(1);
-    scene.step(30);
-    knight.getView().setState(GridEntityState.DASHING);
+    // A dashing row with no jump height, and an enemy in the middle of its dash range ahead of it.
+    CharacterEntity bandit = scene.unit(1, "Assassin", 3500, 22000, "b");
+    UnitData data = bandit.getData();
+    assertThat(data.jumpHeight()).as("a row with no jump height").isLessThan(1);
+    assertThat(data.dashMaxRange()).as("a row that dashes").isPositive();
+    int distance = (data.dashMinRange() + data.dashMaxRange()) / 2;
+    scene.unit(0, "Knight", 3500, 22000 - distance, "k");
+    int steps = 0;
+    while (bandit.getView().getState() != GridEntityState.DASHING) {
+      assertThat(steps++).as("the Bandit's dash starts").isLessThan(200);
+      scene.step(1);
+    }
 
-    assertThatThrownBy(() -> knight.actionHolder().start(scene.row(KNOCK, knight), null))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("in state " + GridEntityState.DASHING);
+    bandit.actionHolder().start(scene.row(KNOCK, bandit), null);
+    assertThat(bandit.getView().getState())
+        .as("still dashing, not asked to stand")
+        .isEqualTo(GridEntityState.DASHING);
+    assertThat(bandit.getUnit().movement().getRoute().isEmpty()).as("its route kept").isFalse();
+
+    scene.step(2);
+    assertThat(bandit.getView().getHeightOffset()).as("lifted by the knock").isPositive();
   }
 
   /** The height a unit in the air is held at before the knock starts on it. */
