@@ -1,18 +1,18 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 98.8,
+  "to_the_end": 99.0,
   "ticks_agreed": 99.4,
   "outcomes": {
-    "diagnostic_match": 9886,
-    "mismatch": 91,
+    "diagnostic_match": 9908,
+    "mismatch": 69,
     "unsupported": 23
   },
   "first_failures": {
-    "mismatch $.entities.length": 34,
+    "mismatch $.entities.length": 23,
     "mismatch $.entities[].hp": 20,
-    "mismatch $.entities[].state": 17,
     "mismatch $.entities[].x": 17,
+    "mismatch $.entities[].state": 6,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
     "unsupported: cmd# is cloned with an air-to-ground action running, which the game starts again on the clone; that is not modelled": 2,
@@ -26,5 +26,5 @@
     "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "6d03223f7520426827cb8da608db840d9fc7d4d4"
+  "commit": "40f0faa5b165004ed7747d126ab23ddd3bc6a403"
 }
