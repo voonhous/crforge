@@ -4,15 +4,15 @@
   "to_the_end": 99.8,
   "ticks_agreed": 99.8,
   "outcomes": {
-    "diagnostic_match": 9985,
-    "mismatch": 7,
+    "diagnostic_match": 9986,
+    "mismatch": 6,
     "unsupported": 8
   },
   "first_failures": {
     "mismatch $.entities[].hp": 3,
-    "mismatch $.entities[].x": 2,
     "mismatch $.entities.length": 1,
     "mismatch $.entities[].state": 1,
+    "mismatch $.entities[].x": 1,
     "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1,
     "unsupported: Deflect_# deflects proj_# (PrincessProjectile) once more, its volley turned around as one before, which is not modelled": 1,
     "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1,
@@ -23,5 +23,5 @@
     "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "d88e26a0a3f7b2bc78ee11cca3311f650cb92dec"
+  "commit": "31301c4f5db5f0f91fbffdd91c1412555363658c"
 }
