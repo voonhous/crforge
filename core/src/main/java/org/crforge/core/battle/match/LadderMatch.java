@@ -61,12 +61,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * nothing to repeat finds no position and is refused with 0x17, nothing taken.
  *
  * <p>A variant card, the Merge Maiden, is played as one of its options. The player's client picks
- * the option from the king's elixir as it gives the play, 20 ticks before it runs: the first whose
- * trigger the elixir reaches, else the last - the mounted maiden from 6 elixir, else the maiden on
- * foot. The play carries that option and its cost. The gates read the variant card's own hand slot
- * and that cost; the option's card is then placed and cast as any troop card, and the play takes
- * the cost, starts the option's production stop and moves the variant card to the back of the
- * queue.
+ * the option from the king's elixir as it gives the play, 20 ticks before it runs, at a reading of
+ * its own: the first whose trigger the elixir reaches, else the last - the mounted maiden from 6
+ * elixir, else the maiden on foot. The play carries that option and its cost, and the battle plays
+ * the option the play carries. The gates read the variant card's own hand slot and that cost; the
+ * option's card is then placed and cast as any troop card, and the play takes the cost, starts the
+ * option's production stop and moves the variant card to the back of the queue.
  *
  * <p>The match is decided when a king has fallen, when overtime sees a crown, or when the time is
  * up. It is asked at the head of each step and after the entity tick, and the first time it holds
@@ -123,7 +123,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " flags, the count each play of an evolution slot's card moves, the evolved and the"
             + " hero item, their row cast at its cost, and the hero form in the deck pass; by"
             + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot: a variant"
-            + " card's option picked from the elixir, its cost gated and spent, and the variant"
+            + " card's option carried by its play, its cost gated and spent, and the variant"
             + " card cycled. Not held by a recorded battle: the Mirror of an evolved play. Held"
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
             + " and the update it runs; by BattleMirrorTest alone: a Mirror after a Mirror and a"

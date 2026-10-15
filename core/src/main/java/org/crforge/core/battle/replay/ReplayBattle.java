@@ -71,10 +71,12 @@ public final class ReplayBattle {
               play.y(),
               "cmd" + index);
         } else if (play.option() != null) {
-          // A variant card's play runs as the option the battle's player picks as it gives it.
+          // A variant card's play runs as the option its item carries, as the game's battle plays
+          // it: the player's client picked it from an elixir reading the replay does not time.
           battle.playVariant(
               play.runTick(),
               play.card(),
+              play.option().index(),
               play.level(),
               play.side(),
               play.x(),

@@ -58,8 +58,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * item also names the card it repeats ({@code fs}); that card, the level field and the cost depend
  * on the battle, and are checked against the Mirror item the simulator builds ({@link
  * #checkMirrorItem}). A variant card's item names the option it is played as in the option field
- * and carries that option's cost; the option the player's client picks depends on the battle, and
- * is checked against the variant item the simulator builds ({@link #checkVariantItem}).
+ * and carries that option's cost; the player's client picks the option from an elixir reading the
+ * replay does not time, and the play runs as the option the item names, as the game's battle plays
+ * it, its item checked against the variant item the simulator builds ({@link #checkVariantItem}).
  *
  * <p>The command type numbers are the data version's ({@link CommandTypes}): a scenario read
  * against tables of a version whose command types are not established has every command refused.
@@ -509,9 +510,9 @@ public final class ReplayScenario {
             + " simulator builds as the play runs. A variant card's: its deck index and level"
             + " fields as above, its slot flags, evolution, count and cosmetic fields 0, its"
             + " option field one of the card's options plus 1 and its cost that option's"
-            + " cost, and its option field and cost against the variant item the simulator"
-            + " builds as the play runs, from the option its player picks; the play runs as"
-            + " Standard1v1Battle.playVariant");
+            + " cost; the play runs as that option, as the game's battle plays it"
+            + " (Standard1v1Battle.playVariant), and its option field, deck index field and cost"
+            + " against the variant item the simulator builds as the play runs");
     mapping.put(
         "cmd[i].c.sel.fs",
         "checked (a Mirror's play only, where it is required): the card row the item repeats,"
@@ -961,12 +962,13 @@ public final class ReplayScenario {
   }
 
   /**
-   * A variant card's play. Its item is built by the player's client from the option it picks as it
-   * gives the play: the option field is the option's index plus 1 and the cost is the option row's.
-   * The option picked depends on the battle, so it is checked as the play runs ({@link
-   * #checkVariantItem}); the parts the deck decides are checked here: the option field names one of
-   * the card's options, the cost is that option's, the deck index and level fields are the card's,
-   * and there are no slot flags and no evolution, count or cosmetic field.
+   * A variant card's play. Its item is built by the player's client from the option it picks from
+   * the king's elixir at a reading the replay does not time: the option field is the option's index
+   * plus 1 and the cost is the option row's. The play runs as that option, as the game's battle
+   * plays the item it is given. Checked here: the option field names one of the card's options, the
+   * cost is that option's, the deck index and level fields are the card's, and there are no slot
+   * flags and no evolution, count or cosmetic field; the run checks the item against the one the
+   * simulator builds ({@link #checkVariantItem}).
    *
    * <p>A variant card in a deck's evolution or hero slot is in no reference, and is refused.
    */
@@ -1249,9 +1251,9 @@ public final class ReplayScenario {
 
   /**
    * Checks a variant card's play item against the variant item the simulator built as the play ran:
-   * the packed item's option field must be the option the simulator's player picked plus 1, and its
-   * deck index and cost the built item's. The simulator picks the option from the king's elixir as
-   * the play is given, so a play given as another option is one it does not model.
+   * the packed item's option field must be the option the simulator played plus 1, and its deck
+   * index and cost the built item's. The simulator plays the option the item names, so the check
+   * holds the deck index and the cost to the ones the battle builds for it.
    *
    * @param play the variant card's play as the scenario gives it
    * @param built the variant item the simulator built as the play ran, or null if it built none

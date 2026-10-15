@@ -55,8 +55,8 @@ public record ScenarioPlan(
    *     fs}), which the run checks against the card the simulator's Mirror repeats ({@link
    *     ReplayScenario#checkMirrorItem}); null for a play of any other card
    * @param option for a variant card's play, the option its item names (the option field) and that
-   *     option's cost, which the run checks against the option the simulator's player picks ({@link
-   *     ReplayScenario#checkVariantItem}); null for a play of any other card
+   *     option's cost, which the play runs as, its item checked against the one the simulator
+   *     builds ({@link ReplayScenario#checkVariantItem}); null for a play of any other card
    */
   public record Play(
       int index,

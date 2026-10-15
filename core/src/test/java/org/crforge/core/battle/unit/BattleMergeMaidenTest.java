@@ -29,12 +29,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The Merge Maiden where the reference runs do not take it: the step its option is picked after, a
- * pending play's cost the pick sets aside, a play run in the pick's own tick, a play the elixir
- * does not cover, a Mirror after it, which repeats the option it was played as, and the plays it
- * refuses - outside a match, before tick 22, given within two ticks after another play's tick, with
- * a Mirror pending or a refused play's promise held - and a Mirror of a variant card whose row
- * would have it repeat the card itself.
+ * The Merge Maiden where the reference runs do not take it: a play run as the option it carries,
+ * whatever the elixir picks, and one carrying an option its card does not have; with no option
+ * carried, the step its option is picked after, a pending play's cost the pick sets aside, a play
+ * run in the pick's own tick, a play the elixir does not cover, a Mirror after it, which repeats
+ * the option it was played as, and the plays it refuses - outside a match, before tick 22, given
+ * within two ticks after another play's tick, with a Mirror pending or a refused play's promise
+ * held - and a Mirror of a variant card whose row would have it repeat the card itself.
  */
 class BattleMergeMaidenTest {
 
@@ -140,6 +141,68 @@ class BattleMergeMaidenTest {
     assertThat(item.spell()).isEqualTo("MergeMaiden_Normal");
     assertThat(item.cost()).isEqualTo(ON_FOOT);
     assertThat(match.side(0).getSpent()).isEqualTo(MOUNTED * MatchSide.SCALE);
+  }
+
+  @Test
+  @DisplayName(
+      "a variant play that carries its option runs as that option, as the game's battle plays it:"
+          + " on foot from a full bar, where the elixir picks the mounted maiden, for the on-foot"
+          + " cost")
+  void aCarriedOptionIsPlayedAsGiven() {
+    Standard1v1Battle picked = new Standard1v1Battle(GameData.tables());
+    picked.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
+    picked.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(picked, 22);
+    assertThat(picked.getPlays().get(0).variant().spell()).isEqualTo("MergeMaiden_Mounted");
+
+    Standard1v1Battle carried = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = carried.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
+    int onFoot = optionIndex("MergeMaiden_Normal");
+    carried.playVariant(22, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
+    run(carried, 22);
+
+    Standard1v1Battle.Play maiden = carried.getPlays().get(0);
+    assertThat(maiden.matchCode()).isZero();
+    assertThat(maiden.variant().option()).isEqualTo(onFoot);
+    assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Normal");
+    assertThat(maiden.variant().cost()).isEqualTo(ON_FOOT);
+    assertThat(maiden.units().get(0).getData().name()).isEqualTo("MergeMaiden_Normal");
+    assertThat(match.side(0).getSpent()).isEqualTo(ON_FOOT * MatchSide.SCALE);
+    assertThat(match.side(0).lastPlayed().name()).isEqualTo("MergeMaiden");
+  }
+
+  @Test
+  @DisplayName(
+      "a variant play that carries its option needs no pick, so one given in the tick of another"
+          + " play of its side runs, where a picked one is refused")
+  void aCarriedOptionNeedsNoPick() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
+    battle.play(41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    int onFoot = optionIndex("MergeMaiden_Normal");
+    battle.playVariant(41, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
+    run(battle, 41);
+
+    Standard1v1Battle.Play maiden = battle.getPlays().get(1);
+    assertThat(maiden.matchCode()).isZero();
+    assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Normal");
+    assertThat(match.side(0).getSpent()).isEqualTo((ZAP + ON_FOOT) * MatchSide.SCALE);
+  }
+
+  @Test
+  @DisplayName("a variant play that carries an option its card does not have is refused")
+  void aCarriedOptionTheCardDoesNotHaveIsRefused() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
+    int options = Shipped.column(Shipped.row("spells_other", "MergeMaiden"), "Options").size();
+
+    assertThatThrownBy(
+            () -> battle.playVariant(22, "MergeMaiden", options, LEVEL, 0, 3500, 10000, "m"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("m: MergeMaiden has no option " + options);
+    assertThatThrownBy(() -> battle.playVariant(22, "MergeMaiden", -1, LEVEL, 0, 3500, 10000, "m"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("m: MergeMaiden has no option -1");
   }
 
   @Test
@@ -472,6 +535,17 @@ class BattleMergeMaidenTest {
     MatchSide side = match.side(0);
     assertThat(side.lastPlayed().name()).isEqualTo("MergeMaiden");
     assertThat(side.getSpent()).isEqualTo((before + Shipped.cost(option) + cost) * MatchSide.SCALE);
+  }
+
+  /** The index of the Merge Maiden's option whose SpellData is the given row. */
+  private static int optionIndex(String spell) {
+    JsonNode options = Shipped.column(Shipped.row("spells_other", "MergeMaiden"), "Options");
+    for (int index = 0; index < options.size(); index++) {
+      if (options.get(index).path("SpellData").asText().equals(spell)) {
+        return index;
+      }
+    }
+    throw new AssertionError("no option " + spell);
   }
 
   /**

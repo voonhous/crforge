@@ -1049,36 +1049,37 @@ class ReplaySmokeRunTest {
   }
 
   @Test
-  void aVariantPlayGivenAsAnotherOptionThanTheSimulatorPicksIsUnsupported() throws IOException {
+  void aVariantPlayGivenAsAnotherOptionThanTheElixirPicksRunsAsTheOptionItCarries()
+      throws IOException {
     usePlannedSchedule();
     ObjectNode scenario = fit(Scenarios.mergeMaidenMounted());
-    int mounted = item(scenario, 0);
-    // The maiden on foot, where the client picks the mounted maiden from a full bar: the on-foot
-    // play's item, the Merge Maiden at the same deck index.
+    // The maiden on foot, where the elixir, a full bar, picks the mounted maiden: the on-foot
+    // play's item, the Merge Maiden at the same deck index. The player's client picks from an
+    // elixir reading the replay does not time, and the battle plays the option the item carries.
     int onFoot = item(fit(Scenarios.mergeMaidenOnFoot()), 1);
+    assertThat(describe(onFoot)).contains("option field 2");
+    assertThat(describe(item(scenario, 0))).contains("option field 1");
     ((ObjectNode) scenario.path("cmd").get(0).path("c").path("sel")).put("pd", onFoot);
     Path out = folder.resolve("run");
 
     int exit = run(scenario, out, terminalIdentity, 250);
 
-    assertThat(exit).isEqualTo(ReplaySmokeRun.UNSUPPORTED);
+    assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
     JsonNode manifest = MAPPER.readTree(out.resolve("manifest.json").toFile());
-    assertThat(manifest.path("unsupported").path("feature").asText())
-        .isEqualTo("a play whose packed item is not the item the simulator builds as it runs");
-    assertThat(manifest.path("unsupported").path("input").asText())
-        .isEqualTo(
-            "cmd[0].c.sel.pd="
-                + onFoot
-                + " ("
-                + describe(onFoot)
-                + ") for MergeMaiden, where the simulator builds "
-                + mounted
-                + " ("
-                + describe(mounted)
-                + ")");
-    assertThat(describe(onFoot)).contains("option field 2");
-    assertThat(describe(mounted)).contains("option field 1");
-    assertThat(out.resolve("COMPLETE")).doesNotExist();
+    JsonNode maiden = manifest.path("plays_run").get(0);
+    assertThat(maiden.path("name").asText()).isEqualTo("cmd0");
+    assertThat(maiden.path("tick").asInt()).isEqualTo(240);
+    assertThat(maiden.path("placed").asBoolean()).isTrue();
+    List<String> lines = Files.readAllLines(out.resolve("observations.jsonl"));
+    JsonNode unit = newestUnit(MAPPER.readTree(lines.get(241)));
+    assertThat(unit.path("row").asText()).isEqualTo("MergeMaiden_Normal");
+    assertThat(unit.path("side").asInt()).isZero();
+    // The on-foot maiden's cost, not the mounted one's, less one step's regeneration.
+    int cost = costOf("MergeMaiden_Normal");
+    assertThat(cost).isLessThan(costOf("MergeMaiden_Mounted"));
+    int before = MAPPER.readTree(lines.get(240)).path("sides").get(0).path("elixir").asInt();
+    int after = MAPPER.readTree(lines.get(241)).path("sides").get(0).path("elixir").asInt();
+    assertThat(before - after).isBetween(cost - 200, cost);
   }
 
   @Test
