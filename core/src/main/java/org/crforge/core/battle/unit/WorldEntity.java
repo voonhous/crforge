@@ -1271,7 +1271,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /**
    * What the targeting component does each time it is switched off, its slot's reset. By default
-   * nothing; a unit whose dashes chain ends its chain.
+   * nothing; a character clears its strike-now byte, and a unit whose dashes chain ends its chain.
    */
   protected void targetingSwitchedOff() {}
 

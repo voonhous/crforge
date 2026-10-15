@@ -18,6 +18,7 @@ import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
+import org.crforge.core.pathfinding.target.TargetingState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -263,5 +264,65 @@ class BattleChargeTest {
       match.getBattle().step();
     }
     assertThat(ram.getView().getY()).isLessThan(hitY - 1000);
+  }
+
+  @Test
+  @DisplayName(
+      "a stun that switches off a jumping Prince's targeting clears its strike-now byte and"
+          + " leaves its charge as it was")
+  void aStunInTheJumpClearsTheStrike() {
+    Standard1v1Battle match = passiveTowers();
+    // Short of the river on its side: the Prince walks toward the left bridge and charges.
+    CharacterEntity prince = match.deploy(0, GameData.unit("Prince"), 11, 0, 8000, 10500);
+    TargetingState targeting = prince.getUnit().targeting();
+    MovementState movement = prince.getUnit().movement();
+    int jumped = -1;
+    boolean placed = false;
+    for (int tick = 0; tick < 400 && jumped < 0; tick++) {
+      match.getBattle().step();
+      if (!placed && movement.getChargeProgress() >= MovementState.CHARGE_COMPLETE) {
+        // Charged: an enemy Knight straight ahead across the river, which it jumps the river for.
+        placed = true;
+        match.deploy(
+            match.getWorld().tick() + 1,
+            GameData.unit("Knight"),
+            11,
+            1,
+            prince.getView().getX(),
+            prince.getView().getY() + 5000);
+      }
+      if (prince.getView().getState() == GridEntityState.JUMPING) {
+        jumped = match.getWorld().tick();
+      }
+    }
+    assertThat(jumped).as("the Prince's jump over the river").isPositive();
+    // It jumps charged, the strike-now byte set by its charged walk.
+    assertThat(movement.getChargeProgress()).isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
+    assertThat(targeting.isChargeStrike()).isTrue();
+
+    // An enemy Zap on it: the stun's combat gate switches its targeting component off.
+    boolean[] switchedOff = new boolean[1];
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void combatComponentSwitched(
+                  int t, WorldEntity entity, boolean on, int hitSpeed) {
+                if (entity == prince && !on) {
+                  switchedOff[0] = true;
+                }
+              }
+            });
+    match.placeAreaEffect(
+        jumped + 1, "Zap", 11, 1, prince.getView().getX(), prince.getView().getY(), "zap");
+    for (int i = 0; i < 5 && !switchedOff[0]; i++) {
+      match.getBattle().step();
+    }
+    assertThat(switchedOff[0]).as("the stun switched the targeting component off").isTrue();
+    assertThat(prince.getView().getState()).isEqualTo(GridEntityState.JUMPING);
+    // The switch-off clears the strike-now byte; the jump leaves the charge as it was.
+    assertThat(targeting.isChargeStrike()).isFalse();
+    assertThat(movement.getChargeProgress()).isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
   }
 }

@@ -202,7 +202,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " troops_hog_and_balloon_pass_defenders, troops_lavahound_and_giant_skeleton_deaths"
             + " and card_BabyDragon; a charge built by the steps it walks, its doubled speed, its"
             + " strike-now byte landing the first hit at once and that hit's special damage, held"
-            + " by card_Prince, card_DarkPrince and status_zap_stuns_prince_charge; a river jump"
+            + " by card_Prince, card_DarkPrince and status_zap_stuns_prince_charge, and the byte"
+            + " cleared as the targeting component is switched off, the charge left as it is,"
+            + " held by prince-jump-zap-v1; a river jump"
             + " over the water its route crosses, from the node before the water to the first"
             + " land cell beyond it at its jump speed, held by card_HogRider and"
             + " grid_zap_on_hog_river_jump; a dash, its wind-up standing it still inside its"
@@ -2097,12 +2099,20 @@ public class CharacterEntity extends WorldEntity {
         unit.targeting().getSpecialLoadTimerMs());
   }
 
-  /** A unit whose dashes chain ends its chain as its targeting component is switched off. */
+  /**
+   * The targeting component's reset as it is switched off: a unit whose dashes chain ends its
+   * chain, and every unit has its strike-now byte cleared. The charge itself is the movement
+   * component's and stays as it is, so a charge the switch-off leaves complete, as a jump that a
+   * stun reaches leaves it, strikes no charged hit at once when the component is on again: the byte
+   * is set anew only by a charged step in the moving state, and a unit that stops to attack before
+   * one loses the charge at its standing step.
+   */
   @Override
   protected void targetingSwitchedOff() {
     if (getData().dashCount() >= 1) {
       dashReset();
     }
+    unit.targeting().setChargeStrike(false);
   }
 
   /** Switches a component on or off, the movement component's view and targeting bits with it. */
