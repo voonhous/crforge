@@ -1,0 +1,17 @@
+{
+  "content_version": "16.402.19",
+  "battles": 1733,
+  "to_the_end": 99.8,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 1731,
+    "mismatch": 1,
+    "unsupported": 1
+  },
+  "first_failures": {
+    "mismatch $.entities[].x": 1,
+    "unsupported: cmd#: a Mirror of the champion Goblinstein, a card of two groups, which no reference holds": 1
+  },
+  "set": "dcc19aa63a03c58e",
+  "commit": "4e3a3ff47d240afa01b13e4b4212865087436a41"
+}
