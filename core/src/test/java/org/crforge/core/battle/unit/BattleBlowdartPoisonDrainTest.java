@@ -13,16 +13,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.DamageResult;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +46,12 @@ import org.junit.jupiter.api.io.TempDir;
  * (the controller's crown tower duration is written longer than the scene). A Witch of the bottom
  * side, at its own end of the arena and written to make one child in each post-hook, is played;
  * once every dart has landed the tower is left with one hit point, so the next poison hit kills it.
+ *
+ * <p>The hit the run queues carries the side of the poison area that last raised its amount, the
+ * thrower's: a unit the poison kills at the drain dies for that side, so in a match a unit whose
+ * row gives the opponent elixir on its death pays it to the thrower's king. The hit has no
+ * attacker, so the killed action of such a unit is handed a cause that carries that side alone, no
+ * object.
  */
 class BattleBlowdartPoisonDrainTest {
 
@@ -66,6 +79,15 @@ class BattleBlowdartPoisonDrainTest {
 
   /** The steps the scene may take to reach each of its points. */
   private static final int LIMIT = 400;
+
+  /** The smallest blob of the Elixir Golem, which gives the opponent elixir as it dies. */
+  private static final String BLOB = "ElixirGolem4";
+
+  /** The poisoned unit's level, high enough for it to outlive the darts that start the poison. */
+  private static final int BLOB_LEVEL = 11;
+
+  /** Each side's deck in the match: the scene plays no card. */
+  private static final List<String> DECK = Collections.nCopies(8, "Knight");
 
   @TempDir static Path folder;
 
@@ -200,5 +222,112 @@ class BattleBlowdartPoisonDrainTest {
     assertThat(atSpawn.get(killed[0]))
         .as("the tower still has its hit point in the post-hooks of the step the poison kills it")
         .isEqualTo(1);
+  }
+
+  /**
+   * Plays the evolved Dart Goblin of the bottom side at a unit of the top side, walking down past
+   * it, until a poison damage run goes on the unit; then takes the Dart Goblin away, lets every
+   * dart it threw land, and leaves the unit with one hit point, so the next poison hit kills it.
+   *
+   * @param battle the battle
+   * @param row the unit's row
+   * @param level the unit's level, high enough for it to outlive the darts
+   * @return the unit
+   */
+  private static CharacterEntity poisonedToOneHitPoint(
+      Standard1v1Battle battle, String row, int level) {
+    CharacterEntity unit = battle.deploy(0, records.unit(row), level, 1, 14500, 22000);
+    CharacterEntity goblin =
+        battle.deploy(0, records.unit("BlowdartGoblin_EV1"), LEVEL, 0, 14500, 16000);
+    while (!poisoned(unit) && battle.getBattle().getTick() < LIMIT) {
+      battle.getBattle().step();
+    }
+    assertThat(poisoned(unit)).as("a poison damage run goes on the unit").isTrue();
+    battle.getWorld().kill(goblin, null);
+    for (int i = 0; i < DARTS_LANDED; i++) {
+      battle.getBattle().step();
+    }
+    assertThat(unit.getHitPoints().getHitPoints()).as("the unit outlives the darts").isPositive();
+    assertThat(poisoned(unit)).as("the poison keeps going after the darts").isTrue();
+    unit.getHitPoints().setHitPoints(1);
+    return unit;
+  }
+
+  /** Steps the battle until the unit has died, at most {@link #LIMIT} steps. */
+  private static void stepUntilDead(Standard1v1Battle battle, CharacterEntity unit) {
+    int until = battle.getBattle().getTick() + LIMIT;
+    while (HitPoints.alive(unit.getHitPoints()) && battle.getBattle().getTick() < until) {
+      battle.getBattle().step();
+    }
+    assertThat(HitPoints.alive(unit.getHitPoints())).as("the poison kills the unit").isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit the poison kills at the drain pays its ManaOnDeathForOpponent to the thrower's side")
+  void aPoisonKillPaysTheThrowersSide() {
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    List<String> paid = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void deathElixirPaid(int tick, WorldEntity dying, int side, int amount) {
+                paid.add(dying.name() + " " + side + " " + amount);
+              }
+            });
+    // The smallest Elixir Golem blob, which gives the opponent elixir as it dies.
+    CharacterEntity blob = poisonedToOneHitPoint(battle, BLOB, BLOB_LEVEL);
+    int before = match.side(0).getElixir();
+    stepUntilDead(battle, blob);
+
+    // The row's ManaOnDeathForOpponent in thousandths of an elixir, paid in ten-thousandths.
+    int payout = records.unit(BLOB).manaOnDeathForOpponent() * 10;
+    assertThat(paid).containsExactly(BLOB + " 0 " + payout);
+    assertThat(match.side(0).getElixir()).isGreaterThanOrEqualTo(before + payout);
+  }
+
+  @Test
+  @DisplayName(
+      "the Boss Bandit the poison kills checks its killer with a cause that carries the thrower's"
+          + " side alone, no object: its check of the killer's row runs nothing")
+  void aPoisonKillHandsTheKilledActionTheSideAlone() {
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+    List<String> scheduled = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void deathHooksScheduled(
+                  int tick,
+                  WorldEntity dying,
+                  BattleEntity attacker,
+                  int side,
+                  List<String> hooks,
+                  boolean inPendingPass) {
+                scheduled.add(dying.name() + " by " + attacker + " side " + side + " " + hooks);
+              }
+            });
+    CharacterEntity bossBandit = poisonedToOneHitPoint(battle, "BossBandit", BLOB_LEVEL);
+    List<String> runs = new ArrayList<>();
+    bossBandit
+        .actionHolder()
+        .setListener(
+            new ActionHolder.Listener() {
+              @Override
+              public void started(BattleAction action, int phase) {
+                runs.add(action.name());
+              }
+            });
+    stepUntilDead(battle, bossBandit);
+    battle.getBattle().step();
+
+    String check = records.unit("BossBandit").onKilledAction();
+    assertThat(scheduled).containsExactly("BossBandit by null side 0 [" + check + "]");
+    // The check runs with no object to compare, and so schedules neither of its actions.
+    assertThat(runs).containsExactly(check);
   }
 }

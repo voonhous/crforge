@@ -25,8 +25,8 @@ import org.crforge.core.pathfinding.combat.ScalingMode;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled line for line from the class's start, re-trigger, step, match and amount; held"
-            + " by evo_blowdartgoblin_vs_musketeer. Supplied: the amount scaled as an area"
+        "Settled line for line from the class's start, re-trigger, step, match, amount and side;"
+            + " held by evo_blowdartgoblin_vs_musketeer. Supplied: the amount scaled as an area"
             + " effect's damage is, at the area's level. Refused: a cause other than a poison area"
             + " carrying its controller's copy.")
 public final class BlowdartDamageRun extends ActionInstance {
@@ -43,6 +43,12 @@ public final class BlowdartDamageRun extends ActionInstance {
   /** The amount each damage deals. */
   @Getter private int amount;
 
+  /**
+   * The side each damage is dealt for: the side of the poison area whose start or further hit last
+   * raised the amount, and none (-1) until one does. A unit the poison kills dies for that side.
+   */
+  @Getter private int side = -1;
+
   /** Milliseconds the run has left. */
   @Getter private int leftMs;
 
@@ -55,8 +61,20 @@ public final class BlowdartDamageRun extends ActionInstance {
     this.owner = owner;
     leftMs = duration();
     BlowdartControllerRun.Copy copy = copy(instigator);
-    amount = Math.max(amount, amount(instigator, copy));
+    raise(instigator, copy);
     thrower = copy.getThrower();
+  }
+
+  /**
+   * Raises the amount to a start's or a further hit's when that is higher, and with it takes the
+   * side of the area that caused it; a lower or equal amount leaves both as they were.
+   */
+  private void raise(ActionHolder instigator, BlowdartControllerRun.Copy copy) {
+    int raised = amount(instigator, copy);
+    if (raised > amount) {
+      amount = raised;
+      side = ((AreaEffectEntity) instigator.getOwner()).side();
+    }
   }
 
   /** Duration, or CrownTowerDuration on a crown tower when it is set. */
@@ -110,12 +128,13 @@ public final class BlowdartDamageRun extends ActionInstance {
   }
 
   /**
-   * A further hit of an area: the time is put back and the amount raised when the new is higher.
+   * A further hit of an area: the time is put back and the amount raised, with its side, when the
+   * new is higher.
    */
   @Override
   protected void retrigger(ActionHolder holder, ActionHolder instigator) {
     leftMs = duration();
-    amount = Math.max(amount, amount(instigator, copy(instigator)));
+    raise(instigator, copy(instigator));
   }
 
   @Override
@@ -123,8 +142,9 @@ public final class BlowdartDamageRun extends ActionInstance {
     clockMs += STEP_MS;
     leftMs -= STEP_MS;
     if (clockMs % damage.getColumns().hitSpeedMs() == 0 && owner.getHitPoints() != null) {
-      // The damage entry queues the hit, with no attacker, for the holder's damage drain.
-      owner.world.dealQueuedDamage(owner.getTargetView(), amount, 0, 0);
+      // The damage entry queues the hit, with no attacker and the run's side, for the holder's
+      // damage drain.
+      owner.world.dealQueuedDamage(owner.getTargetView(), amount, 0, 0, side);
     }
     if (leftMs <= 0) {
       finish();

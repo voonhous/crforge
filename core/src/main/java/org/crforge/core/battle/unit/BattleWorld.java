@@ -349,16 +349,19 @@ public class BattleWorld implements HolderPasses {
    * One direct hit waiting for the drain: what the attacker's targeting visit hands the damage
    * entry, dealt as {@link #dealDamage(WorldEntity, TargetView, int, int, int)} deals it at once,
    * then followed by the attacker's buff on damage when the hit landed. A hit with no attacker, as
-   * a damage run hands the entry one, is dealt the same way, with no buff on damage after it.
+   * a damage run hands the entry one, is dealt the same way, with no buff on damage after it, and
+   * kills for the side the run handed with it.
    *
    * @param attacker the entity whose hit it is, or null for none
    * @param target the view the hit resolved against
    * @param damage hit points the hit deals, before the target's guards and the clamp to zero
    * @param directionX direction of the hit along the arena's width
    * @param directionY direction of the hit along the arena's length
+   * @param side the side a hit with no attacker kills for, or -1 for none; a hit with an attacker
+   *     kills for the attacker's side
    */
   private record DirectHitDue(
-      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY)
+      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY, int side)
       implements QueuedHit {}
 
   /**
@@ -652,9 +655,10 @@ public class BattleWorld implements HolderPasses {
    * tick's, as the recorded battles show.
    *
    * <p>The evolved Dart Goblin's poison damage goes the same way (see {@link
-   * #dealQueuedDamage(TargetView, int, int, int)}): its run, in the action pass, hands each hit to
-   * the damage entry with no attacker, so a target the poison kills is still alive for the
-   * post-hooks - a spawner's child made in them may still pick it - and dies at the drain.
+   * #dealQueuedDamage(TargetView, int, int, int, int)}): its run, in the action pass, hands each
+   * hit to the damage entry with no attacker and the run's side, so a target the poison kills is
+   * still alive for the post-hooks - a spawner's child made in them may still pick it - and dies at
+   * the drain, for the run's side.
    */
   private final List<QueuedHit> queuedHits = new ArrayList<>();
 
@@ -1061,7 +1065,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void dealDirectHit(
       WorldEntity attacker, TargetView target, int damage, int directionX, int directionY) {
-    queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY));
+    queuedHits.add(new DirectHitDue(attacker, target, damage, directionX, directionY, -1));
   }
 
   /**
@@ -1077,18 +1081,23 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals the damage of one hit with no attacker, as a damage run hands it to the damage entry:
-   * queued for the damage drain, in the order hits are dealt (see {@link #queuedHits}), where it is
-   * dealt as {@link #dealDamage(TargetView, int, int, int)} deals it at once. A hit dealt after the
+   * Deals the damage of one hit with no attacker, as a damage run hands it to the damage entry with
+   * the side it deals it for: queued for the damage drain, in the order hits are dealt (see {@link
+   * #queuedHits}), where it is dealt as {@link #dealDamage(TargetView, int, int, int)} deals it at
+   * once. The record keeps the side, which the drain hands the death handler with no attacker: a
+   * target the hit kills dies for that side, so its killed action and the elixir its death gives
+   * the opponent go as for a kill of that side (see {@link #entityDied}). A hit dealt after the
    * tick's drain waits for the next tick's.
    *
    * @param target the view the hit resolved against
    * @param damage hit points the hit deals, before the target's guards and the clamp to zero
    * @param directionX direction of the hit along the arena's width
    * @param directionY direction of the hit along the arena's length
+   * @param side the side the hit is dealt for, or -1 for none
    */
-  public void dealQueuedDamage(TargetView target, int damage, int directionX, int directionY) {
-    queuedHits.add(new DirectHitDue(null, target, damage, directionX, directionY));
+  public void dealQueuedDamage(
+      TargetView target, int damage, int directionX, int directionY, int side) {
+    queuedHits.add(new DirectHitDue(null, target, damage, directionX, directionY, side));
   }
 
   /**
@@ -1117,6 +1126,24 @@ public class BattleWorld implements HolderPasses {
       int directionX,
       int directionY,
       boolean passesHidden) {
+    return dealDamage(attacker, target, damage, directionX, directionY, passesHidden, -1);
+  }
+
+  /**
+   * Deals one hit as {@link #dealDamage(WorldEntity, TargetView, int, int, int)} does, with the
+   * side a hit with no attacker kills for.
+   *
+   * @param side the side the hit kills for when it has no attacker, or -1 for none; a hit with an
+   *     attacker kills for the attacker's side
+   */
+  private DamageResult dealDamage(
+      WorldEntity attacker,
+      TargetView target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean passesHidden,
+      int side) {
     WorldEntity entity = known.get(target.getEntity());
     if (entity == null) {
       return DamageResult.NOTHING;
@@ -1129,7 +1156,11 @@ public class BattleWorld implements HolderPasses {
       observer.damageDealt(tick, entity, damage, result);
     }
     if (result.died()) {
-      entity.die(attacker);
+      if (attacker == null && side != -1) {
+        entity.dieForSideAlone(side);
+      } else {
+        entity.die(attacker);
+      }
     } else if (result.landed()) {
       referenceDrop(attacker, entity, false);
     }
@@ -3147,10 +3178,15 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>A buff's damage over time kills with the buff's source as the attacker, for the side the
    * buff was applied for (see {@link #dealBuffDamageNow}). A death with a killing side and no
-   * attacker - the damage of a buff with no source - is handed in the game a cause that carries the
-   * side alone, which the battle does not hold. The battle schedules the killed action with no
-   * cause when no action of its chain reads its cause (see {@link BattleAction#readsCause}), as the
-   * evolved Wall Breaker's spawn, whose source is its owner.
+   * attacker - the damage of a buff with no source, or a hit of the evolved Dart Goblin's poison
+   * run, which kills for the run's side - is handed in the game a cause that carries the side
+   * alone, which the battle does not hold. The battle schedules the killed action with no cause
+   * when no action of its chain reads its cause (see {@link BattleAction#readsCause}), as the
+   * evolved Wall Breaker's spawn, whose source is its owner. For a hit the game deals with no
+   * attacker for a side - the poison run's - the cause is that side alone and no object, so the
+   * killed action is also scheduled with no cause when no action of its chain reads more of a cause
+   * than its object (see {@link BattleAction#readsSideAloneCause}), as the Boss Bandit's check of
+   * its killer's row, which finds no object and runs nothing.
    *
    * <p>Refused rather than guessed: a killed action with no attacker whose chain reads its cause, a
    * killed action whose attacker is an object of another kind than a unit, a projectile or an area
@@ -3166,12 +3202,14 @@ public class BattleWorld implements HolderPasses {
    * @param dying the entity that died
    * @param attacker what killed it: an arena entity, a projectile, or null for nothing
    * @param killingSide the side of the killing hit, or -1 for none
+   * @param sideAlone true when the game hands the killed action a cause that carries the killing
+   *     side alone and no object: a hit with no attacker dealt for a side
    */
-  void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide) {
+  void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide, boolean sideAlone) {
     UnitData data = dying.getData();
     deathSlot(dying, data);
     killedDone(dying, attacker);
-    killedHook(dying, attacker, data, killingSide);
+    killedHook(dying, attacker, data, killingSide, sideAlone);
     deathReward(dying, data, killingSide);
   }
 
@@ -3292,17 +3330,20 @@ public class BattleWorld implements HolderPasses {
    * cause; the death slot schedules the death action (see {@link #slotDeathAction}). None when the
    * row has no killed action, when the death has no killing side, or when the unit killed itself on
    * the killing side. With no attacker - a buff with no source - the action is scheduled with no
-   * cause when no action of its chain reads its cause. Refused rather than guessed: a killed action
-   * with no attacker whose chain reads its cause, which would be a side alone, one whose attacker
-   * is an object of another kind, and one scheduled after the tick's last pending pass.
+   * cause when no action of its chain reads its cause; for a cause the game makes of the side alone
+   * - a hit with no attacker dealt for a side - also when no action of its chain reads more of a
+   * cause than its object. Refused rather than guessed: any other killed action with no attacker
+   * whose chain reads its cause, which would be a side alone, one whose attacker is an object of
+   * another kind, and one scheduled after the tick's last pending pass.
    *
    * @param dying the entity that died
    * @param attacker what killed it, or null for nothing
    * @param data its row
    * @param killingSide the side of the killing hit, or -1 for none
+   * @param sideAlone true when the game's cause is the killing side alone and no object
    */
   private void killedHook(
-      WorldEntity dying, BattleEntity attacker, UnitData data, int killingSide) {
+      WorldEntity dying, BattleEntity attacker, UnitData data, int killingSide, boolean sideAlone) {
     if (data.onKilledAction() == null || killingSide == -1) {
       return;
     }
@@ -3311,8 +3352,12 @@ public class BattleWorld implements HolderPasses {
         attacker == null ? actions.build(data.onKilledAction(), binding(dying)) : null;
     ActionHolder cause;
     int side;
-    if (killed != null && !chainReadsCause(killed)) {
-      // No action of the chain reads the cause, which the battle does not hold here.
+    if (killed != null
+        && !(sideAlone
+            ? chainReads(killed, BattleAction::readsSideAloneCause)
+            : chainReadsCause(killed))) {
+      // No action of the chain reads the cause, or nothing of it but the object a side alone lacks,
+      // which the battle does not hold here.
       cause = null;
       side = killingSide;
     } else if (attacker instanceof WorldEntity entity) {
@@ -3362,9 +3407,18 @@ public class BattleWorld implements HolderPasses {
    * full.
    */
   private static boolean chainReadsCause(BattleAction action) {
+    return chainReads(action, BattleAction::readsCause);
+  }
+
+  /**
+   * Whether an action or any action chained after it, each scheduled with the same cause, answers
+   * the given question about its cause. A chain that comes back to an action already asked has been
+   * asked in full.
+   */
+  private static boolean chainReads(BattleAction action, Predicate<BattleAction> reads) {
     Set<BattleAction> asked = Collections.newSetFromMap(new IdentityHashMap<>());
     for (BattleAction step = action; step != null && asked.add(step); step = step.nextAction()) {
-      if (step.readsCause()) {
+      if (reads.test(step)) {
         return true;
       }
     }
@@ -6198,7 +6252,9 @@ public class BattleWorld implements HolderPasses {
                 direct.target(),
                 direct.damage(),
                 direct.directionX(),
-                direct.directionY());
+                direct.directionY(),
+                false,
+                direct.side());
         drainBuffOnDamage(direct.attacker(), direct.target(), result);
         continue;
       }
