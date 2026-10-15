@@ -26,5 +26,5 @@
     "unsupported: goblinstein_doctor_OnStartingAction spawns AOE_goblinstein_ability from a clone, which is not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "0a9e0d64e35fd6d2f5c433ac2499dd3ad090739f"
+  "commit": "076f45f4f14344e9788ecc4df34fb6062182f70b"
 }
