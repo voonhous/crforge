@@ -540,6 +540,8 @@
   "minipekka-hero-tap-v1/tap_on_second_raise_t483": {"outcome": "diagnostic_match"},
   "mirror-champion-v1/mirror_of_golden_knight": {"outcome": "diagnostic_match"},
   "mirror-champion-v1/mirror_of_hero_mini_pekka": {"outcome": "diagnostic_match"},
+  "mirror-goblinstein-v1/mirror_of_goblinstein_after": {"outcome": "diagnostic_match"},
+  "mirror-goblinstein-v1/mirror_of_goblinstein_live": {"outcome": "diagnostic_match"},
   "mirror-of-variant-v1/mirror_of_maiden_mounted": {"outcome": "diagnostic_match"},
   "mirror-of-variant-v1/mirror_of_maiden_on_foot": {"outcome": "diagnostic_match"},
   "mirror-pending-v1/mirror_after_refused_play": {"outcome": "diagnostic_match"},
