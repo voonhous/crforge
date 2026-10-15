@@ -766,8 +766,11 @@ public final class BuffComponent implements BattleComponent {
 
   /**
    * One hit of an instance's damage and heal over time, for the period it covers: the damage first,
-   * then the heal. The heal is dropped for a unit whose Kamikaze hit has landed; the battle
-   * destroys such a unit at the end of that hit, so none is left to take one.
+   * then the heal. The heal is dropped for a unit whose Kamikaze hit has ended: its kill of itself
+   * is queued for the damage drain with the hit points it had as the hit ended, and its buffs are
+   * visited after its hit, so a heal landing there would leave it standing on the heal's share
+   * after the kill (a Battle Ram under a Heal Spirit's heal). A row with a Kamikaze time, whose
+   * state visit drains it from then on, takes no heal either.
    */
   private void overTime(BuffInstance instance, int period) {
     BuffData buff = instance.getBuff();
@@ -791,6 +794,9 @@ public final class BuffComponent implements BattleComponent {
       if (entity.getHitPoints() != null) {
         world.dealBuffDamage(entity, instance, damage);
       }
+    }
+    if (entity instanceof CharacterEntity character && character.isKamikazeHitEnded()) {
+      heal = 0;
     }
     if (heal >= 1 && entity.getHitPoints() != null) {
       world.dealBuffHeal(entity, instance, heal);
