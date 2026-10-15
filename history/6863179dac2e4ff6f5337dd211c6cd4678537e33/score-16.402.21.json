@@ -1,0 +1,16 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 9998,
+    "unsupported": 2
+  },
+  "first_failures": {
+    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1,
+    "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
+  },
+  "set": "e6e3bccb191ecd17",
+  "commit": "6863179dac2e4ff6f5337dd211c6cd4678537e33"
+}
