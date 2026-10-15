@@ -25,7 +25,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * emptied and its reference dropped; the two effects only show something. It has no run: it is done
  * as it starts. The reset, the flying warp's start's alike and the same as entering a pathfinding
  * state, makes every projectile aimed at the unit lose it as its target, handing nothing back: each
- * flies on to its aim, where the unit stood for it before the warp, and lands on nothing.
+ * flies on to its aim, where the unit stood for it before the warp, and lands on nothing. A
+ * projectile whose row keeps its target through the reset (the Royal Chef's pancake) keeps the
+ * unit, follows it to where the warp takes it and lands on it.
  *
  * <p>The flying warp ({@link #getFlight()} not null, mode InjectedCharacter with a speed) is not
  * started by the runner: the Mega Minion hero's hand-over builds its run with the target it took
@@ -37,7 +39,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * speed, an offset away from a tower, a warp that makes the unit untargetable for a step after it,
  * tags, a singleton instant warp, a next action that waits for it, and the gates. As it starts: an
  * owner other than a character, a flying warp started by the runner, which no injected target
- * reaches, and a projectile aimed at the unit whose row keeps its target through the reset.
+ * reaches, and a projectile aimed at the unit whose row keeps its target through the reset with
+ * damage on its way, which no shipped row has.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -47,12 +50,14 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " and reference cleared, the projectiles aimed at the unit dropped. Held by the"
             + " reference battles ability_boss_bandit and card_BossBandit_until_stop and, for the"
             + " dropped arrow, ability_hero_elite_archer. The flying warp's start, steps and"
-            + " arrival, held by ability_hero_mega_minion_vs_musketeer. Not modelled: the two"
+            + " arrival, held by ability_hero_mega_minion_vs_musketeer. A projectile whose row"
+            + " keeps its target through the reset follows the unit and lands on it, held by"
+            + " megaminion-return-pancake-v1. Not modelled: the two"
             + " effects. Refused: another mode, a relative speed, an instant injected warp, the"
             + " tower offset, the untargetable step, tags, a singleton instant warp, a next"
             + " action that waits, the gates, an owner other than a character, a flying warp the"
             + " runner starts and a projectile aimed at the unit whose row keeps its target"
-            + " through the reset.")
+            + " through the reset with damage on its way.")
 public final class WarpCharacter extends RowAction {
 
   /**

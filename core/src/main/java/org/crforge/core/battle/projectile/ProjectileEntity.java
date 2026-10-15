@@ -1359,6 +1359,16 @@ public class ProjectileEntity extends BattleEntity
     pendingRegistered = false;
   }
 
+  /**
+   * The damage the projectile has registered on its target as pending, which its arrival hands
+   * back: 0 when none is registered or it has no target.
+   *
+   * @return its registered part of the target's pending damage
+   */
+  public int registeredPendingAmount() {
+    return pendingRegistered && target != null ? pendingAmount() : 0;
+  }
+
   /** The release's hand-back: only while the damage is registered and the target is still there. */
   private void releasePending() {
     if (pendingRegistered && target != null) {

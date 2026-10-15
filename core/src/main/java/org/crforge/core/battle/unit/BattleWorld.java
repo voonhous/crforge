@@ -6889,8 +6889,13 @@ public class BattleWorld implements HolderPasses {
    * reset hook, the same as entering a pathfinding state. The damage on its way to the unit is set
    * to 0, then every projectile aimed at it whose row allows it loses it as its target, handing
    * nothing back; each flies on to its aim, where the unit last stood for it, and lands on nothing.
-   * A projectile aimed at the unit whose row keeps its target through the reset, which would hand
-   * its damage back from the emptied amount on its arrival, is refused: no reference holds it.
+   *
+   * <p>A projectile aimed at the unit whose row keeps its target through the reset
+   * (AllowResetTarget cleared) is left alone: it keeps the unit as its target, goes on re-aiming at
+   * it wherever the warp takes it, and lands on it, its arrival handing back its own part of the
+   * emptied amount. The rows that keep their target deal no damage, so that part is 0 and the
+   * hand-back changes nothing. One with damage on its way, whose hand-back from the emptied amount
+   * no reference holds, is refused.
    *
    * @param unit the unit
    * @param action the warp row's name
@@ -6899,14 +6904,16 @@ public class BattleWorld implements HolderPasses {
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof ProjectileEntity p
           && p.getTarget() == unit
-          && !p.getData().allowResetTarget()) {
+          && !p.getData().allowResetTarget()
+          && p.registeredPendingAmount() != 0) {
         throw new UnsupportedOperationException(
             action
                 + " warps "
                 + unit.name()
                 + " with "
                 + p.name()
-                + " aimed at it, whose row keeps its target through the reset, not modelled");
+                + " aimed at it, whose row keeps its target through the reset with damage on its"
+                + " way, not modelled");
       }
     }
     unit.getView().setPendingDamageAmount(0);
