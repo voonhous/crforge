@@ -4,13 +4,13 @@
   "to_the_end": 99.7,
   "ticks_agreed": 99.8,
   "outcomes": {
-    "diagnostic_match": 9976,
-    "mismatch": 16,
+    "diagnostic_match": 9979,
+    "mismatch": 13,
     "unsupported": 8
   },
   "first_failures": {
-    "mismatch $.entities[].hp": 6,
     "mismatch $.entities[].x": 5,
+    "mismatch $.entities[].hp": 3,
     "mismatch $.entities[].state": 3,
     "mismatch $.entities.length": 1,
     "mismatch $.entities[].side": 1,
@@ -24,5 +24,5 @@
     "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "a242f04dd37c3db94bff2f89036ec9354449fea4"
+  "commit": "54cd14b6c5b48b212731e42badde81ad0f7249c8"
 }
