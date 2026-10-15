@@ -5432,12 +5432,13 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The death slot: what a dying object's row does as it dies, in order - its starting buff taken
-   * off; its ManaOnDeath paid to its own side's king; its area effect at its point, for its side
-   * and at its level, a clone's for a dying clone; what its buffs leave; what the object switches
-   * off; its death damage; its death spawn; its death projectiles. The switches come after the
-   * buffs: a child a buff leaves is visited as it is made, and finds the dying object still moving.
-   * A death whose row sets a column of the slot the battle does not model is refused, and so is the
-   * death of one whose area object is still in the battle, which would end it.
+   * off; its ManaOnDeath paid to its own side's king; its area effect at its point (kept the
+   * creation's inset inside the arena), for its side and at its level, a clone's for a dying clone;
+   * what its buffs leave; what the object switches off; its death damage; its death spawn; its
+   * death projectiles. The switches come after the buffs: a child a buff leaves is visited as it is
+   * made, and finds the dying object still moving. A death whose row sets a column of the slot the
+   * battle does not model is refused, and so is the death of one whose area object is still in the
+   * battle, which would end it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -5468,11 +5469,13 @@ public class BattleWorld implements HolderPasses {
       }
     }
     if (data.deathAreaEffect() != null) {
+      // It is created as every game object is, its point kept the creation's inset inside each
+      // edge of the arena: a unit pushed onto the edge leaves its area effect the inset inside it.
       AreaEffectEntity deathArea =
           createAreaEffect(
               data.deathAreaEffect(),
-              dying.getView().getX(),
-              dying.getView().getY(),
+              inset(dying.getView().getX(), tileMap.width()),
+              inset(dying.getView().getY(), tileMap.height()),
               dying.side(),
               dying.getPackedLevel(),
               null,

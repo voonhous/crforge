@@ -618,6 +618,8 @@
   "queued-kill-reduction-v1/queued_kill_monk_b": {"outcome": "diagnostic_match"},
   "queued-kill-reduction-v1/queued_kill_monk_c": {"outcome": "diagnostic_match"},
   "queued-kill-reduction-v1/queued_kill_monk_control": {"outcome": "diagnostic_match"},
+  "ragebarbarian-edge-death-v1/ragebarb_edge_death_t177": {"outcome": "diagnostic_match"},
+  "ragebarbarian-edge-death-v1/ragebarb_inside_death_t172": {"outcome": "diagnostic_match"},
   "ragebarbarian-ghost-v2/evo_ragebarbarian_ghost_walks_out": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0001": {"outcome": "diagnostic_match"},
   "random-battles-16-v1/random_battle16_s0002": {"outcome": "diagnostic_match"},
