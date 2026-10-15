@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
  * group, and the last arrow's row leaves DeflectGroup empty, so a deflection turns the group around
  * as one: only the first arrow, the one that deals the damage, is deflected; its deflection sends
  * every arrow of the volley still flying back at the Princess for the Monk's side, the first one
- * turned twice - once with the group, once on its own.
+ * turned twice - once with the group, once on its own. A Monk of the Princess's side then deflects
+ * the volley again: the first arrow counts a third deflection with the group, past the most a
+ * projectile takes, so its flight ends, and the rest are turned back at the first Monk.
  */
 class PrincessDeflectTest {
 
@@ -48,6 +50,14 @@ class PrincessDeflectTest {
 
   /** How far along the length the Princess stands from the Monk, within her range. */
   private static final int GAP = 6000;
+
+  /**
+   * How far along the length the Princess stands from the first Monk when a second one guards her.
+   */
+  private static final int FAR_GAP = 8000;
+
+  /** How far in front of the Princess her own Monk stands, on the volley's way back. */
+  private static final int GUARD_GAP = 2000;
 
   /** The area effect the Monk's ability spawns as it activates: its Deflect. */
   private static final String DEFLECT =
@@ -153,6 +163,138 @@ class PrincessDeflectTest {
     assertThat(monk.getHitPoints().getHitPoints() + monk.getHitPoints().getShield())
         .as("the Monk takes the first arrow's damage")
         .isLessThan(monkBefore);
+  }
+
+  @Test
+  @DisplayName(
+      "a second deflection of the turned volley ends its first arrow's flight and turns the rest")
+  void volleyDeflectedAgain() {
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, true);
+    BattleWorld world = match.getWorld();
+    List<Deflection> deflections = new ArrayList<>();
+    List<ProjectileEntity> launched = new ArrayList<>();
+    world.addObserver(
+        new WorldObserver() {
+          @Override
+          public void projectileLaunched(int tick, ProjectileEntity projectile) {
+            launched.add(projectile);
+          }
+
+          @Override
+          public void projectileDeflected(
+              int tick,
+              AreaEffectEntity deflector,
+              ProjectileEntity projectile,
+              WorldEntity parent,
+              WorldEntity source) {
+            deflections.add(new Deflection(tick, projectile, source));
+          }
+        });
+
+    // A Monk of each side, held still: the first in front of the Princess's aim, the second of her
+    // own side between her and the first, where the volley turned around flies back past it.
+    CharacterEntity monk =
+        match.deploy(0, records.unit("Monk"), LEVEL, MONK_SIDE, MONK_X, MONK_Y, "monk");
+    CharacterEntity guard =
+        match.deploy(
+            0,
+            records.unit("Monk"),
+            LEVEL,
+            SHOOTER_SIDE,
+            MONK_X,
+            MONK_Y + FAR_GAP - GUARD_GAP,
+            "guard");
+    int steps = 0;
+    while (deploying(monk) || deploying(guard)) {
+      match.getBattle().step();
+      assertThat(++steps).as("the Monks deploy").isLessThan(TICKS);
+    }
+    monk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    guard.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    monk.requestAbility();
+    guard.requestAbility();
+    while (!deflectAlive(world, monk) || !deflectAlive(world, guard)) {
+      match.getBattle().step();
+      assertThat(++steps).as("both Monks cast their Deflect").isLessThan(TICKS);
+    }
+
+    // The Princess, held still behind the second Monk, fires her volley at the first.
+    int now = match.getBattle().getTick() + 1;
+    CharacterEntity princess =
+        match.deploy(
+            now,
+            records.unit("Princess"),
+            LEVEL,
+            SHOOTER_SIDE,
+            MONK_X,
+            MONK_Y + FAR_GAP,
+            "princess");
+    match.getBattle().step();
+    princess.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    List<ProjectileEntity> volley = new ArrayList<>();
+    while (volley.isEmpty()) {
+      match.getBattle().step();
+      assertThat(++steps).as("the Princess fires").isLessThan(TICKS);
+      launched.stream().filter(p -> p.getRoot() == princess).forEach(volley::add);
+    }
+    ProjectileEntity first = volley.get(0);
+    assertThat(volley).as("a volley of several arrows").hasSizeGreaterThan(1);
+
+    // The first Monk turns the volley around as one; it flies back into the second Monk's Deflect.
+    int guardBefore = guard.getHitPoints().getHitPoints() + guard.getHitPoints().getShield();
+    while (deflections.size() < 2) {
+      match.getBattle().step();
+      assertThat(++steps).as("the volley is deflected twice").isLessThan(TICKS);
+    }
+    assertThat(deflectAlive(world, monk)).as("the first Deflect still stands").isTrue();
+    assertThat(deflections.get(0).projectile()).isSameAs(first);
+    assertThat(deflections.get(0).source())
+        .as("first sent back at the Princess")
+        .isSameAs(princess);
+    Deflection again = deflections.get(1);
+    assertThat(again.projectile()).as("the first arrow is deflected again").isSameAs(first);
+    assertThat(again.source()).as("sent back at the first Monk").isSameAs(monk);
+
+    // The first arrow counted two deflections at the first turn; turned once more with the group,
+    // it counts three, past the most a projectile takes (MAX_DEFLECTION_TIMES, 2), and its flight
+    // ends: it is not turned on its own after. The others are turned around again, for the second
+    // Monk's side, at the first Monk, and fly on.
+    assertThat(first.getDeflections()).as("turned once more, with the group").isEqualTo(3);
+    assertThat(first.isReleased())
+        .as("the first arrow's flight ends past the most")
+        .isEqualTo(3 > records.globalNumber("MAX_DEFLECTION_TIMES"));
+    List<ProjectileEntity> flying =
+        volley.stream().filter(p -> p != first && !p.isReleased()).toList();
+    assertThat(flying).as("the rest of the volley flies on").isNotEmpty();
+    for (ProjectileEntity arrow : flying) {
+      assertThat(arrow.side()).as("turned for the second Monk's side").isEqualTo(SHOOTER_SIDE);
+      assertThat(arrow.getTarget()).as("sent at the first Monk").isSameAs(monk);
+      assertThat(arrow.getDeflections()).as("turned twice in all").isEqualTo(2);
+    }
+
+    // The second Monk, which the group did not list, takes the first arrow's damage at the drain.
+    assertThat(guard.getHitPoints().getHitPoints() + guard.getHitPoints().getShield())
+        .as("the second Monk takes the first arrow's damage")
+        .isLessThan(guardBefore);
+  }
+
+  private static boolean deploying(CharacterEntity unit) {
+    return unit.getView().getState() == GridEntityState.DEPLOYING
+        || unit.getView().getState() == GridEntityState.WAITING_TO_DEPLOY
+        || unit.getId() == 0;
+  }
+
+  private static boolean deflectAlive(BattleWorld world, CharacterEntity parent) {
+    for (BattleEntity entity : world.getHolder().entities()) {
+      if (entity instanceof AreaEffectEntity area
+          && area.getData().name().equals(DEFLECT)
+          && area.getFollow() == parent) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static boolean deflectAlive(BattleWorld world) {

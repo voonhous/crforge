@@ -4834,6 +4834,14 @@ public class BattleWorld implements HolderPasses {
    * parent its damage once, by its first arrow turned or landed on it, and its arrows turned after
    * pass the parent over, as its arrows landing after do.
    *
+   * <p>Such a group is deflected again the same way, by an area effect of the other side, its first
+   * still in the battle the one deflected: the first, which counts two deflections from the turn
+   * before, counts a third with the group, past the most a projectile takes (MAX_DEFLECTION_TIMES),
+   * so its flight ends and it is not turned on its own after; the others, one deflection each
+   * before, are turned again and fly on, sent at the first one's root, the parent of the turn
+   * before. The group lists only the parents it has turned at, so a new parent takes the first
+   * one's damage.
+   *
    * <p>A projectile of a volley's group not turned around as one, as each of the Hunter's pellets,
    * is deflected on its own, whichever of the group it is, and only it is turned. The group's list
    * holds for it all the same: the first of the group a deflection reaches deals the parent its
@@ -4851,15 +4859,14 @@ public class BattleWorld implements HolderPasses {
    * parent's side, and its flight is ended: it takes no further step and leaves at the next
    * cleanup, without an impact on its target and without its action on reaching its target.
    *
-   * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, a projectile
-   * of a group turned around as one deflected before, whose count no recording holds, an area
-   * effect that follows nothing, a projectile without a root owner that is spell-like - a bomb
-   * whose area effect has left - or has an action on reaching its target, which no recording holds;
-   * a homing shot a king tower fired that has lost its target, which searches for the nearest enemy
-   * crown tower instead, and one carrying copies that change its damage; a projectile the search
-   * would send at a king tower, which no recording holds; a projectile an area effect launched that
-   * was not dropped onto it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES)
-   * turns it around all the same and then ends its flight.
+   * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
+   * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
+   * effect has left - or has an action on reaching its target, which no recording holds; a homing
+   * shot a king tower fired that has lost its target, which searches for the nearest enemy crown
+   * tower instead, and one carrying copies that change its damage; a projectile the search would
+   * send at a king tower, which no recording holds; a projectile an area effect launched that was
+   * not dropped onto it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns
+   * it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -4875,16 +4882,6 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     refuseDeflection(deflector, projectile);
-    // Its deflection turns it twice, so a second one would meet a count no recording holds.
-    if (asOne && projectile.getDeflections() >= 1) {
-      throw new UnsupportedOperationException(
-          deflector.name()
-              + " deflects "
-              + projectile.name()
-              + " ("
-              + projectile.getData().name()
-              + ") once more, its volley turned around as one before, which is not modelled");
-    }
     boolean spellLike = spellLike(projectile.getData());
     WorldEntity source = projectile.getRoot();
     // A bomb dropped onto its area effect has that area effect as its root.
