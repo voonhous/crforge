@@ -8894,8 +8894,10 @@ public class BattleWorld implements HolderPasses {
   /**
    * Makes a target indicator attack's signal: the area effect of the row at the target's point, for
    * the unit's side and at its level, re-based on the area effect's own rarity, the unit kept as
-   * its parent and following nothing, handed to the holder with the unit's id as its maker. It is
-   * admitted at the tick's closing cleanup and first updates on the next tick.
+   * its parent and following nothing, handed to the holder with the unit's id filed beside it. It
+   * is admitted at the tick's closing cleanup and first updates on the next tick, while the unit is
+   * still listed and not removable then; a unit that leaves in that cleanup, killed in the tick the
+   * signal was made, has its signal let go by the fold instead, never admitted, its id spent.
    *
    * @param unit the unit running the attack
    * @param row the area effect's row
@@ -8916,7 +8918,7 @@ public class BattleWorld implements HolderPasses {
             unit.name(),
             unit,
             null);
-    signal.setCreator(unit.getId());
+    holder.requireListed(signal, unit.getId());
     return signal;
   }
 
