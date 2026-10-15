@@ -17,8 +17,13 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.move.ContactRule;
+import org.crforge.core.pathfinding.target.TargetView;
+import org.crforge.core.pathfinding.target.TargetingQueries;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -399,6 +404,129 @@ class RiderTest {
       snared = knight.getBuffs().carries("BolaSnare");
     }
     assertThat(snared).isTrue();
+  }
+
+  /** A battle with a Ram Rider's rider and the red Knight it throws its bolas at. */
+  private record RiderAndKnight(
+      Standard1v1Battle match, CharacterEntity rider, CharacterEntity knight) {}
+
+  /**
+   * A Ram Rider played for the bottom side on tick 0 and a red Knight deployed ahead of it on tick
+   * 41, after 41 steps: the rider takes the Knight and throws its bolas at it.
+   */
+  private static RiderAndKnight ramRiderFacingAKnight() {
+    Standard1v1Battle match = new Standard1v1Battle(tables);
+    match.play(0, records.card("RamRider"), 11, 0, 3500, 10000, "RamRider");
+    for (int tick = 0; tick <= 40; tick++) {
+      match.getBattle().step();
+    }
+    CharacterEntity rider = match.getPlays().get(0).units().get(0).riders().get(0);
+    CharacterEntity knight = match.deploy(41, records.unit("Knight"), 11, 1, 3500, 16000);
+    return new RiderAndKnight(match, rider, knight);
+  }
+
+  /**
+   * The steps {@link #ramRiderFacingAKnight} takes from tick 41 until the rider's first projectile
+   * lands.
+   */
+  private static int stepsToTheFirstBola() {
+    RiderAndKnight scene = ramRiderFacingAKnight();
+    Standard1v1Battle match = scene.match();
+    List<Integer> impacts = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileImpacted(
+                  int tick,
+                  ProjectileEntity projectile,
+                  WorldEntity target,
+                  int damage,
+                  DamageResult result) {
+                if (projectile.getOwner() == scene.rider()) {
+                  impacts.add(tick);
+                }
+              }
+            });
+    int steps = 0;
+    while (impacts.isEmpty() && steps < 200) {
+      match.getBattle().step();
+      steps++;
+    }
+    assertThat(impacts).as("a bola lands within 200 steps").isNotEmpty();
+    return steps;
+  }
+
+  @Test
+  @DisplayName(
+      "a bola landing on a target another hit of the same drain killed keeps the rider's"
+          + " reference, so the removal counts the attack down: the rider holds its attack")
+  void aBolaOnAnAlreadyDeadTargetLeavesTheReference() {
+    int steps = stepsToTheFirstBola();
+    RiderAndKnight scene = ramRiderFacingAKnight();
+    Standard1v1Battle match = scene.match();
+    CharacterEntity rider = scene.rider();
+    CharacterEntity knight = scene.knight();
+    List<Integer> hitPointsAtImpact = new ArrayList<>();
+    List<WorldEntity> drops = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileImpacted(
+                  int tick,
+                  ProjectileEntity projectile,
+                  WorldEntity target,
+                  int damage,
+                  DamageResult result) {
+                if (projectile.getOwner() == rider) {
+                  hitPointsAtImpact.add(target.getHitPoints().getHitPoints());
+                }
+              }
+
+              @Override
+              public void referenceDroppedOnHit(
+                  int tick,
+                  CharacterEntity unit,
+                  WorldEntity hit,
+                  ProjectileEntity via,
+                  boolean kills,
+                  boolean active,
+                  TargetView dropped) {
+                drops.add(hit);
+              }
+            });
+    for (int step = 1; step < steps; step++) {
+      match.getBattle().step();
+    }
+    assertThat(rider.getTargeting().getReference()).isSameAs(knight.getTargetView());
+
+    // Killed between two steps, the Knight dies at the next step's damage drain, before the bola
+    // landing in that step reaches it: the bola lands on a Knight already at 0 hit points.
+    match.getWorld().kill(knight, null);
+    match.getBattle().step();
+    assertThat(hitPointsAtImpact).containsExactly(0);
+    assertThat(drops).as("no drop for a hit on a target already dead").isEmpty();
+
+    // The Knight leaves in the cleanup after that drain, still the rider's reference: the removal
+    // starts the target-lost countdown, under which the attack runs on for the attack finish time
+    // before the rider moves on. Without the skip the bola dropped the reference first, the
+    // removal found nothing to count down, and the rider moved on at once.
+    int finishSteps =
+        rider.getTargeting().getGlobals().attackFinishTimeMs() / TargetingQueries.TICK_MS;
+    assertThat(finishSteps).isPositive();
+    List<Integer> states = new ArrayList<>();
+    for (int step = 0; step < finishSteps + 3; step++) {
+      match.getBattle().step();
+      states.add(rider.getView().getState());
+    }
+    List<Integer> expected = new ArrayList<>();
+    for (int step = 0; step < finishSteps + 3; step++) {
+      expected.add(step < finishSteps ? GridEntityState.ATTACKING : GridEntityState.MOVING);
+    }
+    assertThat(states).isEqualTo(expected);
   }
 
   @Test

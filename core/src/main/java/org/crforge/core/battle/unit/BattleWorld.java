@@ -3239,11 +3239,22 @@ public class BattleWorld implements HolderPasses {
    * shooter is in the battle and a character. Every hit that reaches such a row is told to the
    * observers.
    *
+   * <p>A hit on a target already below 1 hit point - killed earlier in the same drain by another
+   * hit - lands, but the subtraction leaves before its tail, so the attacker's hook is not called
+   * and nothing is dropped. The rider then still holds the dead target when the cleanup removes it,
+   * and the removal notice starts its target-lost countdown as for any attacker, unless the rider
+   * kept the target only for the lethal damage of its own shot in flight.
+   *
    * @param attacker what landed the hit: an arena entity, a projectile, or anything else
    * @param hit the entity it hit
    * @param kills whether the hit killed it
    */
   private void referenceDrop(BattleEntity attacker, WorldEntity hit, boolean kills) {
+    // A hit that lands without killing leaves the target below 1 hit point only when it was there
+    // already: the subtraction takes nothing from such a target and skips the attacker's hook.
+    if (!kills && hitPointsOf(hit) < 1) {
+      return;
+    }
     ProjectileEntity via = attacker instanceof ProjectileEntity projectile ? projectile : null;
     BattleEntity shooter = via != null ? via.getOwner() : attacker;
     if (!(shooter instanceof CharacterEntity unit)) {
