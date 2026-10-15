@@ -31,6 +31,7 @@ import org.crforge.core.battle.TargetLocks;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
+import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.Berserk;
 import org.crforge.core.battle.action.BossBanditAbility;
@@ -9227,15 +9228,17 @@ public class BattleWorld implements HolderPasses {
    * any spawn: its own row's starting action is scheduled then. The unit's runs stay the unit's. It
    * takes a copy of every buff the unit carries, the Clone's own buff, just put on the unit, among
    * them, with the time each has left, and none of their start actions runs; then the copies of a
-   * row that is not cloned are removed from it, their remove actions run on the clone. Then the two
-   * move apart: the clone back toward its own side, and the unit, set up as a clone too unless it
-   * dashes, forward. Last, for a unit that carries riders, each rider in their order is cloned the
-   * same way, through this creator - its clone made on the rider's point, the rider set up as a
-   * clone and moving apart too - and its clone attached to the unit's clone on the rider's angle.
-   * The clone of a unit that carries riders never enters the deploying state, so it makes no riders
-   * of its own. A unit still deploying is set up as a clone with its countdown running, as its
-   * clone is: the countdown runs down in the setup, and each move apart that reaches its duration
-   * holds its unit still until the countdown has ended, then resumes it.
+   * row that is not cloned are removed from it, their remove actions run on the clone. Then each
+   * run the unit lists is told of the clone, and an air-to-ground run starts its row again on the
+   * clone, the unit its cause, which copies the unit's run (see {@link WorldEntity#airToGround}).
+   * Then the two move apart: the clone back toward its own side, and the unit, set up as a clone
+   * too unless it dashes, forward. Last, for a unit that carries riders, each rider in their order
+   * is cloned the same way, through this creator - its clone made on the rider's point, the rider
+   * set up as a clone and moving apart too - and its clone attached to the unit's clone on the
+   * rider's angle. The clone of a unit that carries riders never enters the deploying state, so it
+   * makes no riders of its own. A unit still deploying is set up as a clone with its countdown
+   * running, as its clone is: the countdown runs down in the setup, and each move apart that
+   * reaches its duration holds its unit still until the countdown has ended, then resumes it.
    *
    * @param original the unit
    * @param instigator the Clone's area effect
@@ -9279,6 +9282,14 @@ public class BattleWorld implements HolderPasses {
       observer.cloned(tick, original, clone, instigator, visits);
     }
     clone.getBuffs().copyFrom(original.getBuffs());
+    // The creator tells each run the unit lists of the clone, in their order; only an air-to-ground
+    // run acts on it: it schedules its row on the clone with the unit as the cause, whose start
+    // then copies the unit's run.
+    for (ActionInstance run : List.copyOf(original.actionHolder().running())) {
+      if (run.getAction() instanceof AirToGround hold) {
+        clone.actionHolder().schedule(hold, ActionHolder.OWN_DELAY, false, original.actionHolder());
+      }
+    }
     clone.startCloneMove(fromX, fromY, action);
     // A unit that dashes, or is in its ability's follow-up, keeps its state and does not move.
     int state = at.getState();
