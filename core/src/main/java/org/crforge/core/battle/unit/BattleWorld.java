@@ -4679,6 +4679,11 @@ public class BattleWorld implements HolderPasses {
    * from where it stands back by its flight from its start to its aim, so it rolls the way it came
    * by the length it was thrown.
    *
+   * <p>A projectile whose root owner is a rider, as a Spear Goblin on a Goblin Giant or the Ram
+   * Rider on her Ram, is sent back at the carrier the rider sits on instead: the carrier is its new
+   * target and takes the deflected share of its damage. The gates before the redirect still read
+   * the rider.
+   *
    * <p>A projectile a crown tower fired at the parent has the tower as its root and keeps its
    * target: it is sent back at the tower, a king tower as a princess tower, as from any root.
    *
@@ -4892,9 +4897,16 @@ public class BattleWorld implements HolderPasses {
     } else if (source == null) {
       turn = p -> p.deflectAt(parent, areaSource.getX(), areaSource.getY());
     } else {
-      turn = p -> p.deflect(parent, source);
+      // A root owner that rides a carrier, as the Spear Goblins on a Goblin Giant or the Ram Rider
+      // on her Ram, is swapped for the carrier: the shot is sent back at the carrier, its new
+      // target, and registers its damage on it.
+      WorldEntity backAt =
+          source instanceof CharacterEntity rider && rider.getParent() != null
+              ? rider.getParent()
+              : source;
+      turn = p -> p.deflect(parent, backAt);
       // A hooking projectile is not sent back: the redirect ends its flight where it is.
-      sentAt = projectile.getData().dragBackSpeed() >= 1 ? null : source;
+      sentAt = projectile.getData().dragBackSpeed() >= 1 ? null : backAt;
     }
     // A group turned around as one: every projectile of it still in the battle, the first launched
     // first - the deflected one among them - and then the deflected one once more.
