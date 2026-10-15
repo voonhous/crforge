@@ -347,8 +347,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * What a pushback request asks of the character: whether its row ignores pushback, whether a buff
-   * it carries does, and the dash wind-up its targeting component runs, which a pushback breaks
-   * off.
+   * it carries does, whether it is hidden, and the dash wind-up its targeting component runs, which
+   * a pushback breaks off.
    */
   private final PushbackQueries pushbackQueries =
       new PushbackQueries() {
@@ -360,6 +360,16 @@ public class CharacterEntity extends WorldEntity {
         @Override
         public boolean buffRefusesPushback() {
           return getBuffs().ignoresPushBack();
+        }
+
+        /**
+         * The character's own hidden test: a request that does not reach hidden units refuses one
+         * that waits its turn to deploy, tunnels, routes underground or hides, whatever gates the
+         * caller lifts.
+         */
+        @Override
+        public boolean hidden() {
+          return CharacterEntity.this.hidden();
         }
 
         /** The running wind-up, read only while the targeting component is on; else none. */

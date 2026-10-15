@@ -20,7 +20,7 @@ public interface PushbackQueries {
     return false;
   }
 
-  /** True while the entity is hidden. Nothing hides yet: false. */
+  /** True while the entity is hidden; false for an entity that never hides. */
   default boolean hidden() {
     return false;
   }
