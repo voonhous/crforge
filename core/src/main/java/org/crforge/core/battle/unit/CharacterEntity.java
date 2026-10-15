@@ -3368,7 +3368,22 @@ public class CharacterEntity extends WorldEntity {
         this::kamikazeDrain,
         this::deployEndVisit,
         this::hideVisit,
-        this::abilityFired);
+        this::abilityFired,
+        this::landingEnd);
+  }
+
+  /**
+   * The end of a dash's landing hold, before the moving state is asked for: with the targeting
+   * component on, the attack is reset and the wind-up reloaded. The component is read as the gate
+   * of the visit before left it, so a freeze or stun that lands on the hold's last tick, which the
+   * moving state's gate then switches the component off for, still sees the wind-up reloaded; the
+   * load runs down again only once the component is back on.
+   */
+  private void landingEnd() {
+    if (isActive(TARGETING_SLOT)) {
+      unit.targeting().clearAttack();
+      unit.targeting().setLoadTimerMs(getData().loadTimeMs());
+    }
   }
 
   /**
@@ -3645,12 +3660,6 @@ public class CharacterEntity extends WorldEntity {
     }
     if (calls.contains("spawner")) {
       spawner();
-    }
-    // The landing hold's end resets the attack and reloads the wind-up, with the targeting
-    // component on, as the moving state is asked for.
-    if (calls.contains("dash_landed") && isActive(TARGETING_SLOT)) {
-      unit.targeting().clearAttack();
-      unit.targeting().setLoadTimerMs(getData().loadTimeMs());
     }
     // The visit's tail call: the combat gate.
     if (!calls.isEmpty() && calls.get(calls.size() - 1).equals("visit_tail")) {
