@@ -1,17 +1,17 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 99.0,
-  "ticks_agreed": 99.4,
+  "to_the_end": 99.1,
+  "ticks_agreed": 99.5,
   "outcomes": {
-    "diagnostic_match": 9908,
-    "mismatch": 69,
+    "diagnostic_match": 9915,
+    "mismatch": 62,
     "unsupported": 23
   },
   "first_failures": {
     "mismatch $.entities.length": 23,
     "mismatch $.entities[].hp": 20,
-    "mismatch $.entities[].x": 17,
+    "mismatch $.entities[].x": 10,
     "mismatch $.entities[].state": 6,
     "unsupported: a play whose packed item is not the item the simulator builds as it runs": 3,
     "mismatch $.sides[].elixir": 2,
@@ -26,5 +26,5 @@
     "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "40f0faa5b165004ed7747d126ab23ddd3bc6a403"
+  "commit": "69b3b327778ab232122f428363699f745d5ca843"
 }
