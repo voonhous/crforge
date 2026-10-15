@@ -2503,7 +2503,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The side lists' part of a removal: a removed entity leaves every arena entity's default targets
-   * in the same cleanup, after each entity's own notice has run.
+   * in the same cleanup, after each entity's own notice has run, the entities still waiting to be
+   * admitted at that cleanup's fold included.
    */
   @Override
   public void entityRemoved(BattleEntity removed) {
@@ -2520,6 +2521,15 @@ public class BattleWorld implements HolderPasses {
     gone.leave();
     for (WorldEntity entity : known.values()) {
       entity.forget(gone.getView());
+    }
+    // The side lists are one list per side, read by every unit at its selection: a unit handed
+    // over during this tick, which waits for this cleanup's fold and is not known yet, already
+    // learnt this tick's entities at its registration and must lose the leaving one as well, or it
+    // would keep a destroyed princess tower as a default target for the rest of the battle.
+    for (BattleEntity waiting : holder.queued()) {
+      if (waiting instanceof WorldEntity entity && !known.containsKey(entity.getView())) {
+        entity.forget(gone.getView());
+      }
     }
     for (WorldObserver observer : observers) {
       observer.entityRemoved(tick, gone);
