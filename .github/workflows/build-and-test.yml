@@ -200,7 +200,8 @@ jobs:
 
   # Every recorded reference battle of each compatible data version at the locked data commit, each
   # case held to conformance/reference-expectations/<version>.json. A version without recorded
-  # references is skipped. The cases of a version are split across the shards of the matrix.
+  # references is skipped. The cases of a version are split across the shards of the matrix; each
+  # shard builds the tables of its version alone.
   reference:
     needs: lock
     if: needs.lock.outputs.has-game-data == 'true'

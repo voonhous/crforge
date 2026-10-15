@@ -45,8 +45,10 @@ tasks.register<JavaExec>("gameTables") {
 }
 
 // Builds the tables of the data version alone, for a task that reads no other version's (a run of
-// one data version's coverage set, its reference expectations or the tick benchmark): the same
-// program and settings as gameTables, without the compatible versions beside it.
+// one data version's reference battles, coverage set, reference expectations or the tick
+// benchmark): the same program and settings as gameTables, without the compatible versions beside
+// it. The reference battles (:conformance:referenceTest) depend on it through the root build's
+// test settings.
 tasks.register<JavaExec>("dataVersionTables") {
     group = "build"
     description = "Builds the game tables of the data version alone and prints their folder."
