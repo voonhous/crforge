@@ -81,7 +81,7 @@ class ReplayFileTest {
             "  side 0 deck (red, top): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer,"
                 + " Fireball, Arrows",
             "  side 1 deck (blue, bottom): " + String.join(", ", replay.header().decks().get(1)));
-    assertThat(replay.describe(ViewOrientation.STANDARD))
+    assertThat(replay.describe(ViewOrientation.SIDE_0))
         .contains("  side 1 deck (red, top): " + String.join(", ", replay.header().decks().get(1)));
     assertThat(lines)
         .contains(

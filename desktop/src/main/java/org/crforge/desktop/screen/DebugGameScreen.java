@@ -54,7 +54,8 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>V: Switch to the next data version built and start a new Ladder battle on it; a version the
  *       battle core refuses is reported in the messages and the battle stays
  *   <li>F: Not offered here: the view flips in the replay viewer only, since this screen's clicks,
- *       hand panels and number keys play for a side as the arena is drawn standing; logs a note
+ *       hand panels and number keys play for a side as the arena is drawn in the game's view of
+ *       side 0 (side 0 at the bottom, the width mirrored); logs a note
  *   <li>T: Hide or show the text annotations (status column, messages)
  *   <li>1-4: Select a card from the blue player's hand
  *   <li>5-8: Select a card from the red player's hand
@@ -84,7 +85,10 @@ public class DebugGameScreen implements Screen {
   private InputAdapter controls;
   private final Vector3 touchPos = new Vector3();
 
-  /** The view settings: standing, side 0 at the bottom; F does not flip it, T hides annotations. */
+  /**
+   * The view settings: the game's view of side 0, side 0 at the bottom; F does not flip it, T hides
+   * annotations.
+   */
   private final ViewState view = ViewState.ladder();
 
   private BattleSession session;
@@ -178,7 +182,7 @@ public class DebugGameScreen implements Screen {
         if (!view.flip()) {
           log.info(
               "F flips the view in the replay viewer only: this screen's clicks, hand"
-                  + " panels and number keys play for a side as the arena stands");
+                  + " panels and number keys play for a side as the arena is drawn");
         }
       }
       case SIDEBAR -> {
@@ -244,7 +248,8 @@ public class DebugGameScreen implements Screen {
     workspace.unproject(touchPos);
 
     // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT. The view
-    // maps the pixel to the battle's tile, which is the pixel's own on this standing screen.
+    // maps the pixel back to the battle's tile: in the game's view of side 0 this screen draws,
+    // the drawn column counted from the other edge, the row as drawn.
     ViewOrientation orientation = view.getOrientation();
     hoverTileX = orientation.tileColumnAt(touchPos.x);
     hoverTileY = orientation.tileRowAt(touchPos.y);

@@ -91,16 +91,16 @@ class ReplayPlayerTest {
     while (player.step()) {
       // To the replay's end tick
     }
-    // Side 0 played: drawn red at the top in the replay's flipped view, blue standing.
+    // Side 0 played: drawn red at the top in side 1's view, the replay's first, blue in side 0's.
     assertThat(player.getSession().getBattle().getPlays().get(0).side()).isZero();
     BattleSession session = player.getSession();
 
-    assertThat(BattleAdapter.frame(session, ViewOrientation.FLIPPED::sideName).messages())
+    assertThat(BattleAdapter.frame(session, ViewOrientation.SIDE_1::sideName).messages())
         .anyMatch(m -> m.endsWith("] red plays ArcherQueen on tick 220 (cmd0)"))
         .anyMatch(
             m -> m.endsWith("] red taps ArcherQueen's ability on tick 350 (cmd1, unit cmd0_0)"))
         .noneMatch(m -> m.contains("blue"));
-    assertThat(BattleAdapter.frame(session, ViewOrientation.STANDARD::sideName).messages())
+    assertThat(BattleAdapter.frame(session, ViewOrientation.SIDE_0::sideName).messages())
         .anyMatch(m -> m.endsWith("] blue plays ArcherQueen on tick 220 (cmd0)"));
     // The battle is the replay's either way: the view names it, it does not change it.
     assertThat(session.getBattle().getPlays()).hasSize(1);
@@ -170,10 +170,10 @@ class ReplayPlayerTest {
     assertThat(player.finished()).isTrue();
     assertThat(player.getSession().tick()).isEqualTo(400);
     assertThat(player.stopReason()).isEqualTo("the replay's end tick 400");
-    // The battle's own crowns as they stand, the bottom side's first: side 1 in the flipped view.
+    // The battle's own crowns as they stand, the bottom side's first: side 1 in side 1's view.
     LadderMatch match = player.getSession().match();
     assertThat(match.isEnded()).isFalse();
-    assertThat(player.statusLines(ViewOrientation.FLIPPED))
+    assertThat(player.statusLines(ViewOrientation.SIDE_1))
         .contains(
             "tick 400 / 400",
             "commands run 2 / 2",
@@ -260,7 +260,7 @@ class ReplayPlayerTest {
         .startsWith("the battle left the replay, a play whose packed item is not")
         .contains("cmd[1].c.sel.pd=" + item);
     assertThat(player.stopReason()).startsWith("halted on tick 231");
-    assertThat(player.statusLines(ViewOrientation.FLIPPED))
+    assertThat(player.statusLines(ViewOrientation.SIDE_1))
         .contains("recorded result: none in the replay");
   }
 
@@ -278,7 +278,7 @@ class ReplayPlayerTest {
     assertThat(player.step()).isFalse();
     assertThat(player.advance(1f)).isZero();
     assertThat(player.stopReason()).isEqualTo("the replay is refused");
-    assertThat(player.statusLines(ViewOrientation.FLIPPED))
+    assertThat(player.statusLines(ViewOrientation.SIDE_1))
         .containsExactly("replay: replay.json", "refused: see the reasons");
   }
 }

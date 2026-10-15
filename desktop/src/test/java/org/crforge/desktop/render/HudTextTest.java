@@ -45,8 +45,8 @@ class HudTextTest {
   }
 
   @Test
-  @DisplayName("standing, the crowns are side 0's first and side 0 wins as blue")
-  void standing() {
+  @DisplayName("in side 0's view, the crowns are side 0's first and side 0 wins as blue")
+  void sideZerosView() {
     HudText text = HudText.of(frame(true, 0, null), ViewState.ladder(), STATUS);
 
     assertThat(text.crowns()).isEqualTo("crowns 2 - 1");
@@ -54,8 +54,8 @@ class HudTextTest {
   }
 
   @Test
-  @DisplayName("flipped, the crowns are side 1's first and side 0 wins as red")
-  void flipped() {
+  @DisplayName("in side 1's view, the crowns are side 1's first and side 0 wins as red")
+  void sideOnesView() {
     HudText text = HudText.of(frame(true, 0, null), ViewState.replay(), STATUS);
 
     assertThat(text.crowns()).isEqualTo("crowns 1 - 2");

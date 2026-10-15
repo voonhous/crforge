@@ -232,7 +232,7 @@ class ReplayArchiveTest {
     assertThat(replay.name()).isEqualTo("crawl.jsonl.zst line 1");
     assertThat(replay.describe())
         .contains("replay: " + file.toAbsolutePath().normalize() + ", line 1");
-    assertThat(new ReplayPlayer(replay, versions.current()).statusLines(ViewOrientation.FLIPPED))
+    assertThat(new ReplayPlayer(replay, versions.current()).statusLines(ViewOrientation.SIDE_1))
         .contains("replay: crawl.jsonl.zst line 1");
     assertThat(printed())
         .contains(

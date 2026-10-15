@@ -197,7 +197,7 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 
 The number keys only *select* a card; playing always goes through a left click on the arena.
 
-`F` does not flip the Ladder screen: its hand panels, number keys and clicks play for a side by the arena and panels as drawn standing, so the screen keeps side 0 at the bottom in blue.
+The Ladder screen draws the arena as the game shows it to side 0: side 0 at the bottom in blue and the arena's width mirrored, so a play at the battle's x 14500 (a right lane play as side 1 sees it) stands on the left (see [The two game views](#the-two-game-views)). A click plays at the battle's own tile under the mouse, mirrored back. `F` does not flip the Ladder screen: its hand panels, number keys and clicks play for a side by the arena and panels as drawn, so the screen keeps side 0 at the bottom in blue.
 
 `T` collapses the diagnostics sidebar on either screen. Playback controls, the loaded data version, tick, clock, hands, events and stop reason remain visible. Overlay settings are independent of sidebar visibility. Paused, finished, halted and refused sessions have distinct status labels. A refused replay shows scrollable reasons and can be replaced by dropping another replay file onto the window, or by picking another replay from a crawl's list.
 
@@ -260,13 +260,24 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 | `R`           | Restart the replay from tick 0                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                       |
 | `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
-| `F`           | Flip the view: side 1 at the bottom (the default) or side 0 |
+| `F`           | Flip the view: the game's view of side 1 (the default) or of side 0 |
 | `T`           | Hide / show the diagnostics sidebar                     |
 | Left click    | Inspect a unit                                          |
 
 Cards are not selected or played from the viewer: the plays are the replay's own.
 
-A replay opens **flipped**: the arena is mirrored along its length only, as the game's own replay view draws it (a play on the right stays on the right), so the battle's side 1 (`deck1`) stands at the bottom in blue and side 0 (`deck0`) at the top in red. `F` flips it back to side 0 at the bottom and again, and the status column says which (`view: side 1 at bottom (F flips)`). The flip is a view only, made in one place (`org.crforge.desktop.render.ViewOrientation`): the battle's sides, positions and inputs are the replay's either way. Every position goes through it, so the arena's cells and halves, the bodies, bars, labels, target and heading lines, projectiles, area effects and every overlay (`P`, `O`, `D`, `A`, `H`, `G`, `N`) mirror together, and the mouse's tile and cell map back to the battle's own. The side at the bottom is always the one drawn blue and named blue: its hand and elixir take the bottom panel, its crowns are listed first, and the result line and the play notes name the sides by these colours.
+A replay opens in **the game's view of side 1**, as the game shows a replay that neither player is watching (a TV replay): the arena is mirrored along its length only (a play on the right stays on the right), so the battle's side 1 (`deck1`) stands at the bottom in blue and side 0 (`deck0`) at the top in red. `F` flips it to the game's view of side 0, the same view turned half a turn, and back, and the status column says which (`view: side 1 at bottom (F flips)`).
+
+#### The two game views
+
+The game draws the arena in one of two ways, and the visualizer draws only these two (`org.crforge.desktop.render.ViewOrientation`, `SIDE_1` and `SIDE_0`). The battle's coordinates have y grow from side 0 towards side 1; the window draws y growing up.
+
+- **The view of side 1** draws the battle's positions as they are on the game's screen, whose y grows down: side 1 at the bottom, x kept, so against the battle's coordinates only the length is mirrored. The replay viewer opens with it.
+- **The view of side 0** is the view of side 1 turned half a turn about the arena's centre: side 0 at the bottom, as the battle's coordinates have it, and x mirrored across the width, so a play at x 14500 stands on the left. The game shows it when the player watching is side 0. The Ladder screen draws it, and `F` in the replay viewer turns to it.
+
+The game never draws the battle's coordinates as they are with y up (side 0 at the bottom and x kept), nor mirrors the length alone against them.
+
+The view is a view only, made in one place: the battle's sides, positions and inputs are the battle's or the replay's either way. Every position and direction goes through it, so the arena's cells, river, bridges and halves, the bodies, bars, labels, target and heading lines, projectiles, area effects, the placement preview and every overlay (`P`, `O`, `D`, `A`, `H`, `G`, `N`) turn together, and the mouse's tile and cell (for a play, the inspector and the hover) map back to the battle's own. The side at the bottom is always the one drawn blue and named blue: its hand and elixir take the bottom panel, its crowns are listed first, and the result line and the play notes name the sides by these colours.
 
 ### Overlays
 

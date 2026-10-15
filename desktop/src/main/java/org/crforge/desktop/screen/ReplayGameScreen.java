@@ -45,9 +45,10 @@ import org.crforge.desktop.replay.ReplayPlayer;
  *   <li>R: Restart the replay from tick 0
  *   <li>+/-: Speed up/slow down
  *   <li>P, O, D, A, H, G, N: The overlays, as on the debug screen
- *   <li>F: Flip the view. A replay opens flipped, side 1 at the bottom in blue and side 0 at the
- *       top in red; F turns the arena, every overlay and the HUD by 180 degrees back and forth. The
- *       battle's sides are the replay's either way: only the drawing changes.
+ *   <li>F: Flip the view. A replay opens in the game's view of side 1, side 1 at the bottom in blue
+ *       and side 0 at the top in red; F turns the arena, every overlay and the HUD by 180 degrees
+ *       to the game's view of side 0 and back. The battle's sides are the replay's either way: only
+ *       the drawing changes.
  *   <li>T: Hide or show the text annotations (status column, messages)
  *   <li>L: Show or hide the list of a crawl's replays, when the replay is one of them
  *   <li>[ and ]: Open the crawl's previous or next replay
@@ -77,7 +78,7 @@ public class ReplayGameScreen implements Screen {
   private InputAdapter controls;
   private final Vector3 touchPos = new Vector3();
 
-  /** The view settings: flipped at first, F flips them, T hides the annotations. */
+  /** The view settings: side 1's view at first, F flips them, T hides the annotations. */
   private final ViewState view = ViewState.replay();
 
   private int hoverTileX = -1;

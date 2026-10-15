@@ -144,7 +144,7 @@ class ReplayDataTest {
         .isEqualTo(
             "Replay: data named by its capture block (client 16.402.17, captured"
                 + " 2026-10-06T03:47:38Z)");
-    assertThat(new ReplayPlayer(replay, versions.current()).statusLines(ViewOrientation.FLIPPED))
+    assertThat(new ReplayPlayer(replay, versions.current()).statusLines(ViewOrientation.SIDE_1))
         .contains("recorded: client 16.402.17, 2026-10-06T03:47:38Z");
   }
 

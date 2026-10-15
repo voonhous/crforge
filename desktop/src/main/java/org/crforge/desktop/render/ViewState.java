@@ -41,24 +41,25 @@ public final class ViewState {
   }
 
   /**
-   * The replay viewer's settings: flipped, side 1 at the bottom in blue, and {@code F} flips it
-   * back and forth. Annotations shown.
+   * The replay viewer's settings: the game's view of side 1, side 1 at the bottom in blue, as the
+   * game shows a replay neither player is watching, and {@code F} flips it to the game's view of
+   * side 0 and back. Annotations shown.
    */
   public static ViewState replay() {
-    return new ViewState(ViewOrientation.FLIPPED, true);
+    return new ViewState(ViewOrientation.SIDE_1, true);
   }
 
   /**
-   * The Ladder screen's settings: standing, side 0 at the bottom in blue, and {@code F} does not
-   * flip it, since its clicks and keys play for a side by the panel and arena as drawn standing.
-   * Annotations shown.
+   * The Ladder screen's settings: the game's view of side 0, side 0 at the bottom in blue, and
+   * {@code F} does not flip it, since its clicks and keys play for a side by the panel and arena as
+   * drawn in that view. Annotations shown.
    */
   public static ViewState ladder() {
-    return new ViewState(ViewOrientation.STANDARD, false);
+    return new ViewState(ViewOrientation.SIDE_0, false);
   }
 
   /**
-   * Flips the arena, when this screen allows it.
+   * Flips the arena to the game's view of the other side, half a turn, when this screen allows it.
    *
    * @return true when the orientation changed
    */

@@ -53,11 +53,11 @@ class BattleRendererTest {
   }
 
   @Test
-  @DisplayName("flipped, side 0's bodies are red and side 1's are blue")
-  void flippedColours() {
-    assertThat(BattleRenderer.sideColor(0, ViewOrientation.FLIPPED)).isEqualTo(ArenaPalette.RED);
-    assertThat(BattleRenderer.sideColor(1, ViewOrientation.FLIPPED)).isEqualTo(ArenaPalette.BLUE);
-    assertThat(BattleRenderer.sideColor(0, ViewOrientation.STANDARD)).isEqualTo(ArenaPalette.BLUE);
+  @DisplayName("in side 1's view, side 0's bodies are red and side 1's are blue")
+  void sideOnesViewColours() {
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.SIDE_1)).isEqualTo(ArenaPalette.RED);
+    assertThat(BattleRenderer.sideColor(1, ViewOrientation.SIDE_1)).isEqualTo(ArenaPalette.BLUE);
+    assertThat(BattleRenderer.sideColor(0, ViewOrientation.SIDE_0)).isEqualTo(ArenaPalette.BLUE);
 
     BattleFrame frame = BattleAdapter.frame(BattleSession.ladder(GameTables.loadConfigured()));
     for (EntityView tower : frame.entities()) {
@@ -65,10 +65,10 @@ class BattleRendererTest {
         continue;
       }
       boolean sideOne = tower.side() == 1;
-      Color flipped = BattleRenderer.bodyColor(tower, ViewOrientation.FLIPPED);
-      Color standing = BattleRenderer.bodyColor(tower, ViewOrientation.STANDARD);
-      assertThat(flipped).isEqualTo(sideOne ? ArenaPalette.BLUE : ArenaPalette.RED);
-      assertThat(standing).isEqualTo(sideOne ? ArenaPalette.RED : ArenaPalette.BLUE);
+      Color inSideOnesView = BattleRenderer.bodyColor(tower, ViewOrientation.SIDE_1);
+      Color inSideZerosView = BattleRenderer.bodyColor(tower, ViewOrientation.SIDE_0);
+      assertThat(inSideOnesView).isEqualTo(sideOne ? ArenaPalette.BLUE : ArenaPalette.RED);
+      assertThat(inSideZerosView).isEqualTo(sideOne ? ArenaPalette.RED : ArenaPalette.BLUE);
     }
   }
 
