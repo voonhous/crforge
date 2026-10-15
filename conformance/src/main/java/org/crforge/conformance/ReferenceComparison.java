@@ -6,7 +6,10 @@
 
 package org.crforge.conformance;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -23,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +48,9 @@ import java.util.TreeSet;
  * <p>Both sides are written the same way (one line per observation, keys sorted, no spaces), so an
  * agreeing observation is usually the same bytes on both sides: such a line is read once and is
  * equal without a field walk, and no observation is kept as a value once its checks have what they
- * need. The outcome is the one a walk of every value would give.
+ * need. The checks of a line read only its {@code tick} and {@code stopped}, not the whole value. A
+ * run's digest the caller already has is not computed again, and a reference trace of the same
+ * bytes as the run's has the run's digest. The outcome is the one a walk of every value would give.
  *
  * <p>The outcome is {@code diagnostic_match} (every observation equal: agreement with a recorded
  * reference battle, not a release pass), {@code mismatch} (with the first divergent observation,
@@ -67,6 +74,20 @@ public final class ReferenceComparison {
   /** A line is one JSON value and nothing after it. */
   private static final ObjectMapper MAPPER =
       new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+
+  /**
+   * Reads one value inside a line as {@link #MAPPER} reads it in a whole line, the same parser and
+   * node settings but for the check of what follows the value, which the line's own read makes.
+   */
+  private static final ObjectMapper VALUE_MAPPER = new ObjectMapper();
+
+  /**
+   * The longest string value {@link #MAPPER} reads. A read of a line's whole value refuses a longer
+   * string, which a read of only the line's {@code tick} and {@code stopped} does not see: a line
+   * of more characters is read whole.
+   */
+  private static final int MAX_STRING_LENGTH =
+      MAPPER.getFactory().streamReadConstraints().getMaxStringLength();
 
   private static final JsonNodeFactory JSON = JsonNodeFactory.instance;
 
@@ -128,6 +149,33 @@ public final class ReferenceComparison {
    */
   public static Result compare(
       JsonNode referenceManifest, byte[] referenceTrace, JsonNode runManifest, byte[] runTrace) {
+    return compare(referenceManifest, referenceTrace, runManifest, runTrace, sha256(runTrace));
+  }
+
+  /**
+   * Compares a run with a reference, the run's trace digest already known: a run of this process
+   * has it from writing the trace, so it is not computed again.
+   *
+   * <p>A reference trace of the same bytes as the run's, which is every agreeing run, has the same
+   * digest: it is checked against that digest without hashing the reference.
+   *
+   * @param referenceManifest the reference's fields, as {@link #compare(JsonNode, byte[], JsonNode,
+   *     byte[])} names them
+   * @param referenceTrace the reference trace's bytes
+   * @param runManifest the run's manifest, with the same fields
+   * @param runTrace the run's trace bytes
+   * @param runTraceSha256 the SHA-256 of {@code runTrace}, in lower-case hex, computed from those
+   *     bytes
+   * @return the result
+   */
+  public static Result compare(
+      JsonNode referenceManifest,
+      byte[] referenceTrace,
+      JsonNode runManifest,
+      byte[] runTrace,
+      String runTraceSha256) {
+    String referenceTraceSha256 =
+        Arrays.equals(referenceTrace, runTrace) ? runTraceSha256 : sha256(referenceTrace);
     Lines reference = new Lines(referenceTrace);
     Lines run = new Lines(runTrace);
     int common = Math.min(reference.count(), run.count());
@@ -164,19 +212,19 @@ public final class ReferenceComparison {
       read(
           "the reference",
           referenceManifest,
-          referenceTrace,
+          referenceTraceSha256,
           reference,
           referenceRows,
           i -> {
             if (i < common && same[i]) {
               if (runRows[i] == null) {
-                runRows[i] = Row.of(run.tree(i));
+                runRows[i] = run.row(i);
               }
               return runRows[i];
             }
-            return Row.of(reference.tree(i));
+            return reference.row(i);
           });
-      read("the run", runManifest, runTrace, run, runRows, i -> Row.of(run.tree(i)));
+      read("the run", runManifest, runTraceSha256, run, runRows, run::row);
       for (String key : IDENTITY) {
         if (!referenceManifest.has(key) || !runManifest.has(key)) {
           throw new InvalidRunException("no identity field " + key);
@@ -373,13 +421,14 @@ public final class ReferenceComparison {
 
   /**
    * What the checks of one side need of an observation line: the value it reads as, or why it does
-   * not read; the line's value itself is not kept.
+   * not read; the line's value itself is not kept. A row is read from the line's value ({@link
+   * #of}), or from the line itself ({@link Lines#row}) without building the value.
    *
    * @param failure why the line is not an observation (an empty line, or not JSON), else null
    * @param tick the value's {@code tick} field when the value is an object, else null
    * @param stopped the value's {@code stopped} field, or null
    */
-  private record Row(String failure, JsonNode tick, JsonNode stopped) {
+  record Row(String failure, JsonNode tick, JsonNode stopped) {
 
     private static final Row EMPTY = new Row("an empty observation line", null, null);
     private static final Row NOT_JSON = new Row("an observation line is not JSON", null, null);
@@ -406,17 +455,23 @@ public final class ReferenceComparison {
    * Checks one side on its own.
    *
    * @param side how the side is named in an error
+   * @param traceSha256 the SHA-256 of the side's trace bytes
    * @param rows the rows already read, by line, null where none is; filled in here
    * @param reader reads a line not read yet
    */
   private static void read(
-      String side, JsonNode manifest, byte[] trace, Lines lines, Row[] rows, LineReader reader)
+      String side,
+      JsonNode manifest,
+      String traceSha256,
+      Lines lines,
+      Row[] rows,
+      LineReader reader)
       throws InvalidRunException {
     if (manifest.has("status") && !"completed".equals(manifest.get("status").asText())) {
       throw new InvalidRunException(side + " did not complete");
     }
     if (!manifest.path("trace_sha256").isTextual()
-        || !sha256(trace).equals(manifest.get("trace_sha256").textValue())) {
+        || !traceSha256.equals(manifest.get("trace_sha256").textValue())) {
       throw new InvalidRunException(side + ": the trace digest does not match");
     }
     int count = lines.count();
@@ -528,19 +583,117 @@ public final class ReferenceComparison {
      * not one JSON value.
      */
     JsonNode tree(int i) {
+      String text = text(i);
+      return text == null ? null : tree(text);
+    }
+
+    private static JsonNode tree(String text) {
       try {
-        // The bytes must be UTF-8 text before they are JSON.
-        String text =
-            StandardCharsets.UTF_8
-                .newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(trace, starts[i], ends[i] - starts[i]))
-                .toString();
         JsonNode node = MAPPER.readTree(text);
         return node == null ? MissingNode.getInstance() : node;
-      } catch (CharacterCodingException | JsonProcessingException e) {
+      } catch (JsonProcessingException e) {
         return null;
+      }
+    }
+
+    /** A line's text, or null when its bytes are not UTF-8 text, which they must be to be JSON. */
+    private String text(int i) {
+      try {
+        return StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(trace, starts[i], ends[i] - starts[i]))
+            .toString();
+      } catch (CharacterCodingException e) {
+        return null;
+      }
+    }
+
+    /**
+     * A line's row, as {@link Row#of} gives it from the line's {@link #tree}, read without building
+     * the value: the line goes through the same parser, with the same calls a read of the value
+     * makes (the next field name in an object, the next token in a list, the check that nothing
+     * follows the value), so a line that does not read is refused by the same check; of the values
+     * only the top object's {@code tick} and {@code stopped} are read, each as the read of the
+     * value reads it, the last of a repeated name kept as there. What the read of the value checks
+     * besides is done to every value it builds, so this read skips it: a string value's length,
+     * which a line no longer than the longest string cannot exceed (a longer line is read whole),
+     * and the conversion of a number's text to its value, which cannot fail for a number the parser
+     * has taken.
+     */
+    Row row(int i) {
+      String text = text(i);
+      if (text == null) {
+        return Row.NOT_JSON;
+      }
+      if (text.length() > MAX_STRING_LENGTH) {
+        return Row.of(tree(text));
+      }
+      try (JsonParser parser = MAPPER.createParser(text)) {
+        JsonToken token = parser.nextToken();
+        if (token == null) {
+          return Row.EMPTY;
+        }
+        JsonNode tick = null;
+        JsonNode stopped = null;
+        if (token == JsonToken.START_OBJECT) {
+          for (String name = parser.nextFieldName(); name != null; name = parser.nextFieldName()) {
+            JsonToken value = parser.nextToken();
+            if (value == null) {
+              throw new JsonParseException(parser, "the line ends inside a value");
+            }
+            if ("tick".equals(name)) {
+              tick = VALUE_MAPPER.readTree(parser);
+            } else if ("stopped".equals(name)) {
+              stopped = VALUE_MAPPER.readTree(parser);
+            } else {
+              skip(parser, value);
+            }
+          }
+        } else {
+          skip(parser, token);
+        }
+        return parser.nextToken() == null ? new Row(null, tick, stopped) : Row.NOT_JSON;
+      } catch (IOException e) {
+        return Row.NOT_JSON;
+      }
+    }
+
+    /**
+     * Moves the parser past the value that starts at {@code token}, a container through its
+     * contents: the next field name in an object, the next token in a list.
+     */
+    private static void skip(JsonParser parser, JsonToken token) throws IOException {
+      if (!token.isStructStart()) {
+        return;
+      }
+      // objects.get(d): whether the container open at depth d is an object
+      BitSet objects = new BitSet();
+      int depth = 0;
+      objects.set(0, token == JsonToken.START_OBJECT);
+      while (depth >= 0) {
+        JsonToken next;
+        if (objects.get(depth)) {
+          if (parser.nextFieldName() == null) {
+            depth--;
+            continue;
+          }
+          next = parser.nextToken();
+        } else {
+          next = parser.nextToken();
+          if (next == JsonToken.END_ARRAY) {
+            depth--;
+            continue;
+          }
+        }
+        if (next == null) {
+          throw new JsonParseException(parser, "the line ends inside a value");
+        }
+        if (next.isStructStart()) {
+          depth++;
+          objects.set(depth, next == JsonToken.START_OBJECT);
+        }
       }
     }
   }

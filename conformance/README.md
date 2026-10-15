@@ -126,7 +126,16 @@ Since then a reference line with the same bytes as the run's line of the same nu
 | 200 (two runs each) | 17.7 s, 129 s; 16.6 s, 120 s; 3.4 GB | 9.9 s, 59 s; 9.8 s, 59 s; 1.0 GB |
 | 1,000 (part 0 of the set) | 81.3 s, 561 s, 3.4 GB | 41.4 s, 190 s, 1.0 GB |
 
-What is left at 200 battles: the compiler 35% (a short run; less of a part of 1,000), the battle steps 29%, the SHA-256 digests of the traces 17% (the reference's once, the Java trace's twice: when the run writes it and when the comparison checks it), reading the lines 6% and writing the Java trace 5%; garbage collection 1%. The tables a coverage job reads are of one data version, so it builds that one alone (`:tables:dataVersionTables`).
+What was left at 200 battles: the compiler 35% (a short run; less of a part of 1,000), the battle steps 29%, the SHA-256 digests of the traces 17% (the reference's once, the Java trace's twice: when the run writes it and when the comparison checks it), reading the lines 6% and writing the Java trace 5%; garbage collection 1%. The tables a coverage job reads are of one data version, so it builds that one alone (`:tables:dataVersionTables`).
+
+Since 2026-10-15 the comparison takes the digest the run computed when it wrote its trace instead of hashing the trace again, and a reference trace of the same bytes as the run's, which is every agreeing battle, is checked against that same digest, so an agreeing battle is hashed once in all. The checks of a line read only its `tick` and `stopped` from the parser's tokens, through the same calls a read of the whole line makes, instead of building the line's value. Every outcome is unchanged (each case of the 16.402.19 and 16.402.21 sets, and the references of every compatible version). Measured back to back at 552280ca, the same machine, load average 5 to 7:
+
+| Battles of 16.402.21 | Before: wall, CPU (user + sys) | After: wall, CPU |
+|----------------------|--------------------------------|------------------|
+| 200 (three runs each) | 9.4 s, 56 s; 9.4 s, 57 s; 9.4 s, 55 s | 7.6 s, 49 s; 10.9 s, 56 s; 8.1 s, 48 s |
+| 1,000 (part 0 of the set, two runs each) | 39.9 s, 185 s; 39.7 s, 184 s | 29.1 s, 141 s; 31.3 s, 146 s |
+
+Of the 200 battles' CPU samples the digests in the comparison fell from 10% to none and the line reading from 6% to 4%; the compiler is now 42% of a run that short, the battle steps 35%, the run's own digest of its trace 5%. The JDK 17 build on this machine does not use the processor's SHA-256 instructions (`UseSHA` is off); on a machine whose JDK uses them the digests cost less, and so does what this saves. Limiting the compiler to its first tier (`-XX:TieredStopAtLevel=1`) cuts its share but slows the steps: part 0 then took 72 s and 288 s of CPU.
 
 ## Moving to a new data version
 

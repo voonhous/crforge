@@ -310,9 +310,10 @@ public final class ReferenceSuite {
       }
       case "completed" -> {
         JsonNode manifest = MAPPER.valueToTree(run.manifest());
+        // The run hashed its trace when it wrote it: the comparison takes that digest.
         traceSha[0] = manifest.path("trace_sha256").asText();
         ReferenceComparison.Result compared =
-            ReferenceComparison.compare(reference, trace, manifest, run.trace());
+            ReferenceComparison.compare(reference, trace, manifest, run.trace(), traceSha[0]);
         result.put("outcome", compared.outcome());
         if (ReferenceComparison.MISMATCH.equals(compared.outcome())) {
           result.put("first_divergent_tick", compared.firstDivergentTick());
