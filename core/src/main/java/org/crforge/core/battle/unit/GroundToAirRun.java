@@ -45,6 +45,10 @@ import org.crforge.core.pathfinding.grid.Relocation;
  * transition), its width kept. The step that finds the counter out schedules the row's action on
  * the ground, as the others are, and ends the run: the flying height override is cleared, and the
  * path is reset when the row asks for it and the movement component is on.
+ *
+ * <p>A character already in the air as the run starts, as a knock throwing it up leaves it, starts
+ * the climb part of the way up while its live height is below the row's flying height: the counter
+ * is the transition less the live height's share of it. One at or above the height is refused.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -54,7 +58,9 @@ import org.crforge.core.pathfinding.grid.Relocation;
             + " counter and the scheduled action), the hold's tags and pushes, the turn to the"
             + " descent with its scheduled action, the descent's tags, heights, pushes and landing"
             + " relocation, and the end with the override cleared and the path reset; held by"
-            + " ability_hero_wizard and cg_wizard_hero_lands.")
+            + " ability_hero_wizard and cg_wizard_hero_lands. The start in the air below the height,"
+            + " its counter the transition less the live height's share, held by a recorded witness"
+            + " outside the locked references. Refused: a start in the air at or above the height.")
 final class GroundToAirRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -79,8 +85,9 @@ final class GroundToAirRun extends ActionInstance {
   private int phase;
 
   /**
-   * The start on a ground character: its flying height override takes the row's flying height, and
-   * the climb starts with the whole transition left.
+   * The start: the character's flying height override takes the row's flying height, and the climb
+   * starts with the whole transition left on the ground, or with the transition less the live
+   * height's share of it in the air below the row's flying height.
    */
   GroundToAirRun(GroundToAir row, CharacterEntity unit) {
     super(row);
@@ -88,14 +95,31 @@ final class GroundToAirRun extends ActionInstance {
     this.unit = unit;
     unit.setFlyingHeightOverride(row.getFlyingHeight());
     rowHeight = unit.getData().flyingHeight();
-    if (unit.getView().isAir()) {
-      // An owner in the air starts from its live height against the row's: held at once, or
-      // climbing the rest of the way, none of which a reference holds.
-      throw new UnsupportedOperationException(
-          row.name() + " lifts " + unit.name() + ", already in the air, which is not modelled");
-    }
     phase = CLIMBING;
-    counter = row.getTransitionDurationMs();
+    int t = row.getTransitionDurationMs();
+    // The layer as the tag word and the live height give it now, whatever the last pre-hook
+    // folded: a unit a knock throws is in the air from its FORCE_IS_AIR.
+    if (!unit.layerAir()) {
+      counter = t;
+      return;
+    }
+    // In the air: the climb starts part of the way up, at the live height's share of the
+    // transition, so it reaches the row's flying height in that much less time.
+    GridEntity view = unit.getView();
+    int height = view.getZ() + view.getHeightOffset();
+    int flying = row.getFlyingHeight();
+    if (height >= flying) {
+      // At or above the row's height the run starts with no climb: held at once for the whole
+      // less a transition on a ground row, or a wait of the whole and no height on a flying row.
+      // Neither is held by a recording, and a wrong guess would change the unit's height and
+      // layer silently.
+      throw new UnsupportedOperationException(
+          row.name()
+              + " lifts "
+              + unit.name()
+              + ", already in the air at its flying height, which is not modelled");
+    }
+    counter = t - (flying > height ? divide(t * height, flying) : t);
   }
 
   int phase() {

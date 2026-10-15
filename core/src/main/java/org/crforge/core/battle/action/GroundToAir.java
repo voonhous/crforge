@@ -27,9 +27,14 @@ import org.crforge.core.fidelity.FidelityStatus;
  * and when the descent ends the row's action on the ground is scheduled, the override is cleared
  * and the path is reset when the row asks for it and the owner's movement component is on.
  *
+ * <p>An owner already in the air as it starts - its layer read from its tag word and its live
+ * height, as a knock throwing it up leaves it - climbs only the rest of the way while its live
+ * height is below the row's flying height: the climb's counter is the transition less the live
+ * height's share of it.
+ *
  * <p>Refused as it starts: an owner that is not a character, a clone, a hovering unit, one that
- * rides another or carries riders, and an owner already in the air, whose start reads its live
- * height against the row's.
+ * rides another or carries riders, and an owner in the air at or above the row's flying height,
+ * which would be held at once or only wait.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -40,8 +45,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " pushes, the turn to the descent and its scheduled action, the descent's tags,"
             + " heights, pushes and landing relocation, and the end (the action on the ground, the"
             + " override cleared, the path reset); held by ability_hero_wizard and"
-            + " cg_wizard_hero_lands. Refused: a start in the air, and a clone, hovering, riding or"
-            + " carrying owner.")
+            + " cg_wizard_hero_lands. A start in the air below the height, climbing the rest of the"
+            + " way, held by a recorded witness outside the locked references and by recorded"
+            + " battles. Refused: a start in the air at or above the height, and a clone, hovering,"
+            + " riding or carrying owner.")
 public final class GroundToAir extends RowAction {
 
   /** The height the owner climbs to. */
