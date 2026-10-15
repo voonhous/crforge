@@ -825,6 +825,18 @@ public interface ActionOwner {
   }
 
   /**
+   * Counts a deflection on the owner, a projectile, and hands it the cause's side, as a row's own
+   * deflection action does. Only a projectile is deflected; any other owner is refused.
+   *
+   * @param action the action
+   * @param cause the owner of the holder that caused it: the deflector's parent, or null
+   */
+  default void projectileDeflected(ProjectileDeflected action, ActionOwner cause) {
+    throw new UnsupportedOperationException(
+        action.name() + " runs on an owner other than a projectile, which is not modelled");
+  }
+
+  /**
    * Throws a mirrored extra spell from the owner as its cause, as the action's perform reads it.
    * Only a projectile is a cause the perform reads; any other is refused.
    *

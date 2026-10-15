@@ -80,6 +80,7 @@ import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.OverrideProjectileSpeed;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ProjectileDeflected;
 import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.ResetTarget;
@@ -248,6 +249,9 @@ public final class ActionRows {
           Map.entry("ActionResetPath", Set.of()),
           // The target reset reads no column of its own.
           Map.entry("ActionResetTarget", Set.of()),
+          // A projectile's own deflection, run in place of its turn-around, reads no column of its
+          // own.
+          Map.entry("ActionProjectileDeflected", Set.of()),
           // The hero Barbarian Barrel's reroll. The deploy animation, the health bar hiding and the
           // target indicator's columns are read only by the views; the tags while the spawn delay
           // runs, which the run never raises, are refused by being left out.
@@ -1617,6 +1621,7 @@ public final class ActionRows {
             case "ActionRunActionOnResolvedGameObjects" -> resolvedObjects(name, shared, f);
             case "ActionResetPath" -> new ResetPath(shared);
             case "ActionResetTarget" -> new ResetTarget(shared);
+            case "ActionProjectileDeflected" -> new ProjectileDeflected(shared);
             case "ActionBarbBarrelHeroReRoll" -> barbBarrelReRoll(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);
             case "ActionKnockback" -> knockback(name, shared, f);

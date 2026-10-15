@@ -4742,6 +4742,11 @@ public class BattleWorld implements HolderPasses {
    * keeps as what it was dropped onto. The parent takes the projectile's damage either way, before
    * the redirect.
    *
+   * <p>A spell-like projectile whose row names its own deflection action, as the evolved Snowball's
+   * rolling snowball, goes that way up to the redirect - the gate, the search and the parent's
+   * damage - and is then not turned: the redirect schedules that action on it instead (see {@link
+   * ProjectileEntity#deflectAt}). The search's tower is never read, so a king tower is no bar.
+   *
    * <p>A rolling body (see {@link #rollingBody}) inverts its direction instead, whatever its root:
    * no gate and no search. The parent takes its damage as above, and it is sent on, with no target,
    * from where it stands back by its flight from its start to its aim, so it rolls the way it came
@@ -4897,7 +4902,10 @@ public class BattleWorld implements HolderPasses {
             && projectile.getAreaTarget() == null)
         || kingSearch) {
       tower = nearestEnemyCrownTower(deflector, projectile);
-      if (tower != null && tower.getData().king()) {
+      // A row with its own deflection action is not sent anywhere: the point is never read.
+      if (tower != null
+          && tower.getData().king()
+          && projectile.getData().customDeflectAction() == null) {
         throw new UnsupportedOperationException(
             deflector.name()
                 + " sends "
@@ -8198,6 +8206,17 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /**
+   * Tells every observer that a row's own deflection action counted a deflection on its projectile
+   * and handed it the side of the deflector's parent.
+   */
+  public void projectileSelfDeflected(
+      ProjectileEntity projectile, String action, WorldEntity deflector) {
+    for (WorldObserver observer : observers) {
+      observer.projectileSelfDeflected(tick, projectile, action, deflector);
+    }
+  }
+
   /** Tells every observer that the evolved Executioner's axe controller started on its axe. */
   public void executionerStarted(ProjectileEntity axe, String action, int phase) {
     for (WorldObserver observer : observers) {
@@ -8287,16 +8306,25 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The deflection pass a roll runs at its projectile's point as it starts and after each step,
-   * which finds nothing without a deflecting area effect; one in the battle is refused.
+   * The deflection pass a roll runs at its projectile's point and height as it starts and after
+   * each step: the deflection pass of a flying projectile (see {@link #deflectPass}), whose
+   * deflection of a row with its own deflection action, as the evolved Snowball's rolling snowball,
+   * schedules that action on the projectile in place of turning it (see {@link
+   * ProjectileEntity#deflectAt}); the roll reads the count it raises at its next step. Refused
+   * beside a deflecting area effect: a rolling row without such an action, whose redirect would
+   * launch the projectile again under its roll, which no row of the data does and no recording
+   * holds.
    *
    * @param projectile the rolling projectile
    */
   public void rollDeflectionPass(ProjectileEntity projectile) {
-    if (!deflectors().isEmpty()) {
+    if (projectile.getData().customDeflectAction() == null && !deflectors().isEmpty()) {
       throw new UnsupportedOperationException(
-          projectile.name() + " rolls beside a deflecting area effect, which is not modelled");
+          projectile.name()
+              + " rolls beside a deflecting area effect without its own deflection action, which"
+              + " is not modelled");
     }
+    deflectPass(projectile, projectile.getX(), projectile.getY(), projectile.getZ());
   }
 
   /**

@@ -1039,6 +1039,13 @@ public interface WorldObserver {
   /** A data-changing action swapped a projectile's row. */
   default void projectileSwapped(int tick, ProjectileEntity projectile, String from, String to) {}
 
+  /**
+   * A row's own deflection action counted a deflection on its projectile and handed it the side of
+   * the deflector's parent.
+   */
+  default void projectileSelfDeflected(
+      int tick, ProjectileEntity projectile, String action, WorldEntity deflector) {}
+
   /** The evolved Executioner's axe controller started on its axe. */
   default void executionerStarted(int tick, ProjectileEntity axe, String action, int phase) {}
 
