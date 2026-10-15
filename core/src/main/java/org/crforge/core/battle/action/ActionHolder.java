@@ -298,7 +298,7 @@ public class ActionHolder implements EntityActions {
 
   /**
    * Starts an action now: re-triggers a singleton's listed run, or passes the start gate, does what
-   * the action does, lists its run and chains a next action that waits.
+   * the action does, lists its run, calls the run's own start and chains a next action that waits.
    *
    * @param action the action
    */
@@ -362,7 +362,10 @@ public class ActionHolder implements EntityActions {
       if (instance != null) {
         instance.addTags(action.tags());
         instance.setContext(context);
+        // Listed before its own start, as the game lists a new run before it calls the run's
+        // start: a run that start begins at once comes after it in the run pass.
         running.add(instance);
+        instance.startListed(this);
       }
       BattleAction next = action.nextAction();
       if (next != null && action.nextActionWait()) {

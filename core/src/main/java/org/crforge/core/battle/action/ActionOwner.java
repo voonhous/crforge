@@ -718,7 +718,7 @@ public interface ActionOwner {
   }
 
   /**
-   * Starts an attack chain on the owner.
+   * Makes an attack chain's run on the owner, started once its holder lists it.
    *
    * @param action the chain
    * @param holder the owner's holder
