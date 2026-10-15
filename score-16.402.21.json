@@ -4,16 +4,15 @@
   "to_the_end": 99.9,
   "ticks_agreed": 99.9,
   "outcomes": {
-    "diagnostic_match": 9995,
-    "unsupported": 5
+    "diagnostic_match": 9996,
+    "unsupported": 4
   },
   "first_failures": {
-    "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1,
     "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1,
     "unsupported: MegaMinion_hero_return_action warps cmd# with proj_# aimed at it, whose row keeps its target through the reset, not modelled": 1,
     "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1,
     "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
   },
   "set": "e6e3bccb191ecd17",
-  "commit": "a8242220e9be554bd1bd026c3289bb8d897f56ca"
+  "commit": "028b8958d59a1dee0049253d6db4aff37c5cd2fa"
 }
