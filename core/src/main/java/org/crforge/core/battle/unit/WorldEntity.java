@@ -556,7 +556,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param killingSide the side of the killing hit, or -1 for none
    */
   void die(BattleEntity attacker, int killingSide) {
-    world.entityDied(this, attacker, killingSide);
+    world.entityDied(this, attacker, killingSide, false);
+  }
+
+  /**
+   * The death of the entity by a hit with no attacker that the game deals for a side: the death
+   * handler hands its killed action a cause that carries that side alone, no object, as for a hit
+   * of the evolved Dart Goblin's poison run.
+   *
+   * @param killingSide the side the hit was dealt for
+   */
+  void dieForSideAlone(int killingSide) {
+    world.entityDied(this, null, killingSide, true);
   }
 
   /** The side of what killed an entity: an arena entity's, a projectile's or an area effect's. */

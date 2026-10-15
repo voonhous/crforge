@@ -93,6 +93,17 @@ public interface BattleAction {
   }
 
   /**
+   * Whether a run of the action reads anything of a cause that carries a side alone and no object,
+   * as the game's death handler hands a killed action for a kill with no attacker: the side, or the
+   * level or point such a cause holds. A class that reads only the object behind its cause runs
+   * with such a cause as with none, and answers false. As {@link #readsCause} unless the class says
+   * otherwise.
+   */
+  default boolean readsSideAloneCause() {
+    return readsCause();
+  }
+
+  /**
    * Runs every time the action is scheduled, whether it starts at once or is queued. The actions
    * that schedule other actions when they are scheduled do their work here.
    *

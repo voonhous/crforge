@@ -68,6 +68,15 @@ public final class RunIfInstigatorMatches extends RowAction {
     return start(holder, null);
   }
 
+  /**
+   * It reads only the object behind its cause: with a cause that carries a side alone and no
+   * object, the game's run does nothing at all, as it does here without a cause.
+   */
+  @Override
+  public boolean readsSideAloneCause() {
+    return false;
+  }
+
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
     if (instigator == null) {
