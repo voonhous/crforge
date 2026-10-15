@@ -26,8 +26,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " owner-leave before any notice and the stop as the"
             + " entity leaves after them, and the notice of an ability its player paid for, which"
             + " do nothing unless"
-            + " the class overrides them. Not modelled: the start and on-finish hooks some classes"
-            + " override.")
+            + " the class overrides them. The start a run makes once its holder has listed it,"
+            + " which comes after the row's own start, is the attack chain's (its pick and first"
+            + " link), held by recorded battles of a taunted Valkyrie hero ending its whirlwind;"
+            + " not modelled: the start and on-finish hooks other classes override.")
 public abstract class ActionInstance {
 
   /** The action this is a run of. */
@@ -51,6 +53,16 @@ public abstract class ActionInstance {
 
   /** One step of the run, from the holder's run pass. */
   protected abstract void update(ActionHolder holder);
+
+  /**
+   * The run's own start, once its holder has listed it. The game does what the row does, makes the
+   * run, lists it at the end of the holder's runs and only then calls the run's start, so a run its
+   * start begins at once is listed after it and stepped after it in the run pass. By default
+   * nothing: a class whose whole start is the row's leaves this alone.
+   *
+   * @param holder the holder that listed the run
+   */
+  protected void startListed(ActionHolder holder) {}
 
   /**
    * What a second start of a singleton row does to the run already listed. By default nothing: the

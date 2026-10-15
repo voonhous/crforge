@@ -2666,9 +2666,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Starts an attack chain on the character: its first object picked and the chain begun on it, or
-   * the run left waiting. A clone, a rider and a carrier are refused, whose chain no reference
-   * holds.
+   * Makes an attack chain's run on the character, whose start - its first object picked and the
+   * chain begun on it, or the run left waiting - comes once the holder has listed it. A clone, a
+   * rider and a carrier are refused, whose chain no reference holds.
    */
   @Override
   public ActionInstance attackChain(AttackChain action, ActionHolder holder) {
@@ -2676,9 +2676,8 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           action.name() + " on " + name() + ", a clone, a rider or a carrier, not modelled");
     }
-    AttackChainRun run = new AttackChainRun(action, this, holder);
-    run.start();
-    return run;
+    // The run starts once the holder has listed it (AttackChainRun.startListed).
+    return new AttackChainRun(action, this, holder);
   }
 
   /**

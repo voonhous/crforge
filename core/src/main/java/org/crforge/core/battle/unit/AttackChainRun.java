@@ -83,10 +83,13 @@ final class AttackChainRun extends ActionInstance {
   }
 
   /**
-   * The start: with a resolver and a link to make, the first object picked and the chain begun on
-   * it; with nothing to pick the run waits. Without a link to make the chain ends at once.
+   * The start, once the holder has listed the run: with a resolver and a link to make, the first
+   * object picked and the chain begun on it; with nothing to pick the run waits. Without a link to
+   * make the chain ends at once. The begin's action, which starts at once, is listed after the run,
+   * so the run pass steps the chain before it.
    */
-  void start() {
+  @Override
+  protected void startListed(ActionHolder running) {
     if (columns.resolver() == null || columns.chainCount() <= 0) {
       end();
       return;
