@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.crforge.core.battle.GameData.fields;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -90,6 +92,14 @@ class BattleWizardHeroTest {
 
   /** The flying row's shot start height above its launcher. */
   private static final int START_Z = 1200;
+
+  /** A knock the tests start on the hero while it casts, so its run starts in the air. */
+  private static final String KNOCK = "MegaKnight_EV1_uppercut_send_flying";
+
+  /** The knock's top height and duration, written into its row by {@link #knocked}. */
+  private static final int KNOCK_HEIGHT = 8000;
+
+  private static final int KNOCK_DURATION = 900;
 
   @Test
   @DisplayName(
@@ -439,6 +449,51 @@ class BattleWizardHeroTest {
     assertThat(slot.champions()).as("followed again on the ground row").containsExactly(hero);
   }
 
+  @Test
+  @DisplayName(
+      "a run that starts on a hero a knock has thrown into the air, below the run's height, climbs"
+          + " only the rest of the way: its counter is the transition less the live height's share"
+          + " of it, so it turns to the hold, swapping the hero onto its flying row, steps sooner")
+  void aKnockedHeroClimbsTheRestOfTheWay(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(knocked(folder));
+    CharacterEntity hero = scene.abilityUsed();
+    int cast = scene.stepUntilCasting(hero);
+    // The knock starts on the first casting step; the cast goes on through it, and the
+    // activation starts the run two steps after it, with the hero thrown up by then.
+    hero.actionHolder().start(scene.knock(hero), null);
+    scene.steps(3);
+    assertThat(scene.runs).hasSize(1);
+    int height = scene.startHeight;
+    assertThat(height).as("in the air, below the run's height").isPositive().isLessThan(HEIGHT);
+    int counter = TRANSITION - TRANSITION * height / HEIGHT;
+    assertThat(counter).as("part of the climb left").isLessThan(TRANSITION);
+    assertThat(scene.runs).containsExactly((cast + 2) + " start phase 1 counter " + counter);
+    // The climb takes 50 ms off a step until its counter is out, then turns to the hold on the
+    // next step, where the action at the height swaps the hero onto its flying row.
+    int climbs = (counter + 49) / 50;
+    scene.steps(climbs);
+    assertThat(hero.getData().name()).isEqualTo(HERO);
+    scene.steps(1);
+    assertThat(scene.runs).last().asString().startsWith((cast + 3 + climbs) + " phase 1 2 ");
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+  }
+
+  @Test
+  @DisplayName(
+      "a run that starts on a hero a knock holds at or above the run's height is refused: it"
+          + " would start held at once, with no climb and no action at the height, which no"
+          + " recording holds")
+  void aKnockedHeroAboveTheHeightIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(knocked(folder, 1));
+    CharacterEntity hero = scene.abilityUsed();
+    scene.stepUntilCasting(hero);
+    hero.actionHolder().start(scene.knock(hero), null);
+    scene.steps(2);
+    assertThatThrownBy(() -> scene.steps(1))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("already in the air at its flying height");
+  }
+
   /**
    * A copy of the configured tables with the values this test's numbers follow from written into
    * the hero's two rows, its ability row, its ground-to-air run and its flying shot's area effect
@@ -477,6 +532,29 @@ class BattleWizardHeroTest {
     return GameTables.load(folder);
   }
 
+  /** The pinned copy with the knock's height and duration written into its row too. */
+  private static GameTables knocked(Path folder) throws IOException {
+    return knocked(folder, HEIGHT);
+  }
+
+  /**
+   * The pinned copy with the knock's height and duration written into its row, and the run's flying
+   * height set to the given one.
+   */
+  private static GameTables knocked(Path folder, int flyingHeight) throws IOException {
+    pinned(folder);
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode knock = fields(rows, KNOCK);
+          knock.put("Height", KNOCK_HEIGHT);
+          knock.put("Duration", KNOCK_DURATION);
+          fields(rows, "WizardHero_ground_to_air").put("FlyingHeight", flyingHeight);
+        });
+    return GameTables.load(folder);
+  }
+
   /** The pinned copy whose action at the height leaves out the swap to the flying row. */
   private static GameTables withoutSwap(Path folder) throws IOException {
     pinned(folder);
@@ -497,6 +575,9 @@ class BattleWizardHeroTest {
     final LadderMatch match;
     final BattleRecords records;
     final List<String> runs = new ArrayList<>();
+
+    /** The live height of the unit the last ground-to-air run started on, as it started. */
+    int startHeight;
 
     /** A ladder match on the given data whose first hand holds the hero card. */
     Scene(GameTables tables) {
@@ -522,6 +603,7 @@ class BattleWizardHeroTest {
                     int runPhase,
                     int counter) {
                   runs.add("%d start phase %d counter %d".formatted(tick, runPhase, counter));
+                  startHeight = unit.getView().getZ() + unit.getView().getHeightOffset();
                 }
 
                 @Override
@@ -606,6 +688,11 @@ class BattleWizardHeroTest {
         }
       }
       throw new AssertionError("no slot follows " + row);
+    }
+
+    /** The knock's row, built to run on the unit. */
+    BattleAction knock(CharacterEntity unit) {
+      return world().getActions().build(KNOCK, world().binding(unit));
     }
 
     List<CharacterEntity> heroes() {
