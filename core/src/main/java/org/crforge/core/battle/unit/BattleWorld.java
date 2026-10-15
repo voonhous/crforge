@@ -366,6 +366,32 @@ public class BattleWorld implements HolderPasses {
       implements QueuedHit {}
 
   /**
+   * A reflected attack's damage waiting for the drain, queued by the reflect behind every hit
+   * already waiting: dealt there as {@link #reflectedHitNow(ReflectedHitDue)} deals it.
+   *
+   * @param reflecting the reflecting unit, the hit's attacker
+   * @param attacker what dealt the hit the reflect answered
+   * @param source the character the reflect traced that hit to
+   * @param struck the one struck back
+   * @param hitSpeed the reflecting unit's hit-speed scale of 100 at the reflect
+   * @param level the reflecting unit's level, packed
+   * @param damage the reflected damage at that level
+   * @param directionX the answered hit's direction along the arena's width
+   * @param directionY the same along the length
+   */
+  private record ReflectedHitDue(
+      WorldEntity reflecting,
+      BattleEntity attacker,
+      WorldEntity source,
+      WorldEntity struck,
+      int hitSpeed,
+      int level,
+      int damage,
+      int directionX,
+      int directionY)
+      implements QueuedHit {}
+
+  /**
    * One victim's share of a character's area damage waiting for the drain: dealt there as {@link
    * #dealAreaDamageNow(WorldEntity, WorldEntity, int, int)} deals it.
    *
@@ -520,6 +546,7 @@ public class BattleWorld implements HolderPasses {
   private sealed interface QueuedHit
       permits TypedHit,
           DirectHitDue,
+          ReflectedHitDue,
           AreaHitDue,
           TetherHitDue,
           CarriedPushHitDue,
@@ -1189,8 +1216,14 @@ public class BattleWorld implements HolderPasses {
    * for its side, on every reflected hit; and once per attack - the struck one's attack count and
    * id, so the shots of riders share their parent's key until the parent attacks itself, listed on
    * the unit and never cleared - the reflected damage at the unit's level, its crown tower column
-   * against a crown tower, through the damage entry with the unit as the attacker, the battle's
-   * holds and the hidden test lifted. A death it causes runs at once, before the unit's own.
+   * against a crown tower. That damage is not dealt here: it is appended to the damage queue, as
+   * the damage entry queues any hit, and the drain, which reads the queue's count again after every
+   * hit, deals it in the same drain after every hit queued before it (see {@link
+   * #reflectedHitNow}), through the damage entry with the unit as the attacker, the battle's holds
+   * and the hidden test lifted. So a shot that lands on the attacker in the same step meets its
+   * shield before the reflected damage does, a hit that kills the unit runs its death before the
+   * one struck back takes the damage, and a child the struck one leaves as it dies is made after
+   * both.
    */
   private void reflect(
       WorldEntity target,
@@ -1282,22 +1315,40 @@ public class BattleWorld implements HolderPasses {
     int damage =
         LevelScaling.scale(
             ScalingGlobals.standard(), base, level, ScalingMode.CARD_DAMAGE, row.rarity());
+    // The reflected damage is a hit of its own, put at the end of the damage queue: the drain
+    // deals it after every hit queued before it, those of this tick still waiting among them.
+    queuedHits.add(
+        new ReflectedHitDue(
+            target, attacker, source, struck, hitSpeed, level, damage, directionX, directionY));
+  }
+
+  /**
+   * Deals a reflected attack's damage at the drain: through the damage entry with the reflecting
+   * unit as the attacker (see {@link WorldEntity#takeReflectedDamage}), the observers told, and the
+   * death of the one struck, for the reflecting unit, when the hit kills it. The reflecting unit
+   * may have died since the reflect queued the hit; the hit is dealt all the same.
+   */
+  private void reflectedHitNow(ReflectedHitDue due) {
+    WorldEntity target = due.reflecting();
+    WorldEntity struck = due.struck();
+    UnitData row = target.getData();
     int before = struck.getHitPoints().getHitPoints();
-    DamageResult hit = struck.takeReflectedDamage(target, damage, directionX, directionY);
+    DamageResult hit =
+        struck.takeReflectedDamage(target, due.damage(), due.directionX(), due.directionY());
     for (WorldObserver observer : observers) {
-      observer.reflectedHit(tick, target, struck, damage, hit);
+      observer.reflectedHit(tick, target, struck, due.damage(), hit);
     }
     reflected(
         new Reflection(
             target,
-            attacker,
-            source,
+            due.attacker(),
+            due.source(),
             struck,
-            hitSpeed,
+            due.hitSpeed(),
             row.reflectedAttackBuff(),
             row.reflectedAttackBuffDurationMs(),
-            level,
-            damage,
+            due.level(),
+            due.damage(),
             before,
             struck.getHitPoints().getHitPoints()));
     if (hit.died()) {
@@ -6255,19 +6306,26 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Deals every queued hit, in the order they were queued. A typed hit: the type's pipeline, a
-   * damage id from the battle's hit counter when the type takes one, the typed hit's entry, then
-   * the type's action on the source and its action on the target, and the observers are told. A
-   * direct hit, a share of a character's or a projectile's area, a tether's or a carried push's
-   * hit, a projectile's hit on its one target, or a capture's hit: the damage dealt, with its
-   * reflect, its observers, its death or the reference drop; a hit of a buff's damage over time; a
-   * circle's, a Kamikaze unit's, a kill action's or a tiebreaker's clearing's kill.
+   * Deals every queued hit, in the order they were queued, a hit queued while the drain runs - a
+   * reflect's damage - included: the drain reads the queue's count again after every hit, and
+   * empties the queue once it reaches the end. A typed hit: the type's pipeline, a damage id from
+   * the battle's hit counter when the type takes one, the typed hit's entry, then the type's action
+   * on the source and its action on the target, and the observers are told. A direct hit, a share
+   * of a character's or a projectile's area, a tether's or a carried push's hit, a projectile's hit
+   * on its one target, or a capture's hit: the damage dealt, with its reflect, its observers, its
+   * death or the reference drop; a hit of a buff's damage over time; a circle's, a Kamikaze unit's,
+   * a kill action's or a tiebreaker's clearing's kill; a reflect's damage.
    */
   private void drainTypedHits() {
-    List<QueuedHit> due = new ArrayList<>(queuedHits);
-    queuedHits.clear();
     queuedTotalStarts.clear();
-    for (QueuedHit queued : due) {
+    // The drain reads the queue's length again after each hit, so a hit queued while it runs - a
+    // reflected attack's damage - is dealt in this drain too, after every hit queued before it.
+    for (int index = 0; index < queuedHits.size(); index++) {
+      QueuedHit queued = queuedHits.get(index);
+      if (queued instanceof ReflectedHitDue reflected) {
+        reflectedHitNow(reflected);
+        continue;
+      }
       if (queued instanceof DirectHitDue direct) {
         DamageResult result =
             dealDamage(
@@ -6418,6 +6476,8 @@ public class BattleWorld implements HolderPasses {
         observer.typedHitDealt(tick, source, target, amount, damageId, result);
       }
     }
+    queuedHits.clear();
+    queuedTotalStarts.clear();
   }
 
   /**

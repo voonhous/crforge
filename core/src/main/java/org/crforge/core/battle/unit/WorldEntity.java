@@ -434,10 +434,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Takes a reflected attack's damage: the damage entry as any hit's, with the battle's holds, the
-   * hidden test and the untouchable test lifted, the one struck never riding on a parent. The hit
-   * does not pierce immunity, so an unkillable target is held at 1 hit point as by any other hit,
-   * and a target whose tags forbid damage takes none of it.
+   * Takes a reflected attack's damage, as the damage drain deals it: the damage entry as any hit's,
+   * with the battle's holds, the hidden test and the untouchable test lifted, the one struck never
+   * riding on a parent. The hit does not pierce immunity, so an unkillable target is held at 1 hit
+   * point as by any other hit, and a target whose tags forbid damage takes none of it.
    */
   DamageResult takeReflectedDamage(
       WorldEntity reflecting, int damage, int directionX, int directionY) {

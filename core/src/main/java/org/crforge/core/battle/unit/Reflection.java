@@ -9,7 +9,8 @@ package org.crforge.core.battle.unit;
 import org.crforge.core.battle.BattleEntity;
 
 /**
- * One hit that reached a reflecting unit's reflect, as the reflect left it.
+ * One hit that reached a reflecting unit's reflect, as the reflect left it: for a reflect that
+ * queued its damage, as the drain left the one struck once it dealt that damage.
  *
  * @param target the reflecting unit
  * @param attacker what dealt the hit, or null for nothing

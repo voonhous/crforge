@@ -21,6 +21,8 @@ import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -31,11 +33,13 @@ import org.junit.jupiter.api.io.TempDir;
  * per attack while every hit of it re-applies the buff; a dying Giant still striking back, but not
  * at a hit that finds it already down; a building that is no crown tower taking the ordinary
  * damage; an area hit struck back; nothing for its own side or a shot whose row ignores the
- * reflect; a death the reflected damage causes running at once; a rider's shot struck back at its
- * parent; a damage-taking action's hit struck back at the character that caused it and never at an
- * area effect; an unkillable attacker held at 1 hit point by the reflected damage; an evolved
- * Giant's pulse debuff, handed to a Goblin Giant's riders, lowering them on the Giant's step; and
- * the hits the battle refuses.
+ * reflect; the reflected damage queued at the end of the damage drain, so a hit queued after the
+ * one struck back meets the attacker's shield first and fells a Giant before a Night Witch it
+ * strikes back dies, whose child then never takes the fallen Giant; a death the reflected damage
+ * causes; a rider's shot struck back at its parent; a damage-taking action's hit struck back at the
+ * character that caused it and never at an area effect; an unkillable attacker held at 1 hit point
+ * by the reflected damage; an evolved Giant's pulse debuff, handed to a Goblin Giant's riders,
+ * lowering them on the Giant's step; and the hits the battle refuses.
  */
 class BattleElectroGiantTest {
 
@@ -383,6 +387,57 @@ class BattleElectroGiantTest {
 
   @Test
   @DisplayName(
+      "the reflected damage waits behind the hits queued before it: a Night Witch it kills on the"
+          + " step another hit fells the Giant leaves a child that never takes the fallen Giant")
+  void theReflectedDamageWaitsItsTurn() {
+    Scene scene = new Scene();
+    CharacterEntity witch = scene.still(0, 1, "DarkWitch", X, Y + 1500, "witch");
+    CharacterEntity knight = scene.still(0, 1, "Knight", X + 6000, Y + 6000, "knight");
+    knight.setActive(CharacterEntity.TARGETING_SLOT, false);
+    List<Integer> giantHitPointsAtTheReflectedHit = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void reflectedHit(
+                  int t, WorldEntity reflector, WorldEntity struck, int damage, DamageResult r) {
+                giantHitPointsAtTheReflectedHit.add(reflector.getHitPoints().getHitPoints());
+              }
+            });
+    // Deployed, and no hit of its own yet: the witch's first hit waits for its load time.
+    scene.step(Shipped.number(Shipped.unitRow("DarkWitch"), "DeployTime") / 50 + 1);
+    witch.getHitPoints().setHitPoints(1);
+    scene.giant.getHitPoints().setHitPoints(10);
+    BattleWorld world = scene.match.getWorld();
+    // Both hits wait for the next drain, in this order: the witch's is struck back, the Knight's
+    // fells the Giant.
+    world.dealDirectHit(witch, scene.giant.getTargetView(), 1, 0, 0);
+    world.dealDirectHit(knight, scene.giant.getTargetView(), 100, 0, 0);
+    scene.step(1);
+
+    // The witch's reflected damage was dealt after the Knight's hit: the Giant was down.
+    assertThat(giantHitPointsAtTheReflectedHit).containsExactly(0);
+    assertThat(witch.getHitPoints().getHitPoints()).isZero();
+    String child = Shipped.text(Shipped.unitRow("DarkWitch"), "DeathSpawnCharacter");
+    CharacterEntity made = null;
+    for (BattleEntity entity : scene.match.getBattle().getHolder().entities()) {
+      if (entity instanceof CharacterEntity unit && unit.getData().name().equals(child)) {
+        made = unit;
+      }
+    }
+    assertThat(made).isNotNull();
+    // So the child the witch left, made after both hits, walked on rather than starting an attack
+    // on a Giant that was already down.
+    assertThat(made.getUnit().entity().getState()).isEqualTo(GridEntityState.MOVING);
+    assertThat(made.getUnit().targeting().getReference())
+        .isNotNull()
+        .isNotSameAs(scene.giant.getTargetView());
+  }
+
+  @Test
+  @DisplayName(
       "a second hit on the tick the Giant falls, which finds it with no hit points, is not struck"
           + " back")
   void aGiantAlreadyDown() {
@@ -396,6 +451,8 @@ class BattleElectroGiantTest {
     world.dealDamage(second, scene.giant.getTargetView(), 100, 0, 0);
 
     assertThat(scene.giant.getHitPoints().getHitPoints()).isZero();
+    // The first hit's reflected damage waits in the damage queue for the next drain.
+    scene.step(1);
     assertThat(scene.from("first")).hasSize(1);
     assertThat(scene.from("second")).isEmpty();
   }
@@ -414,7 +471,7 @@ class BattleElectroGiantTest {
   }
 
   @Test
-  @DisplayName("a Giant Skeleton killed by the reflected damage dies at once and drops its bomb")
+  @DisplayName("a Giant Skeleton killed by the reflected damage dies and drops its bomb")
   void aKillingReflect() {
     Scene scene = new Scene();
     CharacterEntity skeleton = scene.still(0, 1, "GiantSkeleton", X, Y + 1500, "skeleton");
@@ -426,6 +483,44 @@ class BattleElectroGiantTest {
 
     assertThat(scene.from("skeleton").get(0).hitPointsAfter()).isZero();
     assertThat(scene.holds("GiantSkeletonBomb")).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "the reflected damage joins the end of the damage drain and lands there in the same step:"
+          + " a hit queued after the struck back one meets the attacker's shield first")
+  void theReflectedDamageLandsAfterTheHitsQueuedBeforeIt() {
+    Scene scene = new Scene();
+    // A shielded attacker inside the reflect's reach but out of its own attack range, so it never
+    // hits the Giant by itself: the only hit it deals is the one queued below.
+    int reach =
+        Shipped.number(GIANT, "ReflectedAttackRadius")
+            + Shipped.number(GIANT, "CollisionRadius")
+            + Shipped.number(Shipped.unitRow("DarkPrince"), "CollisionRadius");
+    CharacterEntity prince = scene.still(0, 1, "DarkPrince", X, Y + reach - 300, "prince");
+    scene.step(25);
+    int shield = prince.getHitPoints().getShield();
+    int full = prince.getHitPoints().getHitPoints();
+    assertThat(shield).isPositive().isNotEqualTo(reflectedDamage());
+    assertThat(scene.from("prince")).isEmpty();
+
+    // The Dark Prince's hit on the Giant, then a hit of exactly its shield on the Dark Prince
+    // queued after it, both for the next step's drain.
+    BattleWorld world = scene.match.getWorld();
+    world.dealDirectHit(prince, scene.giant.getTargetView(), 100, 0, 0);
+    world.dealQueuedDamage(prince.getTargetView(), shield, 0, 0, 0);
+    scene.step(1);
+
+    // The later hit takes the whole shield; the reflected damage, dealt after it, comes off the
+    // hit points. Dealt at once inside the Giant's hit, the reflect would meet the shield first,
+    // and the later hit would lose to the shield whatever the reflect left of it.
+    assertThat(scene.from("prince")).hasSize(1);
+    Reflection struck = scene.from("prince").get(0);
+    assertThat(struck.damage()).isEqualTo(reflectedDamage());
+    assertThat(struck.hitPointsBefore()).isEqualTo(full);
+    assertThat(struck.hitPointsAfter()).isEqualTo(full - reflectedDamage());
+    assertThat(prince.getHitPoints().getShield()).isZero();
+    assertThat(prince.getHitPoints().getHitPoints()).isEqualTo(full - reflectedDamage());
   }
 
   @Test

@@ -367,10 +367,7 @@ class BattleDeathHookTest {
     int before = s.knight.getHitPoints().getHitPoints();
     s.stepWith(world -> world.kill(s.tombstone, s.knight));
     // The kill lands at the step's damage drain; the death's share, queued as the drain deals the
-    // kill, waits for the next step's.
-    assertThat(s.knight.getHitPoints().getHitPoints()).isEqualTo(before);
-    s.battle.step();
-
+    // kill, joins the end of the queue the drain is still reading and lands in the same drain.
     assertThat(s.knight.getHitPoints().getHitPoints())
         .as("the Tombstone's 500 at its level 1")
         .isEqualTo(before - 500);
