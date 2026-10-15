@@ -911,6 +911,10 @@
   "vines-hover-v1/vines_ghost_river_fireball_end": {"outcome": "diagnostic_match"},
   "vines-hover-v1/vines_ghost_river_fireball_mid": {"outcome": "diagnostic_match"},
   "vines-hover-v1/vines_ghost_tower": {"outcome": "diagnostic_match"},
+  "wizard-hero-air-shot-deflect-v1/wizard_air_shot_deflect_w165_m150": {"outcome": "diagnostic_match"},
+  "wizard-hero-air-shot-deflect-v1/wizard_air_shot_deflect_w165_m180": {"outcome": "diagnostic_match"},
+  "wizard-hero-air-shot-deflect-v1/wizard_air_shot_deflect_w175_m165": {"outcome": "diagnostic_match"},
+  "wizard-hero-air-shot-deflect-v1/wizard_air_shot_deflect_w185_m180": {"outcome": "diagnostic_match"},
   "wizard-swap-target-v1/wizard_hero_target_dies_before_swap": {"outcome": "diagnostic_match"},
   "wizard-swap-target-v1/wizard_hero_target_dies_held": {"outcome": "diagnostic_match"}
  }
