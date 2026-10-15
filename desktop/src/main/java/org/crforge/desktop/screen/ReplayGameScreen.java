@@ -42,6 +42,9 @@ import org.crforge.desktop.replay.ReplayPlayer;
  *
  * <ul>
  *   <li>SPACE: Pause/resume
+ *   <li>. and ,: Pause and step one tick forward or back. The battle core keeps no copy of a past
+ *       tick, so a step back builds the replay's battle anew and plays it again to the tick before,
+ *       which takes longer the later the tick
  *   <li>R: Restart the replay from tick 0
  *   <li>+/-: Speed up/slow down
  *   <li>P, O, D, A, H, G, N: The overlays, as on the debug screen
@@ -63,7 +66,10 @@ public class ReplayGameScreen implements Screen {
 
   /** The controls the status column lists, the replay screen's own. */
   private static final List<String> NOTES =
-      List.of("SPACE pause, R restart, +/- speed", "clicks do not play in a replay");
+      List.of(
+          "SPACE pause, . and , one tick forward or back",
+          "R restart, +/- speed",
+          "clicks do not play in a replay");
 
   private ReplayPlayer player;
   private final DataVersions versions;
@@ -227,6 +233,13 @@ public class ReplayGameScreen implements Screen {
         log.info("Replay restarted from tick 0");
       }
       case STEP -> player.stepOnce();
+      case STEP_BACK -> {
+        if (player.stepBack()) {
+          // The area hits drawn are the step's the replay went back to, not the later ones.
+          newAreaHits.clear();
+          loggedStop = null;
+        }
+      }
       case FASTER -> {
         player.faster();
         log.info("Replay speed: {}x", player.getSpeed());
@@ -419,6 +432,7 @@ public class ReplayGameScreen implements Screen {
         === CRForge Replay Viewer (battle core) ===
           SPACE - Pause/Resume
           .     - Pause and advance one tick
+          ,     - Pause and go back one tick
           R     - Restart the replay from tick 0
           +/-   - Speed up/slow down
           P O D A H G N - Overlays, as on the debug screen

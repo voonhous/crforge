@@ -25,7 +25,7 @@ import org.crforge.desktop.render.ViewOrientation;
 /**
  * Plays a replay on the battle core, as the replay screen shows it, with no graphics: the battle
  * built from the replay ({@link ReplayBattle#build}) with every command queued at its tick, the
- * clock that steps it, pause and speed, and a restart from tick 0.
+ * clock that steps it, pause and speed, a step back by one tick, and a restart from tick 0.
  *
  * <p>Each play and ability command that runs is noted in the session's messages (its side, named by
  * the screen's colours as the messages are read, its card or unit, and the tick it ran on), and
@@ -107,6 +107,39 @@ public final class ReplayPlayer {
     paused = true;
     accumulator = 0f;
     return step();
+  }
+
+  /**
+   * Pauses one tick back: the battle as the step before the last left it, its notes and the area
+   * hits of that step included. The battle core keeps no copy of a past step, so the battle is
+   * built anew and played again to that tick; a replay plays the same way every time, so the tick
+   * is the one played before. The speed is kept. A replay at tick 0, or refused, stays as it is.
+   *
+   * @return true when the replay went back a tick
+   */
+  public boolean stepBack() {
+    if (session == null || session.tick() == 0) {
+      return false;
+    }
+    playTo(session.tick() - 1);
+    return true;
+  }
+
+  /**
+   * Builds the replay's battle anew and plays it, paused, to a tick: the area hits kept are those
+   * of the last step run, as stepping forward to that tick leaves them.
+   *
+   * @param tick the tick to stop at, at most the current one
+   */
+  private void playTo(int tick) {
+    restart();
+    paused = true;
+    while (session.tick() < tick) {
+      areaHits.clear();
+      if (!step()) {
+        break;
+      }
+    }
   }
 
   /** Doubles the speed, up to {@link #SPEED_MAX}. */
