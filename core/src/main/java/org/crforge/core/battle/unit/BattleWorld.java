@@ -4162,7 +4162,10 @@ public class BattleWorld implements HolderPasses {
    * registration visit took is kept. Each child joins the live list at the next cleanup's fold,
    * which starts it: its row's starting action is scheduled then. A clone's projectile makes each
    * child a clone of 1 hit point of 1, the clone setter running after its deploy countdown and
-   * before the add that registers it. A deflected projectile with a deflected spawn is refused.
+   * before the add that registers it. A deflected projectile whose row names a deflected spawn
+   * makes that in place of its spawned character, as many of them, for the side the deflection gave
+   * it: the hero Barbarian Barrel's roll, turned, lets out the barbarian without the hero's ability
+   * for the deflector's side, which no champion slot follows.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -4170,18 +4173,12 @@ public class BattleWorld implements HolderPasses {
    */
   public void impactSpawn(ProjectileEntity projectile, int x, int y) {
     ProjectileData data = projectile.getData();
-    if (projectile.getDeflections() >= 1 && data.deflectedCharacterSpawn() != null) {
-      // A deflected projectile's impact makes its deflected spawn in place of its spawned
-      // character, as many of them; that spawn is held by no reference.
-      throw new UnsupportedOperationException(
-          data.name()
-              + " is deflected and its impact makes "
-              + data.deflectedCharacterSpawn()
-              + " in place of "
-              + data.spawnCharacter()
-              + ", which is not modelled");
-    }
-    UnitData child = spawnedRow(data.spawnCharacter());
+    // Deflected once or more, the impact takes the row's deflected spawn when it names one.
+    UnitData child =
+        spawnedRow(
+            projectile.getDeflections() >= 1 && data.deflectedCharacterSpawn() != null
+                ? data.deflectedCharacterSpawn()
+                : data.spawnCharacter());
     if (child.hitpoints() <= 0 || child.building() || child.spawnPathfindSpeed() != 0) {
       throw new UnsupportedOperationException(
           data.name()
@@ -4723,8 +4720,10 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>And a rolling body: one whose deflection behaviour inverts its direction, with a round or a
    * box body and no deflect radius, that flies to a point, as the Bowler's ball, the rolling logs
-   * and the Firecracker's sparks do (see {@link #rollingBody}). Refused: such a row with a starting
-   * action, as the hero Barbarian Barrel's, which sets its owner's ability button while it rolls.
+   * and the Firecracker's sparks do (see {@link #rollingBody}). A starting action is no bar, as the
+   * hero Barbarian Barrel's roll has: the deflection leaves its runs as they are, and the button
+   * state its run writes on every step goes into the slots of the projectile's side as it is then,
+   * so, turned, into the deflector's side's slot that follows the hero barbarian, if any.
    *
    * <p>An action on the deflector is no bar, as the Firecracker's rocket has: the redirect runs it
    * on the deflector's parent (see {@link ProjectileEntity#deflect}). Nor is a projectile whose
@@ -4757,7 +4756,6 @@ public class BattleWorld implements HolderPasses {
             && data.spawnCharacter() != null
             && projectile.getDeflections() >= 1)
         || (data.projectileRadiusY() != 0 && !rolling)
-        || (rolling && data.onStartingAction() != null)
         || data.chainedHitRadius() >= 1
         || (data.homingLike() && !pingpong && !rolling && !data.checkCollisions() && !piercing)
         || (data.homingTimeMs() >= 1 && !piercing && !hooking)
