@@ -295,6 +295,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   /** The variables its actions write. */
   private final Map<Integer, Integer> variables = new HashMap<>();
 
+  /**
+   * Whether it is a clone's: an action's spawn and the death slot set it from their source's clone
+   * answer, so an area effect a clone's action makes, or a dying clone leaves, is a clone's, and so
+   * is one such an area effect's own action, or Goblinstein's ability run on it, makes. Its own
+   * update reads it for none of its hits, damage and buff alike. A character an action's spawn
+   * makes from it is a clone (see {@link BattleWorld}'s spawner); what else it spawns is refused
+   * (see {@link #refuseClonesSpawn(String)}).
+   */
+  @Getter private boolean clone;
+
   /** Its hits' owner as the validator sees it: an area effect of its side at its point. */
   private final TargetingState owner;
 
@@ -415,6 +425,45 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     countdown = -1;
   }
 
+  /** Marks it a clone's area effect: what it spawns would be a clone's too. */
+  void markClone() {
+    clone = true;
+  }
+
+  /**
+   * Refuses what a clone's area effect would carry its mark on to and the battle does not model: a
+   * projectile it launches or drops, the area effect its row chains unless that one only hits, a
+   * guard or a summon it makes. The game hands the mark to the characters an action's spawn makes
+   * from it and to the area effects it makes, which the battle follows; what becomes of it in these
+   * others is not established, and no recording shows a clone's area effect making one.
+   *
+   * @param what what it would spawn, for the message
+   */
+  void refuseClonesSpawn(String what) {
+    if (clone) {
+      throw new UnsupportedOperationException(
+          "the area effect " + name() + " of a clone " + what + ", which is not modelled");
+    }
+  }
+
+  /**
+   * Whether a chained row only hits: it spawns no character, launches no projectile, runs no action
+   * and chains nothing further. Its hits read no clone mark, so a clone's area effect chains it as
+   * any area effect does, the chained one taking no mark: the Barbarian Rage of a cloned Rage
+   * Barbarian chains its damage area as the original's does.
+   *
+   * @param chainedRow the chained row
+   */
+  private static boolean chainsOnlyHits(AreaEffectData chainedRow) {
+    return chainedRow.spawnCharacter() == null
+        && chainedRow.projectile() == null
+        && chainedRow.onStartingAction() == null
+        && chainedRow.onHitAction() == null
+        && chainedRow.onHitSelfAction() == null
+        && chainedRow.onLifeTimeEndAction() == null
+        && chainedRow.spawnAreaEffectObject() == null;
+  }
+
   /**
    * Sets its countdown to 0, as Goblinstein's ability does to the death area it holds when its own
    * area effect leaves. It is then not removable: it has one more update, which takes the countdown
@@ -532,6 +581,9 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       spawn(start, end, radius);
     }
     if (!chained && data.spawnAreaEffectObject() != null) {
+      if (!chainsOnlyHits(world.getRecords().areaEffect(data.spawnAreaEffectObject()))) {
+        refuseClonesSpawn("chains " + data.spawnAreaEffectObject());
+      }
       chained = true;
       world.createAreaEffect(
           data.spawnAreaEffectObject(), x, y, side, packedLevel, null, "chained", name);
@@ -788,6 +840,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    * from the area effect's source.
    */
   private void launchFilterProjectile(ProjectileData row, WorldEntity target, int px, int py) {
+    refuseClonesSpawn("launches " + row.name());
     ProjectileEntity launched = new ProjectileEntity(world, row, side);
     launched.launchFromArea(this, target, px, py, data.projectileStartHeight(), px, py);
     world.launch(launched);
@@ -1172,6 +1225,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       sy = target.getView().getY();
     }
     ProjectileData row = world.getRecords().projectile(data.projectile());
+    refuseClonesSpawn("launches " + row.name());
     ProjectileEntity projectile = new ProjectileEntity(world, row, side);
     projectile.launchFromArea(this, target, sx, sy, data.projectileStartHeight(), sx, sy);
     world.launch(projectile);
