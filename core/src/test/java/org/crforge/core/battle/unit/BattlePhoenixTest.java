@@ -194,7 +194,7 @@ class BattlePhoenixTest {
   @Test
   @DisplayName(
       "a death projectile drawn from a least radius, counted by a spawner's limit, held by its"
-          + " launcher's targeting or launched by a clone is refused")
+          + " launcher's targeting, or launched by a clone and hopping on, is refused")
   void unheldDeathProjectilesAreRefused(@TempDir Path folder) throws IOException {
     GameTables drawn =
         GameData.altered(
@@ -241,7 +241,13 @@ class BattlePhoenixTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("its targeting component would hold");
 
-    Scene cloned = new Scene(GameData.tables());
+    // A clone's fireball written to hop on: what a clone's mark changes of a hop is not held.
+    GameTables hopping =
+        GameData.altered(
+            Files.createDirectories(folder.resolve("hopping")),
+            "projectiles",
+            rows -> GameData.columns(rows, "PhoenixFireball").put("ChainedHitCount", 2));
+    Scene cloned = new Scene(hopping);
     CharacterEntity original = cloned.place(0, "Knight", X, Y - 3000);
     CharacterEntity clone = cloned.place(0, "Phoenix", X, Y);
     clone.markClone(original);
@@ -252,6 +258,40 @@ class BattlePhoenixTest {
             })
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("is a clone");
+  }
+
+  @Test
+  @DisplayName(
+      "a clone Phoenix's fireball makes its egg a clone of 1 hit point of 1, and the Phoenix the"
+          + " egg hatches is a clone too")
+  void aClonesEggIsAClone() {
+    Scene scene = new Scene(GameData.tables());
+    CharacterEntity original = scene.place(0, "Knight", X, Y - 3000);
+    CharacterEntity clone = scene.place(0, "Phoenix", X, Y);
+    clone.markClone(original);
+    scene.match.getWorld().kill(clone, null);
+    for (int i = 0; i < 100 && scene.spawned.isEmpty(); i++) {
+      scene.step(1);
+    }
+    assertThat(scene.shots).hasSize(1);
+    assertThat(scene.spawned).hasSize(1);
+    CharacterEntity egg = scene.spawned.get(0);
+    assertThat(egg.getData().name())
+        .isEqualTo(clone.getData().deathSpawnProjectile().spawnCharacter());
+    assertThat(egg.isClone()).isTrue();
+    assertThat(egg.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(egg.getHitPoints().getMaximum()).isEqualTo(1);
+
+    // Nothing reaches the egg: it hatches its Phoenix, a clone as every spawn of a clone.
+    for (int i = 0; i < 400 && scene.spawned.size() < 2; i++) {
+      scene.step(1);
+    }
+    assertThat(scene.spawned).hasSize(2);
+    CharacterEntity reborn = scene.spawned.get(1);
+    assertThat(reborn.getData().name()).isEqualTo(egg.getData().spawnCharacter());
+    assertThat(reborn.isClone()).isTrue();
+    assertThat(reborn.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(reborn.getHitPoints().getMaximum()).isEqualTo(1);
   }
 
   @Test

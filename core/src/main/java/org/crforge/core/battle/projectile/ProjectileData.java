@@ -258,13 +258,34 @@ public record ProjectileData(
    * target. The game marks a clone's projectile in two cases - the hit of a clone whose hit
    * destroys it, and a clone's death projectile - and only what the projectile spawns reads that
    * mark: its character spawn is made a clone by it and its area effect carries it. Such a
-   * projectile flies and lands as any other; the battle models a clone's projectile of this kind
-   * only, a buff, an action or a hop having no recording that shows what a clone's mark changes of
-   * them.
+   * projectile flies and lands as any other. A clone's death projectile is modelled when it also
+   * spawns characters (see {@link #dealsDamageOrSpawnsCharacters()}); a clone whose hit destroys
+   * it, when its projectile also applies a buff, hops on or makes an area effect that spawns no
+   * character, as the recordings show (see {@code CharacterEntity#markClone}).
    */
   public boolean dealsOnlyDamage() {
     return spawnCharacter == null
         && deflectedCharacterSpawn == null
+        && spawnProjectile == null
+        && spawnAreaEffectObject == null
+        && onStartingAction == null
+        && onHitTargetAction == null
+        && onTargetReachedAction == null
+        && actionOnDeflector == null
+        && customDeflectAction == null
+        && targetBuff == null
+        && chainedHitCount == 0;
+  }
+
+  /**
+   * True for a projectile that deals its damage and push and at most spawns characters at its
+   * impact (see {@link #dealsOnlyDamage()} for the rest): no deflected spawn, area effect or
+   * projectile, no action, no target buff and no hop. A clone's projectile of this kind makes each
+   * child of its impact a clone, as the game's clone mark on the projectile does, and is otherwise
+   * the original's.
+   */
+  public boolean dealsDamageOrSpawnsCharacters() {
+    return deflectedCharacterSpawn == null
         && spawnProjectile == null
         && spawnAreaEffectObject == null
         && onStartingAction == null

@@ -319,6 +319,15 @@ public class ProjectileEntity extends BattleEntity
   private ActionHolder actionHolder;
 
   /**
+   * True for a clone's projectile: the death projectile a clone launches, which takes its
+   * launcher's clone mark as it is launched. Only the impact's character spawn reads it here: each
+   * child it makes is set up as a clone (see {@link BattleWorld#impactSpawn}). The game marks the
+   * projectile of a clone whose hit destroys it as well; such a clone is cloned only when its
+   * projectile deals its damage alone, which reads no mark, so that launch leaves it unset.
+   */
+  @Getter private boolean clone;
+
+  /**
    * True while the projectile's damage is registered on its target as pending: from its start, or a
    * hop's relaunch, until it hands the damage back.
    */
@@ -620,6 +629,11 @@ public class ProjectileEntity extends BattleEntity
     this.ringX = x;
     this.ringY = y;
     chain.markRingPoints();
+  }
+
+  /** Marks the projectile a clone's: what its impact spawns is a clone. */
+  public void markClone() {
+    clone = true;
   }
 
   /**

@@ -1030,6 +1030,26 @@ public class CharacterEntity extends WorldEntity {
   @Getter @Setter private int deployIndex = -1;
 
   /**
+   * Whether a clone whose hit destroys it launches the projectile as the original's lands: one that
+   * deals its damage and push and at most applies its target buff, hops on and makes an area effect
+   * whose row spawns no character; no character, deflected or projectile spawn and no action.
+   */
+  private boolean landsAsTheOriginals(ProjectileData shot) {
+    if (shot.spawnCharacter() != null
+        || shot.deflectedCharacterSpawn() != null
+        || shot.spawnProjectile() != null
+        || shot.onStartingAction() != null
+        || shot.onHitTargetAction() != null
+        || shot.onTargetReachedAction() != null
+        || shot.actionOnDeflector() != null
+        || shot.customDeflectAction() != null) {
+      return false;
+    }
+    return shot.spawnAreaEffectObject() == null
+        || world.getRecords().areaEffect(shot.spawnAreaEffectObject()).spawnCharacter() == null;
+  }
+
+  /**
    * The clone setter: the character becomes a clone of 1 hit point of 1. Its shield follows the
    * unit it stands for: none when that unit's shield is broken or it has none, its maximum 1 for a
    * row with a shield; otherwise 1 of 1 while its own shield is up, the standard game preserving a
@@ -1042,7 +1062,11 @@ public class CharacterEntity extends WorldEntity {
    * whose hit launches a projectile, as the Fire Spirit or the Wall Breaker, launches it at its own
    * level as any such unit does: the game marks that projectile a clone's, and only what the
    * projectile spawns reads the mark, so a projectile that only deals its damage lands as the
-   * original's would (see {@link ProjectileData#dealsOnlyDamage()}).
+   * original's would (see {@link ProjectileData#dealsOnlyDamage()}). So does one that also applies
+   * its target buff (the Ice Spirit's freeze), hops on (the Electro Spirit's) or makes an area
+   * effect that spawns no character (the Heal Spirit's), as the recordings of each show: the area
+   * effect carries the mark in the game, and nothing the recordings show of it changes (see {@link
+   * #landsAsTheOriginals(ProjectileData)}).
    *
    * <p>A champion, a hero form among them, is cloned as any unit: its clone keeps the champion's
    * row and ability, but the champion slots follow no clone, so no tap reaches it and a paid
@@ -1051,8 +1075,9 @@ public class CharacterEntity extends WorldEntity {
    *
    * <p>Refused rather than guessed: a building with hit points, whose lifetime the hit points'
    * visit counts differently for a clone; and a unit whose hit destroys it and launches a
-   * projectile that spawns, runs an action, applies a buff or hops on, whose spawns would be clones
-   * and whose buff, action and hop no recording shows for a clone.
+   * projectile that spawns a character or a projectile, makes an area effect that spawns a
+   * character or runs an action (the evolved Ice Spirit's), whose spawns would be clones and whose
+   * action no recording shows for a clone.
    *
    * @param original the unit it stands for, or null for none
    */
@@ -1061,10 +1086,10 @@ public class CharacterEntity extends WorldEntity {
     String refused = null;
     if (data.building() && getHitPoints() != null) {
       refused = "a building with hit points";
-    } else if (data.kamikaze() && data.hasProjectile() && !data.projectile().dealsOnlyDamage()) {
+    } else if (data.kamikaze() && data.hasProjectile() && !landsAsTheOriginals(data.projectile())) {
       refused =
-          "a unit whose hit destroys it and launches a projectile that spawns, runs an action,"
-              + " applies a buff or hops on";
+          "a unit whose hit destroys it and launches a projectile that spawns a character or a"
+              + " projectile, makes an area effect that spawns a character, or runs an action";
     }
     if (refused != null) {
       throw new UnsupportedOperationException(
