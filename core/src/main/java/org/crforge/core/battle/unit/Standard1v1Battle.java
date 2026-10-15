@@ -584,8 +584,10 @@ public class Standard1v1Battle {
    * <p>A Mirror of a champion's card, or of a hero play, which it repeats as the hero row, places a
    * copy one level up even while the first copy lives, and the champion slots hear the play as a
    * play of that row: the slot of its champion follows the copy, as it follows a second play of the
-   * card, and the first copy stays as a plain unit. A Mirror of a champion's card of two groups,
-   * whose copy no recording holds, is refused.
+   * card, and the first copy stays as a plain unit. A Mirror of Goblinstein, a champion's card of
+   * two groups, places a monster and a doctor of its own: the construction chains the units of each
+   * play apart, so the copy's doctor ties to the copy's monster while the first pair lives on, and
+   * the first monster's listener hears the play as a play of Goblinstein.
    *
    * @param tick the tick the play runs on
    * @param card the Mirror's card row name
@@ -646,18 +648,11 @@ public class Standard1v1Battle {
     // them: the item names the Mirror.
     // A champion's card or hero row is repeated as any card: the copy is placed beside a live one
     // as a second play of the card would be, and the champion slots hear the play as a play of the
-    // row the item repeats, so the slot of its champion follows the copy.
+    // row the item repeats, so the slot of its champion follows the copy. A champion's card of two
+    // groups, Goblinstein, is no exception: the construction links the units of this play into a
+    // chain of their own, so the copy's doctor ties to the copy's monster.
     DeployCard repeated =
         world.getRecords().withStaggerOfCard(world.getRecords().card(item.repeats().name()), card);
-    // A champion's card of two groups, Goblinstein's doctor and monster, which its card listener
-    // ties together, has no copy any recording holds.
-    if (repeated.secondary() != null && world.getRecords().cardChampion(repeated.name()) != null) {
-      throw new UnsupportedOperationException(
-          name
-              + ": a Mirror of the champion "
-              + repeated.name()
-              + ", a card of two groups, which no reference holds");
-    }
     place(
         target,
         repeated,

@@ -32,7 +32,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Goblinstein where the reference runs do not take it: a listener's count below its cost, a variant
  * card's play tested as its option, and counted, the tether over units, the ability's run off an
- * area effect that follows, and a Mirror of the card, a champion's card of two groups.
+ * area effect that follows, and a Mirror of the card while the first pair lives, a champion's card
+ * of two groups.
  */
 class BattleGoblinsteinTest {
 
@@ -371,12 +372,36 @@ class BattleGoblinsteinTest {
   }
 
   @Test
-  @DisplayName("a Mirror of Goblinstein, whose doctor is its champion, is refused")
-  void aMirrorOfGoblinsteinIsRefused() {
-    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+  @DisplayName(
+      "a Mirror of Goblinstein while the first lives places a monster and a doctor of its own, one"
+          + " level up, chained to each other: the copy's doctor ties to the copy's monster, the"
+          + " first monster's listener hears the play as Goblinstein, and the champion's slot"
+          + " follows the copy's doctor: a command naming the first doctor is refused, one naming"
+          + " the copy's passes")
+  void aMirrorOfGoblinsteinMakesAPairOfItsOwn() {
+    // The towers stand passive, so the first pair lives on.
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    List<String> heard = heardBy(battle, "g_0");
+    List<String> connected = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void goblinsteinConnected(
+                  int tick, AreaEffectEntity owner, BattleEntity unit) {
+                connected.add(
+                    ((WorldEntity) owner.getFollow()).name()
+                        + " "
+                        + (unit == null ? null : ((WorldEntity) unit).name()));
+              }
+            });
     LadderMatch match = battle.startLadderMatch(GOBLINSTEIN_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
+    battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 4000, "g");
     run(battle, 21);
+    List<CharacterEntity> first = battle.getPlays().get(0).units();
+    // Kept where they stand, so they take no tower.
+    first.forEach(unit -> unit.setActive(CharacterEntity.MOVEMENT_SLOT, false));
     // Once the elixir covers the Mirror's item, Goblinstein's cost and the Mirror's own, held to
     // the most elixir there can be; and no sooner than 22 ticks after the play it repeats.
     int cost =
@@ -384,13 +409,55 @@ class BattleGoblinsteinTest {
             Shipped.cost("Goblinstein") + Shipped.cost("Mirror"),
             Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue"));
     int mirror = Math.max(21 + 22, coveredFrom(battle, match, cost));
-    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 4000, "m");
+    run(battle, mirror + 2);
 
-    assertThatThrownBy(() -> run(battle, mirror))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessage(
-            "m: a Mirror of the champion Goblinstein, a card of two groups, which no reference"
-                + " holds");
+    Standard1v1Battle.Play play = battle.getPlays().get(1);
+    assertThat(play.matchCode()).isZero();
+    assertThat(play.mirror().repeats().name()).isEqualTo("Goblinstein");
+    int level =
+        LEVEL + Shipped.number(Shipped.row("globals", "MIRROR_LEVEL_OFFSET"), "NumberValue");
+    assertThat(play.mirror().level()).isEqualTo(level);
+    List<CharacterEntity> copy = play.units();
+    copy.forEach(unit -> unit.setActive(CharacterEntity.MOVEMENT_SLOT, false));
+    // The same two groups as the first play, one level up.
+    assertThat(copy).hasSize(2);
+    for (int i = 0; i < 2; i++) {
+      GameRow row = Shipped.unitRow(first.get(i).getData().name());
+      assertThat(copy.get(i).getData().name()).isEqualTo(first.get(i).getData().name());
+      assertThat(copy.get(i).getHitPoints().getMaximum())
+          .isEqualTo(Shipped.scaled(Shipped.number(row, "Hitpoints"), row, level));
+    }
+    // Each play's construction chains its own units: the monster first, its doctor after it.
+    assertThat(first.get(1).chainHead()).isSameAs(first.get(0));
+    assertThat(first.get(0).chainNext()).isSameAs(first.get(1));
+    assertThat(copy.get(1).chainHead()).isSameAs(copy.get(0));
+    assertThat(copy.get(0).chainNext()).isSameAs(copy.get(1));
+    assertThat(connected).containsExactly("g_1 g_0", "m_1 m_0");
+    // The first monster's listener tests the card put down, Goblinstein, and schedules its action.
+    assertThat(heard).containsExactly("Mirror Goblinstein 0 goblinstein_set_custom_tag");
+
+    // The slot hears the Mirror's play as a play of Goblinstein and follows the copy's doctor.
+    ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
+    assertThat(slot.getChampion().name())
+        .isEqualTo(GameData.records().cardChampion("Goblinstein").name());
+    assertThat(slot.getDeployIndex()).isEqualTo(copy.get(1).getDeployIndex());
+    GameRow doctor = Shipped.unitRow(copy.get(1).getData().name());
+    int abilityCost =
+        Shipped.number(
+            Shipped.row("character_abilities", Shipped.text(doctor, "Ability")), "ManaCost");
+    int deployed = battle.getBattle().getTick() + Shipped.number(doctor, "DeployTime") / 50 + 1;
+    while (battle.getBattle().getTick() < deployed || match.side(0).wholeElixir() < abilityCost) {
+      battle.getBattle().step();
+    }
+    int now = battle.getBattle().getTick();
+    battle.useAbility(now, 0, "g_1", "old");
+    battle.useAbility(now + 1, 0, "m_1", "new");
+    run(battle, now + 1);
+    List<Standard1v1Battle.AbilityUse> uses = battle.getAbilityUses();
+    assertThat(uses.get(uses.size() - 2).outcome().code()).isEqualTo(AbilityCommand.NO_CHAMPION);
+    assertThat(uses.get(uses.size() - 1).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(uses.get(uses.size() - 1).outcome().requested()).containsExactly(copy.get(1));
   }
 
   /**
