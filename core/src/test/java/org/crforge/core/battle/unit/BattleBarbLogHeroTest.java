@@ -116,6 +116,77 @@ class BattleBarbLogHeroTest {
 
   @Test
   @DisplayName(
+      "a hero roll turned by an enemy Monk's Deflect rolls back for the Monk's side, its starting"
+          + " action's later writes going by that side, and lets out the row's deflected spawn for"
+          + " the Monk's side, which no champion slot follows")
+  void theTurnedRollLeavesTheDeflectedSpawnForTheMonk() {
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0; match == null || !inHand(match, "BarbLog"); word++) {
+      battle = new Standard1v1Battle(GameData.tables());
+      match = battle.startLadderMatch(BARREL_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
+    }
+    ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
+    int cost = GameData.records().matchCard("BarbLog").cost();
+    while (match.side(0).wholeElixir() < cost) {
+      step(battle);
+    }
+    // The enemy Monk stands still on the barrel's lane, short of where the roll would end, with
+    // its Deflect up as the barrel is played.
+    CharacterEntity monk =
+        battle.deploy(
+            battle.getBattle().getTick() + 1,
+            GameData.records().unit("Monk"),
+            LEVEL,
+            1,
+            3500,
+            17000,
+            "monk");
+    while (monk.getId() == 0
+        || monk.getView().getState() == GridEntityState.DEPLOYING
+        || monk.getView().getState() == GridEntityState.WAITING_TO_DEPLOY) {
+      step(battle);
+    }
+    monk.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    monk.setActive(CharacterEntity.TARGETING_SLOT, false);
+    monk.requestAbility();
+    while (deflectors(battle) == 0) {
+      step(battle);
+    }
+    battle.play(battle.getBattle().getTick(), GameData.card("BarbLog"), LEVEL, 0, 3500, 20500, "b");
+    int limit = battle.getBattle().getTick() + 200;
+    ProjectileEntity roll = null;
+    while (roll == null || roll.getDeflections() == 0) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+      List<ProjectileEntity> rolling = projectiles(battle, "BarbLogHeroProjectileRolling");
+      if (roll == null && !rolling.isEmpty()) {
+        roll = rolling.get(0);
+      }
+    }
+    assertThat(roll.side()).as("the turned roll is the Monk's").isEqualTo(monk.side());
+    String deflectedSpawn = roll.getData().deflectedCharacterSpawn();
+    assertThat(deflectedSpawn).isNotNull().isNotEqualTo(roll.getData().spawnCharacter());
+
+    // While it rolls back, its starting action writes into the Monk side's slots, none of which
+    // follows the barbarian: the thrower's slot, with no copy of its play, is no longer held ready.
+    step(battle);
+    while (named(battle, deflectedSpawn).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      assertThat(slot.getState()).isEqualTo(ChampionController.ABSENT);
+      step(battle);
+    }
+    assertThat(named(battle, BARBARIAN)).as("no hero barbarian is let out").isEmpty();
+    CharacterEntity naked = named(battle, deflectedSpawn).get(0);
+    assertThat(naked.side()).as("the deflected spawn fights for the Monk").isEqualTo(monk.side());
+    step(battle);
+    step(battle);
+    assertThat(slot.champions()).isEmpty();
+    assertThat(battle.getWorld().kingTower(1).championSlot(1).champions()).doesNotContain(naked);
+  }
+
+  @Test
+  @DisplayName(
       "the ability's reroll backs the barbarian off toward its side by the offset's share of a"
           + " step while its spawn delay runs, then rolls it in its projectile from where it"
           + " stands, healed by the variable's percent of its missing hit points; it follows the"
@@ -245,6 +316,15 @@ class BattleBarbLogHeroTest {
         .map(CharacterEntity.class::cast)
         .filter(unit -> unit.getData().name().equals(row))
         .toList();
+  }
+
+  /** The area effects the holder lists that deflect projectiles. */
+  private static long deflectors(Standard1v1Battle battle) {
+    return battle.getWorld().getHolder().entities().stream()
+        .filter(AreaEffectEntity.class::isInstance)
+        .map(AreaEffectEntity.class::cast)
+        .filter(area -> area.getData().deflectsProjectiles())
+        .count();
   }
 
   /** The projectiles of a row the holder lists, in its order. */
