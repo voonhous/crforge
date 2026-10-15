@@ -12,6 +12,7 @@ import com.badlogic.gdx.Input;
 public enum WorkspaceAction {
   PAUSE,
   STEP,
+  STEP_BACK,
   TOGGLE_INSPECT,
   RESTART,
   HEADINGS,
@@ -44,6 +45,7 @@ public enum WorkspaceAction {
     return switch (key) {
       case Input.Keys.SPACE -> PAUSE;
       case Input.Keys.PERIOD -> STEP;
+      case Input.Keys.COMMA -> STEP_BACK;
       case Input.Keys.I -> TOGGLE_INSPECT;
       case Input.Keys.R -> RESTART;
       case Input.Keys.P -> HEADINGS;

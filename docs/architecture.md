@@ -257,6 +257,7 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 |---------------|----------------------------------------------------------|
 | `SPACE`       | Pause / resume                                           |
 | `.`           | Pause and advance exactly one tick                       |
+| `,`           | Pause and go back exactly one tick                       |
 | `R`           | Restart the replay from tick 0                           |
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                       |
 | `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
@@ -265,6 +266,8 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 | Left click    | Inspect a unit                                          |
 
 Cards are not selected or played from the viewer: the plays are the replay's own.
+
+A step back (`,`, or the toolbar's Back) shows the tick before as stepping forward left it: the units, both hands, elixir, the clock, the notes and that step's area hits. The battle core keeps no copy of a past tick, so the viewer builds the replay's battle anew and plays it again, headless, to the tick before; the battle is deterministic, so it is the tick played before. A step back late in a long replay therefore takes a moment (a full replay of a few thousand ticks runs in well under a second). A step back from a halt or a finished replay goes back before the stop, and stepping forward again reaches it again.
 
 A replay opens in **the game's view of side 1**, as the game shows a replay that neither player is watching (a TV replay): the arena is mirrored along its length only (a play on the right stays on the right), so the battle's side 1 (`deck1`) stands at the bottom in blue and side 0 (`deck0`) at the top in red. `F` flips it to the game's view of side 0, the same view turned half a turn, and back, and the status column says which (`view: side 1 at bottom (F flips)`).
 

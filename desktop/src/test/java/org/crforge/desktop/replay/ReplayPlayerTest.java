@@ -11,12 +11,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
@@ -27,8 +29,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The replay screen's state with no graphics: the replay's commands run at their ticks and are
- * noted, the clock steps by real time at the chosen speed, pause stops it, R restarts at tick 0,
- * and the replay stops at its end tick with both results shown.
+ * noted, the clock steps by real time at the chosen speed, pause stops it, a step back goes one
+ * tick back, R restarts at tick 0, and the replay stops at its end tick with both results shown.
  */
 class ReplayPlayerTest {
 
@@ -60,6 +62,121 @@ class ReplayPlayerTest {
     while (player.step()) {}
     assertThat(player.stepOnce()).isFalse();
     assertThat(player.getSession().tick()).isEqualTo(400);
+  }
+
+  @Test
+  @DisplayName("a step back pauses on the tick before, the battle as stepping forward left it")
+  void stepBackShowsTheTickBeforeAsPlayedForward() {
+    ReplayPlayer forward = player(fit(Replays.archerQueen()));
+    List<BattleFrame> frames = new ArrayList<>();
+    frames.add(BattleAdapter.frame(forward.getSession()));
+    while (forward.step()) {
+      frames.add(BattleAdapter.frame(forward.getSession()));
+    }
+    assertThat(frames).hasSize(401);
+    ReplayPlayer player = player(fit(Replays.archerQueen()));
+    player.faster();
+    while (player.step()) {
+      // To the replay's end tick
+    }
+    assertThat(player.finished()).isTrue();
+
+    // Back over the ability command (tick 350) and the play (tick 220) to tick 0, each tick as
+    // it was played forward: units, hands, elixir, the clock and the notes so far.
+    for (int tick = 399; tick >= 0; tick--) {
+      assertThat(player.stepBack()).isTrue();
+      // A unit's grid state is the battle's own live object, compared by what it shows.
+      assertThat(BattleAdapter.frame(player.getSession()))
+          .usingRecursiveComparison()
+          .ignoringFields("entities.grid")
+          .isEqualTo(frames.get(tick));
+      assertThat(player.isPaused()).isTrue();
+      assertThat(player.finished()).isFalse();
+    }
+    assertThat(player.stepBack()).isFalse();
+    assertThat(player.getSession().tick()).isZero();
+    assertThat(player.getSpeed()).isEqualTo(2f);
+    assertThat(player.statusLines(ViewOrientation.SIDE_1)).contains("commands run 0 / 2");
+
+    // Forward again from a step back, the commands noted once each.
+    while (player.step()) {
+      // To the replay's end tick
+    }
+    assertThat(player.getSession().messages()).filteredOn(m -> m.contains(" plays ")).hasSize(1);
+    assertThat(player.statusLines(ViewOrientation.SIDE_1)).contains("commands run 2 / 2");
+  }
+
+  @Test
+  @DisplayName("a step back shows the area hits of the step it lands on only")
+  void stepBackKeepsTheLastStepsAreaHits() {
+    ObjectNode document = fit(Replays.archerQueen());
+    // Side 0's Arrows (deck index field 8) on side 1's left Princess Tower on tick 300, its
+    // second play: an area hit where it lands.
+    ObjectNode play = ((ArrayNode) document.path("cmd")).insertObject(1);
+    play.put("ct", Replays.PLAY);
+    ObjectNode body = play.putObject("c");
+    body.put("t", 280).put("t2", 300).put("idHi", 0).put("idLo", 1);
+    body.put("px", 3500).put("py", 25500).put("sid", -1);
+    body.putObject("sel").put("os", 28000001).put("pd", 8 << 22);
+    fit(document);
+    ReplayPlayer forward = player(document);
+    List<List<AreaHitLog.AreaHit>> hits = new ArrayList<>();
+    while (forward.step()) {
+      hits.add(forward.drainAreaHits());
+    }
+    assertThat(forward.getSession().getHalted()).isNull();
+    assertThat(hits).hasSize(400).anyMatch(step -> !step.isEmpty());
+    ReplayPlayer player = player(document);
+    while (player.step()) {
+      // To the replay's end tick
+    }
+    player.drainAreaHits();
+
+    // On tick t the area hits drawn are those of the step that ran tick t - 1.
+    for (int tick = 399; tick >= 1; tick--) {
+      player.stepBack();
+      assertThat(player.drainAreaHits()).as("tick %d", tick).isEqualTo(hits.get(tick - 1));
+    }
+  }
+
+  @Test
+  @DisplayName("a step back from a halt plays the tick before the halt again, not halted")
+  void stepBackFromAHalt() {
+    ObjectNode document = fit(Replays.archerQueen());
+    // The play of anItemOtherThanTheBattlesHalts, which halts the replay on tick 231.
+    ((ObjectNode) document.path("battle").path("deck1").path("sp").get(1)).put("el", 1);
+    ObjectNode play = ((ArrayNode) document.path("cmd")).insertObject(1);
+    play.put("ct", Replays.PLAY);
+    ObjectNode body = play.putObject("c");
+    body.put("t", 210).put("t2", 230).put("idHi", 0).put("idLo", 2);
+    body.put("px", 3500).put("py", 18000).put("sid", -1);
+    body.putObject("sel").put("os", 26000001).put("pd", (2 << 22) | (1 << 19) | (2 << 7));
+    fit(document);
+    ReplayPlayer player = player(document);
+    while (player.step()) {
+      // Until it halts
+    }
+    assertThat(player.getSession().getHalted()).isNotNull();
+
+    assertThat(player.stepBack()).isTrue();
+
+    assertThat(player.getSession().tick()).isEqualTo(230);
+    assertThat(player.getSession().getHalted()).isNull();
+    assertThat(player.stopReason()).isNull();
+    assertThat(player.stepOnce()).isTrue();
+    assertThat(player.getSession().getHalted()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("a refused replay has no tick to step back to")
+  void aRefusedReplayDoesNotStepBack() {
+    ObjectNode document = fit(Replays.archerQueen());
+    ((ObjectNode) document.path("cmd").get(0)).put("ct", 124);
+
+    ReplayPlayer player = player(document);
+
+    assertThat(player.stepBack()).isFalse();
+    assertThat(player.getSession()).isNull();
   }
 
   @Test

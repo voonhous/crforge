@@ -65,6 +65,10 @@ public final class BattleWorkspace implements Disposable {
   private final Cell<ScrollPane> sidebarCell;
   private final TextButton pause;
   private final TextButton step;
+
+  /** The replay's step back by one tick; null on the debug screen, which cannot go back. */
+  private final TextButton stepBack;
+
   private final TextButton inspect;
   private final TextButton deploy;
   private final TextButton dataButton;
@@ -137,7 +141,9 @@ public final class BattleWorkspace implements Disposable {
     toolbar.defaults().height(34).padRight(4);
     pause = button("Pause [Space]", () -> command.accept(WorkspaceAction.PAUSE));
     step = button("Step [.]", () -> command.accept(WorkspaceAction.STEP));
+    stepBack = replay ? button("Back [,]", () -> command.accept(WorkspaceAction.STEP_BACK)) : null;
     toolbar.add(pause).width(120);
+    if (replay) toolbar.add(stepBack).width(86);
     toolbar.add(step).width(86);
     toolbar.add(button("Restart [R]", () -> command.accept(WorkspaceAction.RESTART))).width(108);
     toolbar.add(button("-", () -> command.accept(WorkspaceAction.SLOWER))).width(28);
@@ -614,6 +620,11 @@ public final class BattleWorkspace implements Disposable {
     step.setDisabled(finished);
     pause.setChecked(false);
     step.setChecked(false);
+    if (stepBack != null) {
+      // A replay goes back from any tick past the first, a finished one included.
+      stepBack.setDisabled(frame.tick() == 0);
+      stepBack.setChecked(false);
+    }
     inspect.setChecked(inspecting);
     inspect.setDisabled(replay);
     deploy.setChecked(!inspecting);
@@ -672,6 +683,7 @@ public final class BattleWorkspace implements Disposable {
     state.setColor(Color.SALMON);
     pause.setDisabled(true);
     step.setDisabled(true);
+    if (stepBack != null) stepBack.setDisabled(true);
     inspect.setDisabled(true);
     inspector.setText("No battle loaded.\n\nSee the replay refusal reasons beside this panel.");
     for (Toggle toggle : toggles) toggle.button().setDisabled(true);
