@@ -709,13 +709,14 @@ public class ProjectileEntity extends BattleEntity
     this.ownerId = launcher == null ? 0 : launcher.getId();
     this.root = rootOwner;
     this.spawnChain = data.spawnChain();
-    // A deflection's relaunch of a projectile that flies to a point and neither inverts its
-    // direction, sweeps out and back nor stops at collisions, as the Magic Archer's arrow, is aimed
-    // as a first launch is, but from where it stands: stretched to its range toward the hit
-    // position, forgetting the target, and held to its least distance.
+    // A deflection's relaunch of a projectile that flies to a point, as the Magic Archer's arrow,
+    // or has a range without flying to one, as the evolved Bomber's bounce, and neither inverts its
+    // direction, sweeps out and back nor stops at collisions, is aimed as a first launch is, but
+    // from where it stands: stretched to its range toward the hit position, forgetting the target,
+    // and held to its least distance.
     boolean aimsFromItself =
         deflections >= 1
-            && data.homingLike()
+            && (data.homingLike() || data.projectileRange() >= 1)
             && (data.deflectBehaviour() & ProjectileData.INVERT_DIRECTION) == 0
             && data.pingpongVisualTimeMs() < 1
             && !data.checkCollisions();
@@ -851,13 +852,16 @@ public class ProjectileEntity extends BattleEntity
    * stands, at its height, at the source and its position, the deflector its launcher and owner, at
    * its own level, and registers its damage, now the deflected share, on the source. A row with a
    * random delay draws a fresh one from the battle's random source, as every launch with a launcher
-   * does, so the turned projectile waits where it was turned before it flies back.
+   * does, so the turned projectile waits where it was turned before it flies back. A projectile
+   * whose impact spawns others counts their chain from its row's spawn chain again, as every launch
+   * does: a turned bounce of the evolved Bomber's bomb bounces on as often as the bomb itself.
    *
-   * <p>A projectile that flies to a point and neither inverts its direction, sweeps out and back
-   * nor stops at collisions, as the Magic Archer's arrow, is aimed from where it stands instead,
-   * stretched to its range toward the source, and forgets the source as its target; a row that
-   * homes for a time homes on the source again when it stands farther than the row's least homing
-   * distance, and its flight is then measured from the deflector, as from a launcher.
+   * <p>A projectile that flies to a point, or has a range without flying to one, and neither
+   * inverts its direction, sweeps out and back nor stops at collisions, as the Magic Archer's arrow
+   * and the evolved Bomber's bounce, is aimed from where it stands instead, stretched to its range
+   * toward the source, and forgets the source as its target; a row that homes for a time homes on
+   * the source again when it stands farther than the row's least homing distance, and its flight is
+   * then measured from the deflector, as from a launcher.
    *
    * <p>A hooking projectile, as the Fisherman's hook, is not redirected at all: after its action on
    * the deflector its flight ends where it is, as a release ends it (its action on reaching its
