@@ -104,8 +104,10 @@ class BattleCloneTest {
     final List<String> chargeResets = new ArrayList<>();
     final List<String> deathProjectiles = new ArrayList<>();
     final List<CharacterEntity> impactSpawns = new ArrayList<>();
+    final List<CharacterEntity> areaSpawns = new ArrayList<>();
     final GameTables tables;
     AreaEffectEntity area;
+    final List<AreaEffectEntity> areas = new ArrayList<>();
     int tick;
 
     Scene() {
@@ -123,6 +125,7 @@ class BattleCloneTest {
                 public void areaEffectCreated(
                     int t, AreaEffectEntity a, String how, String source) {
                   area = a;
+                  areas.add(a);
                 }
 
                 @Override
@@ -182,6 +185,9 @@ class BattleCloneTest {
                     int t, SpawnHost source, CharacterEntity child, int createdX, int createdY) {
                   if (source instanceof ProjectileEntity) {
                     impactSpawns.add(child);
+                  }
+                  if (source instanceof AreaEffectEntity) {
+                    areaSpawns.add(child);
                   }
                 }
 
@@ -826,19 +832,219 @@ class BattleCloneTest {
         .hasMessageContaining("is cloned with a deploy countdown and carries riders");
   }
 
+  /** The written action that spawns the written landing area. */
+  private static final String LANDING = "Test_CloneLanding";
+
+  /** The written area effect the landing spawns: damage in a circle, on its first update only. */
+  private static final String LANDING_AREA = "Test_CloneLandingArea";
+
+  /** The written area effect whose starting action spawns the written landing area. */
+  private static final String OUTER_AREA = "Test_CloneOuterArea";
+
+  /** The written area effect whose starting action spawns a Knight. */
+  private static final String BREEDER_AREA = "Test_CloneBreederArea";
+
+  /** The written area effect that chains the landing area, which only hits. */
+  private static final String CHAIN_AREA = "Test_CloneChainArea";
+
+  /** The written area effect that chains the outer area, which runs an action. */
+  private static final String CHAIN_OUTER_AREA = "Test_CloneChainOuterArea";
+
+  /** The landing area's damage at the first level, written. */
+  private static final int LANDING_DAMAGE = 100;
+
+  /**
+   * The configured tables with the Clone written and the written spawns: {@link #LANDING} spawns
+   * the landing area, a circle of 2000 that deals {@link #LANDING_DAMAGE} once to what the common
+   * area damage filter takes; the outer area's starting action is the landing, and the breeder
+   * area's a spawn of one Knight; the chain area chains the landing area and the chain-outer area
+   * the outer one. Each written area effect spawn has its own action row, named after its area with
+   * "_Spawn" added.
+   */
+  private static GameTables cloneSpawnAreaTables(Path folder) throws IOException {
+    withClone(
+        folder,
+        rows -> {
+          ObjectNode landing = writtenArea(rows, LANDING_AREA);
+          landing.putObject("Damage").put("BaseDamage", LANDING_DAMAGE);
+          landing.put("Filter", "CommonAreaDamageFilter");
+          landing.put("HitSpeed", 50).put("LifeDuration", 0).put("Radius", 2000);
+          writtenArea(rows, OUTER_AREA).put("LifeDuration", 1000).put("OnStartingAction", LANDING);
+          writtenArea(rows, BREEDER_AREA)
+              .put("LifeDuration", 1000)
+              .put("OnStartingAction", "Test_CloneBreederSpawn");
+          writtenArea(rows, CHAIN_AREA)
+              .put("LifeDuration", 1000)
+              .put("SpawnAreaEffectObject", LANDING_AREA);
+          writtenArea(rows, CHAIN_OUTER_AREA)
+              .put("LifeDuration", 1000)
+              .put("SpawnAreaEffectObject", OUTER_AREA);
+        });
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          writtenSpawn(rows, LANDING, "AreaEffectType", LANDING_AREA);
+          writtenSpawn(rows, OUTER_AREA + "_Spawn", "AreaEffectType", OUTER_AREA);
+          writtenSpawn(rows, BREEDER_AREA + "_Spawn", "AreaEffectType", BREEDER_AREA);
+          writtenSpawn(rows, CHAIN_AREA + "_Spawn", "AreaEffectType", CHAIN_AREA);
+          writtenSpawn(rows, CHAIN_OUTER_AREA + "_Spawn", "AreaEffectType", CHAIN_OUTER_AREA);
+          writtenSpawn(rows, "Test_CloneBreederSpawn", "CharacterType", "Knight");
+        });
+    return GameTables.load(folder);
+  }
+
+  /** Writes a common area effect row and returns its columns. */
+  private static ObjectNode writtenArea(ObjectNode rows, String name) {
+    ObjectNode row = rows.putObject(name);
+    row.put("index", rows.size());
+    row.put("class", "LogicAreaEffectObjectData");
+    ObjectNode columns = row.putObject("columns");
+    columns.put("Rarity", "Common");
+    return columns;
+  }
+
+  /** Writes an action row of the spawn class that spawns one row of a type. */
+  private static void writtenSpawn(ObjectNode rows, String name, String type, String data) {
+    ObjectNode row = rows.putObject(name);
+    row.put("class", "LogicActionSpawnData");
+    row.put("ClassType", "ActionSpawn");
+    ObjectNode fields = row.putObject("fields");
+    fields.put("ClassType", "ActionSpawn");
+    fields.put("SpawnData", data);
+    fields.put("SpawnType", type);
+  }
+
+  /** The area effects of a row the scene has created, in order. */
+  private static List<AreaEffectEntity> areasOf(Scene scene, String row) {
+    return scene.areas.stream().filter(area -> area.getData().name().equals(row)).toList();
+  }
+
+  /** Starts a written action on a unit, the unit its cause, as its starting action would run. */
+  private static void run(Scene scene, CharacterEntity unit, String action) {
+    BattleWorld world = scene.match.getWorld();
+    unit.actionHolder()
+        .start(world.getActions().build(action, world.binding(unit)), unit.actionHolder());
+  }
+
   @Test
-  @DisplayName("an area effect spawned with a clone as its cause is refused")
-  void anAreaEffectSpawnedFromAClone() {
-    Scene scene = new Scene();
-    scene.still(0, 0, "Knight", X, Y, "knight");
+  @DisplayName(
+      "an area effect a clone's action spawns is a clone's, and deals its damage as the"
+          + " original's does")
+  void anAreaEffectSpawnedFromAClone(@TempDir Path folder) throws IOException {
+    GameTables tables = cloneSpawnAreaTables(folder);
+    // The clone's: a Knight cloned, its landing right after, an enemy 1000 below that never fights.
+    Scene cloned = new Scene(tables);
+    cloned.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    CharacterEntity enemy = cloned.stillOfTables(0, 1, "Knight", X, Y - 1000, "enemy");
+    enemy.setActive(CharacterEntity.TARGETING_SLOT, false);
+    cloned.clone(CAST_TICK);
+    CharacterEntity clone = cloned.named("knight_clone0");
+    int full = enemy.getHitPoints().getHitPoints();
+    run(cloned, clone, LANDING);
+    AreaEffectEntity fromClone = areasOf(cloned, LANDING_AREA).get(0);
+    assertThat(fromClone.isClone()).isTrue();
+    assertThat(fromClone.getParent()).isSameAs(clone);
+    cloned.step(2);
+    int dealt = full - enemy.getHitPoints().getHitPoints();
+    assertThat(dealt).isPositive();
+
+    // The original's, at the same level and with the same enemy below it: no clone's, the same hit.
+    Scene plain = new Scene(tables);
+    CharacterEntity knight = plain.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    CharacterEntity other = plain.stillOfTables(0, 1, "Knight", X, Y - 1000, "enemy");
+    other.setActive(CharacterEntity.TARGETING_SLOT, false);
+    knight.setActive(CharacterEntity.TARGETING_SLOT, false);
+    plain.step(CAST_TICK + 1);
+    assertThat(knight.getPackedLevel()).isEqualTo(clone.getPackedLevel());
+    run(plain, knight, LANDING);
+    AreaEffectEntity fromKnight = areasOf(plain, LANDING_AREA).get(0);
+    assertThat(fromKnight.isClone()).isFalse();
+    plain.step(2);
+    assertThat(full - other.getHitPoints().getHitPoints()).isEqualTo(dealt);
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect a clone's area effect spawns is a clone's too, and so is a character it"
+          + " spawns, of 1 hit point")
+  void aCloneAreasSpawns(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(cloneSpawnAreaTables(folder));
+    scene.stillOfTables(0, 0, "Knight", X, Y, "knight");
     scene.clone(CAST_TICK);
     CharacterEntity clone = scene.named("knight_clone0");
-    BattleAction spawn =
-        GameData.actions().build("GoblinCurseCore", scene.match.getWorld().binding(clone));
 
-    assertThatThrownBy(() -> clone.actionHolder().start(spawn, clone.actionHolder()))
+    // The outer area's starting action runs as it is admitted, at the tick's closing cleanup.
+    run(scene, clone, OUTER_AREA + "_Spawn");
+    assertThat(areasOf(scene, OUTER_AREA)).singleElement().matches(AreaEffectEntity::isClone);
+    scene.step(1);
+    assertThat(areasOf(scene, LANDING_AREA)).singleElement().matches(AreaEffectEntity::isClone);
+
+    run(scene, clone, BREEDER_AREA + "_Spawn");
+    AreaEffectEntity breeder = areasOf(scene, BREEDER_AREA).get(0);
+    assertThat(breeder.isClone()).isTrue();
+    scene.step(1);
+    CharacterEntity bred = scene.areaSpawns.isEmpty() ? null : scene.areaSpawns.get(0);
+    assertThat(bred).isNotNull();
+    assertThat(bred.isClone()).isTrue();
+    assertThat(bred.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(bred.getHitPoints().getMaximum()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a clone's area effect chains an area effect that only hits, unmarked, and one that runs an"
+          + " action is refused")
+  void aCloneAreasChain(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(cloneSpawnAreaTables(folder));
+    scene.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("knight_clone0");
+
+    // The chain is made on the area effect's first update, the tick after it is admitted.
+    run(scene, clone, CHAIN_AREA + "_Spawn");
+    assertThat(areasOf(scene, CHAIN_AREA)).singleElement().matches(AreaEffectEntity::isClone);
+    scene.step(2);
+    assertThat(areasOf(scene, LANDING_AREA)).singleElement().matches(area -> !area.isClone());
+
+    run(scene, clone, CHAIN_OUTER_AREA + "_Spawn");
+    assertThatThrownBy(() -> scene.step(2))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("from a clone");
+        .hasMessageContaining("of a clone chains " + OUTER_AREA);
+  }
+
+  @Test
+  @DisplayName(
+      "a clone's death area is a clone's, and the character its starting action spawns is a clone"
+          + " of 1 hit point; the original's spawns a plain one")
+  void aClonesDeathAreaSpawnsClones(@TempDir Path folder) throws IOException {
+    cloneSpawnAreaTables(folder);
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows -> GameData.columns(rows, "Knight").put("DeathAreaEffect", BREEDER_AREA));
+    Scene scene = new Scene(GameTables.load(folder));
+    CharacterEntity knight = scene.stillOfTables(0, 0, "Knight", X, Y, "knight");
+    scene.clone(CAST_TICK);
+    CharacterEntity clone = scene.named("knight_clone0");
+    BattleWorld world = scene.match.getWorld();
+
+    world.kill(clone, null);
+    scene.step(2);
+    AreaEffectEntity cloneDeath = areasOf(scene, BREEDER_AREA).get(0);
+    assertThat(cloneDeath.isClone()).isTrue();
+    assertThat(scene.areaSpawns).hasSize(1);
+    CharacterEntity bred = scene.areaSpawns.get(0);
+    assertThat(bred.isClone()).isTrue();
+    assertThat(bred.getHitPoints().getHitPoints()).isEqualTo(1);
+
+    world.kill(knight, null);
+    scene.step(2);
+    AreaEffectEntity knightDeath = areasOf(scene, BREEDER_AREA).get(1);
+    assertThat(knightDeath.isClone()).isFalse();
+    assertThat(scene.areaSpawns).hasSize(2);
+    assertThat(scene.areaSpawns.get(1).isClone()).isFalse();
+    assertThat(scene.areaSpawns.get(1).getHitPoints().getHitPoints()).isGreaterThan(1);
   }
 
   /**

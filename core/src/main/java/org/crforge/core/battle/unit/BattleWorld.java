@@ -2832,7 +2832,7 @@ public class BattleWorld implements HolderPasses {
    * Makes the death area of a run of Goblinstein's ability at a point: for the area effect's side
    * and at its level, re-based on the death area's own rarity, the area effect its parent and
    * following nothing. It is handed to the holder inside the cleanup that removed the connected
-   * unit, which admits it as it ends.
+   * unit, which admits it as it ends. It is a clone's when the area effect is.
    *
    * @param owner the area effect the run is on
    * @param row the death area's row
@@ -2841,17 +2841,23 @@ public class BattleWorld implements HolderPasses {
    * @return the death area
    */
   AreaEffectEntity goblinsteinDeathArea(AreaEffectEntity owner, String row, int x, int y) {
-    return createAreaEffect(
-        row,
-        x,
-        y,
-        owner.side(),
-        owner.packedLevel(),
-        null,
-        "goblinstein_death",
-        owner.name(),
-        owner,
-        null);
+    AreaEffectEntity deathArea =
+        createAreaEffect(
+            row,
+            x,
+            y,
+            owner.side(),
+            owner.packedLevel(),
+            null,
+            "goblinstein_death",
+            owner.name(),
+            owner,
+            null);
+    // Made by the shared spawn, which asks the run's area effect whether it is a clone's.
+    if (owner.isClone()) {
+      deathArea.markClone();
+    }
+    return deathArea;
   }
 
   /** Tells the observers a run of Goblinstein's ability made its death area. */
@@ -5427,11 +5433,11 @@ public class BattleWorld implements HolderPasses {
   /**
    * The death slot: what a dying object's row does as it dies, in order - its starting buff taken
    * off; its ManaOnDeath paid to its own side's king; its area effect at its point, for its side
-   * and at its level; what its buffs leave; what the object switches off; its death damage; its
-   * death spawn; its death projectiles. The switches come after the buffs: a child a buff leaves is
-   * visited as it is made, and finds the dying object still moving. A death whose row sets a column
-   * of the slot the battle does not model is refused, and so is the death of one whose area object
-   * is still in the battle, which would end it.
+   * and at its level, a clone's for a dying clone; what its buffs leave; what the object switches
+   * off; its death damage; its death spawn; its death projectiles. The switches come after the
+   * buffs: a child a buff leaves is visited as it is made, and finds the dying object still moving.
+   * A death whose row sets a column of the slot the battle does not model is refused, and so is the
+   * death of one whose area object is still in the battle, which would end it.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -5462,15 +5468,20 @@ public class BattleWorld implements HolderPasses {
       }
     }
     if (data.deathAreaEffect() != null) {
-      createAreaEffect(
-          data.deathAreaEffect(),
-          dying.getView().getX(),
-          dying.getView().getY(),
-          dying.side(),
-          dying.getPackedLevel(),
-          null,
-          "death",
-          dying.name());
+      AreaEffectEntity deathArea =
+          createAreaEffect(
+              data.deathAreaEffect(),
+              dying.getView().getX(),
+              dying.getView().getY(),
+              dying.side(),
+              dying.getPackedLevel(),
+              null,
+              "death",
+              dying.name());
+      // The death slot gives its area effect the dying object's clone answer.
+      if (isClone(dying)) {
+        deathArea.markClone();
+      }
     }
     buffDeathSpawns(dying);
     dying.deathSwitches();
@@ -6670,6 +6681,7 @@ public class BattleWorld implements HolderPasses {
   void spawnGuard(AreaEffectEntity areaEffect, SpawnGuard action, int phase) {
     SpawnGuard.Columns columns = action.getColumns();
     UnitData row = spawnedRow(columns.spawnData());
+    areaEffect.refuseClonesSpawn("spawns " + row.name());
     if (row.onStartingAction() != null) {
       throw new UnsupportedOperationException(
           action.name() + " makes " + row.name() + ", which starts an action, not modelled");
@@ -8016,8 +8028,12 @@ public class BattleWorld implements HolderPasses {
    * admitted at that tick's closing cleanup and first updates on the next tick. The observers are
    * told after it is created.
    *
-   * <p>Refused rather than guessed: a source that is a clone, whose clone byte the area effect
-   * would copy, which nothing the battle models reads.
+   * <p>It takes its source's clone answer: the area effect a clone's action spawns, as the trooper
+   * a cloned hero Balloon drops makes as it lands or the one a cloned Goblinstein doctor starts
+   * with, is a clone's, and so is one a clone's area effect spawns. Its hits read it for nothing:
+   * it deals its damage and applies its buff as the original's would. A character an action spawns
+   * from it is a clone (see {@link #cloneSpawn}); what else it would carry the mark on to is
+   * refused (see {@link AreaEffectEntity#refuseClonesSpawn(String)}).
    *
    * @param owner the owner of the holder that ran the action
    * @param action the spawn row's name
@@ -8066,10 +8082,6 @@ public class BattleWorld implements HolderPasses {
       int offsetX,
       int offsetY,
       int phase) {
-    if (source instanceof CharacterEntity unit && unit.isClone()) {
-      throw new UnsupportedOperationException(
-          action + " spawns " + row + " from a clone, which is not modelled");
-    }
     AreaEffectEntity areaEffect =
         createAreaEffect(
             row,
@@ -8082,6 +8094,11 @@ public class BattleWorld implements HolderPasses {
             source.name(),
             source,
             records.areaEffect(row).followsParent() ? owner : null);
+    // The spawn sets the area effect's clone mark from its source's clone answer after handing it
+    // to the holder.
+    if (isClone(source)) {
+      areaEffect.markClone();
+    }
     for (WorldObserver observer : observers) {
       observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
     }
@@ -8636,6 +8653,7 @@ public class BattleWorld implements HolderPasses {
    * @param phase the phase of the pending pass that ran the drop
    */
   void cannonBomb(AreaEffectEntity area, CannonProjectileSpawn action, int phase) {
+    area.refuseClonesSpawn("drops " + action.getProjectile());
     int lifetime =
         area.getLifetimeOverride() >= 0
             ? area.getLifetimeOverride()
@@ -8763,6 +8781,7 @@ public class BattleWorld implements HolderPasses {
    * @param y the point it faces along the length
    */
   void ghostSummon(AreaEffectEntity area, String row, WorldEntity reference, int x, int y) {
+    area.refuseClonesSpawn("summons " + row);
     UnitData data = spawnedRow(row);
     if (data.building()
         || data.spawnPathfindSpeed() != 0
@@ -9347,12 +9366,33 @@ public class BattleWorld implements HolderPasses {
    * countdown, and it sets only the clone mark and the hit points, so a child with a deploy time is
    * a clone made deploying: its countdown runs as any unit's, it takes no part in collision until
    * the countdown ends (the contact rule's deploying clone), and it resumes as any unit then.
+   *
+   * <p>A clone's area effect as the spawner makes clones too: the spawner asks it as it asks any
+   * source, and hands the setter no original, as for every source that is not a character, so the
+   * child takes its own shield rule. The death area of a cloned Suspicious Bush spawns its Bush
+   * Goblins as clones of 1 hit point.
    */
   private static void cloneSpawn(SpawnHost spawner, CharacterEntity child) {
+    if (spawner instanceof AreaEffectEntity area) {
+      if (area.isClone()) {
+        child.markClone(null);
+      }
+      return;
+    }
     if (!(spawner instanceof CharacterEntity source) || !source.isClone()) {
       return;
     }
     child.markClone(source);
+  }
+
+  /**
+   * A spawn source's clone answer: a clone, or a clone's area effect.
+   *
+   * @param source the source
+   */
+  private static boolean isClone(SpawnHost source) {
+    return source instanceof CharacterEntity unit && unit.isClone()
+        || source instanceof AreaEffectEntity area && area.isClone();
   }
 
   void cloneRefused(WorldEntity original, String reason, SpawnHost instigator) {
