@@ -43,8 +43,8 @@ application {
 // commit crforge-data.lock pins: references/<version>. A folder of them is named by the Gradle
 // property -Pcrforge.references=<dir>; without one the reference test is skipped. The tables are the
 // ones the build makes for -Pcrforge.dataVersion (see the root build), which must be the
-// references' version. The expected outcome of every case is kept here, one file per content
-// version.
+// references' version; the reference test builds that version's alone (:tables:dataVersionTables).
+// The expected outcome of every case is kept here, one file per content version.
 val expectationsFolder = layout.projectDirectory.dir("reference-expectations")
 
 /** A Gradle property's value, or null when it is not set or blank. */
