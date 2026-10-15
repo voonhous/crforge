@@ -158,12 +158,15 @@ public final class EntityStateVisit {
       return;
     }
 
-    // 4. A landed dash holds the unit for its landing time and then releases it.
+    // 4. A landed dash holds the unit for its landing time and then releases it: the attack reset
+    // and the wind-up reloaded, with the targeting component on, before the moving state is asked
+    // for, whose change ends with the combat gate.
     if (entity.getBlockCountdownMs() >= 1) {
       entity.setBlockCountdownMs(entity.getBlockCountdownMs() + TICK_MS);
       if (entity.getBlockCountdownMs() >= config.dashLandingTimeMs()) {
         entity.setBlockCountdownMs(0);
         chain.add("dash_landed");
+        queries.landingEnd().run();
         setter.setState(entity, GridEntityState.MOVING);
       }
     }

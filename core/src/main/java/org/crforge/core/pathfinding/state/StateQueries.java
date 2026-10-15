@@ -46,6 +46,10 @@ import java.util.function.BooleanSupplier;
  * @param abilityEffect the ability's effect, run where the visit reaches it: on the visit the
  *     trigger delay reaches zero, after both countdowns step and before the cast's end is tested,
  *     so the rest of the visit sees the state the effect leaves
+ * @param landingEnd what the end of a dash's landing hold runs before it asks for the moving state:
+ *     with the targeting component on, the attack reset and the wind-up reloaded. It runs before
+ *     that state change, whose combat gate may switch the component off, so it reads the component
+ *     as the gate of the visit before left it
  */
 public record StateQueries(
     int team,
@@ -63,12 +67,16 @@ public record StateQueries(
     Runnable kamikazeDrain,
     Runnable deployEndVisit,
     Runnable hide,
-    Runnable abilityEffect) {
+    Runnable abilityEffect,
+    Runnable landingEnd) {
 
   /** Milliseconds one tick advances every countdown by. */
   public static final int TICK_MS = 50;
 
-  /** The answers without an ability effect: a visit that reaches it runs nothing. */
+  /**
+   * The answers without an ability effect or a landing end: a visit that reaches either runs
+   * nothing.
+   */
   public StateQueries(
       int team,
       boolean mayHoldRoute,
@@ -101,6 +109,7 @@ public record StateQueries(
         kamikazeDrain,
         deployEndVisit,
         hide,
+        () -> {},
         () -> {});
   }
 
@@ -158,6 +167,7 @@ public record StateQueries(
         kamikazeDrain,
         deployEndVisit,
         hide,
-        abilityEffect);
+        abilityEffect,
+        landingEnd);
   }
 }
