@@ -4048,8 +4048,9 @@ public class BattleWorld implements HolderPasses {
    * one, and registered with its registration visit; only then is a child on the ground moved off
    * the water, onto the point the relocation gives where the child then stands, so the step its
    * registration visit took is kept. Each child joins the live list at the next cleanup's fold,
-   * which starts it: its row's starting action is scheduled then. A deflected projectile with a
-   * deflected spawn is refused.
+   * which starts it: its row's starting action is scheduled then. A clone's projectile makes each
+   * child a clone of 1 hit point of 1, the clone setter running after its deploy countdown and
+   * before the add that registers it. A deflected projectile with a deflected spawn is refused.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -4117,6 +4118,11 @@ public class BattleWorld implements HolderPasses {
       }
       if (data.spawnCharacterDeployTimeMs() >= 1) {
         spawned.deployFor(data.spawnCharacterDeployTimeMs());
+      }
+      // A clone's projectile makes a clone: the clone setter takes the projectile's mark, before
+      // the add registers the child.
+      if (projectile.isClone()) {
+        spawned.markClone(null);
       }
       // The child is queued by the add that registers it now: it joins the live list at the next
       // cleanup's fold, which starts it, scheduling its row's starting action then. It carries the
@@ -5541,12 +5547,16 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>A clone launches them as any unit: the game marks each a clone's projectile, which only what
    * the projectile spawns reads, so a row that only deals its damage (see {@link
-   * ProjectileData#dealsOnlyDamage()}), as the Goblin Demolisher's, lands as the original's would.
+   * ProjectileData#dealsOnlyDamage()}), as the Goblin Demolisher's, lands as the original's would,
+   * and a row that also spawns characters where it lands, as the Phoenix's, makes each of them a
+   * clone (see {@link #impactSpawn}): the Phoenix's egg is a clone of 1 hit point, and so is the
+   * Phoenix it hatches.
    *
    * <p>Refused rather than guessed: a least radius, which draws each radius from the battle's
    * random source; a row with a spawner limit, whose count is what the limit has left; and a
-   * clone's row that spawns, runs an action, applies a buff or hops on, as the Phoenix's, whose egg
-   * would be a clone.
+   * clone's row that spawns an area effect or a projectile, runs an action, applies a buff or hops
+   * on (see {@link ProjectileData#dealsDamageOrSpawnsCharacters()}), which no recording shows for a
+   * clone.
    */
   private void deathProjectiles(WorldEntity dying, UnitData data) {
     ProjectileData row = data.deathSpawnProjectile();
@@ -5560,9 +5570,10 @@ public class BattleWorld implements HolderPasses {
       refused = "counts them by what its spawner's limit has left";
     } else if (dying instanceof CharacterEntity character
         && character.isClone()
-        && !row.dealsOnlyDamage()) {
+        && !row.dealsDamageOrSpawnsCharacters()) {
       refused = "is a clone, whose projectiles carry it to what they spawn";
     }
+    boolean clone = dying instanceof CharacterEntity unit && unit.isClone();
     if (refused != null) {
       throw new UnsupportedOperationException(
           dying.name()
@@ -5585,6 +5596,9 @@ public class BattleWorld implements HolderPasses {
       ProjectileEntity projectile = new ProjectileEntity(this, row, dying.side());
       ProjectileLauncher.launchOnDeath(
           projectile, dying, bottom ? x - dx : x + dx, bottom ? y + dy : y - dy);
+      if (clone) {
+        projectile.markClone();
+      }
       launch(projectile);
       for (WorldObserver observer : observers) {
         observer.deathProjectileLaunched(tick, dying, projectile);
