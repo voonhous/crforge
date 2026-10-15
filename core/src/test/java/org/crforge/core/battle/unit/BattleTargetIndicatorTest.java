@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -30,9 +29,9 @@ import org.junit.jupiter.api.io.TempDir;
  * tick twenty later than there, where the units are placed out of their deploy. A Zap ends the
  * attack and the machine marks the Musketeer again as it comes back; a Musketeer moved off after it
  * was marked is missed; the machine killed with its rocket in flight stops its run and ends its
- * signal, and the rocket still lands. A signal whose maker leaves before it is admitted is refused.
- * These scenes write every column their logs are read from: the machine's row, its rocket attack
- * and its signal, the rocket, the Knight, the Musketeer and the Zap.
+ * signal, and the rocket still lands. A signal whose maker leaves before it is admitted is let go
+ * by the fold. These scenes write every column their logs are read from: the machine's row, its
+ * rocket attack and its signal, the rocket, the Knight, the Musketeer and the Zap.
  */
 class BattleTargetIndicatorTest {
 
@@ -256,9 +255,9 @@ class BattleTargetIndicatorTest {
 
   @Test
   @DisplayName(
-      "a signal whose machine leaves on the tick it is made would be destroyed unread as it is"
-          + " admitted, which is refused")
-  void aSignalWhoseMakerLeftIsRefused(@TempDir Path folder) throws IOException {
+      "a signal whose machine leaves on the tick it is made is let go by the fold, never admitted:"
+          + " its id stays spent, no rocket is shot and the battle goes on")
+  void aSignalWhoseMakerLeftIsReleased(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(written(folder));
     scene
         .match
@@ -273,10 +272,25 @@ class BattleTargetIndicatorTest {
                 }
               }
             });
-    scene.stepTo(49);
-    assertThatThrownBy(() -> scene.stepTo(50))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("admitted after its maker left");
+    // An area effect placed after the release, another signal that stands and does nothing, takes
+    // the next id: the released signal's stays spent.
+    scene.match.placeAreaEffect(
+        60, "goblin_machine_rocket_target_signal", LEVEL, 1, 3500, 30000, "placed");
+    List<Integer> listed = new ArrayList<>();
+    for (int last = 50; last <= 100; last++) {
+      scene.stepTo(last);
+      scene.match.getBattle().getHolder().entities().stream()
+          .filter(entity -> entity instanceof AreaEffectEntity)
+          .forEach(entity -> listed.add(entity.getId()));
+    }
+    // The machine's run stops as it leaves; the signal is not live, so the stop ends nothing.
+    assertThat(scene.log)
+        .containsExactly(
+            "50 step [find 5000008, begin, signal 0 5000008 3000000] load 1500 1550 cooldown -1 -1",
+            "50 stop [stop 1, remove 0 3000000]");
+    assertThat(listed).doesNotContain(3000000).contains(3000001);
+    assertThat(scene.musketeer.getHitPoints().getHitPoints())
+        .isEqualTo(scene.musketeer.getHitPoints().getMaximum());
   }
 
   @Test

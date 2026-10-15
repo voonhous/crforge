@@ -174,8 +174,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " when the chooser finds nobody, which no run meets. A target indicator attack's"
             + " signal at its target's point, for the maker's side and level with the maker as"
             + " parent, ended by its attack, held by card_GoblinMachine and"
-            + " random_battle16_s0025; one admitted after its maker left, which would be"
-            + " destroyed unread, is refused. A Clone's hit action on the units its index query"
+            + " random_battle16_s0025; one whose maker leaves in the cleanup that would admit"
+            + " it, let go there, never admitted, its id spent and no projectile launched, held"
+            + " by goblinmachine-signal-left-v1. A Clone's hit action on the units its index query"
             + " finds, in the query's order, and its filter, held by card_Clone and"
             + " spell_clone_into_push. Its filter's buff test of a clone, the buff row's"
             + " HealPerSecond, a healing buff refusing the clone and any other passing it as any"
@@ -285,12 +286,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   private final List<Integer> struck = new ArrayList<>();
 
   private final ActionHolder actionHolder;
-
-  /**
-   * The id of the object that made it as a target indicator attack's signal, which must still be in
-   * the battle as the area effect is admitted; -1 for one made otherwise.
-   */
-  private int creatorId = -1;
 
   /** The variables its actions write. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -405,15 +400,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * Keeps the id of the object that made it, which its admission tests.
-   *
-   * @param id the maker's id
-   */
-  void setCreator(int id) {
-    creatorId = id;
-  }
-
-  /**
    * Ends it: its countdown goes below 0, so the next cleanup after its update removes it.
    *
    * <p>The game keeps every area effect until its countdown is below 0, a row with hit switches as
@@ -491,22 +477,26 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   /**
    * As it is admitted, its row's starting action is scheduled on itself, itself the cause. A signal
-   * whose maker left the battle before it was admitted would be destroyed unread, which is refused.
+   * whose maker left the battle before the fold is never admitted: the fold lets it go instead
+   * ({@link #releasedAtFold()}).
    */
   @Override
   protected void onRegistered() {
-    if (creatorId != -1 && world.liveObject(creatorId) == null) {
-      throw new UnsupportedOperationException(
-          "the area effect "
-              + name
-              + " is admitted after its maker left, which would destroy it unread, not modelled");
-    }
     world.areaEffectAdmitted(this);
     if (data.onStartingAction() != null) {
       BattleAction starting = world.getActions().build(data.onStartingAction(), binding());
       actionHolder.schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder);
     }
   }
+
+  /**
+   * Let go by the fold instead of admitted, as a target indicator attack's signal whose maker left
+   * in the cleanup that would admit it: the game's leave reset of an area effect only lets its
+   * presentation go and clears its own fields, which nothing reads again, so nothing runs here. No
+   * starting action was scheduled, and no other object hears of it.
+   */
+  @Override
+  protected void releasedAtFold() {}
 
   /**
    * Schedules the action a spawn row runs on the area effect it spawned, built for the area effect,

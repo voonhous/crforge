@@ -160,6 +160,22 @@ public class EntityHolder {
     entity.registrationVisit();
   }
 
+  /**
+   * Files the id of another object beside an entity already handed over and still waiting, as a
+   * target indicator attack hands its signal over with its maker's id: the fold admits it only
+   * while an object with that id is listed and not removable, and otherwise releases it ({@link
+   * BattleEntity#releasedAtFold()}).
+   *
+   * @param entity the waiting entity
+   * @param requiredId the id of the object it needs
+   */
+  public void requireListed(BattleEntity entity, int requiredId) {
+    checkState(
+        pendingAdditions.contains(entity),
+        () -> "entity " + entity.getId() + " is not waiting to be admitted");
+    requiredIds.put(entity, requiredId);
+  }
+
   /** The entities handed over since the last cleanup, in the order they arrived. */
   public List<BattleEntity> queued() {
     return Collections.unmodifiableList(pendingAdditions);
