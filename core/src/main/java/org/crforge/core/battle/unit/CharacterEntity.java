@@ -1120,10 +1120,10 @@ public class CharacterEntity extends WorldEntity {
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
    * by anything but an area effect, of a carrier still deploying or one of its riders, of a unit
    * still deploying whose clone's row spawns an area object or a push as it enters the deploying
-   * state, or of a unit running an air-to-ground action, which the game starts again on the clone -
-   * for a carrier, of any of its riders too, each cloned with it. Any other unit still deploying is
-   * cloned with its countdown. A row with a cloned version and the runs of every other action class
-   * are modelled: the clone is made of the cloned version, and the runs stay the unit's.
+   * state - for a carrier, of any of its riders too, each cloned with it - or of a carrier's rider
+   * running an air-to-ground action. Any other unit still deploying is cloned with its countdown. A
+   * row with a cloned version and the runs are modelled: the clone is made of the cloned version,
+   * the runs stay the unit's, and an air-to-ground run is started again on the clone, copied.
    *
    * <p>The perform does not ask whether the unit is a clone itself: a clone it reaches is cloned
    * again. A Clone's area never reaches one, its filter dropping clones, so a clone the action
@@ -1180,13 +1180,16 @@ public class CharacterEntity extends WorldEntity {
       }
       // The creator tells each run the unit has listed of the clone; every class but the
       // air-to-ground one does nothing with it, so the runs stay the unit's. That one starts its
-      // action again on the clone.
-      for (ActionInstance run : unit.actionHolder().running()) {
-        if (run.getAction() instanceof AirToGround) {
-          throw new UnsupportedOperationException(
-              unit.name()
-                  + " is cloned with an air-to-ground action running, which the game starts again"
-                  + " on the clone; that is not modelled");
+      // action again on the clone, which copies the unit's run. A rider is never held by one (the
+      // run's start refuses a rider), so a rider's run of it is refused, not guessed at.
+      if (unit != this) {
+        for (ActionInstance run : unit.actionHolder().running()) {
+          if (run.getAction() instanceof AirToGround) {
+            throw new UnsupportedOperationException(
+                unit.name()
+                    + " is cloned as a carrier's rider with an air-to-ground action running, which"
+                    + " is not modelled");
+          }
         }
       }
     }

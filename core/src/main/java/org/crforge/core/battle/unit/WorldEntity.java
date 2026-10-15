@@ -1913,13 +1913,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * Starts an air-to-ground run on the entity, listed by the holder. A unit carrying riders is held
    * like any other: the run reads and moves only the unit it is on, and its riders, which nothing
    * targets, are left to follow it. A hovering unit is held from the start (see {@link
-   * AirToGroundRun}). A clone on the ground, such as each skeleton the Skeleton King's graveyard
-   * makes, is held like any other ground unit: the start asks a clone for one thing more, whether
-   * the entity that caused the run is a character or a tower whose own holder lists a run of the
-   * same row, finished or not, for a singleton row, whose phase and counter the clone's run would
-   * then take. That copy, a clone at a flying height or hovering, a unit that rides another, and a
-   * hovering row a force tag already holds, which the run would take for a plain ground unit, are
-   * refused: no reference holds one.
+   * AirToGroundRun}). The start asks a clone for one thing more: whether the entity that caused the
+   * run is a character or a tower whose own holder lists a run of the same singleton row, finished
+   * or not. Then the clone's run copies the first such run: its phase and counter, at the height
+   * the clone's row flies at, with no action once on the ground scheduled. That is the run the
+   * clone's creator starts again on the clone of a unit an air-to-ground action holds, the unit the
+   * cause, so the clone is held as its unit is and let go with it. Any other clone starts as any
+   * unit does: one on the ground, such as each skeleton the Skeleton King's graveyard makes, is
+   * held like any other ground unit, and has the action once on the ground scheduled only when the
+   * row lets a clone trigger its landing actions. A clone started at a flying height or hovering
+   * outside the copy, a unit that rides another, and a hovering row a force tag already holds,
+   * which the run would take for a plain ground unit, are refused: no reference holds one.
    *
    * @param action the row
    * @param phase the pending pass it starts in
@@ -1932,19 +1936,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       throw new UnsupportedOperationException(
           action.name() + " holds " + name() + ", a rider, which is not modelled");
     }
-    if (this instanceof CharacterEntity unit && unit.isClone()) {
-      if (instigator != null
-          && (instigator.getOwner() instanceof CharacterEntity
-              || instigator.getOwner() instanceof TowerEntity)
-          && action.singleton()
-          && instigator.running().stream()
-              .anyMatch(run -> run.getAction().name().equals(action.name()))) {
-        throw new UnsupportedOperationException(
-            action.name()
-                + " holds the clone "
-                + name()
-                + " from a cause that runs it too, whose run the clone's would copy, which is"
-                + " not modelled");
+    if (this instanceof CharacterEntity unit
+        && unit.isClone()
+        && instigator != null
+        && (instigator.getOwner() instanceof CharacterEntity
+            || instigator.getOwner() instanceof TowerEntity)
+        && action.singleton()) {
+      for (ActionInstance listed : instigator.running()) {
+        if (listed.getAction().name().equals(action.name())) {
+          startLayering();
+          AirToGroundRun copy = new AirToGroundRun(action, this, (AirToGroundRun) listed);
+          world.airToGroundStarted(
+              this, action.name(), phase, copy.phase(), copy.counter(), copy.height());
+          return copy;
+        }
       }
     }
     if (data.hovering() && !layerHovering()) {
@@ -1966,18 +1971,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               + " at a flying height or hovering, which no reference holds");
     }
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
-    if (run.startsOnTheGround() && action.getOnGround() != null) {
+    if (run.startsOnTheGround()
+        && action.getOnGround() != null
+        && AirToGroundRun.landingActionsRun(action, this)) {
       // A unit already on the ground as the run starts, as an evolved Royal Hog Vines holds is
       // when a hit makes it fall, has the action once on the ground scheduled at once, itself its
-      // cause, as the end of a descent schedules it. The game asks a clone whether the row lets a
-      // clone run it, a column read for nothing else, so a clone stays refused.
-      if (this instanceof CharacterEntity unit && unit.isClone()) {
-        throw new UnsupportedOperationException(
-            action.name()
-                + " starts on the ground on the clone "
-                + name()
-                + ", scheduling its action once on the ground, which is not modelled");
-      }
+      // cause, as the end of a descent schedules it. A clone has it only when the row lets a clone
+      // trigger its landing actions.
       actionHolder().schedule(action.getOnGround(), ActionHolder.OWN_DELAY, false, actionHolder());
     }
     return run;

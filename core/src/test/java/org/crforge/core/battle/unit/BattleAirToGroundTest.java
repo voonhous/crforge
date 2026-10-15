@@ -334,9 +334,9 @@ class BattleAirToGroundTest {
 
   @Test
   @DisplayName(
-      "a run on a clone caused by a character whose own holder lists a run of the row, whose"
-          + " phase the clone's run would copy, is refused")
-  void aCloneFromACauseRunningTheRowIsRefused(@TempDir Path folder) throws IOException {
+      "a run on a clone caused by a character whose own holder lists a run of the row copies that"
+          + " run: its phase and counter, at the height the clone's row flies at")
+  void aCloneFromACauseRunningTheRowCopiesItsRun(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(vines(folder, fields -> {}));
     CharacterEntity dragon =
         scene.match.deploy(0, GameData.unit("BabyDragon"), LEVEL, 1, X, Y, "dragon");
@@ -350,9 +350,13 @@ class BattleAirToGroundTest {
     BattleWorld world = scene.match.getWorld();
     BattleAction run = world.getActions().build("Vines_Air_To_Ground", world.binding(knight));
     knight.actionHolder().schedule(run, ActionHolder.OWN_DELAY, false, dragon.actionHolder());
-    assertThatThrownBy(() -> scene.steps(1))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("holds the clone cloned knight from a cause that runs it too");
+    scene.steps(1);
+    AirToGroundRun from = (AirToGroundRun) dragon.actionHolder().running().get(0);
+    AirToGroundRun copy = (AirToGroundRun) knight.actionHolder().running().get(0);
+    assertThat(copy.getAction().name()).isEqualTo("Vines_Air_To_Ground");
+    assertThat(copy.phase()).isEqualTo(from.phase());
+    assertThat(copy.counter()).isEqualTo(from.counter());
+    assertThat(copy.height()).isZero();
   }
 
   @Test
@@ -434,8 +438,8 @@ class BattleAirToGroundTest {
 
   @Test
   @DisplayName(
-      "a run starting on the ground on a clone, with an action once on the ground, which the game"
-          + " gates on a column read for nothing else, is refused")
+      "a run starting on the ground on a clone, with an action once on the ground, is refused when"
+          + " its row lets a clone trigger its landing actions, as it does unless it says not")
   void aCloneOnTheGroundWithAnActionOnGroundIsRefused(@TempDir Path folder) throws IOException {
     Scene scene =
         new Scene(
@@ -449,6 +453,30 @@ class BattleAirToGroundTest {
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
     assertThatThrownBy(() -> scene.steps(19))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("starts on the ground on the clone cloned knight");
+        .hasMessageContaining("on the clone cloned knight")
+        .hasMessageContaining("CloneTriggersLandingActions");
+  }
+
+  @Test
+  @DisplayName(
+      "a run starting on the ground on a clone whose row does not let a clone trigger its landing"
+          + " actions schedules no action once on the ground")
+  void aCloneOnTheGroundRunsNoActionOnGround(@TempDir Path folder) throws IOException {
+    Scene scene =
+        new Scene(
+            vines(
+                folder,
+                fields -> {
+                  fields.putObject("ActionOnGround").put("action", "Hunter_EV1_apply_snare_small");
+                  fields.put("CloneTriggersLandingActions", false);
+                }));
+    CharacterEntity knight =
+        scene.match.deploy(0, GameData.unit("Knight"), LEVEL, 1, X, Y, "cloned knight");
+    knight.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(20);
+    assertThat(scene.held).containsExactly(knight.name());
+    // The action once on the ground would put the evolved Hunter's snare on it.
+    assertThat(knight.getBuffs().carries("Hunter_EV1_bear_trap_snare_small")).isFalse();
   }
 }

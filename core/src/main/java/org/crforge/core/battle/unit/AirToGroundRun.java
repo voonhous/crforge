@@ -39,7 +39,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " end is held by BattleAirToGroundTest and reached by tv_replay_014; a Goblin Giant"
             + " carrying riders by cg_vines_goblingiant_riders. A hovering unit held from the"
             + " start by BattleAirToGroundTest and recorded Vines battles on the Ghost and its"
-            + " evolution; its re-trigger by a recorded Mirror of Vines.")
+            + " evolution; its re-trigger by a recorded Mirror of Vines. A clone's copy of its"
+            + " unit's run, held, descending and climbing, and the landing actions a clone skips,"
+            + " by recorded Clones of a held Baby Dragon and of falling evolved Royal Hogs.")
 final class AirToGroundRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -99,6 +101,26 @@ final class AirToGroundRun extends ActionInstance {
       phase = GROUND;
       counter = row.getTotalDurationMs();
     }
+  }
+
+  /**
+   * The run a clone's start makes when the entity that caused it, a character or a tower, lists a
+   * run of the same singleton row, as the clone's unit does when the clone's creator starts the row
+   * again on the clone: the new run takes that run's phase and counter, and the height its own
+   * unit's row flies at, 0 for a ground row; it is never a hovering unit's hold, and it schedules
+   * no action once on the ground as it starts.
+   *
+   * @param row the row
+   * @param unit the clone
+   * @param from the cause's run of the row
+   */
+  AirToGroundRun(AirToGround row, WorldEntity unit, AirToGroundRun from) {
+    super(row);
+    this.row = row;
+    this.unit = unit;
+    height = unit.getData().flyingHeight();
+    phase = from.phase;
+    counter = from.counter;
   }
 
   /**
@@ -189,7 +211,7 @@ final class AirToGroundRun extends ActionInstance {
     }
     phase = HELD;
     counter = row.getTotalDurationMs() - 2 * t;
-    if (row.getOnGround() != null) {
+    if (row.getOnGround() != null && landingActionsRun(row, unit)) {
       holder.schedule(row.getOnGround(), ActionHolder.OWN_DELAY, false, holder);
     }
   }
@@ -211,6 +233,29 @@ final class AirToGroundRun extends ActionInstance {
     }
     phase = CLIMBING;
     counter = row.getTransitionDurationMs() - STEP_MS;
+  }
+
+  /**
+   * Whether the row's landing actions, its action once on the ground among them, are scheduled on
+   * the unit: always for a unit that is not a clone; for a clone only when the row lets a clone
+   * trigger them, which is refused, as no reference holds one.
+   *
+   * @param row the row
+   * @param unit the unit the run holds
+   * @return true to schedule them
+   */
+  static boolean landingActionsRun(AirToGround row, WorldEntity unit) {
+    if (!(unit instanceof CharacterEntity character) || !character.isClone()) {
+      return true;
+    }
+    if (row.isCloneTriggersLandingActions()) {
+      throw new UnsupportedOperationException(
+          row.name()
+              + " schedules its action once on the ground on the clone "
+              + unit.name()
+              + ", whose row sets CloneTriggersLandingActions, which is not modelled");
+    }
+    return false;
   }
 
   /** Pushes a height change to a unit with a movement component. */

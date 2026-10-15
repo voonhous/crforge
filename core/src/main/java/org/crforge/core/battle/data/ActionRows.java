@@ -2346,9 +2346,10 @@ public final class ActionRows {
 
     /**
      * An air-to-ground row's columns, a column it leaves out taking the loader's default: a
-     * transition of 200, a whole of 1000, the path reset at the end, no ground tag on idle and no
-     * action once on the ground. A row with a landing action or a landing end action, a path reset
-     * at landing or a next action is refused. Its tags are carried by its run as any row's are.
+     * transition of 200, a whole of 1000, the path reset at the end, no ground tag on idle, no
+     * action once on the ground and a clone's landing actions triggered. A row with a landing
+     * action or a landing end action, a path reset at landing or a next action is refused. Its tags
+     * are carried by its run as any row's are.
      */
     private AirToGround airToGround(String name, ActionRow shared, JsonNode f) {
       for (String column :
@@ -2364,7 +2365,8 @@ public final class ActionRows {
           integer(f, "TotalDuration", 1000),
           bool(f, "AllowIsGroundTagOnIdle", false),
           bool(f, "ResetPathAtEnd", true),
-          action(f.get("ActionOnGround")));
+          action(f.get("ActionOnGround")),
+          bool(f, "CloneTriggersLandingActions", true));
     }
 
     /**

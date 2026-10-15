@@ -1018,21 +1018,151 @@ class BattleCloneTest {
             "knight_clone0 Rage %s other".formatted(effect));
   }
 
+  /** The unit's listed run of the air-to-ground row. */
+  private static AirToGroundRun airToGroundRun(CharacterEntity unit, String row) {
+    return unit.actionHolder().running().stream()
+        .filter(run -> run.getAction().name().equals(row))
+        .map(AirToGroundRun.class::cast)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError(unit.name() + " lists no run of " + row));
+  }
+
   @Test
   @DisplayName(
-      "a unit running an air-to-ground action is refused: the game starts that action again on the"
-          + " clone, which is not modelled")
-  void anAirToGroundRunIsRefused(@TempDir Path folder) throws IOException {
+      "a unit running an air-to-ground action has it started again on its clone, its unit the"
+          + " cause: the clone's run takes the phase and the counter of its unit's run, so the two"
+          + " holds end together")
+  void anAirToGroundRunStartsAgainOnTheClone(@TempDir Path folder) throws IOException {
     GameTables tables = clonedVersionTables(folder, "Vines_Air_To_Ground");
     Scene scene = new Scene(tables);
     CharacterEntity knight =
         scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "knight");
     knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    scene.clone(CAST_TICK);
 
-    assertThatThrownBy(() -> scene.clone(CAST_TICK))
+    CharacterEntity clone = scene.named("knight_clone0");
+    AirToGroundRun original = airToGroundRun(knight, "Vines_Air_To_Ground");
+    AirToGroundRun copy = airToGroundRun(clone, "Vines_Air_To_Ground");
+    assertThat(copy).isNotSameAs(original);
+    // A ground unit's hold, part way through: the copy is not a run started over.
+    assertThat(original.phase()).isEqualTo(AirToGroundRun.GROUND);
+    assertThat(original.counter()).isLessThan(5000);
+    scene.step(1);
+    assertThat(copy.phase()).isEqualTo(original.phase());
+    assertThat(copy.counter()).isEqualTo(original.counter());
+    int left = original.counter() / 50;
+    scene.step(left);
+    assertThat(original.isFinished()).isFalse();
+    assertThat(copy.isFinished()).isFalse();
+    scene.step(1);
+    assertThat(original.isFinished()).isTrue();
+    assertThat(copy.isFinished()).isTrue();
+  }
+
+  /**
+   * The configured tables with the Clone written, and a Minion that starts the air-to-ground row as
+   * it starts, whose clone is a Baby Dragon, which starts no such row of its own.
+   */
+  private static GameTables flyingHoldTables(Path folder, String row) throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Minion")
+                .put("OnStartingAction", row)
+                .put("ClonedVersion", "BabyDragon"));
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          GameData.fields(rows, "Vines_Air_To_Ground").put("TotalDuration", 5000);
+          // The fall of the evolved Royal Hog made long enough for a Clone to land in it, and its
+          // action once on the ground a snare on the unit.
+          GameData.fields(rows, "RoyalHog_EV1_To_Ground")
+              .put("TransitionDuration", 2000)
+              .putObject("ActionOnGround")
+              .put("action", "Vines_Apply_Snare_Small");
+        });
+    return GameTables.load(folder);
+  }
+
+  @Test
+  @DisplayName(
+      "the clone of an air unit held on the ground is held too, at its own row's flying height, and"
+          + " climbs back with its unit")
+  void anAirUnitsCloneIsHeldWithIt(@TempDir Path folder) throws IOException {
+    GameTables tables = flyingHoldTables(folder, "Vines_Air_To_Ground");
+    Scene scene = new Scene(tables);
+    CharacterEntity minion = scene.stillOfTables(0, 0, "Minion", X, Y, "minion");
+    scene.clone(CAST_TICK);
+
+    CharacterEntity clone = scene.named("minion_clone0");
+    AirToGroundRun original = airToGroundRun(minion, "Vines_Air_To_Ground");
+    AirToGroundRun copy = airToGroundRun(clone, "Vines_Air_To_Ground");
+    assertThat(original.phase()).isEqualTo(AirToGroundRun.HELD);
+    // The height the clone's own row flies at.
+    assertThat(copy.height())
+        .isEqualTo(new BattleRecords(tables).unit("BabyDragon").flyingHeight())
+        .isNotEqualTo(original.height());
+    scene.step(2);
+    assertThat(copy.phase()).isEqualTo(AirToGroundRun.HELD);
+    assertThat(copy.counter()).isEqualTo(original.counter());
+    // Held on the ground: the ground layer, as its unit.
+    assertThat(minion.getView().isAir()).isFalse();
+    assertThat(clone.getView().isAir()).isFalse();
+    while (!original.isFinished()) {
+      scene.step(1);
+    }
+    assertThat(copy.isFinished()).isTrue();
+    scene.step(1);
+    assertThat(clone.getView().isAir()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a clone that ends its unit's descent schedules no action once on the ground when the row"
+          + " does not let a clone trigger its landing actions; its unit lands and takes it")
+  void aClonesDescentEndsWithoutTheLandingActions(@TempDir Path folder) throws IOException {
+    GameTables tables = flyingHoldTables(folder, "RoyalHog_EV1_To_Ground");
+    Scene scene = new Scene(tables);
+    CharacterEntity minion = scene.stillOfTables(0, 0, "Minion", X, Y, "minion");
+    scene.clone(CAST_TICK);
+
+    CharacterEntity clone = scene.named("minion_clone0");
+    AirToGroundRun original = airToGroundRun(minion, "RoyalHog_EV1_To_Ground");
+    AirToGroundRun copy = airToGroundRun(clone, "RoyalHog_EV1_To_Ground");
+    assertThat(original.phase()).isEqualTo(AirToGroundRun.DESCENDING);
+    while (original.phase() == AirToGroundRun.DESCENDING) {
+      scene.step(1);
+    }
+    scene.step(2);
+    assertThat(copy.phase()).isEqualTo(AirToGroundRun.HELD);
+    assertThat(minion.getBuffs().carries("Vines_Trap_Snare_Small")).isTrue();
+    assertThat(clone.getBuffs().carries("Vines_Trap_Snare_Small")).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a clone that would end its descent with its landing actions, which its row lets a clone"
+          + " trigger, is refused: no reference holds one")
+  void aClonesLandingActionsAreRefused(@TempDir Path folder) throws IOException {
+    GameTables tables = flyingHoldTables(folder, "RoyalHog_EV1_To_Ground");
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows ->
+            GameData.fields(rows, "RoyalHog_EV1_To_Ground")
+                .put("CloneTriggersLandingActions", true));
+    GameTables triggering = GameTables.load(folder);
+    Scene scene = new Scene(triggering);
+    scene.stillOfTables(0, 0, "Minion", X, Y, "minion");
+    scene.clone(CAST_TICK);
+
+    assertThatThrownBy(() -> scene.step(60))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("knight")
-        .hasMessageContaining("air-to-ground");
+        .hasMessageContaining("minion_clone0")
+        .hasMessageContaining("CloneTriggersLandingActions");
   }
 
   /**
