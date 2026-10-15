@@ -30,9 +30,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " its buff once per id; the step of speed times the offset over the unguarded"
             + " distance, truncated, and the arrival's put, last buff, release and finish; held"
             + " by the reference battle evo_snowball_on_musketeer, the side and the walk back by"
-            + " BattleSnowballEvoTest. Held by no run: the distance across, the arrival's last"
-            + " buff on what the step before missed, and the square test of a building. Refused:"
-            + " a deflection, which the run's deflection pass and a deflected roll would need.")
+            + " BattleSnowballEvoTest. The deflection pass at the start and after each step, and"
+            + " a deflection counted since the last step taking the destination again for the"
+            + " projectile's side by the distances less what was rolled, held by"
+            + " snowball-ev1-roll-deflect-v1. Held by no run: the distance across, the arrival's"
+            + " last buff on what the step before missed, and the square test of a building.")
 final class RollingRun extends ActionInstance {
 
   /** How far each walk back from a blocked destination goes. */
@@ -46,6 +48,14 @@ final class RollingRun extends ActionInstance {
 
   private int destinationX;
   private int destinationY;
+
+  /** The projectile's count of deflections the run has turned for. */
+  private int seenDeflections;
+
+  /** How far the run has moved its projectile, step by step, along the width and the length. */
+  private int rolledX;
+
+  private int rolledY;
 
   /**
    * The start: the deflection pass at the projectile's point, then the destination.
@@ -107,8 +117,18 @@ final class RollingRun extends ActionInstance {
     }
   }
 
+  /**
+   * One step. A deflection counted on the projectile since the last one turns the roll first: the
+   * destination is taken again from where the projectile stands, for the side it now has, by the
+   * distances less what the run has rolled along each, so a roll turned partway rolls back by the
+   * rest of its distance, and one turned again by the rest of that.
+   */
   @Override
   protected void update(ActionHolder holder) {
+    if (projectile.getDeflections() > seenDeflections) {
+      seenDeflections = projectile.getDeflections();
+      destination(columns.distanceX() - rolledX, columns.distanceY() - rolledY);
+    }
     hitPass();
     int x = projectile.getX();
     int y = projectile.getY();
@@ -121,6 +141,8 @@ final class RollingRun extends ActionInstance {
       int sx = columns.speed() * dx / distance;
       int sy = columns.speed() * dy / distance;
       projectile.moveTo(x + sx, y + sy, projectile.getZ());
+      rolledX += sx;
+      rolledY += sy;
       projectile.world().rolled(projectile, false);
       projectile.world().rollDeflectionPass(projectile);
       return;

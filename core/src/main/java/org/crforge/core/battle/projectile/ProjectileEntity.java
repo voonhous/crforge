@@ -26,6 +26,7 @@ import org.crforge.core.battle.action.ExecutionerEvoProjectile;
 import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.action.MirroredExtraSpell;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
+import org.crforge.core.battle.action.ProjectileDeflected;
 import org.crforge.core.battle.action.RollingProjectile;
 import org.crforge.core.battle.action.TakeDamage;
 import org.crforge.core.battle.filter.GameObjectFilter;
@@ -910,6 +911,12 @@ public class ProjectileEntity extends BattleEntity
    * the next one, and the damage it queues falls on the parent at the drain after it, scaled by the
    * projectile's level. Refused: an action on the deflector that deals no damage to its owner,
    * which no recording holds.
+   *
+   * <p>A row with its own deflection action, as the evolved Snowball's rolling snowball, is not
+   * turned at all: the action is scheduled on the projectile, the deflector its cause - outside a
+   * pending pass it waits for the next one - and nothing else of the redirect runs, neither the
+   * count, the side, the target nor the launch; the action counts the deflection and hands over the
+   * side as it starts (see {@link #projectileDeflected}).
    */
   private void turnAround(WorldEntity deflector, WorldEntity source, int px, int py) {
     if (data.actionOnDeflector() != null) {
@@ -925,8 +932,10 @@ public class ProjectileEntity extends BattleEntity
       deflector.actionHolder().schedule(onDeflector, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     if (data.customDeflectAction() != null) {
-      throw new UnsupportedOperationException(
-          name() + " is deflected, which runs " + data.customDeflectAction() + ", not modelled");
+      BattleAction custom =
+          world.getActions().build(data.customDeflectAction(), new ProjectileBinding(world, this));
+      actionHolder().schedule(custom, ActionHolder.OWN_DELAY, false, deflector.actionHolder());
+      return;
     }
     if (data.dragBackSpeed() >= 1) {
       // A hooking projectile, as the Fisherman's hook, is not turned: its flight ends where it is,
@@ -1164,6 +1173,31 @@ public class ProjectileEntity extends BattleEntity
   /** A row's battle columns: everything but its name and its starting action. */
   private static ProjectileData battleColumns(ProjectileData row) {
     return row.toBuilder().name("").onStartingAction(null).build();
+  }
+
+  /**
+   * A row's own deflection action on the projectile: one more deflection counted and the side of
+   * its cause, the deflector's parent, taken; nothing else changes, so whatever moves it reads the
+   * count, as a roll does (see {@link RollingRun}). Refused: a cause that is not a unit, and a
+   * deflection past the most a projectile takes (MAX_DEFLECTION_TIMES), which ends its flight as a
+   * release does and which no recording holds.
+   */
+  @Override
+  public void projectileDeflected(ProjectileDeflected action, ActionOwner cause) {
+    if (!(cause instanceof WorldEntity deflector)) {
+      throw new UnsupportedOperationException(
+          action.name() + " deflects " + name() + " without a unit as its cause, not modelled");
+    }
+    if (deflections >= world.globalNumber("MAX_DEFLECTION_TIMES")) {
+      throw new UnsupportedOperationException(
+          action.name()
+              + " deflects "
+              + name()
+              + " past the most a projectile takes, which ends its flight, not modelled");
+    }
+    deflections++;
+    side = deflector.side();
+    world.projectileSelfDeflected(this, action.name(), deflector);
   }
 
   /** Starts the evolved Executioner's axe controller on the projectile. */

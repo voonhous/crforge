@@ -55,6 +55,7 @@ import org.crforge.core.battle.action.MegaMinionHeroAbility;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.PlayAnimationIfHasTarget;
 import org.crforge.core.battle.action.PopBalloons;
+import org.crforge.core.battle.action.ProjectileDeflected;
 import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.ResetPath;
 import org.crforge.core.battle.action.ResetTarget;
@@ -1386,10 +1387,34 @@ class ActionRowsTest {
 
   @Test
   @DisplayName("a row whose tree reaches a class the battle does not have is refused, naming it")
-  void anUnmodelledClassIsRefused() {
-    assertThatThrownBy(() -> GameData.actions().build("SnowballSpell_EV1_deflect", INERT_BINDING))
+  void anUnmodelledClassIsRefused(@TempDir Path folder) throws IOException {
+    String row = "SnowballSpell_EV1_deflect";
+    String unknown = "ActionNotInTheBattle";
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> {
+              ObjectNode node = (ObjectNode) rows.get(row);
+              node.put("ClassType", unknown);
+              ((ObjectNode) node.get("fields")).put("ClassType", unknown);
+            });
+    ActionRows rows = new ActionRows(altered, new BattleRecords(altered));
+    assertThatThrownBy(() -> rows.build(row, INERT_BINDING))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("ActionProjectileDeflected");
+        .hasMessageContaining(unknown);
+  }
+
+  @Test
+  @DisplayName("the evolved Snowball's own deflection action builds as a projectile's deflection")
+  void theSnowballsDeflectionBuilds() {
+    String row =
+        GameData.tables()
+            .table("projectiles")
+            .row("SnowballSpell_EV1_Rolling")
+            .string("CustomDeflectAction");
+    assertThat(GameData.actions().build(row, INERT_BINDING))
+        .isInstanceOf(ProjectileDeflected.class);
   }
 
   @Test
