@@ -479,7 +479,7 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * True once a Kamikaze row's hit has ended: from then on the state visit of a row with a Kamikaze
-   * time drains its hit points.
+   * time drains its hit points, and no buff's heal over time reaches the unit.
    */
   @Getter private boolean kamikazeHitEnded;
 
