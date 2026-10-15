@@ -34,8 +34,8 @@ import org.junit.jupiter.api.io.TempDir;
  * reach: hit points kept above a smaller maximum, a target given up by the row and the attack
  * timing it leaves, a target kept on the new row's columns, the new row as the unit's attackers
  * read it, a walking unit broken down into a building that attacks with a push left on the movement
- * component it no longer has, the swaps that are refused, and the hit-point functions the swap's
- * rows read.
+ * component it no longer has, a shield kept with its maximum through a row without one, the swaps
+ * that are refused, and the hit-point functions the swap's rows read.
  */
 class BattleChangeDataTest {
 
@@ -44,6 +44,9 @@ class BattleChangeDataTest {
 
   /** The Barbarian's, smaller, written into its row. */
   private static final int BARBARIAN_HIT_POINTS = 280;
+
+  /** The Bomber's shield hit points at the first level, written into its row. */
+  private static final int BOMBER_SHIELD_HIT_POINTS = 100;
 
   /** The Goblin Demolisher's kamikaze form's lifetime, written into its row. */
   private static final int KAMIKAZE_LIFETIME_MS = 20000;
@@ -68,6 +71,9 @@ class BattleChangeDataTest {
                   .put("Rarity", "Common");
               GameData.columns(rows, "Barbarian")
                   .put("Hitpoints", BARBARIAN_HIT_POINTS)
+                  .put("Rarity", "Common");
+              GameData.columns(rows, "Bomber")
+                  .put("ShieldHitpoints", BOMBER_SHIELD_HIT_POINTS)
                   .put("Rarity", "Common");
               GameData.columns(rows, "GoblinDemolisher_kamikaze_form")
                   .put("LifeTime", KAMIKAZE_LIFETIME_MS);
@@ -305,6 +311,44 @@ class BattleChangeDataTest {
   }
 
   @Test
+  @DisplayName(
+      "a row without a shield leaves the shield and its maximum as they were: a heal fills a shield"
+          + " partly down to the old maximum and leaves a full one full, and a level change keeps"
+          + " the maximum")
+  void aShieldKeepsItsMaximumThroughARowWithoutOne() {
+    for (boolean partlyDown : new boolean[] {true, false}) {
+      Scene scene = new Scene("Bomber");
+      CharacterEntity unit = scene.knight;
+      HitPoints hp = unit.getHitPoints();
+      int maximum = hp.getShieldMaximum();
+      assertThat(maximum).as("the row's shield at the level").isGreaterThan(1);
+      assertThat(hp.getShield()).as("created full").isEqualTo(maximum);
+      int shield = partlyDown ? maximum / 2 : maximum;
+      hp.setShield(shield);
+      int hitPoints = hp.getHitPoints();
+
+      unit.changeData("Barbarian", false);
+
+      assertThat(hp.getShield()).as("partly down " + partlyDown).isEqualTo(shield);
+      assertThat(hp.getShieldMaximum())
+          .as("partly down " + partlyDown + ": the Barbarian's row has no shield")
+          .isEqualTo(maximum);
+
+      unit.takeHeal(maximum, 0);
+
+      assertThat(hp.getShield()).as("partly down " + partlyDown).isEqualTo(maximum);
+      assertThat(hp.getHitPoints()).as("a shield that is up takes the heal").isEqualTo(hitPoints);
+
+      unit.changeLevel(unit.getPackedLevel() + 1);
+
+      assertThat(hp.getShieldMaximum())
+          .as("partly down " + partlyDown + ": the row has no shield at the new level either")
+          .isEqualTo(maximum);
+      assertThat(hp.getShield()).as("never lowered on a rise").isEqualTo(maximum);
+    }
+  }
+
+  @Test
   @DisplayName("a swap whose effect is not established is refused, naming what it asks for")
   void unestablishedSwapsAreRefused() {
     assertThatThrownBy(() -> new Scene("Knight").knight.changeData("BabyDragon", false))
@@ -322,6 +366,9 @@ class BattleChangeDataTest {
     assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Assassin", false))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a dash");
+    assertThatThrownBy(() -> new Scene("Knight").knight.changeData("Bomber", false))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a shield without a shield maximum");
     Scene towers = new Scene("Knight");
     TowerEntity king = BattleTowers.towerNamed(towers.battle, "KingTower_0_0");
     assertThatThrownBy(() -> king.changeData("Knight", false))

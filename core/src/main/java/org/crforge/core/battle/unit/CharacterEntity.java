@@ -1416,8 +1416,11 @@ public class CharacterEntity extends WorldEntity {
    *
    * <p>Refused rather than guessed: any other building row, a flying row either side but those, any
    * other swap that builds or frees the movement component or reaches a lifetime, a different
-   * rarity, a different deploy time while the unit deploys, and another ability. A shield keeps its
-   * value, its maximum taken from the new row.
+   * rarity, a different deploy time while the unit deploys, another ability, and a row with a
+   * shield taken by a unit without a shield maximum. A shield keeps its value, and its maximum is
+   * the new row's when that row has a shield; a row without one leaves the maximum as it was, as
+   * the hero Dark Prince keeps its shield's maximum on foot, so a heal fills a shield that is still
+   * up back to it.
    *
    * @param rowName the name of the new character row
    * @param resetTarget true to give up the target rather than keep it

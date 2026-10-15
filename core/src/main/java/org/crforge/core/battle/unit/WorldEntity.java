@@ -131,7 +131,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " reported, the excess of a hit lost, and its break resetting an attacker with an"
             + " attack sequence, held by card_RoyalRecruits, evo_royalrecruits_vs_musketeer,"
             + " status_guards_shields_vs_valkyrie_and_archers and card_SkeletonWarriors - the"
-            + " reset, and a shield through a level change or a swap, held by no run; the"
+            + " reset, a shield and its maximum kept through a swap to a row without a shield,"
+            + " held by dpshield_zap_tap_heal and dpshield_tap_heal, and a shield through a level"
+            + " change, held by no run; the"
             + " pending-damage slot summing the damage of the shots on their way and raising the"
             + " duration to a shot's flight rounded up to 50 ms, at most 1000, and the level the"
             + " pending-damage rule reads the row's full hit points at, held by the battle"
@@ -1452,6 +1454,17 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return new int[] {hitpoints, shield};
   }
 
+  /**
+   * The shield maximum the hit points take when their maxima are worked out again from the row, by
+   * a swap or a level change: the row's shield at the level, or, for a row without a shield, the
+   * maximum the hit points already have, which a swap away from a row with a shield leaves behind.
+   *
+   * @param rowShield the row's shield at the level, 0 for none
+   */
+  private int shieldMaximumTaken(int rowShield) {
+    return rowShield != 0 ? rowShield : hitPoints.getShieldMaximum();
+  }
+
   /** A shield's value at a level: its row's ShieldHitpoints by the card hit-points rule. */
   private static int shieldAt(UnitData row, int packedLevel) {
     if (row.shieldHitpoints() <= 0) {
@@ -2308,10 +2321,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * out, and the hundredths it carries are kept.
    *
    * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
-   * The shield's maximum follows the level too, and a shield that is up, under an old maximum of at
-   * least 1, keeps its share as the hit points do, never lowered on a rise and never below 1 on a
-   * fall; a broken one stays at 0. The growth percentage the share is taken at is the usual 100, as
-   * no unit that grows is modelled.
+   * The shield's maximum follows the level too when the row has a shield (a row without one keeps
+   * the maximum a swap away from a row with a shield left), and a shield that is up, under an old
+   * maximum of at least 1, keeps its share as the hit points do, never lowered on a rise and never
+   * below 1 on a fall; a broken one stays at 0. The growth percentage the share is taken at is the
+   * usual 100, as no unit that grows is modelled.
    *
    * @param packed the new level, packed
    */
@@ -2351,10 +2365,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     int share = hitPoints.getHitPoints() * 100_000 / oldMaximum;
     int rescaled = maximum * share / 100_000;
     hitPoints.setHitPoints(Math.max(delta >= 1 ? hitPoints.getHitPoints() : 1, rescaled));
-    // The shield's maximum follows the level; a shield that is up keeps its share by the same rule,
-    // and a broken one stays broken.
+    // The shield's maximum follows the level, or stays as it is for a row without a shield; a
+    // shield that is up keeps its share by the same rule, and a broken one stays broken.
     int oldShieldMaximum = hitPoints.getShieldMaximum();
-    int shieldMaximum = shieldAt(data, packedLevel);
+    int shieldMaximum = shieldMaximumTaken(shieldAt(data, packedLevel));
     hitPoints.setShieldMaximum(shieldMaximum);
     if (hitPoints.getShield() >= 1 && oldShieldMaximum >= 1) {
       int shieldShare = hitPoints.getShield() * 100_000 / oldShieldMaximum;
@@ -2482,7 +2496,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * The part of a row swap every entity shares: the row itself, read from here on wherever the
    * entity reads a column, the damage of its next hit, and the hit points' maximum and both team
    * pools recomputed from the new row at the level the entity has, which is not re-based. The hit
-   * points themselves are kept, even above the new maximum.
+   * points themselves are kept, even above the new maximum. The shield is kept as it is; its
+   * maximum is the new row's when that row has a shield and stays as it was when it has none.
+   *
+   * <p>Refused rather than guessed: a row with a shield taken by an entity whose shield maximum is
+   * 0, which the game fills to the new maximum.
    *
    * @param next the new row
    */
@@ -2490,6 +2508,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (hitPoints == null ? next.hitpoints() > 0 : next.hitpoints() <= 0) {
       throw new UnsupportedOperationException(
           name() + " would gain or lose its hit points by taking " + next.name());
+    }
+    if (hitPoints != null
+        && hitPoints.getShieldMaximum() == 0
+        && shieldAt(next, packedLevel) != 0) {
+      // The game fills the shield to the new row's maximum here, which no recording holds: no
+      // shipped swap takes a row with a shield.
+      throw new UnsupportedOperationException(
+          name()
+              + " would take "
+              + next.name()
+              + ", a row with a shield without a shield maximum,"
+              + " which is not modelled");
     }
     data = next;
     damage = damageAt(packedLevel);
@@ -2505,8 +2535,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       hitPoints.setMaximum(maximum);
       hitPoints.setTeamPool(0, maximum);
       hitPoints.setTeamPool(1, maximum);
-      // The shield's maximum comes from the new row; the shield itself is kept as it is.
-      hitPoints.setShieldMaximum(shieldAt(next, packedLevel));
+      // The shield's maximum is the new row's only when that row has a shield: a row without one
+      // leaves the maximum as it was, so a heal still fills a shield that is up to it. The shield
+      // itself is kept as it is.
+      hitPoints.setShieldMaximum(shieldMaximumTaken(shieldAt(next, packedLevel)));
     }
     refreshHitPoints();
   }
