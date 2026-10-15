@@ -12,40 +12,41 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * A screen's view settings: the replay viewer opens flipped and F flips it back and forth, the
- * Ladder screen stands and F leaves it standing, and T hides and shows the annotations on both.
+ * A screen's view settings: the replay viewer opens in the game's view of side 1 and F flips it to
+ * side 0's and back, the Ladder screen draws side 0's view and F leaves it, and T hides and shows
+ * the annotations on both.
  */
 class ViewStateTest {
 
   @Test
-  @DisplayName("a replay opens flipped, side 1 at the bottom, and F flips it back and forth")
-  void aReplayOpensFlipped() {
+  @DisplayName("a replay opens in side 1's view, and F flips it to side 0's view and back")
+  void aReplayOpensInSideOnesView() {
     ViewState view = ViewState.replay();
 
     assertThat(view.isFlippable()).isTrue();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.FLIPPED);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_1);
     assertThat(view.getOrientation().bottomSide()).isEqualTo(1);
     assertThat(view.statusLines())
         .containsExactly("view: side 1 at bottom (F flips)", ViewState.ANNOTATIONS_NOTE);
 
     assertThat(view.flip()).isTrue();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.STANDARD);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_0);
     assertThat(view.statusLines()).first().isEqualTo("view: side 0 at bottom (F flips)");
 
     assertThat(view.flip()).isTrue();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.FLIPPED);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_1);
   }
 
   @Test
-  @DisplayName("the Ladder screen stands, side 0 at the bottom, and F does not flip it")
-  void theLadderScreenStands() {
+  @DisplayName("the Ladder screen draws side 0's view, and F does not flip it")
+  void theLadderScreenDrawsSideZerosView() {
     ViewState view = ViewState.ladder();
 
     assertThat(view.isFlippable()).isFalse();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.STANDARD);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_0);
 
     assertThat(view.flip()).isFalse();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.STANDARD);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_0);
     // No orientation line where F does nothing; the annotations note stays.
     assertThat(view.statusLines()).containsExactly(ViewState.ANNOTATIONS_NOTE);
   }
@@ -68,7 +69,7 @@ class ViewStateTest {
     ViewState view = ViewState.replay();
 
     view.toggleAnnotations();
-    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.FLIPPED);
+    assertThat(view.getOrientation()).isEqualTo(ViewOrientation.SIDE_1);
     view.flip();
     assertThat(view.isAnnotations()).isFalse();
   }

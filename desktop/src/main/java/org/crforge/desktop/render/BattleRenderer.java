@@ -43,10 +43,11 @@ import org.crforge.desktop.battle.UnitStatus;
  * exist for both engines through the same renderers: the routing cell costs, the routes, the damage
  * numbers and the area damage indicators.
  *
- * <p>Every arena position, team colour and side name goes through the screen's {@link
- * ViewOrientation}, so a flipped view draws the whole arena and every overlay turned by 180
- * degrees, the side at the bottom in blue with the bottom HUD panel. The screen's {@link ViewState}
- * also says whether the text annotations are drawn (see {@link HudText}).
+ * <p>Every arena position, direction, team colour and side name goes through the screen's {@link
+ * ViewOrientation}, the game's view of one side, so the whole arena and every overlay are drawn as
+ * that side's view has them; the two sides' views are half a turn apart. The side at the bottom is
+ * drawn blue with the bottom HUD panel. The screen's {@link ViewState} also says whether the text
+ * annotations are drawn (see {@link HudText}).
  */
 public class BattleRenderer {
 
@@ -131,7 +132,7 @@ public class BattleRenderer {
   }
 
   /** Which way up the frame being drawn has the arena, from the screen's view settings. */
-  private ViewOrientation view = ViewOrientation.STANDARD;
+  private ViewOrientation view = ViewOrientation.SIDE_0;
 
   public BattleRenderer() {
     this.ctx = new RenderContext(12);
