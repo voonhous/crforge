@@ -1184,11 +1184,8 @@ public class BattleWorld implements HolderPasses {
       observer.damageDealt(tick, entity, damage, result);
     }
     if (result.died()) {
-      if (attacker == null && side != -1) {
-        entity.dieForSideAlone(side);
-      } else {
-        entity.die(attacker);
-      }
+      // A hit with no attacker kills for the side it was dealt for, if any.
+      entity.die(attacker, attacker != null ? attacker.side() : side);
     } else if (result.landed()) {
       referenceDrop(attacker, entity, false);
     }
@@ -3236,22 +3233,20 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>A buff's damage over time kills with the buff's source as the attacker, for the side the
    * buff was applied for (see {@link #dealBuffDamageNow}). A death with a killing side and no
-   * attacker - the damage of a buff with no source, or a hit of the evolved Dart Goblin's poison
-   * run, which kills for the run's side - is handed in the game a cause that carries the side
-   * alone, which the battle does not hold. The battle schedules the killed action with no cause
-   * when no action of its chain reads its cause (see {@link BattleAction#readsCause}), as the
-   * evolved Wall Breaker's spawn, whose source is its owner. For a hit the game deals with no
-   * attacker for a side - the poison run's - the cause is that side alone and no object, so the
-   * killed action is also scheduled with no cause when no action of its chain reads more of a cause
-   * than its object (see {@link BattleAction#readsSideAloneCause}), as the Boss Bandit's check of
-   * its killer's row, which finds no object and runs nothing.
+   * attacker - the damage of a buff whose source has left the battle or never had one, or a hit of
+   * the evolved Dart Goblin's poison run, which kills for the run's side - is handed in the game a
+   * cause that carries that side alone and no object, which the battle does not hold. The battle
+   * schedules the killed action with no cause when no action of its chain reads more of a cause
+   * than its object (see {@link BattleAction#readsSideAloneCause}): the evolved Wall Breaker's
+   * spawn, whose source is its owner, and the Boss Bandit's check of its killer's row, which finds
+   * no object and runs nothing.
    *
-   * <p>Refused rather than guessed: a killed action with no attacker whose chain reads its cause, a
-   * killed action whose attacker is an object of another kind than a unit, a projectile or an area
-   * effect, and a death hook scheduled after the tick's last pending pass, which would leave with
-   * the entity. The cause is the attacker's own holder, where the game hands the hook a copy of the
-   * attacker made at the kill; a hook reads no more of it than its presence and its row, which the
-   * copy shares.
+   * <p>Refused rather than guessed: a killed action with no attacker whose chain reads the side,
+   * level or point of its cause, a killed action whose attacker is an object of another kind than a
+   * unit, a projectile or an area effect, and a death hook scheduled after the tick's last pending
+   * pass, which would leave with the entity. The cause is the attacker's own holder, where the game
+   * hands the hook a copy of the attacker made at the kill; a hook reads no more of it than its
+   * presence and its row, which the copy shares.
    *
    * <p>After the hooks, the death handler's reward: in a match, a player's unit that gives elixir
    * on its death pays it to the king of the killing side, ten times its column in ten-thousandths;
@@ -3260,14 +3255,12 @@ public class BattleWorld implements HolderPasses {
    * @param dying the entity that died
    * @param attacker what killed it: an arena entity, a projectile, or null for nothing
    * @param killingSide the side of the killing hit, or -1 for none
-   * @param sideAlone true when the game hands the killed action a cause that carries the killing
-   *     side alone and no object: a hit with no attacker dealt for a side
    */
-  void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide, boolean sideAlone) {
+  void entityDied(WorldEntity dying, BattleEntity attacker, int killingSide) {
     UnitData data = dying.getData();
     deathSlot(dying, data);
     killedDone(dying, attacker);
-    killedHook(dying, attacker, data, killingSide, sideAlone);
+    killedHook(dying, attacker, data, killingSide);
     deathReward(dying, data, killingSide);
   }
 
@@ -3387,21 +3380,19 @@ public class BattleWorld implements HolderPasses {
    * The death handler's hook: the dying unit's killed action alone, with what killed it as the
    * cause; the death slot schedules the death action (see {@link #slotDeathAction}). None when the
    * row has no killed action, when the death has no killing side, or when the unit killed itself on
-   * the killing side. With no attacker - a buff with no source - the action is scheduled with no
-   * cause when no action of its chain reads its cause; for a cause the game makes of the side alone
-   * - a hit with no attacker dealt for a side - also when no action of its chain reads more of a
-   * cause than its object. Refused rather than guessed: any other killed action with no attacker
-   * whose chain reads its cause, which would be a side alone, one whose attacker is an object of
-   * another kind, and one scheduled after the tick's last pending pass.
+   * the killing side. With no attacker the game's cause is the killing side alone and no object:
+   * the action is scheduled with no cause when no action of its chain reads more of a cause than
+   * its object. Refused rather than guessed: any other killed action with no attacker, whose chain
+   * reads what a side alone holds, one whose attacker is an object of another kind, and one
+   * scheduled after the tick's last pending pass.
    *
    * @param dying the entity that died
    * @param attacker what killed it, or null for nothing
    * @param data its row
    * @param killingSide the side of the killing hit, or -1 for none
-   * @param sideAlone true when the game's cause is the killing side alone and no object
    */
   private void killedHook(
-      WorldEntity dying, BattleEntity attacker, UnitData data, int killingSide, boolean sideAlone) {
+      WorldEntity dying, BattleEntity attacker, UnitData data, int killingSide) {
     if (data.onKilledAction() == null || killingSide == -1) {
       return;
     }
@@ -3410,12 +3401,8 @@ public class BattleWorld implements HolderPasses {
         attacker == null ? actions.build(data.onKilledAction(), binding(dying)) : null;
     ActionHolder cause;
     int side;
-    if (killed != null
-        && !(sideAlone
-            ? chainReads(killed, BattleAction::readsSideAloneCause)
-            : chainReadsCause(killed))) {
-      // No action of the chain reads the cause, or nothing of it but the object a side alone lacks,
-      // which the battle does not hold here.
+    if (killed != null && !chainReads(killed, BattleAction::readsSideAloneCause)) {
+      // No action of the chain reads anything of the cause but the object a side alone lacks.
       cause = null;
       side = killingSide;
     } else if (attacker instanceof WorldEntity entity) {
@@ -3457,15 +3444,6 @@ public class BattleWorld implements HolderPasses {
       killed = actions.build(data.onKilledAction(), binding(dying));
     }
     dying.actionHolder().schedule(killed, ActionHolder.OWN_DELAY, false, cause);
-  }
-
-  /**
-   * Whether an action or any action chained after it, each scheduled with the same cause, reads its
-   * cause. A chain that comes back to an action already asked has been asked in full. asked in
-   * full.
-   */
-  private static boolean chainReadsCause(BattleAction action) {
-    return chainReads(action, BattleAction::readsCause);
   }
 
   /**
@@ -9688,7 +9666,9 @@ public class BattleWorld implements HolderPasses {
    * carrier, for the side the buff was applied for, so its killer's hook and the carrier's killed
    * action see the source (see {@link #entityDied}); a hit that lands and does not kill reaches the
    * source's reference drop as any other hit does (see {@link #referenceDrop}). A buff with no
-   * source kills with nothing as what killed it.
+   * source - one applied with none, or one whose source has left the battle, which it then forgets
+   * as the game clears it - kills with nothing as what killed it, for its side, so the killed
+   * action's cause is that side alone (see {@link #entityDied}).
    *
    * @param due the queued hit
    */

@@ -334,8 +334,8 @@ class BattleDeathHookTest {
 
   @Test
   @DisplayName(
-      "a killed action that reads its cause stays refused for a buff with no source, whose cause"
-          + " would be a side alone: a spawn from its cause and a check of its killer")
+      "a killed action that reads the side of its cause stays refused for a buff with no source,"
+          + " whose cause would be a side alone: a spawn from its cause")
   void aKilledActionThatReadsItsCauseIsRefusedWithNoAttacker() {
     // The death action spawns its area effect from its cause, as it has no ParentGOAsSource.
     Setup spawn = new Setup(tombstoneKilledToo(), 3500, 25000);
@@ -343,13 +343,40 @@ class BattleDeathHookTest {
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("died with no attacker")
         .hasMessageContaining("reads its cause");
+  }
 
-    // The Boss Bandit's own row: its killed action checks whether its killer is a Bandit.
-    Setup check = new Setup(GameData.unit("BossBandit"), 3500, 25000);
-    assertThatThrownBy(() -> poisonToDeath(check))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("died with no attacker")
-        .hasMessageContaining("reads its cause");
+  @Test
+  @DisplayName(
+      "the Boss Bandit a buff kills after the buff's source left the battle has a side alone for"
+          + " its killer: its check of its killer is scheduled with no cause and runs nothing, the"
+          + " voice line it runs for a Bandit still in the battle not at all")
+  void theBossBanditChecksNothingOfABuffWhoseSourceLeft() {
+    UnitData bossBandit = GameData.unit("BossBandit");
+    String voiceLine = "BossBandit_defeated_by_bandit_voiceline";
+
+    // The Bandit's row is Assassin, the name the check matches: it applies the Poison, then leaves
+    // the battle, killed with no attacker, before the Poison kills the Boss Bandit.
+    Setup s = new Setup(bossBandit, "Assassin", 3500, 25000);
+    s.tombstone
+        .getBuffs()
+        .apply(s.match.getWorld().getRecords().buff("Poison"), 5000, POISON_LEVEL, s.knight, 1);
+    s.stepWith(world -> world.dealDamage(s.knight.getTargetView(), 100_000, 0, 1));
+    s.battle.step();
+    assertThat(s.battle.getHolder().entities()).doesNotContain(s.knight);
+
+    s.tombstone.getHitPoints().setHitPoints(1);
+    for (int i = 0; i < 60 && HitPoints.alive(s.tombstone.getHitPoints()); i++) {
+      s.battle.step();
+    }
+    assertThat(HitPoints.alive(s.tombstone.getHitPoints())).isFalse();
+    s.battle.step();
+
+    assertThat(s.scheduled)
+        .containsExactly(
+            "Tombstone by none side 1 [%s] pending false".formatted(bossBandit.onKilledAction()));
+    assertThat(s.runs)
+        .contains(bossBandit.onKilledAction() + " 3")
+        .noneMatch(run -> run.startsWith(voiceLine + " "));
   }
 
   @Test
