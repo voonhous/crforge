@@ -1718,7 +1718,8 @@ public interface WorldObserver {
 
   /**
    * A hit reached a reflecting unit's reflect, which has run: whether it struck back, whom, and
-   * with what.
+   * with what. A reflect that queued its damage is told of when the drain deals that damage, with
+   * the hit points it left; any other as it ran.
    *
    * @param tick the battle tick
    * @param reflection what the reflect did
@@ -1726,8 +1727,8 @@ public interface WorldObserver {
   default void reflected(int tick, Reflection reflection) {}
 
   /**
-   * A reflecting unit's reflect dealt its damage to the unit it struck, before the unit's death, if
-   * the damage killed it, runs.
+   * A reflecting unit's reflect dealt its damage to the unit it struck, at the damage drain that
+   * reached it, before the unit's death, if the damage killed it, runs.
    *
    * @param tick the battle tick
    * @param reflector the reflecting unit
