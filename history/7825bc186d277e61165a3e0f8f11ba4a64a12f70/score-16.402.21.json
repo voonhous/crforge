@@ -1,0 +1,12 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 100.0,
+  "ticks_agreed": 100.0,
+  "outcomes": {
+    "diagnostic_match": 10000
+  },
+  "first_failures": {},
+  "set": "e6e3bccb191ecd17",
+  "commit": "7825bc186d277e61165a3e0f8f11ba4a64a12f70"
+}

@@ -1,15 +1,12 @@
 {
   "content_version": "16.402.21",
   "battles": 10000,
-  "to_the_end": 99.9,
-  "ticks_agreed": 99.9,
+  "to_the_end": 100.0,
+  "ticks_agreed": 100.0,
   "outcomes": {
-    "diagnostic_match": 9999,
-    "unsupported": 1
+    "diagnostic_match": 10000
   },
-  "first_failures": {
-    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1
-  },
+  "first_failures": {},
   "set": "e6e3bccb191ecd17",
-  "commit": "be99847476b8742ad364205d4666318afeb31192"
+  "commit": "7825bc186d277e61165a3e0f8f11ba4a64a12f70"
 }
