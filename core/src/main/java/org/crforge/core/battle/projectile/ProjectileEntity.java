@@ -167,12 +167,6 @@ public class ProjectileEntity extends BattleEntity
   @Getter private int deflections;
 
   /**
-   * True for a projectile of a volley its launcher's row links into one group, which a deflection
-   * treats as one.
-   */
-  @Getter private boolean grouped;
-
-  /**
    * The group of the volley the projectile was launched in, shared by every projectile of that
    * volley, for a launcher whose row links them into one; null for none.
    */
@@ -370,7 +364,6 @@ public class ProjectileEntity extends BattleEntity
    */
   void launch(WorldEntity launcher, WorldEntity target, int sx, int sy, int sz, int hx, int hy) {
     GridEntity view = launcher.getView();
-    grouped = launcher.getData().groupProjectiles();
     place(
         launcher,
         launcher,
@@ -1541,6 +1534,16 @@ public class ProjectileEntity extends BattleEntity
       }
     }
     return out;
+  }
+
+  /**
+   * True for a projectile in its volley's group: only the volley of a hit links its projectiles
+   * into one, for a launcher whose row sets GroupProjectiles (see {@link
+   * ProjectileLauncher#launch}). Any other projectile the same launcher fires, as the evolved
+   * Hunter's net its starting action throws, is in no group.
+   */
+  public boolean isGrouped() {
+    return group != null;
   }
 
   /**

@@ -4551,10 +4551,9 @@ public class BattleWorld implements HolderPasses {
    * what it hooked, which a deflection would let go, as no recording holds; one that flies to a
    * point and does not stop at collisions with a least distance, a box body or a deflect radius,
    * which no recording holds; one whose impact spawns a chain of projectiles two links or more
-   * long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not spell-like,
-   * or that its launcher marks as grouped without a volley's group. A spell such as the Fireball,
-   * whose deflection behaviour sends it at the enemy nearest the area effect without a target, is
-   * among them.
+   * long, as the evolved Bomber's bouncing bomb; one that belongs to a chain and is not spell-like.
+   * A spell such as the Fireball, whose deflection behaviour sends it at the enemy nearest the area
+   * effect without a target, is among them.
    *
    * <p>A projectile that flies to a point and stops at collisions is modelled, as the Hunter's
    * pellets are: its relaunch aims at its root owner's position itself, not stretched to its range,
@@ -4646,8 +4645,7 @@ public class BattleWorld implements HolderPasses {
         || (data.homingTimeMs() >= 1 && !piercing && !hooking)
         || (hooking && projectile.isHooked())
         || (data.spawnProjectile() != null && data.spawnAxisY())
-        || (projectile.getChain() != null && !spellLike)
-        || (projectile.isGrouped() && projectile.getGroup() == null)) {
+        || (projectile.getChain() != null && !spellLike)) {
       throw new UnsupportedOperationException(
           projectile.name()
               + " ("
