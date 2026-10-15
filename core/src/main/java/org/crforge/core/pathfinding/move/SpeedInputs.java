@@ -22,8 +22,9 @@ import org.crforge.core.pathfinding.GridEntity;
  * @param hasTargetingComponent whether the entity carries an active targeting component at all
  * @param dashWindup positive while the targeting component winds up a dash, which zeroes the budget
  *     and the facing and avoidance gates
- * @param attackHold a second positive-blocks-movement field of the targeting component; its writers
- *     are not documented, so the name describes only its effect
+ * @param resumeDelayMs the targeting component's resume delay: the length of the wait a pingpong
+ *     launch starts, the sweep's time, until its projectile comes back; positive while it runs,
+ *     which zeroes the budget
  * @param specialLoadPending non-zero while the targeting component holds a special attack loaded,
  *     which zeroes the ordinary budget and the avoidance gate
  * @param blockCountdownMs the <b>entity's</b> movement-blocking countdown in milliseconds, not the
@@ -41,7 +42,7 @@ public record SpeedInputs(
     int state,
     boolean hasTargetingComponent,
     int dashWindup,
-    int attackHold,
+    int resumeDelayMs,
     int specialLoadPending,
     int blockCountdownMs,
     int[] modifierPercents,

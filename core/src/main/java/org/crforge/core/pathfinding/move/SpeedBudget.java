@@ -17,8 +17,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>The budget is the entity's speed column scaled by the percent modifiers currently on it and,
  * once a charge is complete, by the charge multiplier. Several conditions short-circuit it to zero
  * before the state is even looked at: a movement-forbidding flag, a targeting component that is
- * winding up a dash or holding the entity, and the entity's own movement-blocking countdown. Some
- * states answer a different column instead of the ordinary speed, and six answer zero.
+ * winding up a dash or waiting for its pingpong projectile to come back (its resume delay running),
+ * and the entity's own movement-blocking countdown. Some states answer a different column instead
+ * of the ordinary speed, and six answer zero.
  *
  * <p>The follower divides the budget by 250 to decide how many extra displacements a visit takes,
  * so a speed of 60 gives exactly one displacement of 60 units per tick.
@@ -28,10 +29,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line; held for a walking unit at its base speed by"
             + " the walks of the reference battles, card-deploy-c2's units among them; the clone"
-            + " setup's budget, held by card_Clone and spell_clone_into_push. Not held: the"
-            + " held-position flags, the attack hold, the block countdown, jump speed and the"
-            + " pathfind speed columns. Not modelled: status effects never reach the budget, so a"
-            + " slowed or raged unit walks at base speed.")
+            + " setup's budget, held by card_Clone and spell_clone_into_push; the resume delay of"
+            + " a pingpong launch, which holds an Executioner the tiebreaker's clearing resumes"
+            + " into the moving state while its axe is out, by tiebreak_axe_out_arrow_a, _b and"
+            + " _c and BattlePingpongResumeStandTest. Not held: the held-position flags, the block"
+            + " countdown, jump speed and the pathfind speed columns. Not modelled: status effects"
+            + " never reach the budget, so a slowed or raged unit walks at base speed.")
 public final class SpeedBudget {
 
   /** Percent the modifier arithmetic is expressed in. */
@@ -64,7 +67,8 @@ public final class SpeedBudget {
       if (targetingActive(entity)) {
         return 0;
       }
-      if (entity.attackHold() > 0) {
+      // A unit waiting for its pingpong projectile to come back stands, whatever its state.
+      if (entity.resumeDelayMs() > 0) {
         return 0;
       }
     }

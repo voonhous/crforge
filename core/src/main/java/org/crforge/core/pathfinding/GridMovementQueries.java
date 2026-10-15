@@ -274,7 +274,8 @@ public final class GridMovementQueries implements MovementQueries {
         entity.getState(),
         targetingOn,
         targeting.getDashWindupMs(),
-        targeting.getAttackBlockTimerMs(),
+        // The resume delay's length, which a pingpong launch sets: it holds the unit still too.
+        targeting.getResumeDelayMs(),
         targeting.isSpecialLoadPending() ? 1 : 0,
         entity.getBlockCountdownMs(),
         speedPercents,
