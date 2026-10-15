@@ -105,10 +105,15 @@ subprojects {
         useJUnitPlatform()
         // The tests read the tables the build makes for the data version (and every compatible
         // one, beside it), named by the crforge.gameTables system property. The tables module's
-        // own tests build theirs themselves.
+        // own tests build theirs themselves. The reference battles (:conformance:referenceTest)
+        // read the data version's tables alone, so that task builds that one version
+        // (:tables:dataVersionTables): a CI job running one version's references builds no other.
         if (project.name != "tables") {
             val gameTables = "$builtTablesRoot/$dataVersion"
-            dependsOn(":tables:gameTables")
+            val readsDataVersionAlone = project.name == "conformance" && name == "referenceTest"
+            dependsOn(
+                if (readsDataVersionAlone) ":tables:dataVersionTables" else ":tables:gameTables",
+            )
             inputs.dir(gameTables).withPropertyName("gameTables")
             systemProperty("crforge.gameTables", gameTables)
         }
