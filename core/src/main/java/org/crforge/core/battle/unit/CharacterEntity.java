@@ -670,6 +670,8 @@ public class CharacterEntity extends WorldEntity {
             this::movementChain,
             data.deployTimeMs(),
             unit.movementConfig());
+    // The setter reaches the targeting component through its switch: one switched off is not there.
+    setter.setTargetingSwitchedOn(() -> isActive(TARGETING_SLOT));
     // A buff may give a row without a charge range one, which the setter's charge reset reads.
     setter.setChargeRangeFromModifiers(() -> getBuffs().overrideChargeRange());
     // A unit with an ability casts through its setter, which seeds the cast's countdowns and ends a
