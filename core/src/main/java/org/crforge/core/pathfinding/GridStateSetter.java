@@ -8,6 +8,7 @@ package org.crforge.core.pathfinding;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import lombok.Setter;
@@ -25,14 +26,15 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * runs on the unit's movement and targeting components.
  *
  * <p>A state change is more than a store. Leaving the attacking state clears the targeting
- * component's target-lost timer and starts a row's not-attacking countdown; leaving the deploying
- * or either pathfinding state clears the deploy countdown, unless the unit is leaving for clone
- * setup. Entering the standing, attacking, clone-setup or casting state empties the route and
- * clears the route-leads-away bit, so a unit that stops holds no route; entering clone setup also
- * switches the movement component on, and leaving it empties the route and clears the movement
- * component's destination. Entering the moving state prepares a route at once, over whatever
- * reference the targeting component holds at that moment, rather than waiting for the next movement
- * visit. The actions run in that order: exit actions, the store, entry actions.
+ * component's target-lost timer, while that component is switched on, and starts a row's
+ * not-attacking countdown; leaving the deploying or either pathfinding state clears the deploy
+ * countdown, unless the unit is leaving for clone setup. Entering the standing, attacking,
+ * clone-setup or casting state empties the route and clears the route-leads-away bit, so a unit
+ * that stops holds no route; entering clone setup also switches the movement component on, and
+ * leaving it empties the route and clears the movement component's destination. Entering the moving
+ * state prepares a route at once, over whatever reference the targeting component holds at that
+ * moment, rather than waiting for the next movement visit. The actions run in that order: exit
+ * actions, the store, entry actions.
  *
  * <p>The guard comes first: while the deploy countdown is running, only clone setup and the two
  * removed-and-following states may be set, so nothing pulls a unit that is still being placed into
@@ -43,7 +45,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * preparation builds a fresh one.
  *
  * <p>A unit without a movement component skips every route action, and one without a targeting
- * component skips the target-lost clear; either may be null.
+ * component skips the target-lost clear; either may be null. The standard game reaches the
+ * targeting component through the unit's switch, so a component switched off, as a stun or a hold
+ * leaves it, is not there either: a unit stunned in the attacking state and moved out of it, as a
+ * Clone sets it up, keeps its target-lost timer.
  *
  * <p>A setter given the unit's deploy time seeds the deploy countdown on entering the deploying
  * state with the larger of the countdown and the deploy time, which is how a unit that waited its
@@ -89,7 +94,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
         "Settled: the interrupt guard; the route emptied on entering the standing, attacking,"
             + " clone-setup and casting states; the route prepared on entering the moving state;"
             + " the target-lost timer cleared, and the not-attacking countdown started, on"
-            + " leaving the attacking state, the second held by the reference battles card_Ghost,"
+            + " leaving the attacking state, the first only while the targeting component is"
+            + " switched on, held by the recorded Clones of a Knight a Zap stunned just after it"
+            + " lost its target (stun_clone_lost_*), the second held by the reference battles"
+            + " card_Ghost,"
             + " evo_ghost_vs_musketeer and knight_evolved_third_play; the deploy countdown"
             + " cleared on leaving the deploying and pathfinding states and raised to the unit's"
             + " deploy time on entering the deploying state; the dashing state's entry, held by"
@@ -220,6 +228,15 @@ public final class GridStateSetter implements StateSetter {
     /** The combat gate a change into or out of the hook's states ends with. */
     void tailGate();
   }
+
+  /**
+   * Whether the unit's targeting component is switched on now, or null for a setter that treats it
+   * as on (a tower's, and the bare setters of the unit tests). The standard game reaches the
+   * component through the unit's switch: a component switched off, as a stun or a hold leaves it,
+   * is not there for the setter, so a change out of the attacking state keeps its target-lost
+   * timer.
+   */
+  @Setter private BooleanSupplier targetingSwitchedOn;
 
   /** The unit's hook states, or null for a unit the setter refuses to move into them. */
   @Setter private Following following;
@@ -438,7 +455,8 @@ public final class GridStateSetter implements StateSetter {
   private void exit(int oldState, int newState) {
     switch (oldState) {
       case GridEntityState.ATTACKING -> {
-        if (targeting != null) {
+        if (targeting != null
+            && (targetingSwitchedOn == null || targetingSwitchedOn.getAsBoolean())) {
           targeting.setTargetLostTimerMs(0);
         }
         if (attackingExit != null) {

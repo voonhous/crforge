@@ -352,6 +352,59 @@ class BattleCloneTest {
     assertThat(clone.getUnit().movement().getExplicitX()).isEqualTo(-1);
   }
 
+  /**
+   * A still Knight whose enemy dies while its hit is under way, so that its target-lost timer runs,
+   * stepped one visit further: the scene the two tests below clone it in.
+   */
+  private static CharacterEntity knightThatLostItsTarget(Scene scene) {
+    CharacterEntity knight = scene.still(0, 0, "Knight", X, Y, "knight");
+    CharacterEntity enemy = scene.still(0, 1, "Knight", X, Y + 1000, "enemy");
+    while (knight.getView().getState() != GridEntityState.ATTACKING
+        || knight.getTargeting().getAttackTimerMs() < 1) {
+      scene.step(1);
+    }
+    scene.match.getWorld().kill(enemy, null);
+    scene.step(2);
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
+    assertThat(knight.getTargeting().getTargetLostTimerMs()).isGreaterThanOrEqualTo(1);
+    return knight;
+  }
+
+  @Test
+  @DisplayName(
+      "a unit cloned in the attacking state with its targeting component on has its target-lost"
+          + " timer cleared as it leaves that state for the clone's setup")
+  void theSetupClearsTheLostTimerOfATargetingUnit() {
+    Scene scene = new Scene();
+    CharacterEntity knight = knightThatLostItsTarget(scene);
+    scene.clone(scene.tick);
+
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(knight.getTargeting().getTargetLostTimerMs()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit cloned in the attacking state with its targeting component switched off, as a stun"
+          + " or a hold leaves it, keeps its target-lost timer through the clone's setup: the"
+          + " setter reaches the component through its switch, and one switched off is not there")
+  void theSetupKeepsTheLostTimerOfAUnitSwitchedOff() {
+    Scene scene = new Scene();
+    CharacterEntity knight = knightThatLostItsTarget(scene);
+    // Stunned by the enemy: the combat gate switches the targeting component off, and the
+    // targeting visit, which runs the timer on, runs no more.
+    knight.getBuffs().apply(scene.match.getWorld().getRecords().buff("Stun"), 1000, LEVEL, null, 1);
+    scene.step(1);
+    assertThat(knight.isActive(CharacterEntity.TARGETING_SLOT)).isFalse();
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
+    int lost = knight.getTargeting().getTargetLostTimerMs();
+    assertThat(lost).isGreaterThanOrEqualTo(1);
+    scene.clone(scene.tick);
+
+    assertThat(knight.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(knight.getTargeting().getTargetLostTimerMs()).isEqualTo(lost);
+  }
+
   @Test
   @DisplayName(
       "a second Clone clones the units again and passes their clones by, its area's filter dropping"
