@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -247,6 +248,88 @@ class BuffComponentTest {
     buffs.visit();
     assertThat(asks).containsExactly("LittlePrinceLvlMax 950 1", "LittlePrinceLvlMax 900 0");
     assertThat(buffs.items()).isEmpty();
+  }
+
+  /**
+   * The hit points a Knight loses to Poison's first hit when a reducing buff whose life condition
+   * fails on that very visit is listed beside it: the evolved Knight's Fortify, alive while
+   * LP_AttackCount >= 6, applied before the Poison or after it. The battle steps the visits; the
+   * condition fails on the visit of the Poison's first hit.
+   */
+  private static int poisonHitBesideAnEndingReduction(Path folder, boolean reductionFirst)
+      throws IOException {
+    GameTables tables =
+        written(
+            folder,
+            rows ->
+                GameData.columns(rows, "Knight_Fortify_EV1")
+                    .put("AliveIfTrue", "LP_AttackCount >= 6"));
+    Standard1v1Battle match = new Standard1v1Battle(tables);
+    BattleRecords records = match.getWorld().getRecords();
+    List<Integer> lost = new ArrayList<>();
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void buffDamaged(
+                  int tick,
+                  WorldEntity target,
+                  BuffInstance buff,
+                  int amount,
+                  int hitPointsBefore,
+                  DamageResult result) {
+                lost.add(result.applied());
+              }
+            });
+    CharacterEntity knight = match.deploy(0, records.unit("Knight"), 11, 0, 3500, 10000);
+    match.getBattle().step();
+    int count = knight.world().variableKey("LP_AttackCount");
+    knight.setVariable(count, 6);
+    BuffComponent buffs = knight.getBuffs();
+    BuffData fortify = records.buff("Knight_Fortify_EV1");
+    BuffData poison = records.buff("Poison");
+    if (reductionFirst) {
+      buffs.apply(fortify, 100000, LEVEL_11, null, 0);
+      buffs.apply(poison, 5000, LEVEL_11, null, 1);
+    } else {
+      buffs.apply(poison, 5000, LEVEL_11, null, 1);
+      buffs.apply(fortify, 100000, LEVEL_11, null, 0);
+    }
+    // One hit a second: the Poison's first hit is due on its 20th visit.
+    int visits = 1000 / poison.hitFrequency() * 20;
+    for (int i = 1; i < visits; i++) {
+      match.getBattle().step();
+    }
+    assertThat(lost).isEmpty();
+    assertThat(buffs.carries("Knight_Fortify_EV1")).isTrue();
+    knight.setVariable(count, 5);
+    match.getBattle().step();
+    match.getBattle().step();
+    assertThat(buffs.carries("Knight_Fortify_EV1")).isFalse();
+    assertThat(lost).hasSize(1);
+    return lost.get(0);
+  }
+
+  @Test
+  @DisplayName(
+      "a buff's damage over time is reduced as its own instance is visited: listed after a"
+          + " reduction whose condition fails on the same visit, Poison's 92 takes the 60 off once"
+          + " (36), the entry finding the reduction gone")
+  void aHitIsReducedAsItsInstanceIsVisited(@TempDir Path folder) throws IOException {
+    BuffData poison = records.buff("Poison");
+    int hit = BuffComponent.damagePerSecond(poison, PackedLevel.pack(LEVEL_11, poison.rarity()));
+    assertThat(poisonHitBesideAnEndingReduction(folder, true)).isEqualTo(hit * (100 - 60) / 100);
+  }
+
+  @Test
+  @DisplayName(
+      "listed before a reduction whose condition fails on the same visit, Poison's hit comes after"
+          + " the reduction's removal and takes its 92 whole")
+  void aHitAfterTheReductionsRemovalIsWhole(@TempDir Path folder) throws IOException {
+    BuffData poison = records.buff("Poison");
+    int hit = BuffComponent.damagePerSecond(poison, PackedLevel.pack(LEVEL_11, poison.rarity()));
+    assertThat(poisonHitBesideAnEndingReduction(folder, false)).isEqualTo(hit);
   }
 
   @Test

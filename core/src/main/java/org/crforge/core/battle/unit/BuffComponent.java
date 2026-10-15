@@ -57,7 +57,9 @@ import org.crforge.core.pathfinding.target.TargetingState;
  * <p><b>Visit.</b> In the holder tick's pass 3 each instance, from the last to the first, loses 50
  * ms and is removed once its time is 0; a buff with a life condition asks it of the carrier after
  * the step, while the instance has time left, and an answer of 0 spends that time; the damage and
- * the heal over time due on the visit land once it is over, each instance's damage before its heal.
+ * the heal over time due come in the instance's own turn, its damage before its heal: the damage is
+ * lowered by the reduction of the instances listed then, before any listed ahead of it is visited
+ * and removed, and queued for the damage drain, which lowers it once more by what is listed there.
  * An instance counts visits toward its next hit, which comes as the count reaches the hit
  * frequency; for a buff whose hits follow their source, as the Earthquake's do, each visit first
  * sets the count from the age of the area effect that applied it, so every target of one area
@@ -691,8 +693,6 @@ public final class BuffComponent implements BattleComponent {
   public void visit() {
     List<BuffInstance> snapshot = new ArrayList<>(items);
     List<BuffInstance> removed = new ArrayList<>();
-    List<BuffInstance> hitting = new ArrayList<>();
-    List<Integer> periods = new ArrayList<>();
     for (int k = snapshot.size() - 1; k >= 0; k--) {
       BuffInstance instance = snapshot.get(k);
       instance.step(STEP_MS);
@@ -704,10 +704,13 @@ public final class BuffComponent implements BattleComponent {
         world.buffSpawn(entity, instance);
         instance.spawnerFired();
       }
+      // The hit due comes in the instance's own turn, before the instances listed ahead of it are
+      // visited: an instance among them whose time this visit spends, its life condition failing,
+      // still lowers the hit's damage here, though it is gone when the drain lowers it again (the
+      // Valkyrie hero's whirlwind reduction on the visit its spin ends).
       int period = instance.countHit(STEP_MS);
       if (period != 0) {
-        hitting.add(instance);
-        periods.add(period);
+        overTime(instance, period);
       }
       if (instance.finished() && items.remove(instance)) {
         onRemoved(instance);
@@ -716,10 +719,6 @@ public final class BuffComponent implements BattleComponent {
     }
     for (BuffInstance instance : removed) {
       world.buffRemoved(entity, instance);
-    }
-    // The hits the visit found due land once it is over, in the order it found them.
-    for (int i = 0; i < hitting.size(); i++) {
-      overTime(hitting.get(i), periods.get(i));
     }
   }
 
