@@ -366,7 +366,9 @@ public final class ProjectileLauncher {
     }
     int sx = ox + dx;
     int sy = yOffset + dy + oy;
-    int sz = launcher.projectileStartZ() + view.getZ();
+    // The start height is the launcher's live height, its height and the height offset its pushes
+    // folded in together, as the hero Wizard held in the air by its ground-to-air run has it.
+    int sz = launcher.projectileStartZ() + view.getZ() + view.getHeightOffset();
     projectile.launch(launcher, target, sx, sy, sz, hx, hy);
   }
 

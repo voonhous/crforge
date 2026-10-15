@@ -65,8 +65,9 @@ class BattleWizardHeroTest {
   /**
    * The values this test's numbers follow from, written into a copy of the hero's rows by {@link
    * #pinned}: the run's flying height, transition and whole duration; the ability's trigger delay,
-   * cast time, cost and charges; how far beyond the flying shot's point its area effects spawn; and
-   * the hero's range, the reach its activation's instant hit tests.
+   * cast time, cost and charges; how far beyond the flying shot's point its area effects spawn; the
+   * hero's range, the reach its activation's instant hit tests; and the flying row's shot start
+   * height.
    */
   private static final int HEIGHT = 3500;
 
@@ -86,6 +87,9 @@ class BattleWizardHeroTest {
 
   /** The reach the instant hit's gate tests, which the hero's range is set to. */
   private static final int GATE = 5500;
+
+  /** The flying row's shot start height above its launcher. */
+  private static final int START_Z = 1200;
 
   @Test
   @DisplayName(
@@ -333,6 +337,36 @@ class BattleWizardHeroTest {
 
   @Test
   @DisplayName(
+      "the flying row's shot starts at the hero's live height, the height the hold pushed folded"
+          + " in, plus the row's start height: its own height stays 0 in the hold")
+  void theAirShotStartsAtTheLiveHeight(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(pinned(folder));
+    List<ProjectileEntity> shots = new ArrayList<>();
+    scene
+        .world()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileLaunched(int tick, ProjectileEntity projectile) {
+                if (projectile.getData().name().equals("WizardHeroAbilityProjectile")) {
+                  shots.add(projectile);
+                }
+              }
+            });
+    CharacterEntity hero = scene.abilityUsedAttacking();
+    int limit = scene.tick() + 100;
+    while (shots.isEmpty()) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.steps(1);
+    }
+    assertThat(hero.getData().name()).isEqualTo("WizardHero_air");
+    assertThat(hero.getView().getZ()).as("its own height").isZero();
+    assertThat(hero.getTargetView().z()).as("its live height").isEqualTo(HEIGHT);
+    assertThat(shots.get(0).getStartZ()).isEqualTo(HEIGHT + START_Z);
+  }
+
+  @Test
+  @DisplayName(
       "held at the height the hero carries FORCE_IS_AIR and pushes 3500 on each step for 3100 ms;"
           + " the hold's last step turns to the descent, with a transition less 50 ms left")
   void theHeroIsHeld(@TempDir Path folder) throws IOException {
@@ -428,6 +462,7 @@ class BattleWizardHeroTest {
         rows -> {
           GameData.columns(rows, HERO).put("Range", GATE);
           GameData.columns(rows, "WizardHero_air").put("Range", GATE);
+          GameData.columns(rows, "WizardHero_air").put("ProjectileStartZ", START_Z);
         });
     GameData.alterLoaded(
         folder,
