@@ -177,6 +177,134 @@ class ReferenceComparisonTest {
   }
 
   @Test
+  void aStaleReferenceDigestIsInvalidWhenTheTracesAreTheSameBytes() throws IOException {
+    byte[] reference = trace(rows(5));
+    byte[] java = trace(rows(5));
+    ObjectNode stale = manifest(reference, 5);
+    stale.put("trace_sha256", sha256(reference).replace('a', 'b').replace('0', '1'));
+
+    // The reference is checked against the run's digest, the digest of the same bytes.
+    ReferenceComparison.Result result =
+        ReferenceComparison.compare(stale, reference, manifest(java, 5), java, sha256(java));
+
+    assertThat(result.outcome()).isEqualTo(ReferenceComparison.INVALID);
+    assertThat(result.error()).isEqualTo("the reference: the trace digest does not match");
+  }
+
+  @Test
+  void aKnownRunDigestGivesTheOutcomeOfAComputedOne() throws IOException {
+    byte[] reference = trace(rows(5));
+    List<ObjectNode> changed = rows(5);
+    changed.get(3).put("rng", 1);
+    ObjectNode stale = manifest(trace(rows(5)), 5);
+    stale.put("trace_sha256", sha256(reference).replace('a', 'b').replace('0', '1'));
+    for (byte[] java : List.of(trace(rows(5)), trace(changed), trace(rows(4)))) {
+      for (ObjectNode runManifest : List.of(manifest(java, count(java) - 1), stale)) {
+        ReferenceComparison.Result computed =
+            ReferenceComparison.compare(manifest(reference, 5), reference, runManifest, java);
+        ReferenceComparison.Result known =
+            ReferenceComparison.compare(
+                manifest(reference, 5), reference, runManifest, java, sha256(java));
+
+        assertThat(known).isEqualTo(computed);
+      }
+    }
+  }
+
+  /** How many lines a trace has. */
+  private static int count(byte[] trace) {
+    return new String(trace, StandardCharsets.UTF_8).split("\n").length;
+  }
+
+  @Test
+  void aLineReadForItsTickAndStopGivesTheRowOfItsWholeValue() throws IOException {
+    String digits = "1".repeat(1001);
+    List<String> lines =
+        new ArrayList<>(
+            List.of(
+                "{\"tick\":0,\"stopped\":false}",
+                "{\"stopped\":true,\"tick\":3,\"x\":[1,{\"a\":\"b\"}],\"y\":{\"z\":[]}}",
+                "",
+                "   ",
+                "\t",
+                "null",
+                "5",
+                "\"s\"",
+                "[1,2]",
+                "[]",
+                "{}",
+                "true",
+                "[{\"tick\":1,\"stopped\":true}]",
+                "{\"a\":{\"tick\":1,\"stopped\":true}}",
+                // something after the value
+                "{} {}",
+                "{}x",
+                "{\"tick\":1} 2",
+                "5 5",
+                "{\"tick\":1},",
+                "[1] ]",
+                // repeated names: the last is kept
+                "{\"tick\":1,\"tick\":2}",
+                "{\"tick\":1,\"tick\":{\"a\":1}}",
+                "{\"tick\":{\"a\":1},\"tick\":7}",
+                "{\"stopped\":true,\"stopped\":false}",
+                // a tick or a stop of every kind
+                "{\"tick\":true,\"stopped\":1}",
+                "{\"tick\":1.0,\"stopped\":\"true\"}",
+                "{\"tick\":\"1\",\"stopped\":null}",
+                "{\"tick\":null,\"stopped\":[true]}",
+                "{\"tick\":[1],\"stopped\":{}}",
+                "{\"tick\":12345678901234567890123}",
+                "{\"tick\":9223372036854775807}",
+                "{\"tick\":1e400}",
+                "{\"tick\":-0}",
+                "{\"tick\":-0.0}",
+                "{\"tick\":" + digits + "}",
+                // lines that are not JSON, the fault outside the tick and the stop
+                "{\"a\":\"\\q\",\"tick\":0}",
+                "{\"a\":[\"\\u00zz\"],\"tick\":0}",
+                "{\"tick\":0,\"a\":\"x",
+                "{\"tick\":0,\"a\":1 \"b\":2}",
+                "{\"tick\":0,\"a\":1,}",
+                "{\"tick\":0,\"a\":[1,]}",
+                "{/*c*/\"tick\":0}",
+                "{\"tick\":0,\"a\":NaN}",
+                "{\"tick\":0,\"a\":[01]}",
+                "{tick:0}",
+                "{'tick':0}",
+                "{\"tick\":0,\"a\":{\"b\":[1,2,{\"c\":}]}}",
+                "{\"tick\":0,\"a\":[1,2}",
+                "{\"tick\":0,\"a\":{\"b\":1]}",
+                "]",
+                "}",
+                "{\"tick\":0",
+                "{\"tick\":",
+                "{\"tick\"",
+                "[",
+                "{\"tick\":0,\"a\":\"tab\tinside\"}",
+                "{\"tick\":0,\"a\":[\"control" + (char) 1 + "\"]}",
+                "{\"tick\":0,\"a\":[" + digits + "]}",
+                "{\"tick\":0,\"a\":{\"b\":0." + digits + "}}",
+                "{\"tick\":0,\"a\":{\"" + "n".repeat(60_000) + "\":1}}",
+                "{\"tick\":0,\"a\":" + "[".repeat(1500) + "]".repeat(1500) + "}",
+                "{\"tick\":0,\"a\":\"\\ud800\"}",
+                (char) 0xfeff + "{\"tick\":0}"));
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    for (String line : lines) {
+      out.write(line.getBytes(StandardCharsets.UTF_8));
+      out.write('\n');
+    }
+    // bytes that are not UTF-8 text
+    out.write(new byte[] {'{', '"', 'a', '"', ':', '"', (byte) 0xff, '"', '}', '\n'});
+    ReferenceComparison.Lines read = new ReferenceComparison.Lines(out.toByteArray());
+
+    assertThat(read.count()).isEqualTo(lines.size() + 1);
+    for (int i = 0; i < read.count(); i++) {
+      assertThat(read.row(i)).as("line %d", i).isEqualTo(ReferenceComparison.Row.of(read.tree(i)));
+    }
+  }
+
+  @Test
   void lineBreaksOfAnotherStyleSplitTheSameObservations() throws IOException {
     byte[] reference = trace(rows(5));
     byte[] crlf =
