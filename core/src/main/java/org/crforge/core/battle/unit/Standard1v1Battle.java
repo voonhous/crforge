@@ -30,6 +30,7 @@ import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.MirrorItem;
+import org.crforge.core.battle.match.SpellVariant;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.fidelity.Fidelity;
@@ -64,10 +65,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " golden-gaps-v1/mirror_after_troop and mirror_after_spell, and given while a play"
             + " of its side is pending or after one the match refused, its item repeating that"
             + " play while its client lists the play as promised, held by captured Ladder"
-            + " battles; a variant card's play,"
-            + " its option picked from the elixir after the step 22 before its run, the step"
-            + " before the last one its play's tick follows, held by card_item_merge_maiden_mounted"
-            + " and card_item_merge_maiden_on_foot and by captured Ladder battles; a play of a"
+            + " battles; a variant card's play run as the option its command carries, held by"
+            + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot and by captured"
+            + " Ladder battles, among them plays whose option is not the one the elixir after the"
+            + " step 22 before the run picks; with no command item, as the debug screen plays it,"
+            + " its option picked from the elixir after that step, the one every captured play"
+            + " agrees with but a few picked from an older reading; a play of a"
             + " deck card with slots, its item built as it runs and its evolved or hero row"
             + " placed, held by knight_evolved_third_play and the hero reference battles"
             + " (hero_giant, deck_hero_and_champion); the draw each player's data takes of the"
@@ -77,7 +80,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " outside a match, one given in the tick of another play of its side or the tick"
             + " after, one given within two ticks of the drop of a refused play's promise, and one"
             + " whose client would repeat a Mirror's play or a refused variant play; a variant"
-            + " card outside a match, run"
+            + " card outside a match; a variant play picked with no command item that is run"
             + " before tick 22, or given while another play of its side is pending, whose cost"
             + " the pick would set aside; a play of an evolution slot's card given while another"
             + " play of it is due, whose item the client builds from the count before that play,"
@@ -85,8 +88,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " not have counted. Held by captured Ladder battles: a play of an evolution slot's"
             + " card the match's gates refuse at its run moves the count its client builds the"
             + " next item from, as a placed play does."
-            + " Supplied: the step a variant's option is picked after, the last the client can"
-            + " have seen before it gives the play; the level of the option's units, the level"
+            + " Supplied: for a variant play with no command item, the step its option is picked"
+            + " after, which the player's client reads at a moment its command does not time;"
+            + " the level of the option's units, the level"
             + " the play is given, as for every card.")
 public class Standard1v1Battle {
 
@@ -271,12 +275,15 @@ public class Standard1v1Battle {
   private final List<QueuedAbility> queuedAbilities = new ArrayList<>();
 
   /**
-   * How many ticks before its own run a variant card's option is picked: after the step this many
-   * ticks before, the one before the step the play's tick follows. The player's client builds the
-   * item from a king one step older than the step before its play's tick: every captured Merge
-   * Maiden play agrees with a pick after that step, and some picked on foot hold an elixir that had
-   * reached the mounted trigger by the step after it. A play of its side that runs from the next
-   * tick on is pending at the pick, and one that runs in that tick has run before it.
+   * How many ticks before its own run a variant card's option is picked when no command item names
+   * it: after the step this many ticks before, the one before the step the play's tick follows. The
+   * player's client builds the item from the king's elixir at its last hand refresh before it gives
+   * the play, mostly one step older than the step before its play's tick: all but a few captured
+   * Merge Maiden plays agree with a pick after that step, and some picked on foot hold an elixir
+   * that had reached the mounted trigger by the step after it; the few read an elixir up to five
+   * steps older, at a moment of the client's frame the replay does not time, which is why a
+   * replay's play runs as the option it carries. A play of its side that runs from the next tick on
+   * is pending at the pick, and one that runs in that tick has run before it.
    */
   private static final int VARIANT_PICK_TICKS = PLAY_DELAY_TICKS + 2;
 
@@ -759,10 +766,12 @@ public class Standard1v1Battle {
   }
 
   /**
-   * Queues a variant card's play to run on the given tick, in a match: it is played as the option
-   * its player's client picks from the king's elixir as it gives the play, for that option's cost,
-   * and the variant card goes to the back of the queue. The option's card is placed and cast as any
-   * troop card, its units named after the play.
+   * Queues a variant card's play to run on the given tick, in a match, with no command item to name
+   * its option, as the debug screen plays it: it is played as the option its player's client picks
+   * from the king's elixir as it gives the play, for that option's cost, and the variant card goes
+   * to the back of the queue. The option's card is placed and cast as any troop card, its units
+   * named after the play. A replay's play carries its option, which {@link #playVariant(int,
+   * String, int, int, int, int, int, String)} plays as given.
    *
    * <p>The option is picked after the step {@value #VARIANT_PICK_TICKS} ticks before the run, one
    * older than the step before the play's tick, as its client reads the king, from the king's
@@ -833,7 +842,54 @@ public class Standard1v1Battle {
 
           @Override
           public void execute(Battle target) {
+            checkPromisesKnown(queued, name);
             runVariant(target, queued, card, level, x, y, name, option[0]);
+          }
+        });
+  }
+
+  /**
+   * Queues a variant card's play to run on the given tick, in a match, as the option its command
+   * carries, as the game's battle plays it: the option's card is placed and cast as any troop card,
+   * for that option's cost, and the variant card goes to the back of the queue. The player's client
+   * picks the option from the king's elixir at its last hand refresh before it gives the play, a
+   * reading the command does not time: it may be a few steps older than the one {@link
+   * #playVariant(int, String, int, int, int, int, String)} picks after, so the battle plays the
+   * option given and does not pick one. The option drives all the item does: the row cast, its
+   * cost, its production stop, and the option a Mirror after it repeats.
+   *
+   * @param tick the tick the play runs on
+   * @param card the variant card's row name
+   * @param option the index of the option the command carries, one of the card's options
+   * @param level the level it is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void playVariant(
+      int tick, String card, int option, int level, int side, int x, int y, String name) {
+    if (match == null) {
+      throw new UnsupportedOperationException(
+          card + " outside a match, which has no hand to play it from");
+    }
+    SpellVariant variant = match.side(side).deck().get(match.deckIndex(side, card)).variant();
+    checkArgument(variant != null, () -> card + " is not a variant card");
+    checkArgument(
+        option >= 0 && option < variant.options().size(),
+        () -> name + ": " + card + " has no option " + option);
+    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT, name);
+    queuedPlays.add(queued);
+    battle.queue(
+        new BattleCommand() {
+          @Override
+          public int tick() {
+            return tick;
+          }
+
+          @Override
+          public void execute(Battle target) {
+            runVariant(target, queued, card, level, x, y, name, option);
           }
         });
   }
@@ -848,7 +904,6 @@ public class Standard1v1Battle {
       String name,
       int option) {
     int side = queued.side();
-    checkPromisesKnown(queued, name);
     int deckIndex = match.deckIndex(side, card);
     VariantItem item = match.variantItem(side, deckIndex, option);
     // The gates read the variant card's own hand slot and the option's cost; a refused play
