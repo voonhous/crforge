@@ -8950,8 +8950,10 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>The projectile reaches a character of the launcher's side only when the row does not hit
    * enemies only, and one of the other side only when it does not buff its own troops only; the
-   * character must be alive, not untouchable and not waiting to deploy. Unlike an area effect it
-   * has no filter of its own, so the air and the ground are reached alike.
+   * character must be alive, not untouchable, not hidden and not waiting to deploy. The pass does
+   * not reach hidden units, so a unit the evolved Goblin Cage holds hidden on its point is passed
+   * by, as the impact's damage passes it by. Unlike an area effect it has no filter of its own, so
+   * the air and the ground are reached alike.
    *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
@@ -9182,6 +9184,10 @@ public class BattleWorld implements HolderPasses {
       return false;
     }
     if (target.untouchable()) {
+      return false;
+    }
+    // The projectile's circle does not reach hidden units: a hidden one is passed by.
+    if (target.passedBy(false)) {
       return false;
     }
     return target.getView().getState() != GridEntityState.WAITING_TO_DEPLOY;
