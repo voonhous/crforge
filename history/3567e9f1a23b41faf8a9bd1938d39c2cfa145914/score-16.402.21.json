@@ -1,0 +1,27 @@
+{
+  "content_version": "16.402.21",
+  "battles": 10000,
+  "to_the_end": 99.8,
+  "ticks_agreed": 99.8,
+  "outcomes": {
+    "diagnostic_match": 9982,
+    "mismatch": 10,
+    "unsupported": 8
+  },
+  "first_failures": {
+    "mismatch $.entities[].hp": 3,
+    "mismatch $.entities[].state": 3,
+    "mismatch $.entities[].x": 3,
+    "mismatch $.entities.length": 1,
+    "unsupported: BalloonHero_Ability_Target_Seeker is listed unfinished as its owner leaves, whose finishing action BalloonHero_Failsafe_Spawn_Delayer is not modelled there": 1,
+    "unsupported: Deflect_# deflects proj_# (PrincessProjectile) once more, its volley turned around as one before, which is not modelled": 1,
+    "unsupported: GiantHero_Slap_Knockback knocks cmd# in state 3, not modelled": 1,
+    "unsupported: MegaMinion_hero_return_action warps cmd# with proj_# aimed at it, whose row keeps its target through the reset, not modelled": 1,
+    "unsupported: WizardHero_ground_to_air lifts cmd#, already in the air, which is not modelled": 1,
+    "unsupported: cmd# died with no attacker and its killed action reads its cause, which would be a side alone, not modelled": 1,
+    "unsupported: proj_# (BarbLogHeroProjectileRolling) flies within Deflect_# (Deflect), whose deflection of it is not modelled": 1,
+    "unsupported: the area effect goblin_machine_rocket_target_signal_# is admitted after its maker left, which would destroy it unread, not modelled": 1
+  },
+  "set": "e6e3bccb191ecd17",
+  "commit": "3567e9f1a23b41faf8a9bd1938d39c2cfa145914"
+}
