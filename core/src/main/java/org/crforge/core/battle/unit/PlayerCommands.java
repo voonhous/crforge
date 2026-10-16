@@ -47,8 +47,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>Before it sends a command the client tries it against the battle as it stands, and drops it,
  * with nothing changed, when that try refuses it. For a card play the try is, in order: the match's
- * gates (the match decided, the king dead, the card in one of the hand's slots), then the king's
- * whole elixir, less the costs the side's commands still waiting have promised and never below 0,
+ * gates (the match decided, the king dead, the card in one of the hand's slots, the tick counter
+ * below the game mode's start cooldown, so no play is given before it), then the king's whole
+ * elixir, less the costs the side's commands still waiting have promised and never below 0,
  * covering the play's item's cost, then the map check on the point sent, which a tile the search
  * found always passes. The screen's search comes before the try: a drop both refuse is reported
  * here as the try refuses it, and is sent by neither. For an ability command the try is the run's
@@ -77,8 +78,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the stamp and the 20 ticks for every Ladder command kind, held by every"
             + " recorded command; a play sent on the tile the screen's placement search finds at"
             + " the drop, refused only when it finds none, held by every live play sent on a tile"
-            + " centre or a building's corner; the client's try at the giving: the match's gates,"
-            + " the elixir less the promised costs for a play, the"
+            + " centre or a building's corner; the client's try at the giving: the match's gates"
+            + " (the start cooldown among them, which no recording holds at the giving), the"
+            + " elixir less the promised costs for a play, the"
             + " run's gates with the promised costs set aside for an ability command; the promise"
             + " of each command, its expiry 60 ticks after the counter it was given at and its"
             + " release at the run. Held by the recorded Ladder battles: no card is played while a"
@@ -105,6 +107,10 @@ public final class PlayerCommands {
     KING_DEAD,
     /** The card is in none of the hand's slots, or the slot is empty. */
     NOT_IN_HAND,
+    /**
+     * The tick counter is below the game mode's start cooldown: {@link LadderMatch#START_COOLDOWN}.
+     */
+    START_COOLDOWN,
     /** A play of the hand slot's card is waiting to run: the screen does not offer it again. */
     CARD_PENDING,
     /** The elixir less the promised costs does not cover the cost. */
@@ -406,8 +412,9 @@ public final class PlayerCommands {
     if (isPending(side, deckIndex)) {
       return refused(Refusal.CARD_PENDING, SCREEN, givenTick, runTick, 0);
     }
-    // The gates before the elixir: the match decided, the king dead, the card in the hand.
-    int gate = match.gate(side, deckIndex, 0);
+    // The gates before the elixir: the match decided, the king dead, the card in the hand, the
+    // start cooldown, read on the tick counter.
+    int gate = match.gate(side, deckIndex, 0, tick);
     if (gate != 0) {
       return refused(playRefusal(gate), gate, givenTick, runTick, 0);
     }
@@ -618,6 +625,7 @@ public final class PlayerCommands {
       case LadderMatch.OVER -> Refusal.MATCH_OVER;
       case LadderMatch.KING_DEAD -> Refusal.KING_DEAD;
       case LadderMatch.NOT_IN_HAND -> Refusal.NOT_IN_HAND;
+      case LadderMatch.START_COOLDOWN -> Refusal.START_COOLDOWN;
       case LadderMatch.NOT_ENOUGH_ELIXIR -> Refusal.NOT_ENOUGH_ELIXIR;
       default -> throw new IllegalStateException("a match gate's code " + code);
     };

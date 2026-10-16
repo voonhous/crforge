@@ -63,11 +63,13 @@ class LadderMatchTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
     // Side 0's opening hand is Valkyrie, Giant, Archer, Minions; the Knight waits in the queue.
-    assertThat(match.gate(0, match.deckIndex(0, "Knight"))).isEqualTo(LadderMatch.NOT_IN_HAND);
-    assertThat(match.gate(0, match.deckIndex(0, "Archer"))).isZero();
+    assertThat(match.gate(0, match.deckIndex(0, "Knight"), match.getStartCooldownTicks()))
+        .isEqualTo(LadderMatch.NOT_IN_HAND);
+    assertThat(match.gate(0, match.deckIndex(0, "Archer"), match.getStartCooldownTicks())).isZero();
     // The Giant costs 5 and the side starts with 6: after the Archer's 3 it is 3.
     match.play(0, match.deckIndex(0, "Archer"));
-    assertThat(match.gate(0, match.deckIndex(0, "Giant"))).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
+    assertThat(match.gate(0, match.deckIndex(0, "Giant"), match.getStartCooldownTicks()))
+        .isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
   }
 
   @Test
@@ -89,7 +91,8 @@ class LadderMatchTest {
     assertThat(match.crowns(0)).isEqualTo(3);
     assertThat(match.getTimeline().isFrozen()).isTrue();
     assertThat(match.getEndTimerMs()).isEqualTo(51);
-    assertThat(match.gate(0, match.deckIndex(0, "Archer"))).isEqualTo(LadderMatch.OVER);
+    assertThat(match.gate(0, match.deckIndex(0, "Archer"), match.getStartCooldownTicks()))
+        .isEqualTo(LadderMatch.OVER);
     // From the end every ordinary hit is refused.
     TowerEntity king = battle.getWorld().kingTower(0);
     int hitPoints = king.getHitPoints().getHitPoints();

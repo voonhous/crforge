@@ -258,7 +258,8 @@ class BattleMiniPekkaHeroQuestTest {
           battle.startLadderMatch(HERO_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
       if (inHand(match, "MiniPekka")) {
         int cost = GameData.records().matchCard("MiniPekka").cost();
-        while (match.side(0).wholeElixir() < cost) {
+        while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+            || match.side(0).wholeElixir() < cost) {
           battle.getBattle().step();
         }
         return battle;

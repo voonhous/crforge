@@ -37,6 +37,9 @@ class BattleEvolutionTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The start cooldown: the first tick a card play of a match may run. */
+  private static final int OPEN = Shipped.startCooldownTicks();
+
   /**
    * Two cards and six Mirrors. The shuffle holds the Mirrors back while it draws the first four, so
    * the opening hand is the two cards and then two Mirrors.
@@ -128,8 +131,8 @@ class BattleEvolutionTest {
         battle.startLadderMatch(GIANT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS);
     assertThat(battle.getWorld().kingTower(0).championSlot(1).getChampion().name())
         .isEqualTo("GiantHero");
-    battle.play(20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, OPEN + 20);
 
     Standard1v1Battle.Play play = battle.getPlays().get(0);
     EvolutionItem item = play.evolution();
@@ -159,8 +162,9 @@ class BattleEvolutionTest {
     Standard1v1Battle battle = new Standard1v1Battle(tables);
     LadderMatch match =
         battle.startLadderMatch(GIANT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS);
-    battle.play(20, battle.getWorld().getRecords().card("Giant"), LEVEL, 0, 3500, 10000, "g");
-    run(battle, 20);
+    battle.play(
+        OPEN + 20, battle.getWorld().getRecords().card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, OPEN + 20);
 
     assertThat(battle.getPlays().get(0).evolution().cost()).isEqualTo(6);
     assertThat(match.side(0).getSpent()).isEqualTo(6 * MatchSide.SCALE);
@@ -176,16 +180,16 @@ class BattleEvolutionTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match =
         battle.startLadderMatch(GIANT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS);
-    battle.play(20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, OPEN + 20);
 
     MirrorItem item = match.mirrorItem(0, match.deckIndex(0, "Mirror"), LEVEL);
     assertThat(item.repeats().name()).isEqualTo("Giant_hero");
     assertThat(item.cost())
         .isEqualTo(cost("spells_other", "Mirror") + cost("spells_hero_form", "Giant_hero"));
     // Played once the elixir has had time to fill up, whatever the two costs.
-    battle.playMirror(700, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(battle, 700);
+    battle.playMirror(OPEN + 700, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, OPEN + 700);
     Standard1v1Battle.Play mirror = battle.getPlays().get(1);
     assertThat(mirror.matchCode()).isZero();
     assertThat(mirror.mirror().repeats().name()).isEqualTo("Giant_hero");
@@ -206,8 +210,8 @@ class BattleEvolutionTest {
             0,
             first(MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT),
             NO_SLOTS);
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, OPEN + 20);
 
     EvolutionItem played = battle.getPlays().get(0).evolution();
     assertThat(played.field()).isEqualTo(EvolutionItem.HERO);
@@ -268,7 +272,7 @@ class BattleEvolutionTest {
     // The plain plays the count needs, then the evolved one.
     int evolvedPlay = EVOLUTION_COST;
     int barrels = 0;
-    int tick = 20;
+    int tick = OPEN + 20;
     while (barrels <= evolvedPlay) {
       tick += 200;
       run(battle, tick - 1);
@@ -383,10 +387,10 @@ class BattleEvolutionTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(
         KNIGHT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k1");
-    battle.play(30, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k2");
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k1");
+    battle.play(OPEN + 30, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k2");
 
-    assertThatThrownBy(() -> run(battle, 30))
+    assertThatThrownBy(() -> run(battle, OPEN + 30))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("k2: a play of Knight, an evolution slot's card");
   }
@@ -405,9 +409,9 @@ class BattleEvolutionTest {
     // The Giant leaves too little elixir for the Knight a tick later.
     assertThat(cost("spells_characters", "Giant") + cost("spells_characters", "Knight"))
         .isGreaterThan(side.wholeElixir() + 1);
-    battle.play(20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
-    battle.play(21, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    run(battle, 21);
+    battle.play(OPEN + 20, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    battle.play(OPEN + 21, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, OPEN + 21);
 
     Standard1v1Battle.Play knight = battle.getPlays().get(1);
     assertThat(knight.matchCode()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
@@ -478,15 +482,15 @@ class BattleEvolutionTest {
         battle.startLadderMatch(
             KNIGHT_MIRRORS, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
     // Left of the map: the map check refuses it after the gates let it through.
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, -1000, 10000, "k1");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, -1000, 10000, "k1");
+    run(battle, OPEN + 20);
     assertThat(battle.getPlays().get(0).matchCode()).isZero();
     assertThat(battle.getPlays().get(0).result().placed()).isFalse();
     assertThat(match.side(0).evolutionCountUnknown(0)).isTrue();
 
     // Given after the first one's run, so that it is not due any more.
-    battle.play(41, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k2");
-    assertThatThrownBy(() -> run(battle, 41))
+    battle.play(OPEN + 41, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k2");
+    assertThatThrownBy(() -> run(battle, OPEN + 41))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("k2: a play of Knight, an evolution slot's card, after a play of it")
         .hasMessageContaining("refused at its placement");
@@ -508,7 +512,7 @@ class BattleEvolutionTest {
     String firstName = side.deck().get(0).name();
     String secondName = side.deck().get(1).name();
     int[] played = new int[2];
-    for (int tick = 20; played[0] < times || played[1] < times; tick += 200) {
+    for (int tick = OPEN + 20; played[0] < times || played[1] < times; tick += 200) {
       run(battle, tick - 1);
       int pick = -1;
       for (int index : side.getHand().slots()) {

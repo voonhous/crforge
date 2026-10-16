@@ -39,10 +39,13 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * at the rate and cooldown the timeline gives for that tick.
  *
  * <p>A card play first passes the match's gates, in order: the match must not be decided (code 4),
- * the king must be alive (code 8), the card must be in one of the hand's four slots (code 9), and
- * the whole elixir must cover its cost (code 0xd). A refused play changes nothing. One that places
- * or casts takes its cost and moves the card to the back of the queue before its units are created
- * or its spell cast.
+ * the king must be alive (code 8), the card must be in one of the hand's four slots (code 9), the
+ * battle's tick counter must have reached the start cooldown (code 0x16), and the whole elixir must
+ * cover its cost (code 0xd). The start cooldown is the game mode row's BattleStartCooldown, or the
+ * global LOGIC_BATTLE_START_COOLDOWN where the row leaves it empty, as Ladder does, in ticks of 50
+ * ms; the gate is read at the run with the run's tick, and by the player's client at the giving
+ * with the counter then. A refused play changes nothing. One that places or casts takes its cost
+ * and moves the card to the back of the queue before its units are created or its spell cast.
  *
  * <p>A deck marks its evolution and hero slots, one flag each per deck card. A play of a deck card
  * carries an item built from its side's count for the card: evolved once the count has reached the
@@ -97,7 +100,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " them timeline_spells_through_rates: the setup in side order with the shuffle's"
             + " draw, the update's advance before the entity tick, the kings' refill and"
             + " regeneration in their post-hook, the gate 9 (held by refused_not_in_hand_s1) and"
-            + " the gate 13 (held by golden-gaps-v1/mirror_after_spell) and the spend and cycle"
+            + " the gate 13 (held by golden-gaps-v1/mirror_after_spell), the gate 0x16 of the"
+            + " start cooldown at the run (held by play-start-cooldown-v1: a play run one tick"
+            + " before it refused, one at it placed) and the spend and cycle"
             + " before the placement's units; by card_Pekka_until_stop: the end at a king's fall,"
             + " the winner, the end timer and the entity ticks it allows, the fallen king's"
             + " circle and the stop, the attack timers held and the hits refused from the end; by"
@@ -167,6 +172,9 @@ public final class LadderMatch implements BattleMode {
   /** A refused play: the card is not in one of the hand's four slots. */
   public static final int NOT_IN_HAND = 9;
 
+  /** A refused play: the battle's tick counter is below the game mode's start cooldown. */
+  public static final int START_COOLDOWN = 0x16;
+
   /** A refused play: the whole elixir does not cover the card's cost. */
   public static final int NOT_ENOUGH_ELIXIR = 0xd;
 
@@ -193,6 +201,13 @@ public final class LadderMatch implements BattleMode {
 
   /** How many levels above its own a Mirror plays its card. */
   private final int mirrorLevelOffset;
+
+  /**
+   * The start cooldown in ticks: a card play is refused while the battle's tick counter is below
+   * it. The game mode row's BattleStartCooldown, or the global when the row leaves it empty, in
+   * milliseconds over the step's 50.
+   */
+  @Getter private final int startCooldownTicks;
 
   private final List<MatchSide> sides = new ArrayList<>();
 
@@ -272,6 +287,7 @@ public final class LadderMatch implements BattleMode {
     this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
     this.mirrorLevelOffset = records.globalNumber(MIRROR_LEVEL_OFFSET);
+    this.startCooldownTicks = records.battleStartCooldownMs(GAME_MODE) / Battle.STEP_MS;
     this.endDelayMs = records.endScreenDelayMs();
     this.arenaLength = world.getTileMap().height() * TileMap.CELL_UNITS;
     for (int side = 0; side < 2; side++) {
@@ -839,26 +855,29 @@ public final class LadderMatch implements BattleMode {
    *
    * @param side the playing side
    * @param index the card's deck index
+   * @param tick the battle's tick counter: the run's tick, or the counter at the giving
    * @return 0 when the play may go on, else the code it is refused with
-   * @see #gate(int, int, int)
+   * @see #gate(int, int, int, int)
    */
-  public int gate(int side, int index) {
+  public int gate(int side, int index, int tick) {
     MatchCard card = sides.get(side).deck().get(index);
     checkArgument(
         !card.mirror() && card.variant() == null,
         () -> card.name() + "'s play is gated on its item's cost");
-    return gate(side, index, card.cost());
+    return gate(side, index, card.cost(), tick);
   }
 
   /**
-   * The match's gates for a play, in order: the king alive, the card in the hand, the elixir.
+   * The match's gates for a play, in order: the match not decided, the king alive, the card in the
+   * hand, the tick counter at or past the start cooldown, the elixir.
    *
    * @param side the playing side
    * @param index the card's deck index
    * @param cost the cost the elixir must cover: the card's, or a Mirror's or a variant's item's
+   * @param tick the battle's tick counter: the run's tick, or the counter at the giving
    * @return 0 when the play may go on, else the code it is refused with
    */
-  public int gate(int side, int index, int cost) {
+  public int gate(int side, int index, int cost, int tick) {
     MatchSide matchSide = sides.get(side);
     if (decided()) {
       return OVER;
@@ -869,6 +888,10 @@ public final class LadderMatch implements BattleMode {
     int slot = matchSide.getHand().slotOf(index);
     if (slot < 0 || slot >= Hand.SLOTS) {
       return NOT_IN_HAND;
+    }
+    // The start cooldown: open from the tick counter that reaches it.
+    if (tick < startCooldownTicks) {
+      return START_COOLDOWN;
     }
     if (matchSide.wholeElixir() < cost) {
       return NOT_ENOUGH_ELIXIR;

@@ -184,7 +184,8 @@ class BattleMusketeerHeroTest {
       match = battle.startLadderMatch(DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("Musketeer").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       step(battle);
     }
     battle.play(

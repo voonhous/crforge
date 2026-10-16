@@ -92,7 +92,8 @@ class BattleChampionRefundTest {
      */
     CharacterEntity playQueen(int more) {
       int cost = GameData.records().matchCard(QUEEN).cost();
-      while (match.side(0).wholeElixir() < cost + more) {
+      while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+          || match.side(0).wholeElixir() < cost + more) {
         battle.getBattle().step();
       }
       int tick = battle.getBattle().getTick();
