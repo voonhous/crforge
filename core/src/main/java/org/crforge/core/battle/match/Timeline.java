@@ -253,6 +253,14 @@ public final class Timeline {
     frozenTimeMs = timeMs;
   }
 
+  /**
+   * The time left in the current section, in milliseconds: its length less the time spent in it,
+   * never below 0, and 0 for a section without a length, which lasts until the match ends.
+   */
+  public int sectionLeftMs() {
+    return Math.max(sectionLengthMs - sectionElapsedMs, 0);
+  }
+
   /** True in an overtime section. */
   public boolean overtime() {
     return sectionType == BattleTimeline.OVERTIME;
