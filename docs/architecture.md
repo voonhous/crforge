@@ -10,7 +10,7 @@ This page is the index of the docs, the module and package layout, and the debug
 
 | Document | Description |
 |----------|-------------|
-| [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, the tests and the game data, what is covered, the roadmap and the assumptions carried |
+| [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, when a player's command runs, the tests and the game data, what is covered, the roadmap and the assumptions carried |
 | [Troop Pathfinding](pathfinding.md) | The movement, targeting and state rules the battle core runs: the routing grid, cell costs, the route search, endpoints and lanes, assumptions and what is still unvalidated |
 | [Game Tables and Reference Battles](game-tables.md) | The game tables the battle core reads, how they are named, the recorded reference battles and the records built from the rows |
 | [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, the coverage score and what it costs, moving to a new data version |
@@ -125,7 +125,7 @@ org.crforge.core/
   util/          GameUnits, ValidationUtils
 ```
 
-`battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base; see the dependency rule in [The Battle Core](battle-core.md#package-layout). The step and the entity tick are described in [One step](battle-core.md#one-step), with a diagram of the battle core's inside.
+`battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base; see the dependency rule in [The Battle Core](battle-core.md#package-layout). The step and the entity tick are described in [One step](battle-core.md#one-step), with a diagram of the battle core's inside; a player's command runs 20 steps after it is given, see [When a player's command runs](battle-core.md#when-a-players-command-runs).
 
 ---
 
