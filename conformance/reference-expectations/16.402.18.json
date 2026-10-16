@@ -784,6 +784,8 @@
   "smoke-c1/refused_enemy_side_s0": {"outcome": "diagnostic_match"},
   "smoke-c1/refused_not_in_hand_s1": {"outcome": "diagnostic_match"},
   "smoke-c1/same_tick_both_sides": {"outcome": "diagnostic_match"},
+  "snowball-ev1-roll-deflect-max-v1/roll_third_deflect": {"outcome": "diagnostic_match"},
+  "snowball-ev1-roll-deflect-max-v1/roll_third_deflect_capture": {"outcome": "diagnostic_match"},
   "snowball-ev1-roll-deflect-v1/roll_at_start": {"outcome": "diagnostic_match"},
   "snowball-ev1-roll-deflect-v1/roll_in_t790": {"outcome": "diagnostic_match"},
   "snowball-ev1-roll-deflect-v1/roll_in_t800": {"outcome": "diagnostic_match"},

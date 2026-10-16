@@ -127,8 +127,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the run's writes by its own side, held by hero_barb_log, where no variable is"
             + " written for it. Not modelled: a pingpong projectile, or one with a random delay,"
             + " that a spell casts or an impact spawns, the angular delay, the drag-back hook,"
-            + " the custom movement, the far-distance clamp with its cell pull, a redirect to a"
-            + " point, and a deflection past the most a projectile takes.")
+            + " the custom movement, the far-distance clamp with its cell pull, and a redirect to"
+            + " a point. A deflection by the row's own deflection action that finds the"
+            + " projectile at the most it takes counts, hands the side and releases it, held by"
+            + " snowball-ev1-roll-deflect-max-v1.")
 public class ProjectileEntity extends BattleEntity
     implements ActionOwner, SpawnHost, FollowedObject {
 
@@ -1178,9 +1180,10 @@ public class ProjectileEntity extends BattleEntity
   /**
    * A row's own deflection action on the projectile: one more deflection counted and the side of
    * its cause, the deflector's parent, taken; nothing else changes, so whatever moves it reads the
-   * count, as a roll does (see {@link RollingRun}). Refused: a cause that is not a unit, and a
-   * deflection past the most a projectile takes (MAX_DEFLECTION_TIMES), which ends its flight as a
-   * release does and which no recording holds.
+   * count, as a roll does (see {@link RollingRun}). A deflection that finds the projectile already
+   * at the most it takes (MAX_DEFLECTION_TIMES) counts and hands the side all the same and then
+   * releases it: it leaves at this tick's cleanup without an impact, its action on reaching its
+   * target scheduled, as a roll's arrival releases it. Refused: a cause that is not a unit.
    */
   @Override
   public void projectileDeflected(ProjectileDeflected action, ActionOwner cause) {
@@ -1188,16 +1191,14 @@ public class ProjectileEntity extends BattleEntity
       throw new UnsupportedOperationException(
           action.name() + " deflects " + name() + " without a unit as its cause, not modelled");
     }
-    if (deflections >= world.globalNumber("MAX_DEFLECTION_TIMES")) {
-      throw new UnsupportedOperationException(
-          action.name()
-              + " deflects "
-              + name()
-              + " past the most a projectile takes, which ends its flight, not modelled");
-    }
+    // The count before this deflection decides the release.
+    int before = deflections;
     deflections++;
     side = deflector.side();
     world.projectileSelfDeflected(this, action.name(), deflector);
+    if (before >= world.globalNumber("MAX_DEFLECTION_TIMES")) {
+      release();
+    }
   }
 
   /** Starts the evolved Executioner's axe controller on the projectile. */
