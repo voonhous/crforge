@@ -31,6 +31,8 @@ python/                  crforge_env (the crforge-env package)
   ClashParallelEnv       one battle, both seats as the agents of a parallel multi-agent environment
   ClashGymEnv            one seat of a battle as a single-agent environment, the other seat a given policy
   Schema                 the layout, read from the vector's metadata at start
+  ScriptedBot            a scripted opponent of a few readable rules on what its player sees
+  evaluate               a policy against an opponent over many episodes, as wins, losses and draws
   bench                  the Python-side benchmark (crforge-env-bench)
 ```
 
@@ -205,11 +207,42 @@ At start the package reads `VectorEnv.metadataJson()`: the schema's version, siz
 Two wrappers over a vector of one battle, both with autoreset off:
 
 - `ClashParallelEnv(deck0, deck1, install=..., tables=...)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 2496 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
-- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0)`: a single-agent environment for the learner on `seat`; the other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, and `wait_opponent` come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
+- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0)`: a single-agent environment for the learner on `seat`; the other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
 
 The observation space is a box of int32 of the seat's 2496 integers, not floats: its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself. Its bounds (`schema.observation_bounds(vocabulary_size)`): a vocabulary id field (hand, next card, deck, enemy cards seen, waiting commands' cards, an entity's row) lies in -1 to the last id; the result, the seat, the overtime and pending marks, an entity's kind, side and flags in 0 to their largest code; every other field in the int32 range. The action space is the 2305 actions. A `reset(seed=...)` takes a 32-bit seed as the battle's seed; a reset without one draws the battle's seed from the environment's own generator.
 
 Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait or a play given), `last_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
+
+### The scripted bot and evaluation
+
+`ScriptedBot` is a deterministic opponent of three rules, of the same shape as `random_opponent` (`bot(observation, mask, rng) -> action`). It reads the seat's observation and mask only: its elixir, hand, hand costs and waiting plays, the enemy princess towers' hit points and the enemy characters on the field. Each decision:
+
+1. **Defend**: an enemy character past the river on the seat's half and no play of its own waiting: the cheapest open troop or building card in the lane of the deepest such character, on the row just behind the princess towers.
+2. **Attack**: the elixir less what its waiting plays hold back at 9 or more (`attack_elixir`): the cheapest open troop card at the bridge of the lane whose enemy princess tower has fewer hit points, on the last row of its half; `rng` breaks a tie of the two lanes, and is drawn from for nothing else.
+3. Otherwise **wait**.
+
+A card is open when the mask opens a tile of its hand slot (the mask carries the elixir, the start cooldown and a play of the card already waiting). The bot plays its chosen tile when the mask opens it, else the nearest tile of that slot the mask opens; it never takes an action the mask closed, and never plays a spell. The lanes and rows are tiles of the seat's frame of the standard arena, constructor arguments with defaults.
+
+A card's cost is `hand_cost` of the observation. Its type comes from the tables: `VectorBattle.card_types()` gives each deck card's vocabulary id the type of its card table, `troop` (the character cards), `building` (the building cards) or `spell` (the other cards). The bot is bound to a vector with `bind(vector)` before its first decision, which reads the layout and the card types; `ClashGymEnv` binds an opponent with a `bind` method as it makes its vector, and `evaluate` binds both policies. A synthetic vector has no tables, so a bot on one is given its `card_types`.
+
+```python
+env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent=ScriptedBot())
+result = evaluate(policy, ScriptedBot(), deck=deck, episodes=200, install=install, tables=tables)
+result.wins, result.losses, result.draws, result.truncated, result.win_rate
+```
+
+`evaluate(policy, opponent, *, deck, episodes, install, opponent_deck=None, tables=None, engine="ladder", config=None, envs=8, threads=1, seed=0, **vector_kwargs)` plays `episodes` episodes of `policy` against `opponent` (each a policy of the opponent's shape; a trained model is wrapped in such a function) on a vector of `envs` battles, and counts them from the policy's seat as an `EvaluationResult`: `episodes`, `wins`, `losses`, `draws`, `truncated` (cut short by the tick limit or a fault), `faults` by kind, `illegal` (the policy's actions refused as illegal) and `win_rate` (wins over all episodes). The policy plays seat 0 in the even environments and seat 1 in the odd ones, so an even `envs` gives each side half the episodes; each environment plays a fixed share of the episodes, so which ones count does not depend on which end first; the battle seeds and each seat's generator are drawn from `seed`, so a run is reproduced by it.
+
+Measured on 2026-10-16 on one Mac (Apple M4 Pro), data version 16.402.19, with other work running (1-minute load average 8.3 to 9.0): `evaluate` over 300 episodes each, 16 battles on 4 threads, seed 2026, both seats holding the deck `Knight`, `Archer`, `Musketeer`, `Giant`, `MiniPekka`, `Fireball`, `Arrows`, `Zap` at level 11, a decision being 5 ticks.
+
+| policy | opponent | wins | losses | draws | truncated | seconds |
+|---|---|---:|---:|---:|---:|---:|
+| `ScriptedBot` | `wait_opponent` | 300 | 0 | 0 | 0 | 3.5 |
+| `ScriptedBot` | `random_opponent` | 300 | 0 | 0 | 0 | 4.5 |
+| `random_opponent` | `ScriptedBot` | 0 | 300 | 0 | 0 | 3.9 |
+| `ScriptedBot` | `ScriptedBot` | 141 | 157 | 2 | 0 | 9.8 |
+
+No episode faulted and the bot took no illegal action. The bot is a floor for a trained policy to beat, not a strong player: it never plays a spell, defends with whatever troop is cheapest and attacks in one lane at a time.
 
 ### Faults are truncations
 
@@ -224,7 +257,7 @@ uv run pytest --install=../env/build/install/env                            # th
 uv run ruff check && uv run ruff format --check
 ```
 
-The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, and a saved vocabulary whose ids moved refused. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
+The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, and a saved vocabulary whose ids moved refused. The scripted bot's tests hold its rules on observations written by hand, its determinism and the mask on synthetic environments with hand-written card types, the evaluation's counting on synthetic episodes, and on Ladder battles the card types against the tables, a win against `wait_opponent` and a whole battle against `random_opponent` with plays and no illegal action. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
 
 ### The Python-side benchmark
 

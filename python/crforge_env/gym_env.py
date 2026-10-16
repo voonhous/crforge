@@ -78,6 +78,10 @@ class ClashGymEnv(Env):
       ``info["fault_signature"]``
     - info: :meth:`VectorBattle.seat_info` of the learner's seat
 
+    ``opponent`` is a policy ``opponent(observation, mask, rng) -> action`` of the other seat
+    (:func:`random_opponent`, :func:`wait_opponent`, a :class:`ScriptedBot`); one with a
+    ``bind(vector)`` method is bound to this environment's vector as it is made.
+
     ``deck`` is the learner's, ``opponent_deck`` the opponent's, eight card row names each.
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
     a data version (required for the ladder engine). The remaining keywords go to
@@ -108,6 +112,10 @@ class ClashGymEnv(Env):
         self.schema = self.vector.schema
         self.seat = seat
         self.opponent = opponent
+        # An opponent that reads the layout or the tables (a ScriptedBot) is bound to the vector.
+        bind = getattr(opponent, "bind", None)
+        if callable(bind):
+            bind(self.vector)
         decks = [list(deck), list(opponent_deck)]
         self._decks = (decks[seat], decks[1 - seat])
         self.observation_space = observation_space(self.vector)

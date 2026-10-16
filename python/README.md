@@ -18,7 +18,7 @@ uv run crforge-env-bench --install ../env/build/install/env --tables ~/.crforge/
 ```
 
 ```python
-from crforge_env import ClashGymEnv, ClashParallelEnv, VectorBattle
+from crforge_env import ClashGymEnv, ClashParallelEnv, ScriptedBot, VectorBattle, evaluate
 
 deck = ["Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap"]
 install = "../env/build/install/env"  # ./gradlew :env:installDist
@@ -32,6 +32,8 @@ with VectorBattle(256, 8, install=install, tables=tables) as vector:
         vector.step()  # rewards, dones, infos are in place
 
 env = ClashGymEnv(deck, deck, install=install, tables=tables)  # one seat, a random opponent
+env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent=ScriptedBot())
+result = evaluate(policy, ScriptedBot(), deck=deck, episodes=200, install=install, tables=tables)
 both = ClashParallelEnv(deck, deck, install=install, tables=tables)  # both seats
 ```
 
