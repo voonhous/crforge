@@ -1,0 +1,445 @@
+/*
+ * crforge - https://github.com/voonhous/crforge
+ * SPDX-License-Identifier: Apache-2.0
+ * Porting this code? Please cite this file and the commit you read: see the README.
+ */
+
+package org.crforge.core.battle.unit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.deploy.MapCheck;
+import org.crforge.core.battle.match.Hand;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.unit.PlayerCommands.Giving;
+import org.crforge.core.battle.unit.PlayerCommands.Refusal;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+/**
+ * A player's commands given as its client gives them: every kind stamped with the tick counter, or
+ * 1 at tick 0, and run 20 ticks after the stamp; the client's try at the giving, its elixir less
+ * the costs its waiting commands promised; a promise kept 60 ticks after the giving of a play
+ * refused at its run; and a refused giving that changes nothing.
+ */
+class PlayerCommandsTest {
+
+  private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
+
+  /** A Knight and an Archer, then the Mirrors the shuffle holds back for the refills. */
+  private static final List<String> KNIGHT_MIRRORS =
+      List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  private static final List<String> MAIDENS = Collections.nCopies(8, "MergeMaiden");
+
+  /** One Knight and seven Skeletons. */
+  private static final List<String> KNIGHT_SKELETONS =
+      List.of(
+          "Knight",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons");
+
+  /** An Archer Queen, a champion, and seven Skeletons. */
+  private static final List<String> QUEEN_SKELETONS =
+      List.of(
+          "ArcherQueen",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons",
+          "Skeletons");
+
+  /** A point on side 0's half the map takes, away from the bridges. */
+  private static final int X = 3500;
+
+  private static final int Y = 8500;
+
+  @Test
+  @DisplayName("a deck card's play given at tick t runs at t + 20, not before")
+  void aCardPlayRunsTwentyTicksLater() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, 30);
+
+    Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "k");
+
+    assertThat(giving.given()).isTrue();
+    assertThat(giving.givenTick()).isEqualTo(30);
+    assertThat(giving.runTick()).isEqualTo(30 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    stepTo(battle, giving.runTick());
+    assertThat(battle.getPlays()).as("nothing has run before its run tick").isEmpty();
+    battle.getBattle().step();
+    assertThat(battle.getPlays()).hasSize(1);
+    assertThat(battle.getPlays().get(0).tick()).isEqualTo(giving.runTick());
+    assertThat(battle.getPlays().get(0).units()).hasSize(1);
+  }
+
+  @Test
+  @DisplayName("a play given before the first step is stamped 1 and runs on tick 21")
+  void aPlayAtTickZeroIsStampedOne() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+
+    Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "k");
+
+    assertThat(giving.givenTick()).isEqualTo(1);
+    assertThat(giving.runTick()).isEqualTo(1 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    stepTo(battle, giving.runTick() + 1);
+    assertThat(battle.getPlays()).extracting(Standard1v1Battle.Play::tick).containsExactly(21);
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror given while a Knight's play waits promises the item its client builds from that"
+          + " play, and runs 20 ticks after its own stamp")
+  void aMirrorRunsTwentyTicksLater() {
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Mirror");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    int knightCost = Shipped.cost("Knight");
+    int mirrorItemCost = Shipped.cost("Mirror") + knightCost;
+    while (match.side(0).wholeElixir() < knightCost + mirrorItemCost) {
+      battle.getBattle().step();
+    }
+    Giving knight = commands.playCard(0, slot(match, "Knight"), LEVEL, X, Y, "k");
+    // Two ticks later, so the client lists the Knight's play as promised.
+    stepTo(battle, battle.getBattle().getTick() + 2);
+
+    Giving mirror = commands.playCard(0, slot(match, "Mirror"), LEVEL, 14500, Y, "m");
+
+    assertThat(knight.given()).isTrue();
+    assertThat(mirror.given()).isTrue();
+    assertThat(mirror.cost()).isEqualTo(mirrorItemCost);
+    assertThat(commands.promised(0)).isEqualTo(knightCost + mirrorItemCost);
+    assertThat(mirror.runTick())
+        .isEqualTo(battle.getBattle().getTick() + Standard1v1Battle.PLAY_DELAY_TICKS);
+    stepTo(battle, mirror.runTick() + 1);
+    Standard1v1Battle.Play played = battle.getPlays().get(1);
+    assertThat(played.name()).isEqualTo("m");
+    assertThat(played.tick()).isEqualTo(mirror.runTick());
+    assertThat(played.mirror().repeats().name()).isEqualTo("Knight");
+    assertThat(played.mirror().cost()).isEqualTo(mirror.cost());
+    assertThat(played.units()).hasSize(1);
+    assertThat(commands.promised(0)).as("both placed, both promises released").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a variant card's play given at tick t runs at t + 20 as the option its client picked at"
+          + " the giving, for that option's cost")
+  void aVariantPlayRunsTwentyTicksLater() {
+    Standard1v1Battle battle = ladder(MAIDENS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, 40);
+
+    Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "m");
+
+    assertThat(giving.given()).isTrue();
+    assertThat(giving.runTick()).isEqualTo(40 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    stepTo(battle, giving.runTick() + 1);
+    Standard1v1Battle.Play played = battle.getPlays().get(0);
+    assertThat(played.tick()).isEqualTo(giving.runTick());
+    assertThat(played.variant()).isNotNull();
+    assertThat(played.variant().cost()).isEqualTo(giving.cost());
+    assertThat(battle.getMatch().side(0).getSpent()).isEqualTo(giving.cost() * MatchSide.SCALE);
+  }
+
+  @Test
+  @DisplayName(
+      "an ability command given at tick t runs at t + 20, and promises the ability's cost until"
+          + " its run")
+  void anAbilityCommandRunsTwentyTicksLater() {
+    Standard1v1Battle battle = dealt(QUEEN_SKELETONS, "ArcherQueen");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    int queenCost = Shipped.cost("ArcherQueen");
+    while (match.side(0).wholeElixir() < queenCost) {
+      battle.getBattle().step();
+    }
+    Giving queen = commands.playCard(0, slot(match, "ArcherQueen"), LEVEL, X, 4000, "q");
+    assertThat(queen.given()).isTrue();
+    int abilityCost = battle.getWorld().getRecords().unit("ArcherQueen").ability().manaCost();
+    int deployed =
+        queen.runTick() + Shipped.number(Shipped.unitRow("ArcherQueen"), "DeployTime") / 50;
+    while (battle.getBattle().getTick() <= deployed || match.side(0).wholeElixir() < abilityCost) {
+      battle.getBattle().step();
+    }
+    int tick = battle.getBattle().getTick();
+
+    Giving ability = commands.useAbility(0, "q_0", "a");
+
+    assertThat(ability.given()).isTrue();
+    assertThat(ability.cost()).isEqualTo(abilityCost);
+    assertThat(ability.runTick()).isEqualTo(tick + Standard1v1Battle.PLAY_DELAY_TICKS);
+    assertThat(commands.promised(0)).isEqualTo(abilityCost);
+    stepTo(battle, ability.runTick());
+    assertThat(battle.getAbilityUses()).isEmpty();
+    battle.getBattle().step();
+    assertThat(battle.getAbilityUses()).hasSize(1);
+    assertThat(battle.getAbilityUses().get(0).tick()).isEqualTo(ability.runTick());
+    assertThat(battle.getAbilityUses().get(0).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(commands.promised(0)).as("released by its run").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "the elixir check sets aside the costs the waiting plays promised: a Knight the whole elixir"
+          + " covers is refused while they wait, and given once they have run")
+  void waitingPlaysPromisesAreSetAside() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    MatchSide side = battle.getMatch().side(0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    int cost = Shipped.cost("Knight");
+    stepTo(battle, 10);
+    // Knights from slot after slot until one is refused; the most elixir there can be is below
+    // four Knights, so one of the four is.
+    List<Giving> given = new ArrayList<>();
+    Giving refused = null;
+    for (int slot = 0; slot < Hand.SLOTS && refused == null; slot++) {
+      Giving giving = commands.playCard(0, slot, LEVEL, 2000 + 3000 * slot, Y, "k" + slot);
+      if (giving.given()) {
+        given.add(giving);
+      } else {
+        refused = giving;
+      }
+    }
+
+    assertThat(given).isNotEmpty();
+    assertThat(refused).isNotNull();
+    assertThat(refused.refusal()).isEqualTo(Refusal.NOT_ENOUGH_ELIXIR);
+    assertThat(refused.code()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
+    assertThat(refused.cost()).isEqualTo(cost);
+    assertThat(commands.promised(0)).isEqualTo(given.size() * cost);
+    assertThat(side.wholeElixir())
+        .as("the whole elixir covers it; less the promises it does not")
+        .isGreaterThanOrEqualTo(cost)
+        .isLessThan(commands.promised(0) + cost);
+    // The plays pay at their run and release their promises.
+    stepTo(battle, given.get(given.size() - 1).runTick() + 1);
+    while (side.wholeElixir() < cost) {
+      battle.getBattle().step();
+    }
+    assertThat(commands.promised(0)).isZero();
+    assertThat(commands.playCard(0, 3, LEVEL, 14500, Y, "after").given()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "two plays of one side wait at once when the elixir covers both, each run on its own tick")
+  void twoCommandsWaitAtOnce() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    MatchSide side = battle.getMatch().side(0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    int cost = Shipped.cost("Knight");
+    stepTo(battle, 10);
+    while (side.wholeElixir() < 2 * cost) {
+      battle.getBattle().step();
+    }
+
+    Giving first = commands.playCard(0, 0, LEVEL, X, Y, "k1");
+    battle.getBattle().step();
+    Giving second = commands.playCard(0, 1, LEVEL, 14500, Y, "k2");
+
+    assertThat(first.given()).isTrue();
+    assertThat(second.given()).isTrue();
+    assertThat(second.runTick()).isEqualTo(first.runTick() + 1);
+    assertThat(commands.promised(0)).isEqualTo(2 * cost);
+    int spentBefore = side.getSpent();
+    stepTo(battle, second.runTick() + 1);
+    assertThat(battle.getPlays())
+        .extracting(Standard1v1Battle.Play::name, Standard1v1Battle.Play::tick)
+        .containsExactly(tuple("k1", first.runTick()), tuple("k2", second.runTick()));
+    assertThat(side.getSpent() - spentBefore).isEqualTo(2 * cost * MatchSide.SCALE);
+    assertThat(commands.promised(0)).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a play refused at its run keeps its promise until 60 ticks after the tick counter it was"
+          + " given at, and the elixir check sets it aside until then")
+  void aRefusedPlaysPromiseExpires() {
+    Standard1v1Battle battle = dealt(KNIGHT_SKELETONS, "Knight");
+    LadderMatch match = battle.getMatch();
+    MatchSide side = match.side(0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    int knight = Shipped.cost("Knight");
+    int skeletons = Shipped.cost("Skeletons");
+    int given = battle.getBattle().getTick();
+    Giving refusedAtRun = commands.playCard(0, slot(match, "Knight"), LEVEL, X, Y, "k");
+    // A play of the deck's one Knight queued with its run tick, outside the client, runs first
+    // and sends it to the back of the queue: the given play finds it in no hand slot at its run.
+    battle.play(
+        given, battle.getWorld().getRecords().card("Knight"), LEVEL, 0, 14500, Y, "outside");
+    stepTo(battle, refusedAtRun.runTick() + 1);
+    Standard1v1Battle.Play run = battle.getPlays().get(1);
+    assertThat(run.name()).isEqualTo("k");
+    assertThat(run.matchCode()).as("refused at its run").isEqualTo(LadderMatch.NOT_IN_HAND);
+    int expiry = given + Standard1v1Battle.PROMISE_TICKS;
+
+    // While it is kept, Skeletons the whole elixir covers are refused: the Knight's cost is set
+    // aside.
+    while (side.wholeElixir() < skeletons) {
+      battle.getBattle().step();
+    }
+    assertThat(battle.getBattle().getTick()).isLessThanOrEqualTo(expiry - 2);
+    assertThat(side.wholeElixir()).isLessThan(knight + skeletons);
+    assertThat(commands.promised(0)).isEqualTo(knight);
+    Giving whileKept = commands.tryCard(0, slot(match, "Skeletons"), LEVEL);
+    assertThat(whileKept.refusal()).isEqualTo(Refusal.NOT_ENOUGH_ELIXIR);
+    // Kept until two ticks before its expiry, whose step is not traced to the tick.
+    stepTo(battle, expiry - 2);
+    assertThat(commands.promised(0)).isEqualTo(knight);
+    // Dropped from three ticks after it.
+    stepTo(battle, expiry + 3);
+    assertThat(commands.promised(0)).isZero();
+    assertThat(side.wholeElixir()).isGreaterThanOrEqualTo(skeletons);
+    assertThat(commands.tryCard(0, slot(match, "Skeletons"), LEVEL).given()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "a refused giving changes nothing: the battle runs on as one where nothing was given, and"
+          + " no cost is promised")
+  void aRefusedGivingChangesNothing() {
+    Standard1v1Battle refused = ladder(KNIGHTS, KNIGHTS, 0);
+    Standard1v1Battle untouched = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(refused);
+    PlayerCommands others = new PlayerCommands(untouched);
+    stepTo(refused, 10);
+    stepTo(untouched, 10);
+    int cost = Shipped.cost("Knight");
+    MatchSide side = refused.getMatch().side(0);
+    assertThat(side.wholeElixir()).isGreaterThanOrEqualTo(cost);
+    // Side 0 gives the Knights its elixir covers in both battles, side 1 one; in one battle side 0
+    // also gives three the client refuses: off the map, while its elixir still covers a Knight,
+    // then one its elixir does not cover, and its first hand slot again.
+    Giving offMap = commands.playCard(0, 3, LEVEL, -500, Y, "off");
+    int slot = 0;
+    for (; slot < 3 && side.wholeElixir() >= commands.promised(0) + cost; slot++) {
+      for (PlayerCommands each : List.of(commands, others)) {
+        assertThat(each.playCard(0, slot, LEVEL, 2000 + 3000 * slot, Y, "k" + slot).given())
+            .isTrue();
+      }
+    }
+    for (PlayerCommands each : List.of(commands, others)) {
+      assertThat(each.playCard(1, 0, LEVEL, X, 23500, "r").given()).isTrue();
+    }
+    Giving shortOfElixir = commands.playCard(0, 3, LEVEL, 14500, Y, "short");
+    Giving again = commands.playCard(0, 0, LEVEL, X, Y, "again");
+
+    assertThat(offMap.refusal()).isEqualTo(Refusal.MAP);
+    assertThat(offMap.code()).isNotEqualTo(MapCheck.OK);
+    assertThat(shortOfElixir.refusal()).isEqualTo(Refusal.NOT_ENOUGH_ELIXIR);
+    assertThat(again.refusal()).isEqualTo(Refusal.CARD_PENDING);
+    assertThat(again.code()).isEqualTo(PlayerCommands.SCREEN);
+    assertThat(commands.promised(0)).isEqualTo(others.promised(0)).isEqualTo(slot * cost);
+    for (int tick = 0; tick < 120; tick++) {
+      refused.getBattle().step();
+      untouched.getBattle().step();
+      assertThat(state(refused)).as("tick %d", tick).isEqualTo(state(untouched));
+    }
+    assertThat(refused.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .doesNotContain("off", "short", "again")
+        .hasSize(slot + 1);
+  }
+
+  @Test
+  @DisplayName("an ability command naming no unit of its side is refused, and nothing is queued")
+  void anAbilityNamingNoUnitIsRefused() {
+    Standard1v1Battle battle = ladder(QUEEN_SKELETONS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+
+    Giving giving = commands.useAbility(0, "nobody_0", "a");
+
+    assertThat(giving.refusal()).isEqualTo(Refusal.NO_CHAMPION);
+    assertThat(giving.code()).isEqualTo(AbilityCommand.NO_CHAMPION);
+    assertThat(commands.promised(0)).isZero();
+    stepTo(battle, giving.runTick() + 1);
+    assertThat(battle.getAbilityUses()).isEmpty();
+  }
+
+  /** A Ladder battle, side 0 shuffled with a word. */
+  private static Standard1v1Battle ladder(List<String> deck0, List<String> deck1, int word) {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(deck0, deck1, word, 0);
+    return battle;
+  }
+
+  /** A Ladder battle whose side 0 is dealt every card named into its opening hand. */
+  private static Standard1v1Battle dealt(List<String> deck, String... cards) {
+    for (int word = 0; ; word++) {
+      Standard1v1Battle battle = ladder(deck, KNIGHTS, word);
+      boolean all = true;
+      for (String card : cards) {
+        all &= slotOrNone(battle.getMatch(), card) >= 0;
+      }
+      if (all) {
+        return battle;
+      }
+    }
+  }
+
+  /** Side 0's first hand slot holding a card. */
+  private static int slot(LadderMatch match, String card) {
+    int slot = slotOrNone(match, card);
+    assertThat(slot).as("%s in the hand", card).isNotNegative();
+    return slot;
+  }
+
+  private static int slotOrNone(LadderMatch match, String card) {
+    int[] slots = match.side(0).getHand().slots();
+    for (int slot = 0; slot < Hand.SLOTS; slot++) {
+      if (slots[slot] != Hand.EMPTY && match.side(0).deck().get(slots[slot]).name().equals(card)) {
+        return slot;
+      }
+    }
+    return -1;
+  }
+
+  /** Steps the battle until its tick counter reaches a tick. */
+  private static void stepTo(Standard1v1Battle battle, int tick) {
+    while (battle.getBattle().getTick() < tick) {
+      battle.getBattle().step();
+    }
+  }
+
+  /** What two battles are compared by: each side's elixir, spend and hand, and every entity. */
+  private static List<String> state(Standard1v1Battle battle) {
+    List<String> state = new ArrayList<>();
+    for (int s = 0; s < 2; s++) {
+      MatchSide side = battle.getMatch().side(s);
+      state.add(side.getElixir() + " " + side.getSpent() + " " + side.getHand());
+    }
+    for (BattleEntity entity : battle.getWorld().getHolder().entities()) {
+      if (entity instanceof WorldEntity w) {
+        state.add(
+            entity.getId()
+                + " "
+                + w.getData().name()
+                + " "
+                + w.getView().getX()
+                + " "
+                + w.getView().getY());
+      }
+    }
+    return state;
+  }
+}
