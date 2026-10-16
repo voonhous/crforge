@@ -24,6 +24,15 @@ from .schema import Codes, Schema
 ENGINES = ("ladder", "synthetic")
 FAULT_KINDS = ("refusal", "bug", "env_bug")
 
+CARD_TABLES = {
+    "spells_characters": "troop",
+    "spells_buildings": "building",
+    "spells_other": "spell",
+}
+"""The tables of the cards a deck holds (the env module's ``Vocabulary.DECK_TABLES``) and the type
+of card each holds: a card that places characters, one that places a building, and every other
+card (spells, and cards that place neither directly)."""
+
 
 @dataclass(frozen=True)
 class LadderConfig:
@@ -118,6 +127,7 @@ class VectorBattle:
         vector_env = _jvm.java_class("org.crforge.env.VectorEnv")
         self._illegal_argument = _jvm.java_class("java.lang.IllegalArgumentException")
         self._vocabulary = None
+        self._tables = None
         if engine == "ladder":
             if tables is None:
                 raise ValueError(
@@ -129,6 +139,7 @@ class VectorBattle:
                 raise FileNotFoundError(f"no game tables folder at {folder}")
             java_folder = _jvm.java_class("java.nio.file.Path").of(str(folder))
             game_tables = vector_env.tables(java_folder)
+            self._tables = game_tables
             self._vocabulary = vector_env.vocabulary(game_tables)
             self._env = vector_env.ladder(game_tables, self._java_config(config), count, threads)
         else:
@@ -277,6 +288,19 @@ class VectorBattle:
         if name not in self._ids:
             raise KeyError(f"the tables have no row named {name}")
         return self._ids[name]
+
+    def card_types(self) -> dict[int, str]:
+        """The type of every card a deck may hold, by vocabulary id: ``troop`` for a card of the
+        tables' character cards, ``building`` for one of the building cards and ``spell`` for one
+        of the other cards (:data:`CARD_TABLES`). A hand slot's card is ``hand_card`` of a seat's
+        observation, its cost ``hand_cost``. Empty for a synthetic vector, which has no tables."""
+        if self._tables is None:
+            return {}
+        types: dict[int, str] = {}
+        for table, card_type in CARD_TABLES.items():
+            for row in self._tables.table(table).rows():
+                types[self.card_id(str(row.name()))] = card_type
+        return types
 
     def info(self, index: int) -> dict[str, int]:
         """An environment's info record by field name."""
