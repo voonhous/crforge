@@ -89,7 +89,6 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 | [Troop Pathfinding](docs/pathfinding.md)                     | Routing grid, cell costs, routes and movement rules                  |
 | [Game Tables and Reference Battles](docs/game-tables.md)     | The tables the battle core reads and the battles it is held to       |
 | [The Environment](docs/environment.md)                       | The RL environment: its schema, mask, faults, benchmark and Python package |
-| [The Trainer](docs/rl-trainer.md)                            | A small PPO trainer on the environment, its commands and first results |
 
 See [docs/architecture.md](docs/architecture.md) for the full documentation index.
 

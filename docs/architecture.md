@@ -19,7 +19,6 @@ This page is the index of the docs, the module and package layout, and the debug
 | [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures, how to profile and the current baseline |
 | [Performance History](performance-history.md) | The earlier benchmark baselines and each round of optimisations, with their numbers and profiles |
 | [The Environment](environment.md) | The reinforcement learning environment on the battle core: the observation schema, the action space and mask, the faults, the vector environment and its benchmark, and the Python package on it |
-| [The Trainer](rl-trainer.md) | A small PPO trainer on the environment's vector: the commands to train and evaluate, the policy, the opponents, the checkpoints and the first results |
 | [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 
 ---
