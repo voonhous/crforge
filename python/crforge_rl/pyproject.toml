@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crforge-rl"
+version = "0.1.0"
+description = "A small PPO trainer on crforge-env's vector of battles: a masked policy, evaluation against pluggable opponents, checkpoints that carry their schema and vocabulary"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+# torch is an extra, so the package (its opponents, its evaluation records) imports without it
+# and crforge-env never needs it.
+dependencies = ["crforge-env", "numpy>=1.26"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.4"]
+plot = ["matplotlib>=3.8"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+crforge-rl-train = "crforge_rl.train:main"
+crforge-rl-eval = "crforge_rl.evaluate:main"
+crforge-rl-plot = "crforge_rl.curve:main"
+
+[tool.uv.sources]
+crforge-env = { path = "..", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/crforge_rl"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "W", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
