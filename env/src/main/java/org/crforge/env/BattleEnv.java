@@ -6,9 +6,11 @@
 
 package org.crforge.env;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -77,4 +79,17 @@ public interface BattleEnv {
 
   /** The fault that ended the current episode, or null. */
   EnvFault fault();
+
+  /**
+   * Writes the episode a fault just ended as a bundle ({@link FaultBundle}), after {@link #fail}.
+   * An environment that plays no battle writes none.
+   *
+   * @param folder the bundle's own folder, not yet made
+   * @param index the environment's index in its vector
+   * @param thrown the exception the vector's boundary caught
+   * @return whether a bundle was written
+   */
+  default boolean writeFaultBundle(Path folder, int index, Throwable thrown) throws IOException {
+    return false;
+  }
 }

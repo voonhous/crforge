@@ -88,20 +88,20 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 public final class ReplayScenario {
 
   /** Ids per table. */
-  private static final int IDS_PER_TABLE = 1_000_000;
+  static final int IDS_PER_TABLE = 1_000_000;
 
   /** The table of the tower selections, the support cards. */
   private static final int SUPPORT_CARD_TABLE = 159;
 
   /** The table of the support cards' rarities, which set a tower selection's levels. */
-  private static final String SUPPORT_RARITIES = "support_rarities";
+  static final String SUPPORT_RARITIES = "support_rarities";
 
   /**
    * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
    * towers, the Dagger Duchess's towers and the Royal Chef's towers, each placed from the card's
    * spawn group.
    */
-  private static final Set<String> BUILT_TOWER_SELECTIONS =
+  static final Set<String> BUILT_TOWER_SELECTIONS =
       Set.of("King_PrincessTowers", "King_CannonTowers", "King_KnifeTowers", "King_ChefTowers");
 
   /** What the simulator does not model of each other tower selection, by support card. */
@@ -121,16 +121,16 @@ public final class ReplayScenario {
    * exp level, which for {@link #EXP_LEVEL} is the first. It does not depend on the side's tower
    * selection or its level index.
    */
-  private static final int KING_LEVEL = 1;
+  static final int KING_LEVEL = 1;
 
   /** The table of the game modes. */
-  private static final String GAME_MODES = "game_modes";
+  static final String GAME_MODES = "game_modes";
 
   /**
    * The battle header values a Ladder replay is established on: the game mode type ({@code gmt}),
    * the level cap ({@code lvlcap}) and {@code trail}.
    */
-  private static final Map<String, String> LADDER_HEADER =
+  static final Map<String, String> LADDER_HEADER =
       Map.of("gmt", "1", "lvlcap", "0", "trail", "170000000");
 
   /**
@@ -159,7 +159,7 @@ public final class ReplayScenario {
       Set.of("Name", "CardLevelAdjustment", "FixedArena", "ValidLadderMode");
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
-  private static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
+  static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
   /**
    * How the battle header's and each avatar's {@code arena} are read: the players' trophy arena,
@@ -173,7 +173,7 @@ public final class ReplayScenario {
   private static final int ITEM_FIELD_MASK = 0xf;
 
   /** The option field of a play's packed item, the option plus 1: three bits from bit 4. */
-  private static final int ITEM_OPTION_SHIFT = 4;
+  static final int ITEM_OPTION_SHIFT = 4;
 
   private static final int ITEM_OPTION_MASK = 0x7;
 
@@ -181,12 +181,12 @@ public final class ReplayScenario {
    * The count field of a play's packed item, an evolution slot's count plus 1: three bits from bit
    * 7.
    */
-  private static final int ITEM_COUNT_SHIFT = 7;
+  static final int ITEM_COUNT_SHIFT = 7;
 
   private static final int ITEM_COUNT_MASK = 0x7;
 
   /** The level field of a play's packed item: seven bits from bit 10. */
-  private static final int ITEM_LEVEL_SHIFT = 10;
+  static final int ITEM_LEVEL_SHIFT = 10;
 
   private static final int ITEM_LEVEL_MASK = 0x7f;
 
@@ -196,7 +196,7 @@ public final class ReplayScenario {
   private static final int ITEM_COSMETIC_MASK = 0x3;
 
   /** The slot flags field of a play's packed item, the deck card's: three bits from bit 19. */
-  private static final int ITEM_FLAGS_SHIFT = 19;
+  static final int ITEM_FLAGS_SHIFT = 19;
 
   private static final int ITEM_FLAGS_MASK = 0x7;
 
@@ -204,12 +204,12 @@ public final class ReplayScenario {
   private static final int MODELLED_SLOT_FLAGS = MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT;
 
   /** The deck index field of a play's packed item, the index plus 1: six bits from bit 22. */
-  private static final int ITEM_INDEX_SHIFT = 22;
+  static final int ITEM_INDEX_SHIFT = 22;
 
   private static final int ITEM_INDEX_MASK = 0x3f;
 
   /** The cost field of a play's packed item: the bits from bit 28. */
-  private static final int ITEM_COST_SHIFT = 28;
+  static final int ITEM_COST_SHIFT = 28;
 
   /** The card row column that marks the Mirror, whose play repeats its side's last card. */
   private static final String MIRROR_COLUMN = "Mirror";
@@ -221,10 +221,10 @@ public final class ReplayScenario {
   private static final String CUSTOM_CLASS_COLUMN = "CustomClassType";
 
   /** A player's data with no emotes listed. */
-  private static final String NO_EMOTES = "{\"em\":{\"oe\":[],\"de\":[]}}";
+  static final String NO_EMOTES = "{\"em\":{\"oe\":[],\"de\":[]}}";
 
   /** How many choices the game builds such data with. */
-  private static final int NO_EMOTES_CHOICES = 1;
+  static final int NO_EMOTES_CHOICES = 1;
 
   private final GameTables tables;
 

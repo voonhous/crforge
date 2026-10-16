@@ -19,8 +19,11 @@ import java.util.Locale;
  *     exception's class, the message with its numbers replaced by {@code #}, and the frame that
  *     threw it
  * @param tick the battle's tick counter when it was thrown, or -1 when there was no battle
+ * @param bundle the folder its bundle was written to ({@link FaultBundle}), or null when none was
+ *     written: bundles off, an earlier bundle of the same signature, or the writing failed
  */
-public record EnvFault(Kind kind, String exception, String message, String signature, int tick) {
+public record EnvFault(
+    Kind kind, String exception, String message, String signature, int tick, String bundle) {
 
   /** What kind of fault it is. */
   public enum Kind {
@@ -67,7 +70,12 @@ public record EnvFault(Kind kind, String exception, String message, String signa
     }
     String message = cause.getMessage() == null ? "" : cause.getMessage();
     String exception = cause.getClass().getName();
-    return new EnvFault(kind, exception, message, signature(kind, cause, message), tick);
+    return new EnvFault(kind, exception, message, signature(kind, cause, message), tick, null);
+  }
+
+  /** This fault with the folder its bundle was written to. */
+  public EnvFault withBundle(String folder) {
+    return new EnvFault(kind, exception, message, signature, tick, folder);
   }
 
   private static String signature(Kind kind, Throwable cause, String message) {

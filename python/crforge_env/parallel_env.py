@@ -25,9 +25,9 @@ class ClashParallelEnv(ParallelEnv):
     integer of the schema's action space, the wait for an agent left out of the actions. The
     episode ends for both seats together: terminated with +1, -1 or 0 when the match ends,
     truncated with 0 when it is cut short by the tick limit or by a fault. A fault is never a
-    result: each agent's info names its kind under ``fault``, with ``fault_message`` and
-    ``fault_signature``. Each agent's info is :meth:`VectorBattle.seat_info` of its seat: its own
-    crowns and illegal counts, not the other's.
+    result: each agent's info names its kind under ``fault``, with ``fault_message``,
+    ``fault_signature`` and ``fault_bundle``. Each agent's info is :meth:`VectorBattle.seat_info`
+    of its seat: its own crowns and illegal counts, not the other's.
 
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
     a data version (required for the ladder engine); ``slots0`` and ``slots1`` each deck's slot

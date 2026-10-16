@@ -105,6 +105,9 @@ def test_a_forced_fault_ends_that_episode_alone_as_truncated(install, kind):
             assert fault is not None and fault.kind == kind
             assert "forced" in fault.message
             assert fault.signature.startswith(kind + " ")
+            # A synthetic environment plays no battle: it writes no bundle.
+            assert fault.bundle is None
+            assert v.seat_info(i, 0)["fault_bundle"] == ""
         assert v.rewards.tolist() == [[0.0, 0.0], [0.0, 0.0]]
         assert v.fault_kind_counts()[kind] == 2
         assert sum(v.fault_counts().values()) == 2

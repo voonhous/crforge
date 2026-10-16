@@ -38,6 +38,9 @@ __pycache__/
 venv/
 .venv/
 
+# Fault bundles of the environment (docs/environment.md): local files of a run, never committed
+fault-bundles/
+
 # Backup files
 *.bak
 

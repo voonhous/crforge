@@ -6,6 +6,8 @@
 
 package org.crforge.env;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -90,6 +92,22 @@ public final class LadderEnv extends BufferedEnv {
   private final Vocabulary vocabulary;
   private final EnvConfig config;
 
+  /** The episode's battle seed and decks, as its reset gave them. */
+  private int seed;
+
+  private List<List<String>> decks = List.of(List.of(), List.of());
+
+  /** The episode's slot flags by deck index, side 0's then side 1's, as its reset gave them. */
+  private int[][] slots = new int[2][0];
+
+  /**
+   * Both seats' actions of each decision of the episode, seat 0's then seat 1's, kept for a fault
+   * bundle only when bundles are written.
+   */
+  private int[] actionLog = new int[0];
+
+  private int actionCount;
+
   private Standard1v1Battle standard;
   private Battle battle;
   private LadderMatch match;
@@ -125,7 +143,6 @@ public final class LadderEnv extends BufferedEnv {
   private int firstSide;
   private int playsSeen;
   private int abilityUsesSeen;
-  private int playsGiven;
   private int episodeStep;
   private boolean done;
   private boolean truncated;
@@ -188,6 +205,10 @@ public final class LadderEnv extends BufferedEnv {
   @Override
   public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
     clearFault();
+    this.seed = seed;
+    this.decks = List.of(List.copyOf(deck0), List.copyOf(deck1));
+    this.slots = new int[][] {slots0.clone(), slots1.clone()};
+    actionCount = 0;
     standard = null;
     battle = null;
     match = null;
@@ -211,7 +232,6 @@ public final class LadderEnv extends BufferedEnv {
     firstSide = 0;
     playsSeen = 0;
     abilityUsesSeen = 0;
-    playsGiven = 0;
     episodeStep = 0;
     done = false;
     truncated = false;
@@ -219,6 +239,10 @@ public final class LadderEnv extends BufferedEnv {
     try {
       standard = new Standard1v1Battle(tables, config.towerLevel());
       standard.getWorld().seed(seed);
+      // Each player's data is handed over before the decks are dealt, as the game's battle setup
+      // does for every player: one choice each, so each draws once.
+      standard.addPlayerData(1);
+      standard.addPlayerData(1);
       match = standard.startLadderMatch(deck0, deck1, 0, 0, slots0, slots1);
       commands = new PlayerCommands(standard);
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
@@ -233,6 +257,9 @@ public final class LadderEnv extends BufferedEnv {
   public void step(int action0, int action1) {
     if (done) {
       throw new IllegalStateException("the episode is over: reset the environment");
+    }
+    if (config.faultBundles() != null) {
+      logActions(action0, action1);
     }
     firstSide = episodeStep % 2;
     Arrays.fill(illegalNow, 0);
@@ -262,6 +289,58 @@ public final class LadderEnv extends BufferedEnv {
   @Override
   public boolean done() {
     return done;
+  }
+
+  @Override
+  public boolean writeFaultBundle(Path folder, int index, Throwable thrown) throws IOException {
+    FaultBundle.write(folder, this, index, thrown);
+    return true;
+  }
+
+  /** The tables the battles are played on. */
+  GameTables tables() {
+    return tables;
+  }
+
+  /** How the battles are played. */
+  EnvConfig config() {
+    return config;
+  }
+
+  /** The episode's battle seed. */
+  int seed() {
+    return seed;
+  }
+
+  /** The episode's decks, side 0's then side 1's, by card row name. */
+  List<List<String>> decks() {
+    return decks;
+  }
+
+  /** The episode's slot flags by deck index, side 0's then side 1's. */
+  int[][] slots() {
+    return new int[][] {slots[0].clone(), slots[1].clone()};
+  }
+
+  /** The decisions taken in the episode. */
+  int episodeStep() {
+    return episodeStep;
+  }
+
+  /**
+   * Both seats' actions of each decision of the episode, seat 0's then seat 1's, the step that
+   * faulted last; empty when bundles are not written.
+   */
+  int[] actionLog() {
+    return Arrays.copyOf(actionLog, actionCount);
+  }
+
+  private void logActions(int action0, int action1) {
+    if (actionCount + 2 > actionLog.length) {
+      actionLog = Arrays.copyOf(actionLog, Math.max(64, actionLog.length * 2));
+    }
+    actionLog[actionCount++] = action0;
+    actionLog[actionCount++] = action1;
   }
 
   @Override
@@ -303,7 +382,9 @@ public final class LadderEnv extends BufferedEnv {
     int y = Schema.gameY(side, tile / Schema.COLS);
     MatchSide own = match.side(side);
     int deckIndex = own.getHand().slots()[slot];
-    String name = "s" + side + "_" + (++playsGiven);
+    // Named as a replay of the battle names its commands, by their order: a fault's message reads
+    // the same in the episode and in its bundle's replay.
+    String name = "cmd" + standard.getCommands().size();
     PlayerCommands.Giving giving;
     try {
       giving = commands.playCard(side, slot, config.level(), x, y, name);
@@ -335,7 +416,8 @@ public final class LadderEnv extends BufferedEnv {
       refuse(side, Schema.REFUSAL_MASKED);
       return;
     }
-    String name = "s" + side + "_" + (++playsGiven);
+    // Named by its order among the battle's commands, as a replay names it.
+    String name = "cmd" + standard.getCommands().size();
     PlayerCommands.Giving giving;
     try {
       giving = commands.useAbility(side, unit.name(), name);

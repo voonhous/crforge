@@ -18,12 +18,13 @@ The battle core holds no code of the environment. The environment reads the obse
 env/                     org.crforge.env
   Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes (version 2)
   Vocabulary             every card, character, building, projectile and area effect row named by number
-  EnvConfig              decision interval, card and tower level, tick limit
+  EnvConfig              decision interval, card and tower level, tick limit, fault bundle folder
   BattleEnv              one battle between two seats, writing into its share of the vector's buffers
   BufferedEnv            what every environment shares: the buffer views, the scratch arrays, the end by a fault
   LadderEnv              the environment on the battle core: plays, the mask, the observation, the result
   SyntheticEnv           an environment that is no battle: full-size observations from a pseudo-random source
-  EnvFault               a fault's kind, message and signature
+  EnvFault               a fault's kind, message, signature and bundle folder
+  FaultBundle            a faulted episode written as a replay and fault.json
   VectorEnv              N environments stepped together, on a thread pool, through direct buffers
 
 python/                  crforge_env (the crforge-env package)
@@ -48,7 +49,7 @@ One step of the vector is one decision in every battle:
 
 An episode ends when the match ends: `dones[i]` is 1, the observation is the terminal one, the rewards are +1 and -1, or 0 and 0 for a draw, `H_RESULT` says which and `I_WINNER` names the winning side (2 for a draw). With autoreset on (the default) the next step resets that environment instead of stepping it, ignores its actions and reports the new episode's first observation with `I_RESET` set. `EnvConfig.maxTicks` cuts an episode short with `I_TRUNCATED` and `I_WINNER` -1.
 
-Reproducibility: an environment's episodes draw their seeds from a sequence its reset seed starts, so a run is reproduced by its reset seeds and actions alone; the same seeds and actions give byte-identical buffers on one thread or four (`LadderEnvTest`, `SyntheticVectorEnvTest`).
+Reproducibility: an environment's episodes draw their seeds from a sequence its reset seed starts, so a run is reproduced by its reset seeds and actions alone; the same seeds and actions give byte-identical buffers on one thread or four (`LadderEnvTest`, `SyntheticVectorEnvTest`). A battle is set up as the game sets one up: each player's data is handed over (one choice each, `Standard1v1Battle.addPlayerData`) before the decks are dealt with both players' words 0, so an episode is the battle a replay of it gives ([Fault bundles](#fault-bundles)). Each play's command is named `cmd<n>` after its place among the battle's commands, as a replay names it.
 
 ## Faults
 
@@ -63,6 +64,19 @@ Each environment's reset and step run inside a fault boundary of their own in `V
 The environment wraps every call into the core in its own marker (`EnvFault.CoreFailure`), so the boundary tells the core's exceptions from its own without reading stack traces. `VectorEnv.fault(i)` gives the kind, the exception's class and message, the tick, and a signature: the kind, the exception's class, the message with its numbers replaced by `#`, and the frame that threw it. `VectorEnv.faultCounts()` counts faults by signature since the vector was made, `faultKindCounts()` by kind. A play refused at its giving or at its run is not a fault: it is a legal outcome shown to the seat.
 
 Decks are checked before any environment is touched: eight cards, each a card row of the tables, none twice. A bad deck refuses the whole `reset` call with the environment and side named, and changes nothing.
+
+### Fault bundles
+
+With `EnvConfig.faultBundles` naming a folder (`EnvConfig.DEFAULT.withFaultBundles("<folder>")`; off by default), the vector writes a faulted Ladder episode to a folder of its own under it, `<kind>-<signature hash>-env<i>-tick<t>`, and `VectorEnv.fault(i).bundle()` names that folder. Only the first fault of each signature the vector meets is written: the others are counted (`faultCounts()`), so a fault met every episode does not fill the disk. The bundle is written inside the fault boundary, after the episode is ended; a bundle that cannot be written is left out with the reason on the error stream, and the vector goes on as for any fault. A synthetic environment plays no battle and writes none.
+
+| File | What it holds |
+|---|---|
+| `replay.json` | the episode's battle as a replay of the tables' data version (`org.crforge.core.battle.replay.ScenarioWriter`): the seed, the decks with their levels and slot flags, the towers, each player's data, every command the seats gave with the tick it was given on and the tick it runs on and the item its client built, and a capture block naming the tables' client version, data version and content sha. Its `endTick` is the tick after the faulting step. Left out (`replay` null, `replay_refusal` the reason) when the battle cannot be written, for one when no battle was built |
+| `fault.json` | `kind`, `signature`, `exception`, `message`, `stack` (the full stack trace), `data_version`, `content_sha`, `schema_version`, `config` (decision ticks, levels, tick limit), `env_index`, `seed` (the episode's battle seed), `decks`, `slots` (each deck's slot flags), `tick`, `episode_step`, `actions` (both seats' actions of every decision of the episode, the faulting one last), `commands` (every command given to the battle, plays and ability commands: name, kind, side, card, level, given and run tick, point, option, and an ability command's unit and object id), `replay` |
+
+Read back and stepped, the replay meets the same fault at the same tick, with the same message and signature: `ReplayScenario` translates it and `ReplayBattle.build` builds its battle, which a step past the fault's tick refuses as the episode did (`FaultBundleTest`). The debug visualizer opens it as any replay (`./gradlew :desktop:run --args="--replay <bundle>/replay.json"`) and stops at its `endTick`. A play given and not yet run when the battle faulted carries the item its side builds at the fault, which the replay checks only if it runs that far.
+
+Bundles are local files of the machine that runs the environment, a run's own data: they are never committed. Write them outside the repository, or under `fault-bundles/`, which `.gitignore` lists.
 
 ## The schema (version 2)
 
@@ -171,7 +185,6 @@ With more than one thread the battles are stepped on a fixed pool of daemon thre
 - **Levels**: every card is played at one level (`EnvConfig.level`, 11 by default) and every tower at `EnvConfig.towerLevel`; entity rows carry no level.
 - **Inferred knowledge of the enemy**: what a player can count (the enemy's cycle, an estimate of its elixir) is not in the observation; it will come as separate fields.
 - **Per-entity detail** beyond the table above (targets, deploy countdowns, buffs, velocities, projectile aims, area lifetimes), static per-row features and normalization scales.
-- **A replayable fault record**: a fault is kept as its kind, message and signature, not yet as a scenario that replays it.
 
 ## Running it
 
@@ -199,7 +212,7 @@ Two inputs, each one explicit argument with no default and no environment variab
 
 ### The vector
 
-`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2528)`, `masks` uint8 `(count, 2, 2307)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s.
+`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2528)`, `masks` uint8 `(count, 2, 2307)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s; `LadderConfig(fault_bundles=<folder>)` writes fault bundles ([Fault bundles](#fault-bundles)), and `fault(i).bundle` names a written bundle's folder.
 
 A synthetic vector takes `synthetic_entities`, `synthetic_episode_steps`, and `synthetic_fault_at` with `synthetic_fault_kind` (`refusal`, `bug`, `env_bug`): every episode faults at that decision, so the fault path can be tested without a battle.
 
@@ -218,7 +231,7 @@ Two wrappers over a vector of one battle, both with autoreset off:
 
 The observation space is a box of int32 of the seat's 2528 integers, not floats: its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself. Its bounds (`schema.observation_bounds(vocabulary_size)`): a vocabulary id field (hand, next card, deck, enemy cards seen, waiting commands' cards, a champion slot's champion, an entity's row) lies in -1 to the last id; the result, the seat, the overtime and pending marks, the deck's slot flags, the hand's forms, an entity's kind, side and flags in 0 to their largest code; every other field in the int32 range. The action space is the 2307 actions. A `reset(seed=...)` takes a 32-bit seed as the battle's seed; a reset without one draws the battle's seed from the environment's own generator.
 
-Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait, a play or an ability command given), `last_run_refusal`, `last_ability_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
+Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait, a play or an ability command given), `last_run_refusal`, `last_ability_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, `fault_bundle`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
 
 ### The scripted bot and evaluation
 
@@ -253,7 +266,7 @@ No episode faulted and the bot took no illegal action. The bot is a floor for a 
 
 ### Faults are truncations
 
-A fault is never a result. When a battle's episode ends by a fault (a refusal of the battle core, a bug of the core, a bug of the environment), the step that reports it is `terminated=False, truncated=True` with reward 0 for both seats, and the info names the fault's kind under `fault` (`refusal`, `bug` or `env_bug`, `none` otherwise) with `fault_message` and `fault_signature`. A trainer bootstraps such a step as it bootstraps a tick limit, and never learns from it as a loss or a win. A tick limit (`LadderConfig.max_ticks`) truncates the same way, with `fault` `none`. A reset whose new episode faults before its first decision raises `BattleFaultError` with the fault.
+A fault is never a result. When a battle's episode ends by a fault (a refusal of the battle core, a bug of the core, a bug of the environment), the step that reports it is `terminated=False, truncated=True` with reward 0 for both seats, and the info names the fault's kind under `fault` (`refusal`, `bug` or `env_bug`, `none` otherwise) with `fault_message`, `fault_signature` and `fault_bundle` (the folder of the fault's bundle, empty when none was written). A trainer bootstraps such a step as it bootstraps a tick limit, and never learns from it as a loss or a win. A tick limit (`LadderConfig.max_ticks`) truncates the same way, with `fault` `none`. A reset whose new episode faults before its first decision raises `BattleFaultError` with the fault.
 
 ### Tests and checks
 
@@ -264,7 +277,7 @@ uv run pytest --install=../env/build/install/env                            # th
 uv run ruff check && uv run ruff format --check
 ```
 
-The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, and a saved vocabulary whose ids moved refused. The scripted bot's tests hold its rules on observations written by hand, its determinism and the mask on synthetic environments with hand-written card types, the evaluation's counting on synthetic episodes, and on Ladder battles the card types against the tables, a win against `wait_opponent` and a whole battle against `random_opponent` with plays and no illegal action. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
+The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, a saved vocabulary whose ids moved refused, and a fault's bundle written, its folder named in the fault and the seats' info, and none written by default. The scripted bot's tests hold its rules on observations written by hand, its determinism and the mask on synthetic environments with hand-written card types, the evaluation's counting on synthetic episodes, and on Ladder battles the card types against the tables, a win against `wait_opponent` and a whole battle against `random_opponent` with plays and no illegal action. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
 
 ### The Python-side benchmark
 

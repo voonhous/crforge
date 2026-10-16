@@ -11,6 +11,7 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
@@ -123,6 +124,9 @@ public class Standard1v1Battle {
   @Getter private final BattleWorld world;
   @Getter private final Battle battle;
 
+  /** Each side's towers as the battle was built with them, side 0 first. */
+  @Getter private final List<Towers> towers;
+
   /**
    * A battle on the game's tables whose towers stand at {@link #DEFAULT_LEVEL}.
    *
@@ -176,6 +180,7 @@ public class Standard1v1Battle {
    */
   public Standard1v1Battle(GameTables tables, List<Towers> sides, boolean towersAttack) {
     checkArgument(sides.size() == 2, () -> "two sides' towers, got " + sides.size());
+    this.towers = List.copyOf(sides);
     TileMap tileMap = TileMap.standard1v1();
     this.world = new BattleWorld(tileMap);
     world.load(tables);
@@ -245,6 +250,75 @@ public class Standard1v1Battle {
       VariantItem variant,
       EvolutionItem evolution) {}
 
+  /** What a player's command given to the battle does. */
+  public enum CommandKind {
+    /** A deck card's play. */
+    CARD,
+    /** A Mirror's play. */
+    MIRROR,
+    /** A variant card's play. */
+    VARIANT,
+    /** An ability command. */
+    ABILITY
+  }
+
+  /**
+   * A player's command queued on the battle, as it was given: what a replay of the battle writes
+   * ({@code ScenarioWriter}). Units placed and actions scheduled straight onto the battle are no
+   * player's commands and are not listed.
+   *
+   * @param name the command's name
+   * @param kind what it does
+   * @param given the tick it was given on
+   * @param tick the tick it runs on
+   * @param side the commanding side
+   * @param card a play's card row name, the Mirror's or the variant card's own; null for an ability
+   *     command
+   * @param level a play's level, counted from 1; 0 for an ability command
+   * @param x a play's requested point in game units; 0 for an ability command
+   * @param y a play's requested point in game units; 0 for an ability command
+   * @param option a variant play's option as given; -1 when the battle picks it, and for any other
+   *     command
+   * @param unit the name of the unit an ability command names, or null
+   * @param objectId the game object id of the unit an ability command names, or -1
+   */
+  public record Command(
+      String name,
+      CommandKind kind,
+      int given,
+      int tick,
+      int side,
+      String card,
+      int level,
+      int x,
+      int y,
+      int option,
+      String unit,
+      int objectId) {}
+
+  /** Every player's command queued so far, in the order queued. */
+  private final List<Command> commands = new ArrayList<>();
+
+  /** Every player's command queued so far, in the order queued: within a tick, the run order. */
+  public List<Command> getCommands() {
+    return Collections.unmodifiableList(commands);
+  }
+
+  /** Queues a play's command, as given. */
+  private void given(
+      String name,
+      CommandKind kind,
+      int given,
+      int tick,
+      int side,
+      String card,
+      int level,
+      int x,
+      int y,
+      int option) {
+    commands.add(new Command(name, kind, given, tick, side, card, level, x, y, option, null, -1));
+  }
+
   /** What a queued play plays: a deck card, a Mirror or a variant card. */
   private enum PlayKind {
     CARD,
@@ -309,6 +383,12 @@ public class Standard1v1Battle {
   /** What each player's data picked, in the order the data was handed over. */
   @Getter private final List<Integer> playerDataPicks = new ArrayList<>();
 
+  /** How many choices each player's data listed, in the order the data was handed over. */
+  @Getter private final List<Integer> playerDataChoices = new ArrayList<>();
+
+  /** Each side's word, added to its shuffle's draw, as the match was started with them. */
+  private int[] playerWords;
+
   /**
    * Hands the battle one player's data, as its setup does for each player in turn before the decks
    * are dealt. Data that lists choices has one of them picked by a draw of the battle's random
@@ -325,6 +405,7 @@ public class Standard1v1Battle {
   public int addPlayerData(int choices) {
     checkState(match == null, "a player's data is handed over before the decks are dealt");
     int picked = choices >= 1 ? world.getRandom().next(choices) : NO_PICK;
+    playerDataChoices.add(choices);
     playerDataPicks.add(picked);
     return picked;
   }
@@ -378,6 +459,7 @@ public class Standard1v1Battle {
     battle.setMode(ladder);
     world.setKingVisit(ladder::kingVisit);
     this.match = ladder;
+    this.playerWords = new int[] {playerWord0, playerWord1};
     // Each king's two champion slots, then each deck's pass over them, side 0 first: the avatar
     // setup ends its deck's setup with the pass, after the hand is dealt.
     for (int side = 0; side < 2; side++) {
@@ -420,6 +502,15 @@ public class Standard1v1Battle {
   }
 
   /**
+   * Each side's word, added to its shuffle's draw, as the match was started with them.
+   *
+   * @return side 0's word then side 1's, or null before the match is started
+   */
+  public int[] getPlayerWords() {
+    return playerWords == null ? null : playerWords.clone();
+  }
+
+  /**
    * One ability command that has run.
    *
    * @param name the command's name
@@ -453,6 +544,20 @@ public class Standard1v1Battle {
           name + ": an ability command outside a match, which has no champion slots");
     }
     queuedAbilities.add(new QueuedAbility(tick - PLAY_DELAY_TICKS, tick, side, unit, -1));
+    commands.add(
+        new Command(
+            name,
+            CommandKind.ABILITY,
+            tick - PLAY_DELAY_TICKS,
+            tick,
+            side,
+            null,
+            0,
+            0,
+            0,
+            -1,
+            unit,
+            -1));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -509,6 +614,9 @@ public class Standard1v1Battle {
           name + ": an ability command outside a match, which has no champion slots");
     }
     queuedAbilities.add(new QueuedAbility(given, tick, side, null, objectId));
+    commands.add(
+        new Command(
+            name, CommandKind.ABILITY, given, tick, side, null, 0, 0, 0, -1, null, objectId));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -598,6 +706,7 @@ public class Standard1v1Battle {
       int given, int tick, DeployCard card, int level, int side, int x, int y, String name) {
     checkDelay(given, tick, name);
     queuedPlays.add(new QueuedPlay(given, tick, side, card.name(), PlayKind.CARD, name));
+    given(name, CommandKind.CARD, given, tick, side, card.name(), level, x, y, -1);
     battle.queue(
         new BattleCommand() {
           @Override
@@ -671,6 +780,7 @@ public class Standard1v1Battle {
     }
     QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.MIRROR, name);
     queuedPlays.add(queued);
+    given(name, CommandKind.MIRROR, given, tick, side, card, level, x, y, -1);
     battle.queue(
         new BattleCommand() {
           @Override
@@ -909,6 +1019,7 @@ public class Standard1v1Battle {
     QueuedPlay queued =
         new QueuedPlay(tick - PLAY_DELAY_TICKS, tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
+    given(name, CommandKind.VARIANT, tick - PLAY_DELAY_TICKS, tick, side, card, level, x, y, -1);
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before
     // the commands that can change its side's elixir, which are refused.
@@ -1010,6 +1121,7 @@ public class Standard1v1Battle {
         () -> name + ": " + card + " has no option " + option);
     QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
+    given(name, CommandKind.VARIANT, given, tick, side, card, level, x, y, option);
     battle.queue(
         new BattleCommand() {
           @Override

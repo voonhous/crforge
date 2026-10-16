@@ -75,8 +75,8 @@ class ClashGymEnv(Env):
     - terminated: the match ended; truncated: the episode was cut short with no result, by the
       tick limit or by a fault. A fault (the battle core refused a behaviour, a bug of the core or
       of the environment) is never a result: the step is truncated with reward 0 and
-      ``info["fault"]`` names the kind, with ``info["fault_message"]`` and
-      ``info["fault_signature"]``
+      ``info["fault"]`` names the kind, with ``info["fault_message"]``,
+      ``info["fault_signature"]`` and ``info["fault_bundle"]``
     - info: :meth:`VectorBattle.seat_info` of the learner's seat
 
     ``opponent`` is a policy ``opponent(observation, mask, rng) -> action`` of the other seat

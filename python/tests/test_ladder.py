@@ -2,6 +2,7 @@
 values are read from the tables, the schema or the battle, or held as relations."""
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -232,3 +233,47 @@ def test_a_card_not_in_the_tables_is_refused(install, tables):
     with VectorBattle(1, 1, install=install, tables=tables) as v:
         with pytest.raises(ValueError, match="Archers"):
             v.reset([1], [*BLUE[:1], "Archers", *BLUE[2:]], RED)
+
+
+# Three champion cards in one deck: a battle whose setup the battle core refuses.
+THREE_CHAMPIONS = [
+    "ArcherQueen",
+    "GoldenKnight",
+    "SkeletonKing",
+    "Knight",
+    "Archer",
+    "Musketeer",
+    "Giant",
+    "MiniPekka",
+]
+
+
+def test_a_fault_writes_a_bundle_whose_folder_the_fault_info_names(install, tables, tmp_path):
+    folder = tmp_path / "bundles"
+    with VectorBattle(
+        1, 1, install=install, tables=tables, config=LadderConfig(fault_bundles=folder)
+    ) as v:
+        v.reset([3], THREE_CHAMPIONS, RED)
+        fault = v.fault(0)
+        assert fault is not None and fault.kind == "refusal"
+        bundle = Path(fault.bundle)
+        assert bundle.parent == folder.resolve()
+        record = json.loads((bundle / "fault.json").read_text(encoding="utf-8"))
+        assert record["kind"] == "refusal"
+        assert record["signature"] == fault.signature
+        assert record["data_version"] == v.data_version
+        assert record["content_sha"] == v.content_sha
+        assert record["seed"] == 3
+        assert record["decks"] == [THREE_CHAMPIONS, RED]
+        assert record["replay"] == "replay.json"
+        replay = json.loads((bundle / "replay.json").read_text(encoding="utf-8"))
+        assert replay["capture"]["content_sha"] == v.content_sha
+        for seat in range(2):
+            info = v.seat_info(0, seat)
+            assert info["fault"] == "refusal"
+            assert info["fault_bundle"] == fault.bundle
+    # Off by default: the fault is kept, no bundle is written.
+    with VectorBattle(1, 1, install=install, tables=tables) as v:
+        v.reset([3], THREE_CHAMPIONS, RED)
+        assert v.fault(0).bundle is None
+        assert v.seat_info(0, 0)["fault_bundle"] == ""
