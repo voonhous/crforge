@@ -73,7 +73,8 @@ class BattleKnightHeroShieldTest {
       match = battle.startLadderMatch(DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("Knight").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       battle.getBattle().step();
     }
     battle.play(battle.getBattle().getTick(), GameData.card("Knight"), LEVEL, 0, 3500, 14000, "k");

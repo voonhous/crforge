@@ -298,7 +298,15 @@ class BattleAdapterTest {
   /** A Ladder battle in which both decks are eight copies of one card, always in slot 0. */
   private static BattleSession only(String card) {
     List<String> deck = Collections.nCopies(8, card);
-    return BattleSession.ladder(GameData.tables(), deck, deck);
+    return open(BattleSession.ladder(GameData.tables(), deck, deck));
+  }
+
+  /** Steps a session to the start cooldown, the first tick counter a card play may be given at. */
+  private static BattleSession open(BattleSession session) {
+    while (session.tick() < session.match().getStartCooldownTicks()) {
+      assertThat(session.step()).isTrue();
+    }
+    return session;
   }
 
   private static EntityView king(List<EntityView> towers, int side) {

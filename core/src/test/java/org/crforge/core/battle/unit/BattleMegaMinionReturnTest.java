@@ -217,7 +217,8 @@ class BattleMegaMinionReturnTest {
       battle = new Standard1v1Battle(tables);
       match = battle.startLadderMatch(DECK, OTHER, word, 0, slots, new int[8]);
     }
-    while (match.side(0).wholeElixir() < records.matchCard("MegaMinion").cost()) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < records.matchCard("MegaMinion").cost()) {
       step(battle);
     }
     battle.play(

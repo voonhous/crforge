@@ -99,7 +99,8 @@ class BattleGoblinHeroTest {
     }
     ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
     int cost = GameData.records().matchCard("Goblins").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       battle.getBattle().step();
     }
     int tick = battle.getBattle().getTick();
@@ -359,7 +360,8 @@ class BattleGoblinHeroTest {
       match[0] = battle.startLadderMatch(GOBLINS_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("Goblins").cost();
-    while (match[0].side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match[0].getStartCooldownTicks()
+        || match[0].side(0).wholeElixir() < cost) {
       step(battle);
     }
     battle.play(battle.getBattle().getTick(), GameData.card("Goblins"), LEVEL, 0, 3500, 14000, "g");

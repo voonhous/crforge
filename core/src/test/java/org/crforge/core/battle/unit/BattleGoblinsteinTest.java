@@ -39,6 +39,9 @@ class BattleGoblinsteinTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The start cooldown: the first tick a card play of a match may run. */
+  private static final int OPEN = Shipped.startCooldownTicks();
+
   /** A Goblinstein and a Merge Maiden, then the Mirrors the shuffle holds back for the refills. */
   private static final List<String> GOBLINSTEIN_MAIDEN =
       List.of(
@@ -91,13 +94,13 @@ class BattleGoblinsteinTest {
                 }
               }
             });
-    battle.play(0, records.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
-    battle.play(40, records.card("Goblinstein"), LEVEL, 1, 3500, 22000, "e");
-    battle.play(60, records.card("Knight"), LEVEL, 0, 14500, 8000, "k");
-    battle.play(80, records.card("Goblinstein"), LEVEL, 0, 14500, 12000, "h");
-    battle.play(100, records.card("Goblinstein"), LEVEL, 0, 14500, 8000, "i");
-    battle.play(120, records.card("Goblinstein"), LEVEL, 0, 3500, 8000, "j");
-    run(battle, 120);
+    battle.play(OPEN, records.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
+    battle.play(OPEN + 40, records.card("Goblinstein"), LEVEL, 1, 3500, 22000, "e");
+    battle.play(OPEN + 60, records.card("Knight"), LEVEL, 0, 14500, 8000, "k");
+    battle.play(OPEN + 80, records.card("Goblinstein"), LEVEL, 0, 14500, 12000, "h");
+    battle.play(OPEN + 100, records.card("Goblinstein"), LEVEL, 0, 14500, 8000, "i");
+    battle.play(OPEN + 120, records.card("Goblinstein"), LEVEL, 0, 3500, 8000, "j");
+    run(battle, OPEN + 120);
 
     int cost = records.matchCard("Goblinstein").cost();
     assertThat(cost).isEqualTo(5);
@@ -118,9 +121,9 @@ class BattleGoblinsteinTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     List<String> heard = heardBy(battle, "g_0");
     battle.startLadderMatch(GOBLINSTEIN_MAIDEN, KNIGHTS, 0, 0);
-    battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
-    battle.playVariant(400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
-    run(battle, 400);
+    battle.play(OPEN + 21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
+    battle.playVariant(OPEN + 400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
+    run(battle, OPEN + 400);
 
     assertThat(GameData.records().cardGroup("Goblinstein"))
         .doesNotContain("MergeMaiden", "MergeMaiden_Mounted");
@@ -189,9 +192,10 @@ class BattleGoblinsteinTest {
     Standard1v1Battle battle = new Standard1v1Battle(tables);
     List<String> heard = heardBy(battle, "g_0");
     battle.startLadderMatch(GOBLINSTEIN_MAIDEN, KNIGHTS, 0, 0);
-    battle.play(21, new BattleRecords(tables).card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
-    battle.playVariant(400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
-    run(battle, 400);
+    battle.play(
+        OPEN + 21, new BattleRecords(tables).card("Goblinstein"), LEVEL, 0, 3500, 10000, "g");
+    battle.playVariant(OPEN + 400, "MergeMaiden", LEVEL, 0, 14500, 10000, "m");
+    run(battle, OPEN + 400);
     return heard;
   }
 
@@ -259,8 +263,8 @@ class BattleGoblinsteinTest {
                 hits.add(target.name() + " " + damage);
               }
             });
-    battle.play(0, GameData.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
-    run(battle, 30);
+    battle.play(OPEN, GameData.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
+    run(battle, OPEN + 30);
     CharacterEntity monster = battle.getPlays().get(0).units().get(0);
     CharacterEntity doctor = battle.getPlays().get(0).units().get(1);
     // Neither end moves or fights, so the segment stays where it is.
@@ -286,9 +290,9 @@ class BattleGoblinsteinTest {
             tick, GameData.unit("Golem"), LEVEL, 1, (ax + bx) / 2 + off, (ay + by) / 2, "far");
     near.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     far.setActive(CharacterEntity.MOVEMENT_SLOT, false);
-    run(battle, 70);
+    run(battle, OPEN + 70);
     doctor.requestAbility();
-    run(battle, 200);
+    run(battle, OPEN + 200);
 
     // A pass every TetherHitInterval from the tether's start for as long as its TetherDuration
     // lasts, the end excluded. Each hit is the TetherDamage at the doctor's level and rarity.
@@ -331,28 +335,29 @@ class BattleGoblinsteinTest {
                 log.add("death_area " + left.name());
               }
             });
-    battle.play(0, GameData.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
-    // The monster is killed in tick 0, after its pre-pass: the kill lands at that tick's damage
-    // drain, and a cleanup removes the monster before the run's first step, in tick 1.
+    battle.play(OPEN, GameData.card("Goblinstein"), LEVEL, 0, 3500, 12000, "g");
+    // The monster is killed in the tick it is placed, after its pre-pass: the kill lands at that
+    // tick's damage drain, and a cleanup removes the monster before the run's first step, in the
+    // tick after.
     battle
         .getWorld()
         .addObserver(
             new WorldObserver() {
               @Override
               public void afterPrePass(int tick, List<WorldEntity> present) {
-                if (tick == 0) {
+                if (tick == OPEN) {
                   battle.getPlays().get(0).units().get(0).killBy(null);
                 }
               }
             });
-    run(battle, 0);
+    run(battle, OPEN);
     CharacterEntity doctor = battle.getPlays().get(0).units().get(1);
-    run(battle, 1);
+    run(battle, OPEN + 1);
     assertThat(doctor.chainHead()).isSameAs(doctor);
     assertThat(log).containsExactly("connect null");
 
     doctor.killBy(null);
-    run(battle, 3);
+    run(battle, OPEN + 3);
     assertThat(log).containsExactly("connect null");
   }
 
@@ -364,7 +369,7 @@ class BattleGoblinsteinTest {
     BattleAction ability = GameData.actions().build("goblinstein_ability_action", owner.binding());
     battle.scheduleAction(1, owner, ability);
 
-    assertThatThrownBy(() -> run(battle, 1))
+    assertThatThrownBy(() -> run(battle, OPEN + 1))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "goblinstein_ability_action on an owner other than an area effect that follows, not"
@@ -397,8 +402,8 @@ class BattleGoblinsteinTest {
               }
             });
     LadderMatch match = battle.startLadderMatch(GOBLINSTEIN_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 4000, "g");
-    run(battle, 21);
+    battle.play(OPEN + 21, GameData.card("Goblinstein"), LEVEL, 0, 3500, 4000, "g");
+    run(battle, OPEN + 21);
     List<CharacterEntity> first = battle.getPlays().get(0).units();
     // Kept where they stand, so they take no tower.
     first.forEach(unit -> unit.setActive(CharacterEntity.MOVEMENT_SLOT, false));

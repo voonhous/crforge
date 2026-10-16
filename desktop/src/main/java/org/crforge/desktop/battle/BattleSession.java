@@ -356,7 +356,7 @@ public final class BattleSession {
     return switch (giving.refusal()) {
       case CARD_PENDING -> card.name() + " is already played and waits to run";
       case NO_TILE -> card.name() + " has no legal tile";
-      case MATCH_OVER, KING_DEAD, NOT_IN_HAND, NOT_ENOUGH_ELIXIR ->
+      case MATCH_OVER, KING_DEAD, NOT_IN_HAND, START_COOLDOWN, NOT_ENOUGH_ELIXIR ->
           card.name() + " refused, " + refusal(giving.code());
       default ->
           card.name()
@@ -453,6 +453,7 @@ public final class BattleSession {
       case LadderMatch.OVER -> "the match is decided";
       case LadderMatch.KING_DEAD -> "the king is dead";
       case LadderMatch.NOT_IN_HAND -> "the card is not in the hand";
+      case LadderMatch.START_COOLDOWN -> "the battle's start cooldown runs";
       case LadderMatch.NOT_ENOUGH_ELIXIR -> "not enough elixir";
       default -> "code " + hex(code);
     };

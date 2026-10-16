@@ -79,18 +79,19 @@ class BattleSessionTest {
   @DisplayName("a message about a side names it as the reader names the sides when it is read")
   void aSidesMessageIsNamedWhenRead() {
     BattleSession session = only("Golem");
+    String now = "[" + session.tick() + "]";
 
     session.play(0, 0, 9500, 8500);
     session.note(1, " taps a test ability");
     session.note("no side named");
 
     List<String> standing = session.messages();
-    assertThat(standing.get(standing.size() - 3)).startsWith("[0] blue: Golem refused");
-    assertThat(standing.get(standing.size() - 2)).isEqualTo("[0] red taps a test ability");
+    assertThat(standing.get(standing.size() - 3)).startsWith(now + " blue: Golem refused");
+    assertThat(standing.get(standing.size() - 2)).isEqualTo(now + " red taps a test ability");
     List<String> flipped = session.messages(side -> side == 1 ? "blue" : "red");
-    assertThat(flipped.get(flipped.size() - 3)).startsWith("[0] red: Golem refused");
-    assertThat(flipped.get(flipped.size() - 2)).isEqualTo("[0] blue taps a test ability");
-    assertThat(flipped).last().isEqualTo("[0] no side named");
+    assertThat(flipped.get(flipped.size() - 3)).startsWith(now + " red: Golem refused");
+    assertThat(flipped.get(flipped.size() - 2)).isEqualTo(now + " blue taps a test ability");
+    assertThat(flipped).last().isEqualTo(now + " no side named");
   }
 
   @Test
@@ -150,7 +151,7 @@ class BattleSessionTest {
           + " message")
   void noTile() {
     BattleSession session =
-        BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight"));
+        open(BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight")));
     int mirror = slot(session, "Mirror");
     assertThat(session.cardUnavailableReason(0, mirror)).contains("no legal tile");
     assertThat(session.play(0, mirror, 3500, 8500)).isFalse();
@@ -167,6 +168,7 @@ class BattleSessionTest {
         BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight"));
     // An Archer's play runs first, so the king's last card, which the screen's search places a
     // Mirror as, is placed on the Knight's tile.
+    open(session);
     while (session.match().side(0).wholeElixir() < Shipped.cost("Archer")) {
       assertThat(session.step()).isTrue();
     }
@@ -241,9 +243,9 @@ class BattleSessionTest {
   void aBattleBuiltElsewhere() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     List<String> knights = Collections.nCopies(8, "Knight");
-    battle.startLadderMatch(knights, knights, 0, 0);
+    int open = battle.startLadderMatch(knights, knights, 0, 0).getStartCooldownTicks();
     battle.play(
-        30,
+        open + 30,
         battle.getWorld().getRecords().card("Knight"),
         BattleSession.LEVEL,
         0,
@@ -252,7 +254,7 @@ class BattleSessionTest {
         "cmd0");
     // A point off the map: the play's placement refuses it as it runs.
     battle.play(
-        40,
+        open + 40,
         battle.getWorld().getRecords().card("Knight"),
         BattleSession.LEVEL,
         1,
@@ -261,7 +263,7 @@ class BattleSessionTest {
         "cmd1");
     BattleSession session = BattleSession.of(battle);
 
-    for (int i = 0; i < 60; i++) {
+    for (int i = 0; i < open + 60; i++) {
       assertThat(session.step()).isTrue();
     }
 
@@ -278,6 +280,7 @@ class BattleSessionTest {
           + " ticks later")
   void aVariantCardIsGiven() {
     BattleSession session = only("MergeMaiden");
+    int given = session.tick() + 30;
     for (int i = 0; i < 30; i++) {
       assertThat(session.step()).isTrue();
     }
@@ -290,13 +293,21 @@ class BattleSessionTest {
     assertThat(session.getBattle().getPlays()).hasSize(1);
     assertThat(session.getBattle().getPlays().get(0).variant()).isNotNull();
     assertThat(session.getBattle().getPlays().get(0).tick())
-        .isEqualTo(30 + Standard1v1Battle.PLAY_DELAY_TICKS);
+        .isEqualTo(given + Standard1v1Battle.PLAY_DELAY_TICKS);
   }
 
   /** A Ladder battle in which both decks are eight copies of one card. */
   private static BattleSession only(String card) {
     List<String> deck = Collections.nCopies(8, card);
-    return BattleSession.ladder(GameData.tables(), deck, deck);
+    return open(BattleSession.ladder(GameData.tables(), deck, deck));
+  }
+
+  /** Steps a session to the start cooldown, the first tick counter a card play may be given at. */
+  private static BattleSession open(BattleSession session) {
+    while (session.tick() < session.match().getStartCooldownTicks()) {
+      assertThat(session.step()).isTrue();
+    }
+    return session;
   }
 
   /** The first slot of side 0's hand holding a card. */

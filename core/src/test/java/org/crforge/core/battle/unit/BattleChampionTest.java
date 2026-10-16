@@ -249,7 +249,9 @@ class BattleChampionTest {
       Standard1v1Battle battle, LadderMatch match, String card, int x, int y, String name) {
     int cost = GameData.records().matchCard(card).cost();
     int limit = battle.getBattle().getTick() + 1000;
-    while (!inHand(match, card) || match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || !inHand(match, card)
+        || match.side(0).wholeElixir() < cost) {
       assertThat(battle.getBattle().getTick())
           .as(
               "%s in the hand %s, elixir %d",

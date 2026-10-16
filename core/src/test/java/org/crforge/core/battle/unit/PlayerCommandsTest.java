@@ -37,6 +37,9 @@ class PlayerCommandsTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The start cooldown: the first tick counter a card play may be given at. */
+  private static final int OPEN = Shipped.startCooldownTicks();
+
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   /** A Knight and an Archer, then the Mirrors the shuffle holds back for the refills. */
@@ -79,13 +82,13 @@ class PlayerCommandsTest {
   void aCardPlayRunsTwentyTicksLater() {
     Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(battle);
-    stepTo(battle, 30);
+    stepTo(battle, OPEN + 30);
 
     Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "k");
 
     assertThat(giving.given()).isTrue();
-    assertThat(giving.givenTick()).isEqualTo(30);
-    assertThat(giving.runTick()).isEqualTo(30 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    assertThat(giving.givenTick()).isEqualTo(OPEN + 30);
+    assertThat(giving.runTick()).isEqualTo(OPEN + 30 + Standard1v1Battle.PLAY_DELAY_TICKS);
     stepTo(battle, giving.runTick());
     assertThat(battle.getPlays()).as("nothing has run before its run tick").isEmpty();
     battle.getBattle().step();
@@ -95,17 +98,23 @@ class PlayerCommandsTest {
   }
 
   @Test
-  @DisplayName("a play given before the first step is stamped 1 and runs on tick 21")
-  void aPlayAtTickZeroIsStampedOne() {
+  @DisplayName(
+      "a command given before the first step is stamped 1 and would run on tick 21; a card play"
+          + " there is refused by the start cooldown")
+  void aCommandAtTickZeroIsStampedOne() {
     Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(battle);
 
-    Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "k");
+    Giving play = commands.playCard(0, 0, LEVEL, X, Y, "k");
+    Giving ability = commands.useAbility(0, "nobody_0", "a");
 
-    assertThat(giving.givenTick()).isEqualTo(1);
-    assertThat(giving.runTick()).isEqualTo(1 + Standard1v1Battle.PLAY_DELAY_TICKS);
-    stepTo(battle, giving.runTick() + 1);
-    assertThat(battle.getPlays()).extracting(Standard1v1Battle.Play::tick).containsExactly(21);
+    for (Giving giving : List.of(play, ability)) {
+      assertThat(giving.givenTick()).isEqualTo(1);
+      assertThat(giving.runTick()).isEqualTo(1 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    }
+    assertThat(play.refusal()).isEqualTo(Refusal.START_COOLDOWN);
+    stepTo(battle, play.runTick() + 1);
+    assertThat(battle.getPlays()).isEmpty();
   }
 
   @Test
@@ -121,6 +130,7 @@ class PlayerCommandsTest {
     playAndRun(battle, commands, "Archer", "a");
     int knightCost = Shipped.cost("Knight");
     int mirrorItemCost = Shipped.cost("Mirror") + knightCost;
+    stepTo(battle, OPEN);
     while (match.side(0).wholeElixir() < knightCost + mirrorItemCost) {
       battle.getBattle().step();
     }
@@ -153,12 +163,12 @@ class PlayerCommandsTest {
   void aVariantPlayRunsTwentyTicksLater() {
     Standard1v1Battle battle = ladder(MAIDENS, KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(battle);
-    stepTo(battle, 40);
+    stepTo(battle, OPEN + 40);
 
     Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "m");
 
     assertThat(giving.given()).isTrue();
-    assertThat(giving.runTick()).isEqualTo(40 + Standard1v1Battle.PLAY_DELAY_TICKS);
+    assertThat(giving.runTick()).isEqualTo(OPEN + 40 + Standard1v1Battle.PLAY_DELAY_TICKS);
     stepTo(battle, giving.runTick() + 1);
     Standard1v1Battle.Play played = battle.getPlays().get(0);
     assertThat(played.tick()).isEqualTo(giving.runTick());
@@ -176,6 +186,7 @@ class PlayerCommandsTest {
     LadderMatch match = battle.getMatch();
     PlayerCommands commands = new PlayerCommands(battle);
     int queenCost = Shipped.cost("ArcherQueen");
+    stepTo(battle, OPEN);
     while (match.side(0).wholeElixir() < queenCost) {
       battle.getBattle().step();
     }
@@ -213,7 +224,7 @@ class PlayerCommandsTest {
     MatchSide side = battle.getMatch().side(0);
     PlayerCommands commands = new PlayerCommands(battle);
     int cost = Shipped.cost("Knight");
-    stepTo(battle, 10);
+    stepTo(battle, OPEN + 10);
     // Knights from slot after slot until one is refused; the most elixir there can be is below
     // four Knights, so one of the four is.
     List<Giving> given = new ArrayList<>();
@@ -254,7 +265,7 @@ class PlayerCommandsTest {
     MatchSide side = battle.getMatch().side(0);
     PlayerCommands commands = new PlayerCommands(battle);
     int cost = Shipped.cost("Knight");
-    stepTo(battle, 10);
+    stepTo(battle, OPEN + 10);
     while (side.wholeElixir() < 2 * cost) {
       battle.getBattle().step();
     }
@@ -287,14 +298,18 @@ class PlayerCommandsTest {
     PlayerCommands commands = new PlayerCommands(battle);
     int knight = Shipped.cost("Knight");
     int skeletons = Shipped.cost("Skeletons");
+    stepTo(battle, OPEN);
     int given = battle.getBattle().getTick();
     Giving refusedAtRun = commands.playCard(0, slot(match, "Knight"), LEVEL, X, Y, "k");
     // A play of the deck's one Knight queued with its run tick, outside the client, runs first
     // and sends it to the back of the queue: the given play finds it in no hand slot at its run.
+    // Skeletons queued with it leave less than the Knight's and the Skeletons' costs.
     battle.play(
         given, battle.getWorld().getRecords().card("Knight"), LEVEL, 0, 14500, Y, "outside");
+    battle.play(
+        given, battle.getWorld().getRecords().card("Skeletons"), LEVEL, 0, 9000, Y, "spent");
     stepTo(battle, refusedAtRun.runTick() + 1);
-    Standard1v1Battle.Play run = battle.getPlays().get(1);
+    Standard1v1Battle.Play run = battle.getPlays().get(2);
     assertThat(run.name()).isEqualTo("k");
     assertThat(run.matchCode()).as("refused at its run").isEqualTo(LadderMatch.NOT_IN_HAND);
     int expiry = given + Standard1v1Battle.PROMISE_TICKS;
@@ -328,8 +343,8 @@ class PlayerCommandsTest {
     Standard1v1Battle untouched = ladder(KNIGHTS, KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(refused);
     PlayerCommands others = new PlayerCommands(untouched);
-    stepTo(refused, 10);
-    stepTo(untouched, 10);
+    stepTo(refused, OPEN + 10);
+    stepTo(untouched, OPEN + 10);
     int cost = Shipped.cost("Knight");
     MatchSide side = refused.getMatch().side(0);
     assertThat(side.wholeElixir()).isGreaterThanOrEqualTo(cost);
@@ -371,7 +386,7 @@ class PlayerCommandsTest {
   void aTroopInTheEnemyHalfIsGivenOnItsOwnTile() {
     Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(battle);
-    stepTo(battle, 30);
+    stepTo(battle, OPEN + 30);
     DeployCard knight = battle.getWorld().getRecords().card("Knight");
     // The mirror of side 0's point in side 1's half, between two tiles.
     int x = X + 123;
@@ -414,6 +429,7 @@ class PlayerCommandsTest {
         .as("the map check refuses the king tower's centre")
         .isNotEqualTo(MapCheck.OK);
     int[][] drops = {{kx, ky}, {px, py}, {-500, Y}};
+    stepTo(battle, OPEN);
 
     for (int[] drop : drops) {
       while (battle.getMatch().side(0).wholeElixir() < Shipped.cost("Knight")) {
@@ -442,7 +458,7 @@ class PlayerCommandsTest {
   void aSpellIsGivenOnItsTileCentre() {
     Standard1v1Battle battle = ladder(Collections.nCopies(8, "Fireball"), KNIGHTS, 0);
     PlayerCommands commands = new PlayerCommands(battle);
-    stepTo(battle, 60);
+    stepTo(battle, OPEN + 60);
     int x = X + 321;
     int y = lengthUnits(battle) - Y + 77;
 
@@ -462,7 +478,8 @@ class PlayerCommandsTest {
     Standard1v1Battle untouched = dealt(KNIGHT_MIRRORS, "Mirror");
     LadderMatch match = battle.getMatch();
     PlayerCommands commands = new PlayerCommands(battle);
-    while (match.side(0).wholeElixir() < Shipped.cost("Mirror")) {
+    while (battle.getBattle().getTick() < OPEN
+        || match.side(0).wholeElixir() < Shipped.cost("Mirror")) {
       battle.getBattle().step();
       untouched.getBattle().step();
     }
@@ -491,6 +508,7 @@ class PlayerCommandsTest {
     LadderMatch match = battle.getMatch();
     PlayerCommands commands = new PlayerCommands(battle);
     int both = 2 * Shipped.cost("Knight") + Shipped.cost("Mirror");
+    stepTo(battle, OPEN);
     while (match.side(0).wholeElixir() < both) {
       battle.getBattle().step();
     }
@@ -516,7 +534,7 @@ class PlayerCommandsTest {
     int y = 10500;
     LadderMatch match = battle.getMatch();
     PlayerCommands commands = new PlayerCommands(battle);
-    stepTo(battle, 10);
+    stepTo(battle, OPEN + 10);
     while (match.side(0).wholeElixir() < Shipped.cost("Cannon") + Shipped.cost("Knight")) {
       battle.getBattle().step();
     }
@@ -597,6 +615,7 @@ class PlayerCommandsTest {
   /** Gives side 0's play of a hand card at the usual point and steps past its run. */
   private static void playAndRun(
       Standard1v1Battle battle, PlayerCommands commands, String card, String name) {
+    stepTo(battle, OPEN);
     while (battle.getMatch().side(0).wholeElixir() < Shipped.cost(card)) {
       battle.getBattle().step();
     }

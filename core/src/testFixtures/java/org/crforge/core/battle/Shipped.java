@@ -116,6 +116,26 @@ public final class Shipped {
     return seconds * 1000 / 50;
   }
 
+  /**
+   * The Ladder mode's start cooldown in ticks: the first tick a card play may run. The game mode
+   * row's BattleStartCooldown, or the global LOGIC_BATTLE_START_COOLDOWN where the row leaves it
+   * empty, in milliseconds over the step's 50.
+   */
+  public static int startCooldownTicks() {
+    return startCooldownTicks(tables());
+  }
+
+  /**
+   * The Ladder mode's start cooldown in ticks on a set of tables, as {@link #startCooldownTicks()}.
+   */
+  public static int startCooldownTicks(GameTables tables) {
+    int ms = number(tables.table("game_modes").row(LadderMatch.GAME_MODE), "BattleStartCooldown");
+    if (ms == 0) {
+      ms = number(tables.table("globals").row("LOGIC_BATTLE_START_COOLDOWN"), "NumberValue");
+    }
+    return ms / 50;
+  }
+
   /** A column as the row writes it, or null when the row leaves it out or leaves it empty. */
   public static JsonNode column(GameRow row, String column) {
     JsonNode value = row.columns().get(column);

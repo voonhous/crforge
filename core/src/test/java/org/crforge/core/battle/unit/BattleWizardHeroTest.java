@@ -690,7 +690,8 @@ class BattleWizardHeroTest {
      */
     CharacterEntity abilityUsed() {
       int cost = records.matchCard("Wizard").cost();
-      while (match.side(0).wholeElixir() < cost) {
+      while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+          || match.side(0).wholeElixir() < cost) {
         steps(1);
       }
       battle.play(tick(), records.card("Wizard"), LEVEL, 0, 3500, 14000, "w");
@@ -713,7 +714,8 @@ class BattleWizardHeroTest {
      */
     CharacterEntity abilityUsedAttacking() {
       int cost = records.matchCard("Wizard").cost();
-      while (match.side(0).wholeElixir() < cost) {
+      while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+          || match.side(0).wholeElixir() < cost) {
         steps(1);
       }
       battle.play(tick(), records.card("Wizard"), LEVEL, 0, 3500, 14000, "w");

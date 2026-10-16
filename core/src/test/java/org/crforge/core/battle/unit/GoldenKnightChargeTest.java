@@ -266,7 +266,9 @@ class GoldenKnightChargeTest {
     BattleRecords records = battle.getWorld().getRecords();
     int cost = records.matchCard(card).cost();
     int limit = battle.getBattle().getTick() + 1000;
-    while (!inHand(match, side, card) || match.side(side).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || !inHand(match, side, card)
+        || match.side(side).wholeElixir() < cost) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);
       battle.getBattle().step();
     }

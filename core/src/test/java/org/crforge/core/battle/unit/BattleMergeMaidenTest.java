@@ -41,6 +41,9 @@ class BattleMergeMaidenTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The start cooldown: the first tick a card play of a match may run. */
+  private static final int OPEN = Shipped.startCooldownTicks();
+
   /**
    * A deck of Zaps and Merge Maidens in turn, whose opening hand is a Zap and three Merge Maidens;
    * a Merge Maiden's play is held by the reference battle card_item_merge_maiden_on_foot.
@@ -100,7 +103,7 @@ class BattleMergeMaidenTest {
     int footTick = reached - 1 + 22;
     Standard1v1Battle foot = new Standard1v1Battle(GameData.tables());
     LadderMatch footMatch = foot.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    foot.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    foot.play(OPEN + 21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
     foot.playVariant(footTick, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     run(foot, footTick);
     Standard1v1Battle.Play onFoot = foot.getPlays().get(1);
@@ -111,7 +114,7 @@ class BattleMergeMaidenTest {
 
     Standard1v1Battle mounted = new Standard1v1Battle(GameData.tables());
     LadderMatch mountedMatch = mounted.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    mounted.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    mounted.play(OPEN + 21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
     mounted.playVariant(footTick + 1, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
     run(mounted, footTick + 1);
     Standard1v1Battle.Play flying = mounted.getPlays().get(1);
@@ -130,9 +133,9 @@ class BattleMergeMaidenTest {
     LadderMatch match = battle.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
     // The first Merge Maiden comes mounted; the second is picked on foot after step 21 and finds
     // less than its cost at its run.
-    battle.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
-    battle.playVariant(43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
-    run(battle, 43);
+    battle.playVariant(OPEN + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
+    battle.playVariant(OPEN + 43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
+    run(battle, OPEN + 43);
 
     Standard1v1Battle.Play refused = battle.getPlays().get(1);
     assertThat(refused.matchCode()).isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
@@ -151,15 +154,15 @@ class BattleMergeMaidenTest {
   void aCarriedOptionIsPlayedAsGiven() {
     Standard1v1Battle picked = new Standard1v1Battle(GameData.tables());
     picked.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
-    picked.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    run(picked, 22);
+    picked.playVariant(OPEN + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(picked, OPEN + 22);
     assertThat(picked.getPlays().get(0).variant().spell()).isEqualTo("MergeMaiden_Mounted");
 
     Standard1v1Battle carried = new Standard1v1Battle(GameData.tables());
     LadderMatch match = carried.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
     int onFoot = optionIndex("MergeMaiden_Normal");
-    carried.playVariant(22, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
-    run(carried, 22);
+    carried.playVariant(OPEN + 22, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
+    run(carried, OPEN + 22);
 
     Standard1v1Battle.Play maiden = carried.getPlays().get(0);
     assertThat(maiden.matchCode()).isZero();
@@ -178,10 +181,10 @@ class BattleMergeMaidenTest {
   void aCarriedOptionNeedsNoPick() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    battle.play(41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    battle.play(OPEN + 41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
     int onFoot = optionIndex("MergeMaiden_Normal");
-    battle.playVariant(41, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
-    run(battle, 41);
+    battle.playVariant(OPEN + 41, "MergeMaiden", onFoot, LEVEL, 0, 3500, 10000, "m");
+    run(battle, OPEN + 41);
 
     Standard1v1Battle.Play maiden = battle.getPlays().get(1);
     assertThat(maiden.matchCode()).isZero();
@@ -197,10 +200,11 @@ class BattleMergeMaidenTest {
     int options = Shipped.column(Shipped.row("spells_other", "MergeMaiden"), "Options").size();
 
     assertThatThrownBy(
-            () -> battle.playVariant(22, "MergeMaiden", options, LEVEL, 0, 3500, 10000, "m"))
+            () -> battle.playVariant(OPEN + 22, "MergeMaiden", options, LEVEL, 0, 3500, 10000, "m"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("m: MergeMaiden has no option " + options);
-    assertThatThrownBy(() -> battle.playVariant(22, "MergeMaiden", -1, LEVEL, 0, 3500, 10000, "m"))
+    assertThatThrownBy(
+            () -> battle.playVariant(OPEN + 22, "MergeMaiden", -1, LEVEL, 0, 3500, 10000, "m"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("m: MergeMaiden has no option -1");
   }
@@ -210,7 +214,8 @@ class BattleMergeMaidenTest {
   void aVariantOutsideAMatchIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
 
-    assertThatThrownBy(() -> battle.playVariant(21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m"))
+    assertThatThrownBy(
+            () -> battle.playVariant(OPEN + 21, "MergeMaiden", LEVEL, 0, 3500, 10000, "m"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("MergeMaiden outside a match, which picks its option from a king's elixir");
   }
@@ -234,11 +239,12 @@ class BattleMergeMaidenTest {
           + " picks from the elixir less that play's cost: on foot, where the elixir alone would"
           + " pick it mounted")
   void aPendingPlaysCostIsSetAsideByThePick() {
-    // The Zap is given on 21 and runs on 41; the Merge Maiden is given on 30, its option picked
-    // after step 28, while the Zap is still pending.
-    int zapRun = 41;
-    int maidenRun = 50;
-    // The elixir after step 28 alone reaches the mounted option's trigger; less the Zap's cost it
+    // The Zap is given at the start cooldown and runs 20 ticks later; the Merge Maiden is given 8
+    // ticks after the Zap, its option picked after the step 2 ticks before, while the Zap is still
+    // pending.
+    int zapRun = OPEN + 20;
+    int maidenRun = OPEN + 28;
+    // The elixir after that step alone reaches the mounted option's trigger; less the Zap's cost it
     // does not.
     int elixir = elixirAfterStep(maidenRun - 22);
     assertThat(elixir).isGreaterThanOrEqualTo(mountedTrigger());
@@ -290,10 +296,10 @@ class BattleMergeMaidenTest {
       "a variant play given in the tick of another play of its side, or within the two ticks after"
           + " it, is refused; one given after that play has run is picked from the elixir alone")
   void aVariantGivenWithAnotherPlayIsRefused() {
-    for (int maidenRun : new int[] {41, 42, 43}) {
+    for (int maidenRun : new int[] {OPEN + 41, OPEN + 42, OPEN + 43}) {
       Standard1v1Battle pending = new Standard1v1Battle(GameData.tables());
       pending.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-      pending.play(41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+      pending.play(OPEN + 41, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
       pending.playVariant(maidenRun, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
 
       assertThatThrownBy(() -> run(pending, maidenRun))
@@ -305,9 +311,9 @@ class BattleMergeMaidenTest {
 
     Standard1v1Battle later = new Standard1v1Battle(GameData.tables());
     later.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    later.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
-    later.playVariant(42, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    run(later, 42);
+    later.play(OPEN + 21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    later.playVariant(OPEN + 42, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(later, OPEN + 42);
     Standard1v1Battle.Play maiden = later.getPlays().get(1);
     assertThat(maiden.matchCode()).isZero();
     assertThat(maiden.variant().spell()).isEqualTo("MergeMaiden_Normal");
@@ -320,11 +326,11 @@ class BattleMergeMaidenTest {
   void aVariantWithAnUnmodelledPromiseIsRefused() {
     Standard1v1Battle mirror = new Standard1v1Battle(GameData.tables());
     mirror.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    mirror.play(21, GameData.card("Archer"), LEVEL, 0, 3500, 10000, "a");
-    mirror.playMirror(60, "Mirror", LEVEL, 0, 14500, 10000, "r");
-    mirror.playVariant(70, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    mirror.play(OPEN + 21, GameData.card("Archer"), LEVEL, 0, 3500, 10000, "a");
+    mirror.playMirror(OPEN + 60, "Mirror", LEVEL, 0, 14500, 10000, "r");
+    mirror.playVariant(OPEN + 70, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
 
-    assertThatThrownBy(() -> run(mirror, 70))
+    assertThatThrownBy(() -> run(mirror, OPEN + 70))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "m: a variant play given while a Mirror's play of its side is pending, whose item's"
@@ -334,11 +340,11 @@ class BattleMergeMaidenTest {
     // refused, its promise held by the player's client past its run.
     Standard1v1Battle refused = new Standard1v1Battle(GameData.tables());
     refused.startLadderMatch(MAIDENS, KNIGHTS, 0, 0);
-    refused.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
-    refused.playVariant(43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
-    refused.playVariant(85, "MergeMaiden", LEVEL, 0, 14500, 9000, "m3");
+    refused.playVariant(OPEN + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m1");
+    refused.playVariant(OPEN + 43, "MergeMaiden", LEVEL, 0, 14500, 10000, "m2");
+    refused.playVariant(OPEN + 85, "MergeMaiden", LEVEL, 0, 14500, 9000, "m3");
 
-    assertThatThrownBy(() -> run(refused, 85))
+    assertThatThrownBy(() -> run(refused, OPEN + 85))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "m3: a variant play given while a play of its side refused at its run may still hold"
@@ -447,17 +453,17 @@ class BattleMergeMaidenTest {
     // Mounted: the Merge Maiden on 22, picked from the starting elixir.
     Standard1v1Battle mounted = new Standard1v1Battle(GameData.tables());
     LadderMatch mountedMatch = mounted.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    mounted.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    run(mounted, 22);
+    mounted.playVariant(OPEN + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(mounted, OPEN + 22);
     playMirrorOnceCovered(mounted, mountedMatch, "MergeMaiden_Mounted");
     assertMirrorRepeats(mounted, mountedMatch, "MergeMaiden_Mounted", 0);
 
     // On foot: an Archer on 21, then the Merge Maiden picked from what is left of the elixir.
     Standard1v1Battle onFoot = new Standard1v1Battle(GameData.tables());
     LadderMatch onFootMatch = onFoot.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    onFoot.play(21, GameData.card("Archer"), LEVEL, 0, 9000, 10000, "a");
-    onFoot.playVariant(42, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    run(onFoot, 42);
+    onFoot.play(OPEN + 21, GameData.card("Archer"), LEVEL, 0, 9000, 10000, "a");
+    onFoot.playVariant(OPEN + 42, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    run(onFoot, OPEN + 42);
     playMirrorOnceCovered(onFoot, onFootMatch, "MergeMaiden_Normal");
     assertMirrorRepeats(onFoot, onFootMatch, "MergeMaiden_Normal", Shipped.cost("Archer"));
   }
@@ -474,10 +480,10 @@ class BattleMergeMaidenTest {
             rows -> GameData.columns(rows, "MergeMaiden").putNull("MirrorUsesRootSpell"));
     Standard1v1Battle battle = new Standard1v1Battle(tables);
     battle.startLadderMatch(MAIDEN_MIRRORS, KNIGHTS, 0, 0);
-    battle.playVariant(22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
-    battle.playMirror(300, "Mirror", LEVEL, 0, 14500, 10000, "r");
+    battle.playVariant(OPEN + 22, "MergeMaiden", LEVEL, 0, 3500, 10000, "m");
+    battle.playMirror(OPEN + 300, "Mirror", LEVEL, 0, 14500, 10000, "r");
 
-    assertThatThrownBy(() -> run(battle, 300))
+    assertThatThrownBy(() -> run(battle, OPEN + 300))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage(
             "a Mirror of the variant card MergeMaiden as the card itself, whose row casts no"
@@ -568,8 +574,8 @@ class BattleMergeMaidenTest {
   private static int firstStepReaching(int elixir) {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(ZAP_MAIDENS, KNIGHTS, 0, 0);
-    battle.play(21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
-    run(battle, 21);
+    battle.play(OPEN + 21, GameData.card("Zap"), LEVEL, 0, 9000, 16000, "z");
+    run(battle, OPEN + 21);
     while (match.side(0).getElixir() < elixir) {
       battle.getBattle().step();
     }
@@ -595,7 +601,7 @@ class BattleMergeMaidenTest {
       battle.startLadderMatch(KNIGHT_MAIDENS, KNIGHTS, word, 0);
     }
     int cost = Shipped.cost("GoldenKnight");
-    while (battle.getMatch().side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < OPEN || battle.getMatch().side(0).wholeElixir() < cost) {
       battle.getBattle().step();
     }
     int tick = battle.getBattle().getTick();

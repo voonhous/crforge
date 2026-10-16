@@ -696,7 +696,7 @@ public class Standard1v1Battle {
             : match.mirrorItemOf(side, deckIndex, level, refusedSource.evolution());
     // The gates read the Mirror's own hand slot and the item's cost; a refused play changes
     // nothing.
-    int code = match.gate(side, deckIndex, item.cost());
+    int code = match.gate(side, deckIndex, item.cost(), target.getTick());
     if (code != 0) {
       plays.add(
           new Play(name, side, x, y, target.getTick(), null, List.of(), code, item, null, null));
@@ -1038,7 +1038,7 @@ public class Standard1v1Battle {
     VariantItem item = match.variantItem(side, deckIndex, option);
     // The gates read the variant card's own hand slot and the option's cost; a refused play
     // changes nothing.
-    int code = match.gate(side, deckIndex, item.cost());
+    int code = match.gate(side, deckIndex, item.cost(), target.getTick());
     if (code != 0) {
       plays.add(
           new Play(name, side, x, y, target.getTick(), null, List.of(), code, null, item, null));
@@ -1238,7 +1238,7 @@ public class Standard1v1Battle {
         checkCountKnown(side, deckIndex, card.name(), name);
       }
       item = match.item(side, deckIndex);
-      int code = match.gate(side, deckIndex, item.cost());
+      int code = match.gate(side, deckIndex, item.cost(), target.getTick());
       if (code != 0) {
         // The player's client counts the play it gave all the same: an evolution slot's count
         // moves as for a placed play.

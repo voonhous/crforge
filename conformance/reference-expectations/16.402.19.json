@@ -657,6 +657,7 @@
   "pingpong-deflect-v1/monk_deflects_axe_t264": {"outcome": "diagnostic_match"},
   "pingpong-deflect-v1/monk_deflects_axe_t300": {"outcome": "diagnostic_match"},
   "pingpong-stun-v1/axeman_zap_return": {"outcome": "diagnostic_match"},
+  "play-start-cooldown-v1/play_runs_before_start_cooldown": {"outcome": "diagnostic_match"},
   "poison-drain-kill-mana-v1/blob_poison_a": {"outcome": "diagnostic_match"},
   "poison-drain-kill-mana-v1/blob_poison_b": {"outcome": "diagnostic_match"},
   "poison-drain-kill-mana-v1/blob_poison_c": {"outcome": "diagnostic_match"},

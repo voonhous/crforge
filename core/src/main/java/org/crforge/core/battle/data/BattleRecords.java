@@ -3019,6 +3019,21 @@ public final class BattleRecords {
   }
 
   /**
+   * A game mode's start cooldown in milliseconds: how long from the battle's start a card play is
+   * refused. The game mode row's BattleStartCooldown, or, where the row leaves it empty, the global
+   * LOGIC_BATTLE_START_COOLDOWN. The game picks another global, LOGIC_BATTLE_START_COOLDOWN_2V2,
+   * for a 2v2 battle, which the battle core does not play.
+   *
+   * @param gameMode the game mode row's name
+   */
+  public int battleStartCooldownMs(String gameMode) {
+    GameTable modes = tables.table(GAME_MODES);
+    checkArgument(modes.has(gameMode), () -> "the game tables have no game mode " + gameMode);
+    int own = modes.row(gameMode).intValue("BattleStartCooldown");
+    return own != 0 ? own : globalNumber("LOGIC_BATTLE_START_COOLDOWN");
+  }
+
+  /**
    * What the match reads of a card: its cost, its two opening-hand columns, its production stop,
    * whether it is the Mirror, the options a variant card is played as, whether a Mirror repeats it
    * as the card itself or as the row its play was cast as, and the rows it is played as in other

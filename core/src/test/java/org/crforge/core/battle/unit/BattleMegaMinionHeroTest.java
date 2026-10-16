@@ -208,7 +208,9 @@ class BattleMegaMinionHeroTest {
       match = battle.startLadderMatch(DECK, OTHER, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("MegaMinion").cost();
-    while (match.side(0).wholeElixir() < cost || match.side(1).wholeElixir() < otherElixir) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost
+        || match.side(1).wholeElixir() < otherElixir) {
       step(battle);
     }
     battle.play(

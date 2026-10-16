@@ -79,7 +79,8 @@ class BattleBarbLogHeroTest {
     }
     ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
     int cost = GameData.records().matchCard("BarbLog").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       step(battle);
     }
     int deployIndex = match.side(0).getDeployCounter();
@@ -128,7 +129,8 @@ class BattleBarbLogHeroTest {
     }
     ChampionController slot = battle.getWorld().kingTower(0).championSlot(1);
     int cost = GameData.records().matchCard("BarbLog").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       step(battle);
     }
     // The enemy Monk stands still on the barrel's lane, short of where the roll would end, with
@@ -200,7 +202,8 @@ class BattleBarbLogHeroTest {
       match = battle.startLadderMatch(BARREL_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
     }
     int cost = GameData.records().matchCard("BarbLog").cost();
-    while (match.side(0).wholeElixir() < cost) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < cost) {
       step(battle);
     }
     battle.play(battle.getBattle().getTick(), GameData.card("BarbLog"), LEVEL, 0, 3500, 20500, "b");

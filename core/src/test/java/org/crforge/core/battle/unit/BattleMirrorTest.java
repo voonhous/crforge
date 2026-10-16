@@ -36,6 +36,9 @@ class BattleMirrorTest {
 
   private static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
 
+  /** The start cooldown: the first tick a card play of a match may run. */
+  private static final int OPEN = Shipped.startCooldownTicks();
+
   /**
    * Two cards and six Mirrors. The shuffle holds the Mirrors back while it draws the first four, so
    * the opening hand is the two cards and then two Mirrors.
@@ -97,9 +100,9 @@ class BattleMirrorTest {
     // be, and is played once the elixir covers it.
     int knightCost = Shipped.cost("Knight");
     int mirrorCost = Math.min(knightCost + Shipped.cost("Mirror"), MAX_MANA);
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    run(battle, 20);
-    int first = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, OPEN + 20);
+    int first = Math.max(OPEN + 20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
     battle.playMirror(first, "Mirror", LEVEL, 0, 14500, 10000, "m1");
     run(battle, first);
     int second = Math.max(first + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
@@ -130,8 +133,8 @@ class BattleMirrorTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
     int[] hand = match.side(0).getHand().slots();
-    battle.playMirror(20, "Mirror", LEVEL, 0, 3500, 10000, "m");
-    run(battle, 20);
+    battle.playMirror(OPEN + 20, "Mirror", LEVEL, 0, 3500, 10000, "m");
+    run(battle, OPEN + 20);
 
     Standard1v1Battle.Play play = battle.getPlays().get(0);
     assertThat(play.matchCode()).isZero();
@@ -160,14 +163,14 @@ class BattleMirrorTest {
     assertThat(Shipped.column(mirror, "SummonDeployDelaySecond")).isNull();
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(GOBLIN_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(20, GameData.card("Goblins"), LEVEL, 0, 3500, 10000, "g");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Goblins"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, OPEN + 20);
     // The direct play's units' states on the tick it ran.
     Standard1v1Battle.Play direct = battle.getPlays().get(0);
     List<Integer> directStates =
         direct.units().stream().map(unit -> unit.getView().getState()).toList();
     int mirrorCost = Math.min(Shipped.cost("Goblins") + Shipped.cost("Mirror"), MAX_MANA);
-    int tick = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
+    int tick = Math.max(OPEN + 20 + AFTER_A_PLAY, coveredFrom(battle, match, mirrorCost));
     battle.playMirror(tick, "Mirror", LEVEL, 0, 14500, 10000, "m");
     run(battle, tick);
 
@@ -187,7 +190,7 @@ class BattleMirrorTest {
   void aMirrorOutsideAMatchIsRefused() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
 
-    assertThatThrownBy(() -> battle.playMirror(20, "Mirror", LEVEL, 0, 3500, 10000, "m"))
+    assertThatThrownBy(() -> battle.playMirror(OPEN + 20, "Mirror", LEVEL, 0, 3500, 10000, "m"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessage("the Mirror outside a match, which keeps no last card to play again");
   }
@@ -201,11 +204,12 @@ class BattleMirrorTest {
     LadderMatch match = battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
     int archerCost = Shipped.cost("Archer");
     int mirrorCost = Math.min(archerCost + Shipped.cost("Mirror"), MAX_MANA);
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    run(battle, OPEN + 20);
     // The Archers run on a tick the elixir covers them and the Mirror after; the Mirror is given
     // ten ticks after them, while they are still pending and the Knight is the last card.
-    int archers = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, archerCost + mirrorCost));
+    int archers =
+        Math.max(OPEN + 20 + AFTER_A_PLAY, coveredFrom(battle, match, archerCost + mirrorCost));
     battle.play(archers, GameData.card("Archer"), LEVEL, 0, 3500, 10000, "a");
     battle.playMirror(archers + 10, "Mirror", LEVEL, 0, 14500, 10000, "m");
     run(battle, archers - 1);
@@ -225,10 +229,10 @@ class BattleMirrorTest {
       "a Mirror given in the tick of another play of its side or the tick after is refused, and"
           + " one two ticks after repeats that play")
   void aMirrorGivenInThePlaysTickOrTheTickAfterIsRefused() {
-    for (int mirror : new int[] {20, 21}) {
+    for (int mirror : new int[] {OPEN + 20, OPEN + 21}) {
       Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
       battle.startLadderMatch(SKELETON_MIRRORS, KNIGHTS, 0, 0);
-      battle.play(20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
+      battle.play(OPEN + 20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
       battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
 
       assertThatThrownBy(() -> run(battle, mirror))
@@ -240,9 +244,9 @@ class BattleMirrorTest {
 
     Standard1v1Battle later = new Standard1v1Battle(GameData.tables());
     later.startLadderMatch(SKELETON_MIRRORS, KNIGHTS, 0, 0);
-    later.play(20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
-    later.playMirror(22, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(later, 22);
+    later.play(OPEN + 20, GameData.card("Skeletons"), LEVEL, 0, 3500, 10000, "s");
+    later.playMirror(OPEN + 22, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(later, OPEN + 22);
     assertThat(later.getPlays().get(1).mirror().repeats().name()).isEqualTo("Skeletons");
   }
 
@@ -252,9 +256,9 @@ class BattleMirrorTest {
           + " repeats that play, which its client still lists, not the last card")
   void aMirrorRepeatsAPendingPlayRefusedAtItsRun() {
     Standard1v1Battle battle = refusedGiant();
-    // Given on tick 11, while the Giant given on 1 is pending.
-    battle.playMirror(31, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(battle, 31);
+    // Given ten ticks after the Giant, while the Giant is pending.
+    battle.playMirror(OPEN + 31, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(battle, OPEN + 31);
 
     Standard1v1Battle.Play mirror = battle.getPlays().get(2);
     assertThat(mirror.mirror().repeats().name()).isEqualTo("Giant");
@@ -269,13 +273,13 @@ class BattleMirrorTest {
           + " the play's promise, up to 60 ticks after its giving, is refused about the tick it is"
           + " dropped, and repeats the last card after")
   void aMirrorRepeatsARefusedPlayWhileItsPromiseIsListed() {
-    // The Giant was given on tick 1: its promise is dropped about tick 61.
+    // The Giant was given on OPEN + 1: its promise is dropped about OPEN + 61.
     Standard1v1Battle listed = refusedGiant();
-    listed.playMirror(79, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(listed, 79);
+    listed.playMirror(OPEN + 79, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(listed, OPEN + 79);
     assertThat(listed.getPlays().get(2).mirror().repeats().name()).isEqualTo("Giant");
 
-    for (int mirror : new int[] {80, 83}) {
+    for (int mirror : new int[] {OPEN + 80, OPEN + 83}) {
       Standard1v1Battle uncertain = refusedGiant();
       uncertain.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 10000, "m");
       assertThatThrownBy(() -> run(uncertain, mirror))
@@ -286,18 +290,21 @@ class BattleMirrorTest {
     }
 
     Standard1v1Battle dropped = refusedGiant();
-    dropped.playMirror(84, "Mirror", LEVEL, 0, 14500, 10000, "m");
-    run(dropped, 84);
+    dropped.playMirror(OPEN + 84, "Mirror", LEVEL, 0, 14500, 10000, "m");
+    run(dropped, OPEN + 84);
     assertThat(dropped.getPlays().get(2).mirror().repeats().name()).isEqualTo("Knight");
   }
 
-  /** A Knight on tick 20 and a Giant on 21, which the elixir left does not cover. */
+  /**
+   * A Knight 20 ticks after the start cooldown and a Giant the tick after, which the elixir left
+   * does not cover.
+   */
   private static Standard1v1Battle refusedGiant() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     battle.startLadderMatch(GIANT_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
-    battle.play(21, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
-    run(battle, 21);
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, 3500, 10000, "k");
+    battle.play(OPEN + 21, GameData.card("Giant"), LEVEL, 0, 3500, 10000, "g");
+    run(battle, OPEN + 21);
     assertThat(battle.getPlays().get(1).matchCode()).isNotZero();
     return battle;
   }
@@ -311,14 +318,14 @@ class BattleMirrorTest {
     // The towers stand passive, so the first copy lives on.
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     LadderMatch match = battle.startLadderMatch(QUEEN_MIRRORS, KNIGHTS, 0, 0);
-    battle.play(20, GameData.card("ArcherQueen"), LEVEL, 0, 3500, 4000, "q");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("ArcherQueen"), LEVEL, 0, 3500, 4000, "q");
+    run(battle, OPEN + 20);
     CharacterEntity queen = battle.getPlays().get(0).units().get(0);
     // Kept where she stands, so she takes no tower.
     queen.setActive(CharacterEntity.MOVEMENT_SLOT, false);
     // The Archer Queen's 5 and the Mirror's 1: played once the elixir covers 6.
     int cost = Math.min(Shipped.cost("ArcherQueen") + Shipped.cost("Mirror"), MAX_MANA);
-    int mirror = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
+    int mirror = Math.max(OPEN + 20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
     battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 4000, "m");
     run(battle, mirror);
 
@@ -366,12 +373,12 @@ class BattleMirrorTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables(), LEVEL, false);
     LadderMatch match =
         battle.startLadderMatch(PEKKA_MIRRORS, KNIGHTS, 0, 0, heroFirst, new int[8]);
-    battle.play(20, GameData.card("MiniPekka"), LEVEL, 0, 3500, 4000, "p");
-    run(battle, 20);
+    battle.play(OPEN + 20, GameData.card("MiniPekka"), LEVEL, 0, 3500, 4000, "p");
+    run(battle, OPEN + 20);
     MatchCard heroForm = match.side(0).deck().get(0).formRow(MatchCard.HERO_FORM);
     String heroRow = heroForm.name();
     int cost = Math.min(heroForm.cost() + Shipped.cost("Mirror"), MAX_MANA);
-    int mirror = Math.max(20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
+    int mirror = Math.max(OPEN + 20 + AFTER_A_PLAY, coveredFrom(battle, match, cost));
     battle.playMirror(mirror, "Mirror", LEVEL, 0, 14500, 4000, "m");
     run(battle, mirror);
 

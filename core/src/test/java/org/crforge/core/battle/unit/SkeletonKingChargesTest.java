@@ -103,7 +103,8 @@ class SkeletonKingChargesTest {
                 }
               });
       int cost = records.matchCard("SkeletonKing").cost();
-      while (match.side(0).wholeElixir() < cost) {
+      while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+          || match.side(0).wholeElixir() < cost) {
         battle.getBattle().step();
       }
       int tick = battle.getBattle().getTick();

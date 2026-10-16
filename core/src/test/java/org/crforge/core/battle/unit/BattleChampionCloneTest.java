@@ -144,7 +144,8 @@ class BattleChampionCloneTest {
   }
 
   private void stepUntil(int elixir) {
-    while (match.side(0).wholeElixir() < elixir) {
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < elixir) {
       battle.getBattle().step();
     }
   }
