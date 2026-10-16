@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crforge-env"
+version = "0.1.0"
+description = "Reinforcement learning environments on the crforge battle core, read from the env module's buffers without a copy"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+# The API versions the wrappers are written against: Gymnasium 1.x and PettingZoo 1.x.
+dependencies = [
+    "jpype1>=1.5,<2",
+    "numpy>=1.26",
+    "gymnasium>=1.0,<2",
+    "pettingzoo>=1.24,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+crforge-env-bench = "crforge_env.bench:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["crforge_env"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "W", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

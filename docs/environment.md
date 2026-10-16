@@ -1,6 +1,6 @@
 # The Environment
 
-The reinforcement learning environment on the battle core: a vector of Ladder battles stepped in the JVM behind flat buffers, which a Python trainer reads as arrays of the same memory. The `env` module is the Java side; the Python package that wraps it is a separate change built on this module's API.
+The reinforcement learning environment on the battle core: a vector of Ladder battles stepped in the JVM behind flat buffers, which a Python trainer reads as arrays of the same memory. The `env` module is the Java side; the `crforge-env` package under `python/` is the Python side ([Python](#python)).
 
 **TL;DR:** one `VectorEnv.step()` takes both seats' actions in every battle, gives each play through the battle's own `PlayerCommands` (the client's path), steps each battle one decision (5 ticks by default) and leaves every observation, mask, reward and info record in place. A seat sees what its player sees; a fault in one battle ends that battle's episode alone.
 
@@ -25,6 +25,13 @@ env/                     org.crforge.env
   SyntheticEnv           an environment that is no battle: full-size observations from a pseudo-random source
   EnvFault               a fault's kind, message and signature
   VectorEnv              N environments stepped together, on a thread pool, through direct buffers
+
+python/                  crforge_env (the crforge-env package)
+  VectorBattle           the vector from Python: its buffers as arrays of the same memory
+  ClashParallelEnv       one battle, both seats as the agents of a parallel multi-agent environment
+  ClashGymEnv            one seat of a battle as a single-agent environment, the other seat a given policy
+  Schema                 the layout, read from the vector's metadata at start
+  bench                  the Python-side benchmark (crforge-env-bench)
 ```
 
 ## A decision
@@ -166,6 +173,77 @@ With more than one thread the battles are stepped on a fixed pool of daemon thre
 ```
 
 `VectorEnvBenchmark` has `ladder` (Ladder battles on the tables, a mirror match of an eight-card deck) and `synthetic` (no battle), over 1, 64 and 256 environments on 1 and 4 threads. One operation is one `step()` of the vector; `:envSteps` counts environment steps and `:ticks` battle ticks. The actions are a random open play 3 decisions in 10 a seat, else the wait.
+
+## Python
+
+The `crforge-env` package (`python/`, a uv project) runs the module's jars in a JVM inside the Python process and reads the vector's buffers as arrays of the same memory: a step is one call into the JVM for every battle, and no observation is copied across.
+
+### Install
+
+```bash
+./gradlew :env:installDist                                   # the jars, under env/build/install/env
+./gradlew :tables:dataVersionTables -Pcrforge.assetSource=file://$DD/cdn/   # the tables (docs/game-tables.md)
+cd python && uv sync --extra dev                             # python/.venv, from uv.lock
+```
+
+Two inputs, each one explicit argument with no default and no environment variable: `install`, the module's installed distribution (`env/build/install/env`, whose `lib` folder holds the env module, the battle core and their libraries), and for Ladder battles `tables`, the tables folder of a data version as the build makes it (`<cache>/tables/<data version>`, `~/.crforge/tables/<data version>` by default). The JVM starts once per process with the jars of the first `install`; another folder later in the same process is refused. JVM options (heap, collector) go in `jvm_args` of the first vector.
+
+### The vector
+
+`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2496)`, `masks` uint8 `(count, 2, 2305)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s.
+
+A synthetic vector takes `synthetic_entities`, `synthetic_episode_steps`, and `synthetic_fault_at` with `synthetic_fault_kind` (`refusal`, `bug`, `env_bug`): every episode faults at that decision, so the fault path can be tested without a battle.
+
+### The schema from the metadata
+
+At start the package reads `VectorEnv.metadataJson()`: the schema's version, sizes and field names give every offset (`schema.header[name]`, the indices of a header field; `schema.entity[name]`, `schema.info[name]`, `schema.flags[name]`, `schema.refusals[code]`), and the few codes the metadata does not list (results, entity kinds, the winner codes, the deck size, the arena's size) are read from the `Schema` class. No offset is typed twice in Python. The package reads schema version 1; a module that writes another version is refused at start.
+
+`vector.metadata` is the export and `vector.write_metadata(path)` writes it, to be kept with every run and checkpoint. `vector.check_metadata(saved)` refuses a saved export this vector would read differently: another schema version, sizes or field names, a vocabulary missing, or a vocabulary whose ids moved (through `Vocabulary.checkSame`, naming the first moved name), so a model trained on one data version is remapped by name rather than read shifted.
+
+### The wrappers
+
+Two wrappers over a vector of one battle, both with autoreset off:
+
+- `ClashParallelEnv(deck0, deck1, install=..., tables=...)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 2496 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
+- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0)`: a single-agent environment for the learner on `seat`; the other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, and `wait_opponent` come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
+
+The observation space is a box of int32 of the seat's 2496 integers, not floats: its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself. Its bounds (`schema.observation_bounds(vocabulary_size)`): a vocabulary id field (hand, next card, deck, enemy cards seen, waiting commands' cards, an entity's row) lies in -1 to the last id; the result, the seat, the overtime and pending marks, an entity's kind, side and flags in 0 to their largest code; every other field in the int32 range. The action space is the 2305 actions. A `reset(seed=...)` takes a 32-bit seed as the battle's seed; a reset without one draws the battle's seed from the environment's own generator.
+
+Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait or a play given), `last_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
+
+### Faults are truncations
+
+A fault is never a result. When a battle's episode ends by a fault (a refusal of the battle core, a bug of the core, a bug of the environment), the step that reports it is `terminated=False, truncated=True` with reward 0 for both seats, and the info names the fault's kind under `fault` (`refusal`, `bug` or `env_bug`, `none` otherwise) with `fault_message` and `fault_signature`. A trainer bootstraps such a step as it bootstraps a tick limit, and never learns from it as a loss or a win. A tick limit (`LadderConfig.max_ticks`) truncates the same way, with `fault` `none`. A reset whose new episode faults before its first decision raises `BattleFaultError` with the fault.
+
+### Tests and checks
+
+```bash
+cd python
+uv run pytest --install=../env/build/install/env --tables=<tables folder>   # all tests
+uv run pytest --install=../env/build/install/env                            # the Ladder tests skipped, and the run says so
+uv run ruff check && uv run ruff format --check
+```
+
+The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, and a saved vocabulary whose ids moved refused. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
+
+### The Python-side benchmark
+
+`crforge-env-bench --install <env/build/install/env> --tables <folder>` steps a vector of 1, 16, 64 and 256 environments of each engine (`--engine` picks one) for 200 decisions, 3 trials after a warm-up, with a random open play 3 decisions in 10 a seat drawn on arrays in Python, and times the whole loop: the action draw, the call into the JVM and the reads of rewards and dones. Every battle is the same match of two decks of card row names (`Knight`, `Archer`, `Musketeer`, `Giant`, `MiniPekka`, `Fireball`, `Arrows`, and `Zap` or `Goblins`). The best trial is reported, with the spread over the trials.
+
+Measured on 2026-10-16 on one Mac (Apple M4 Pro, 14 cores, JDK 17.0.14, Python 3.12.7), with other work running (1-minute load average 3.7 to 5.1): `crforge-env-bench --threads 1` and `--threads 4`, data version 16.402.19, a decision being 5 ticks. A short run on a busy machine: read the numbers as magnitudes.
+
+| engine | battles | threads | env steps/s | ticks/s | us a call | spread |
+|---|---:|---:|---:|---:|---:|---:|
+| `ladder` | 64 | 1 | 22,405 | 112,011 | 2,857 | 20% |
+| `ladder` | 256 | 1 | 22,731 | 113,601 | 11,262 | 28% |
+| `ladder` | 64 | 4 | 63,694 | 318,428 | 1,005 | 30% |
+| `ladder` | 256 | 4 | 60,023 | 299,975 | 4,265 | 21% |
+| `synthetic` | 64 | 1 | 217,106 | - | 295 | 4% |
+| `synthetic` | 256 | 1 | 206,586 | - | 1,239 | 3% |
+| `synthetic` | 64 | 4 | 327,906 | - | 195 | 2% |
+| `synthetic` | 256 | 4 | 348,710 | - | 734 | 4% |
+
+From 64 battles on, Python steps Ladder battles at about the JVM benchmark's rate above ([Performance](#performance)): the bridge and the action draw add little to a Ladder decision. On the synthetic engine, where a decision costs the JVM about 3 us, the draw of the random actions in Python (about 2 us an environment) is most of the rest. Runs of 1 and 16 battles are left out of the table: their spread was 30 to 265 percent on this machine (the warm-up of the first engine run, and per-call overheads that dominate at that size).
 
 ## Performance
 

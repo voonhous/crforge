@@ -76,8 +76,9 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 | `conformance` | Checks the battle core against recorded reference battles ([README](conformance/README.md)) |
 | `env`         | The reinforcement learning environment: a vector of battles behind flat buffers ([docs](docs/environment.md)) |
 | `tables`      | The table decoder: builds the game tables of a data version from the game's files           |
+| `python/`     | The `crforge-env` Python package: the environment's vector and wrappers for Python trainers ([README](python/README.md)) |
 
-`core` has no GUI dependencies. `desktop`, `conformance` and `env` depend on `core` only, and `tables` on nothing in the project. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
+`core` has no GUI dependencies. `desktop`, `conformance` and `env` depend on `core` only, and `tables` on nothing in the project. `python/` is not a Gradle module: it runs the `env` module's installed jars in the JVM. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
 
 ## Docs
 
@@ -87,7 +88,7 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 | [The Battle Core](docs/battle-core.md)                       | The step, the entity tick, what is covered and what is assumed       |
 | [Troop Pathfinding](docs/pathfinding.md)                     | Routing grid, cell costs, routes and movement rules                  |
 | [Game Tables and Reference Battles](docs/game-tables.md)     | The tables the battle core reads and the battles it is held to       |
-| [The Environment](docs/environment.md)                       | The RL environment: its schema, mask, faults and benchmark           |
+| [The Environment](docs/environment.md)                       | The RL environment: its schema, mask, faults, benchmark and Python package |
 
 See [docs/architecture.md](docs/architecture.md) for the full documentation index.
 

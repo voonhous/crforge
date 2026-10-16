@@ -159,6 +159,64 @@ jobs:
       - name: Run Tests
         run: ./gradlew test $CRFORGE_DATA_ARGS
 
+  # The Python package (python/) on the env module's installed jars: its lint and its tests, the
+  # Ladder tests on the tables of the lock's version, built from the data repository's copy of the
+  # asset files as the build job builds them (never the game's CDN). Without the game data (a pull
+  # request from a fork) only the tests that need no tables run.
+  python:
+    needs: lock
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out the game tables
+        if: needs.lock.outputs.has-game-data == 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.GAME_TABLES_REPOSITORY }}
+          ref: ${{ needs.lock.outputs.commit }}
+          ssh-key: ${{ secrets.GAME_TABLES_KEY }}
+          path: game-tables
+          sparse-checkout: cdn
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.0
+
+      # The env module's jars under env/build/install/env, and with the game data the tables of the
+      # lock's version in a cache of the job's own.
+      - name: Install the env module and build the tables
+        run: |
+          if [ "${{ needs.lock.outputs.has-game-data }}" = true ]; then
+            version=$(sed -n 's/^version=//p' crforge-data.lock)
+            ./gradlew :env:installDist :tables:dataVersionTables \
+              -Pcrforge.assetSource=file://${{ github.workspace }}/game-tables/cdn/ \
+              -Pcrforge.cache=${{ github.workspace }}/crforge-cache
+            echo "TABLES_ARG=--tables=${{ github.workspace }}/crforge-cache/tables/$version" >> "$GITHUB_ENV"
+          else
+            ./gradlew :env:installDist
+          fi
+
+      - name: Lint and test the Python package
+        working-directory: python
+        run: |
+          uv sync --locked --extra dev
+          uv run ruff check
+          uv run ruff format --check
+          uv run pytest -rs --install=${{ github.workspace }}/env/build/install/env $TABLES_ARG
+
   # The unit tests on the tables of every compatible data version other than the lock's version,
   # which the build job covers. The versions share the client's battle rules and the tests pin no
   # game data, so they pass on each one unchanged.
