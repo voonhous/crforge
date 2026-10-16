@@ -7,8 +7,10 @@
 package org.crforge.core.battle.unit;
 
 import static org.crforge.core.util.ValidationUtils.checkArgument;
+import static org.crforge.core.util.ValidationUtils.checkState;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -32,17 +34,28 @@ import org.crforge.core.fidelity.FidelityStatus;
  * {@link Standard1v1Battle#PLAY_DELAY_TICKS} after the stamp, against the battle as it stands then,
  * whatever kind it is: a deck card's play, a Mirror's, a variant card's, or an ability command.
  *
+ * <p>A card play is not sent on the point it is dropped on. The player's screen runs the play's own
+ * placement search on that point against the battle as it stands at the drop, the search the run
+ * makes, and the command carries the tile it finds: a tile centre, less 1 on a coordinate the
+ * symmetrical snap shifts, or a building's tile corner, for a spell as for a troop. A troop dropped
+ * in the enemy half, on the river, on a tower, off the map or on a cell the map check refuses is
+ * moved to the nearest legal tile, not refused; a drop is refused only when the search finds no
+ * tile ({@link Refusal#NO_TILE}). On the standard arena only a Mirror finds none, while its king
+ * has no last card: the search places a Mirror as the king's last card. The play's run searches
+ * again from the tile sent, against the battle as it stands then, so a tower or building that falls
+ * or lands in between moves the play again.
+ *
  * <p>Before it sends a command the client tries it against the battle as it stands, and drops it,
  * with nothing changed, when that try refuses it. For a card play the try is, in order: the match's
  * gates (the match decided, the king dead, the card in one of the hand's slots), then the king's
  * whole elixir, less the costs the side's commands still waiting have promised and never below 0,
- * covering the play's item's cost, then the map check on the requested point. It does not run the
- * placement search: a point the map takes is given even where no tile is free now, and the play's
- * run finds its tile, or refuses it, against the battle as it stands then. For an ability command
- * the try is the run's gates in order with the elixir gate reading the elixir less the promised
- * costs. The client builds the item a play carries as it gives it: a deck card's from the side's
- * count now, a Mirror's from the last play of its side it still lists as promised or else the
- * king's last card, a variant card's option picked from the king's elixir less the promised costs.
+ * covering the play's item's cost, then the map check on the point sent, which a tile the search
+ * found always passes. The screen's search comes before the try: a drop both refuse is reported
+ * here as the try refuses it, and is sent by neither. For an ability command the try is the run's
+ * gates in order with the elixir gate reading the elixir less the promised costs. The client builds
+ * the item a play carries as it gives it: a deck card's from the side's count now, a Mirror's from
+ * the last play of its side it still lists as promised or else the king's last card, a variant
+ * card's option picked from the king's elixir less the promised costs.
  *
  * <p>A command the try passes promises its item's cost from its giving: a play until its run places
  * it, or, refused at its run, until {@value Standard1v1Battle#PROMISE_TICKS} ticks after the tick
@@ -62,8 +75,10 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the stamp and the 20 ticks for every Ladder command kind, held by every"
-            + " recorded command; the client's try at the giving: the match's gates, the elixir"
-            + " less the promised costs, the map check and no placement search for a play, the"
+            + " recorded command; a play sent on the tile the screen's placement search finds at"
+            + " the drop, refused only when it finds none, held by every live play sent on a tile"
+            + " centre or a building's corner; the client's try at the giving: the match's gates,"
+            + " the elixir less the promised costs for a play, the"
             + " run's gates with the promised costs set aside for an ability command; the promise"
             + " of each command, its expiry 60 ticks after the counter it was given at and its"
             + " release at the run. Held by the recorded Ladder battles: no card is played while a"
@@ -71,7 +86,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " refused play's expired promise, so a giving whose outcome a promise within two"
             + " ticks of its expiry decides is refused, and so is a Mirror whose item would repeat"
             + " a waiting Mirror's or variant card's play. No recording holds a giving that the"
-            + " client refused: the recordings hold the commands it sent.")
+            + " client refused: the recordings hold the commands it sent. Inferred, not traced:"
+            + " the screen's search is handed the row of the dragged hand card, an evolved or"
+            + " hero play's row and a variant card's option as the run places them, and a Mirror's"
+            + " own row, which the search places as the king's last card; a Mirror whose item"
+            + " repeats a listed play of its side is refused when that play's card and the king's"
+            + " last card would be sent on different tiles. Not modelled: the screen's cancel of a card"
+            + " dragged back over the hand, a gesture and no point.")
 public final class PlayerCommands {
 
   /** Why a giving was refused, or {@link #NONE} for a command given. */
@@ -88,8 +109,8 @@ public final class PlayerCommands {
     CARD_PENDING,
     /** The elixir less the promised costs does not cover the cost. */
     NOT_ENOUGH_ELIXIR,
-    /** The map check refuses the requested point: off the map, or a cell the card may not take. */
-    MAP,
+    /** The screen's placement search finds no tile for the play: nothing is sent. */
+    NO_TILE,
     /** No unit of the side is found for an ability command, or no champion slot follows it. */
     NO_CHAMPION,
     /** The champion slot's cooldown runs. */
@@ -112,15 +133,25 @@ public final class PlayerCommands {
    * What a giving came to.
    *
    * @param refusal why it was refused, or {@link Refusal#NONE} when it was given
-   * @param code the command's own code for the refusal: a match gate's, the map check's or an
-   *     ability gate's; 0 when given, -1 for {@link Refusal#CARD_PENDING}, which the screen refuses
+   * @param code the command's own code for the refusal: a match gate's or an ability gate's; 0 when
+   *     given, {@link #SCREEN} for {@link Refusal#CARD_PENDING} and {@link Refusal#NO_TILE}, which
+   *     the screen refuses
    * @param givenTick the tick it is stamped with: the tick counter, or 1 while it is 0
    * @param runTick the tick it runs on, or would have run on: the stamp plus {@link
    *     Standard1v1Battle#PLAY_DELAY_TICKS}
    * @param cost the whole elixir it promised, or would have: its item's cost, or the ability's; 0
    *     when it was refused before its cost was known
+   * @param x the point a given play's command carries, the tile the screen's placement search
+   *     found, in game units; {@link #NO_POINT} for a refused giving and an ability command
+   * @param y the point a given play's command carries, as {@code x}
    */
-  public record Giving(Refusal refusal, int code, int givenTick, int runTick, int cost) {
+  public record Giving(
+      Refusal refusal, int code, int givenTick, int runTick, int cost, int x, int y) {
+
+    /** A giving that carries no point: refused, or an ability command. */
+    Giving(Refusal refusal, int code, int givenTick, int runTick, int cost) {
+      this(refusal, code, givenTick, runTick, cost, NO_POINT, NO_POINT);
+    }
 
     /** Whether the command was given, and runs on {@link #runTick}. */
     public boolean given() {
@@ -130,6 +161,9 @@ public final class PlayerCommands {
 
   /** The no-code mark of a refusal the screen makes, not the client's try. */
   public static final int SCREEN = -1;
+
+  /** The point of a giving that carries none. */
+  public static final int NO_POINT = -1;
 
   /** What a given command plays. */
   private enum Kind {
@@ -172,12 +206,19 @@ public final class PlayerCommands {
   private static final int DROP_WINDOW = 2;
 
   /**
-   * A play's try worked out before its point is checked: its refusal, or its card's deck index and
-   * kind, the cost it promises, the card the map check reads (null for none), and a variant card's
-   * option.
+   * A play's try worked out before its point is searched: its refusal, or its card's deck index and
+   * kind, the cost it promises, the card the screen's search places, a variant card's option, and,
+   * for a Mirror whose item repeats a listed play of its side in place of the king's last card, the
+   * card the item repeats, else null.
    */
   private record Tried(
-      Giving refused, int deckIndex, Kind kind, int cost, DeployCard mapCard, int option) {}
+      Giving refused,
+      int deckIndex,
+      Kind kind,
+      int cost,
+      DeployCard searchCard,
+      int option,
+      DeployCard itemCard) {}
 
   private final Standard1v1Battle battle;
 
@@ -196,18 +237,20 @@ public final class PlayerCommands {
   }
 
   /**
-   * Gives a play of the card in one of a side's hand slots at a point, as its player does now: a
-   * deck card's, a Mirror's or a variant card's. Given, it runs {@link
-   * Standard1v1Battle#PLAY_DELAY_TICKS} ticks after its stamp through the battle's play path, and
-   * promises its item's cost; refused, nothing changes.
+   * Gives a play of the card in one of a side's hand slots dropped at a point, as its player does
+   * now: a deck card's, a Mirror's or a variant card's. The play is sent on the tile the placement
+   * search finds from the point against the battle as it stands now, and refused when it finds
+   * none. Given, it runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks after its stamp through
+   * the battle's play path, which searches again from the tile sent, and promises its item's cost;
+   * refused, nothing changes.
    *
    * @param side the playing side
    * @param slot the hand slot, 0 to 3
    * @param level the level it is played at, counted from 1
-   * @param x the requested point in game units
-   * @param y the requested point in game units
+   * @param x the dropped point in game units
+   * @param y the dropped point in game units
    * @param name the play's name, new to this battle: unit {@code k} is named {@code name_k}
-   * @return what the giving came to
+   * @return what the giving came to, with the tile sent when given
    */
   public Giving playCard(int side, int slot, int level, int x, int y, String name) {
     checkNameNew(name);
@@ -218,20 +261,32 @@ public final class PlayerCommands {
     int tick = battle.getBattle().getTick();
     int givenTick = stamp(tick);
     int runTick = givenTick + Standard1v1Battle.PLAY_DELAY_TICKS;
-    if (tried.mapCard() != null) {
-      int code = MapCheck.check(battle.getWorld().getTileMap(), tried.mapCard(), x, y);
-      if (code != MapCheck.OK) {
-        return new Giving(Refusal.MAP, code, givenTick, runTick, tried.cost());
-      }
+    int[] tile = battle.searchPlacement(tried.searchCard(), side, x, y);
+    if (tried.itemCard() != null
+        && !Arrays.equals(tile, battle.searchPlacement(tried.itemCard(), side, x, y))) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a Mirror whose item repeats a listed play, dropped where that play's card and"
+              + " the king's last card are placed on different tiles, is not modelled: which of"
+              + " the two the screen's search is handed is not traced");
     }
+    if (tile == null) {
+      return new Giving(Refusal.NO_TILE, SCREEN, givenTick, runTick, tried.cost());
+    }
+    // The try's map check on the tile sent passes: the search took each of the tile's map cells.
+    int px = tile[0];
+    int py = tile[1];
+    checkState(
+        MapCheck.check(battle.getWorld().getTileMap(), tried.searchCard(), px, py) == MapCheck.OK,
+        () -> name + ": the map check refuses the tile the search found");
     MatchCard card = battle.getMatch().side(side).deck().get(tried.deckIndex());
     switch (tried.kind()) {
-      case MIRROR -> battle.playMirror(givenTick, runTick, card.name(), level, side, x, y, name);
+      case MIRROR -> battle.playMirror(givenTick, runTick, card.name(), level, side, px, py, name);
       case VARIANT ->
           battle.playVariant(
-              givenTick, runTick, card.name(), tried.option(), level, side, x, y, name);
+              givenTick, runTick, card.name(), tried.option(), level, side, px, py, name);
       default ->
-          battle.play(givenTick, runTick, records().card(card.name()), level, side, x, y, name);
+          battle.play(givenTick, runTick, records().card(card.name()), level, side, px, py, name);
     }
     given.add(
         new Given(
@@ -242,12 +297,15 @@ public final class PlayerCommands {
             runTick,
             tick + Standard1v1Battle.PROMISE_TICKS,
             tried.cost()));
-    return new Giving(Refusal.NONE, 0, givenTick, runTick, tried.cost());
+    return new Giving(Refusal.NONE, 0, givenTick, runTick, tried.cost(), px, py);
   }
 
   /**
    * Tries a play of the card in a hand slot as {@link #playCard} does, without a point and without
-   * giving it: whether the screen offers it and the client's try passes all but the map check.
+   * giving it: whether the screen offers it and the client's try passes. It does not run the
+   * placement search, which on the standard arena finds a tile from every point but for a Mirror
+   * whose king has no last card, which it refuses as {@link Refusal#NO_TILE} wherever it is
+   * dropped.
    *
    * @param side the playing side
    * @param slot the hand slot, 0 to 3
@@ -357,14 +415,27 @@ public final class PlayerCommands {
     int[] promised = promisedSplit(side);
     Kind kind;
     int cost;
-    DeployCard mapCard;
+    DeployCard searchCard;
+    DeployCard itemCard = null;
     int option = -1;
     if (card.mirror()) {
       kind = Kind.MIRROR;
       MirrorItem item = mirrorItem(side, deckIndex, level, name);
       cost = item.cost();
-      // With nothing to repeat the item is the Mirror's own, which places no unit.
-      mapCard = item.repeats() == null ? null : records().card(item.repeats().name());
+      // The screen's search is handed the Mirror, which it places as the king's last card, or
+      // finds no tile for with none; the item the client builds may repeat a waiting play instead.
+      MatchCard last = match.mirrorItem(side, deckIndex, level).repeats();
+      searchCard = last == null ? null : records().card(last.name());
+      if (item.repeats() != null && (last == null || !item.repeats().name().equals(last.name()))) {
+        if (searchCard == null) {
+          throw new UnsupportedOperationException(
+              name
+                  + ": a Mirror given while its king has no last card and its item repeats a"
+                  + " listed play is not modelled: whether the screen's search is handed the"
+                  + " king's last card, and finds no tile, is not traced");
+        }
+        itemCard = records().card(item.repeats().name());
+      }
     } else if (card.variant() != null) {
       kind = Kind.VARIANT;
       option = match.pickOption(side, card.name(), promised[0]);
@@ -377,13 +448,13 @@ public final class PlayerCommands {
       }
       VariantItem item = match.variantItem(side, deckIndex, option);
       cost = item.cost();
-      mapCard = records().card(item.spell());
+      searchCard = records().card(item.spell());
     } else {
       kind = Kind.CARD;
       EvolutionItem item = match.item(side, deckIndex);
       cost = item.cost();
       // An evolved or hero play is placed as its row in that form.
-      mapCard =
+      searchCard =
           item.field() != 0 ? records().card(item.spell().name()) : records().card(card.name());
     }
     boolean covered = covers(side, cost, promised[0]);
@@ -397,7 +468,11 @@ public final class PlayerCommands {
       return refused(
           Refusal.NOT_ENOUGH_ELIXIR, LadderMatch.NOT_ENOUGH_ELIXIR, givenTick, runTick, cost);
     }
-    return new Tried(null, deckIndex, kind, cost, mapCard, option);
+    if (searchCard == null) {
+      // A Mirror whose king has no last card: the search finds no tile wherever it is dropped.
+      return refused(Refusal.NO_TILE, SCREEN, givenTick, runTick, cost);
+    }
+    return new Tried(null, deckIndex, kind, cost, searchCard, option, itemCard);
   }
 
   /**
@@ -533,7 +608,8 @@ public final class PlayerCommands {
   }
 
   private static Tried refused(Refusal refusal, int code, int givenTick, int runTick, int cost) {
-    return new Tried(new Giving(refusal, code, givenTick, runTick, cost), -1, null, cost, null, -1);
+    return new Tried(
+        new Giving(refusal, code, givenTick, runTick, cost), -1, null, cost, null, -1, null);
   }
 
   /** A match gate's code as a refusal. */

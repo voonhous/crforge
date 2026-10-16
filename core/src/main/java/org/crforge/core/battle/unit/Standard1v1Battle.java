@@ -1488,6 +1488,24 @@ public class Standard1v1Battle {
   }
 
   /**
+   * Runs a play's placement search alone against the battle as it stands now, as a player's screen
+   * runs it on the point a card is dropped on: the tile the play is sent on, which its run, {@link
+   * #PLAY_DELAY_TICKS} ticks later, searches from again against the battle as it stands then. No
+   * map check comes before it, so a point the map check refuses, off the map or on a tower, is
+   * moved as any other. Changes nothing.
+   *
+   * @param card the card the search places
+   * @param side the placing side
+   * @param x the dropped point in game units
+   * @param y the dropped point in game units
+   * @return the tile found, as a point in game units, or null when no legal tile is found
+   */
+  public int[] searchPlacement(DeployCard card, int side, int x, int y) {
+    return CardPlacement.search(
+        world.getTileMap(), card, x, y, side, maskEntities(battle), SYMMETRICAL_DEPLOY_SNAP);
+  }
+
+  /**
    * Plays a unit that tunnels: made and levelled as any troop, it is handed over onto its own king
    * tower and aimed at the placed point - not its formation point - in the spawn-pathfinding state,
    * then queued with its registration visit, in which it searches its route and takes its first

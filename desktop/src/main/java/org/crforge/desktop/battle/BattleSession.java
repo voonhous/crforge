@@ -36,13 +36,15 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * {@link #of}.
  *
  * <p>A play is given as a player gives it, between two steps, through the battle core's {@link
- * PlayerCommands}, and runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks later. The session
- * refuses a play on the spot, with a message, when the player's client would drop it: the match's
- * gates now (the match decided, the king dead), the elixir short once the costs the side's waiting
- * plays promised are set aside, or the map refusing the point; or when the screen does not offer
- * the card, a play of it still waiting to run. A play the battle refuses when it runs, against the
- * battle as it stands then, a point where its placement finds no tile among them, is reported the
- * same way from the battle's own record of the play.
+ * PlayerCommands}, and runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks later. A play is sent
+ * on the tile the placement search finds from the clicked point now, as the player's screen sends
+ * it, and the preview shows the play placed from that tile. The session refuses a play on the spot,
+ * with a message, when the player's client would drop it: the match's gates now (the match decided,
+ * the king dead), or the elixir short once the costs the side's waiting plays promised are set
+ * aside; or when the screen does not offer the card, a play of it still waiting to run, or its
+ * search finds no tile, as for a Mirror whose king has no last card. A play the battle refuses when
+ * it runs, against the battle as it stands then, a point where its placement finds no tile among
+ * them, is reported the same way from the battle's own record of the play.
  *
  * <p>The battle core refuses what it does not model by throwing from inside a step. The session
  * then stops stepping and keeps the message: a battle interrupted part way through a step is not
@@ -266,12 +268,21 @@ public final class BattleSession {
   }
 
   /**
-   * Where a hand slot's card would be placed at a point now, or null when there is no card to place
-   * there or it is not placed by a placement of its own (the Mirror, a variant card).
+   * Where a hand slot's card dropped at a point would be placed now: the play placed from the tile
+   * the placement search finds there, the tile it is sent on, against the battle as it stands now;
+   * refused where the search finds no tile; null when there is no card to place there or it is not
+   * placed by a placement of its own (the Mirror, a variant card).
    */
   public CardPlacement.Result preview(int side, int slot, int x, int y) {
     DeployCard card = deployCard(handCard(side, slot));
-    return card == null ? null : battle.previewPlacement(card, side, x, y);
+    if (card == null) {
+      return null;
+    }
+    int[] tile = battle.searchPlacement(card, side, x, y);
+    if (tile == null) {
+      return new CardPlacement.Result(CardPlacement.NO_POSITION, 0, 0, null, 0, List.of());
+    }
+    return battle.previewPlacement(card, side, tile[0], tile[1]);
   }
 
   /** The battle's row of a card, or null for the Mirror, a variant card or no card. */
@@ -284,8 +295,8 @@ public final class BattleSession {
 
   /**
    * Why a hand card cannot be selected or given now, or null: the client's checks of {@link
-   * PlayerCommands#tryCard} but for the point, which the play checks. A Mirror's and a variant
-   * card's item is built as the client builds it at the giving, and its cost checked.
+   * PlayerCommands#tryCard}, which need no point. A Mirror's and a variant card's item is built as
+   * the client builds it at the giving, and its cost checked.
    */
   public String cardUnavailableReason(int side, int slot) {
     LadderMatch match = match();
@@ -344,7 +355,7 @@ public final class BattleSession {
   private static String reason(MatchCard card, Giving giving) {
     return switch (giving.refusal()) {
       case CARD_PENDING -> card.name() + " is already played and waits to run";
-      case MAP -> card.name() + " has no legal tile there (code " + hex(giving.code()) + ")";
+      case NO_TILE -> card.name() + " has no legal tile";
       case MATCH_OVER, KING_DEAD, NOT_IN_HAND, NOT_ENOUGH_ELIXIR ->
           card.name() + " refused, " + refusal(giving.code());
       default ->
