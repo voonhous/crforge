@@ -2220,12 +2220,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   /**
    * Before its registration visit, a spawned entity takes its id into its view and learns this
    * tick's arena entities as its candidates, the opposing towers among them, as the pre-pass would
-   * have given it.
+   * have given it. One made after a cleanup has removed an entity of that list, such as a death
+   * spawn made inside the cleanup that removes a princess tower, after the tower, learns only the
+   * entities still in the battle: the removed tower has already left its side's list, which every
+   * unit reads as it selects, so the entity never finds it there.
    */
   @Override
   protected void beforeRegistrationVisit() {
     view.setId(getId());
-    registerCandidates(world.present());
+    registerCandidates(world.presentListed());
   }
 
   @Override

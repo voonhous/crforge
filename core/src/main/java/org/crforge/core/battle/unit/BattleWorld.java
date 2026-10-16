@@ -1020,6 +1020,20 @@ public class BattleWorld implements HolderPasses {
     return List.copyOf(present);
   }
 
+  /**
+   * The arena entities of the last pre-pass that are still in the battle: the pre-pass list without
+   * the ones a cleanup has removed since it was built.
+   */
+  List<WorldEntity> presentListed() {
+    List<WorldEntity> listed = new ArrayList<>(present.size());
+    for (WorldEntity entity : present) {
+      if (known.containsKey(entity.getView())) {
+        listed.add(entity);
+      }
+    }
+    return listed;
+  }
+
   /** This tick's projectiles in ascending id, the ones the tick visits. */
   public List<ProjectileEntity> projectiles() {
     return List.copyOf(projectiles);
