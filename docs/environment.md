@@ -200,8 +200,6 @@ With more than one thread the battles are stepped on a fixed pool of daemon thre
 
 The `crforge-env` package (`python/`, a uv project) runs the module's jars in a JVM inside the Python process and reads the vector's buffers as arrays of the same memory: a step is one call into the JVM for every battle, and no observation is copied across.
 
-A small PPO trainer on it, the `crforge-rl` package beside it (`python/crforge_rl`), is in [The Trainer](rl-trainer.md).
-
 ### Install
 
 ```bash
