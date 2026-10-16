@@ -101,6 +101,12 @@ class BattleWizardHeroTest {
 
   private static final int KNOCK_DURATION = 900;
 
+  /**
+   * A knock height whose first step already lifts the hero above the run's height: a ninth of it
+   * times 1.9.
+   */
+  private static final int KNOCK_HEIGHT_ABOVE = 20000;
+
   @Test
   @DisplayName(
       "used while the hero attacks a tower in range, the activation's instant hit raises the"
@@ -480,18 +486,63 @@ class BattleWizardHeroTest {
 
   @Test
   @DisplayName(
-      "a run that starts on a hero a knock holds at or above the run's height is refused: it"
-          + " would start held at once, with no climb and no action at the height, which no"
-          + " recording holds")
-  void aKnockedHeroAboveTheHeightIsRefused(@TempDir Path folder) throws IOException {
-    Scene scene = new Scene(knocked(folder, 1));
+      "a run that starts on a hero a knock has thrown at or above the run's height starts held at"
+          + " once: no climb, the hold's counter the whole less one transition and no action at the"
+          + " height, so the hero keeps its ground row; held at the height after the knock lands,"
+          + " it then comes down as from a climb and the run ends with its override cleared")
+  void aKnockedHeroAboveTheHeightIsHeldAtOnce(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(knockedAbove(folder));
+    CharacterEntity hero = scene.abilityUsed();
+    int cast = scene.stepUntilCasting(hero);
+    // The knock starts on the first casting step, and the activation starts the run two steps
+    // after it, with the hero thrown above the run's height by then.
+    hero.actionHolder().start(scene.knock(hero), null);
+    scene.steps(3);
+    assertThat(scene.startHeight).as("at or above the run's height").isGreaterThanOrEqualTo(HEIGHT);
+    int held = TOTAL - TRANSITION;
+    assertThat(scene.runs).containsExactly((cast + 2) + " start phase 2 counter " + held);
+    // Each held step pushes the run's height and takes 50 ms off, through the knock and after it
+    // has landed; with no climb there is no action at the height, so no swap to the flying row.
+    int steps = held / 50;
+    for (int i = 0; i < steps; i++) {
+      scene.steps(1);
+      assertThat(scene.runs)
+          .last()
+          .isEqualTo(
+              "%d phase 2 2 counter %d %d [%d]"
+                  .formatted(cast + 3 + i, held - 50 * i, held - 50 * (i + 1), HEIGHT));
+      assertThat(hero.getData().name()).as("its ground row kept").isEqualTo(HERO);
+      assertThat(hero.getView().isAir()).isTrue();
+    }
+    assertThat(hero.getTargetView().z()).as("held at the run's height").isEqualTo(HEIGHT);
+    // The hold's last step turns to the descent, which comes down over the transition and ends
+    // the run with the override cleared.
+    scene.steps(1);
+    assertThat(scene.runs)
+        .last()
+        .isEqualTo((cast + 3 + steps) + " phase 2 3 counter 0 150 [" + HEIGHT + "]");
+    scene.steps(4);
+    assertThat(scene.runs).last().isEqualTo((cast + 7 + steps) + " phase 3 3 counter 0 0 [0]");
+    assertThat(hero.flyingHeightOverride()).isZero();
+    assertThat(hero.getData().name()).isEqualTo(HERO);
+    scene.steps(1);
+    assertThat(hero.getView().isAir()).isFalse();
+    assertThat(hero.getTargetView().z()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a run that starts on a flying row a knock holds at or above the run's height is refused: it"
+          + " would only wait the whole, which no recording holds")
+  void aKnockedFlyingRowAboveTheHeightIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(knockedAboveFlying(folder));
     CharacterEntity hero = scene.abilityUsed();
     scene.stepUntilCasting(hero);
     hero.actionHolder().start(scene.knock(hero), null);
     scene.steps(2);
     assertThatThrownBy(() -> scene.steps(1))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("already in the air at its flying height");
+        .hasMessageContaining("a flying row already in the air at its flying height");
   }
 
   /**
@@ -534,14 +585,6 @@ class BattleWizardHeroTest {
 
   /** The pinned copy with the knock's height and duration written into its row too. */
   private static GameTables knocked(Path folder) throws IOException {
-    return knocked(folder, HEIGHT);
-  }
-
-  /**
-   * The pinned copy with the knock's height and duration written into its row, and the run's flying
-   * height set to the given one.
-   */
-  private static GameTables knocked(Path folder, int flyingHeight) throws IOException {
     pinned(folder);
     GameData.alterLoaded(
         folder,
@@ -550,8 +593,26 @@ class BattleWizardHeroTest {
           ObjectNode knock = fields(rows, KNOCK);
           knock.put("Height", KNOCK_HEIGHT);
           knock.put("Duration", KNOCK_DURATION);
-          fields(rows, "WizardHero_ground_to_air").put("FlyingHeight", flyingHeight);
         });
+    return GameTables.load(folder);
+  }
+
+  /**
+   * The pinned copy with the knock's height written high enough that its first step already throws
+   * the hero above the run's height, and its duration as {@link #knocked}.
+   */
+  private static GameTables knockedAbove(Path folder) throws IOException {
+    knocked(folder);
+    GameData.alterLoaded(
+        folder, "actions", rows -> fields(rows, KNOCK).put("Height", KNOCK_HEIGHT_ABOVE));
+    return GameTables.load(folder);
+  }
+
+  /** The {@link #knockedAbove} copy with the hero's ground row given a flying height. */
+  private static GameTables knockedAboveFlying(Path folder) throws IOException {
+    knockedAbove(folder);
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, HERO).put("FlyingHeight", 1));
     return GameTables.load(folder);
   }
 

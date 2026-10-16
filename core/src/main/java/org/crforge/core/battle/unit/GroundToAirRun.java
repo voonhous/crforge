@@ -48,7 +48,10 @@ import org.crforge.core.pathfinding.grid.Relocation;
  *
  * <p>A character already in the air as the run starts, as a knock throwing it up leaves it, starts
  * the climb part of the way up while its live height is below the row's flying height: the counter
- * is the transition less the live height's share of it. One at or above the height is refused.
+ * is the transition less the live height's share of it. One of a ground row at or above the height
+ * starts held, its counter the whole less one transition: it never climbs, so its path is not reset
+ * and the row's action at the height is not scheduled, and it comes down as any other. One of a
+ * flying row at or above the height is refused.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -60,7 +63,10 @@ import org.crforge.core.pathfinding.grid.Relocation;
             + " relocation, and the end with the override cleared and the path reset; held by"
             + " ability_hero_wizard and cg_wizard_hero_lands. The start in the air below the height,"
             + " its counter the transition less the live height's share, held by a recorded witness"
-            + " outside the locked references. Refused: a start in the air at or above the height.")
+            + " outside the locked references. The start of a ground row in the air at or above"
+            + " the height, held at once for the whole less a transition with no climb and no"
+            + " action at the height, held by a recorded witness outside the locked references."
+            + " Refused: the start of a flying row in the air at or above the height.")
 final class GroundToAirRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
@@ -87,7 +93,8 @@ final class GroundToAirRun extends ActionInstance {
   /**
    * The start: the character's flying height override takes the row's flying height, and the climb
    * starts with the whole transition left on the ground, or with the transition less the live
-   * height's share of it in the air below the row's flying height.
+   * height's share of it in the air below the row's flying height. A ground row in the air at or
+   * above that height starts held, with the whole less one transition left.
    */
   GroundToAirRun(GroundToAir row, CharacterEntity unit) {
     super(row);
@@ -109,15 +116,21 @@ final class GroundToAirRun extends ActionInstance {
     int height = view.getZ() + view.getHeightOffset();
     int flying = row.getFlyingHeight();
     if (height >= flying) {
-      // At or above the row's height the run starts with no climb: held at once for the whole
-      // less a transition on a ground row, or a wait of the whole and no height on a flying row.
-      // Neither is held by a recording, and a wrong guess would change the unit's height and
-      // layer silently.
-      throw new UnsupportedOperationException(
-          row.name()
-              + " lifts "
-              + unit.name()
-              + ", already in the air at its flying height, which is not modelled");
+      // At or above the row's height the run starts with no climb. A flying row only waits the
+      // whole with no height, which no recording holds and a wrong guess would change silently.
+      if (rowHeight >= 1) {
+        throw new UnsupportedOperationException(
+            row.name()
+                + " lifts "
+                + unit.name()
+                + ", a flying row already in the air at its flying height, which is not"
+                + " modelled");
+      }
+      // A ground row is held at once for the whole less one transition: no climb, so no path
+      // reset and no action at the height (the unit keeps its row), and the descent as usual.
+      phase = HELD;
+      counter = row.getTotalDurationMs() - t;
+      return;
     }
     counter = t - (flying > height ? divide(t * height, flying) : t);
   }
