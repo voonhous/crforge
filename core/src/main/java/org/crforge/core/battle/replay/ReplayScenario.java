@@ -477,10 +477,18 @@ public final class ReplayScenario {
             + ability
             + ", an ability command; any other is unsupported. Both kinds run in the scenario's"
             + " order within a tick");
-    mapping.put("cmd[i].c.t", "carried: the tick the command was given on");
+    mapping.put(
+        "cmd[i].c.t",
+        "consumed: the tick the command was given on, Standard1v1Battle.play's or useAbility's"
+            + " given tick, which the battle builds a play's item from as the player's client"
+            + " built it; one before tick 1, which a client never stamps, is unsupported");
     mapping.put(
         "cmd[i].c.t2",
-        "consumed: the tick the command runs on, Standard1v1Battle.play's or useAbility's tick");
+        "consumed: the tick the command runs on, Standard1v1Battle.play's or useAbility's tick;"
+            + " one other than "
+            + Standard1v1Battle.PLAY_DELAY_TICKS
+            + " ticks after the given tick, the delay the game runs every command at, is"
+            + " unsupported");
     mapping.put(
         "cmd[i].c.idHi/idLo",
         "consumed: the commanding side, the side whose avatar has this account id");
@@ -949,7 +957,7 @@ public final class ReplayScenario {
     }
     return new ScenarioPlan.Play(
         index,
-        required(body, "t").asInt(),
+        givenTick(body, index),
         required(body, "t2").asInt(),
         side,
         card.name(),
@@ -1030,7 +1038,7 @@ public final class ReplayScenario {
     }
     return new ScenarioPlan.Play(
         index,
-        required(body, "t").asInt(),
+        givenTick(body, index),
         required(body, "t2").asInt(),
         side,
         card.name(),
@@ -1101,7 +1109,7 @@ public final class ReplayScenario {
     }
     return new ScenarioPlan.Play(
         index,
-        required(body, "t").asInt(),
+        givenTick(body, index),
         required(body, "t2").asInt(),
         side,
         card.name(),
@@ -1125,10 +1133,40 @@ public final class ReplayScenario {
     onlyFields(body, field + ".c", "t", "t2", "idHi", "idLo", "cgid");
     return new ScenarioPlan.Ability(
         index,
-        required(body, "t").asInt(),
+        givenTick(body, index),
         required(body, "t2").asInt(),
         side(body, field, accounts),
         required(body, "cgid").asInt());
+  }
+
+  /**
+   * The tick a command was given on ({@code t}), checked against the tick it runs on ({@code t2}).
+   * A player's client stamps a command with the battle's tick counter, or 1 before the first step,
+   * and the game runs every command {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks after that
+   * stamp: one heard late runs in a history replayed from before its run tick, or, later still, is
+   * stamped anew that many ticks before the tick it runs on. So no battle of the game holds a
+   * command given before tick 1 or run at another delay, and the battle, which builds a play's item
+   * as the player's client built it at the giving, refuses one.
+   */
+  private static int givenTick(JsonNode body, int index) {
+    String field = "cmd[" + index + "].c";
+    int given = required(body, "t").asInt();
+    int run = required(body, "t2").asInt();
+    if (given < 1) {
+      throw new UnsupportedScenarioException(
+          "a command given before tick 1, which a player's client never stamps",
+          field + ".t=" + given);
+    }
+    if (run - given != Standard1v1Battle.PLAY_DELAY_TICKS) {
+      throw new UnsupportedScenarioException(
+          "a command run "
+              + (run - given)
+              + " ticks after it was given, where the game runs every command "
+              + Standard1v1Battle.PLAY_DELAY_TICKS
+              + " ticks after, which no battle of the game holds",
+          field + ".t=" + given + ", " + field + ".t2=" + run);
+    }
+    return given;
   }
 
   /** The side a command's account id names: the side whose avatar has it. */

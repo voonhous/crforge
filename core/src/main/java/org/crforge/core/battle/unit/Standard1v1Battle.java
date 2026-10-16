@@ -252,19 +252,24 @@ public class Standard1v1Battle {
     VARIANT
   }
 
-  /** A card play queued: the tick it runs on, its side, its card, what it plays and its name. */
-  private record QueuedPlay(int tick, int side, String card, PlayKind kind, String name) {}
+  /**
+   * A card play queued: the tick it was given on, the tick it runs on, its side, its card, what it
+   * plays and its name.
+   */
+  private record QueuedPlay(
+      int given, int tick, int side, String card, PlayKind kind, String name) {}
 
   /**
-   * An ability command queued: the tick it runs on, its side, and the unit it names, by the name a
-   * card play gave it or, from a replay, by its game object id.
+   * An ability command queued: the tick it was given on, the tick it runs on, its side, and the
+   * unit it names, by the name a card play gave it or, from a replay, by its game object id.
    *
+   * @param given the tick the command was given on
    * @param tick the tick the command runs on
    * @param side the commanding side
    * @param unit the name of the unit it names, or null when it names one by id
    * @param objectId the game object id of the unit it names, or -1 when it names one by name
    */
-  private record QueuedAbility(int tick, int side, String unit, int objectId) {}
+  private record QueuedAbility(int given, int tick, int side, String unit, int objectId) {}
 
   /**
    * Every card play queued so far, which a Mirror's and a variant card's item are built against.
@@ -447,7 +452,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(tick, side, unit, -1));
+    queuedAbilities.add(new QueuedAbility(tick - PLAY_DELAY_TICKS, tick, side, unit, -1));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -473,7 +478,8 @@ public class Standard1v1Battle {
    * does: it carries no row and no play, so only the live entity holding that id answers it (see
    * {@link AbilityCommand#run(BattleWorld, int, int)}). It runs in the command pass of its tick, in
    * order with the card plays, like {@link #useAbility(int, int, String, String)}; the use is
-   * recorded under the name of the unit a card play made with that id, or {@code #id} for none.
+   * recorded under the name of the unit a card play made with that id, or {@code #id} for none. The
+   * command is taken as given {@link #PLAY_DELAY_TICKS} ticks before its run.
    *
    * @param tick the tick the command runs on
    * @param side the commanding side
@@ -481,11 +487,28 @@ public class Standard1v1Battle {
    * @param name the command's name
    */
   public void useAbility(int tick, int side, int objectId, String name) {
+    useAbility(tick - PLAY_DELAY_TICKS, tick, side, objectId, name);
+  }
+
+  /**
+   * Queues a player's ability command that names its unit by game object id and states the tick it
+   * was given on, as a replay's command does; otherwise as {@link #useAbility(int, int, int,
+   * String)}. The command must run {@link #PLAY_DELAY_TICKS} ticks after its giving ({@link
+   * #checkDelay}).
+   *
+   * @param given the tick the command was given on
+   * @param tick the tick the command runs on
+   * @param side the commanding side
+   * @param objectId the game object id of the unit it names
+   * @param name the command's name
+   */
+  public void useAbility(int given, int tick, int side, int objectId, String name) {
+    checkDelay(given, tick, name);
     if (match == null) {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(tick, side, null, objectId));
+    queuedAbilities.add(new QueuedAbility(given, tick, side, null, objectId));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -540,7 +563,8 @@ public class Standard1v1Battle {
    * the tick's entity tick admits and visits them. A spell's play casts instead, at the placed
    * point: its area effect, or its projectile from the side's king tower. A troop card with a
    * projectile casts it onto the placed point before its units are made; one with an area effect
-   * makes it at the placed point after them. A refused play creates nothing.
+   * makes it at the placed point after them. A refused play creates nothing. The play is taken as
+   * given {@link #PLAY_DELAY_TICKS} ticks before its run.
    *
    * @param tick the tick the play runs on
    * @param card the card
@@ -551,7 +575,27 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void play(int tick, DeployCard card, int level, int side, int x, int y, String name) {
-    queuedPlays.add(new QueuedPlay(tick, side, card.name(), PlayKind.CARD, name));
+    play(tick - PLAY_DELAY_TICKS, tick, card, level, side, x, y, name);
+  }
+
+  /**
+   * Queues a card play that states the tick it was given on, as a replay's play does; otherwise as
+   * {@link #play(int, DeployCard, int, int, int, int, String)}. The play must run {@link
+   * #PLAY_DELAY_TICKS} ticks after its giving ({@link #checkDelay}).
+   *
+   * @param given the tick the play was given on
+   * @param tick the tick the play runs on
+   * @param card the card
+   * @param level the level it is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void play(
+      int given, int tick, DeployCard card, int level, int side, int x, int y, String name) {
+    checkDelay(given, tick, name);
+    queuedPlays.add(new QueuedPlay(given, tick, side, card.name(), PlayKind.CARD, name));
     battle.queue(
         new BattleCommand() {
           @Override
@@ -561,7 +605,7 @@ public class Standard1v1Battle {
 
           @Override
           public void execute(Battle target) {
-            runPlay(target, card, level, side, x, y, name);
+            runPlay(target, given, card, level, side, x, y, name);
           }
         });
   }
@@ -579,7 +623,7 @@ public class Standard1v1Battle {
    * the Mirror is the last card by the Mirror's run once it is placed, so the two agree; a listed
    * play the match refused at its run is repeated instead ({@link #mirrorSource}). Where the
    * client's moment decides, the Mirror is refused, and so is a Mirror outside a match, which has
-   * no last card.
+   * no last card. The play is taken as given {@link #PLAY_DELAY_TICKS} ticks before its run.
    *
    * <p>A Mirror of a champion's card, or of a hero play, which it repeats as the hero row, places a
    * copy one level up even while the first copy lives, and the champion slots hear the play as a
@@ -598,11 +642,32 @@ public class Standard1v1Battle {
    * @param name the play's name: unit {@code k} is named {@code name_k}
    */
   public void playMirror(int tick, String card, int level, int side, int x, int y, String name) {
+    playMirror(tick - PLAY_DELAY_TICKS, tick, card, level, side, x, y, name);
+  }
+
+  /**
+   * Queues a Mirror's play that states the tick it was given on, as a replay's play does; otherwise
+   * as {@link #playMirror(int, String, int, int, int, int, String)}: its item is built as its
+   * player's client builds it at that giving. The play must run {@link #PLAY_DELAY_TICKS} ticks
+   * after its giving ({@link #checkDelay}).
+   *
+   * @param given the tick the play was given on
+   * @param tick the tick the play runs on
+   * @param card the Mirror's card row name
+   * @param level the level the Mirror is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void playMirror(
+      int given, int tick, String card, int level, int side, int x, int y, String name) {
+    checkDelay(given, tick, name);
     if (match == null) {
       throw new UnsupportedOperationException(
           "the Mirror outside a match, which keeps no last card to play again");
     }
-    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.MIRROR, name);
+    QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.MIRROR, name);
     queuedPlays.add(queued);
     battle.queue(
         new BattleCommand() {
@@ -689,7 +754,7 @@ public class Standard1v1Battle {
    */
   private Play mirrorSource(QueuedPlay queued, String name) {
     int side = queued.side();
-    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int given = queued.given();
     QueuedPlay last = null;
     Play lastRun = null;
     boolean lastUncertain = false;
@@ -697,7 +762,7 @@ public class Standard1v1Battle {
       if (other == queued || other.side() != side || other.tick() > queued.tick()) {
         continue;
       }
-      int otherGiven = other.tick() - PLAY_DELAY_TICKS;
+      int otherGiven = other.given();
       if (otherGiven >= given - 1) {
         throw new UnsupportedOperationException(
             name
@@ -714,7 +779,7 @@ public class Standard1v1Battle {
       boolean listed = other.tick() >= given || (refused && due >= given + 2);
       boolean uncertain = !listed && refused && due >= given - 2;
       // Of two plays given in one tick the one queued later is listed later.
-      if ((listed || uncertain) && (last == null || otherGiven >= last.tick() - PLAY_DELAY_TICKS)) {
+      if ((listed || uncertain) && (last == null || otherGiven >= last.given())) {
         last = other;
         lastRun = run;
         lastUncertain = uncertain;
@@ -760,6 +825,42 @@ public class Standard1v1Battle {
     throw new IllegalStateException(name + " has not run");
   }
 
+  /** The play run under the given name, or null while it has not run. */
+  private Play ranPlay(String name) {
+    for (Play play : plays) {
+      if (play.name().equals(name)) {
+        return play;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Refuses a command that does not run {@link #PLAY_DELAY_TICKS} ticks after the tick it was given
+   * on. The game runs every player's command that many ticks after its giving: a command heard late
+   * is run in a history replayed from before its run tick, or, later still, given anew that many
+   * ticks before the tick it runs on, so no battle of the game holds another delay. The battle
+   * builds a play's item as the player's client built it at the giving, which with another delay
+   * would be a client the game does not have.
+   *
+   * @param given the tick the command was given on
+   * @param tick the tick the command runs on
+   * @param name the command's name
+   */
+  private static void checkDelay(int given, int tick, String name) {
+    if (tick - given != PLAY_DELAY_TICKS) {
+      throw new UnsupportedOperationException(
+          name
+              + ": a command given on tick "
+              + given
+              + " to run on tick "
+              + tick
+              + ", not "
+              + PLAY_DELAY_TICKS
+              + " ticks later as the game runs every command, is not modelled");
+    }
+  }
+
   /**
    * Queues a variant card's play to run on the given tick, in a match, with no command item to name
    * its option, as the debug screen plays it: it is played as the option its player's client picks
@@ -803,7 +904,8 @@ public class Standard1v1Battle {
             name
                 + ": a variant play runs on tick 22 or later, its option picked after the step 22"
                 + " ticks before");
-    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT, name);
+    QueuedPlay queued =
+        new QueuedPlay(tick - PLAY_DELAY_TICKS, tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before
@@ -851,7 +953,8 @@ public class Standard1v1Battle {
    * reading the command does not time: it may be a few steps older than the one {@link
    * #playVariant(int, String, int, int, int, int, String)} picks after, so the battle plays the
    * option given and does not pick one. The option drives all the item does: the row cast, its
-   * cost, its production stop, and the option a Mirror after it repeats.
+   * cost, its production stop, and the option a Mirror after it repeats. The play is taken as given
+   * {@link #PLAY_DELAY_TICKS} ticks before its run.
    *
    * @param tick the tick the play runs on
    * @param card the variant card's row name
@@ -864,6 +967,36 @@ public class Standard1v1Battle {
    */
   public void playVariant(
       int tick, String card, int option, int level, int side, int x, int y, String name) {
+    playVariant(tick - PLAY_DELAY_TICKS, tick, card, option, level, side, x, y, name);
+  }
+
+  /**
+   * Queues a variant card's play that states the tick it was given on and the option its command
+   * carries, as a replay's play does; otherwise as {@link #playVariant(int, String, int, int, int,
+   * int, int, String)}. The play must run {@link #PLAY_DELAY_TICKS} ticks after its giving ({@link
+   * #checkDelay}).
+   *
+   * @param given the tick the play was given on
+   * @param tick the tick the play runs on
+   * @param card the variant card's row name
+   * @param option the index of the option the command carries, one of the card's options
+   * @param level the level it is played at, counted from 1
+   * @param side the placing side
+   * @param x the requested point in game units
+   * @param y the requested point in game units
+   * @param name the play's name: unit {@code k} is named {@code name_k}
+   */
+  public void playVariant(
+      int given,
+      int tick,
+      String card,
+      int option,
+      int level,
+      int side,
+      int x,
+      int y,
+      String name) {
+    checkDelay(given, tick, name);
     if (match == null) {
       throw new UnsupportedOperationException(
           card + " outside a match, which has no hand to play it from");
@@ -873,7 +1006,7 @@ public class Standard1v1Battle {
     checkArgument(
         option >= 0 && option < variant.options().size(),
         () -> name + ": " + card + " has no option " + option);
-    QueuedPlay queued = new QueuedPlay(tick, side, card, PlayKind.VARIANT, name);
+    QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
     battle.queue(
         new BattleCommand() {
@@ -954,7 +1087,7 @@ public class Standard1v1Battle {
     int pick = pickTick(queued);
     int total = 0;
     for (QueuedPlay other : queuedPlays) {
-      int otherGiven = other.tick() - PLAY_DELAY_TICKS;
+      int otherGiven = other.given();
       if (other == queued
           || other.side() != side
           || otherGiven > pick - 2
@@ -986,7 +1119,7 @@ public class Standard1v1Battle {
     int pick = pickTick(queued);
     int total = 0;
     for (QueuedAbility ability : queuedAbilities) {
-      int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
+      int abilityGiven = ability.given();
       if (ability.side() == side && abilityGiven <= pick - 2 && ability.tick() > pick) {
         total += abilityCost(ability, name);
       }
@@ -1040,12 +1173,12 @@ public class Standard1v1Battle {
    */
   private void checkPromisesKnown(QueuedPlay queued, String name) {
     int side = queued.side();
-    int given = queued.tick() - PLAY_DELAY_TICKS;
+    int given = queued.given();
     int pick = pickTick(queued);
     for (QueuedPlay other : queuedPlays) {
       if (other != queued
           && other.side() == side
-          && other.tick() - PLAY_DELAY_TICKS >= pick - 1
+          && other.given() >= pick - 1
           && other.tick() <= queued.tick()) {
         throw new UnsupportedOperationException(
             name
@@ -1056,11 +1189,15 @@ public class Standard1v1Battle {
     // A refused play's promise is dropped by the first step whose tick reaches PROMISE_TICKS after
     // its giving; which count of the tick that step reads is not traced, so the window is two
     // ticks wider than the pick's step.
-    for (Play play : plays) {
+    for (QueuedPlay other : queuedPlays) {
+      Play play = ranPlay(other.name());
+      if (play == null) {
+        continue;
+      }
       boolean refused = play.matchCode() != 0 || play.result() == null || !play.result().placed();
       if (play.side() == side
           && refused
-          && play.tick() - PLAY_DELAY_TICKS + PROMISE_TICKS >= pick - 2
+          && other.given() + PROMISE_TICKS >= pick - 2
           && play.tick() <= pick) {
         throw new UnsupportedOperationException(
             name
@@ -1069,7 +1206,7 @@ public class Standard1v1Battle {
       }
     }
     for (QueuedAbility ability : queuedAbilities) {
-      int abilityGiven = ability.tick() - PLAY_DELAY_TICKS;
+      int abilityGiven = ability.given();
       if (ability.side() == side && abilityGiven >= pick - 1 && abilityGiven <= given) {
         throw new UnsupportedOperationException(
             name
@@ -1086,7 +1223,7 @@ public class Standard1v1Battle {
   }
 
   private void runPlay(
-      Battle target, DeployCard card, int level, int side, int x, int y, String name) {
+      Battle target, int given, DeployCard card, int level, int side, int x, int y, String name) {
     // In a match the play carries its deck card's item, and first passes the match's gates on the
     // item's cost; a refused play changes nothing.
     Runnable pay = null;
@@ -1095,7 +1232,7 @@ public class Standard1v1Battle {
     if (match != null) {
       int deckIndex = match.deckIndex(side, card.name());
       if ((match.side(side).slotFlags(deckIndex) & MatchSide.EVOLUTION_SLOT) != 0) {
-        checkNoneDue(target.getTick(), side, card.name(), name);
+        checkNoneDue(given, target.getTick(), side, card.name(), name);
         checkCountKnown(side, deckIndex, card.name(), name);
       }
       item = match.item(side, deckIndex);
@@ -1139,12 +1276,15 @@ public class Standard1v1Battle {
    * Refuses a play of an evolution slot's card while another play of the same card of its side is
    * due in the ticks between the play's giving and its run: the player's client builds the item
    * from the count before that play runs, the item here from the count after.
+   *
+   * @param given the tick the play was given on
+   * @param tick the tick the play runs on
    */
-  private void checkNoneDue(int tick, int side, String card, String name) {
+  private void checkNoneDue(int given, int tick, int side, String card, String name) {
     for (QueuedPlay other : queuedPlays) {
       if (other.side() == side
           && other.card().equals(card)
-          && other.tick() >= tick - PLAY_DELAY_TICKS
+          && other.tick() >= given
           && other.tick() < tick) {
         throw new UnsupportedOperationException(
             name

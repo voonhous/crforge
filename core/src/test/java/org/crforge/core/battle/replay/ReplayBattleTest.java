@@ -42,6 +42,27 @@ class ReplayBattleTest {
   }
 
   @Test
+  void aReplayWhoseMirrorRunsAtAnotherDelayThanTheGamesIsRefusedBeforeItsBattleIsBuilt() {
+    GameTables tables = GameTables.loadConfigured();
+    ObjectNode scenario = ScenarioItems.fitted(Scenarios.knightThenMirror(), tables);
+    // The Mirror stated as given one tick before the tick the game would have given it: its item,
+    // which the battle builds as the player's client built it at the giving, would be one no
+    // client of the game builds.
+    ObjectNode mirror = (ObjectNode) scenario.path("cmd").get(4).path("c");
+    int run = mirror.path("t2").asInt();
+    mirror.put("t", run - Standard1v1Battle.PLAY_DELAY_TICKS - 1);
+
+    assertThatThrownBy(
+            () -> ReplayBattle.build(tables, new ReplayScenario(tables).translate(scenario)))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining(
+            "a command run "
+                + (Standard1v1Battle.PLAY_DELAY_TICKS + 1)
+                + " ticks after it was given")
+        .hasMessageContaining("cmd[4].c.t2=" + run);
+  }
+
+  @Test
   void checkingThePlaysThatRanRefusesAnItemOtherThanTheOneTheBattleBuilt() {
     GameTables tables = GameTables.loadConfigured();
     ObjectNode scenario = ScenarioItems.fitted(Scenarios.knightEvolvedThirdPlay(), tables);
