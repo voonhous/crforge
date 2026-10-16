@@ -24,6 +24,8 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.Timeline;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.replay.ReplayBattle;
+import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.AbilityCommand;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectEntity;
@@ -99,6 +101,12 @@ public final class LadderEnv extends BufferedEnv {
 
   /** The episode's slot flags by deck index, side 0's then side 1's, as its reset gave them. */
   private int[][] slots = new int[2][0];
+
+  /**
+   * Each side's card levels by deck index, for an episode reset on a replay's setup; null for every
+   * card at {@link EnvConfig#level}.
+   */
+  private int[][] deckLevels;
 
   /**
    * Both seats' actions of each decision of the episode, seat 0's then seat 1's, kept for a fault
@@ -204,10 +212,73 @@ public final class LadderEnv extends BufferedEnv {
 
   @Override
   public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
+    begin(seed, deck0, deck1, slots0, slots1, null);
+    try {
+      standard = new Standard1v1Battle(tables, config.towerLevel());
+      standard.getWorld().seed(seed);
+      // Each player's data is handed over before the decks are dealt, as the game's battle setup
+      // does for every player: one choice each, so each draws once.
+      standard.addPlayerData(1);
+      standard.addPlayerData(1);
+      match = standard.startLadderMatch(deck0, deck1, 0, 0, slots0, slots1);
+      commands = new PlayerCommands(standard);
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    started();
+  }
+
+  /**
+   * Starts an episode on a replay's setup, with none of its commands: the battle {@link
+   * ReplayBattle#build} builds from the replay's translation (its seed, towers, each player's data,
+   * the account words its deck shuffles draw with, the decks with their slot flags), and each play
+   * of a deck card at the card's level as the replay lists it, not {@link EnvConfig#level}. The
+   * commands are then given to it as a player's are, by {@link #step} or a replay's labeller.
+   *
+   * @param plan the replay's translation; its commands are left out
+   */
+  void resetReplay(ScenarioPlan plan) {
+    begin(
+        plan.seed(),
+        plan.decks().get(0),
+        plan.decks().get(1),
+        plan.slotFlags().get(0),
+        plan.slotFlags().get(1),
+        new int[][] {plan.deckLevels().get(0).clone(), plan.deckLevels().get(1).clone()});
+    ScenarioPlan setup =
+        new ScenarioPlan(
+            plan.seed(),
+            plan.towers(),
+            plan.decks(),
+            plan.deckLevels(),
+            plan.slotFlags(),
+            plan.accounts(),
+            plan.playerDataChoices(),
+            List.of(),
+            List.of());
+    try {
+      standard = ReplayBattle.build(tables, setup);
+      match = standard.getMatch();
+      commands = new PlayerCommands(standard);
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    started();
+  }
+
+  /** Forgets the last episode, before its battle is built. */
+  private void begin(
+      int seed,
+      List<String> deck0,
+      List<String> deck1,
+      int[] slots0,
+      int[] slots1,
+      int[][] levels) {
     clearFault();
     this.seed = seed;
     this.decks = List.of(List.copyOf(deck0), List.copyOf(deck1));
     this.slots = new int[][] {slots0.clone(), slots1.clone()};
+    this.deckLevels = levels;
     actionCount = 0;
     standard = null;
     battle = null;
@@ -236,21 +307,21 @@ public final class LadderEnv extends BufferedEnv {
     done = false;
     truncated = false;
     clear();
-    try {
-      standard = new Standard1v1Battle(tables, config.towerLevel());
-      standard.getWorld().seed(seed);
-      // Each player's data is handed over before the decks are dealt, as the game's battle setup
-      // does for every player: one choice each, so each draws once.
-      standard.addPlayerData(1);
-      standard.addPlayerData(1);
-      match = standard.startLadderMatch(deck0, deck1, 0, 0, slots0, slots1);
-      commands = new PlayerCommands(standard);
-    } catch (RuntimeException | AssertionError | StackOverflowError e) {
-      throw new CoreFailure(e);
-    }
+  }
+
+  /** Reads the battle just built and writes the episode's first observation. */
+  private void started() {
     battle = standard.getBattle();
     rememberTowers();
     observe();
+  }
+
+  /**
+   * The level a play of a side's deck card is given at: the card's level as the replay the episode
+   * was reset on lists it, else {@link EnvConfig#level}.
+   */
+  private int level(int side, int deckIndex) {
+    return deckLevels == null ? config.level() : deckLevels[side][deckIndex];
   }
 
   @Override
@@ -261,28 +332,54 @@ public final class LadderEnv extends BufferedEnv {
     if (config.faultBundles() != null) {
       logActions(action0, action1);
     }
+    beginDecision();
+    apply(firstSide, firstSide == 0 ? action0 : action1);
+    apply(1 - firstSide, firstSide == 0 ? action1 : action0);
+    for (int t = 0; t < config.decisionTicks() && !over(); t++) {
+      advance();
+    }
+    endDecision();
+  }
+
+  /**
+   * Opens a decision: the side given first, and the seats' refusals, illegal marks and run refusals
+   * of the last decision cleared. {@link #step} opens each decision so; a replay's labeller opens
+   * one, gives the replay's commands on their ticks, {@link #advance}s and ends it with {@link
+   * #endDecision}.
+   */
+  void beginDecision() {
     firstSide = episodeStep % 2;
+    Arrays.fill(lastRefusal, Schema.REFUSAL_NONE);
     Arrays.fill(illegalNow, 0);
     Arrays.fill(lastRunRefusal, 0);
     Arrays.fill(lastAbilityRunRefusal, 0);
     notModelled = 0;
-    apply(firstSide, firstSide == 0 ? action0 : action1);
-    apply(1 - firstSide, firstSide == 0 ? action1 : action0);
-    for (int t = 0; t < config.decisionTicks() && !battle.getMode().isOver(); t++) {
-      try {
-        battle.step();
-      } catch (RuntimeException | AssertionError | StackOverflowError e) {
-        throw new CoreFailure(e);
-      }
+  }
+
+  /** Steps the battle one tick. */
+  void advance() {
+    try {
+      battle.step();
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
     }
+  }
+
+  /** Whether the match is over. */
+  boolean over() {
+    return battle.getMode().isOver();
+  }
+
+  /**
+   * Ends a decision: reads the plays and ability commands that ran in it, counts it, decides the
+   * episode's end and writes the observation after it.
+   */
+  void endDecision() {
     readPlays();
     readAbilityUses();
     episodeStep++;
-    truncated =
-        !battle.getMode().isOver()
-            && config.maxTicks() > 0
-            && battle.getTick() >= config.maxTicks();
-    done = truncated || battle.getMode().isOver();
+    truncated = !over() && config.maxTicks() > 0 && battle.getTick() >= config.maxTicks();
+    done = truncated || over();
     observe();
   }
 
@@ -380,30 +477,88 @@ public final class LadderEnv extends BufferedEnv {
     int tile = (action - 1) % Schema.TILES;
     int x = Schema.gameX(side, tile % Schema.COLS);
     int y = Schema.gameY(side, tile / Schema.COLS);
-    MatchSide own = match.side(side);
-    int deckIndex = own.getHand().slots()[slot];
     // Named as a replay of the battle names its commands, by their order: a fault's message reads
     // the same in the episode and in its bundle's replay.
     String name = "cmd" + standard.getCommands().size();
     PlayerCommands.Giving giving;
     try {
-      giving = commands.playCard(side, slot, config.level(), x, y, name);
+      giving = givePlay(side, slot, x, y, name);
     } catch (UnsupportedOperationException e) {
       // A giving the battle core does not model: nothing was sent, as for a refusal.
       notModelled++;
       refuse(side, Schema.REFUSAL_NOT_MODELLED);
       return;
-    } catch (RuntimeException | AssertionError | StackOverflowError e) {
-      throw new CoreFailure(e);
     }
     if (!giving.given()) {
       refuse(side, Schema.refusalCode(giving.refusal()));
-      return;
     }
-    String card = own.deck().get(deckIndex).name();
+  }
+
+  /**
+   * Gives a play of a hand slot's card dropped at a point through the player's commands, at the
+   * card's level, and keeps it as waiting when given.
+   *
+   * @param side the playing side
+   * @param slot the hand slot
+   * @param x the dropped point in game units
+   * @param y the dropped point in game units
+   * @param name the command's name, new to the battle
+   * @return what the giving came to
+   * @throws UnsupportedOperationException for a giving the battle core does not model
+   */
+  PlayerCommands.Giving givePlay(int side, int slot, int x, int y, String name) {
+    MatchSide own = match.side(side);
+    int deckIndex = own.getHand().slots()[slot];
+    PlayerCommands.Giving giving;
+    try {
+      giving =
+          commands.playCard(
+              side,
+              slot,
+              deckIndex == Hand.EMPTY ? config.level() : level(side, deckIndex),
+              x,
+              y,
+              name);
+    } catch (UnsupportedOperationException e) {
+      throw e;
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    if (giving.given()) {
+      trackPlay(
+          name, side, own.deck().get(deckIndex).name(), giving.x(), giving.y(), giving.runTick());
+    }
+    return giving;
+  }
+
+  /**
+   * Keeps a play queued on the battle as waiting, for the observation: its pending row until it
+   * runs, and the card it shows the enemy when placed. {@link #givePlay} keeps each play it gives;
+   * a replay's labeller keeps a recorded play it queues as the replay states it.
+   *
+   * @param name the play's name
+   * @param side the playing side
+   * @param card the deck card played, by row name
+   * @param x the point its command carries
+   * @param y the point its command carries
+   * @param runTick the tick it runs on
+   */
+  void trackPlay(String name, int side, String card, int x, int y, int runTick) {
     givenCards.put(name, card);
-    waiting.add(
-        new Waiting(name, side, vocabulary.id(card), giving.x(), giving.y(), giving.runTick()));
+    waiting.add(new Waiting(name, side, vocabulary.id(card), x, y, runTick));
+  }
+
+  /**
+   * Keeps an ability command queued on the battle as waiting for a champion slot, for the slot's
+   * row of the observation.
+   *
+   * @param name the command's name
+   * @param side the commanding side
+   * @param slot the champion slot, 0 or 1
+   * @param runTick the tick it runs on
+   */
+  void trackAbility(String name, int side, int slot, int runTick) {
+    abilityWaiting.add(new AbilityWaiting(name, side, slot, runTick));
   }
 
   /**
@@ -420,20 +575,50 @@ public final class LadderEnv extends BufferedEnv {
     String name = "cmd" + standard.getCommands().size();
     PlayerCommands.Giving giving;
     try {
-      giving = commands.useAbility(side, unit.name(), name);
+      giving = giveAbility(side, slot, unit.name(), name);
     } catch (UnsupportedOperationException e) {
       // A giving the battle core does not model: nothing was sent, as for a refusal.
       notModelled++;
       refuse(side, Schema.REFUSAL_NOT_MODELLED);
       return;
-    } catch (RuntimeException | AssertionError | StackOverflowError e) {
-      throw new CoreFailure(e);
     }
     if (!giving.given()) {
       refuse(side, Schema.refusalCode(giving.refusal()));
-      return;
     }
-    abilityWaiting.add(new AbilityWaiting(name, side, slot, giving.runTick()));
+  }
+
+  /**
+   * Gives an ability command naming a unit through the player's commands, and keeps it as waiting
+   * for its champion slot when given.
+   *
+   * @param side the commanding side
+   * @param slot the champion slot whose button is tapped
+   * @param unit the name of the unit it names
+   * @param name the command's name, new to the battle
+   * @return what the giving came to
+   * @throws UnsupportedOperationException for a giving the battle core does not model
+   */
+  PlayerCommands.Giving giveAbility(int side, int slot, String unit, String name) {
+    PlayerCommands.Giving giving;
+    try {
+      giving = commands.useAbility(side, unit, name);
+    } catch (UnsupportedOperationException e) {
+      throw e;
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    if (giving.given()) {
+      trackAbility(name, side, slot, giving.runTick());
+    }
+    return giving;
+  }
+
+  /**
+   * The unit a seat's ability action of a champion slot names now, or null: see {@link
+   * #abilityUnit}.
+   */
+  CharacterEntity abilityEntity(int seat, int slot) {
+    return findAbilityUnit(seat, slot);
   }
 
   /**

@@ -26,6 +26,8 @@ env/                     org.crforge.env
   EnvFault               a fault's kind, message, signature and bundle folder
   FaultBundle            a faulted episode written as a replay and fault.json
   VectorEnv              N environments stepped together, on a thread pool, through direct buffers
+  ReplayLabeller         a replay labelled for behavioural training: each seat's rows and the action of its command
+  ReplayFiles            the replays of a file: a replay document, or a crawl's JSON Lines output (plain, zstd, gzip)
 
 python/                  crforge_env (the crforge-env package)
   VectorBattle           the vector from Python: its buffers as arrays of the same memory
@@ -34,6 +36,7 @@ python/                  crforge_env (the crforge-env package)
   Schema                 the layout, read from the vector's metadata at start
   ScriptedBot            a scripted opponent of a few readable rules on what its player sees
   evaluate               a policy against an opponent over many episodes, as wins, losses and draws
+  label_replays          replays labelled for behavioural training, as numpy arrays per replay
   bench                  the Python-side benchmark (crforge-env-bench)
 ```
 
@@ -177,6 +180,85 @@ The buffers are direct `ByteBuffer`s in the machine's byte order, laid out envir
 
 With more than one thread the battles are stepped on a fixed pool of daemon threads, each thread taking a contiguous share; nothing is shared between battles but the read-only tables and vocabulary.
 
+`VectorEnv.replayJson(i)` writes battle `i`'s episode so far as a replay of the tables' data version (`ScenarioWriter`, as a fault bundle's `replay.json`): its seed, decks, levels, towers and every command its seats gave with the ticks they were given and run on, its `endTick` the battle's tick now. The debug visualizer's replay viewer opens it, and the replay labeller below reads it as any replay.
+
+## Labelling replays
+
+Behavioural training (imitation) learns a policy from games people played: at each decision, what the player saw and what the player did. `ReplayLabeller` turns a replay into exactly that, in the environment's own schema: it steps the replay's battle and writes, at every decision of each seat, the observation and mask `LadderEnv` would show that seat, and as the label the action that gives the command the player gave. A model trained on the rows plays the environment as it is. The tool holds no data: it labels any replay of a data version the battle core plays (`docs/compatibility.md`), on the tables of that version, and the rows stay on the machine that makes them.
+
+### A row
+
+A replay gives two rows a decision, seat 0's then seat 1's: the decision's tick, the seat (the game side it plays), its observation (`SEAT_INTS` integers, in the seat's own frame, player-visible only) and its mask (`ACTIONS` bytes), the label (an action of the schema, 0 the wait) and the row's flags. Every decision is a row, the wait-only ones included; a trainer that wants only real choices keeps the rows whose mask opens more than the wait.
+
+### The battle
+
+The replay's battle is built as `ReplayBattle.build` builds it (seed, towers, each player's data, decks, levels and slot flags), but with none of its commands queued. Each command is given on its given tick, the tick counter it was stamped with (the replay's `t`, never inferred), through `PlayerCommands`, from the point the replay records and at the level its deck lists, by the same code `LadderEnv` gives its own plays with. So what each seat is shown is what the environment shows a policy: the promised elixir, the plays waiting, the champion buttons, the mask from the client's try. A command the client's try refuses at its giving, whose recorded point the screen's placement search would move, or whose giving the battle core does not model is queued as the replay states it (as `ReplayBattle` does), so the battle stays the replay's; it is counted, and flagged. Each play's item is checked as it runs against the replay's (`ReplayBattle.checkItems`); a replay whose items or reading the battle core refuses stops there, with its rows so far and the reason.
+
+### The alignment
+
+Decisions fall every `decisionTicks` ticks from tick 0, as the environment takes them: 0, 5, 10, ... by default, every tick at 1. A command belongs to the decision whose window, from its tick up to the next decision's, holds its **given** tick; the run tick, 20 later, plays no part. The row of a decision holds the observation and mask written at its tick, before any command of its window is given, as a policy's decision is taken.
+
+### The label
+
+- **A card play**: the hand slot its card holds in the row's observation, and a tile of the seat's frame. A replay records the tile the screen's search found, a tile centre (less 1 on a coordinate the symmetrical snap shifts) or a building's tile corner (see [When a player's command runs](battle-core.md#when-a-players-command-runs)), so the label's tile is the first of the tiles touching the recorded point, the one holding it first, whose centre the screen's search, run on the battle at the giving, sends to the recorded point. Driven from the label, the play is then sent on the replay's point. When no tile's centre does, the tile holding the point is named and the row flagged.
+- **An ability command**: the ability action of the champion slot whose unit is the one the command names (by its object id).
+- **Two commands of one seat in a window**: the first, in the replay's order, is the label; the others are counted as collisions and the row flagged. At 1-tick decisions only two commands given on one tick collide; at 5 ticks any two within five ticks do.
+- **A command the action space cannot say at the row** is labelled the wait and the row flagged: its card is not in the row's hand (at 5 ticks, a card that came into the hand within the window), no champion slot follows the unit an ability command names (a champion an action spawned, or an object id that names no slot's unit), or a variant card's recorded option is not the one the client would pick now (the action names no option).
+- **A label the mask closes** is kept, and the row flagged: the client sent a command the environment's try would have refused (for example a play the battle core finds short of elixir at the giving, or given after the match was decided).
+
+Nothing is dropped: every command of the replay is a label, a collision, inexpressible, or after the labelling's end.
+
+| Flag | Bit | Meaning |
+|---|---:|---|
+| `label_masked` | 1 | the label's action is closed in the row's mask |
+| `collision` | 2 | the seat gave another command in the window, which the label does not say |
+| `inexpressible` | 4 | the seat gave a command the action space cannot say at the row; the label is the wait |
+| `point_unmatched` | 8 | no tile centre's search sends to the recorded point; the tile holding it is named |
+| `given_as_recorded` | 16 | a command of the seat's window was queued as the replay states it, not given through the player's commands |
+| `unpromised` | 32 | a command of the seat queued as recorded waits to run, so the row's promised elixir, pending marks and mask leave it out |
+
+The counts of a replay (`ReplayLabeller.Counts`, by name in `COUNT_NAMES`): `decisions`, `rows`, `commands`, `plays`, `abilities`, `labelled`, `label_masked`, `collisions`, `inexpressible` (`not_in_hand`, `ability_unit_unknown`, `option_differs`), `point_unmatched`, `given_as_recorded` (`refused_at_giving`: the client's try refused it, its card was not in the hand, or no champion slot names an ability command's unit; `point_moved`; `not_modelled_at_giving`), `after_end` (commands given on or after the tick the labelling stopped at: the match's end, the replay's `endTick`, or a refusal), `order_differs` (windows where both seats are labelled and the replay gave the two in the other order than the environment gives two seats' actions, side 0 first on even decisions) and `rows_unpromised`.
+
+### The proof
+
+`ReplayLabeller.drive(replay, labels)` takes the labels alone and plays them as the environment plays actions: a `LadderEnv` reset on the replay's setup, each decision's two labels given by `step`. It checks the driven battle against the replay's own (`ReplayBattle.build`) at every decision: the two rows before it against the labels' rows, the commands given in it against the replay's (kind, side, card, level, given and run tick, point, option, the unit an ability command names), each play's item as it runs, and the battle's state after it (tick, the battle's random state, each side's elixir, hand, queue and crowns, and every entity's id, kind, side, row, position, state and hit points). It reports the first difference of any kind and goes on past a row or a command's point that differ, stopping at the first command that differs otherwise, the first item and the first state: `reproduced` when everything matched exactly, `stateReproduced` when every command matched but perhaps for its point and the state matched at every decision to the end (a play sent from the tile's centre on a point next to the replay's, which its run places where the replay's was).
+
+At 1-tick decisions a replay whose commands are all expressible, with no collision and no order the alternation reverses, reproduces exactly: an episode of the environment written as a replay is labelled with its own rows and actions, and driven back to the same battle (`ReplayLabellerTest`, `test_labels.py`). At 5 ticks a command given between two decisions is driven at the decision before it, so it is stamped and run up to 4 ticks early, and the driven battle leaves the replay's at the first such command; the rows remain the replay's, which is what training reads.
+
+### Using it
+
+```java
+ReplayLabeller labeller = new ReplayLabeller(tables, 5);           // replays the game client records
+ReplayLabeller labeller = ReplayLabeller.of(tables, 1, "generated"); // generated test cases, every tick
+for (ReplayFiles.Source source : ReplayFiles.read(Path.of("<file>"))) {
+  ReplayLabeller.Labels labels = labeller.label(source.document()); // rows, counts, stop tick, refusal
+  ReplayLabeller.Drive drive = labeller.drive(source.document(), labels);
+}
+```
+
+`ReplayFiles.read` reads a replay document (`.json`) as it is, or a crawl's JSON Lines output (`.jsonl`, plain, zstd or gzip, found by its first bytes) as the desktop replay viewer reads it: format 1 records, the replay as a string, each given the capture block its record names (the battle's data version and content sha), so a record is read only on the tables of its own data version and refused on another's; a record that names candidate versions, or cannot be read, is listed with why. `labeller.metadataJson()` is the environment's metadata export with the labeller's decision interval, to be kept with the rows.
+
+### Measured on the reference battles
+
+Measured on 2026-10-16 on one Mac (Apple M4 Pro, JDK 17.0.14, Python 3.12.7) with other work running (1-minute load average 4.6 at the start and 9.3 at the end of the 16.402.19 run, 5.6 and 8.2 of the 16.402.21 run): `label_replays` on 4 threads over every reference battle of the data repository of each version, labelling alone for the rate, then again with `check`. The reference battles are of two kinds: replays the game client recorded (25 of 16.402.19, 33 of 16.402.21), and generated test cases (967 each), whose plays are dropped on arbitrary points and some before the start cooldown, as no player's screen sends them; only the first kind is players' games.
+
+| version | kind | decision | replays | rows | rows/s | rows labelled with a command | driven exactly | state reproduced |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 16.402.19 | recorded | 5 ticks | 25 | 43,092 | 81,435 | 3.5% | 0 | 0 |
+| 16.402.19 | recorded | 1 tick | 25 | 215,330 | 190,786 | 0.70% | 9 | 13 |
+| 16.402.19 | generated | 5 ticks | 967 | 1,654,574 | 133,638 | 0.33% | 20 | 279 |
+| 16.402.19 | generated | 1 tick | 967 | 8,267,832 | 260,921 | 0.07% | 20 | 341 |
+| 16.402.21 | recorded | 5 ticks | 33 | 58,860 | 70,328 | 3.7% | 0 | 0 |
+| 16.402.21 | recorded | 1 tick | 33 | 294,136 | 181,098 | 0.74% | 10 | 14 |
+| 16.402.21 | generated | 5 ticks | 967 | 1,654,574 | 141,210 | 0.33% | 20 | 279 |
+| 16.402.21 | generated | 1 tick | 967 | 8,267,832 | 241,648 | 0.07% | 20 | 341 |
+
+One thread labels about 22,000 rows a second at 5-tick decisions; the threads scale, as each replay is labelled whole in the JVM, which releases Python's lock (4 threads 89,000, 8 threads 171,000, on 18 reference battles).
+
+The recorded replays of 16.402.19 at 1-tick decisions: 1,629 commands (1,538 plays, 91 ability commands), 1,499 labelled; 16 labels closed by the mask, 1 collision, 16 inexpressible (2 cards not in the hand, 14 ability commands whose object id names no champion slot's unit), 43 points no tile centre's search sends, 73 commands given as recorded, 113 after the end, 5 order flips. At 5 ticks the same replays have 76 labels closed by the mask (a command's window opening before the elixir for it was there), 22 order flips and still 1 collision. Those of 16.402.21 are alike (2,298 commands, 2,163 labelled at 1 tick).
+
+What the drive found, at 1-tick decisions: every recorded replay whose labels are all expressible, open in their masks, with no collision and no order flip reproduces the replay's battle to its end (13 of 13 of 16.402.19, 14 of 14 of 16.402.21), and exactly, every command's point included, when no point is unmatched (9 of 9, 10 of 10). Every other replay stops at a flagged row or an order flip: an ability command whose unit no slot names, a label the mask closed (the client sent a play the battle core finds short of elixir at the giving, or one given after the match was decided), a variant card's option, or two seats' commands on one tick in the other order than the environment's alternation. The 43 unmatched points of 16.402.19 lie at the two middle tile columns, sent at 8500 and 9499 where the battle core's screen search gives 8499 and 9500 (mostly in an open pocket), and three into a pocket the battle core finds closed at the giving; the run places them where the replay's were, so the state still matches. Both, and the client's try at the giving, are filed for tracing on 16.402.17 rather than guessed. At 5-tick decisions no recorded replay is driven exactly: its first command given between two decisions is given up to 4 ticks early.
+
 ## What is not offered yet
 
 - **Champion abilities of spawned champions**: an ability action names a unit a card play of the side made (`PlayerCommands.useAbility` names units by the play's name); a champion slot that follows a champion an action spawned keeps its action closed.
@@ -212,7 +294,7 @@ Two inputs, each one explicit argument with no default and no environment variab
 
 ### The vector
 
-`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2528)`, `masks` uint8 `(count, 2, 2307)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s; `LadderConfig(fault_bundles=<folder>)` writes fault bundles ([Fault bundles](#fault-bundles)), and `fault(i).bundle` names a written bundle's folder.
+`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2528)`, `masks` uint8 `(count, 2, 2307)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`, `replay_json(i)` (battle `i`'s episode so far as a replay document, `VectorEnv.replayJson`). `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s; `LadderConfig(fault_bundles=<folder>)` writes fault bundles ([Fault bundles](#fault-bundles)), and `fault(i).bundle` names a written bundle's folder.
 
 A synthetic vector takes `synthetic_entities`, `synthetic_episode_steps`, and `synthetic_fault_at` with `synthetic_fault_kind` (`refusal`, `bug`, `env_bug`): every episode faults at that decision, so the fault path can be tested without a battle.
 
@@ -264,6 +346,21 @@ Measured on 2026-10-16 on one Mac (Apple M4 Pro), data version 16.402.19, with o
 
 No episode faulted and the bot took no illegal action. The bot is a floor for a trained policy to beat, not a strong player: it never plays a spell, defends with whatever troop is cheapest and attacks in one lane at a time.
 
+### Labelled replays
+
+```python
+from crforge_env import label_replays
+
+run = label_replays(paths, install, tables, decision_ticks=5, threads=4)            # in memory
+run = label_replays(paths, install, tables, decision_ticks=1, check=True, out_dir="rows/")
+run.metadata                       # the schema, the configuration with the interval, the vocabulary
+run.replays[0].observations        # int32 (rows, 2528); .masks uint8 (rows, 2307); .actions int32
+run.replays[0].ticks, .seats, .flags, .counts, .drive
+run.summaries, run.unreadable, run.totals()
+```
+
+`label_replays(paths, install, tables, *, decision_ticks=5, threads=1, shape="replay", check=False, out_dir=None, jvm_args=())` labels every replay of the files (replay documents and crawl outputs, as above) on the tables of their data version ([Labelling replays](#labelling-replays)). Each replay is labelled whole on one thread, `threads` at once. `shape` is `replay` for replays the game client records and `generated` for generated test cases. `check` also drives a battle from each replay's labels and reports it in `drive` (`reproduced`, `state_reproduced`, `first_divergent_tick`, `divergence`, `stop` and the counts). With `out_dir` each replay's arrays go to `<out_dir>/<source>.npz` (`ReplayLabels.save`, the counts and drive as JSON strings in it), with `metadata.json` and `counts.jsonl` (one replay a line) beside them, and none is kept in memory. `FLAGS` names the row flags and `flag_names(flags)` reads them. The rows are local data of the machine that makes them: never commit them.
+
 ### Faults are truncations
 
 A fault is never a result. When a battle's episode ends by a fault (a refusal of the battle core, a bug of the core, a bug of the environment), the step that reports it is `terminated=False, truncated=True` with reward 0 for both seats, and the info names the fault's kind under `fault` (`refusal`, `bug` or `env_bug`, `none` otherwise) with `fault_message`, `fault_signature` and `fault_bundle` (the folder of the fault's bundle, empty when none was written). A trainer bootstraps such a step as it bootstraps a tick limit, and never learns from it as a loss or a win. A tick limit (`LadderConfig.max_ticks`) truncates the same way, with `fault` `none`. A reset whose new episode faults before its first decision raises `BattleFaultError` with the fault.
@@ -277,7 +374,7 @@ uv run pytest --install=../env/build/install/env                            # th
 uv run ruff check && uv run ruff format --check
 ```
 
-The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, a saved vocabulary whose ids moved refused, and a fault's bundle written, its folder named in the fault and the seats' info, and none written by default. The scripted bot's tests hold its rules on observations written by hand, its determinism and the mask on synthetic environments with hand-written card types, the evaluation's counting on synthetic episodes, and on Ladder battles the card types against the tables, a win against `wait_opponent` and a whole battle against `random_opponent` with plays and no illegal action. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
+The tests without tables run the vector, the schema and both wrappers on synthetic environments: the arrays view the buffers, a forced fault of each kind ends the episode as truncated with no reward in both wrappers, the same seeds and actions give the same observations on one thread and four, a saved export of another schema is refused, and both wrappers pass their API's own checker. The Ladder tests add: a battle's start (decks, towers, a mask of the wait alone before the start cooldown), the mask honoured (a closed action counted for its seat alone, random open actions never illegal), determinism on one thread and four, a whole battle to its result, a tick limit as truncation, both API checkers on a battle, a saved vocabulary whose ids moved refused, and a fault's bundle written, its folder named in the fault and the seats' info, and none written by default. The label tests write an episode of the environment as a replay (`VectorBattle.replay_json`) and label it back: at 1-tick decisions its own observations, masks and hand slots come back and the labels drive the same battle; a crawl record of it, plain or compressed, is labelled as the replay document is, on one thread or two, in memory or written to a folder. The scripted bot's tests hold its rules on observations written by hand, its determinism and the mask on synthetic environments with hand-written card types, the evaluation's counting on synthetic episodes, and on Ladder battles the card types against the tables, a win against `wait_opponent` and a whole battle against `random_opponent` with plays and no illegal action. CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
 
 ### The Python-side benchmark
 
