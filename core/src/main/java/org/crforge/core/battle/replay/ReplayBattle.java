@@ -27,7 +27,7 @@ public final class ReplayBattle {
    * Builds the battle a translated scenario gives, before its first step: the towers, the seed,
    * each player's data, the Ladder match between the two decks, and every command queued in the
    * scenario's order, each play and ability command named {@code cmd<index>} after its index in the
-   * scenario.
+   * scenario, with the tick it was given on and the tick it runs on as the scenario states them.
    *
    * @param tables the game tables
    * @param plan the translated scenario
@@ -63,6 +63,7 @@ public final class ReplayBattle {
         if (play.repeats() != null) {
           // A Mirror's play repeats its side's last card, as the battle's Mirror builds it.
           battle.playMirror(
+              play.givenTick(),
               play.runTick(),
               play.card(),
               play.level(),
@@ -74,6 +75,7 @@ public final class ReplayBattle {
           // A variant card's play runs as the option its item carries, as the game's battle plays
           // it: the player's client picked it from an elixir reading the replay does not time.
           battle.playVariant(
+              play.givenTick(),
               play.runTick(),
               play.card(),
               play.option().index(),
@@ -84,6 +86,7 @@ public final class ReplayBattle {
               "cmd" + index);
         } else {
           battle.play(
+              play.givenTick(),
               play.runTick(),
               battle.getWorld().getRecords().card(play.card()),
               play.level(),
@@ -93,7 +96,12 @@ public final class ReplayBattle {
               "cmd" + index);
         }
       } else {
-        battle.useAbility(ability.runTick(), ability.side(), ability.objectId(), "cmd" + index);
+        battle.useAbility(
+            ability.givenTick(),
+            ability.runTick(),
+            ability.side(),
+            ability.objectId(),
+            "cmd" + index);
       }
     }
     return battle;

@@ -341,6 +341,78 @@ class ReplayScenarioTest {
         .hasMessageContaining("the command type 124");
   }
 
+  /** Puts a command's given tick and run tick. */
+  private static void putTicks(ObjectNode scenario, int command, int given, int run) {
+    ((ObjectNode) scenario.path("cmd").get(command).path("c")).put("t", given).put("t2", run);
+  }
+
+  @Test
+  void refusesACommandRunAtAnotherDelayThanTheGamesEveryKindAlike() {
+    int delay = Standard1v1Battle.PLAY_DELAY_TICKS;
+    // A plain play, a Mirror's, a variant card's and an ability command, each run one tick later
+    // and one tick earlier than the game runs a command after its giving.
+    List<ObjectNode> scenarios =
+        List.of(
+            Scenarios.knight(),
+            Scenarios.knightThenMirror(),
+            Scenarios.mergeMaidenMounted(),
+            Scenarios.archerQueenAbility());
+    List<Integer> commands = List.of(0, 4, 0, 1);
+    for (int i = 0; i < scenarios.size(); i++) {
+      int command = commands.get(i);
+      for (int run : new int[] {delay + 1, delay - 1}) {
+        ObjectNode scenario = fit(scenarios.get(i).deepCopy());
+        int given = scenario.path("cmd").get(command).path("c").path("t").asInt();
+        putTicks(scenario, command, given, given + run);
+
+        assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+            .isInstanceOf(UnsupportedScenarioException.class)
+            .hasMessage(
+                "a command run "
+                    + run
+                    + " ticks after it was given, where the game runs every command "
+                    + delay
+                    + " ticks after, which no battle of the game holds: cmd["
+                    + command
+                    + "].c.t="
+                    + given
+                    + ", cmd["
+                    + command
+                    + "].c.t2="
+                    + (given + run));
+      }
+    }
+  }
+
+  @Test
+  void refusesACommandThatRunsBeforeItWasGiven() {
+    ObjectNode scenario = fit(Scenarios.knight());
+    putTicks(scenario, 0, 220, 200);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessageContaining("a command run -20 ticks after it was given")
+        .hasMessageContaining("cmd[0].c.t=220, cmd[0].c.t2=200");
+  }
+
+  @Test
+  void refusesACommandGivenBeforeTick1AndReadsOneGivenOnTick1() {
+    int delay = Standard1v1Battle.PLAY_DELAY_TICKS;
+    // A client stamps a command given before the first step with 1, never 0.
+    ObjectNode scenario = fit(Scenarios.knight());
+    putTicks(scenario, 0, 0, delay);
+
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(scenario))
+        .isInstanceOf(UnsupportedScenarioException.class)
+        .hasMessage(
+            "a command given before tick 1, which a player's client never stamps: cmd[0].c.t=0");
+
+    putTicks(scenario, 0, 1, 1 + delay);
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    assertThat(plan.plays().get(0).givenTick()).isEqualTo(1);
+    assertThat(plan.plays().get(0).runTick()).isEqualTo(1 + delay);
+  }
+
   @Test
   void readsAnAbilityCommandThatNamesItsUnitByGameObjectId() {
     ObjectNode scenario = fit(Scenarios.archerQueenAbility());

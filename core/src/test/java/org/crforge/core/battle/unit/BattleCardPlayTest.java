@@ -75,6 +75,47 @@ class BattleCardPlayTest {
   }
 
   @Test
+  @DisplayName("a play that states its given tick runs 20 ticks after it, and no other delay")
+  void aPlayStatingItsGivenTickRunsTwentyTicksAfterIt() {
+    Standard1v1Battle match =
+        new Standard1v1Battle(GameData.tables(), Standard1v1Battle.DEFAULT_LEVEL, false);
+    Battle battle = match.getBattle();
+    int delay = Standard1v1Battle.PLAY_DELAY_TICKS;
+    // The game runs every command that many ticks after its giving; a play stating another delay
+    // would ask for an item built by a client the game does not have.
+    for (int run : new int[] {delay + 1, delay - 1, 0}) {
+      assertThatThrownBy(
+              () ->
+                  match.play(
+                      30,
+                      30 + run,
+                      knight(),
+                      Standard1v1Battle.DEFAULT_LEVEL,
+                      0,
+                      3500,
+                      10000,
+                      "Late"))
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessage(
+              "Late: a command given on tick 30 to run on tick "
+                  + (30 + run)
+                  + ", not "
+                  + delay
+                  + " ticks later as the game runs every command, is not modelled");
+    }
+    assertThatThrownBy(() -> match.useAbility(30, 31, 0, 5000006, "Tap"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Tap: a command given on tick 30 to run on tick 31");
+
+    match.play(30, 30 + delay, knight(), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000, "Knight");
+    for (int tick = 0; tick <= 30 + delay; tick++) {
+      battle.step();
+    }
+    assertThat(match.getPlays()).extracting(Standard1v1Battle.Play::name).containsExactly("Knight");
+    assertThat(match.getPlays().get(0).tick()).isEqualTo(30 + delay);
+  }
+
+  @Test
   @DisplayName("a unit waiting its turn has its movement switched off until it starts deploying")
   void aWaitingUnitsMovementIsOffUntilItDeploys() {
     Standard1v1Battle match =
