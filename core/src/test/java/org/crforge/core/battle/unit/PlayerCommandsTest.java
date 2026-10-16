@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.ArrayList;
@@ -15,6 +16,8 @@ import java.util.List;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.MapCheck;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
@@ -110,9 +113,12 @@ class PlayerCommandsTest {
       "a Mirror given while a Knight's play waits promises the item its client builds from that"
           + " play, and runs 20 ticks after its own stamp")
   void aMirrorRunsTwentyTicksLater() {
-    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Mirror");
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Archer", "Mirror");
     LadderMatch match = battle.getMatch();
     PlayerCommands commands = new PlayerCommands(battle);
+    // An Archer's play runs first: the king's last card, which the screen's search reads for a
+    // Mirror, is then a card placed on the same tile as the waiting Knight.
+    playAndRun(battle, commands, "Archer", "a");
     int knightCost = Shipped.cost("Knight");
     int mirrorItemCost = Shipped.cost("Mirror") + knightCost;
     while (match.side(0).wholeElixir() < knightCost + mirrorItemCost) {
@@ -131,7 +137,7 @@ class PlayerCommandsTest {
     assertThat(mirror.runTick())
         .isEqualTo(battle.getBattle().getTick() + Standard1v1Battle.PLAY_DELAY_TICKS);
     stepTo(battle, mirror.runTick() + 1);
-    Standard1v1Battle.Play played = battle.getPlays().get(1);
+    Standard1v1Battle.Play played = battle.getPlays().get(2);
     assertThat(played.name()).isEqualTo("m");
     assertThat(played.tick()).isEqualTo(mirror.runTick());
     assertThat(played.mirror().repeats().name()).isEqualTo("Knight");
@@ -328,9 +334,8 @@ class PlayerCommandsTest {
     MatchSide side = refused.getMatch().side(0);
     assertThat(side.wholeElixir()).isGreaterThanOrEqualTo(cost);
     // Side 0 gives the Knights its elixir covers in both battles, side 1 one; in one battle side 0
-    // also gives three the client refuses: off the map, while its elixir still covers a Knight,
-    // then one its elixir does not cover, and its first hand slot again.
-    Giving offMap = commands.playCard(0, 3, LEVEL, -500, Y, "off");
+    // also gives two the client refuses: one its elixir does not cover, and its first hand slot
+    // again.
     int slot = 0;
     for (; slot < 3 && side.wholeElixir() >= commands.promised(0) + cost; slot++) {
       for (PlayerCommands each : List.of(commands, others)) {
@@ -344,8 +349,6 @@ class PlayerCommandsTest {
     Giving shortOfElixir = commands.playCard(0, 3, LEVEL, 14500, Y, "short");
     Giving again = commands.playCard(0, 0, LEVEL, X, Y, "again");
 
-    assertThat(offMap.refusal()).isEqualTo(Refusal.MAP);
-    assertThat(offMap.code()).isNotEqualTo(MapCheck.OK);
     assertThat(shortOfElixir.refusal()).isEqualTo(Refusal.NOT_ENOUGH_ELIXIR);
     assertThat(again.refusal()).isEqualTo(Refusal.CARD_PENDING);
     assertThat(again.code()).isEqualTo(PlayerCommands.SCREEN);
@@ -357,8 +360,185 @@ class PlayerCommandsTest {
     }
     assertThat(refused.getPlays())
         .extracting(Standard1v1Battle.Play::name)
-        .doesNotContain("off", "short", "again")
+        .doesNotContain("short", "again")
         .hasSize(slot + 1);
+  }
+
+  @Test
+  @DisplayName(
+      "a troop dropped in the enemy half is given on the tile the placement search finds now, the"
+          + " tile its run places it on")
+  void aTroopInTheEnemyHalfIsGivenOnItsOwnTile() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, 30);
+    DeployCard knight = battle.getWorld().getRecords().card("Knight");
+    // The mirror of side 0's point in side 1's half, between two tiles.
+    int x = X + 123;
+    int y = lengthUnits(battle) - Y + 77;
+    CardPlacement.Result now = battle.previewPlacement(knight, 0, x, y);
+    assertThat(now.placed()).isTrue();
+
+    Giving giving = commands.playCard(0, 0, LEVEL, x, y, "k");
+
+    assertThat(giving.given()).isTrue();
+    assertThat(new int[] {giving.x(), giving.y()})
+        .as("the tile the search finds now")
+        .containsExactly(now.x(), now.y());
+    assertThat(giving.y()).as("on side 0's half").isLessThan(lengthUnits(battle) / 2);
+    stepTo(battle, giving.runTick() + 1);
+    Standard1v1Battle.Play played = battle.getPlays().get(0);
+    assertThat(new int[] {played.x(), played.y()})
+        .as("the command carries the tile")
+        .containsExactly(giving.x(), giving.y());
+    assertThat(new int[] {played.result().x(), played.result().y()})
+        .as("placed on the tile sent")
+        .containsExactly(giving.x(), giving.y());
+  }
+
+  @Test
+  @DisplayName(
+      "a troop dropped on its king tower, a cell the map check refuses, or on a princess tower is"
+          + " moved to the nearest legal tile and given, as is one dropped off the map")
+  void aDropTheMapRefusesIsMoved() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    DeployCard knight = battle.getWorld().getRecords().card("Knight");
+    TowerEntity king = tower(battle, 0, true);
+    TowerEntity princess = tower(battle, 0, false);
+    int kx = king.getView().getX();
+    int ky = king.getView().getY();
+    int px = princess.getView().getX();
+    int py = princess.getView().getY();
+    assertThat(MapCheck.check(battle.getWorld().getTileMap(), knight, kx, ky))
+        .as("the map check refuses the king tower's centre")
+        .isNotEqualTo(MapCheck.OK);
+    int[][] drops = {{kx, ky}, {px, py}, {-500, Y}};
+
+    for (int[] drop : drops) {
+      while (battle.getMatch().side(0).wholeElixir() < Shipped.cost("Knight")) {
+        battle.getBattle().step();
+      }
+      int[] found = battle.searchPlacement(knight, 0, drop[0], drop[1]);
+      Giving giving = commands.playCard(0, 0, LEVEL, drop[0], drop[1], "k" + drop[0]);
+      assertThat(giving.given()).as("dropped at %d, %d", drop[0], drop[1]).isTrue();
+      assertThat(new int[] {giving.x(), giving.y()}).containsExactly(found);
+      assertThat(new int[] {giving.x(), giving.y()}).isNotEqualTo(drop);
+      stepTo(battle, giving.runTick() + 1);
+    }
+
+    Standard1v1Battle.Play onPrincess = battle.getPlays().get(1);
+    assertThat(Math.max(Math.abs(onPrincess.x() - px), Math.abs(onPrincess.y() - py)))
+        .as("off the princess tower's footprint")
+        .isGreaterThan(princess.getData().collisionRadius());
+    assertThat(battle.getPlays().get(2).x()).as("on the map").isNotNegative();
+    assertThat(battle.getPlays())
+        .extracting(play -> play.result().placed())
+        .containsExactly(true, true, true);
+  }
+
+  @Test
+  @DisplayName("a spell dropped between two tiles is given on its tile's centre")
+  void aSpellIsGivenOnItsTileCentre() {
+    Standard1v1Battle battle = ladder(Collections.nCopies(8, "Fireball"), KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, 60);
+    int x = X + 321;
+    int y = lengthUnits(battle) - Y + 77;
+
+    Giving giving = commands.playCard(0, 0, LEVEL, x, y, "f");
+
+    assertThat(giving.given()).isTrue();
+    assertThat(new int[] {giving.x(), giving.y()})
+        .containsExactly(x / 1000 * 1000 + 500, y / 1000 * 1000 + 500);
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror dropped while its king has no last card finds no tile and is refused on the"
+          + " screen: nothing is sent, nothing promised, and the battle runs on unchanged")
+  void aMirrorWithNothingToRepeatFindsNoTile() {
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Mirror");
+    Standard1v1Battle untouched = dealt(KNIGHT_MIRRORS, "Mirror");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    while (match.side(0).wholeElixir() < Shipped.cost("Mirror")) {
+      battle.getBattle().step();
+      untouched.getBattle().step();
+    }
+
+    Giving tried = commands.tryCard(0, slot(match, "Mirror"), LEVEL);
+    Giving giving = commands.playCard(0, slot(match, "Mirror"), LEVEL, X, Y, "m");
+
+    assertThat(tried.refusal()).isEqualTo(Refusal.NO_TILE);
+    assertThat(giving.refusal()).isEqualTo(Refusal.NO_TILE);
+    assertThat(giving.code()).isEqualTo(PlayerCommands.SCREEN);
+    assertThat(commands.promised(0)).isZero();
+    for (int tick = 0; tick < 40; tick++) {
+      battle.getBattle().step();
+      untouched.getBattle().step();
+      assertThat(state(battle)).as("tick %d", tick).isEqualTo(state(untouched));
+    }
+    assertThat(battle.getPlays()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror dropped while its king has no last card but a play of its side waits is refused"
+          + " as not modelled: which card the screen's search is handed then is not traced")
+  void aMirrorWhoseSearchCardIsUntracedIsRefused() {
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Mirror");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    int both = 2 * Shipped.cost("Knight") + Shipped.cost("Mirror");
+    while (match.side(0).wholeElixir() < both) {
+      battle.getBattle().step();
+    }
+    assertThat(commands.playCard(0, slot(match, "Knight"), LEVEL, X, Y, "k").given()).isTrue();
+    stepTo(battle, battle.getBattle().getTick() + 2);
+    int mirror = slot(match, "Mirror");
+
+    assertThatThrownBy(() -> commands.playCard(0, mirror, LEVEL, X, Y, "m"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("not modelled");
+  }
+
+  @Test
+  @DisplayName(
+      "the board changing in the 20 ticks moves the play again at its run, from the tile it was"
+          + " sent on")
+  void aBoardChangeMovesThePlayAgainAtItsRun() {
+    List<String> deck = new ArrayList<>(Collections.nCopies(7, "Knight"));
+    deck.add(0, "Cannon");
+    Standard1v1Battle battle = dealt(deck, "Cannon", "Knight");
+    // A point on side 0's half away from its towers and the river.
+    int x = 6500;
+    int y = 10500;
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, 10);
+    while (match.side(0).wholeElixir() < Shipped.cost("Cannon") + Shipped.cost("Knight")) {
+      battle.getBattle().step();
+    }
+    Giving cannon = commands.playCard(0, slot(match, "Cannon"), LEVEL, x, y, "c");
+    battle.getBattle().step();
+    // The Cannon has not run: the Knight's tile is the one under the Cannon's point.
+    Giving knight = commands.playCard(0, slot(match, "Knight"), LEVEL, x, y, "k");
+    assertThat(cannon.given()).isTrue();
+    assertThat(knight.given()).isTrue();
+    assertThat(knight.runTick()).isEqualTo(cannon.runTick() + 1);
+    assertThat(new int[] {knight.x(), knight.y()})
+        .containsExactly(battle.searchPlacement(GameData.card("Knight"), 0, x, y));
+
+    stepTo(battle, knight.runTick() + 1);
+
+    Standard1v1Battle.Play played = battle.getPlays().get(1);
+    assertThat(played.name()).isEqualTo("k");
+    assertThat(new int[] {played.x(), played.y()}).containsExactly(knight.x(), knight.y());
+    assertThat(played.result().placed()).isTrue();
+    assertThat(new int[] {played.result().x(), played.result().y()})
+        .as("moved off the Cannon that landed on its tile")
+        .isNotEqualTo(new int[] {knight.x(), knight.y()});
   }
 
   @Test
@@ -412,6 +592,34 @@ class PlayerCommandsTest {
       }
     }
     return -1;
+  }
+
+  /** Gives side 0's play of a hand card at the usual point and steps past its run. */
+  private static void playAndRun(
+      Standard1v1Battle battle, PlayerCommands commands, String card, String name) {
+    while (battle.getMatch().side(0).wholeElixir() < Shipped.cost(card)) {
+      battle.getBattle().step();
+    }
+    Giving giving = commands.playCard(0, slot(battle.getMatch(), card), LEVEL, X, Y, name);
+    assertThat(giving.given()).isTrue();
+    stepTo(battle, giving.runTick() + 1);
+  }
+
+  /** A side's king tower, or one of its princess towers. */
+  private static TowerEntity tower(Standard1v1Battle battle, int side, boolean king) {
+    for (BattleEntity entity : battle.getWorld().getHolder().entities()) {
+      if (entity instanceof TowerEntity tower
+          && tower.side() == side
+          && tower.getData().king() == king) {
+        return tower;
+      }
+    }
+    throw new AssertionError("no tower");
+  }
+
+  /** The arena's length in game units. */
+  private static int lengthUnits(Standard1v1Battle battle) {
+    return battle.getWorld().getTileMap().height() * 500;
   }
 
   /** Steps the battle until its tick counter reaches a tick. */

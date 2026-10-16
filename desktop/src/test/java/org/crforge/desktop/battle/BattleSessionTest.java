@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,10 @@ import org.junit.jupiter.api.Test;
  * refused play becomes a message instead of a crash.
  */
 class BattleSessionTest {
+
+  /** A Knight and an Archer, then the Mirrors the shuffle holds back for the refills. */
+  private static final List<String> MIRRORS =
+      List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
 
   @Test
   @DisplayName("the default decks deal, and every card of them plays without halting the battle")
@@ -121,10 +126,34 @@ class BattleSessionTest {
   }
 
   @Test
-  @DisplayName("a point where the card finds no tile is refused on the spot with a message")
-  void noTile() {
+  @DisplayName(
+      "a play is sent on the tile the search finds from the clicked point, one off the map"
+          + " included, and the preview shows it placed there")
+  void aPlayIsSentOnTheTileFound() {
     BattleSession session = only("Knight");
-    assertThat(session.play(0, 0, -500, 8500)).isFalse();
+    CardPlacement.Result preview = session.preview(0, 0, -500, 8500);
+    assertThat(preview.placed()).isTrue();
+
+    assertThat(session.play(0, 0, -500, 8500)).isTrue();
+
+    for (int i = 0; i <= Standard1v1Battle.PLAY_DELAY_TICKS + 1; i++) {
+      session.step();
+    }
+    Standard1v1Battle.Play played = session.getBattle().getPlays().get(0);
+    assertThat(new int[] {played.result().x(), played.result().y()})
+        .containsExactly(preview.x(), preview.y());
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror whose king has no last card finds no tile and is refused on the spot with a"
+          + " message")
+  void noTile() {
+    BattleSession session =
+        BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight"));
+    int mirror = slot(session, "Mirror");
+    assertThat(session.cardUnavailableReason(0, mirror)).contains("no legal tile");
+    assertThat(session.play(0, mirror, 3500, 8500)).isFalse();
     assertThat(session.messages()).last().asString().contains("no legal tile");
   }
 
@@ -134,10 +163,17 @@ class BattleSessionTest {
           + " further step runs")
   void aRefusedStepHalts() {
     // A Mirror given in the tick of another play of its side is refused inside the step.
-    List<String> mirrors =
-        List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
     BattleSession session =
-        BattleSession.ladder(GameData.tables(), mirrors, Collections.nCopies(8, "Knight"));
+        BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight"));
+    // An Archer's play runs first, so the king's last card, which the screen's search places a
+    // Mirror as, is placed on the Knight's tile.
+    while (session.match().side(0).wholeElixir() < Shipped.cost("Archer")) {
+      assertThat(session.step()).isTrue();
+    }
+    assertThat(session.play(0, slot(session, "Archer"), 3500, 8500)).isTrue();
+    for (int i = 0; i <= Standard1v1Battle.PLAY_DELAY_TICKS + 1; i++) {
+      assertThat(session.step()).isTrue();
+    }
     int knight = slot(session, "Knight");
     int mirror = slot(session, "Mirror");
     // The elixir covers the Knight and the Mirror's item, which repeats the waiting Knight.

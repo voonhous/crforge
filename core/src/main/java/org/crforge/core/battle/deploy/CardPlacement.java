@@ -116,8 +116,7 @@ public final class CardPlacement {
     if (code != MapCheck.OK) {
       return new Result(code, 0, 0, null, 0, List.of());
     }
-    boolean[] mask = PlacementSearch.mask(tileMap, card, side, entities);
-    int[] placed = PlacementSearch.find(tileMap, card, x, y, side, mask, symmetricalSnap);
+    int[] placed = search(tileMap, card, x, y, side, entities, symmetricalSnap);
     if (placed == null) {
       return new Result(NO_POSITION, 0, 0, null, 0, List.of());
     }
@@ -232,6 +231,33 @@ public final class CardPlacement {
       units.add(new Unit(k, unit, offset[0], offset[1], cx, cy, lane, start));
     }
     return new Result(0, px, py, interval, originLane, units);
+  }
+
+  /**
+   * The placement search of a play alone, with no map check before it: the deploy mask of the
+   * placing side over the battle's characters, then the nearest legal tile around the requested
+   * point ({@link PlacementSearch#find}). {@link #place} runs it after the map check; a player's
+   * screen runs it on the point a card is dropped on and sends the tile it finds.
+   *
+   * @param tileMap the arena's map
+   * @param card the card
+   * @param x requested x
+   * @param y requested y
+   * @param side the placing side
+   * @param entities the battle's characters, the live list then the queued ones
+   * @param symmetricalSnap whether the symmetrical snap applies
+   * @return the point found, or null when no legal tile is found
+   */
+  public static int[] search(
+      TileMap tileMap,
+      DeployCard card,
+      int x,
+      int y,
+      int side,
+      List<MaskEntity> entities,
+      boolean symmetricalSnap) {
+    boolean[] mask = PlacementSearch.mask(tileMap, card, side, entities);
+    return PlacementSearch.find(tileMap, card, x, y, side, mask, symmetricalSnap);
   }
 
   /**
