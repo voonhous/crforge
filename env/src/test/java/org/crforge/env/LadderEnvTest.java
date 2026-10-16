@@ -1,0 +1,722 @@
+/*
+ * crforge - https://github.com/voonhous/crforge
+ * SPDX-License-Identifier: Apache-2.0
+ * Porting this code? Please cite this file and the commit you read: see the README.
+ */
+
+package org.crforge.env;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.SplittableRandom;
+import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.unit.KingElixir;
+import org.crforge.core.battle.unit.PlayerCommands;
+import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.core.battle.unit.UnitData;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The Ladder environment on the configured tables, which the build makes for every test task. The
+ * decks name rows of the tables; every expected game value is read from the tables or the battle,
+ * or asserted as a relation.
+ */
+class LadderEnvTest {
+
+  private static final List<String> BASIC =
+      List.of("Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap");
+
+  private static final List<String> OTHER =
+      List.of(
+          "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Goblins");
+
+  private static final List<String> MIRROR =
+      List.of("Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Mirror", "Zap");
+
+  private static final List<String> VARIANT =
+      List.of(
+          "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "MergeMaiden", "Zap");
+
+  private static GameTables tables;
+  private static Vocabulary vocabulary;
+
+  @BeforeAll
+  static void loadTables() {
+    tables = GameData.tables();
+    vocabulary = VectorEnv.vocabulary(tables);
+  }
+
+  private static VectorEnv ladder(
+      int count, int threads, EnvConfig config, List<String> deck0, List<String> deck1) {
+    VectorEnv env = VectorEnv.ladder(tables, config, count, threads);
+    int[] seeds = new int[count];
+    for (int i = 0; i < count; i++) {
+      seeds[i] = 100 + i;
+    }
+    env.reset(seeds, deck0, deck1);
+    return env;
+  }
+
+  private static LadderEnv ladderEnv(VectorEnv env, int index) {
+    return (LadderEnv) env.env(index);
+  }
+
+  private static int header(VectorEnv env, int index, int seat, int field) {
+    return env.observations().asIntBuffer().get((index * 2 + seat) * Schema.SEAT_INTS + field);
+  }
+
+  private static int entity(VectorEnv env, int index, int seat, int row, int field) {
+    return header(env, index, seat, Schema.HEADER_INTS + row * Schema.ENTITY_INTS + field);
+  }
+
+  private static int info(VectorEnv env, int index, int field) {
+    return env.infos().asIntBuffer().get(index * Schema.INFO_INTS + field);
+  }
+
+  private static boolean open(VectorEnv env, int index, int seat, int action) {
+    return env.masks().get((index * 2 + seat) * Schema.ACTIONS + action) == 1;
+  }
+
+  private static int openCount(VectorEnv env, int index, int seat) {
+    int open = 0;
+    for (int a = 0; a < Schema.ACTIONS; a++) {
+      open += open(env, index, seat, a) ? 1 : 0;
+    }
+    return open;
+  }
+
+  /** A random open play of a seat with a probability out of ten, else the wait. */
+  private static int randomAction(
+      VectorEnv env, int index, int seat, SplittableRandom random, int playsInTen) {
+    if (random.nextInt(10) >= playsInTen) {
+      return Schema.WAIT;
+    }
+    List<Integer> open = new ArrayList<>();
+    for (int a = 1; a < Schema.ACTIONS; a++) {
+      if (open(env, index, seat, a)) {
+        open.add(a);
+      }
+    }
+    return open.isEmpty() ? Schema.WAIT : open.get(random.nextInt(open.size()));
+  }
+
+  /** One seat's observation and mask, as bytes, for a comparison. */
+  private static byte[] seatBytes(VectorEnv env, int index, int seat) {
+    ByteBuffer observations = env.observations();
+    ByteBuffer masks = env.masks();
+    byte[] bytes = new byte[Schema.SEAT_INTS * 4 + Schema.ACTIONS];
+    observations.get((index * 2 + seat) * Schema.SEAT_INTS * 4, bytes, 0, Schema.SEAT_INTS * 4);
+    masks.get((index * 2 + seat) * Schema.ACTIONS, bytes, Schema.SEAT_INTS * 4, Schema.ACTIONS);
+    return bytes;
+  }
+
+  private static byte[] all(ByteBuffer buffer) {
+    byte[] bytes = new byte[buffer.capacity()];
+    buffer.get(0, bytes);
+    return bytes;
+  }
+
+  @Test
+  void theFirstObservationShowsTheDeckTheHandTheClockAndTheTowers() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
+      LadderMatch match = ladderEnv(env, 0).battle().getMatch();
+      for (int seat = 0; seat < 2; seat++) {
+        List<String> deck = seat == 0 ? BASIC : OTHER;
+        MatchSide own = match.side(seat);
+        for (int k = 0; k < Schema.DECK_SIZE; k++) {
+          assertThat(header(env, 0, seat, Schema.H_DECK + k)).isEqualTo(vocabulary.id(deck.get(k)));
+          assertThat(header(env, 0, seat, Schema.H_ENEMY_SEEN + k)).isEqualTo(-1);
+        }
+        List<Integer> hand = new ArrayList<>();
+        for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+          int card = header(env, 0, seat, Schema.H_HAND_CARD + k);
+          assertThat(hand).doesNotContain(card);
+          hand.add(card);
+          String name = own.deck().get(own.getHand().slots()[k]).name();
+          assertThat(card).isEqualTo(vocabulary.id(name));
+          assertThat(header(env, 0, seat, Schema.H_HAND_COST + k))
+              .isEqualTo(own.deck().get(own.getHand().slots()[k]).cost())
+              .isPositive();
+          assertThat(header(env, 0, seat, Schema.H_HAND_PENDING + k)).isZero();
+        }
+        assertThat(header(env, 0, seat, Schema.H_NEXT_CARD)).isNotEqualTo(-1);
+        assertThat(header(env, 0, seat, Schema.H_ELIXIR))
+            .isEqualTo(own.getElixir())
+            .isEqualTo(match.getTimeline().row().startingElixir() * MatchSide.SCALE)
+            .isPositive();
+        assertThat(header(env, 0, seat, Schema.H_ELIXIR_RESERVED)).isZero();
+        assertThat(header(env, 0, seat, Schema.H_RESULT)).isEqualTo(Schema.RUNNING);
+        assertThat(header(env, 0, seat, Schema.H_SEAT)).isEqualTo(seat);
+        assertThat(header(env, 0, seat, Schema.H_PLAY_DELAY_TICKS))
+            .isEqualTo(Standard1v1Battle.PLAY_DELAY_TICKS);
+        assertThat(header(env, 0, seat, Schema.H_PLAY_OPEN_IN_TICKS))
+            .isEqualTo(match.getStartCooldownTicks())
+            .isPositive();
+        assertThat(header(env, 0, seat, Schema.H_SECTION_LEFT_MS)).isPositive();
+        assertThat(header(env, 0, seat, Schema.H_FULL_BAR_MS)).isPositive();
+        assertThat(header(env, 0, seat, Schema.H_OVERTIME)).isZero();
+        assertThat(header(env, 0, seat, Schema.H_PENDING_COUNT)).isZero();
+        for (int r = 0; r < Schema.PENDING_ROWS; r++) {
+          assertThat(header(env, 0, seat, Schema.H_PENDING + r * Schema.PENDING_INTS))
+              .isEqualTo(-1);
+        }
+        for (int t = 0; t < 6; t++) {
+          int hp = header(env, 0, seat, Schema.H_TOWERS + 2 * t);
+          int max = header(env, 0, seat, Schema.H_TOWERS + 2 * t + 1);
+          assertThat(hp).isPositive().isEqualTo(max);
+        }
+        // Six towers and nothing else, the seat's own at the bottom of its frame.
+        assertThat(header(env, 0, seat, Schema.H_ENTITY_COUNT)).isEqualTo(6);
+        List<Integer> ownPrincessX = new ArrayList<>();
+        for (int row = 0; row < 6; row++) {
+          assertThat(entity(env, 0, seat, row, Schema.E_KIND)).isEqualTo(Schema.KIND_TOWER);
+          boolean mine = entity(env, 0, seat, row, Schema.E_SIDE) == 0;
+          int y = entity(env, 0, seat, row, Schema.E_Y);
+          assertThat(y < Schema.HEIGHT_UNITS / 2).as("own towers low in the frame").isEqualTo(mine);
+          assertThat(entity(env, 0, seat, row, Schema.E_FLAGS) & Schema.F_ALIVE).isNotZero();
+          if (mine && (entity(env, 0, seat, row, Schema.E_FLAGS) & Schema.F_KING) == 0) {
+            ownPrincessX.add(entity(env, 0, seat, row, Schema.E_X));
+          }
+        }
+        // The left princess tower is the one on the left of the seat's screen.
+        assertThat(ownPrincessX).hasSize(2);
+        assertThat(Math.min(ownPrincessX.get(0), ownPrincessX.get(1)))
+            .isLessThan(Schema.WIDTH_UNITS / 2);
+      }
+      assertThat(info(env, 0, Schema.I_WINNER)).isEqualTo(Schema.WINNER_NONE);
+      assertThat(env.dones().get(0)).isEqualTo((byte) 0);
+    }
+  }
+
+  @Test
+  void beforeTheStartCooldownTheMaskIsTheWaitAloneAndAPlayIsRefused() {
+    EnvConfig config = EnvConfig.DEFAULT.withDecisionTicks(1);
+    try (VectorEnv env = ladder(1, 1, config, BASIC, BASIC)) {
+      int cooldown = ladderEnv(env, 0).battle().getMatch().getStartCooldownTicks();
+      IntBuffer actions = env.actions().asIntBuffer();
+      while (header(env, 0, 0, Schema.H_TICK) < cooldown) {
+        for (int seat = 0; seat < 2; seat++) {
+          assertThat(openCount(env, 0, seat)).isEqualTo(1);
+          assertThat(open(env, 0, seat, Schema.WAIT)).isTrue();
+          assertThat(header(env, 0, seat, Schema.H_PLAY_OPEN_IN_TICKS))
+              .isEqualTo(cooldown - header(env, 0, seat, Schema.H_TICK));
+        }
+        // A play given anyway is refused as masked and taken as a wait.
+        actions.put(0, Schema.play(0, Schema.COLS / 2, 5));
+        actions.put(1, Schema.WAIT);
+        env.step();
+        assertThat(info(env, 0, Schema.I_ILLEGAL_0)).isEqualTo(1);
+        assertThat(info(env, 0, Schema.I_ILLEGAL_1)).isZero();
+        assertThat(header(env, 0, 0, Schema.H_LAST_REFUSAL)).isEqualTo(Schema.REFUSAL_MASKED);
+        assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isZero();
+      }
+      // From the cooldown on the match takes plays: a card the elixir covers is open.
+      assertThat(header(env, 0, 0, Schema.H_TICK)).isEqualTo(cooldown);
+      assertThat(header(env, 0, 0, Schema.H_PLAY_OPEN_IN_TICKS)).isZero();
+      assertThat(openCount(env, 0, 0)).isGreaterThan(1);
+    }
+  }
+
+  @Test
+  void theMaskIsTheTryOfEachSlotAndAnOpenSlotIsGiven() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
+      LadderEnv ladder = ladderEnv(env, 0);
+      SplittableRandom random = new SplittableRandom(3);
+      IntBuffer actions = env.actions().asIntBuffer();
+      int given = 0;
+      int closedSeen = 0;
+      for (int decision = 0; decision < 600 && env.dones().get(0) == 0; decision++) {
+        int[] chosen = new int[2];
+        for (int seat = 0; seat < 2; seat++) {
+          for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+            boolean tried = ladder.commands().tryCard(seat, k, EnvConfig.DEFAULT.level()).given();
+            int from = 1 + k * Schema.TILES;
+            int openTiles = 0;
+            for (int a = from; a < from + Schema.TILES; a++) {
+              openTiles += open(env, 0, seat, a) ? 1 : 0;
+            }
+            // Every tile of an open slot is open, none of a closed one.
+            assertThat(openTiles).isEqualTo(tried ? Schema.TILES : 0);
+            closedSeen += tried ? 0 : 1;
+          }
+          chosen[seat] = randomAction(env, 0, seat, random, 3);
+          actions.put(seat, chosen[seat]);
+        }
+        env.step();
+        for (int seat = 0; seat < 2; seat++) {
+          if (chosen[seat] != Schema.WAIT) {
+            // A play of an open slot is given.
+            assertThat(info(env, 0, seat == 0 ? Schema.I_ILLEGAL_0 : Schema.I_ILLEGAL_1))
+                .as("decision %d seat %d", decision, seat)
+                .isZero();
+            assertThat(header(env, 0, seat, Schema.H_LAST_REFUSAL)).isZero();
+            given++;
+          }
+          // Towers and characters come before projectiles and area effects.
+          boolean other = false;
+          for (int row = 0; row < header(env, 0, seat, Schema.H_ENTITY_COUNT); row++) {
+            int kind = entity(env, 0, seat, row, Schema.E_KIND);
+            boolean world = kind == Schema.KIND_TOWER || kind == Schema.KIND_CHARACTER;
+            assertThat(world && other).as("a character after a projectile").isFalse();
+            other |= !world;
+          }
+        }
+        assertThat(info(env, 0, Schema.I_FIRST_SIDE)).isEqualTo(decision % 2);
+      }
+      assertThat(given).isGreaterThan(10);
+      assertThat(closedSeen).isPositive();
+      assertThat(env.fault(0)).isNull();
+    }
+  }
+
+  @Test
+  void aMirrorDeckAndAVariantDeckPlayAWholeEpisodeWithNoFault() {
+    for (List<String> deck : List.of(MIRROR, VARIANT)) {
+      try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, deck, deck)) {
+        env.setAutoreset(false);
+        LadderEnv ladder = ladderEnv(env, 0);
+        SplittableRandom random = new SplittableRandom(17);
+        IntBuffer actions = env.actions().asIntBuffer();
+        int decisions = 0;
+        while (env.dones().get(0) == 0) {
+          actions.put(0, randomAction(env, 0, 0, random, 5));
+          actions.put(1, randomAction(env, 0, 1, random, 5));
+          env.step();
+          decisions++;
+          assertThat(decisions).isLessThan(5000);
+        }
+        assertThat(env.fault(0)).as("%s", deck).isNull();
+        assertThat(env.faultCounts()).isEmpty();
+        assertThat(info(env, 0, Schema.I_TRUNCATED)).isZero();
+        assertThat(info(env, 0, Schema.I_WINNER)).isNotEqualTo(Schema.WINNER_NONE);
+        // The special card was played, and its plays were seen by the enemy as a player sees
+        // them: a Mirror's as the Mirror and the card it repeated.
+        int special = 0;
+        for (Standard1v1Battle.Play play : ladder.battle().getPlays()) {
+          boolean placed = play.matchCode() == 0 && play.result() != null && play.result().placed();
+          if (!placed || play.mirror() == null && play.variant() == null) {
+            continue;
+          }
+          special++;
+          int enemy = 1 - play.side();
+          List<Integer> seen = new ArrayList<>();
+          for (int k = 0; k < Schema.DECK_SIZE; k++) {
+            seen.add(header(env, 0, enemy, Schema.H_ENEMY_SEEN + k));
+          }
+          if (play.mirror() != null) {
+            assertThat(seen)
+                .contains(vocabulary.id("Mirror"))
+                .contains(vocabulary.id(play.mirror().repeats().name()));
+          } else {
+            assertThat(seen).contains(vocabulary.id("MergeMaiden"));
+          }
+        }
+        assertThat(special).as("%s", deck).isPositive();
+      }
+    }
+  }
+
+  @Test
+  void theElixirReservedHoldsAPlayRefusedAtItsRunForItsPromise() {
+    EnvConfig config = EnvConfig.DEFAULT.withDecisionTicks(1);
+    try (VectorEnv env = ladder(1, 1, config, BASIC, BASIC)) {
+      LadderEnv ladder = ladderEnv(env, 0);
+      KingElixir kings = ladder.battle().getWorld().getKingElixir();
+      IntBuffer actions = env.actions().asIntBuffer();
+      actions.put(0, Schema.WAIT);
+      actions.put(1, Schema.WAIT);
+      // Wait for the first open slot of seat 0.
+      int slot = -1;
+      while (slot < 0) {
+        env.step();
+        for (int k = 0; k < Schema.HAND_SLOTS && slot < 0; k++) {
+          slot = open(env, 0, 0, 1 + k * Schema.TILES) ? k : -1;
+        }
+      }
+      int cost = ladder.commands().tryCard(0, slot, config.level()).cost();
+      int givenAt = header(env, 0, 0, Schema.H_TICK);
+      actions.put(0, Schema.play(slot, Schema.COLS / 2, 6));
+      env.step();
+      actions.put(0, Schema.WAIT);
+      assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isEqualTo(1);
+      assertThat(header(env, 0, 0, Schema.H_ELIXIR_RESERVED)).isEqualTo(cost * MatchSide.SCALE);
+      assertThat(header(env, 0, 0, Schema.H_HAND_PENDING + slot)).isEqualTo(1);
+      // The pending row: the card, a point in the seat's half, and the ticks to its run.
+      assertThat(header(env, 0, 0, Schema.H_PENDING))
+          .isEqualTo(header(env, 0, 0, Schema.H_HAND_CARD + slot));
+      assertThat(header(env, 0, 0, Schema.H_PENDING + 2)).isLessThan(Schema.HEIGHT_UNITS / 2);
+      assertThat(header(env, 0, 0, Schema.H_PENDING + 3))
+          .isEqualTo(Math.max(givenAt, 1) + Standard1v1Battle.PLAY_DELAY_TICKS - givenAt - 1);
+      // Drain the king's elixir until the play runs, so its run refuses it for the elixir.
+      boolean refusedAtRun = false;
+      while (header(env, 0, 0, Schema.H_TICK) < givenAt + Standard1v1Battle.PROMISE_TICKS + 4) {
+        kings.spend(0, kings.elixir(0));
+        env.step();
+        int tick = header(env, 0, 0, Schema.H_TICK);
+        int reserved = header(env, 0, 0, Schema.H_ELIXIR_RESERVED);
+        if (header(env, 0, 0, Schema.H_LAST_RUN_REFUSAL) != 0) {
+          assertThat(header(env, 0, 0, Schema.H_LAST_RUN_REFUSAL))
+              .isEqualTo(LadderMatch.NOT_ENOUGH_ELIXIR);
+          refusedAtRun = true;
+        }
+        if (tick <= givenAt + Standard1v1Battle.PROMISE_TICKS - 2) {
+          assertThat(reserved).as("tick %d", tick).isEqualTo(cost * MatchSide.SCALE);
+        } else if (tick > givenAt + Standard1v1Battle.PROMISE_TICKS + 2) {
+          assertThat(reserved).as("tick %d", tick).isZero();
+        }
+        if (refusedAtRun) {
+          // The play has run: no longer waiting, though its cost is still held back.
+          assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isZero();
+          assertThat(header(env, 0, 0, Schema.H_HAND_PENDING + slot)).isZero();
+        }
+      }
+      assertThat(refusedAtRun).isTrue();
+      assertThat(env.fault(0)).isNull();
+    }
+  }
+
+  @Test
+  void theSameSeedsAndActionsGiveTheSameBuffersTwiceAndOnOneThreadOrFour() {
+    EnvConfig config = EnvConfig.DEFAULT.withMaxTicks(1500);
+    try (VectorEnv one = ladder(3, 1, config, MIRROR, VARIANT);
+        VectorEnv again = ladder(3, 1, config, MIRROR, VARIANT);
+        VectorEnv four = ladder(3, 4, config, MIRROR, VARIANT)) {
+      SplittableRandom random = new SplittableRandom(5);
+      for (int step = 0; step < 320; step++) {
+        for (int index = 0; index < 3; index++) {
+          for (int seat = 0; seat < 2; seat++) {
+            int action = randomAction(one, index, seat, random, 4);
+            for (VectorEnv env : List.of(one, again, four)) {
+              env.actions().asIntBuffer().put(2 * index + seat, action);
+            }
+          }
+        }
+        for (VectorEnv env : List.of(one, again, four)) {
+          env.step();
+        }
+        for (VectorEnv env : List.of(again, four)) {
+          assertThat(all(env.observations()))
+              .as("step %d", step)
+              .isEqualTo(all(one.observations()));
+          assertThat(all(env.masks())).as("step %d", step).isEqualTo(all(one.masks()));
+          assertThat(all(env.rewards())).as("step %d", step).isEqualTo(all(one.rewards()));
+          assertThat(all(env.dones())).as("step %d", step).isEqualTo(all(one.dones()));
+          assertThat(all(env.infos())).as("step %d", step).isEqualTo(all(one.infos()));
+        }
+      }
+      assertThat(one.faultCounts()).isEmpty();
+    }
+  }
+
+  @Test
+  void aSeatsObservationHoldsNothingOfTheEnemysHandOrElixir() {
+    try (VectorEnv a = ladder(1, 1, EnvConfig.DEFAULT, BASIC, BASIC);
+        VectorEnv b = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
+      KingElixir kingsB = ladderEnv(b, 0).battle().getWorld().getKingElixir();
+      SplittableRandom random = new SplittableRandom(23);
+      boolean enemyElixirDiffers = false;
+      for (int step = 0; step < 300; step++) {
+        assertThat(seatBytes(b, 0, 0)).as("step %d", step).isEqualTo(seatBytes(a, 0, 0));
+        enemyElixirDiffers |= header(a, 0, 1, Schema.H_ELIXIR) != header(b, 0, 1, Schema.H_ELIXIR);
+        int action = randomAction(a, 0, 0, random, 3);
+        for (VectorEnv env : List.of(a, b)) {
+          env.actions().asIntBuffer().put(0, action);
+          env.actions().asIntBuffer().put(1, Schema.WAIT);
+        }
+        a.step();
+        b.step();
+        // The enemy of seat 0 in b holds another deck and loses its elixir every decision.
+        kingsB.spend(1, kingsB.elixir(1));
+      }
+      assertThat(enemyElixirDiffers).isTrue();
+      assertThat(header(a, 0, 1, Schema.H_DECK + 7))
+          .isNotEqualTo(header(b, 0, 1, Schema.H_DECK + 7));
+    }
+  }
+
+  @Test
+  void aPlayWaitsThenRunsAndItsUnitsAppearHalfATurnApartInTheTwoFrames() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
+      IntBuffer actions = env.actions().asIntBuffer();
+      actions.put(0, Schema.WAIT);
+      actions.put(1, Schema.WAIT);
+      // Wait for seat 0's first open troop: a slot whose card is a character card.
+      int slot = -1;
+      while (slot < 0) {
+        env.step();
+        for (int k = 0; k < Schema.HAND_SLOTS && slot < 0; k++) {
+          String name = vocabulary.names().get(header(env, 0, 0, Schema.H_HAND_CARD + k));
+          boolean troop =
+              tables.table("spells_characters").rows().stream()
+                  .map(GameRow::name)
+                  .anyMatch(name::equals);
+          slot = troop && open(env, 0, 0, 1 + k * Schema.TILES) ? k : -1;
+        }
+      }
+      int played = header(env, 0, 0, Schema.H_HAND_CARD + slot);
+      actions.put(0, Schema.play(slot, Schema.COLS / 2, 8));
+      env.step();
+      assertThat(header(env, 0, 0, Schema.H_HAND_PENDING + slot)).isEqualTo(1);
+      assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isEqualTo(1);
+      // The enemy is shown nothing of a command not yet run.
+      assertThat(header(env, 0, 1, Schema.H_PENDING_COUNT)).isZero();
+      assertThat(header(env, 0, 1, Schema.H_ENEMY_SEEN)).isEqualTo(-1);
+      // The same action again is refused while the play waits.
+      env.step();
+      assertThat(info(env, 0, Schema.I_ILLEGAL_0)).isEqualTo(1);
+      actions.put(0, Schema.WAIT);
+      while (header(env, 0, 0, Schema.H_PENDING_COUNT) == 1) {
+        env.step();
+      }
+      int count0 = header(env, 0, 0, Schema.H_ENTITY_COUNT);
+      int count1 = header(env, 0, 1, Schema.H_ENTITY_COUNT);
+      assertThat(count0).isGreaterThan(6).isEqualTo(count1);
+      int unit0 = -1;
+      for (int row = 0; row < count0; row++) {
+        if (entity(env, 0, 0, row, Schema.E_KIND) == Schema.KIND_CHARACTER
+            && entity(env, 0, 0, row, Schema.E_SIDE) == 0) {
+          unit0 = row;
+        }
+      }
+      assertThat(unit0).isNotNegative();
+      int id = entity(env, 0, 0, unit0, Schema.E_ID);
+      int unit1 = -1;
+      for (int row = 0; row < count1; row++) {
+        if (entity(env, 0, 1, row, Schema.E_ID) == id) {
+          unit1 = row;
+        }
+      }
+      assertThat(unit1).isNotNegative();
+      assertThat(entity(env, 0, 1, unit1, Schema.E_SIDE)).isEqualTo(1);
+      assertThat(entity(env, 0, 1, unit1, Schema.E_X))
+          .isEqualTo(Schema.WIDTH_UNITS - entity(env, 0, 0, unit0, Schema.E_X));
+      assertThat(entity(env, 0, 1, unit1, Schema.E_Y))
+          .isEqualTo(Schema.HEIGHT_UNITS - entity(env, 0, 0, unit0, Schema.E_Y));
+      // The other seat has now seen the card; this seat has seen none of the other's.
+      assertThat(header(env, 0, 1, Schema.H_ENEMY_SEEN)).isEqualTo(played);
+      assertThat(header(env, 0, 0, Schema.H_ENEMY_SEEN)).isEqualTo(-1);
+    }
+  }
+
+  @Test
+  void anEpisodeRunsToTheMatchsEndWithAZeroSumRewardAndItsWinner() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
+      env.setAutoreset(false);
+      SplittableRandom random = new SplittableRandom(9);
+      IntBuffer actions = env.actions().asIntBuffer();
+      int steps = 0;
+      while (env.dones().get(0) == 0) {
+        actions.put(0, randomAction(env, 0, 0, random, 3));
+        actions.put(1, randomAction(env, 0, 1, random, 3));
+        env.step();
+        steps++;
+        assertThat(steps).isLessThan(5000);
+      }
+      assertThat(env.fault(0)).isNull();
+      assertThat(info(env, 0, Schema.I_TRUNCATED)).isZero();
+      assertThat(info(env, 0, Schema.I_TICK))
+          .isGreaterThan(ladderEnv(env, 0).battle().getMatch().getStartCooldownTicks());
+      float reward0 = env.rewards().asFloatBuffer().get(0);
+      float reward1 = env.rewards().asFloatBuffer().get(1);
+      assertThat(reward0 + reward1).isEqualTo(0f);
+      int result0 = header(env, 0, 0, Schema.H_RESULT);
+      int result1 = header(env, 0, 1, Schema.H_RESULT);
+      int winner = info(env, 0, Schema.I_WINNER);
+      assertThat(result0).isNotEqualTo(Schema.RUNNING);
+      if (result0 == Schema.WON) {
+        assertThat(result1).isEqualTo(Schema.LOST);
+        assertThat(reward0).isEqualTo(1f);
+        assertThat(winner).isEqualTo(0);
+      } else if (result0 == Schema.LOST) {
+        assertThat(result1).isEqualTo(Schema.WON);
+        assertThat(reward0).isEqualTo(-1f);
+        assertThat(winner).isEqualTo(1);
+      } else {
+        assertThat(result1).isEqualTo(Schema.DRAW);
+        assertThat(reward0).isEqualTo(0f);
+        assertThat(winner).isEqualTo(Schema.WINNER_DRAW);
+      }
+      // The terminal mask is the wait alone.
+      assertThat(openCount(env, 0, 0)).isEqualTo(1);
+      assertThat(openCount(env, 0, 1)).isEqualTo(1);
+    }
+  }
+
+  @Test
+  void theTickLimitCutsAnEpisodeShortWithNoResult() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT.withMaxTicks(100), BASIC, BASIC)) {
+      env.setAutoreset(false);
+      for (int step = 0; step < 20; step++) {
+        env.step();
+      }
+      assertThat(env.dones().get(0)).isEqualTo((byte) 1);
+      assertThat(info(env, 0, Schema.I_TRUNCATED)).isEqualTo(1);
+      assertThat(info(env, 0, Schema.I_WINNER)).isEqualTo(Schema.WINNER_NONE);
+      assertThat(info(env, 0, Schema.I_FAULT)).isZero();
+      assertThat(header(env, 0, 0, Schema.H_RESULT)).isEqualTo(Schema.RUNNING);
+      assertThat(env.rewards().asFloatBuffer().get(0)).isEqualTo(0f);
+    }
+  }
+
+  @Test
+  void aFullFieldLeavesOutProjectilesBeforeCharacters() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT.withDecisionTicks(1), BASIC, BASIC)) {
+      Standard1v1Battle battle = ladderEnv(env, 0).battle();
+      UnitData unit = GameData.unit("Skeleton");
+      int level = EnvConfig.DEFAULT.level();
+      // A few characters of side 0 before side 1's princess towers, until a tower's shot flies.
+      int tick = battle.getBattle().getTick() + 1;
+      for (int i = 0; i < 6; i++) {
+        int x = i < 3 ? 3000 + i * 500 : 14000 + (i - 3) * 500;
+        battle.deploy(tick, unit, level, 0, x, Schema.HEIGHT_UNITS - 9000, "lure_" + i);
+      }
+      int oldShot = -1;
+      for (int step = 0; step < 200 && oldShot < 0; step++) {
+        env.step();
+        for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+          if (entity instanceof ProjectileEntity) {
+            oldShot = entity.getId();
+          }
+        }
+      }
+      assertThat(oldShot).as("a tower's shot in flight").isPositive();
+      // Then more characters than the rows hold, all newer than the shot.
+      tick = battle.getBattle().getTick() + 1;
+      for (int i = 0; i < Schema.MAX_ENTITIES + 20; i++) {
+        int x = 2000 + (i % 15) * 1000;
+        int y = 3000 + (i / 15) * 500;
+        battle.deploy(tick, unit, level, 0, x, y, "mass_" + i);
+      }
+      while (header(env, 0, 0, Schema.H_ENTITY_OVERFLOW) == 0
+          && battle.getBattle().getTick() <= tick + 1) {
+        env.step();
+      }
+      boolean shotStillFlies = false;
+      for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+        shotStillFlies |= entity.getId() == oldShot;
+      }
+      assertThat(shotStillFlies).as("the older shot still in flight").isTrue();
+      assertThat(header(env, 0, 0, Schema.H_ENTITY_OVERFLOW)).isPositive();
+      assertThat(header(env, 0, 0, Schema.H_ENTITY_COUNT)).isEqualTo(Schema.MAX_ENTITIES);
+      for (int row = 0; row < Schema.MAX_ENTITIES; row++) {
+        assertThat(entity(env, 0, 0, row, Schema.E_KIND))
+            .isIn(Schema.KIND_TOWER, Schema.KIND_CHARACTER);
+      }
+    }
+  }
+
+  @Test
+  void aDeckOfACardTheTablesDoNotHoldIsRefusedBeforeAnyEnvironmentIsTouched() {
+    try (VectorEnv env = ladder(2, 1, EnvConfig.DEFAULT, BASIC, BASIC)) {
+      env.step();
+      byte[] before = all(env.observations());
+      List<String> unknown = new ArrayList<>(BASIC);
+      unknown.set(3, "NoSuchCardInAnyTable");
+      assertThatThrownBy(() -> env.reset(new int[] {1, 2}, BASIC, unknown))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("NoSuchCardInAnyTable");
+      List<String> twice = new ArrayList<>(BASIC);
+      twice.set(3, BASIC.get(0));
+      assertThatThrownBy(() -> env.reset(new int[] {1, 2}, twice, BASIC))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("twice");
+      assertThat(all(env.observations())).isEqualTo(before);
+    }
+  }
+
+  @Test
+  void theVocabularyIsExportedByNameAndRefusesShiftedIds() throws IOException {
+    assertThat(vocabulary.names()).isSorted().doesNotHaveDuplicates();
+    for (String table : Vocabulary.DECK_TABLES) {
+      for (GameRow row : tables.table(table).rows()) {
+        assertThat(vocabulary.isDeckCard(row.name())).isTrue();
+        assertThat(vocabulary.names().get(vocabulary.id(row.name()))).isEqualTo(row.name());
+      }
+    }
+    assertThat(vocabulary.dataVersion()).isEqualTo(tables.version());
+    assertThat(vocabulary.contentSha()).isEqualTo(tables.contentSha());
+    // Its own export passes; one whose ids moved by a name is refused.
+    vocabulary.checkSame(vocabulary.toJson());
+    ObjectMapper json = new ObjectMapper();
+    JsonNode exported = json.readTree(vocabulary.toJson());
+    List<String> shifted = new ArrayList<>(vocabulary.names());
+    shifted.add(0, "AaaNewRow");
+    String moved =
+        json.writeValueAsString(
+            json.createObjectNode()
+                .put("data_version", "other")
+                .set("names", json.valueToTree(shifted)));
+    assertThatThrownBy(() -> vocabulary.checkSame(moved))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("remap the ids by name");
+    assertThat(exported.get("hash").asText()).isEqualTo(vocabulary.hash());
+    // The vector's metadata holds the schema and the vocabulary with its data version.
+    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+      JsonNode metadata = json.readTree(env.metadataJson());
+      assertThat(metadata.at("/schema/version").asInt()).isEqualTo(Schema.VERSION);
+      assertThat(metadata.at("/schema/header_fields").size()).isEqualTo(Schema.HEADER_INTS);
+      assertThat(metadata.at("/vocabulary/data_version").asText()).isEqualTo(tables.version());
+      assertThat(metadata.at("/vocabulary/content_sha").asText()).isEqualTo(tables.contentSha());
+      assertThat(metadata.at("/config/decision_ticks").asInt())
+          .isEqualTo(EnvConfig.DEFAULT.decisionTicks());
+      vocabulary.checkSame(env.metadataJson());
+    }
+  }
+
+  @Test
+  void theTablesOfAFolderAreLoadedOnceAndShared() {
+    Path folder = GameTables.configuredDirectory().orElseThrow();
+    assertThat(VectorEnv.tables(folder)).isSameAs(VectorEnv.tables(folder));
+    assertThat(VectorEnv.vocabulary(VectorEnv.tables(folder)))
+        .isSameAs(VectorEnv.vocabulary(VectorEnv.tables(folder)));
+    assertThat(VectorEnv.vocabulary(tables)).isSameAs(vocabulary);
+  }
+
+  @Test
+  void aPlayTheCoreDoesNotModelIsRefusedNotAFault() {
+    // Counted as illegal with its own code, never a fault: shown on a Mirror deck's episode, whose
+    // known not-modelled givings may or may not be reached, so this checks the bookkeeping only.
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, MIRROR, MIRROR)) {
+      SplittableRandom random = new SplittableRandom(29);
+      IntBuffer actions = env.actions().asIntBuffer();
+      for (int step = 0; step < 400 && env.dones().get(0) == 0; step++) {
+        actions.put(0, randomAction(env, 0, 0, random, 6));
+        actions.put(1, randomAction(env, 0, 1, random, 6));
+        env.step();
+        int notModelled = info(env, 0, Schema.I_NOT_MODELLED);
+        int refusedAsNotModelled = 0;
+        for (int seat = 0; seat < 2; seat++) {
+          if (header(env, 0, seat, Schema.H_LAST_REFUSAL) == Schema.REFUSAL_NOT_MODELLED) {
+            refusedAsNotModelled++;
+            assertThat(info(env, 0, seat == 0 ? Schema.I_ILLEGAL_0 : Schema.I_ILLEGAL_1))
+                .isEqualTo(1);
+          }
+        }
+        assertThat(notModelled).isEqualTo(refusedAsNotModelled);
+        assertThat(info(env, 0, Schema.I_FAULT)).isZero();
+      }
+    }
+  }
+
+  @Test
+  void aRefusalCodeNamesTheGivingsRefusal() {
+    assertThat(Schema.refusalNames().get(Schema.refusalCode(PlayerCommands.Refusal.CARD_PENDING)))
+        .isEqualTo("CARD_PENDING");
+  }
+}

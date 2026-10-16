@@ -18,6 +18,7 @@ This page is the index of the docs, the module and package layout, and the debug
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
 | [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures, how to profile and the current baseline |
 | [Performance History](performance-history.md) | The earlier benchmark baselines and each round of optimisations, with their numbers and profiles |
+| [The Environment](environment.md) | The reinforcement learning environment on the battle core: the observation schema, the action space and mask, the faults, the vector environment and its benchmark |
 | [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 
 ---
@@ -29,10 +30,11 @@ crforge/
   core/           The battle core: headless, no GUI dependencies
   desktop/        LibGDX debug visualizer and replay viewer, on the battle core
   conformance/    Checks the battle core against recorded reference battles
+  env/            The reinforcement learning environment: a vector of battles behind flat buffers
   tables/         The table decoder: builds the game tables of a data version from the game's files
 ```
 
-`desktop` and `conformance` depend on `core` only, and nothing depends on them. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
+`desktop`, `conformance` and `env` depend on `core` only, and nothing depends on them. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
 
 ```mermaid
 flowchart TB
@@ -68,6 +70,10 @@ flowchart TB
     RPV["Replay viewer<br/>desktop.replay"]
   end
 
+  subgraph ENVM[":env"]
+    VENV["VectorEnv + LadderEnv<br/>plays through PlayerCommands,<br/>flat buffers for a trainer"]
+  end
+
   TAB --> DATA
   DATA --> UNIT
   DATA --> MATCH
@@ -91,6 +97,8 @@ flowchart TB
   TAB --> VIS
   VIS --> BATTLE
   RPV --> REPLAY
+  TAB --> VENV
+  VENV --> MATCH
 
   FIX -. "unit tests" .-> BC
 

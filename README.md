@@ -6,7 +6,7 @@
 [![16.402.19 coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fvoonhous%2Fcrforge%2Fbadges%2Fbadge-16.402.19.json)](conformance/README.md#coverage)
 [![16.402.21 coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fvoonhous%2Fcrforge%2Fbadges%2Fbadge-16.402.21.json)](conformance/README.md#coverage)
 
-A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment will be rebuilt on the battle core.
+A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment steps a vector of battles behind flat buffers a Python trainer reads without a copy ([docs/environment.md](docs/environment.md)).
 
 - **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports; CI replays all of them on each change and fails if any outcome moves, and the outcome of each is listed in [conformance/reference-expectations](conformance/reference-expectations/) ([conformance](conformance/README.md))
 - **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
@@ -74,9 +74,10 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 | `core`        | The battle core: a headless battle simulator on the game's tables                           |
 | `desktop`     | LibGDX debug visualizer for watching and interacting with matches                           |
 | `conformance` | Checks the battle core against recorded reference battles ([README](conformance/README.md)) |
+| `env`         | The reinforcement learning environment: a vector of battles behind flat buffers ([docs](docs/environment.md)) |
 | `tables`      | The table decoder: builds the game tables of a data version from the game's files           |
 
-`core` has no GUI dependencies. `desktop` and `conformance` depend on `core` only, and `tables` on nothing in the project. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
+`core` has no GUI dependencies. `desktop`, `conformance` and `env` depend on `core` only, and `tables` on nothing in the project. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
 
 ## Docs
 
@@ -86,6 +87,7 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 | [The Battle Core](docs/battle-core.md)                       | The step, the entity tick, what is covered and what is assumed       |
 | [Troop Pathfinding](docs/pathfinding.md)                     | Routing grid, cell costs, routes and movement rules                  |
 | [Game Tables and Reference Battles](docs/game-tables.md)     | The tables the battle core reads and the battles it is held to       |
+| [The Environment](docs/environment.md)                       | The RL environment: its schema, mask, faults and benchmark           |
 
 See [docs/architecture.md](docs/architecture.md) for the full documentation index.
 

@@ -91,3 +91,7 @@ What the profile of the replays shows at this baseline (async-profiler, as above
 The crowns (0.2%) and the unit rows (0.2%) have left the profile. The bytes allocated are spread as before, no site above 9%: `MovementChain.mark` 8%, `BuffComponent.visit` 8%, `CharacterEntity.stateQueries` 8%, `BuffComponent.speedPercents` 7% (streams), `SpatialIndex.query` 7%, boxed integers in `ReferenceValidator.validate` 4%.
 
 Earlier baselines and each round of optimisations, with the numbers before and after, are in [Performance history](performance-history.md). What a coverage score costs, and how to profile it, is in the conformance module's [README](../conformance/README.md#what-a-score-costs).
+
+## The environment
+
+The reinforcement learning environment (`env`) steps many battles in one call behind direct buffers. Its benchmark, `./gradlew :env:envBenchmark` (JMH), and the numbers it gave are in [The Environment](environment.md#performance). A Ladder decision costs what this page's tick benchmark says for its ticks plus the environment's encoding, masks and tries, which the synthetic engine puts at a few microseconds.
