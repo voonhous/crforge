@@ -41,6 +41,9 @@ venv/
 # Fault bundles of the environment (docs/environment.md): local files of a run, never committed
 fault-bundles/
 
+# Trainer runs (checkpoints, win-rate curves, fault logs): local only
+runs/
+
 # Backup files
 *.bak
 

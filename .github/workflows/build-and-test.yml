@@ -217,6 +217,18 @@ jobs:
           uv run ruff format --check
           uv run pytest -rs --install=${{ github.workspace }}/env/build/install/env $TABLES_ARG
 
+      # The trainer, a project of its own beside the package. Its torch extra is left out of the
+      # sync (on Linux it pulls the CUDA libraries); the CPU build of torch is installed instead,
+      # so the tests of the policy and the trainer run too.
+      - name: Lint and test the trainer
+        working-directory: python/crforge_rl
+        run: |
+          uv sync --locked --extra dev
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv run --no-sync ruff check
+          uv run --no-sync ruff format --check
+          uv run --no-sync pytest -rs --install=${{ github.workspace }}/env/build/install/env $TABLES_ARG
+
   # The unit tests on the tables of every compatible data version other than the lock's version,
   # which the build job covers. The versions share the client's battle rules and the tests pin no
   # game data, so they pass on each one unchanged.
