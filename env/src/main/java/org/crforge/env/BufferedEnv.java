@@ -108,6 +108,29 @@ public abstract class BufferedEnv implements BattleEnv {
     masks.put(seat * Schema.ACTIONS, maskScratch, 0, Schema.ACTIONS);
   }
 
+  /**
+   * Refuses slot flags of the wrong shape: one per deck card, each {@link Schema#SLOT_EVOLUTION},
+   * {@link Schema#SLOT_HERO}, both or neither. Which cards a slot may hold is the battle core's to
+   * refuse, as the match starts.
+   *
+   * @param slots a deck's slot flags
+   */
+  protected static void checkSlotFlags(int[] slots) {
+    if (slots == null || slots.length != Schema.DECK_SIZE) {
+      throw new IllegalArgumentException(
+          "a deck's slot flags are "
+              + Schema.DECK_SIZE
+              + " values, one per card, got "
+              + (slots == null ? "none" : Arrays.toString(slots)));
+    }
+    for (int flag : slots) {
+      if (flag < 0 || flag > (Schema.SLOT_EVOLUTION | Schema.SLOT_HERO)) {
+        throw new IllegalArgumentException(
+            "a deck's slot flags are 0 to 3 (evolution 1, hero 2), got " + Arrays.toString(slots));
+      }
+    }
+  }
+
   /** Whether a seat's mask, as last flushed, has an action open. */
   protected final boolean open(int seat, int action) {
     return masks.get(seat * Schema.ACTIONS + action) != 0;

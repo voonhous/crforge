@@ -12,7 +12,9 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
@@ -571,6 +573,70 @@ class PlayerCommandsTest {
     assertThat(giving.code()).isEqualTo(AbilityCommand.NO_CHAMPION);
     assertThat(commands.promised(0)).isZero();
     stepTo(battle, giving.runTick() + 1);
+    assertThat(battle.getAbilityUses()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "an ability's try comes to what its giving would on every tick of a champion's life, the"
+          + " king's death included, and changes nothing: a battle whose side tries before each"
+          + " giving runs as one that only gives")
+  void anAbilitysTryAgreesWithItsGiving() {
+    Standard1v1Battle tried = dealt(QUEEN_SKELETONS, "ArcherQueen");
+    Standard1v1Battle given = dealt(QUEEN_SKELETONS, "ArcherQueen");
+    PlayerCommands triedCommands = new PlayerCommands(tried);
+    PlayerCommands givenCommands = new PlayerCommands(given);
+    int queenCost = Shipped.cost("ArcherQueen");
+    boolean queenGiven = false;
+    Set<Refusal> seen = EnumSet.noneOf(Refusal.class);
+    for (int tick = 0; tick < OPEN + 600; tick++) {
+      if (!queenGiven
+          && tick >= OPEN
+          && tried.getMatch().side(0).wholeElixir() - triedCommands.promised(0) >= queenCost) {
+        int slot = slot(tried.getMatch(), "ArcherQueen");
+        assertThat(triedCommands.playCard(0, slot, LEVEL, X, 4000, "q").given()).isTrue();
+        assertThat(givenCommands.playCard(0, slot, LEVEL, X, 4000, "q").given()).isTrue();
+        queenGiven = true;
+      }
+      Giving attempt = triedCommands.tryAbility(0, "q_0");
+      Giving giving = triedCommands.useAbility(0, "q_0", "a" + tick);
+      Giving plain = givenCommands.useAbility(0, "q_0", "a" + tick);
+
+      assertThat(attempt).as("tick %d", tick).isEqualTo(giving).isEqualTo(plain);
+      seen.add(giving.refusal());
+      tried.getBattle().step();
+      given.getBattle().step();
+      assertThat(state(tried)).as("tick %d", tick).isEqualTo(state(given));
+      assertThat(triedCommands.promised(0)).isEqualTo(givenCommands.promised(0));
+      assertThat(tried.getAbilityUses()).hasSameSizeAs(given.getAbilityUses());
+    }
+    assertThat(seen)
+        .as("the champion's life reaches these gates")
+        .contains(Refusal.NO_CHAMPION, Refusal.NONE, Refusal.NOT_ENOUGH_ELIXIR);
+    assertThat(seen)
+        .as("and one gate of a used ability")
+        .containsAnyOf(Refusal.ABILITY_PENDING, Refusal.COOLDOWN, Refusal.NO_CHARGES);
+
+    for (Standard1v1Battle battle : List.of(tried, given)) {
+      battle.getWorld().kingTower(0).getHitPoints().setHitPoints(0);
+    }
+    Giving attempt = triedCommands.tryAbility(0, "q_0");
+    assertThat(attempt.refusal()).isEqualTo(Refusal.KING_DEAD);
+    assertThat(attempt).isEqualTo(triedCommands.useAbility(0, "q_0", "dead"));
+  }
+
+  @Test
+  @DisplayName("an ability's try naming no unit is refused as no champion, and queues nothing")
+  void anAbilitysTryNamingNoUnitIsRefused() {
+    Standard1v1Battle battle = ladder(QUEEN_SKELETONS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+
+    Giving attempt = commands.tryAbility(0, "nobody_0");
+
+    assertThat(attempt.refusal()).isEqualTo(Refusal.NO_CHAMPION);
+    assertThat(attempt.code()).isEqualTo(AbilityCommand.NO_CHAMPION);
+    assertThat(attempt).isEqualTo(commands.useAbility(0, "nobody_0", "a"));
+    stepTo(battle, attempt.runTick() + 1);
     assertThat(battle.getAbilityUses()).isEmpty();
   }
 

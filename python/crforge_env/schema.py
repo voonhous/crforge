@@ -19,7 +19,7 @@ import numpy as np
 
 from ._jvm import java_class
 
-SUPPORTED_VERSION = 1
+SUPPORTED_VERSION = 2
 """The schema version this package reads."""
 
 INT32_MIN = int(np.iinfo(np.int32).min)
@@ -27,7 +27,14 @@ INT32_MAX = int(np.iinfo(np.int32).max)
 
 # The header and entity fields that hold a vocabulary id (-1 for none), and the enumerations whose
 # range the schema fixes; every other field is a count, an amount or a coordinate.
-_ID_HEADER_FIELDS = ("hand_card", "next_card", "deck", "enemy_seen", "pending_card")
+_ID_HEADER_FIELDS = (
+    "hand_card",
+    "next_card",
+    "deck",
+    "enemy_seen",
+    "pending_card",
+    "ability_champion",
+)
 _ID_ENTITY_FIELDS = ("row",)
 
 
@@ -43,6 +50,10 @@ class Codes:
     width_units: int
     height_units: int
     wait: int
+    slot_evolution: int
+    slot_hero: int
+    form_evolved: int
+    form_hero: int
 
     @staticmethod
     def from_java() -> Codes:
@@ -66,6 +77,10 @@ class Codes:
             width_units=int(s.WIDTH_UNITS),
             height_units=int(s.HEIGHT_UNITS),
             wait=int(s.WAIT),
+            slot_evolution=int(s.SLOT_EVOLUTION),
+            slot_hero=int(s.SLOT_HERO),
+            form_evolved=int(s.FORM_EVOLVED),
+            form_hero=int(s.FORM_HERO),
         )
 
 
@@ -100,6 +115,9 @@ class Schema:
         self.rows = int(s["rows"])
         self.tile_units = int(s["tile_units"])
         self.hand_slots = int(s["hand_slots"])
+        self.ability_slots = int(s["ability_slots"])
+        self.first_ability = int(s["first_ability"])
+        self.ability_ints = int(s["ability_ints"])
         self.pending_rows = int(s["pending_rows"])
         self.play_delay_ticks = int(s["play_delay_ticks"])
         self.header_fields = tuple(s["header_fields"])
@@ -116,8 +134,10 @@ class Schema:
                 raise RuntimeError(f"the metadata lists {len(fields)} {name} fields for {size}")
         if self.seat_ints != self.header_ints + self.max_entities * self.entity_ints:
             raise RuntimeError("the metadata's seat size is not its header and entity rows")
-        if self.actions != 1 + self.hand_slots * self.cols * self.rows:
-            raise RuntimeError("the metadata's action count is not the wait and every slot's tiles")
+        if self.first_ability != 1 + self.hand_slots * self.cols * self.rows:
+            raise RuntimeError("the metadata's first ability is not after the wait and every play")
+        if self.actions != self.first_ability + self.ability_slots:
+            raise RuntimeError("the metadata's action count is not the plays and the abilities")
         self.header: dict[str, tuple[int, ...]] = {}
         for index, field in enumerate(self.header_fields):
             if field != "reserved":
@@ -135,6 +155,10 @@ class Schema:
         self.width_units = codes.width_units
         self.height_units = codes.height_units
         self.wait = codes.wait
+        self.slot_evolution = codes.slot_evolution
+        self.slot_hero = codes.slot_hero
+        self.form_evolved = codes.form_evolved
+        self.form_hero = codes.form_hero
 
     # -- actions -------------------------------------------------------------------------------
 
@@ -147,11 +171,27 @@ class Schema:
 
     def decode(self, action: int) -> tuple[int, int, int]:
         """A play action's ``(slot, col, row)``."""
-        if not (0 < action < self.actions):
+        if not (0 < action < self.first_ability):
             raise ValueError(f"no play action {action}")
         slot, rest = divmod(action - 1, self.cols * self.rows)
         row, col = divmod(rest, self.cols)
         return slot, col, row
+
+    def ability(self, slot: int) -> int:
+        """The action that taps the ability of one of the king's champion slots (0 or 1)."""
+        if not 0 <= slot < self.ability_slots:
+            raise ValueError(f"no ability action for champion slot {slot}")
+        return self.first_ability + slot
+
+    def is_ability(self, action: int) -> bool:
+        """Whether an action is an ability action."""
+        return self.first_ability <= action < self.actions
+
+    def ability_slot(self, action: int) -> int:
+        """The champion slot an ability action names."""
+        if not self.is_ability(action):
+            raise ValueError(f"no ability action {action}")
+        return action - self.first_ability
 
     # -- reading -------------------------------------------------------------------------------
 
@@ -173,10 +213,11 @@ class Schema:
         """The lowest and highest value of each integer of a seat's observation, as int32 arrays.
 
         A vocabulary id field (the hand, the next card, the deck, the enemy's cards seen, the
-        waiting commands' cards, an entity's row) is between -1 (none) and the last id; the result,
-        the seat, the overtime and pending marks, an entity's kind, side and flags are between 0
-        and their largest code; every other field (ticks, elixir, hit points, coordinates, codes
-        of the match) is any int32. A cleared observation (all zeros) is within them.
+        waiting commands' cards, a champion slot's champion, an entity's row) is between -1 (none)
+        and the last id; the result, the seat, the overtime and pending marks, the deck's slot
+        flags, the hand's forms, an entity's kind, side and flags are between 0 and their largest
+        code; every other field (ticks, elixir, hit points, coordinates, codes of the match) is
+        any int32. A cleared observation (all zeros) is within them.
         """
         low = np.full(self.seat_ints, INT32_MIN, dtype=np.int32)
         high = np.full(self.seat_ints, INT32_MAX, dtype=np.int32)
@@ -191,6 +232,8 @@ class Schema:
         bound(self.header["seat"], 0, 1)
         bound(self.header["overtime"], 0, 1)
         bound(self.header["hand_pending"], 0, 1)
+        bound(self.header["deck_slot"], 0, self.slot_evolution | self.slot_hero)
+        bound(self.header["hand_form"], 0, max(self.form_evolved, self.form_hero))
         rows = np.arange(self.max_entities) * self.entity_ints + self.header_ints
         for name in _ID_ENTITY_FIELDS:
             bound(rows + self.entity[name], -1, vocabulary_size - 1)

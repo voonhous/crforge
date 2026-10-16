@@ -8,7 +8,9 @@ package org.crforge.env;
 
 import java.util.Arrays;
 import java.util.List;
+import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
+import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -31,11 +33,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * #headerFields()}; an entity row's fields {@code E_*}, by {@link #entityFields()}. The legality
  * mask is {@link #ACTIONS} bytes, one per action, 1 for an action the seat may take now.
  *
- * <p>An action is one integer: {@link #WAIT}, or a play of a hand slot's card dropped at a tile of
- * the seat's frame ({@link #play(int, int, int)}). The arena is {@link #COLS} tiles across and
- * {@link #ROWS} along, a tile being {@link #TILE_UNITS} game units, two of the routing grid's
- * cells; a play is dropped at the tile's centre, and the player's commands send it on the tile the
- * placement search finds from there. Champion abilities are not in this version's action space.
+ * <p>An action is one integer: {@link #WAIT}, a play of a hand slot's card dropped at a tile of the
+ * seat's frame ({@link #play(int, int, int)}), or the tap on one of the king's champion slots'
+ * ability buttons ({@link #ability(int)}), after every play. The arena is {@link #COLS} tiles
+ * across and {@link #ROWS} along, a tile being {@link #TILE_UNITS} game units, two of the routing
+ * grid's cells; a play is dropped at the tile's centre, and the player's commands send it on the
+ * tile the placement search finds from there.
  *
  * <p>What a seat is shown of the other side is what its player sees on the screen: the entities on
  * the field but enemy characters that are hidden, invisible or underground, the enemy's crowns and
@@ -50,7 +53,7 @@ public final class Schema {
   }
 
   /** The version of this layout; a change to any size, field order or code moves it. */
-  public static final int VERSION = 1;
+  public static final int VERSION = 2;
 
   /** Game units in one tile of the action grid: two routing cells. */
   public static final int TILE_UNITS = 2 * TileMap.CELL_UNITS;
@@ -79,8 +82,17 @@ public final class Schema {
   /** The wait action: no play this decision. */
   public static final int WAIT = 0;
 
-  /** Actions a seat chooses from: the wait and a play of each slot at each tile. */
-  public static final int ACTIONS = 1 + HAND_SLOTS * TILES;
+  /** The king's champion slots, one ability action each. */
+  public static final int ABILITY_SLOTS = 2;
+
+  /** The first ability action, after every play: the ability of the king's first champion slot. */
+  public static final int FIRST_ABILITY = 1 + HAND_SLOTS * TILES;
+
+  /**
+   * Actions a seat chooses from: the wait, a play of each slot at each tile, and the ability of
+   * each champion slot.
+   */
+  public static final int ACTIONS = FIRST_ABILITY + ABILITY_SLOTS;
 
   /** Ticks between a command's stamp and the step it runs in, the battle core's own. */
   public static final int PLAY_DELAY_TICKS = Standard1v1Battle.PLAY_DELAY_TICKS;
@@ -212,8 +224,60 @@ public final class Schema {
    */
   public static final int H_PENDING = 65;
 
-  /** The header's size; fields from {@code H_PENDING + 16} on are reserved and zero. */
-  public static final int HEADER_INTS = 96;
+  /**
+   * Each deck card's slot flags, by deck index: bit 0 ({@link #SLOT_EVOLUTION}) for the deck's
+   * evolution slot, bit 1 ({@link #SLOT_HERO}) for its hero slot; 8 fields.
+   */
+  public static final int H_DECK_SLOTS = H_PENDING + PENDING_ROWS * PENDING_INTS;
+
+  /**
+   * Each deck card's evolution count, by deck index: the plays of an evolution slot's card since
+   * its last evolved play, as the king counts them; -1 where the count is not established (a play
+   * of the card refused at its placement); 8 fields.
+   */
+  public static final int H_DECK_EVOLUTION = H_DECK_SLOTS + DECK_SIZE;
+
+  /**
+   * The form a play of each hand slot's card would take now: 0 plain, {@link #FORM_EVOLVED} or
+   * {@link #FORM_HERO}; 0 for an empty slot; 4 fields.
+   */
+  public static final int H_HAND_FORM = H_DECK_EVOLUTION + DECK_SIZE;
+
+  /**
+   * The king's champion slots, {@link #ABILITY_SLOTS} rows of {@link #ABILITY_INTS}, the slot of
+   * ability action {@code FIRST_ABILITY + k} in row {@code k}: the vocabulary id of the champion
+   * row it follows (-1 for none), the battle id of the unit its action names while that unit lives
+   * (-1 otherwise), the button state as the battle core works it out, the cooldown left in
+   * milliseconds, the charges left (-1 for uncounted), and the ticks until the seat's latest
+   * ability command for the slot runs (0 for none waiting).
+   */
+  public static final int H_ABILITY = H_HAND_FORM + HAND_SLOTS;
+
+  /** Fields of a champion slot row: champion, unit, state, cooldown, charges, command ticks. */
+  public static final int ABILITY_INTS = 6;
+
+  /**
+   * The code of the seat's ability command refused at its run in the last decision, the ability
+   * gate's code; 0 for none.
+   */
+  public static final int H_LAST_ABILITY_RUN_REFUSAL = H_ABILITY + ABILITY_SLOTS * ABILITY_INTS;
+
+  /** The header's size; fields after {@link #H_LAST_ABILITY_RUN_REFUSAL} are reserved and zero. */
+  public static final int HEADER_INTS = 128;
+
+  // The slot flags and the forms of a play.
+
+  /** The slot flag of a card in the deck's evolution slot. */
+  public static final int SLOT_EVOLUTION = MatchSide.EVOLUTION_SLOT;
+
+  /** The slot flag of a card in the deck's hero slot. */
+  public static final int SLOT_HERO = MatchSide.HERO_SLOT;
+
+  /** The form of an evolved play. */
+  public static final int FORM_EVOLVED = EvolutionItem.EVOLVED;
+
+  /** The form of a play in its hero form. */
+  public static final int FORM_HERO = EvolutionItem.HERO;
 
   // The results.
 
@@ -390,9 +454,34 @@ public final class Schema {
   }
 
   private static void checkPlay(int action) {
-    if (action <= WAIT || action >= ACTIONS) {
+    if (action <= WAIT || action >= FIRST_ABILITY) {
       throw new IllegalArgumentException("no play action " + action);
     }
+  }
+
+  /**
+   * The action that taps the ability of one of the king's champion slots.
+   *
+   * @param slot the champion slot, 0 for the king's first, 1 for its second
+   */
+  public static int ability(int slot) {
+    if (slot < 0 || slot >= ABILITY_SLOTS) {
+      throw new IllegalArgumentException("no ability action for champion slot " + slot);
+    }
+    return FIRST_ABILITY + slot;
+  }
+
+  /** Whether an action is an ability action. */
+  public static boolean isAbility(int action) {
+    return action >= FIRST_ABILITY && action < ACTIONS;
+  }
+
+  /** The champion slot an ability action names, 0 or 1. */
+  public static int abilitySlot(int action) {
+    if (!isAbility(action)) {
+      throw new IllegalArgumentException("no ability action " + action);
+    }
+    return action - FIRST_ABILITY;
   }
 
   /** The game unit across of the centre of a tile of a seat's frame. */
@@ -499,6 +588,27 @@ public final class Schema {
         names[H_PENDING + r * PENDING_INTS + f] = pending[f];
       }
     }
+    for (int k = 0; k < DECK_SIZE; k++) {
+      names[H_DECK_SLOTS + k] = "deck_slot";
+      names[H_DECK_EVOLUTION + k] = "deck_evolution";
+    }
+    for (int k = 0; k < HAND_SLOTS; k++) {
+      names[H_HAND_FORM + k] = "hand_form";
+    }
+    String[] ability = {
+      "ability_champion",
+      "ability_unit",
+      "ability_state",
+      "ability_cooldown_ms",
+      "ability_charges",
+      "ability_command_ticks"
+    };
+    for (int r = 0; r < ABILITY_SLOTS; r++) {
+      for (int f = 0; f < ABILITY_INTS; f++) {
+        names[H_ABILITY + r * ABILITY_INTS + f] = ability[f];
+      }
+    }
+    names[H_LAST_ABILITY_RUN_REFUSAL] = "last_ability_run_refusal";
     return List.of(names);
   }
 

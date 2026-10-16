@@ -30,10 +30,11 @@ class ClashParallelEnv(ParallelEnv):
     crowns and illegal counts, not the other's.
 
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
-    a data version (required for the ladder engine).
+    a data version (required for the ladder engine); ``slots0`` and ``slots1`` each deck's slot
+    flags, one per card (None for none; see :meth:`VectorBattle.reset`).
     """
 
-    metadata = {"render_modes": [], "name": "crforge_ladder_v1"}  # noqa: RUF012
+    metadata = {"render_modes": [], "name": "crforge_ladder_v2"}  # noqa: RUF012
 
     def __init__(
         self,
@@ -44,6 +45,8 @@ class ClashParallelEnv(ParallelEnv):
         tables: str | Path | None = None,
         engine: str = "ladder",
         config: LadderConfig | None = None,
+        slots0: Sequence[int] | None = None,
+        slots1: Sequence[int] | None = None,
         **vector_kwargs: Any,
     ):
         self.vector = VectorBattle(
@@ -52,6 +55,7 @@ class ClashParallelEnv(ParallelEnv):
         self.vector.set_autoreset(False)
         self.schema = self.vector.schema
         self._decks = (list(deck0), list(deck1))
+        self._slots = (slots0, slots1)
         self.possible_agents = list(SEATS)
         self.agents: list[str] = []
         self._observation_space = observation_space(self.vector)
@@ -77,7 +81,7 @@ class ClashParallelEnv(ParallelEnv):
     def reset(self, seed: int | None = None, options: dict | None = None):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
-        self.vector.reset([battle_seed(seed, self._rng)], *self._decks)
+        self.vector.reset([battle_seed(seed, self._rng)], *self._decks, *self._slots)
         if self.vector.dones[0]:
             raise BattleFaultError(self.vector.fault(0))
         self.agents = list(self.possible_agents)

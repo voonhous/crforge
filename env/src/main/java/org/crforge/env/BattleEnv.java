@@ -38,9 +38,11 @@ public interface BattleEnv {
    * check touches no state.
    *
    * @param deck a side's deck, by card row name
+   * @param slots its slot flags, one per card ({@link Schema#SLOT_EVOLUTION}, {@link
+   *     Schema#SLOT_HERO}, both or neither)
    * @throws IllegalArgumentException naming what is wrong with it
    */
-  void checkDeck(List<String> deck);
+  void checkDeck(List<String> deck, int[] slots);
 
   /**
    * Starts an episode and writes its first observation.
@@ -48,8 +50,10 @@ public interface BattleEnv {
    * @param seed the battle's random seed
    * @param deck0 side 0's deck, by card row name
    * @param deck1 side 1's deck, by card row name
+   * @param slots0 side 0's slot flags, one per card
+   * @param slots1 side 1's slot flags, one per card
    */
-  void reset(int seed, List<String> deck0, List<String> deck1);
+  void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1);
 
   /**
    * Takes both seats' actions, advances the battle one decision and writes the observation after

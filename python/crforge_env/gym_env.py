@@ -66,8 +66,9 @@ class ClashGymEnv(Env):
 
     - observation: the seat's flat int32 vector of the schema, in the seat's own frame
       (:func:`observation_space`); the layout is in ``self.schema``
-    - action: one integer, ``0`` the wait, else a hand slot played at a tile
-      (``self.schema.play(slot, col, row)``)
+    - action: one integer, ``0`` the wait, a hand slot played at a tile
+      (``self.schema.play(slot, col, row)``), or a champion slot's ability
+      (``self.schema.ability(slot)``)
     - mask: ``info["action_mask"]`` (int8) and :meth:`action_masks` (bool); an action the mask
       closed is taken as a wait and counted in ``info["illegal"]``
     - reward: +1, -1 or 0 when the match ends, 0 before
@@ -82,7 +83,9 @@ class ClashGymEnv(Env):
     (:func:`random_opponent`, :func:`wait_opponent`, a :class:`ScriptedBot`); one with a
     ``bind(vector)`` method is bound to this environment's vector as it is made.
 
-    ``deck`` is the learner's, ``opponent_deck`` the opponent's, eight card row names each.
+    ``deck`` is the learner's, ``opponent_deck`` the opponent's, eight card row names each;
+    ``slots`` and ``opponent_slots`` their slot flags, one per card (None for none, every card
+    plain; see :meth:`VectorBattle.reset`).
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
     a data version (required for the ladder engine). The remaining keywords go to
     :class:`VectorBattle` (``synthetic_*``, ``jvm_args``).
@@ -101,6 +104,8 @@ class ClashGymEnv(Env):
         opponent: OpponentPolicy = random_opponent,
         seat: int = 0,
         config: LadderConfig | None = None,
+        slots: Sequence[int] | None = None,
+        opponent_slots: Sequence[int] | None = None,
         **vector_kwargs: Any,
     ):
         if seat not in (0, 1):
@@ -117,7 +122,9 @@ class ClashGymEnv(Env):
         if callable(bind):
             bind(self.vector)
         decks = [list(deck), list(opponent_deck)]
+        flags = [slots, opponent_slots]
         self._decks = (decks[seat], decks[1 - seat])
+        self._slots = (flags[seat], flags[1 - seat])
         self.observation_space = observation_space(self.vector)
         self.action_space = spaces.Discrete(self.schema.actions)
         self._done = True
@@ -131,7 +138,7 @@ class ClashGymEnv(Env):
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        self.vector.reset([battle_seed(seed, self.np_random)], *self._decks)
+        self.vector.reset([battle_seed(seed, self.np_random)], *self._decks, *self._slots)
         if self.vector.dones[0]:
             raise BattleFaultError(self.vector.fault(0))
         self._done = False

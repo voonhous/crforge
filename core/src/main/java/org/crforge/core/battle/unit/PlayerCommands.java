@@ -53,10 +53,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  * covering the play's item's cost, then the map check on the point sent, which a tile the search
  * found always passes. The screen's search comes before the try: a drop both refuse is reported
  * here as the try refuses it, and is sent by neither. For an ability command the try is the run's
- * gates in order with the elixir gate reading the elixir less the promised costs. The client builds
- * the item a play carries as it gives it: a deck card's from the side's count now, a Mirror's from
- * the last play of its side it still lists as promised or else the king's last card, a variant
- * card's option picked from the king's elixir less the promised costs.
+ * gates in order with the elixir gate reading the elixir less the promised costs; {@link
+ * #tryAbility} makes that try without giving the command, as {@link #tryCard} does a play's. The
+ * client builds the item a play carries as it gives it: a deck card's from the side's count now, a
+ * Mirror's from the last play of its side it still lists as promised or else the king's last card,
+ * a variant card's option picked from the king's elixir less the promised costs.
  *
  * <p>A command the try passes promises its item's cost from its giving: a play until its run places
  * it, or, refused at its run, until {@value Standard1v1Battle#PROMISE_TICKS} ticks after the tick
@@ -340,8 +341,39 @@ public final class PlayerCommands {
    */
   public Giving useAbility(int side, String unit, String name) {
     checkNameNew(name);
-    int tick = battle.getBattle().getTick();
-    int givenTick = stamp(tick);
+    Giving tried = tryAbility(side, unit, name);
+    if (!tried.given()) {
+      return tried;
+    }
+    battle.useAbility(tried.runTick(), side, unit, name);
+    given.add(
+        new Given(
+            side,
+            Kind.ABILITY,
+            -1,
+            name,
+            tried.runTick(),
+            battle.getBattle().getTick() + Standard1v1Battle.PROMISE_TICKS,
+            tried.cost()));
+    return tried;
+  }
+
+  /**
+   * Tries an ability command naming a unit as {@link #useAbility} does, without giving it: whether
+   * the client would send it now. The same gates in the same order, so it comes to what a giving
+   * now would, and nothing changes: nothing is queued or promised.
+   *
+   * @param side the commanding side
+   * @param unit the name of the unit it would name, made by a play of the side that has run
+   * @return what a giving now would come to
+   */
+  public Giving tryAbility(int side, String unit) {
+    return tryAbility(side, unit, "an ability command naming " + unit);
+  }
+
+  /** The client's try of an ability command: the run's gates, the promised costs set aside. */
+  private Giving tryAbility(int side, String unit, String name) {
+    int givenTick = stamp(battle.getBattle().getTick());
     int runTick = givenTick + Standard1v1Battle.PLAY_DELAY_TICKS;
     CharacterEntity named = playedUnit(side, unit);
     if (named == null) {
@@ -361,10 +393,6 @@ public final class PlayerCommands {
     if (code != AbilityCommand.OK) {
       return new Giving(abilityRefusal(code), code, givenTick, runTick, cost);
     }
-    battle.useAbility(runTick, side, unit, name);
-    given.add(
-        new Given(
-            side, Kind.ABILITY, -1, name, runTick, tick + Standard1v1Battle.PROMISE_TICKS, cost));
     return new Giving(Refusal.NONE, 0, givenTick, runTick, cost);
   }
 
