@@ -16,7 +16,7 @@ The battle core holds no code of the environment. The environment reads the obse
 
 ```
 env/                     org.crforge.env
-  Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes (version 1)
+  Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes (version 2)
   Vocabulary             every card, character, building, projectile and area effect row named by number
   EnvConfig              decision interval, card and tower level, tick limit
   BattleEnv              one battle between two seats, writing into its share of the vector's buffers
@@ -42,7 +42,7 @@ One step of the vector is one decision in every battle:
 
 1. The trainer writes each seat's action into `actions` (`count x 2` int32) and calls `step()`.
 2. Each environment gives its two actions, one seat after the other. Commands given on the same tick run in the order they were given, so the side given first alternates: side 0 on even decisions (counted from 0 in the episode), side 1 on odd ones; `I_FIRST_SIDE` says which.
-3. A wait does nothing. A play of an action the seat's mask left open is given with `PlayerCommands.playCard(side, slot, level, x, y, name)` at the tile's centre, at `EnvConfig.level`. The player's screen runs the placement search at the giving and the command carries the tile it finds, so a drop anywhere is moved to a legal tile rather than refused; the command is stamped with the tick counter and runs `PLAY_DELAY_TICKS` (20) ticks later against the battle as it stands then. An action the mask closed, out of range, or refused at its giving is taken as a wait and counted as illegal (`I_ILLEGAL_0`, `I_ILLEGAL_1`, the seat's `illegal`), with its refusal code in the seat's `last_refusal`. A giving the battle core refuses as not modelled (an `UnsupportedOperationException` from `playCard`) is refused the same way, with the code `NOT_MODELLED` and counted in `I_NOT_MODELLED`; it is not a fault.
+3. A wait does nothing. A play of an action the seat's mask left open is given with `PlayerCommands.playCard(side, slot, level, x, y, name)` at the tile's centre, at `EnvConfig.level`. The player's screen runs the placement search at the giving and the command carries the tile it finds, so a drop anywhere is moved to a legal tile rather than refused; the command is stamped with the tick counter and runs `PLAY_DELAY_TICKS` (20) ticks later against the battle as it stands then. An action the mask closed, out of range, or refused at its giving is taken as a wait and counted as illegal (`I_ILLEGAL_0`, `I_ILLEGAL_1`, the seat's `illegal`), with its refusal code in the seat's `last_refusal`. An ability action the mask left open is given with `PlayerCommands.useAbility(side, unit, name)`, naming the unit of the play the champion slot follows by the name the battle gave it (below); it is stamped and runs 20 ticks later the same way. A giving the battle core refuses as not modelled (an `UnsupportedOperationException` from `playCard` or `useAbility`) is refused the same way, with the code `NOT_MODELLED` and counted in `I_NOT_MODELLED`; it is not a fault.
 4. The battle steps `EnvConfig.decisionTicks` times (5 by default, four decisions a second of game time; 1 decides every tick), or fewer when the match ends.
 5. The environment writes both seats' observations and masks, the rewards and the info record. The step returns; everything is in the buffers.
 
@@ -64,7 +64,7 @@ The environment wraps every call into the core in its own marker (`EnvFault.Core
 
 Decks are checked before any environment is touched: eight cards, each a card row of the tables, none twice. A bad deck refuses the whole `reset` call with the environment and side named, and changes nothing.
 
-## The schema (version 1)
+## The schema (version 2)
 
 Everything is a 32-bit integer in the machine's byte order, so Python reads the buffers as arrays without a copy; only the rewards are floats. The constants and their documentation are in `org.crforge.env.Schema`, and `VectorEnv.metadataJson()` exports them (below).
 
@@ -76,7 +76,7 @@ The action grid is 18 tiles across and 32 along in the seat's frame, a tile bein
 
 ### The observation
 
-`SEAT_INTS` = 2496 integers a seat: a header of 96, then 200 entity rows of 12, the first `entity_count` written.
+`SEAT_INTS` = 2528 integers a seat: a header of 128, then 200 entity rows of 12, the first `entity_count` written.
 
 | Header field | What it is |
 |---|---|
@@ -95,6 +95,10 @@ The action grid is 18 tiles across and 32 along in the seat's frame, a tile bein
 | `last_run_refusal` | the code of the seat's play refused at its run in the last decision: the match gate's code, 1000 for a placement that found no place, 0 for none |
 | `illegal` | the seat's actions refused as illegal in the episode |
 | `pending_count`, pending rows 4 x (`pending_card`, `pending_x`, `pending_y`, `pending_ticks`) | the seat's own commands given and not yet run, oldest first: the card, the point the command carries in the seat's frame, the ticks until it runs; unused rows are -1, 0, 0, 0. A hand slot's card has at most one play waiting, so four rows hold them all |
+| `deck_slot` x8, `deck_evolution` x8 | the seat's own deck's slot flags by deck index (evolution 1, hero 2, both 3, none 0), and each card's evolution count as the king counts it (plays of an evolution slot's card since its last evolved play), -1 where the count is not established (a play of the card refused at its placement) |
+| `hand_form` x4 | the form a play of each hand slot's card would take now: 0 plain, 1 evolved, 2 hero (`EvolutionItem`'s field); 0 for an empty slot |
+| champion rows 2 x (`ability_champion`, `ability_unit`, `ability_state`, `ability_cooldown_ms`, `ability_charges`, `ability_command_ticks`) | the seat's king's two champion slots, row `k` for ability action `k`: the vocabulary id of the champion row the slot follows (-1 for none), the battle id of the unit its action names while that unit lives (-1 otherwise), the button state as `ChampionController` works it out, the cooldown left in ms, the charges left (-1 uncounted), and the ticks until the seat's latest ability command for the slot runs (0 for none waiting) |
+| `last_ability_run_refusal` | the ability gate's code of the seat's ability command refused at its run in the last decision, 0 for none |
 
 | Entity field | What it is |
 |---|---|
@@ -113,17 +117,18 @@ The action grid is 18 tiles across and 32 along in the seat's frame, a tile bein
 
 ### The mask
 
-`ACTIONS` = 2305 bytes a seat, 1 for an action the seat may take now; it is what the player's screen offers:
+`ACTIONS` = 2307 bytes a seat, 1 for an action the seat may take now; it is what the player's screen offers:
 
 - the wait is always open;
 - before the match's start cooldown (`LadderMatch.getStartCooldownTicks()`, from the game mode's row) nothing else is;
-- after it, a hand slot is open when the client's try of its card passes (`PlayerCommands.tryCard(side, slot, level)`: the match's gates, the elixir less the promised costs, no play of the card waiting, and a Mirror with a card to repeat), and then every one of its 576 tiles is open, as a drop anywhere is moved to the tile the placement search finds. A try the core refuses as not modelled closes the slot.
+- after it, a hand slot is open when the client's try of its card passes (`PlayerCommands.tryCard(side, slot, level)`: the match's gates, the elixir less the promised costs, no play of the card waiting, and a Mirror with a card to repeat), and then every one of its 576 tiles is open, as a drop anywhere is moved to the tile the placement search finds. A try the core refuses as not modelled closes the slot;
+- a champion slot's ability action is open when the client's try of an ability command naming the slot's unit passes (`PlayerCommands.tryAbility(side, unit)`: the same gates `useAbility` applies, in order, with the elixir less the promised costs, and nothing given). The unit is the one of the play the slot follows (its deploy count) whose row names the champion's ability, not a clone, by the name `Standard1v1Battle` gave it; a slot that follows no play, or a champion no play of the side made, keeps its action closed. The match does not gate an ability command on its start cooldown; no champion stands before it anyway.
 
 The mask reads no entity, so it shows nothing of the field the seat does not see. A play the mask let through is given (the try and the giving are the same check), and runs 20 ticks later against the battle as it stands then, so it may still be refused at its run, as a player's can: `last_run_refusal` shows it, and its cost stays held back for its promise.
 
 ### The action
 
-One integer: `0` the wait, else `1 + slot * 576 + row * 18 + col` for a play of hand slot `slot` dropped at the centre of tile `(col, row)` of the seat's frame, `col` 0 at the seat's left and `row` 0 at its own back line.
+One integer: `0` the wait; `1 + slot * 576 + row * 18 + col` for a play of hand slot `slot` dropped at the centre of tile `(col, row)` of the seat's frame, `col` 0 at the seat's left and `row` 0 at its own back line; and `FIRST_ABILITY + k` (2305 and 2306) for the tap on the ability of the king's champion slot `k` (`Schema.ability(k)`). The ability actions come after every play, so the play actions keep their numbers from version 1.
 
 ### The info record
 
@@ -131,7 +136,7 @@ One integer: `0` the wait, else `1 + slot * 576 + row * 18 + col` for a play of 
 
 ### Refusal codes
 
-`last_refusal` holds the giving's refusal as `PlayerCommands.Refusal` numbers it: 0 `NONE`, 1 `MATCH_OVER`, 2 `KING_DEAD`, 3 `NOT_IN_HAND`, 4 `START_COOLDOWN`, 5 `CARD_PENDING`, 6 `NOT_ENOUGH_ELIXIR`, 7 `NO_TILE`, then the ability refusals (8 to 15, unused while abilities are not in the action space); and two of the environment's own: 100 `MASKED` (an action the mask closed, never given) and 101 `NOT_MODELLED`. A change of the core's refusals moves the schema's version (`SchemaTest` pins the list).
+`last_refusal` holds the giving's refusal as `PlayerCommands.Refusal` numbers it: 0 `NONE`, 1 `MATCH_OVER`, 2 `KING_DEAD`, 3 `NOT_IN_HAND`, 4 `START_COOLDOWN`, 5 `CARD_PENDING`, 6 `NOT_ENOUGH_ELIXIR`, 7 `NO_TILE`, then the ability refusals, 8 `NO_CHAMPION`, 9 `COOLDOWN`, 10 `NO_CHARGES`, 11 `NOT_CHAMPION`, 12 `ABILITY_PENDING`, 13 `CLONE`, 14 `FROZEN`, 15 `ABILITY_DISABLED` (an ability command's elixir gate and dead king are reported as 6 and 2); and two of the environment's own: 100 `MASKED` (an action the mask closed, never given) and 101 `NOT_MODELLED`. A change of the core's refusals moves the schema's version (`SchemaTest` pins the list).
 
 ### The vocabulary and the metadata
 
@@ -144,6 +149,7 @@ GameTables tables = VectorEnv.tables(Path.of("<tables folder of a data version>"
 try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 256, 8)) {
   env.writeMetadata(Path.of("run/metadata.json"));
   env.reset(seeds, deck0, deck1);           // one seed per battle; decks by card row name
+  // or env.reset(seeds, deck0, deck1, slots0, slots1) with each deck's slot flags
   IntBuffer actions = env.actions().asIntBuffer();
   while (training) {
     // read env.observations() and env.masks(), write each seat's action
@@ -153,14 +159,15 @@ try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 256, 8)) {
 }
 ```
 
-The buffers are direct `ByteBuffer`s in the machine's byte order, laid out environment after environment and seat after seat: `observations()` is `count x 2 x 2496` int32, `masks()` `count x 2 x 2305` bytes, `actions()` `count x 2` int32, `rewards()` `count x 2` float32, `dones()` `count` bytes, `infos()` `count x 12` int32. They are made once and valid for the vector's life, so a Python bridge maps them once and moves no bytes in a step. `reset(seeds, String[] deck0, String[] deck1)` gives each battle its own decks (eight names each, battle after battle); `resetEnv(i, seed)` resets one battle on its decks; `setAutoreset(false)` leaves finished battles for the caller. `VectorEnv.ladder(Path, ...)` takes a tables folder directly; the folder is one explicit argument, with no default.
+The buffers are direct `ByteBuffer`s in the machine's byte order, laid out environment after environment and seat after seat: `observations()` is `count x 2 x 2528` int32, `masks()` `count x 2 x 2307` bytes, `actions()` `count x 2` int32, `rewards()` `count x 2` float32, `dones()` `count` bytes, `infos()` `count x 12` int32. They are made once and valid for the vector's life, so a Python bridge maps them once and moves no bytes in a step. `reset(seeds, String[] deck0, String[] deck1)` gives each battle its own decks (eight names each, battle after battle); `reset(seeds, deck0, deck1, int[] slots0, int[] slots1)` adds each deck's slot flags (eight a deck, battle after battle, `Schema.SLOT_EVOLUTION` 1 and `Schema.SLOT_HERO` 2; null for none, every card played plain, as the resets without them do): the shape is checked before any battle is touched, and a card the battle core does not take in a slot ends that battle's episode as a refusal fault as its match starts; `resetEnv(i, seed)` resets one battle on its decks and slot flags; `setAutoreset(false)` leaves finished battles for the caller. `VectorEnv.ladder(Path, ...)` takes a tables folder directly; the folder is one explicit argument, with no default.
 
 With more than one thread the battles are stepped on a fixed pool of daemon threads, each thread taking a contiguous share; nothing is shared between battles but the read-only tables and vocabulary.
 
 ## What is not offered yet
 
-- **Champion abilities**: a seat cannot tap an ability; the action space has none (refusal codes 8 to 15 are reserved for them).
-- **Evolution and hero slots**: every deck plays with no slot flags, so no card is played evolved or in its hero form.
+- **Champion abilities of spawned champions**: an ability action names a unit a card play of the side made (`PlayerCommands.useAbility` names units by the play's name); a champion slot that follows a champion an action spawned keeps its action closed.
+- **The enemy's champion slots and slot flags**: a seat sees only its own; the enemy's champion shows on the field as an entity.
+- **Deck slot rules**: the environment checks the slot flags' shape only; which cards a slot may hold, and how many slots a deck has, are the battle core's to refuse as the match starts.
 - **Levels**: every card is played at one level (`EnvConfig.level`, 11 by default) and every tower at `EnvConfig.towerLevel`; entity rows carry no level.
 - **Inferred knowledge of the enemy**: what a player can count (the enemy's cycle, an estimate of its elixir) is not in the observation; it will come as separate fields.
 - **Per-entity detail** beyond the table above (targets, deploy countdowns, buffs, velocities, projectile aims, area lifetimes), static per-row features and normalization scales.
@@ -192,13 +199,13 @@ Two inputs, each one explicit argument with no default and no environment variab
 
 ### The vector
 
-`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2496)`, `masks` uint8 `(count, 2, 2305)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s.
+`VectorBattle(count, threads, install=..., tables=..., config=LadderConfig(...))` wraps `VectorEnv.ladder`; `engine="synthetic"` wraps synthetic environments instead and needs no tables. Its arrays are views of the buffers, made once: `observations` int32 `(count, 2, 2528)`, `masks` uint8 `(count, 2, 2307)`, `actions` int32 `(count, 2)` (written before `step()`), `rewards` float32 `(count, 2)`, `dones` uint8 `(count,)`, `infos` int32 `(count, 12)`. `reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none); `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`. `LadderConfig` fields left unset take `EnvConfig.DEFAULT`'s.
 
 A synthetic vector takes `synthetic_entities`, `synthetic_episode_steps`, and `synthetic_fault_at` with `synthetic_fault_kind` (`refusal`, `bug`, `env_bug`): every episode faults at that decision, so the fault path can be tested without a battle.
 
 ### The schema from the metadata
 
-At start the package reads `VectorEnv.metadataJson()`: the schema's version, sizes and field names give every offset (`schema.header[name]`, the indices of a header field; `schema.entity[name]`, `schema.info[name]`, `schema.flags[name]`, `schema.refusals[code]`), and the few codes the metadata does not list (results, entity kinds, the winner codes, the deck size, the arena's size) are read from the `Schema` class. No offset is typed twice in Python. The package reads schema version 1; a module that writes another version is refused at start.
+At start the package reads `VectorEnv.metadataJson()`: the schema's version, sizes and field names give every offset (`schema.header[name]`, the indices of a header field; `schema.entity[name]`, `schema.info[name]`, `schema.flags[name]`, `schema.refusals[code]`), and the few codes the metadata does not list (results, entity kinds, the winner codes, the deck size, the arena's size) are read from the `Schema` class. No offset is typed twice in Python. The package reads schema version 2; a module that writes another version is refused at start. The action count is `schema.actions` (the metadata's `actions`), the first ability action `schema.first_ability`; `schema.ability(k)`, `schema.is_ability(action)` and `schema.ability_slot(action)` encode and read the ability actions as `schema.play` and `schema.decode` do the plays.
 
 `vector.metadata` is the export and `vector.write_metadata(path)` writes it, to be kept with every run and checkpoint. `vector.check_metadata(saved)` refuses a saved export this vector would read differently: another schema version, sizes or field names, a vocabulary missing, or a vocabulary whose ids moved (through `Vocabulary.checkSame`, naming the first moved name), so a model trained on one data version is remapped by name rather than read shifted.
 
@@ -206,12 +213,12 @@ At start the package reads `VectorEnv.metadataJson()`: the schema's version, siz
 
 Two wrappers over a vector of one battle, both with autoreset off:
 
-- `ClashParallelEnv(deck0, deck1, install=..., tables=...)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 2496 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
-- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0)`: a single-agent environment for the learner on `seat`; the other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
+- `ClashParallelEnv(deck0, deck1, install=..., tables=..., slots0=None, slots1=None)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 2528 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
+- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0, slots=None, opponent_slots=None)`: a single-agent environment for the learner on `seat`, `slots` and `opponent_slots` each deck's slot flags; the other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
 
-The observation space is a box of int32 of the seat's 2496 integers, not floats: its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself. Its bounds (`schema.observation_bounds(vocabulary_size)`): a vocabulary id field (hand, next card, deck, enemy cards seen, waiting commands' cards, an entity's row) lies in -1 to the last id; the result, the seat, the overtime and pending marks, an entity's kind, side and flags in 0 to their largest code; every other field in the int32 range. The action space is the 2305 actions. A `reset(seed=...)` takes a 32-bit seed as the battle's seed; a reset without one draws the battle's seed from the environment's own generator.
+The observation space is a box of int32 of the seat's 2528 integers, not floats: its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself. Its bounds (`schema.observation_bounds(vocabulary_size)`): a vocabulary id field (hand, next card, deck, enemy cards seen, waiting commands' cards, a champion slot's champion, an entity's row) lies in -1 to the last id; the result, the seat, the overtime and pending marks, the deck's slot flags, the hand's forms, an entity's kind, side and flags in 0 to their largest code; every other field in the int32 range. The action space is the 2307 actions. A `reset(seed=...)` takes a 32-bit seed as the battle's seed; a reset without one draws the battle's seed from the environment's own generator.
 
-Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait or a play given), `last_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
+Each seat's info (`VectorBattle.seat_info`) is its own: `tick`, `episode_step`, `winner` (the side, 2 for a draw, -1 while running and for an episode cut short), `crowns` and `crowns_enemy`, `illegal` (1 when this seat's action of the decision was refused as illegal) and `illegal_total` (this seat's in the episode), `last_refusal` (the refusal's name, `NONE` for a wait, a play or an ability command given), `last_run_refusal`, `last_ability_run_refusal`, `first_side`, `not_modelled`, `truncated`, `fault`, `fault_message`, `fault_signature`, and `action_mask` (int8). The other seat's counts are in the other seat's info only.
 
 ### The scripted bot and evaluation
 

@@ -22,11 +22,15 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.match.Timeline;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.unit.AbilityCommand;
+import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectEntity;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
+import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.env.EnvFault.CoreFailure;
@@ -39,11 +43,14 @@ import org.crforge.env.EnvFault.CoreFailure;
  * match gates it and pays for it. The match decides the end. The environment adds nothing to the
  * battle: it reads the observation off the battle core's own objects after each decision.
  *
- * <p>The legality mask is what the player's screen offers: nothing but the wait before the match's
- * start cooldown; then a hand slot is open when the client's try of its card passes ({@link
+ * <p>The legality mask is what the player's screen offers: no play before the match's start
+ * cooldown; then a hand slot is open when the client's try of its card passes ({@link
  * PlayerCommands#tryCard}), and every tile of an open slot is open, as a drop anywhere is moved to
- * the tile the placement search finds. A play the mask let through may still be refused at its run,
- * as a player's can, and the seat is shown so.
+ * the tile the placement search finds. A champion slot's ability action is open when the client's
+ * try of an ability command naming the slot's unit passes ({@link PlayerCommands#tryAbility}); the
+ * unit is the one of the play the slot follows whose row names the champion's ability, by the name
+ * the battle gave it. A play or ability command the mask let through may still be refused at its
+ * run, as a player's can, and the seat is shown so.
  *
  * <p>An action the mask closed, out of range, or refused at its giving is taken as a wait and
  * counted as illegal, with its refusal code in the seat's header. A giving the battle core refuses
@@ -69,6 +76,16 @@ public final class LadderEnv extends BufferedEnv {
    */
   private record Waiting(String name, int side, int card, int x, int y, int runTick) {}
 
+  /**
+   * An ability command this environment gave that has not run yet.
+   *
+   * @param name the command's name
+   * @param side the giving side
+   * @param slot the champion slot it was given for, 0 or 1
+   * @param runTick the tick it runs on
+   */
+  private record AbilityWaiting(String name, int side, int slot, int runTick) {}
+
   private final GameTables tables;
   private final Vocabulary vocabulary;
   private final EnvConfig config;
@@ -83,6 +100,16 @@ public final class LadderEnv extends BufferedEnv {
 
   private final List<Waiting> waiting = new ArrayList<>();
   private final List<List<String>> enemySeen = List.of(new ArrayList<>(), new ArrayList<>());
+  private final List<AbilityWaiting> abilityWaiting = new ArrayList<>();
+
+  /** Per seat and champion slot: the unit its ability action names, or null for none found. */
+  private final CharacterEntity[][] abilityUnits = new CharacterEntity[2][Schema.ABILITY_SLOTS];
+
+  /** Per seat and champion slot: the champion row the unit was found for. */
+  private final UnitData[][] abilityChampions = new UnitData[2][Schema.ABILITY_SLOTS];
+
+  /** Per seat and champion slot: the deploy count of the play the unit was found for. */
+  private final int[][] abilityIndices = new int[2][Schema.ABILITY_SLOTS];
 
   /**
    * Per seat: its king, left and right princess tower, then the enemy's, left and right as seen.
@@ -91,11 +118,13 @@ public final class LadderEnv extends BufferedEnv {
 
   private final int[] lastRefusal = new int[2];
   private final int[] lastRunRefusal = new int[2];
+  private final int[] lastAbilityRunRefusal = new int[2];
   private final int[] illegalNow = new int[2];
   private final int[] illegalTotal = new int[2];
   private int notModelled;
   private int firstSide;
   private int playsSeen;
+  private int abilityUsesSeen;
   private int playsGiven;
   private int episodeStep;
   private boolean done;
@@ -124,8 +153,22 @@ public final class LadderEnv extends BufferedEnv {
     return commands;
   }
 
+  /**
+   * The name of the unit a seat's ability action of a champion slot names now, as the battle named
+   * it, or null when the slot follows no play or no unit of the play is found: the unit of the play
+   * the slot follows (its deploy count) whose row names the champion's ability, not a clone.
+   *
+   * @param seat the seat, 0 or 1
+   * @param slot the champion slot, 0 or 1
+   */
+  public String abilityUnit(int seat, int slot) {
+    CharacterEntity unit = findAbilityUnit(seat, slot);
+    return unit == null ? null : unit.name();
+  }
+
   @Override
-  public void checkDeck(List<String> deck) {
+  public void checkDeck(List<String> deck, int[] slots) {
+    checkSlotFlags(slots);
     if (deck.size() != Schema.DECK_SIZE) {
       throw new IllegalArgumentException(
           "a deck of " + Schema.DECK_SIZE + " cards, got " + deck.size() + ": " + deck);
@@ -143,7 +186,7 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   @Override
-  public void reset(int seed, List<String> deck0, List<String> deck1) {
+  public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
     clearFault();
     standard = null;
     battle = null;
@@ -153,13 +196,21 @@ public final class LadderEnv extends BufferedEnv {
     waiting.clear();
     enemySeen.get(0).clear();
     enemySeen.get(1).clear();
+    abilityWaiting.clear();
+    for (int seat = 0; seat < 2; seat++) {
+      Arrays.fill(abilityUnits[seat], null);
+      Arrays.fill(abilityChampions[seat], null);
+      Arrays.fill(abilityIndices[seat], -1);
+    }
     Arrays.fill(lastRefusal, 0);
     Arrays.fill(lastRunRefusal, 0);
+    Arrays.fill(lastAbilityRunRefusal, 0);
     Arrays.fill(illegalNow, 0);
     Arrays.fill(illegalTotal, 0);
     notModelled = 0;
     firstSide = 0;
     playsSeen = 0;
+    abilityUsesSeen = 0;
     playsGiven = 0;
     episodeStep = 0;
     done = false;
@@ -168,7 +219,7 @@ public final class LadderEnv extends BufferedEnv {
     try {
       standard = new Standard1v1Battle(tables, config.towerLevel());
       standard.getWorld().seed(seed);
-      match = standard.startLadderMatch(deck0, deck1, 0, 0);
+      match = standard.startLadderMatch(deck0, deck1, 0, 0, slots0, slots1);
       commands = new PlayerCommands(standard);
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       throw new CoreFailure(e);
@@ -186,6 +237,7 @@ public final class LadderEnv extends BufferedEnv {
     firstSide = episodeStep % 2;
     Arrays.fill(illegalNow, 0);
     Arrays.fill(lastRunRefusal, 0);
+    Arrays.fill(lastAbilityRunRefusal, 0);
     notModelled = 0;
     apply(firstSide, firstSide == 0 ? action0 : action1);
     apply(1 - firstSide, firstSide == 0 ? action1 : action0);
@@ -197,6 +249,7 @@ public final class LadderEnv extends BufferedEnv {
       }
     }
     readPlays();
+    readAbilityUses();
     episodeStep++;
     truncated =
         !battle.getMode().isOver()
@@ -228,7 +281,8 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * Gives a seat's action to the battle through the player's commands: nothing for a wait, a play
-   * for an action the seat's mask left open; an action refused is counted as illegal.
+   * or an ability command for an action the seat's mask left open; an action refused is counted as
+   * illegal.
    */
   private void apply(int side, int action) {
     lastRefusal[side] = Schema.REFUSAL_NONE;
@@ -237,6 +291,10 @@ public final class LadderEnv extends BufferedEnv {
     }
     if (action < 1 || action >= Schema.ACTIONS || !open(side, action)) {
       refuse(side, Schema.REFUSAL_MASKED);
+      return;
+    }
+    if (Schema.isAbility(action)) {
+      useAbility(side, Schema.abilitySlot(action));
       return;
     }
     int slot = (action - 1) / Schema.TILES;
@@ -265,6 +323,89 @@ public final class LadderEnv extends BufferedEnv {
     givenCards.put(name, card);
     waiting.add(
         new Waiting(name, side, vocabulary.id(card), giving.x(), giving.y(), giving.runTick()));
+  }
+
+  /**
+   * Gives an ability command naming the unit a champion slot's action names, through the player's
+   * commands, as the player taps the slot's button.
+   */
+  private void useAbility(int side, int slot) {
+    CharacterEntity unit = findAbilityUnit(side, slot);
+    if (unit == null) {
+      refuse(side, Schema.REFUSAL_MASKED);
+      return;
+    }
+    String name = "s" + side + "_" + (++playsGiven);
+    PlayerCommands.Giving giving;
+    try {
+      giving = commands.useAbility(side, unit.name(), name);
+    } catch (UnsupportedOperationException e) {
+      // A giving the battle core does not model: nothing was sent, as for a refusal.
+      notModelled++;
+      refuse(side, Schema.REFUSAL_NOT_MODELLED);
+      return;
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    if (!giving.given()) {
+      refuse(side, Schema.refusalCode(giving.refusal()));
+      return;
+    }
+    abilityWaiting.add(new AbilityWaiting(name, side, slot, giving.runTick()));
+  }
+
+  /**
+   * The unit a seat's ability action of a champion slot names: the unit of the play the slot
+   * follows whose row names the champion's ability, not a clone; null when the slot follows no
+   * play, or no play of the side that has run made such a unit (a champion an action spawned, which
+   * the player's commands cannot name). Found once per play the slot follows.
+   */
+  private CharacterEntity findAbilityUnit(int seat, int slot) {
+    ChampionController controller = standard.getWorld().kingTower(seat).championSlot(slot + 1);
+    UnitData champion = controller == null ? null : controller.getChampion();
+    int index = controller == null ? -1 : controller.getDeployIndex();
+    if (champion == null || champion.ability() == null || index < 0) {
+      return null;
+    }
+    if (abilityUnits[seat][slot] != null
+        && abilityChampions[seat][slot] == champion
+        && abilityIndices[seat][slot] == index) {
+      return abilityUnits[seat][slot];
+    }
+    String ability = champion.ability().name();
+    for (Standard1v1Battle.Play play : standard.getPlays()) {
+      if (play.side() != seat) {
+        continue;
+      }
+      for (CharacterEntity unit : play.units()) {
+        AbilityData data = unit.getData().ability();
+        if (unit.getDeployIndex() == index
+            && !unit.isClone()
+            && data != null
+            && data.name().equals(ability)) {
+          abilityUnits[seat][slot] = unit;
+          abilityChampions[seat][slot] = champion;
+          abilityIndices[seat][slot] = index;
+          return unit;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Reads the ability commands that ran since the last read: each leaves the waiting list, and one
+   * refused at its run is shown to its seat with its gate's code.
+   */
+  private void readAbilityUses() {
+    List<Standard1v1Battle.AbilityUse> uses = standard.getAbilityUses();
+    for (; abilityUsesSeen < uses.size(); abilityUsesSeen++) {
+      Standard1v1Battle.AbilityUse use = uses.get(abilityUsesSeen);
+      if (abilityWaiting.removeIf(w -> w.name().equals(use.name()))
+          && use.outcome().code() != AbilityCommand.OK) {
+        lastAbilityRunRefusal[use.side()] = use.outcome().code();
+      }
+    }
   }
 
   private void refuse(int side, int code) {
@@ -455,6 +596,40 @@ public final class LadderEnv extends BufferedEnv {
     for (int r = rows; r < Schema.PENDING_ROWS; r++) {
       o[Schema.H_PENDING + r * Schema.PENDING_INTS] = -1;
     }
+    for (int k = 0; k < Schema.DECK_SIZE && k < own.deck().size(); k++) {
+      o[Schema.H_DECK_SLOTS + k] = own.slotFlags(k);
+      o[Schema.H_DECK_EVOLUTION + k] = own.evolutionCountUnknown(k) ? -1 : own.evolutionCount(k);
+    }
+    for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+      int index = slots[k];
+      o[Schema.H_HAND_FORM + k] = index == Hand.EMPTY ? 0 : own.item(index).field();
+    }
+    abilityRows(seat, tick);
+    o[Schema.H_LAST_ABILITY_RUN_REFUSAL] = lastAbilityRunRefusal[seat];
+  }
+
+  /** Writes the seat's champion slot rows. */
+  private void abilityRows(int seat, int tick) {
+    int[] o = seatScratch;
+    TowerEntity king = standard.getWorld().kingTower(seat);
+    for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+      int at = Schema.H_ABILITY + k * Schema.ABILITY_INTS;
+      ChampionController slot = king.championSlot(k + 1);
+      UnitData champion = slot == null ? null : slot.getChampion();
+      CharacterEntity unit = findAbilityUnit(seat, k);
+      o[at] = champion == null ? -1 : vocabulary.id(champion.name());
+      o[at + 1] = unit != null && unit.getView().isAlive() ? unit.getId() : -1;
+      o[at + 2] = slot == null ? 0 : slot.getState();
+      o[at + 3] = slot == null ? 0 : slot.getCooldownMs();
+      o[at + 4] = slot == null ? 0 : slot.getCharges();
+      int ticks = 0;
+      for (AbilityWaiting w : abilityWaiting) {
+        if (w.side() == seat && w.slot() == k) {
+          ticks = Math.max(ticks, Math.max(w.runTick() - tick, 0));
+        }
+      }
+      o[at + 5] = ticks;
+    }
   }
 
   /**
@@ -572,9 +747,9 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Writes a seat's mask: the wait, and once the match takes card plays, every tile of each hand
-   * slot whose card the client's try passes. A try the battle core refuses as not modelled closes
-   * its slot.
+   * Writes a seat's mask: the wait; once the match takes card plays, every tile of each hand slot
+   * whose card the client's try passes; and each champion slot's ability action whose command's try
+   * passes. A try the battle core refuses as not modelled closes its action.
    */
   private void mask(int seat) {
     byte[] m = maskScratch;
@@ -594,6 +769,24 @@ public final class LadderEnv extends BufferedEnv {
           int from = 1 + k * Schema.TILES;
           Arrays.fill(m, from, from + Schema.TILES, (byte) 1);
         }
+      }
+    }
+    // The match does not gate an ability command on its start cooldown: no champion stands before.
+    for (int k = 0; k < Schema.ABILITY_SLOTS && !done; k++) {
+      CharacterEntity unit = findAbilityUnit(seat, k);
+      if (unit == null) {
+        continue;
+      }
+      PlayerCommands.Giving tried;
+      try {
+        tried = commands.tryAbility(seat, unit.name());
+      } catch (UnsupportedOperationException e) {
+        continue;
+      } catch (RuntimeException | AssertionError | StackOverflowError e) {
+        throw new CoreFailure(e);
+      }
+      if (tried.given()) {
+        m[Schema.ability(k)] = 1;
       }
     }
     flushMask(seat);

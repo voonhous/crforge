@@ -23,7 +23,7 @@ class SchemaTest {
     assertThat(Schema.TILE_UNITS).isEqualTo(1000);
     assertThat(Schema.WIDTH_UNITS).isEqualTo(18_000);
     assertThat(Schema.HEIGHT_UNITS).isEqualTo(32_000);
-    assertThat(Schema.ACTIONS).isEqualTo(1 + 4 * 18 * 32);
+    assertThat(Schema.ACTIONS).isEqualTo(1 + 4 * 18 * 32 + 2);
   }
 
   @Test
@@ -41,9 +41,28 @@ class SchemaTest {
         }
       }
     }
-    assertThat(seen).hasSize(Schema.ACTIONS - 1);
+    assertThat(seen).hasSize(Schema.FIRST_ABILITY - 1);
     assertThatThrownBy(() -> Schema.slot(Schema.WAIT)).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> Schema.play(4, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Schema.slot(Schema.FIRST_ABILITY))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void theAbilityActionsComeAfterEveryPlayOnePerChampionSlot() {
+    assertThat(Schema.FIRST_ABILITY).isEqualTo(Schema.play(3, 17, 31) + 1);
+    for (int slot = 0; slot < Schema.ABILITY_SLOTS; slot++) {
+      int action = Schema.ability(slot);
+      assertThat(action).isEqualTo(Schema.FIRST_ABILITY + slot);
+      assertThat(Schema.isAbility(action)).isTrue();
+      assertThat(Schema.abilitySlot(action)).isEqualTo(slot);
+    }
+    assertThat(Schema.ability(Schema.ABILITY_SLOTS - 1)).isEqualTo(Schema.ACTIONS - 1);
+    assertThat(Schema.isAbility(Schema.WAIT)).isFalse();
+    assertThat(Schema.isAbility(Schema.FIRST_ABILITY - 1)).isFalse();
+    assertThat(Schema.isAbility(Schema.ACTIONS)).isFalse();
+    assertThatThrownBy(() -> Schema.ability(2)).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> Schema.abilitySlot(1)).isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -86,6 +105,16 @@ class SchemaTest {
             Schema.headerFields()
                 .get(Schema.H_PENDING + Schema.PENDING_ROWS * Schema.PENDING_INTS - 1))
         .isEqualTo("pending_ticks");
+    assertThat(Schema.headerFields().get(Schema.H_DECK_SLOTS + 7)).isEqualTo("deck_slot");
+    assertThat(Schema.headerFields().get(Schema.H_DECK_EVOLUTION)).isEqualTo("deck_evolution");
+    assertThat(Schema.headerFields().get(Schema.H_HAND_FORM + 3)).isEqualTo("hand_form");
+    assertThat(Schema.headerFields().get(Schema.H_ABILITY)).isEqualTo("ability_champion");
+    assertThat(
+            Schema.headerFields()
+                .get(Schema.H_ABILITY + Schema.ABILITY_SLOTS * Schema.ABILITY_INTS - 1))
+        .isEqualTo("ability_command_ticks");
+    assertThat(Schema.headerFields().get(Schema.H_LAST_ABILITY_RUN_REFUSAL))
+        .isEqualTo("last_ability_run_refusal");
     assertThat(Schema.infoFields().get(Schema.I_NOT_MODELLED)).isEqualTo("not_modelled");
     assertThat(Schema.SEAT_INTS)
         .isEqualTo(Schema.HEADER_INTS + Schema.MAX_ENTITIES * Schema.ENTITY_INTS);
@@ -105,13 +134,19 @@ class SchemaTest {
     assertThat(Schema.H_TOWERS + 12).isEqualTo(Schema.H_ENTITY_COUNT);
     assertThat(Schema.H_ILLEGAL + 1).isEqualTo(Schema.H_PENDING);
     assertThat(Schema.H_PENDING + Schema.PENDING_ROWS * Schema.PENDING_INTS)
-        .isLessThanOrEqualTo(Schema.HEADER_INTS);
+        .isEqualTo(Schema.H_DECK_SLOTS);
+    assertThat(Schema.H_DECK_SLOTS + Schema.DECK_SIZE).isEqualTo(Schema.H_DECK_EVOLUTION);
+    assertThat(Schema.H_DECK_EVOLUTION + Schema.DECK_SIZE).isEqualTo(Schema.H_HAND_FORM);
+    assertThat(Schema.H_HAND_FORM + Schema.HAND_SLOTS).isEqualTo(Schema.H_ABILITY);
+    assertThat(Schema.H_ABILITY + Schema.ABILITY_SLOTS * Schema.ABILITY_INTS)
+        .isEqualTo(Schema.H_LAST_ABILITY_RUN_REFUSAL);
+    assertThat(Schema.H_LAST_ABILITY_RUN_REFUSAL + 1).isLessThanOrEqualTo(Schema.HEADER_INTS);
   }
 
   @Test
   void theRefusalCodesAreTheCommandsOwnAndPinnedByTheVersion() {
     // A change of the player's commands' refusals moves the codes, and with them the schema's
-    // version: this list is what version 1 means.
+    // version: this list is what version 2 means.
     assertThat(Schema.refusalNames().subList(0, 16))
         .containsExactly(
             "NONE",
@@ -134,6 +169,6 @@ class SchemaTest {
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NONE)).isEqualTo("NONE");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_MASKED)).isEqualTo("MASKED");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NOT_MODELLED)).isEqualTo("NOT_MODELLED");
-    assertThat(Schema.VERSION).isEqualTo(1);
+    assertThat(Schema.VERSION).isEqualTo(2);
   }
 }

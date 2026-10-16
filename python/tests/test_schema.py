@@ -61,7 +61,38 @@ def test_the_python_action_codec_agrees_with_the_java_one(vector):
     seen = {
         s.play(k, c, r) for k in range(s.hand_slots) for c in range(s.cols) for r in range(s.rows)
     }
-    assert seen == set(range(1, s.actions))
+    assert seen == set(range(1, s.first_ability))
+
+
+def test_the_ability_actions_follow_every_play_one_per_champion_slot(vector):
+    s = vector.schema
+    j = java_class("org.crforge.env.Schema")
+    assert (s.ability_slots, s.first_ability) == (int(j.ABILITY_SLOTS), int(j.FIRST_ABILITY))
+    assert s.actions == 1 + s.hand_slots * s.cols * s.rows + s.ability_slots
+    assert [s.ability(k) for k in range(s.ability_slots)] == list(range(s.first_ability, s.actions))
+    for k in range(s.ability_slots):
+        action = s.ability(k)
+        assert action == int(j.ability(k))
+        assert s.is_ability(action) and s.ability_slot(action) == k
+        with pytest.raises(ValueError):
+            s.decode(action)
+    assert not s.is_ability(s.wait) and not s.is_ability(s.first_ability - 1)
+    with pytest.raises(ValueError):
+        s.ability(s.ability_slots)
+    assert len(s.header["ability_champion"]) == s.ability_slots
+    assert len(s.header["deck_slot"]) == len(s.header["deck_evolution"]) == s.deck_size
+    assert len(s.header["hand_form"]) == s.hand_slots
+
+
+def test_a_saved_export_of_the_first_schema_is_refused(vector):
+    saved = dict(vector.metadata)
+    saved["schema"] = {
+        **saved["schema"],
+        "version": 1,
+        "actions": vector.schema.first_ability,
+    }
+    with pytest.raises(ValueError, match="schema version 1"):
+        vector.check_metadata(saved)
 
 
 def test_the_bounds_hold_a_cleared_observation(vector):

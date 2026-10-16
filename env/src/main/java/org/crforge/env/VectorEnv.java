@@ -92,6 +92,8 @@ public final class VectorEnv implements AutoCloseable {
   private final SplittableRandom[] seeds;
   private final List<List<String>> deck0s = new ArrayList<>();
   private final List<List<String>> deck1s = new ArrayList<>();
+  private final List<int[]> slots0s = new ArrayList<>();
+  private final List<int[]> slots1s = new ArrayList<>();
   private final EnvFault[] faults;
   private final boolean[] broken;
 
@@ -170,6 +172,8 @@ public final class VectorEnv implements AutoCloseable {
       seeds[i] = new SplittableRandom(i);
       deck0s.add(List.of());
       deck1s.add(List.of());
+      slots0s.add(new int[Schema.DECK_SIZE]);
+      slots1s.add(new int[Schema.DECK_SIZE]);
     }
   }
 
@@ -310,31 +314,79 @@ public final class VectorEnv implements AutoCloseable {
   }
 
   /**
-   * Starts an episode in every environment, the same two decks in each.
+   * Starts an episode in every environment, the same two decks in each, with no evolution or hero
+   * slot.
    *
    * @param seeds one seed per environment
    * @param deck0 side 0's deck, by card row name
    * @param deck1 side 1's deck, by card row name
    */
   public void reset(int[] seeds, List<String> deck0, List<String> deck1) {
+    reset(seeds, deck0, deck1, null, null);
+  }
+
+  /**
+   * Starts an episode in every environment, the same two decks and slot flags in each.
+   *
+   * @param seeds one seed per environment
+   * @param deck0 side 0's deck, by card row name
+   * @param deck1 side 1's deck, by card row name
+   * @param slots0 side 0's slot flags, one per card, or null for none
+   * @param slots1 side 1's slot flags, one per card, or null for none
+   */
+  public void reset(
+      int[] seeds, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
     List<String> flat0 = new ArrayList<>();
     List<String> flat1 = new ArrayList<>();
     for (int i = 0; i < envs.length; i++) {
       flat0.addAll(deck0);
       flat1.addAll(deck1);
     }
-    reset(seeds, flat0.toArray(new String[0]), flat1.toArray(new String[0]));
+    reset(
+        seeds,
+        flat0.toArray(new String[0]),
+        flat1.toArray(new String[0]),
+        repeated(slots0),
+        repeated(slots1));
+  }
+
+  /** One deck's slot flags repeated for every environment, or null for none. */
+  private int[] repeated(int[] slots) {
+    if (slots == null) {
+      return null;
+    }
+    int[] flat = new int[envs.length * slots.length];
+    for (int i = 0; i < envs.length; i++) {
+      System.arraycopy(slots, 0, flat, i * slots.length, slots.length);
+    }
+    return flat;
   }
 
   /**
-   * Starts an episode in every environment. Every deck is checked before any environment is
-   * touched: a bad one refuses the whole call and changes nothing.
+   * Starts an episode in every environment with no evolution or hero slot.
    *
    * @param seeds one seed per environment
    * @param deck0 side 0's decks, environment after environment, {@link Schema#DECK_SIZE} names each
    * @param deck1 side 1's decks, environment after environment
    */
   public void reset(int[] seeds, String[] deck0, String[] deck1) {
+    reset(seeds, deck0, deck1, null, null);
+  }
+
+  /**
+   * Starts an episode in every environment. Every deck and its slot flags are checked before any
+   * environment is touched: a bad one refuses the whole call and changes nothing. Which cards a
+   * slot may hold the battle core checks as the match starts: a card it refuses in a slot ends that
+   * environment's episode as a refusal fault.
+   *
+   * @param seeds one seed per environment
+   * @param deck0 side 0's decks, environment after environment, {@link Schema#DECK_SIZE} names each
+   * @param deck1 side 1's decks, environment after environment
+   * @param slots0 side 0's slot flags, environment after environment, one per card ({@link
+   *     Schema#SLOT_EVOLUTION}, {@link Schema#SLOT_HERO}, both or neither); null for none
+   * @param slots1 side 1's slot flags, as {@code slots0}
+   */
+  public void reset(int[] seeds, String[] deck0, String[] deck1, int[] slots0, int[] slots1) {
     int count = envs.length;
     if (seeds.length != count) {
       throw new IllegalArgumentException(count + " seeds are needed, got " + seeds.length);
@@ -345,33 +397,48 @@ public final class VectorEnv implements AutoCloseable {
               + (count * Schema.DECK_SIZE)
               + " card names, one deck per environment");
     }
+    for (int[] slots : new int[][] {slots0, slots1}) {
+      if (slots != null && slots.length != count * Schema.DECK_SIZE) {
+        throw new IllegalArgumentException(
+            "each side's slot flags are "
+                + (count * Schema.DECK_SIZE)
+                + " values, one per card of each deck, got "
+                + slots.length);
+      }
+    }
     List<List<String>> decks0 = new ArrayList<>();
     List<List<String>> decks1 = new ArrayList<>();
+    List<int[]> flags0 = new ArrayList<>();
+    List<int[]> flags1 = new ArrayList<>();
     for (int i = 0; i < count; i++) {
-      List<String> d0 =
-          Arrays.asList(
-              Arrays.copyOfRange(deck0, i * Schema.DECK_SIZE, (i + 1) * Schema.DECK_SIZE));
-      List<String> d1 =
-          Arrays.asList(
-              Arrays.copyOfRange(deck1, i * Schema.DECK_SIZE, (i + 1) * Schema.DECK_SIZE));
-      checkDeck(i, 0, d0);
-      checkDeck(i, 1, d1);
+      int from = i * Schema.DECK_SIZE;
+      int to = (i + 1) * Schema.DECK_SIZE;
+      List<String> d0 = Arrays.asList(Arrays.copyOfRange(deck0, from, to));
+      List<String> d1 = Arrays.asList(Arrays.copyOfRange(deck1, from, to));
+      int[] f0 = slots0 == null ? new int[Schema.DECK_SIZE] : Arrays.copyOfRange(slots0, from, to);
+      int[] f1 = slots1 == null ? new int[Schema.DECK_SIZE] : Arrays.copyOfRange(slots1, from, to);
+      checkDeck(i, 0, d0, f0);
+      checkDeck(i, 1, d1, f1);
       decks0.add(List.copyOf(d0));
       decks1.add(List.copyOf(d1));
+      flags0.add(f0);
+      flags1.add(f1);
     }
     for (int i = 0; i < count; i++) {
       this.seeds[i] = new SplittableRandom(seeds[i]);
       deck0s.set(i, decks0.get(i));
       deck1s.set(i, decks1.get(i));
+      slots0s.set(i, flags0.get(i));
+      slots1s.set(i, flags1.get(i));
     }
     run(i -> resetEnv(i, seeds[i], false));
     countFaults();
     started = true;
   }
 
-  private void checkDeck(int index, int side, List<String> deck) {
+  private void checkDeck(int index, int side, List<String> deck, int[] slots) {
     try {
-      envs[index].checkDeck(deck);
+      envs[index].checkDeck(deck, slots);
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
           "environment " + index + ", side " + side + ": " + e.getMessage(), e);
@@ -379,7 +446,8 @@ public final class VectorEnv implements AutoCloseable {
   }
 
   /**
-   * Resets one environment to a seed, keeping its decks; its own sequence restarts from it.
+   * Resets one environment to a seed, keeping its decks and slot flags; its own sequence restarts
+   * from it.
    *
    * @param index the environment
    * @param seed the seed
@@ -399,7 +467,12 @@ public final class VectorEnv implements AutoCloseable {
     broken[index] = false;
     faults[index] = null;
     try {
-      env.reset(seed, deck0s.get(index), deck1s.get(index));
+      env.reset(
+          seed,
+          deck0s.get(index),
+          deck1s.get(index),
+          slots0s.get(index).clone(),
+          slots1s.get(index).clone());
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       fail(index, e);
     }
@@ -530,6 +603,9 @@ public final class VectorEnv implements AutoCloseable {
     schema.put("rows", Schema.ROWS);
     schema.put("tile_units", Schema.TILE_UNITS);
     schema.put("hand_slots", Schema.HAND_SLOTS);
+    schema.put("ability_slots", Schema.ABILITY_SLOTS);
+    schema.put("first_ability", Schema.FIRST_ABILITY);
+    schema.put("ability_ints", Schema.ABILITY_INTS);
     schema.put("pending_rows", Schema.PENDING_ROWS);
     schema.put("play_delay_ticks", Schema.PLAY_DELAY_TICKS);
     list(schema, "header_fields", Schema.headerFields());

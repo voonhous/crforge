@@ -65,7 +65,8 @@ public final class SyntheticEnv extends BufferedEnv {
   }
 
   @Override
-  public void checkDeck(List<String> deck) {
+  public void checkDeck(List<String> deck, int[] slots) {
+    checkSlotFlags(slots);
     if (deck.size() != Schema.DECK_SIZE) {
       throw new IllegalArgumentException(
           "a deck of " + Schema.DECK_SIZE + " cards, got " + deck.size());
@@ -76,7 +77,7 @@ public final class SyntheticEnv extends BufferedEnv {
   }
 
   @Override
-  public void reset(int seed, List<String> deck0, List<String> deck1) {
+  public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
     clearFault();
     random = new SplittableRandom(seed);
     step = 0;

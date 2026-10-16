@@ -25,6 +25,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.KingElixir;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -52,6 +53,18 @@ class LadderEnvTest {
   private static final List<String> VARIANT =
       List.of(
           "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "MergeMaiden", "Zap");
+
+  /** A champion, the Archer Queen, and seven cards to cycle her back with. */
+  private static final List<String> QUEEN =
+      List.of(
+          "ArcherQueen",
+          "Knight",
+          "Archer",
+          "Musketeer",
+          "Giant",
+          "MiniPekka",
+          "Fireball",
+          "Arrows");
 
   private static GameTables tables;
   private static Vocabulary vocabulary;
@@ -99,6 +112,27 @@ class LadderEnvTest {
       open += open(env, index, seat, a) ? 1 : 0;
     }
     return open;
+  }
+
+  /** The first hand slot of a seat holding a card, or -1. */
+  private static int handSlot(VectorEnv env, int index, int seat, String card) {
+    for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+      if (header(env, index, seat, Schema.H_HAND_CARD + k) == vocabulary.id(card)) {
+        return k;
+      }
+    }
+    return -1;
+  }
+
+  /** The first open hand slot of a seat whose card is not the one named, or -1. */
+  private static int otherOpenSlot(VectorEnv env, int index, int seat, String card) {
+    for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+      if (header(env, index, seat, Schema.H_HAND_CARD + k) != vocabulary.id(card)
+          && open(env, index, seat, Schema.play(k, 0, 0))) {
+        return k;
+      }
+    }
+    return -1;
   }
 
   /** A random open play of a seat with a probability out of ten, else the wait. */
@@ -711,6 +745,167 @@ class LadderEnvTest {
         assertThat(notModelled).isEqualTo(refusedAsNotModelled);
         assertThat(info(env, 0, Schema.I_FAULT)).isZero();
       }
+    }
+  }
+
+  @Test
+  void anAbilityActionOpensOnceTheChampionStandsAndClosesAfterItsUse() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, QUEEN, BASIC)) {
+      LadderEnv ladder = ladderEnv(env, 0);
+      Standard1v1Battle battle = ladder.battle();
+      IntBuffer actions = env.actions().asIntBuffer();
+      int queen = vocabulary.id("ArcherQueen");
+      boolean played = false;
+      boolean openSeen = false;
+      int usedSlot = -1;
+      boolean closedAfterUse = false;
+      for (int decision = 0; decision < 600 && env.dones().get(0) == 0; decision++) {
+        for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+          ChampionController slot = battle.getWorld().kingTower(0).championSlot(k + 1);
+          int at = Schema.H_ABILITY + k * Schema.ABILITY_INTS;
+          // The header shows the slot as the battle core holds it.
+          assertThat(header(env, 0, 0, at))
+              .isEqualTo(
+                  slot.getChampion() == null ? -1 : vocabulary.id(slot.getChampion().name()));
+          assertThat(header(env, 0, 0, at + 2)).isEqualTo(slot.getState());
+          assertThat(header(env, 0, 0, at + 3)).isEqualTo(slot.getCooldownMs());
+          assertThat(header(env, 0, 0, at + 4)).isEqualTo(slot.getCharges());
+          // The action is open exactly when the try of a command naming the slot's unit passes.
+          String unit = ladder.abilityUnit(0, k);
+          PlayerCommands.Giving tried = unit == null ? null : ladder.commands().tryAbility(0, unit);
+          boolean open = open(env, 0, 0, Schema.ability(k));
+          assertThat(open)
+              .as("decision %d slot %d", decision, k)
+              .isEqualTo(tried != null && tried.given());
+          if (!played) {
+            assertThat(open).as("no champion on the board").isFalse();
+          }
+          openSeen |= open;
+          if (usedSlot == k && !battle.getAbilityUses().isEmpty() && !open) {
+            assertThat(tried.refusal())
+                .isIn(
+                    PlayerCommands.Refusal.COOLDOWN,
+                    PlayerCommands.Refusal.NO_CHARGES,
+                    PlayerCommands.Refusal.ABILITY_PENDING);
+            closedAfterUse = true;
+          }
+        }
+        if (closedAfterUse) {
+          break;
+        }
+        int action = Schema.WAIT;
+        int queenSlot = handSlot(env, 0, 0, "ArcherQueen");
+        int abilitySlot = -1;
+        for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+          if (header(env, 0, 0, Schema.H_ABILITY + k * Schema.ABILITY_INTS) == queen
+              && open(env, 0, 0, Schema.ability(k))) {
+            abilitySlot = k;
+          }
+        }
+        if (usedSlot < 0 && abilitySlot >= 0) {
+          action = Schema.ability(abilitySlot);
+          usedSlot = abilitySlot;
+        } else if (!played && queenSlot >= 0 && open(env, 0, 0, Schema.play(queenSlot, 0, 0))) {
+          action = Schema.play(queenSlot, 4, 6);
+          played = true;
+        } else if (!played && queenSlot < 0) {
+          // Cycle the deck until she is dealt.
+          int other = otherOpenSlot(env, 0, 0, "ArcherQueen");
+          action = other < 0 ? Schema.WAIT : Schema.play(other, 13, 2);
+        }
+        actions.put(0, action);
+        actions.put(1, Schema.WAIT);
+        env.step();
+        assertThat(info(env, 0, Schema.I_ILLEGAL_0)).as("decision %d", decision).isZero();
+        if (Schema.isAbility(action)) {
+          int at = Schema.H_ABILITY + usedSlot * Schema.ABILITY_INTS;
+          assertThat(header(env, 0, 0, Schema.H_LAST_REFUSAL)).isZero();
+          int left = header(env, 0, 0, at + 5);
+          assertThat(left).isPositive().isLessThanOrEqualTo(Schema.PLAY_DELAY_TICKS);
+        }
+      }
+      assertThat(played).isTrue();
+      assertThat(openSeen).isTrue();
+      assertThat(usedSlot).isNotNegative();
+      assertThat(battle.getAbilityUses()).isNotEmpty();
+      assertThat(battle.getAbilityUses().get(0).outcome().code()).isZero();
+      assertThat(closedAfterUse).as("closed after its use").isTrue();
+      assertThat(header(env, 0, 0, Schema.H_LAST_ABILITY_RUN_REFUSAL)).isZero();
+      assertThat(env.fault(0)).isNull();
+    }
+  }
+
+  @Test
+  void anEvolutionSlotFlagReachesTheMatchAndItsCountTheHeader() {
+    int knight = BASIC.indexOf("Knight");
+    int[] slots0 = new int[Schema.DECK_SIZE];
+    slots0[knight] = Schema.SLOT_EVOLUTION;
+    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(new int[] {7}, BASIC, OTHER, slots0, null);
+      LadderMatch match = ladderEnv(env, 0).battle().getMatch();
+      for (int k = 0; k < Schema.DECK_SIZE; k++) {
+        assertThat(match.side(0).slotFlags(k)).isEqualTo(slots0[k]);
+        assertThat(match.side(1).slotFlags(k)).isZero();
+        assertThat(header(env, 0, 0, Schema.H_DECK_SLOTS + k)).isEqualTo(slots0[k]);
+        assertThat(header(env, 0, 1, Schema.H_DECK_SLOTS + k)).isZero();
+      }
+      // Play the Knight whenever it is open, until a play of it reads evolved.
+      IntBuffer actions = env.actions().asIntBuffer();
+      boolean evolvedSeen = false;
+      for (int decision = 0; decision < 1500 && env.dones().get(0) == 0; decision++) {
+        MatchSide side = match.side(0);
+        assertThat(header(env, 0, 0, Schema.H_DECK_EVOLUTION + knight))
+            .isEqualTo(side.evolutionCountUnknown(knight) ? -1 : side.evolutionCount(knight));
+        for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+          int index = side.getHand().slots()[k];
+          int form = index < 0 ? 0 : side.item(index).field();
+          assertThat(header(env, 0, 0, Schema.H_HAND_FORM + k)).isEqualTo(form);
+        }
+        int slot = handSlot(env, 0, 0, "Knight");
+        evolvedSeen |=
+            slot >= 0 && header(env, 0, 0, Schema.H_HAND_FORM + slot) == Schema.FORM_EVOLVED;
+        if (evolvedSeen) {
+          break;
+        }
+        int action = Schema.WAIT;
+        if (slot >= 0 && open(env, 0, 0, Schema.play(slot, 0, 0))) {
+          action = Schema.play(slot, 13, 2);
+        } else if (slot < 0) {
+          int other = otherOpenSlot(env, 0, 0, "Knight");
+          action = other < 0 ? Schema.WAIT : Schema.play(other, 4, 2);
+        }
+        actions.put(0, action);
+        actions.put(1, Schema.WAIT);
+        env.step();
+      }
+      assertThat(evolvedSeen)
+          .as("the Knight's form reads evolved once its count is reached")
+          .isTrue();
+      // A reset with no flags plays every card plain again.
+      env.reset(new int[] {7}, BASIC, OTHER);
+      LadderMatch plain = ladderEnv(env, 0).battle().getMatch();
+      for (int k = 0; k < Schema.DECK_SIZE; k++) {
+        assertThat(plain.side(0).slotFlags(k)).isZero();
+        assertThat(header(env, 0, 0, Schema.H_DECK_SLOTS + k)).isZero();
+      }
+    }
+  }
+
+  @Test
+  void slotFlagsOfTheWrongShapeAreRefusedBeforeAnyEnvironmentIsTouched() {
+    try (VectorEnv env = ladder(2, 1, EnvConfig.DEFAULT, BASIC, BASIC)) {
+      env.step();
+      byte[] before = all(env.observations());
+      int[] seeds = {1, 2};
+      assertThatThrownBy(() -> env.reset(seeds, BASIC, BASIC, new int[7], null))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("slot flags");
+      int[] bad = new int[Schema.DECK_SIZE];
+      bad[2] = 4;
+      assertThatThrownBy(() -> env.reset(seeds, BASIC, BASIC, null, bad))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("side 1");
+      assertThat(all(env.observations())).isEqualTo(before);
     }
   }
 

@@ -187,6 +187,47 @@ def test_a_saved_vocabulary_whose_ids_moved_is_refused(install, tables, tmp_path
             v.check_metadata(saved)
 
 
+def test_slot_flags_reach_the_match_and_the_seats_header(install, tables):
+    with VectorBattle(2, 1, install=install, tables=tables) as v:
+        s = v.schema
+        evolution = [s.slot_evolution] + [0] * (s.deck_size - 1)
+        v.reset([1, 2], BLUE, RED, slots0=[evolution, [0] * s.deck_size])
+        assert list(s.field(v.observations[0, 0], "deck_slot")) == evolution
+        assert not s.field(v.observations[1, 0], "deck_slot").any()
+        assert not s.field(v.observations[0, 1], "deck_slot").any()
+        for i in range(2):
+            for seat in range(2):
+                assert not s.field(v.observations[i, seat], "deck_evolution").any()
+        # A reset without flags plays every card plain again.
+        v.reset([1, 2], BLUE, RED)
+        assert not s.field(v.observations[0, 0], "deck_slot").any()
+        with pytest.raises(ValueError, match="slot flags"):
+            v.reset([1, 2], BLUE, RED, slots1=[0] * (s.deck_size - 1))
+        with pytest.raises(ValueError, match="slot flags"):
+            v.reset([1, 2], BLUE, RED, slots1=[4] + [0] * (s.deck_size - 1))
+    env = ClashGymEnv(BLUE, RED, install=install, tables=tables, seat=1, slots=evolution)
+    try:
+        observation, _ = env.reset(seed=3)
+        assert list(env.schema.field(observation, "deck_slot")) == evolution
+    finally:
+        env.close()
+
+
+def test_the_ability_actions_stay_closed_with_no_champion(install, tables):
+    with VectorBattle(2, 1, install=install, tables=tables) as v:
+        v.reset([1, 2], BLUE, RED)
+        s = v.schema
+        rng = np.random.default_rng(1)
+        for _ in range(200):
+            assert not v.masks[:, :, s.first_ability :].any()
+            assert (v.observations[:, :, list(s.header["ability_unit"])] == -1).all()
+            v.step(draw_actions(v.masks, rng, 0.5))
+        # An ability action given anyway is closed: taken as a wait and counted.
+        v.step(np.array([[s.ability(0), 0], [0, s.ability(1)]]))
+        assert v.seat_info(0, 0)["last_refusal"] == "MASKED"
+        assert v.seat_info(1, 1)["last_refusal"] == "MASKED"
+
+
 def test_a_card_not_in_the_tables_is_refused(install, tables):
     with VectorBattle(1, 1, install=install, tables=tables) as v:
         with pytest.raises(ValueError, match="Archers"):

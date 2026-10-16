@@ -207,24 +207,52 @@ class VectorBattle:
         seeds: Sequence[int],
         deck0: Sequence[str] | Sequence[Sequence[str]],
         deck1: Sequence[str] | Sequence[Sequence[str]],
+        slots0: Sequence[int] | Sequence[Sequence[int]] | None = None,
+        slots1: Sequence[int] | Sequence[Sequence[int]] | None = None,
     ) -> None:
         """Starts an episode in every environment.
 
         ``deck0`` and ``deck1`` are one deck of eight card row names of the tables (``"Knight"``,
-        ``"Archer"``, ...) for every environment, or one deck per environment. The seeds are one
+        ``"Archer"``, ...) for every environment, or one deck per environment. ``slots0`` and
+        ``slots1`` are each deck's slot flags, one per card (``schema.slot_evolution`` for the
+        deck's evolution slot, ``schema.slot_hero`` for its hero slot, both or 0), as one list for
+        every environment or one per environment; None plays every card plain. The seeds are one
         per environment; an environment reset later by autoreset draws its seed from the sequence
-        its seed starts, so a run is reproduced by its seeds and actions alone. A bad deck refuses
-        the whole call (``ValueError``) and changes nothing.
+        its seed starts, so a run is reproduced by its seeds and actions alone. A bad deck or slot
+        flags refuse the whole call (``ValueError``) and change nothing; a card the battle core
+        does not take in a slot ends that environment's episode as a refusal fault.
         """
         if len(seeds) != self.count:
             raise ValueError(f"{self.count} seeds are needed, got {len(seeds)}")
         j_seeds = jpype.JArray(jpype.JInt)([int(x) for x in seeds])
         j_deck0 = jpype.JArray(jpype.JString)(self._flatten(deck0))
         j_deck1 = jpype.JArray(jpype.JString)(self._flatten(deck1))
+        j_slots0 = self._flatten_slots(slots0)
+        j_slots1 = self._flatten_slots(slots1)
         try:
-            self._env.reset(j_seeds, j_deck0, j_deck1)
+            self._env.reset(j_seeds, j_deck0, j_deck1, j_slots0, j_slots1)
         except self._illegal_argument as e:
             raise ValueError(str(e.getMessage())) from None
+
+    def _flatten_slots(self, slots):
+        """One deck's slot flags for every environment, or one per environment, as the flat Java
+        array; None for none."""
+        if slots is None:
+            return None
+        rows = [list(row) for row in slots] if np.ndim(slots) == 2 else [list(slots)] * self.count
+        if len(rows) != self.count:
+            raise ValueError(
+                f"slot flags for one deck or one per environment: {self.count} needed, got "
+                f"{len(rows)}"
+            )
+        flat: list[int] = []
+        for row in rows:
+            if len(row) != self.schema.deck_size:
+                raise ValueError(
+                    f"a deck's slot flags are {self.schema.deck_size} values, got {len(row)}"
+                )
+            flat.extend(int(flag) for flag in row)
+        return jpype.JArray(jpype.JInt)(flat)
 
     def _flatten(self, decks) -> list[str]:
         decks = list(decks)
@@ -318,8 +346,9 @@ class VectorBattle:
         - ``illegal``: 1 when this seat's action of the decision was refused as illegal;
           ``illegal_total``: this seat's illegal actions in the episode
         - ``last_refusal``: the name of the refusal of this seat's last action (``NONE`` for a
-          wait or a play given); ``last_run_refusal``: the code of its play refused at its run
-          (0 for none)
+          wait, a play or an ability command given); ``last_run_refusal``: the code of its play
+          refused at its run (0 for none); ``last_ability_run_refusal``: the gate code of its
+          ability command refused at its run (0 for none)
         - ``fault``: ``none``, or the kind of the fault that ended the episode, with
           ``fault_message`` and ``fault_signature`` (empty without a fault)
         - ``action_mask``: the seat's mask, int8 of the action space's size
@@ -344,6 +373,7 @@ class VectorBattle:
             "not_modelled": int(info[s.info["not_modelled"]]),
             "last_refusal": s.refusals.get(refusal, str(refusal)),
             "last_run_refusal": int(observation[s.header["last_run_refusal"][0]]),
+            "last_ability_run_refusal": int(observation[s.header["last_ability_run_refusal"][0]]),
             "fault": s.fault_names[fault_code],
             "fault_message": fault.message if fault else "",
             "fault_signature": fault.signature if fault else "",
