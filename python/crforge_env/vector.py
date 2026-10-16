@@ -393,6 +393,13 @@ class VectorBattle:
 
     # -- metadata ------------------------------------------------------------------------------
 
+    def replay_json(self, i: int) -> str:
+        """Battle ``i``'s episode so far as a replay document (JSON text) of the tables' data
+        version (``VectorEnv.replayJson``): its seed, decks, levels, towers and every command its
+        seats gave, its ``endTick`` the battle's tick now. A Ladder vector only; with autoreset on,
+        a finished episode is replaced by the next one at the next step."""
+        return str(self._env.replayJson(int(i)))
+
     def write_metadata(self, path: str | Path) -> None:
         """Writes the metadata export, to be kept with a run or a checkpoint."""
         Path(path).write_text(str(self._env.metadataJson()) + "\n", encoding="utf-8")

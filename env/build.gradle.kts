@@ -23,6 +23,9 @@ dependencies {
     // The metadata and vocabulary exports
     implementation(libs.jackson.databind)
 
+    // A crawl's zstd JSON Lines output, read by the replay labeller
+    implementation(libs.aircompressor)
+
     // The configured game tables of the core's test fixtures
     testImplementation(testFixtures(project(":core")))
 

@@ -34,6 +34,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ScenarioWriter;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
  * Many environments stepped together, each a {@link BattleEnv}, through flat buffers shared with
@@ -633,6 +635,17 @@ public final class VectorEnv implements AutoCloseable {
    * version, content sha and hash ({@link Vocabulary#toJson()}).
    */
   public String metadataJson() {
+    return metadataJson(config, vocabulary);
+  }
+
+  /**
+   * The metadata of a configuration and a vocabulary, as {@link #metadataJson()} writes a vector's:
+   * for a tool that writes rows of the same schema without a vector, such as a replay's labeller.
+   *
+   * @param config the configuration, or null for none
+   * @param vocabulary the vocabulary, or null for none
+   */
+  public static String metadataJson(EnvConfig config, Vocabulary vocabulary) {
     ObjectNode root = JSON.createObjectNode();
     ObjectNode schema = root.putObject("schema");
     schema.put("version", Schema.VERSION);
@@ -677,6 +690,30 @@ public final class VectorEnv implements AutoCloseable {
   private static void list(ObjectNode node, String name, List<String> values) {
     ArrayNode array = node.putArray(name);
     values.forEach(array::add);
+  }
+
+  /**
+   * An environment's episode so far as a replay of the tables' data version, as JSON text: its
+   * seed, decks, levels, towers and every command its seats gave, with the ticks they were given
+   * and run on ({@link ScenarioWriter}), and its {@code endTick} the battle's tick now. Read back,
+   * it is the episode's battle; a replay's labeller ({@link ReplayLabeller}) reads it as any
+   * replay.
+   *
+   * @param index the environment, a Ladder one
+   * @throws IllegalStateException for an environment that plays no battle
+   */
+  public String replayJson(int index) {
+    if (!(envs[index] instanceof LadderEnv ladder) || ladder.battle() == null) {
+      throw new IllegalStateException("environment " + index + " plays no Ladder battle");
+    }
+    ScenarioWriter writer = new ScenarioWriter(ladder.tables());
+    Standard1v1Battle battle = ladder.battle();
+    try {
+      return JSON.writeValueAsString(
+          writer.write(writer.plan(battle, ladder.config().level()), battle.getBattle().getTick()));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   /**
