@@ -274,6 +274,9 @@ public class BattleWorld implements HolderPasses {
    */
   @Getter private BattleRandom random = new BattleRandom(DEFAULT_SEED);
 
+  /** The state the battle's random source was last started from: {@link #DEFAULT_SEED} or given. */
+  @Getter private int seed = DEFAULT_SEED;
+
   /**
    * Starts the battle's random source from a state of its own, before anything draws.
    *
@@ -281,6 +284,7 @@ public class BattleWorld implements HolderPasses {
    */
   public void seed(int seed) {
     random = new BattleRandom(seed);
+    this.seed = seed;
   }
 
   /**

@@ -47,6 +47,10 @@ class LadderConfig:
     """the level of every tower"""
     max_ticks: int | None = None
     """the tick an episode is cut short at with no result, 0 for none"""
+    fault_bundles: str | Path | None = None
+    """the folder a faulted episode's bundle (its replay and ``fault.json``) is written under, the
+    first of each fault signature the vector meets; None writes none. Bundles are local files of
+    the run and are never committed"""
 
 
 @dataclass(frozen=True)
@@ -61,6 +65,9 @@ class Fault:
     signature: str
     """the kind, the exception's class, the message with its numbers as ``#``, the throwing frame"""
     tick: int
+    bundle: str | None = None
+    """the folder its bundle was written to, or None: bundles off, an earlier bundle of the same
+    signature, or the writing failed"""
 
 
 def _view(buffer, dtype) -> np.ndarray:
@@ -198,6 +205,7 @@ class VectorBattle:
             pick(config.level, base.level()),
             pick(config.tower_level, base.towerLevel()),
             pick(config.max_ticks, base.maxTicks()),
+            None if config.fault_bundles is None else str(Path(config.fault_bundles).resolve()),
         )
 
     # -- episodes ------------------------------------------------------------------------------
@@ -299,6 +307,7 @@ class VectorBattle:
             message=str(fault.message()),
             signature=str(fault.signature()),
             tick=int(fault.tick()),
+            bundle=None if fault.bundle() is None else str(fault.bundle()),
         )
 
     def fault_counts(self) -> dict[str, int]:
@@ -350,7 +359,8 @@ class VectorBattle:
           refused at its run (0 for none); ``last_ability_run_refusal``: the gate code of its
           ability command refused at its run (0 for none)
         - ``fault``: ``none``, or the kind of the fault that ended the episode, with
-          ``fault_message`` and ``fault_signature`` (empty without a fault)
+          ``fault_message``, ``fault_signature`` and ``fault_bundle`` (the folder of its bundle);
+          each empty without a fault, the bundle empty when none was written
         - ``action_mask``: the seat's mask, int8 of the action space's size
         """
         s = self.schema
@@ -377,6 +387,7 @@ class VectorBattle:
             "fault": s.fault_names[fault_code],
             "fault_message": fault.message if fault else "",
             "fault_signature": fault.signature if fault else "",
+            "fault_bundle": (fault.bundle or "") if fault else "",
             "action_mask": self.masks[index, seat].astype(np.int8),
         }
 

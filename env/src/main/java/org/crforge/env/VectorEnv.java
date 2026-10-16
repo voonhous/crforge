@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
@@ -101,6 +102,10 @@ public final class VectorEnv implements AutoCloseable {
   private final boolean[] uncounted;
 
   private final Map<String, Integer> faultCounts = new TreeMap<>();
+
+  /** The signatures whose fault bundle the vector has written, or tried to. */
+  private final Set<String> bundled = ConcurrentHashMap.newKeySet();
+
   private final Vocabulary vocabulary;
   private final EnvConfig config;
   private boolean autoreset = true;
@@ -530,6 +535,44 @@ public final class VectorEnv implements AutoCloseable {
       second.addSuppressed(thrown);
       broken[index] = true;
       faults[index] = EnvFault.of(second, -1);
+      return;
+    }
+    if (config != null && config.faultBundles() != null) {
+      writeBundle(index, thrown);
+    }
+  }
+
+  /**
+   * Writes the bundle of an environment's fault ({@link FaultBundle}), the first of its signature
+   * the vector meets: the others of that signature are counted only, so a fault met every episode
+   * fills no disk. A bundle that cannot be written is left out, with the reason on the error
+   * stream; the environment goes on as for any fault.
+   */
+  private void writeBundle(int index, Throwable thrown) {
+    EnvFault fault = faults[index];
+    if (!bundled.add(fault.signature())) {
+      return;
+    }
+    String name =
+        fault.kind().name().toLowerCase(Locale.ROOT)
+            + "-"
+            + String.format("%08x", fault.signature().hashCode())
+            + "-env"
+            + index
+            + "-tick"
+            + fault.tick();
+    Path root = Path.of(config.faultBundles());
+    try {
+      Path folder = root.resolve(name);
+      for (int n = 2; Files.exists(folder); n++) {
+        folder = root.resolve(name + "-" + n);
+      }
+      if (envs[index].writeFaultBundle(folder, index, thrown)) {
+        faults[index] = fault.withBundle(folder.toAbsolutePath().normalize().toString());
+      }
+    } catch (IOException | RuntimeException e) {
+      System.err.println(
+          "crforge env: the fault bundle of environment " + index + " was not written: " + e);
     }
   }
 

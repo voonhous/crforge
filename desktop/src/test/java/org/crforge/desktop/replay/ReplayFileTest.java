@@ -14,10 +14,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ScenarioItems;
+import org.crforge.core.battle.replay.ScenarioWriter;
+import org.crforge.core.battle.replay.Scenarios;
+import org.crforge.core.battle.unit.PlayerCommands;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.desktop.render.ViewOrientation;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -197,5 +202,42 @@ class ReplayFileTest {
 
     assertThatThrownBy(() -> ReplayFile.read(file, Replays.tables()))
         .isInstanceOf(IOException.class);
+  }
+
+  @Test
+  @DisplayName("a battle the battle core writes as a replay opens playable, to its last tick")
+  void aWrittenBattle() throws IOException {
+    GameTables tables = Replays.tables();
+    List<String> deck =
+        Arrays.stream(Scenarios.DECK).mapToObj(id -> ScenarioItems.row(tables, id).name()).toList();
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    battle.getWorld().seed(17);
+    battle.addPlayerData(1);
+    battle.addPlayerData(1);
+    battle.startLadderMatch(deck, deck, 0, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    while (!commands.tryCard(0, 0, Standard1v1Battle.DEFAULT_LEVEL).given()) {
+      battle.getBattle().step();
+    }
+    assertThat(commands.playCard(0, 0, Standard1v1Battle.DEFAULT_LEVEL, 9000, 8000, "cmd0").given())
+        .isTrue();
+    for (int step = 0; step < 40; step++) {
+      battle.getBattle().step();
+    }
+    ScenarioWriter writer = new ScenarioWriter(tables);
+    int endTick = battle.getBattle().getTick();
+    ObjectNode document =
+        writer.write(writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL), endTick);
+    Path file = Replays.write(folder, "battle.json", document);
+
+    ReplayFile replay = ReplayFile.read(file, tables);
+
+    assertThat(replay.refusals()).isEmpty();
+    assertThat(replay.playable()).isTrue();
+    assertThat(replay.dataNamed()).isTrue();
+    assertThat(replay.header().decks()).containsExactly(deck, deck);
+    assertThat(replay.header().endTick()).isEqualTo(endTick);
+    assertThat(replay.header().commands()).isEqualTo(1);
+    assertThat(replay.plan().plays()).hasSize(1);
   }
 }
