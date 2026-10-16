@@ -17,6 +17,7 @@ import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.filter.GameObjectFilter;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -28,8 +29,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Mighty Miner's lane switch where its runs do not take it: a spell landing on it as it routes
- * across the arena, a shot launched at it as it starts across, a switch from the arena's edge, and
- * the rows that would make it do what no reference holds.
+ * across the arena, a shot launched at it as it starts across, alone or with a projectile aimed at
+ * it whose row keeps its target, a switch from the arena's edge, and the rows that would make it do
+ * what no reference holds.
  */
 class BattleMightyMinerTest {
 
@@ -55,6 +57,15 @@ class BattleMightyMinerTest {
 
   /** The milliseconds of one battle step. */
   private static final int STEP_MS = 50;
+
+  /** A homing projectile, the princess tower's arrow, the base of the synthetic keeper rows. */
+  private static final String ARROW = "TowerPrincessProjectile";
+
+  /**
+   * The synthetic keeper's speed: slow enough to be still in flight from the tower as the Mighty
+   * Miner starts across.
+   */
+  private static final int KEEPER_SPEED = 100;
 
   /** A Mighty Miner placed for the bottom side, with each lane switch it made. */
   private static final class Scene {
@@ -283,6 +294,136 @@ class BattleMightyMinerTest {
     long dy = scene.miner.getView().getY() - aimY;
     assertThat(dx * dx + dy * dy).as("the Mighty Miner has moved on").isPositive();
     assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
+  }
+
+  @Test
+  @DisplayName(
+      "a shot launched at the Mighty Miner as it starts across leaves a projectile whose row keeps"
+          + " its target aimed at it: with no damage on its way it follows the Mighty Miner across"
+          + " and lands on it")
+  void aShotAtTheSwitchingMinerLeavesAKeeperAimedAtIt() {
+    Scene scene = new Scene(GameData.tables(), 3500, 12000);
+    List<ProjectileEntity> shots = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileLaunched(int t, ProjectileEntity projectile) {
+                shots.add(projectile);
+              }
+            });
+    TowerEntity tower = BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER);
+    while (scene.miner.getView().getState() != GridEntityState.MOVING) {
+      scene.step();
+      assertThat(scene.tick).as("the Mighty Miner walks").isLessThan(TICKS);
+    }
+    // A slow homing projectile of a row that keeps its target through the reset and deals nothing,
+    // as the rows that clear AllowResetTarget do, in flight at the Mighty Miner as it switches.
+    ProjectileData keeperRow =
+        GameData.records().projectile(ARROW).toBuilder()
+            .allowResetTarget(false)
+            .damage(0)
+            .speed(KEEPER_SPEED)
+            .build();
+    shots.clear();
+    scene.match.getWorld().launchAt(tower, keeperRow, scene.miner);
+    assertThat(shots).hasSize(1);
+    ProjectileEntity keeper = shots.get(0);
+    scene.switchLanes();
+    assertThat(keeper.isReleased())
+        .as("still in flight as the Mighty Miner starts across")
+        .isFalse();
+    assertThat(keeper.getTarget()).as("the switch's own drop left it").isSameAs(scene.miner);
+    shots.clear();
+
+    // A shot launched in the step the Mighty Miner starts across, after the switch's drop.
+    ProjectileLauncher.launch(
+        tower,
+        tower.getTargeting(),
+        scene.miner.getTargetView(),
+        -1,
+        false,
+        scene.match.getWorld());
+    assertThat(shots).hasSize(1);
+    ProjectileEntity shot = shots.get(0);
+    assertThat(shot.getData().allowResetTarget()).isTrue();
+    int startX = shot.getX();
+    int startY = shot.getY();
+    int full = scene.miner.getHitPoints().getHitPoints();
+
+    // Its first flight step lets the Mighty Miner go and runs its reset: the keeper is left alone.
+    while (shot.getX() == startX && shot.getY() == startY && !shot.isReleased()) {
+      scene.step();
+      assertThat(scene.tick).as("the shot flies").isLessThan(TICKS);
+    }
+    assertThat(shot.getTarget()).isNull();
+    assertThat(scene.miner.getView().getPendingDamageAmount()).isZero();
+    assertThat(keeper.getTarget()).as("the target the reset keeps").isSameAs(scene.miner);
+
+    // The keeper follows the Mighty Miner across and lands on it, handing back 0 from 0.
+    while (!keeper.isReleased()) {
+      scene.step();
+      assertThat(scene.tick).as("the keeper lands").isLessThan(TICKS * 2);
+    }
+    assertThat(new int[] {keeper.getX(), keeper.getY()})
+        .as("on the Mighty Miner, across")
+        .containsExactly(scene.miner.getView().getX(), scene.miner.getView().getY());
+    assertThat(scene.miner.getView().getPendingDamageAmount()).isZero();
+    assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
+  }
+
+  @Test
+  @DisplayName(
+      "a shot launched at the Mighty Miner as it starts across, with a projectile aimed at it whose"
+          + " row keeps its target and has damage on its way, is refused")
+  void aShotAtTheSwitchingMinerWithADamagingKeeperIsRefused() {
+    Scene scene = new Scene(GameData.tables(), 3500, 12000);
+    List<ProjectileEntity> shots = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileLaunched(int t, ProjectileEntity projectile) {
+                shots.add(projectile);
+              }
+            });
+    TowerEntity tower = BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER);
+    while (scene.miner.getView().getState() != GridEntityState.MOVING) {
+      scene.step();
+      assertThat(scene.tick).as("the Mighty Miner walks").isLessThan(TICKS);
+    }
+    ProjectileData keeperRow =
+        GameData.records().projectile(ARROW).toBuilder()
+            .allowResetTarget(false)
+            .speed(KEEPER_SPEED)
+            .build();
+    shots.clear();
+    scene.match.getWorld().launchAt(tower, keeperRow, scene.miner);
+    ProjectileEntity keeper = shots.get(0);
+    scene.switchLanes();
+    assertThat(keeper.getTarget()).isSameAs(scene.miner);
+    assertThat(keeper.registeredPendingAmount()).as("its damage on its way").isPositive();
+    ProjectileLauncher.launch(
+        tower,
+        tower.getTargeting(),
+        scene.miner.getTargetView(),
+        -1,
+        false,
+        scene.match.getWorld());
+
+    assertThatThrownBy(
+            () -> {
+              for (int tick = 0; tick < TICKS; tick++) {
+                scene.step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(keeper.name())
+        .hasMessageContaining("keeps its target through the reset with damage on its way");
   }
 
   @Test

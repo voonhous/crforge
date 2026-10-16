@@ -6801,7 +6801,8 @@ public class BattleWorld implements HolderPasses {
    * the landing row's centre when none is allowed; the position written once; then the pending
    * damage reset, the route emptied and the reference dropped, as the row asks. The reset drops the
    * unit as the target of every projectile aimed at it, as entering a pathfinding state does; one
-   * whose row keeps its target through it is refused: no reference holds it.
+   * whose row keeps its target through it keeps the unit (see {@link
+   * #resetPendingDamageAtWarp(CharacterEntity, String)}).
    *
    * @param unit the unit
    * @param action the row
@@ -7247,8 +7248,14 @@ public class BattleWorld implements HolderPasses {
    * its aim, where the unit last stood for it, and lands on nothing. The switch's entry runs the
    * same hook, but a projectile launched in the step the unit starts across joins the battle after
    * it, so its own first flight step lets the unit go. A hook that would let its target go so,
-   * whose flight goes on reading the target it let go, is refused, and so is a projectile aimed at
-   * the unit whose row keeps its target through the reset, as at a warp.
+   * whose flight goes on reading the target it let go, is refused.
+   *
+   * <p>A projectile aimed at the unit whose row keeps its target through the reset
+   * (AllowResetTarget cleared) is left alone, as at a warp: it keeps the unit as its target,
+   * follows it across and lands on it, its arrival handing back its own part of the emptied amount.
+   * The rows that keep their target deal no damage, so that part is 0 and the hand-back changes
+   * nothing. One with damage on its way, whose hand-back from the emptied amount no reference
+   * holds, is refused.
    *
    * @param projectile the projectile whose flight step found its target routing across
    * @param unit its target
@@ -7261,14 +7268,16 @@ public class BattleWorld implements HolderPasses {
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof ProjectileEntity p
           && p.getTarget() == unit
-          && !p.getData().allowResetTarget()) {
+          && !p.getData().allowResetTarget()
+          && p.registeredPendingAmount() != 0) {
         throw new UnsupportedOperationException(
             projectile.name()
                 + " lets "
                 + unit.name()
                 + " go as it routes across with "
                 + p.name()
-                + " aimed at it, whose row keeps its target through the reset, not modelled");
+                + " aimed at it, whose row keeps its target through the reset with damage on its"
+                + " way, not modelled");
       }
     }
     unit.getView().setPendingDamageAmount(0);
