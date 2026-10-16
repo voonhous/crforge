@@ -39,7 +39,9 @@ import org.crforge.core.pathfinding.combat.HitPoints;
             + " standard game, the tutorial's, and the gates of an avatar with no king or a"
             + " sender other than its owner. The issuing client's reserving pass, which promises"
             + " the cost as the command is given and which the run releases before its gates, is"
-            + " read only by a variant card's pick (Standard1v1Battle).")
+            + " read by a variant card's pick (Standard1v1Battle) and by the giving of a command"
+            + " (PlayerCommands), whose client tries the same gates with the elixir less the"
+            + " costs its side has promised.")
 public final class AbilityCommand {
 
   /** The command passed and paid. */
@@ -102,7 +104,7 @@ public final class AbilityCommand {
   public static Outcome run(BattleWorld world, int side, CharacterEntity named) {
     TowerEntity king = world.kingTower(side);
     int before = world.elixir(side);
-    int code = gates(world, king, side, named);
+    int code = gates(world, king, side, named, 0);
     if (code != OK) {
       return new Outcome(code, before, before, List.of());
     }
@@ -150,8 +152,30 @@ public final class AbilityCommand {
     return new Outcome(code, before, before, List.of());
   }
 
-  /** The gates in order: 0 when the command may pay, else the code it is refused with. */
-  private static int gates(BattleWorld world, TowerEntity king, int side, CharacterEntity named) {
+  /**
+   * The gates a player's client tries a command on as it gives it, before it sends it: the gates of
+   * the run, in the same order, the elixir gate reading the king's whole elixir less the costs the
+   * side's client has promised to its commands still waiting, never below 0. Nothing is paid or
+   * changed.
+   *
+   * @param world the battle's world, in a match
+   * @param side the commanding side
+   * @param named the unit the command names
+   * @param promised the whole elixir the side's client has promised, set aside before the elixir
+   *     gate
+   * @return {@link #OK} when the client sends the command, else the code it drops it with
+   */
+  static int tryGates(BattleWorld world, int side, CharacterEntity named, int promised) {
+    return gates(world, world.kingTower(side), side, named, promised);
+  }
+
+  /**
+   * The gates in order: 0 when the command may pay, else the code it is refused with. The elixir
+   * gate reads the king's whole elixir less what is set aside, never below 0: nothing at the run,
+   * the promised costs at the giving.
+   */
+  private static int gates(
+      BattleWorld world, TowerEntity king, int side, CharacterEntity named, int setAside) {
     if (!HitPoints.alive(king.getHitPoints())) {
       return KING_GONE;
     }
@@ -190,7 +214,7 @@ public final class AbilityCommand {
     if ((unit.getView().getFlags() & unit.getView().getFlagBits().abilityDisabled()) != 0) {
       return DISABLED;
     }
-    if (world.wholeElixir(side) < ability.manaCost()) {
+    if (Math.max(world.wholeElixir(side) - setAside, 0) < ability.manaCost()) {
       return ELIXIR;
     }
     return OK;

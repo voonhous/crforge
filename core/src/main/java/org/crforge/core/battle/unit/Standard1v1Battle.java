@@ -298,7 +298,7 @@ public class Standard1v1Battle {
    * it as it pays, one refused at its run keeps it until then; an ability command's run releases it
    * before its gates, whatever the command comes to.
    */
-  private static final int PROMISE_TICKS = 60;
+  public static final int PROMISE_TICKS = 60;
 
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
@@ -548,7 +548,9 @@ public class Standard1v1Battle {
   /**
    * Queues a card play as a player makes it, between two steps: the play is stamped with the
    * battle's tick counter, the number of the next step, or 1 while the counter is still 0, and runs
-   * {@link #PLAY_DELAY_TICKS} ticks after that stamp.
+   * {@link #PLAY_DELAY_TICKS} ticks after that stamp. The play is taken as given, without the
+   * checks a player's client makes as it gives it; {@link PlayerCommands} gives a command of any
+   * kind with them.
    *
    * @see #play(int, DeployCard, int, int, int, int, String)
    */

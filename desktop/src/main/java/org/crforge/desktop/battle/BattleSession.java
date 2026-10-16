@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.IntFunction;
 import lombok.Getter;
@@ -20,6 +21,8 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.unit.PlayerCommands;
+import org.crforge.core.battle.unit.PlayerCommands.Giving;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
 /**
@@ -32,13 +35,14 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * and its clock are the battle core's. A battle built elsewhere, such as a replay's, is wrapped by
  * {@link #of}.
  *
- * <p>A play is given as a player gives it, between two steps, and runs {@link
- * Standard1v1Battle#PLAY_DELAY_TICKS} ticks later. The session refuses a play on the spot, with a
- * message, when the match's gates would refuse it now (the match decided, the king dead, the elixir
- * short), when the card is still waiting for an earlier play of it to run, or when its placement
- * finds no tile; the elixir check sets aside the cost of the side's plays still waiting, as a
- * player's client does. A play the battle refuses when it runs, against the battle as it stands
- * then, is reported the same way from the battle's own record of the play.
+ * <p>A play is given as a player gives it, between two steps, through the battle core's {@link
+ * PlayerCommands}, and runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks later. The session
+ * refuses a play on the spot, with a message, when the player's client would drop it: the match's
+ * gates now (the match decided, the king dead), the elixir short once the costs the side's waiting
+ * plays promised are set aside, or the map refusing the point; or when the screen does not offer
+ * the card, a play of it still waiting to run. A play the battle refuses when it runs, against the
+ * battle as it stands then, a point where its placement finds no tile among them, is reported the
+ * same way from the battle's own record of the play.
  *
  * <p>The battle core refuses what it does not model by throwing from inside a step. The session
  * then stops stepping and keeps the message: a battle interrupted part way through a step is not
@@ -68,8 +72,11 @@ public final class BattleSession {
    */
   private final List<int[]> deckLevels;
 
-  /** The plays given and not yet run, by name. */
-  private final Map<String, Pending> pending = new HashMap<>();
+  /**
+   * The players' commands given from the screen, with the client's checks and promises; null for a
+   * battle with no match started on it.
+   */
+  private final PlayerCommands commands;
 
   /** How many of the battle's plays have been read for refusals. */
   private int playsRead;
@@ -80,12 +87,10 @@ public final class BattleSession {
   /** Why the battle stopped stepping, or null while it steps. */
   @Getter private String halted;
 
-  /** A play given and not yet run: its side, its deck index and the cost it sets aside. */
-  private record Pending(int side, int deckIndex, int cost) {}
-
   private BattleSession(Standard1v1Battle battle, List<int[]> deckLevels) {
     this.battle = battle;
     this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
+    this.commands = battle.getMatch() == null ? null : new PlayerCommands(battle);
     // Attached before the first step, so it hears every tick of the battle.
     battle.getWorld().addObserver(areaHits);
   }
@@ -257,7 +262,7 @@ public final class BattleSession {
       return false;
     }
     int index = match.side(side).getHand().slots()[slot];
-    return pending.values().stream().anyMatch(p -> p.side() == side && p.deckIndex() == index);
+    return index != Hand.EMPTY && commands.isPending(side, index);
   }
 
   /**
@@ -278,8 +283,9 @@ public final class BattleSession {
   }
 
   /**
-   * Why a hand card cannot be selected/submitted now, or null. Placement is checked separately.
-   * Mirror and variant item costs are resolved by the battle when their play runs.
+   * Why a hand card cannot be selected or given now, or null: the client's checks of {@link
+   * PlayerCommands#tryCard} but for the point, which the play checks. A Mirror's and a variant
+   * card's item is built as the client builds it at the giving, and its cost checked.
    */
   public String cardUnavailableReason(int side, int slot) {
     LadderMatch match = match();
@@ -287,15 +293,14 @@ public final class BattleSession {
     if (halted != null || isOver()) return "the battle has stopped (R resets)";
     MatchCard card = handCard(side, slot);
     if (card == null) return "slot " + (slot + 1) + " is empty";
-    if (isPending(side, slot)) return card.name() + " is already played and waits to run";
-    if (!card.mirror() && card.variant() == null) {
-      int reserved =
-          pending.values().stream().filter(p -> p.side() == side).mapToInt(Pending::cost).sum();
-      int index = match.side(side).getHand().slots()[slot];
-      int code = match.gate(side, index, card.cost() + reserved);
-      if (code != 0) return card.name() + " refused, " + refusal(code);
+    Giving tried;
+    try {
+      tried =
+          commands.tryCard(side, slot, cardLevel(side, match.side(side).getHand().slots()[slot]));
+    } catch (RuntimeException e) {
+      return card.name() + " refused, " + e.getMessage();
     }
-    return null;
+    return tried.given() ? null : reason(card, tried);
   }
 
   /**
@@ -317,35 +322,39 @@ public final class BattleSession {
     LadderMatch match = match();
     MatchCard card = handCard(side, slot);
     int deckIndex = match.side(side).getHand().slots()[slot];
-    boolean itemCost = card.mirror() || card.variant() != null;
-    if (!itemCost) {
-      CardPlacement.Result preview = preview(side, slot, x, y);
-      if (!preview.placed()) {
-        say(
-            side,
-            ": " + card.name() + " has no legal tile there (code " + hex(preview.code()) + ")");
-        return false;
-      }
-    }
-    String name = (side == 0 ? "b" : "r") + (++playsGiven);
-    int runTick = Math.max(tick(), 1) + Standard1v1Battle.PLAY_DELAY_TICKS;
-    int level = cardLevel(side, deckIndex);
+    String name = (side == 0 ? "b" : "r") + (playsGiven + 1);
+    Giving giving;
     try {
-      if (card.mirror()) {
-        battle.playMirror(runTick, card.name(), level, side, x, y, name);
-      } else if (card.variant() != null) {
-        battle.playVariant(runTick, card.name(), level, side, x, y, name);
-      } else {
-        battle.submit(deployCard(card), level, side, x, y, name);
-      }
+      giving = commands.playCard(side, slot, cardLevel(side, deckIndex), x, y, name);
     } catch (RuntimeException e) {
       say(side, ": " + card.name() + " refused, " + e.getMessage());
       return false;
     }
+    if (!giving.given()) {
+      say(side, ": " + reason(card, giving));
+      return false;
+    }
+    playsGiven++;
     playedCards.put(name, card.name());
-    pending.put(name, new Pending(side, deckIndex, itemCost ? 0 : card.cost()));
-    say(side, ": " + card.name() + " played, runs on tick " + runTick);
+    say(side, ": " + card.name() + " played, runs on tick " + giving.runTick());
     return true;
+  }
+
+  /** What the player is told of a giving the client or the screen refused. */
+  private static String reason(MatchCard card, Giving giving) {
+    return switch (giving.refusal()) {
+      case CARD_PENDING -> card.name() + " is already played and waits to run";
+      case MAP -> card.name() + " has no legal tile there (code " + hex(giving.code()) + ")";
+      case MATCH_OVER, KING_DEAD, NOT_IN_HAND, NOT_ENOUGH_ELIXIR ->
+          card.name() + " refused, " + refusal(giving.code());
+      default ->
+          card.name()
+              + " refused, "
+              + giving.refusal().name().toLowerCase(Locale.ROOT)
+              + " (code "
+              + hex(giving.code())
+              + ")";
+    };
   }
 
   /**
@@ -412,7 +421,6 @@ public final class BattleSession {
     List<Standard1v1Battle.Play> plays = battle.getPlays();
     for (; playsRead < plays.size(); playsRead++) {
       Standard1v1Battle.Play play = plays.get(playsRead);
-      pending.remove(play.name());
       String card = playedCards.getOrDefault(play.name(), play.name());
       if (play.matchCode() != 0) {
         say(play.side(), ": " + card + " refused as it ran, " + refusal(play.matchCode()));

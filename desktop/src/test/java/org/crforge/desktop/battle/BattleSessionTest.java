@@ -140,14 +140,16 @@ class BattleSessionTest {
         BattleSession.ladder(GameData.tables(), mirrors, Collections.nCopies(8, "Knight"));
     int knight = slot(session, "Knight");
     int mirror = slot(session, "Mirror");
+    // The elixir covers the Knight and the Mirror's item, which repeats the waiting Knight.
+    int both = 2 * Shipped.cost("Knight") + Shipped.cost("Mirror");
+    while (session.match().side(0).wholeElixir() < both) {
+      assertThat(session.step()).isTrue();
+    }
     assertThat(session.play(0, knight, 3500, 8500)).isTrue();
     assertThat(session.cardUnavailableReason(0, mirror)).isNull();
     assertThat(BattleAdapter.frame(session).sides().get(0).hand().get(mirror).unavailableReason())
         .isNull();
-    String archer = session.cardUnavailableReason(0, slot(session, "Archer"));
     assertThat(session.play(0, mirror, 14500, 8500)).isTrue();
-    // Mirror reserves zero until its item resolves; the remaining Archer stays as it was.
-    assertThat(session.cardUnavailableReason(0, slot(session, "Archer"))).isEqualTo(archer);
 
     boolean stepped = true;
     for (int i = 0; i < 40 && stepped; i++) {
@@ -232,6 +234,27 @@ class BattleSessionTest {
         .containsExactly("cmd0", "cmd1");
     assertThat(BattleAdapter.frame(session).entities()).anyMatch(e -> e.name().equals("Knight"));
     assertThat(session.messages()).last().asString().contains("cmd1 found no legal tile as it ran");
+  }
+
+  @Test
+  @DisplayName(
+      "a variant card is given from the screen as the option its client picks, and runs 20"
+          + " ticks later")
+  void aVariantCardIsGiven() {
+    BattleSession session = only("MergeMaiden");
+    for (int i = 0; i < 30; i++) {
+      assertThat(session.step()).isTrue();
+    }
+
+    assertThat(session.play(0, 0, 3500, 8500)).as("%s", session.messages()).isTrue();
+
+    for (int i = 0; i <= Standard1v1Battle.PLAY_DELAY_TICKS; i++) {
+      assertThat(session.step()).isTrue();
+    }
+    assertThat(session.getBattle().getPlays()).hasSize(1);
+    assertThat(session.getBattle().getPlays().get(0).variant()).isNotNull();
+    assertThat(session.getBattle().getPlays().get(0).tick())
+        .isEqualTo(30 + Standard1v1Battle.PLAY_DELAY_TICKS);
   }
 
   /** A Ladder battle in which both decks are eight copies of one card. */
