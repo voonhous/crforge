@@ -417,6 +417,42 @@ class VectorBattle:
             np.copyto(self.actions, np.asarray(actions, dtype=np.int32).reshape(self.count, 2))
         self._env.step()
 
+    def lookahead(
+        self,
+        indices: np.ndarray,
+        seats: np.ndarray,
+        actions: np.ndarray,
+        horizon_ticks: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Looks ahead from the battles' decisions (``VectorEnv.lookahead``): for each request, a
+        fork of battle ``indices[r]`` as seat ``seats[r]`` knows it (the enemy's commands it has
+        not seen run left out) takes ``actions[r]`` for the seat and the wait for the other, then
+        both seats wait for ``horizon_ticks``, in whole decisions, or until the battle ends. The
+        requests run on the vector's threads; the vector and its battles are left as they were.
+
+        :return: the seat's observation at the end of each request, int32 ``(n, seat_ints)``, and
+            the fork's info record, int32 ``(n, info_ints)``; a request whose fork faulted has its
+            observation zero and the fault's code in the record's ``fault``
+        """
+        if self.engine != "ladder":
+            raise ValueError("only a ladder vector looks ahead")
+        s = self.schema
+        count = len(indices)
+        if count == 0:
+            return (
+                np.zeros((0, s.seat_ints), dtype=np.int32),
+                np.zeros((0, s.info_ints), dtype=np.int32),
+            )
+        java_ints = jpype.JArray(jpype.JInt)
+        out = self._env.lookahead(
+            java_ints(np.asarray(indices, dtype=np.int32)),
+            java_ints(np.asarray(seats, dtype=np.int32)),
+            java_ints(np.asarray(actions, dtype=np.int32)),
+            int(horizon_ticks),
+        )
+        flat = np.asarray(out, dtype=np.int32).reshape(count, s.seat_ints + s.info_ints)
+        return flat[:, : s.seat_ints].copy(), flat[:, s.seat_ints :].copy()
+
     # -- faults --------------------------------------------------------------------------------
 
     def fault(self, index: int) -> Fault | None:

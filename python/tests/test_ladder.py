@@ -277,3 +277,29 @@ def test_a_fault_writes_a_bundle_whose_folder_the_fault_info_names(install, tabl
         v.reset([3], THREE_CHAMPIONS, RED)
         assert v.fault(0).bundle is None
         assert v.seat_info(0, 0)["fault_bundle"] == ""
+
+
+def test_a_look_ahead_plays_forks_and_leaves_the_battles_as_they_were(install, tables):
+    with VectorBattle(2, 2, install=install, tables=tables) as v:
+        v.reset([5, 6], BLUE, RED)
+        s = v.schema
+        rng = np.random.default_rng(3)
+        for _ in range(200):
+            v.step(draw_actions(v.masks, rng, 0.3))
+        while not v.masks[0, 0, 1 : s.first_ability].any():
+            v.step(np.zeros((2, 2), dtype=np.int32))
+        play = 1 + int(np.flatnonzero(v.masks[0, 0, 1 : s.first_ability])[0])
+        before = (v.observations.copy(), v.masks.copy(), v.infos.copy())
+        indices = np.array([0, 0, 1])
+        seats = np.array([0, 0, 1])
+        actions = np.array([s.wait, play, s.wait])
+        observations, infos = v.lookahead(indices, seats, actions, 160)
+        assert observations.shape == (3, s.seat_ints) and infos.shape == (3, s.info_ints)
+        assert (infos[:, s.info["fault"]] == 0).all()
+        assert (infos[:, s.info["tick"]] >= v.infos[indices, s.info["tick"]] + 160).all()
+        assert (observations[:, s.header["seat"][0]] == seats).all()
+        assert not np.array_equal(observations[0], observations[1])
+        again, _ = v.lookahead(indices, seats, actions, 160)
+        assert np.array_equal(again, observations)
+        for now, then in zip((v.observations, v.masks, v.infos), before, strict=True):
+            assert np.array_equal(now, then)

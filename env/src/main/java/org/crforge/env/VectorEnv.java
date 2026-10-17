@@ -510,6 +510,82 @@ public final class VectorEnv implements AutoCloseable {
     countFaults();
   }
 
+  /**
+   * Looks ahead from the environments' decisions: for each request, a fork of an environment as one
+   * of its seats knows it ({@link LadderEnv#fork}) takes the request's action for that seat, with
+   * the wait for the other, then both seats wait until {@code horizonTicks} have passed, in whole
+   * decisions, or the battle ends. The requests are run on the vector's threads; nothing of the
+   * vector or its environments changes.
+   *
+   * <p>The fork stands for what the seat's player can foresee with the battle core, and no more: it
+   * never gives the enemy's commands the seat has not seen run. It does draw on the battle's own
+   * random numbers and on the enemy's hand, which the seat does not know; with both seats waiting
+   * after the request's action, only the random numbers count.
+   *
+   * @param indices each request's environment, a Ladder one that is running
+   * @param seats each request's seat, 0 or 1
+   * @param actions each request's action for its seat
+   * @param horizonTicks the ticks to look ahead, at least one decision's
+   * @return per request, the seat's observation at the end ({@link Schema#SEAT_INTS} integers) then
+   *     the fork's info record ({@link Schema#INFO_INTS}); a request whose fork faulted has its
+   *     observation zero and the fault's kind code in the record's {@link Schema#I_FAULT}
+   */
+  public int[] lookahead(int[] indices, int[] seats, int[] actions, int horizonTicks) {
+    int count = indices.length;
+    if (seats.length != count || actions.length != count) {
+      throw new IllegalArgumentException(
+          "one seat and one action a request: "
+              + count
+              + " environments, "
+              + seats.length
+              + " seats, "
+              + actions.length
+              + " actions");
+    }
+    if (horizonTicks < 1) {
+      throw new IllegalArgumentException("a horizon of at least one tick, got " + horizonTicks);
+    }
+    LadderEnv[] sources = new LadderEnv[count];
+    for (int r = 0; r < count; r++) {
+      int index = indices[r];
+      if (index < 0 || index >= envs.length) {
+        throw new IllegalArgumentException("no environment " + index + " in " + envs.length);
+      }
+      if (!(envs[index] instanceof LadderEnv ladder)) {
+        throw new IllegalArgumentException("environment " + index + " plays no Ladder battle");
+      }
+      if (seats[r] != 0 && seats[r] != 1) {
+        throw new IllegalArgumentException("a seat is 0 or 1, got " + seats[r]);
+      }
+      if (ladder.done()) {
+        throw new IllegalArgumentException("environment " + index + " is done");
+      }
+      sources[r] = ladder;
+    }
+    int stride = Schema.SEAT_INTS + Schema.INFO_INTS;
+    int[] out = new int[count * stride];
+    run(
+        count,
+        r -> {
+          int seat = seats[r];
+          try {
+            LadderEnv fork = sources[r].fork(seat);
+            int until = fork.tick() + horizonTicks;
+            int action = actions[r];
+            fork.step(seat == 0 ? action : Schema.WAIT, seat == 0 ? Schema.WAIT : action);
+            while (!fork.done() && fork.tick() < until) {
+              fork.step(Schema.WAIT, Schema.WAIT);
+            }
+            fork.copyObservation(seat, out, r * stride);
+            fork.copyInfo(out, r * stride + Schema.SEAT_INTS);
+          } catch (RuntimeException | AssertionError | StackOverflowError e) {
+            Arrays.fill(out, r * stride, (r + 1) * stride, 0);
+            out[r * stride + Schema.SEAT_INTS + Schema.I_FAULT] = EnvFault.of(e, -1).kind().code();
+          }
+        });
+    return out;
+  }
+
   private void stepEnv(int index) {
     BattleEnv env = envs[index];
     if (broken[index] || env.done()) {
@@ -597,7 +673,11 @@ public final class VectorEnv implements AutoCloseable {
    * holds its own fault boundary, so every environment of a share is run whatever another does.
    */
   private void run(EnvTask task) {
-    int count = envs.length;
+    run(envs.length, task);
+  }
+
+  /** Runs a task on each of {@code count} items, numbered from 0, as {@link #run(EnvTask)}. */
+  private void run(int count, EnvTask task) {
     if (pool == null) {
       for (int i = 0; i < count; i++) {
         task.run(i);

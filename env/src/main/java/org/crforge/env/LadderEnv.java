@@ -7,6 +7,9 @@
 package org.crforge.env;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +93,14 @@ public final class LadderEnv extends BufferedEnv {
    */
   private record AbilityWaiting(String name, int side, int slot, int runTick) {}
 
+  /**
+   * The decision a play or ability command this environment gave was given in.
+   *
+   * @param side the giving side
+   * @param decision the decision, counted from 0 as {@link #episodeStep} counts them
+   */
+  private record Given(int side, int decision) {}
+
   private final GameTables tables;
   private final Vocabulary vocabulary;
   private final EnvConfig config;
@@ -109,8 +120,8 @@ public final class LadderEnv extends BufferedEnv {
   private int[][] deckLevels;
 
   /**
-   * Both seats' actions of each decision of the episode, seat 0's then seat 1's, kept for a fault
-   * bundle only when bundles are written.
+   * Both seats' actions of each decision of the episode, seat 0's then seat 1's: what a fault
+   * bundle writes and what a {@link #fork} steps again.
    */
   private int[] actionLog = new int[0];
 
@@ -123,6 +134,9 @@ public final class LadderEnv extends BufferedEnv {
 
   /** The deck card each play this environment gave played, by the play's name. */
   private final Map<String, String> givenCards = new HashMap<>();
+
+  /** The side and decision of each play and ability command given, by the command's name. */
+  private final Map<String, Given> givenAt = new HashMap<>();
 
   private final List<Waiting> waiting = new ArrayList<>();
   private final List<List<String>> enemySeen = List.of(new ArrayList<>(), new ArrayList<>());
@@ -285,6 +299,7 @@ public final class LadderEnv extends BufferedEnv {
     match = null;
     commands = null;
     givenCards.clear();
+    givenAt.clear();
     waiting.clear();
     enemySeen.get(0).clear();
     enemySeen.get(1).clear();
@@ -329,9 +344,7 @@ public final class LadderEnv extends BufferedEnv {
     if (done) {
       throw new IllegalStateException("the episode is over: reset the environment");
     }
-    if (config.faultBundles() != null) {
-      logActions(action0, action1);
-    }
+    logActions(action0, action1);
     beginDecision();
     apply(firstSide, firstSide == 0 ? action0 : action1);
     apply(1 - firstSide, firstSide == 0 ? action1 : action0);
@@ -388,6 +401,99 @@ public final class LadderEnv extends BufferedEnv {
     return done;
   }
 
+  /** The battle's tick. */
+  int tick() {
+    return battle.getTick();
+  }
+
+  /**
+   * A new environment at this episode's decision, played to it again: reset on the episode's seed
+   * and decks, then stepped with every decision's actions as they were taken. The battle core is
+   * deterministic, so with no seat named the fork is the same battle: the same observations and
+   * masks, and stepped on with the same actions, the same battle to its end.
+   *
+   * <p>With a seat named, the fork is the battle as that seat's player knows it: the enemy's plays
+   * and ability commands still waiting to run, which the seat's observation does not show, are
+   * never given in it. From the decision the first of them was given in, each enemy action is
+   * stepped as a wait, unless it gave a command that has run, which the seat has seen. Its own
+   * commands are stepped as they were.
+   *
+   * <p>The fork writes into buffers of its own and no fault bundles. Forking only reads this
+   * environment, so several threads may fork one environment at once while nothing steps it.
+   *
+   * @param seat the seat whose knowledge the fork keeps, 0 or 1, or -1 for the battle as it is
+   * @return the fork, not done
+   * @throws IllegalStateException when there is no episode, it is over, or it was reset on a
+   *     replay's setup (its commands were not all given by {@link #step})
+   */
+  public LadderEnv fork(int seat) {
+    if (seat < -1 || seat > 1) {
+      throw new IllegalArgumentException("a seat is 0 or 1, or -1 for none, got " + seat);
+    }
+    if (standard == null || done || fault() != null) {
+      throw new IllegalStateException("only a running episode is forked");
+    }
+    if (deckLevels != null) {
+      throw new IllegalStateException(
+          "an episode reset on a replay's setup is not forked: its commands were not all given by"
+              + " step");
+    }
+    int decisions = actionCount / 2;
+    boolean[] hidden = new boolean[decisions];
+    if (seat != -1) {
+      int enemy = 1 - seat;
+      Set<String> unseen = new HashSet<>();
+      waiting.stream().filter(w -> w.side() == enemy).forEach(w -> unseen.add(w.name()));
+      abilityWaiting.stream().filter(w -> w.side() == enemy).forEach(w -> unseen.add(w.name()));
+      int first = decisions;
+      for (String name : unseen) {
+        first = Math.min(first, givenAt.get(name).decision());
+      }
+      Arrays.fill(hidden, first, decisions, true);
+      for (Map.Entry<String, Given> given : givenAt.entrySet()) {
+        Given at = given.getValue();
+        if (at.side() == enemy && at.decision() >= first && !unseen.contains(given.getKey())) {
+          hidden[at.decision()] = false;
+        }
+      }
+    }
+    LadderEnv fork = new LadderEnv(tables, vocabulary, config.withFaultBundles(null));
+    fork.bind(
+        IntBuffer.allocate(2 * Schema.SEAT_INTS),
+        ByteBuffer.allocate(2 * Schema.ACTIONS),
+        FloatBuffer.allocate(2),
+        IntBuffer.allocate(Schema.INFO_INTS));
+    fork.reset(seed, decks.get(0), decks.get(1), slots[0], slots[1]);
+    for (int d = 0; d < decisions; d++) {
+      int action0 = actionLog[2 * d];
+      int action1 = actionLog[2 * d + 1];
+      if (hidden[d]) {
+        if (seat == 0) {
+          action1 = Schema.WAIT;
+        } else {
+          action0 = Schema.WAIT;
+        }
+      }
+      if (fork.done()) {
+        // Only a fork that left enemy commands out can end sooner, and none has run yet; the
+        // match does not end on a play that has not run.
+        throw new IllegalStateException("the fork ended at decision " + d + " of " + decisions);
+      }
+      fork.step(action0, action1);
+    }
+    return fork;
+  }
+
+  /** A seat's observation as last written, {@link Schema#SEAT_INTS} integers, into an array. */
+  void copyObservation(int seat, int[] into, int at) {
+    observations.get(seat * Schema.SEAT_INTS, into, at, Schema.SEAT_INTS);
+  }
+
+  /** The info record as last written, {@link Schema#INFO_INTS} integers, into an array. */
+  void copyInfo(int[] into, int at) {
+    info.get(0, into, at, Schema.INFO_INTS);
+  }
+
   @Override
   public boolean writeFaultBundle(Path folder, int index, Throwable thrown) throws IOException {
     FaultBundle.write(folder, this, index, thrown);
@@ -426,7 +532,7 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * Both seats' actions of each decision of the episode, seat 0's then seat 1's, the step that
-   * faulted last; empty when bundles are not written.
+   * faulted last.
    */
   int[] actionLog() {
     return Arrays.copyOf(actionLog, actionCount);
@@ -545,6 +651,7 @@ public final class LadderEnv extends BufferedEnv {
    */
   void trackPlay(String name, int side, String card, int x, int y, int runTick) {
     givenCards.put(name, card);
+    givenAt.put(name, new Given(side, episodeStep));
     waiting.add(new Waiting(name, side, vocabulary.id(card), x, y, runTick));
   }
 
@@ -558,6 +665,7 @@ public final class LadderEnv extends BufferedEnv {
    * @param runTick the tick it runs on
    */
   void trackAbility(String name, int side, int slot, int runTick) {
+    givenAt.put(name, new Given(side, episodeStep));
     abilityWaiting.add(new AbilityWaiting(name, side, slot, runTick));
   }
 
