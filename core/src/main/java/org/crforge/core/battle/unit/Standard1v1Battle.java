@@ -12,7 +12,9 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
@@ -342,8 +344,10 @@ public class Standard1v1Battle {
    * @param side the commanding side
    * @param unit the name of the unit it names, or null when it names one by id
    * @param objectId the game object id of the unit it names, or -1 when it names one by name
+   * @param name the command's name
    */
-  private record QueuedAbility(int given, int tick, int side, String unit, int objectId) {}
+  private record QueuedAbility(
+      int given, int tick, int side, String unit, int objectId, String name) {}
 
   /**
    * Every card play queued so far, which a Mirror's and a variant card's item are built against.
@@ -352,6 +356,40 @@ public class Standard1v1Battle {
 
   /** Every ability command queued so far, which a variant card's pick is checked against. */
   private final List<QueuedAbility> queuedAbilities = new ArrayList<>();
+
+  /** The battle commands each player's command queued, by the command's name. */
+  private final Map<String, List<BattleCommand>> queuedByName = new HashMap<>();
+
+  /** Queues a battle command of a player's command, kept by the command's name. */
+  private void queue(String name, BattleCommand command) {
+    queuedByName.computeIfAbsent(name, n -> new ArrayList<>()).add(command);
+    battle.queue(command);
+  }
+
+  /**
+   * Takes back a player's command that has not run yet, as though it was never given: its battle
+   * commands leave the battle's queue, and it leaves the commands, plays and ability commands
+   * queued. What the player's side gave for it before its run (a hand slot's card, elixir set aside
+   * by the client) is not given back. A tool that looks ahead with a side's commands it has not
+   * seen taken out uses it; a battle played as the game plays it never does.
+   *
+   * @param name the command's name
+   * @throws IllegalArgumentException when no command of that name waits to run
+   */
+  public void withdraw(String name) {
+    List<BattleCommand> queued = queuedByName.get(name);
+    boolean waiting = false;
+    if (queued != null) {
+      for (BattleCommand command : queued) {
+        waiting |= battle.unqueue(command);
+      }
+    }
+    checkArgument(waiting, () -> name + " is not a command waiting to run");
+    queuedByName.remove(name);
+    commands.removeIf(command -> command.name().equals(name));
+    queuedPlays.removeIf(play -> play.name().equals(name));
+    queuedAbilities.removeIf(ability -> ability.name().equals(name));
+  }
 
   /**
    * How many ticks before its own run a variant card's option is picked when no command item names
@@ -543,7 +581,7 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(tick - PLAY_DELAY_TICKS, tick, side, unit, -1));
+    queuedAbilities.add(new QueuedAbility(tick - PLAY_DELAY_TICKS, tick, side, unit, -1, name));
     commands.add(
         new Command(
             name,
@@ -558,7 +596,8 @@ public class Standard1v1Battle {
             -1,
             unit,
             -1));
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -613,11 +652,12 @@ public class Standard1v1Battle {
       throw new UnsupportedOperationException(
           name + ": an ability command outside a match, which has no champion slots");
     }
-    queuedAbilities.add(new QueuedAbility(given, tick, side, null, objectId));
+    queuedAbilities.add(new QueuedAbility(given, tick, side, null, objectId, name));
     commands.add(
         new Command(
             name, CommandKind.ABILITY, given, tick, side, null, 0, 0, 0, -1, null, objectId));
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -707,7 +747,8 @@ public class Standard1v1Battle {
     checkDelay(given, tick, name);
     queuedPlays.add(new QueuedPlay(given, tick, side, card.name(), PlayKind.CARD, name));
     given(name, CommandKind.CARD, given, tick, side, card.name(), level, x, y, -1);
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -781,7 +822,8 @@ public class Standard1v1Battle {
     QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.MIRROR, name);
     queuedPlays.add(queued);
     given(name, CommandKind.MIRROR, given, tick, side, card, level, x, y, -1);
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -1023,7 +1065,8 @@ public class Standard1v1Battle {
     int[] option = {-1};
     // The head of the next step sees the battle as the step left it: the pick runs there, before
     // the commands that can change its side's elixir, which are refused.
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -1043,7 +1086,8 @@ public class Standard1v1Battle {
             }
           }
         });
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {
@@ -1122,7 +1166,8 @@ public class Standard1v1Battle {
     QueuedPlay queued = new QueuedPlay(given, tick, side, card, PlayKind.VARIANT, name);
     queuedPlays.add(queued);
     given(name, CommandKind.VARIANT, given, tick, side, card, level, x, y, option);
-    battle.queue(
+    queue(
+        name,
         new BattleCommand() {
           @Override
           public int tick() {

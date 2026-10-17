@@ -128,6 +128,57 @@ class LookaheadTest {
   }
 
   @Test
+  void aCopiedForkIsTheBattlePlayedAgainFromItsStart() {
+    for (int seed = 0; seed < 3; seed++) {
+      try (VectorEnv env = ladder(1, 1)) {
+        SplittableRandom random = new SplittableRandom(40 + seed);
+        LadderEnv original = ladderEnv(env, 0);
+        for (int at : new int[] {80, 250, 500}) {
+          play(env, 0, at - original.episodeStep(), random);
+          if (original.done()) {
+            break;
+          }
+          LadderEnv copied = original.fork(-1);
+          LadderEnv replayed = original.replayed(-1);
+          assertThat(written(copied)).isEqualTo(written(original));
+          assertThat(written(replayed)).isEqualTo(written(original));
+          SplittableRandom ahead = new SplittableRandom(seed * 1000L + at);
+          for (int d = 0; d < 120 && !replayed.done(); d++) {
+            int action0 = randomAction(replayed, 0, ahead);
+            int action1 = randomAction(replayed, 1, ahead);
+            copied.step(action0, action1);
+            replayed.step(action0, action1);
+            assertThat(written(copied))
+                .as("decision %d after %d", d, at)
+                .isEqualTo(written(replayed));
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  void aSeatsCopiedForkSeesWhatItsReplayedForkSees() {
+    try (VectorEnv env = ladder(1, 1)) {
+      LadderEnv original = ladderEnv(env, 0);
+      play(env, 0, 200, new SplittableRandom(13));
+      original.step(Schema.WAIT, openPlay(original, 1));
+      LadderEnv copied = original.fork(0);
+      LadderEnv replayed = original.replayed(0);
+      assertThat(copied.battle().getCommands()).isEqualTo(replayed.battle().getCommands());
+      for (int d = 0; d < 60 && !replayed.done(); d++) {
+        int[] mine = new int[Schema.SEAT_INTS];
+        int[] theirs = new int[Schema.SEAT_INTS];
+        copied.copyObservation(0, mine, 0);
+        replayed.copyObservation(0, theirs, 0);
+        assertThat(mine).as("decision %d", d).isEqualTo(theirs);
+        copied.step(Schema.WAIT, Schema.WAIT);
+        replayed.step(Schema.WAIT, Schema.WAIT);
+      }
+    }
+  }
+
+  @Test
   void aSeatsForkLeavesOutTheEnemyCommandsTheSeatHasNotSeenRun() {
     try (VectorEnv env = ladder(1, 1)) {
       LadderEnv original = ladderEnv(env, 0);

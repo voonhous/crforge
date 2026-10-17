@@ -7,17 +7,20 @@
 package org.crforge.env;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.data.GameTables;
@@ -40,6 +43,7 @@ import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.util.DeepCopy;
 import org.crforge.env.EnvFault.CoreFailure;
 
 /**
@@ -407,36 +411,92 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * A new environment at this episode's decision, played to it again: reset on the episode's seed
-   * and decks, then stepped with every decision's actions as they were taken. The battle core is
-   * deterministic, so with no seat named the fork is the same battle: the same observations and
-   * masks, and stepped on with the same actions, the same battle to its end.
+   * A new environment at this episode's decision: a deep copy of this one ({@link DeepCopy}), its
+   * battle, match and everything the environment keeps, sharing only the game tables, the
+   * vocabulary and the configuration. The battle core is deterministic, so with no seat named the
+   * fork is the same battle: the same observations and masks, and stepped on with the same actions,
+   * the same battle to its end. Nothing of the episode is played again: a fork costs the copy of
+   * the battle as it stands, whatever its age.
    *
    * <p>With a seat named, the fork is the battle as that seat's player knows it: the enemy's plays
    * and ability commands still waiting to run, which the seat's observation does not show, are
-   * never given in it. From the decision the first of them was given in, each enemy action is
-   * stepped as a wait, unless it gave a command that has run, which the seat has seen. Its own
-   * commands are stepped as they were.
+   * withdrawn from it ({@link Standard1v1Battle#withdraw}). What the enemy gave for them (the cards
+   * and the elixir) is not given back; the seat sees neither.
    *
    * <p>The fork writes into buffers of its own and no fault bundles. Forking only reads this
    * environment, so several threads may fork one environment at once while nothing steps it.
    *
    * @param seat the seat whose knowledge the fork keeps, 0 or 1, or -1 for the battle as it is
    * @return the fork, not done
-   * @throws IllegalStateException when there is no episode, it is over, or it was reset on a
-   *     replay's setup (its commands were not all given by {@link #step})
+   * @throws IllegalStateException when there is no episode or it is over
    */
   public LadderEnv fork(int seat) {
+    checkForkable(seat);
+    Set<Object> data = SHARED.computeIfAbsent(tables, DeepCopy::reachable);
+    LadderEnv fork =
+        DeepCopy.of(
+            this,
+            object ->
+                object == vocabulary
+                    || object == config
+                    || object instanceof Buffer
+                    || data.contains(object));
+    fork.bind(
+        IntBuffer.allocate(2 * Schema.SEAT_INTS),
+        ByteBuffer.allocate(2 * Schema.ACTIONS),
+        FloatBuffer.allocate(2),
+        IntBuffer.allocate(Schema.INFO_INTS));
+    if (seat != -1) {
+      int enemy = 1 - seat;
+      for (Waiting w : List.copyOf(fork.waiting)) {
+        if (w.side() == enemy) {
+          fork.standard.withdraw(w.name());
+          fork.waiting.remove(w);
+          fork.givenCards.remove(w.name());
+        }
+      }
+      for (AbilityWaiting w : List.copyOf(fork.abilityWaiting)) {
+        if (w.side() == enemy) {
+          fork.standard.withdraw(w.name());
+          fork.abilityWaiting.remove(w);
+        }
+      }
+    }
+    fork.observe();
+    return fork;
+  }
+
+  /**
+   * Every object the game tables hold, by tables: what a {@link #fork} shares rather than copies.
+   * Walked once per tables, as the tables never change.
+   */
+  private static final Map<GameTables, Set<Object>> SHARED =
+      Collections.synchronizedMap(new WeakHashMap<>());
+
+  private void checkForkable(int seat) {
     if (seat < -1 || seat > 1) {
       throw new IllegalArgumentException("a seat is 0 or 1, or -1 for none, got " + seat);
     }
     if (standard == null || done || fault() != null) {
       throw new IllegalStateException("only a running episode is forked");
     }
+  }
+
+  /**
+   * The fork {@link #fork} gives, made the slow way, for the tests that hold one to the other: a
+   * new environment reset on the episode's seed and decks and stepped with every decision's actions
+   * as they were taken. With a seat named, from the decision the first enemy command still waiting
+   * was given in, each enemy action is stepped as a wait, unless it gave a command that has run.
+   *
+   * @throws IllegalStateException as {@link #fork} does, and for an episode reset on a replay's
+   *     setup, whose commands were not all given by {@link #step}
+   */
+  LadderEnv replayed(int seat) {
+    checkForkable(seat);
     if (deckLevels != null) {
       throw new IllegalStateException(
-          "an episode reset on a replay's setup is not forked: its commands were not all given by"
-              + " step");
+          "an episode reset on a replay's setup is not played again: its commands were not all"
+              + " given by step");
     }
     int decisions = actionCount / 2;
     boolean[] hidden = new boolean[decisions];
