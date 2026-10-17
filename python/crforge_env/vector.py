@@ -35,6 +35,31 @@ card (spells, and cards that place neither directly)."""
 
 
 @dataclass(frozen=True)
+class SpellFacts:
+    """What a spell card cast on the enemy does, as a player reads it off the card: where it hits
+    and how hard, at the level the vector plays its cards at (:meth:`VectorBattle.spell_facts`).
+
+    The damage is per target hit, in hit points; 0 where the card deals none of its own a player
+    can read off it (a spell that deals its damage through a buff, an action or the characters it
+    places), so only the targets it covers count. Distances are game units of the seat's frame.
+    """
+
+    radius: int
+    """the circle it hits around the point it is cast on, or a rolling spell's half width"""
+    damage: int = 0
+    """the hit points it takes from each character it hits, over all its waves and hits"""
+    tower_damage: int = 0
+    """the hit points a crown tower takes from it, 0 when it cannot take a tower"""
+    hits_air: bool = True
+    hits_ground: bool = True
+    roll: int = 0
+    """a rolling spell's length: it hits from the point it is cast on forwards (towards the enemy)
+    over this distance; 0 for a spell that hits a circle"""
+    max_targets: int = 0
+    """the most characters it hits, 0 for no limit"""
+
+
+@dataclass(frozen=True)
 class LadderConfig:
     """How Ladder battles are played (``org.crforge.env.EnvConfig``); a field left None takes the
     env module's default."""
@@ -85,6 +110,86 @@ def _load_json(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(source, Path) or not str(source).lstrip().startswith("{"):
         return json.loads(Path(source).read_text(encoding="utf-8"))
     return json.loads(str(source))
+
+
+class _SpellReader:
+    """Reads a spell card's :class:`SpellFacts` through the battle core's row readers and level
+    scaling (``BattleRecords``, ``ProjectileAmounts``, ``LevelScaling``)."""
+
+    def __init__(self, tables, level: int):
+        java = _jvm.java_class
+        self.records = java("org.crforge.core.battle.data.BattleRecords")(tables)
+        self.level = level
+        self.packed = java("org.crforge.core.pathfinding.combat.PackedLevel")
+        self.amounts = java("org.crforge.core.battle.projectile.ProjectileAmounts")
+        self.scaling = java("org.crforge.core.pathfinding.combat.LevelScaling")
+        self.mode = java("org.crforge.core.pathfinding.combat.ScalingMode").CARD_DAMAGE
+        self.globals = java("org.crforge.core.pathfinding.combat.ScalingGlobals").standard()
+        self.direct_hit = java("org.crforge.core.pathfinding.target.DirectHit")
+
+    def projectile(self, name: str):
+        """A projectile row, its damage at the level and a crown tower's share of it."""
+        data = self.records.projectile(name)
+        at = self.packed.fromLevel(self.level, data.rarity())
+        damage = int(self.amounts.damage(self.globals, data, at))
+        return data, damage, int(self.amounts.towerDamage(self.globals, data, at))
+
+    def scaled(self, base: int, rarity) -> int:
+        at = self.packed.fromLevel(self.level, rarity)
+        return int(self.scaling.scale(self.globals, base, at, self.mode, rarity))
+
+    def fact(self, name: str) -> SpellFacts | None:
+        """A spell card's facts, or None for a card that places a character (itself or by its
+        projectile) or casts nothing."""
+        card = self.records.card(name)
+        if card.unit() is not None:
+            return None
+        radius = int(card.radius())
+        if card.projectile() is not None:
+            waves = max(int(card.projectileWaves()), 1)
+            data, damage, tower = self.projectile(str(card.projectile()))
+            if data.spawnCharacter() is not None:
+                return None  # a spell that places characters (a barrel) is not cast on a group
+            roll = 0
+            if damage == 0 and data.spawnProjectile() is not None:
+                # A projectile that deals nothing itself and rolls on as another (a log).
+                data, damage, tower = self.projectile(str(data.spawnProjectile()))
+                roll = int(data.projectileRange())
+                radius = radius or int(data.projectileRadius())
+            return SpellFacts(
+                radius=radius or int(data.radius()),
+                damage=damage * waves,
+                tower_damage=tower * waves,
+                hits_air=bool(data.aoeToAir()),
+                hits_ground=bool(data.aoeToGround()),
+                roll=roll,
+            )
+        if card.areaEffect() is not None:
+            data = self.records.areaEffect(str(card.areaEffect()))
+            speed = int(data.hitSpeedMs())
+            hits = max(int(data.lifeDurationMs()) // speed if speed > 0 else 1, 1)
+            max_targets = 0
+            if data.projectile() is not None:
+                # An area effect that strikes with a projectile, a target or a few at a time.
+                _, damage, tower = self.projectile(str(data.projectile()))
+                if int(data.maximumTargets()) > 0:
+                    max_targets = int(data.maximumTargets()) * hits
+            else:
+                typed = data.typedDamage()
+                if typed is None:
+                    damage = self.scaled(int(data.damage()), data.rarity()) * hits
+                    percent = int(data.crownTowerDamagePercent())
+                    tower = int(self.direct_hit.crownTowerDamage(percent, damage))
+                else:
+                    damage = self.scaled(int(typed.amount(False)), data.rarity()) * hits
+                    tower = self.scaled(int(typed.amount(True)), data.rarity()) * hits
+            return SpellFacts(
+                radius=radius or int(data.radius()),
+                damage=damage,
+                tower_damage=tower,
+                max_targets=max_targets,
+            )
+        return None
 
 
 class VectorBattle:
@@ -338,6 +443,40 @@ class VectorBattle:
             for row in self._tables.table(table).rows():
                 types[self.card_id(str(row.name()))] = card_type
         return types
+
+    def spell_facts(self, level: int | None = None) -> dict[int, SpellFacts]:
+        """The :class:`SpellFacts` of every spell card that is cast on the enemy, by vocabulary id,
+        at ``level`` (the vector's card level by default). Empty for a synthetic vector.
+
+        Read from the tables through the battle core's own readers: the card row (a spell card
+        whose row sets ``OnlyEnemies``), its projectile or area effect row, and their damage at the
+        level by the core's level scaling. A spell the battle core does not read (it would refuse
+        the play) is left out, as is one whose projectile places characters (a barrel) and one with
+        no radius. The damage is the projectile's damage times the card's waves; a projectile that
+        rolls on as another projectile (a log) takes the rolling one's damage, width and range; an
+        area effect's damage is its own times its hits, or its projectile's damage, with its hits
+        as the most targets when it hits one target at a time. Everything else a spell does
+        (buffs, actions, the characters an area effect places) is not read: a spell that deals its
+        damage that way is listed with no damage."""
+        if self._tables is None:
+            return {}
+        if level is None:
+            level = int(self.metadata["config"]["level"])
+        reader = _SpellReader(self._tables, level)
+        unsupported = _jvm.java_class("java.lang.RuntimeException")
+        facts: dict[int, SpellFacts] = {}
+        table = next(t for t, kind in CARD_TABLES.items() if kind == "spell")
+        for row in self._tables.table(table).rows():
+            name = str(row.name())
+            if not bool(row.bool("OnlyEnemies")):
+                continue
+            try:
+                fact = reader.fact(name)
+            except unsupported:
+                continue  # a card the battle core would refuse to play
+            if fact is not None and fact.radius > 0:
+                facts[self.card_id(name)] = fact
+        return facts
 
     def info(self, index: int) -> dict[str, int]:
         """An environment's info record by field name."""
