@@ -151,8 +151,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " as its bit in the tag word, a damage type's switches defaulting on. Supplied: an"
             + " interval's rate, which the spawn speed would set, is the usual 100 with no buffs;"
             + " a variable's key is its row's index, which only has to agree between the actions"
-            + " that write a variable and the expressions that read it. Refused: every other"
-            + " class, and every column not modelled.")
+            + " that write a variable and the expressions that read it. Kept as read, told apart"
+            + " by no recorded battle: UpdatePhase PostGameObjectTick as any phase, which the game"
+            + " reads as the pending pass after the post-hooks; the other phase names are refused."
+            + " Refused: every other class, and every column not modelled.")
 public final class ActionRows {
 
   /** The columns every row may set, read into its shared columns. */
@@ -4127,9 +4129,22 @@ public final class ActionRows {
 
   /**
    * The phase name a row's UpdatePhase writes that the reader reads, as the phase it reads it as.
-   * The column is written only as a name. PostGameObjectTick, the one name a row the battle builds
-   * writes (the Giant hero's slap push), is read as it always has been: as any phase, not as the
-   * post game object pass its name says, which is left for a trace to settle.
+   * The column is written only as a name. The game reads four names: Any as any phase, PostTickInit
+   * as the pending pass before the component passes, PostComponentTick as the one after the run
+   * pass and PostGameObjectTick as the one after the post-hooks, once the tick's queued hits have
+   * landed; it reads any other name as any phase. The phase only picks the pending pass that takes
+   * a queued run whose delay has run out: a run scheduled with no delay inside a pending pass
+   * starts at once, whatever its phase.
+   *
+   * <p>PostGameObjectTick is read here as any phase, not as the last pass, and no recorded battle
+   * tells the two apart. The Giant hero's slap push and the Tombstone hero's hit point write are
+   * queued from the run pass, so either reading starts them in the same tick, before or after the
+   * post-hooks. The push's run starts the same either way. The write reads the Tombstone's hit
+   * points before or after that tick's queued hits, but its share is only ever tested for zero, and
+   * the Tombstone's death gives its monster zero before the monster's next run pass either way. The
+   * Bowler hero's two rows that write it only play an effect, and one of them is named by no other
+   * row. The other three names are refused: the one row that writes PostComponentTick, the Dark
+   * Prince hero's mount charge, is named by no other row, so no battle builds it.
    */
   private static final Map<String, Integer> UPDATE_PHASES =
       Map.of("PostGameObjectTick", BattleAction.ANY_PHASE);
