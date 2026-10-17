@@ -194,6 +194,11 @@ class LookaheadTest {
 
       LadderEnv mine = original.fork(0);
       assertThat(mine.battle().getCommands()).hasSize(before);
+      // The fork gives its own plays on, under names still new.
+      LadderEnv playing = original.fork(0);
+      playing.step(openPlay(playing, 0), Schema.WAIT);
+      assertThat(playing.fault()).isNull();
+      assertThat(playing.battle().getCommands()).hasSize(before + 1);
       LadderEnv theirs = original.fork(1);
       assertThat(theirs.battle().getCommands()).hasSize(before + 1);
 

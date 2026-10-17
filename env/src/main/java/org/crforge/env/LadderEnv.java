@@ -166,6 +166,13 @@ public final class LadderEnv extends BufferedEnv {
   private final int[] illegalNow = new int[2];
   private final int[] illegalTotal = new int[2];
   private int notModelled;
+
+  /**
+   * The enemy commands a fork withdrew from its battle, counted into a new command's name so that
+   * it stays new: 0 in an environment that is not a seat's fork.
+   */
+  private int withdrawn;
+
   private int firstSide;
   private int playsSeen;
   private int abilityUsesSeen;
@@ -319,6 +326,7 @@ public final class LadderEnv extends BufferedEnv {
     Arrays.fill(illegalNow, 0);
     Arrays.fill(illegalTotal, 0);
     notModelled = 0;
+    withdrawn = 0;
     firstSide = 0;
     playsSeen = 0;
     abilityUsesSeen = 0;
@@ -451,6 +459,7 @@ public final class LadderEnv extends BufferedEnv {
       for (Waiting w : List.copyOf(fork.waiting)) {
         if (w.side() == enemy) {
           fork.standard.withdraw(w.name());
+          fork.withdrawn++;
           fork.waiting.remove(w);
           fork.givenCards.remove(w.name());
         }
@@ -458,6 +467,7 @@ public final class LadderEnv extends BufferedEnv {
       for (AbilityWaiting w : List.copyOf(fork.abilityWaiting)) {
         if (w.side() == enemy) {
           fork.standard.withdraw(w.name());
+          fork.withdrawn++;
           fork.abilityWaiting.remove(w);
         }
       }
@@ -645,7 +655,7 @@ public final class LadderEnv extends BufferedEnv {
     int y = Schema.gameY(side, tile / Schema.COLS);
     // Named as a replay of the battle names its commands, by their order: a fault's message reads
     // the same in the episode and in its bundle's replay.
-    String name = "cmd" + standard.getCommands().size();
+    String name = "cmd" + (standard.getCommands().size() + withdrawn);
     PlayerCommands.Giving giving;
     try {
       giving = givePlay(side, slot, x, y, name);
@@ -740,7 +750,7 @@ public final class LadderEnv extends BufferedEnv {
       return;
     }
     // Named by its order among the battle's commands, as a replay names it.
-    String name = "cmd" + standard.getCommands().size();
+    String name = "cmd" + (standard.getCommands().size() + withdrawn);
     PlayerCommands.Giving giving;
     try {
       giving = giveAbility(side, slot, unit.name(), name);
