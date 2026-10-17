@@ -60,6 +60,24 @@ class SpellFacts:
 
 
 @dataclass(frozen=True)
+class UnitFacts:
+    """What a troop or building card places, as a player reads it off the card
+    (:meth:`VectorBattle.unit_facts`): the unit it places first, its reach and what it attacks.
+    Distances are game units."""
+
+    unit: int
+    """the vocabulary id of the unit's row, as an entity row of the observation names it"""
+    range: int
+    """how far it attacks from (the row's ``Range``), 0 for a unit that does not attack"""
+    buildings_only: bool = False
+    """it attacks buildings only (the row's ``TargetOnlyBuildings``): towers and buildings"""
+    building: bool = False
+    """the unit is a building (the row's ``IsBuilding``)"""
+    hitpoints: int = 0
+    """one unit's hit points at the vector's card level"""
+
+
+@dataclass(frozen=True)
 class LadderConfig:
     """How Ladder battles are played (``org.crforge.env.EnvConfig``); a field left None takes the
     env module's default."""
@@ -476,6 +494,55 @@ class VectorBattle:
                 continue  # a card the battle core would refuse to play
             if fact is not None and fact.radius > 0:
                 facts[self.card_id(name)] = fact
+        return facts
+
+    def unit_facts(self, level: int | None = None) -> dict[int, UnitFacts]:
+        """The :class:`UnitFacts` of every troop and building card, by vocabulary id, at ``level``
+        (the vector's card level by default). Empty for a synthetic vector.
+
+        Read from the tables through the battle core's own card reader and level scaling
+        (``BattleRecords``, ``LevelScaling``): the unit a card places first (its summoned
+        character, else the first of its list) and that unit's row. A card the battle core does
+        not read (it would refuse the play) is left out, as is one that places no unit of its
+        own."""
+        if self._tables is None:
+            return {}
+        if level is None:
+            level = int(self.metadata["config"]["level"])
+        java = _jvm.java_class
+        records = java("org.crforge.core.battle.data.BattleRecords")(self._tables)
+        packed = java("org.crforge.core.pathfinding.combat.PackedLevel")
+        scaling = java("org.crforge.core.pathfinding.combat.LevelScaling")
+        mode = java("org.crforge.core.pathfinding.combat.ScalingMode").CARD_HITPOINTS
+        scaling_globals = java("org.crforge.core.pathfinding.combat.ScalingGlobals").standard()
+        unsupported = java("java.lang.RuntimeException")
+        facts: dict[int, UnitFacts] = {}
+        for table, kind in CARD_TABLES.items():
+            if kind == "spell":
+                continue
+            for row in self._tables.table(table).rows():
+                name = str(row.name())
+                try:
+                    unit = records.card(name).unit()
+                except unsupported:
+                    continue  # a card the battle core would refuse to play
+                if unit is None or str(unit.name()) not in self._ids:
+                    continue
+                facts[self.card_id(name)] = UnitFacts(
+                    unit=self.card_id(str(unit.name())),
+                    range=int(unit.range()),
+                    buildings_only=bool(unit.targetOnlyBuildings()),
+                    building=bool(unit.building()),
+                    hitpoints=int(
+                        scaling.scale(
+                            scaling_globals,
+                            int(unit.hitpoints()),
+                            packed.fromLevel(level, unit.rarity()),
+                            mode,
+                            unit.rarity(),
+                        )
+                    ),
+                )
         return facts
 
     def info(self, index: int) -> dict[str, int]:
