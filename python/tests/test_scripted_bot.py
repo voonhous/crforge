@@ -12,6 +12,7 @@ from crforge_env import (
     ClashGymEnv,
     ScriptedBot,
     SpellFacts,
+    UnitFacts,
     VectorBattle,
     evaluate,
     random_opponent,
@@ -44,6 +45,31 @@ SPELL_FACTS = {
 """Hand-written spell facts of the synthetic spells: synthetic rows, no game data. Every other
 spell id has none, so the bot never casts it."""
 
+WIN_CONDITION, CHEAP_WIN_CONDITION, TANK, SIEGE, SHORT_BUILDING = 14, 16, 18, 27, 31
+"""Hand-written troops (even ids) that attack buildings only, one of them a tank, a building
+(3 mod 4) whose range reaches the enemy princess tower from the bridge and one whose range does
+not."""
+
+TANK_HITPOINTS = 3000
+"""The tank threshold the tests give the bot."""
+
+TROOP_UNIT, CHEAP_TROOP_UNIT, WIN_CONDITION_UNIT = 110, 112, 114
+"""The vocabulary ids of the units the hand-written cards place (synthetic rows)."""
+
+UNIT_FACTS = {
+    TROOP: UnitFacts(unit=TROOP_UNIT, range=1200),
+    CHEAP_TROOP: UnitFacts(unit=CHEAP_TROOP_UNIT, range=1200),
+    WIN_CONDITION: UnitFacts(
+        unit=WIN_CONDITION_UNIT, range=1200, buildings_only=True, hitpoints=TANK_HITPOINTS - 1
+    ),
+    CHEAP_WIN_CONDITION: UnitFacts(unit=116, range=800, buildings_only=True, hitpoints=500),
+    TANK: UnitFacts(unit=118, range=1200, buildings_only=True, hitpoints=TANK_HITPOINTS),
+    BUILDING: UnitFacts(unit=123, range=5500, building=True),
+    SIEGE: UnitFacts(unit=127, range=12_000, building=True),
+    SHORT_BUILDING: UnitFacts(unit=131, range=6000, building=True),
+}
+"""Hand-written unit facts of the synthetic troops and buildings: synthetic rows, no game data."""
+
 
 @pytest.fixture(scope="module")
 def synthetic(install):
@@ -62,11 +88,13 @@ def crafted(
     enemy_left=1,
     enemy_right=1,
     towers=(),
+    own=(),
 ):
     """A seat observation written by hand: the elixir in ten-thousandths, the hand's card ids and
     costs, the enemy characters as ``(x, y)`` or ``(x, y, hp, max_hp, air)`` in the seat's frame
-    (100 of 100 hit points on the ground by default), the enemy princess towers' hit points and
-    enemy tower entities as ``(x, y, hp)``."""
+    (100 of 100 hit points on the ground by default), the enemy princess towers' hit points,
+    enemy tower entities as ``(x, y, hp)`` and the seat's own characters as ``(x, y, row)``, the
+    row the vocabulary id of the unit."""
     o = np.zeros(schema.seat_ints, dtype=np.int32)
 
     def put(name, values):
@@ -78,16 +106,20 @@ def crafted(
     put("pending_count", pending)
     put("enemy_left_hp", enemy_left)
     put("enemy_right_hp", enemy_right)
-    put("entity_count", len(enemies) + len(towers))
+    put("entity_count", len(enemies) + len(towers) + len(own))
     rows = [
-        ("character", *enemy) if len(enemy) == 5 else ("character", *enemy, 100, 100, False)
+        ("character", 1, 0, *enemy)
+        if len(enemy) == 5
+        else ("character", 1, 0, *enemy, 100, 100, False)
         for enemy in enemies
     ]
-    rows += [("tower", x, y, hp, hp, False) for x, y, hp in towers]
-    for k, (kind, x, y, hp, max_hp, air) in enumerate(rows):
+    rows += [("tower", 1, 0, x, y, hp, hp, False) for x, y, hp in towers]
+    rows += [("character", 0, row, x, y, 100, 100, False) for x, y, row in own]
+    for k, (kind, side, row, x, y, hp, max_hp, air) in enumerate(rows):
         at = schema.header_ints + k * schema.entity_ints
         o[at + schema.entity["kind"]] = schema.kinds[kind]
-        o[at + schema.entity["side"]] = 1
+        o[at + schema.entity["side"]] = side
+        o[at + schema.entity["row"]] = row
         o[at + schema.entity["x"]] = x
         o[at + schema.entity["y"]] = y
         o[at + schema.entity["hp"]] = hp
@@ -109,6 +141,7 @@ def open_mask(schema, slots=None):
 
 def bound_bot(vector, **kwargs):
     kwargs.setdefault("spell_facts", SPELL_FACTS)
+    kwargs.setdefault("tank_hitpoints", TANK_HITPOINTS)
     bot = ScriptedBot(card_types=SYNTHETIC_TYPES, **kwargs)
     bot.bind(vector)
     return bot
@@ -301,6 +334,115 @@ def test_a_ground_spell_counts_no_air_target_and_a_rolling_spell_hits_ahead(synt
     assert bot(o, open_mask(s), rng) == s.play(1, 5, 18)
 
 
+# -- the win condition ---------------------------------------------------------------------------
+
+
+def test_a_deck_with_a_building_targeting_troop_attacks_with_it(synthetic):
+    s = synthetic.schema
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    rng = np.random.default_rng(0)
+    full = 10 * bot.ELIXIR
+    # A cheaper troop in the hand, but the win condition goes to the bridge of the weaker lane.
+    hand = [CHEAP_TROOP, WIN_CONDITION, SPELL, TROOP]
+    o = crafted(s, elixir=full, hand=hand, costs=[2, 5, 1, 3], enemy_left=500, enemy_right=900)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[0], bot.bridge_row)
+    # Two win conditions: the cheaper.
+    hand = [WIN_CONDITION, CHEAP_TROOP, CHEAP_WIN_CONDITION, TROOP]
+    o = crafted(s, elixir=full, hand=hand, costs=[5, 2, 4, 3], enemy_left=900, enemy_right=500)
+    assert s.decode(bot(o, open_mask(s), rng)) == (2, bot.lane_cols[1], bot.bridge_row)
+    # The win condition closed by the mask: the cheapest troop, as without one.
+    o = crafted(s, elixir=full, hand=hand, costs=[5, 2, 4, 3], enemy_left=900, enemy_right=500)
+    assert s.decode(bot(o, open_mask(s, slots=[1, 3]), rng))[0] == 1
+
+
+def test_a_deck_without_a_win_condition_keeps_the_cheapest_troop_attack(synthetic):
+    s = synthetic.schema
+    rng = np.random.default_rng(0)
+    full = 10 * ScriptedBot.ELIXIR
+    hand = [TROOP, CHEAP_TROOP, SPELL, SHORT_BUILDING]
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    o = crafted(s, elixir=full, hand=hand, costs=[3, 2, 1, 2], enemy_left=500, enemy_right=900)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[0], bot.bridge_row)
+    # With no unit facts a building-targeting troop is a troop like any other: the cheapest.
+    blind = bound_bot(synthetic, unit_facts={})
+    hand = [WIN_CONDITION, CHEAP_TROOP, SPELL, TROOP]
+    o = crafted(s, elixir=full, hand=hand, costs=[5, 2, 1, 3], enemy_left=500, enemy_right=900)
+    assert s.decode(blind(o, open_mask(s), rng))[0] == 1
+
+
+def test_a_siege_building_that_reaches_the_tower_goes_to_the_bridge(synthetic):
+    s = synthetic.schema
+    rng = np.random.default_rng(0)
+    full = 10 * ScriptedBot.ELIXIR
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    assert bot.siege_cards == {SIEGE}
+    assert bot.attack_cards == {WIN_CONDITION, CHEAP_WIN_CONDITION, TANK, SIEGE}
+    assert bot.tank_cards == {TANK}
+    hand = [CHEAP_TROOP, SIEGE, SHORT_BUILDING, SPELL]
+    o = crafted(s, elixir=full, hand=hand, costs=[2, 6, 3, 1], enemy_left=900, enemy_right=500)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[1], bot.bridge_row)
+    # Its reach is from the bridge to the enemy princess towers' row: towers further away, and
+    # the building is no siege building; the cheapest troop attacks.
+    far = bound_bot(synthetic, unit_facts=UNIT_FACTS, tower_row=bot.bridge_row + 13)
+    assert far.siege_cards == set()
+    assert s.decode(far(o, open_mask(s), rng)) == (0, bot.lane_cols[1], bot.bridge_row)
+
+
+def test_a_tank_goes_to_the_back_line_of_its_lane(synthetic):
+    s = synthetic.schema
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    rng = np.random.default_rng(0)
+    full = 10 * bot.ELIXIR
+    hand = [CHEAP_TROOP, TANK, SPELL, TROOP]
+    o = crafted(s, elixir=full, hand=hand, costs=[2, 5, 1, 3], enemy_left=900, enemy_right=500)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[1], bot.back_row)
+    # A win condition short of the tank's hit points goes to the bridge.
+    hand = [CHEAP_TROOP, WIN_CONDITION, SPELL, TROOP]
+    o = crafted(s, elixir=full, hand=hand, costs=[2, 5, 1, 3], enemy_left=900, enemy_right=500)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[1], bot.bridge_row)
+
+
+def test_it_keeps_its_win_conditions_out_of_defence(synthetic):
+    s = synthetic.schema
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    rng = np.random.default_rng(0)
+    threat = [(3000, s.height_units // 2 - 2000)]
+    elixir = 6 * bot.ELIXIR
+    hand = [CHEAP_WIN_CONDITION, TROOP, SIEGE, SPELL]
+    o = crafted(s, elixir=elixir, hand=hand, costs=[2, 3, 2, 1], enemies=threat)
+    assert s.decode(bot(o, open_mask(s), rng)) == (1, bot.lane_cols[0], bot.defend_row)
+    # Only its win conditions open: no defence, it waits.
+    assert bot(o, open_mask(s, slots=[0, 2]), rng) == s.wait
+
+
+def test_it_supports_its_win_condition_behind_it(synthetic):
+    s = synthetic.schema
+    bot = bound_bot(synthetic, unit_facts=UNIT_FACTS)
+    rng = np.random.default_rng(0)
+    elixir = bot.support_elixir
+    hand = [TROOP, CHEAP_TROOP, WIN_CONDITION, SPELL]
+    costs = [3, 2, 5, 1]
+    gap = bot.support_gap
+    # Its win condition walking up its own half on the left: the dearest other troop behind it.
+    lead = (3500, 12500, WIN_CONDITION_UNIT)
+    o = crafted(s, elixir=elixir, hand=hand, costs=costs, own=[lead])
+    assert s.decode(bot(o, open_mask(s), rng)) == (0, 3, 12 - gap)
+    # The dearest closed by the mask (short of elixir): the next.
+    assert s.decode(bot(o, open_mask(s, slots=[1, 2, 3]), rng)) == (1, 3, 12 - gap)
+    # Past the river: at the bridge, as the seat cannot play beyond it.
+    o = crafted(s, elixir=elixir, hand=hand, costs=costs, own=[(14500, 20500, WIN_CONDITION_UNIT)])
+    assert s.decode(bot(o, open_mask(s), rng)) == (0, 14, bot.bridge_row)
+    # A troop of its own already beside it: no second support.
+    escort = (3500, 11000, TROOP_UNIT)
+    o = crafted(s, elixir=elixir, hand=hand, costs=costs, own=[lead, escort])
+    assert bot(o, open_mask(s), rng) == s.wait
+    # Short of the support elixir, or no win condition of its own on the field: it waits.
+    o = crafted(s, elixir=elixir - 1, hand=hand, costs=costs, own=[lead])
+    assert bot(o, open_mask(s), rng) == s.wait
+    o = crafted(s, elixir=elixir, hand=hand, costs=costs, own=[(3500, 12500, TROOP_UNIT)])
+    assert bot(o, open_mask(s), rng) == s.wait
+
+
 def test_an_unbound_bot_refuses_to_play(synthetic):
     with pytest.raises(RuntimeError, match="bind"):
         ScriptedBot(card_types=SYNTHETIC_TYPES)(
@@ -326,10 +468,20 @@ EVERY_SPELL_FACTS = {
 field, so a synthetic battle's random hands and fields draw casts."""
 
 
-def synthetic_actions(install, seed, spell_facts=SPELL_FACTS):
+EVERY_UNIT_FACTS = {
+    i: UnitFacts(unit=i, range=12_000 if kind == "building" else 1000, buildings_only=i % 8 == 0)
+    for i, kind in SYNTHETIC_TYPES.items()
+    if kind != "spell"
+}
+"""Hand-written facts for every synthetic troop and building: one troop in four attacks buildings
+only, every building reaches the enemy towers, and each places the unit of its own id, so a
+synthetic battle's random hands and fields draw win conditions, siege buildings and support."""
+
+
+def synthetic_actions(install, seed, spell_facts=SPELL_FACTS, unit_facts=None):
     """The bot's actions for both seats over 200 decisions of a synthetic battle, with its masks."""
     with VectorBattle(1, 1, install=install, engine="synthetic", synthetic_episode_steps=200) as v:
-        bot = bound_bot(v, spell_facts=spell_facts)
+        bot = bound_bot(v, spell_facts=spell_facts, unit_facts=unit_facts)
         rngs = [np.random.default_rng([seed, seat]) for seat in range(2)]
         v.reset([seed], BLUE, RED)
         played = []
@@ -376,6 +528,16 @@ def test_with_spell_facts_it_casts_spells_and_stays_deterministic(install):
                     cast += card in EVERY_SPELL_FACTS
             v.step(np.array([actions]))
         assert cast > 0
+
+
+def test_with_unit_facts_it_plays_its_win_conditions_and_stays_deterministic(install):
+    first = synthetic_actions(install, 13, unit_facts=EVERY_UNIT_FACTS)
+    second = synthetic_actions(install, 13, unit_facts=EVERY_UNIT_FACTS)
+    assert [a for a, _ in first] == [a for a, _ in second]
+    assert [a for a, _ in first] != [a for a, _ in synthetic_actions(install, 13)]
+    for actions, masks in first:
+        for seat, action in enumerate(actions):
+            assert masks[seat, action] == 1
 
 
 def test_the_bot_plays_no_spell_it_has_no_facts_for(install):
@@ -543,3 +705,89 @@ def test_the_bot_casts_spells_in_ladder_battles(install, tables):
                     faults += int(v.infos[i, s.info["fault"]] != 0)
         assert cast > 0
         assert illegal == 0 and faults == 0
+
+
+@pytest.mark.ladder
+def test_the_unit_facts_are_troop_and_building_cards_of_the_tables(install, tables):
+    with VectorBattle(1, 1, install=install, tables=tables) as v:
+        types = v.card_types()
+        facts = v.unit_facts()
+        assert facts, "the tables list no troop or building the bot can read"
+        for card, fact in facts.items():
+            assert types[card] in ("troop", "building"), v.vocabulary[card]
+            assert 0 <= fact.unit < v.vocabulary_size and fact.range >= 0 and fact.hitpoints >= 0
+        # The test deck holds a troop that attacks buildings only, and the tables a building that
+        # attacks from range.
+        assert any(
+            facts[v.card_id(name)].buildings_only
+            for name in BLUE
+            if types.get(v.card_id(name)) == "troop"
+        )
+        assert any(f.building and f.range > 0 for f in facts.values())
+        # The hit points are of the vector's card level: a higher level has no fewer.
+        higher = v.unit_facts(level=int(v.metadata["config"]["level"]) + 1)
+        assert higher.keys() == facts.keys()
+        assert all(higher[card].hitpoints >= fact.hitpoints for card, fact in facts.items())
+        assert any(higher[card].hitpoints > fact.hitpoints for card, fact in facts.items())
+
+
+def play_bot_battles(install, tables, deck, battles=4):
+    """Bot-against-bot Ladder battles of the deck on both seats, played to their result: every play
+    as ``(card, col, row)``, and the illegal actions and faults counted."""
+    with VectorBattle(battles, 2, install=install, tables=tables) as v:
+        bot = ScriptedBot().bind(v)
+        s = v.schema
+        rngs = [[np.random.default_rng([i, seat]) for seat in (0, 1)] for i in range(battles)]
+        v.reset(list(range(battles)), deck, deck)
+        finished = [False] * battles
+        plays = [[] for _ in range(battles)]
+        illegal = faults = 0
+        while not all(finished):
+            for i in range(battles):
+                for seat in (0, 1):
+                    o = v.observations[i, seat]
+                    action = s.wait
+                    if not finished[i]:
+                        action = bot(o, v.masks[i, seat], rngs[i][seat])
+                    if action and not s.is_ability(action):
+                        slot, col, row = s.decode(action)
+                        plays[i].append((int(s.field(o, "hand_card")[slot]), col, row))
+                    v.actions[i, seat] = action
+            v.step()
+            for i in range(battles):
+                if finished[i]:
+                    continue
+                illegal += int(v.infos[i, s.info["illegal_0"]] + v.infos[i, s.info["illegal_1"]])
+                if v.dones[i]:
+                    finished[i] = True
+                    faults += int(v.infos[i, s.info["fault"]] != 0)
+        return bot, plays, illegal, faults
+
+
+@pytest.mark.ladder
+def test_a_win_condition_deck_plays_its_win_condition_in_ladder_battles(install, tables):
+    bot, plays, illegal, faults = play_bot_battles(install, tables, BLUE)
+    assert bot.attack_cards, "the test deck's win condition is not read from the tables"
+    for battle in plays:
+        attacks = [(card, row) for card, _, row in battle if card in bot.attack_cards]
+        assert attacks
+        # A tank on the back line, any other win condition at the bridge.
+        for card, row in attacks:
+            assert row == (bot.back_row if card in bot.tank_cards else bot.bridge_row)
+    assert illegal == 0 and faults == 0
+
+
+@pytest.mark.ladder
+def test_a_siege_deck_places_its_siege_building_at_the_bridge(install, tables):
+    with VectorBattle(1, 1, install=install, tables=tables) as v:
+        siege = ScriptedBot().bind(v).siege_cards
+        assert siege, "the tables list no building that reaches a tower from the bridge"
+        # The test deck with its building-targeting troop swapped for a siege building.
+        facts = v.unit_facts()
+        name = v.vocabulary[min(siege)]
+        deck = [n for n in BLUE if not facts.get(v.card_id(n), UnitFacts(0, 0)).buildings_only]
+        deck = [name, *deck][: len(BLUE)]
+    bot, plays, illegal, faults = play_bot_battles(install, tables, deck, battles=2)
+    sieges = [(col, row) for battle in plays for card, col, row in battle if card in siege]
+    assert sieges and all(row == bot.bridge_row for _, row in sieges)
+    assert illegal == 0 and faults == 0

@@ -20,7 +20,7 @@ from .labels import FLAGS, LabelRun, ReplayLabels, label_replays
 from .parallel_env import ClashParallelEnv
 from .schema import SUPPORTED_VERSION, Schema
 from .scripted import ScriptedBot
-from .vector import Fault, LadderConfig, SpellFacts, VectorBattle
+from .vector import Fault, LadderConfig, SpellFacts, UnitFacts, VectorBattle
 
 __all__ = [
     "FLAGS",
@@ -36,6 +36,7 @@ __all__ = [
     "Schema",
     "ScriptedBot",
     "SpellFacts",
+    "UnitFacts",
     "VectorBattle",
     "evaluate",
     "label_replays",
