@@ -369,9 +369,10 @@ class VectorBattle:
         deck's evolution slot, ``schema.slot_hero`` for its hero slot, both or 0), as one list for
         every environment or one per environment; None plays every card plain. The seeds are one
         per environment; an environment reset later by autoreset draws its seed from the sequence
-        its seed starts, so a run is reproduced by its seeds and actions alone. A bad deck or slot
-        flags refuse the whole call (``ValueError``) and change nothing; a card the battle core
-        does not take in a slot ends that environment's episode as a refusal fault.
+        its seed starts (inside :meth:`set_autoreset_seeds`' range), so a run is reproduced by its
+        seeds and actions alone. A bad deck or slot flags refuse the whole call (``ValueError``)
+        and change nothing; a card the battle core does not take in a slot ends that environment's
+        episode as a refusal fault.
         """
         if len(seeds) != self.count:
             raise ValueError(f"{self.count} seeds are needed, got {len(seeds)}")
@@ -428,6 +429,36 @@ class VectorBattle:
         that follows a done ignores that environment's actions and reports the new episode's first
         observation with the info's ``reset`` set."""
         self._env.setAutoreset(bool(autoreset))
+
+    def set_autoreset_seeds(self, low: int, high: int) -> None:
+        """Keeps the seeds autoreset starts episodes at between ``low`` and ``high``, both included
+        (``VectorEnv.setAutoresetSeeds``): each is drawn evenly from the range by the battle's own
+        sequence, which its last reset seed starts, so the same reset seeds still give the same
+        episodes. By default the range is every 32-bit seed. A trainer that keeps a range of seeds
+        for its evaluations gives the rest here, so no training episode starts at one of them and
+        no second reset is needed. The seeds given to :meth:`reset` and :meth:`reset_env` are not
+        checked against it. The metadata's ``autoreset_seeds`` names the range.
+
+        :raises ValueError: for a range with no seed or a bound outside the 32-bit seeds
+        """
+        for bound in (low, high):
+            if not -(2**31) <= int(bound) < 2**31:
+                raise ValueError(f"a battle seed is a 32-bit signed integer, got {bound}")
+        try:
+            self._env.setAutoresetSeeds(int(low), int(high))
+        except self._illegal_argument as e:
+            raise ValueError(str(e.getMessage())) from None
+        self.metadata["autoreset_seeds"] = {"min": int(low), "max": int(high)}
+
+    @property
+    def autoreset_seeds(self) -> tuple[int, int]:
+        """The lowest and highest seed an autoreset episode starts at, both included."""
+        return int(self._env.autoresetSeedMin()), int(self._env.autoresetSeedMax())
+
+    def episode_seed(self, index: int) -> int:
+        """The seed battle ``index``'s current episode started at, given by a reset or drawn by
+        the autoreset."""
+        return int(self._env.episodeSeed(int(index)))
 
     def step(self, actions: np.ndarray | None = None) -> None:
         """Steps every environment one decision with the actions in ``actions`` (or the array
