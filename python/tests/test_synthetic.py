@@ -129,3 +129,55 @@ def test_a_saved_export_of_another_schema_is_refused(install, tmp_path):
         saved["schema"] = {**v.metadata["schema"], "header_fields": ["tick"]}
         with pytest.raises(ValueError, match="header_fields"):
             v.check_metadata(saved)
+
+
+def test_autoreset_seeds_cover_every_seed_by_default_and_stay_in_a_range_given(install):
+    kwargs = dict(install=install, engine="synthetic", synthetic_episode_steps=1)
+    with VectorBattle(3, 1, **kwargs) as plain, VectorBattle(3, 2, **kwargs) as ranged:
+        assert plain.autoreset_seeds == (-(2**31), 2**31 - 1)
+        assert plain.metadata["autoreset_seeds"] == {"min": -(2**31), "max": 2**31 - 1}
+        ranged.set_autoreset_seeds(10_000_000, 2**31 - 1)
+        assert ranged.autoreset_seeds == (10_000_000, 2**31 - 1)
+        assert ranged.metadata["autoreset_seeds"] == {"min": 10_000_000, "max": 2**31 - 1}
+        plain.reset([1, 2, 3], BLUE, RED)
+        ranged.reset([1, 2, 3], BLUE, RED)
+        assert [ranged.episode_seed(i) for i in range(3)] == [1, 2, 3]
+        seen_plain: list[int] = []
+        seen_ranged: list[int] = []
+        for _ in range(200):
+            plain.step()
+            ranged.step()
+            restarted = np.flatnonzero(ranged.infos[:, ranged.schema.info["reset"]])
+            seen_ranged += [ranged.episode_seed(int(i)) for i in restarted]
+            restarted = np.flatnonzero(plain.infos[:, plain.schema.info["reset"]])
+            seen_plain += [plain.episode_seed(int(i)) for i in restarted]
+        assert len(seen_ranged) == len(seen_plain) == 300
+        assert all(10_000_000 <= seed < 2**31 for seed in seen_ranged)
+        # Without a range the draw takes the whole 32-bit range, negative seeds included.
+        assert any(seed < 0 for seed in seen_plain)
+
+
+def test_the_same_reset_seeds_give_the_same_autoreset_seeds(install):
+    kwargs = dict(install=install, engine="synthetic", synthetic_episode_steps=2)
+    with VectorBattle(4, 1, **kwargs) as one, VectorBattle(4, 4, **kwargs) as four:
+        episodes = []
+        for v in (one, four):
+            v.set_autoreset_seeds(100, 200)
+            v.reset([5, 6, 7, 8], BLUE, RED)
+            seeds = []
+            for _ in range(30):
+                v.step()
+                seeds.append([v.episode_seed(i) for i in range(4)])
+            episodes.append(seeds)
+        assert episodes[0] == episodes[1]
+        assert all(100 <= seed <= 200 for row in episodes[0][2:] for seed in row)
+
+
+def test_an_empty_autoreset_seed_range_is_refused(install):
+    with VectorBattle(1, 1, install=install, engine="synthetic") as v:
+        v.set_autoreset_seeds(5, 10)
+        with pytest.raises(ValueError, match="no seed"):
+            v.set_autoreset_seeds(10, 5)
+        with pytest.raises(ValueError, match="32-bit"):
+            v.set_autoreset_seeds(0, 2**31)
+        assert v.autoreset_seeds == (5, 10)

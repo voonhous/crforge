@@ -60,7 +60,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * episode's first observation with {@link Schema#I_RESET} set and {@code done} clear. Without
  * autoreset the caller resets the environment itself. A reset episode draws its seed from the
  * environment's own sequence, started by the seed its last reset gave it, so a run is reproduced by
- * its reset seeds and actions alone.
+ * its reset seeds and actions alone. The draw covers every 32-bit seed by default; {@link
+ * #setAutoresetSeeds} keeps it inside a range, so a trainer's episodes never start at the seeds it
+ * keeps for its evaluations.
  *
  * <p>Each environment's reset and step run inside a fault boundary of their own: an exception ends
  * that environment's episode alone, as truncated, with the fault's kind in its info record, the
@@ -93,6 +95,10 @@ public final class VectorEnv implements AutoCloseable {
   private final IntBuffer actionInts;
   private final IntBuffer infoInts;
   private final SplittableRandom[] seeds;
+
+  /** The seed each environment's current episode started at. */
+  private final int[] episodeSeeds;
+
   private final List<List<String>> deck0s = new ArrayList<>();
   private final List<List<String>> deck1s = new ArrayList<>();
   private final List<int[]> slots0s = new ArrayList<>();
@@ -111,6 +117,11 @@ public final class VectorEnv implements AutoCloseable {
   private final Vocabulary vocabulary;
   private final EnvConfig config;
   private boolean autoreset = true;
+
+  /** The lowest and highest seed an autoreset episode starts at, both included. */
+  private int autoresetSeedMin = Integer.MIN_VALUE;
+
+  private int autoresetSeedMax = Integer.MAX_VALUE;
   private boolean started;
 
   /**
@@ -159,6 +170,7 @@ public final class VectorEnv implements AutoCloseable {
     infoInts = infos.asIntBuffer();
     envs = new BattleEnv[count];
     seeds = new SplittableRandom[count];
+    episodeSeeds = new int[count];
     faults = new EnvFault[count];
     broken = new boolean[count];
     uncounted = new boolean[count];
@@ -289,6 +301,53 @@ public final class VectorEnv implements AutoCloseable {
   /** Whether a finished environment is reset by the next step; on by default. */
   public void setAutoreset(boolean autoreset) {
     this.autoreset = autoreset;
+  }
+
+  /**
+   * Keeps the seeds of the episodes autoreset starts inside a range: each is drawn evenly from it
+   * by the environment's own sequence, so the same reset seeds still give the same episodes. By
+   * default the range is every 32-bit seed, drawn as the sequence's next integer. The seeds the
+   * caller gives ({@link #reset}, {@link #resetEnv}) are its own and are not checked against it.
+   *
+   * @param min the lowest seed, included
+   * @param max the highest seed, included
+   * @throws IllegalArgumentException for a range with no seed, the range left as it was
+   */
+  public void setAutoresetSeeds(int min, int max) {
+    if (min > max) {
+      throw new IllegalArgumentException(
+          "an autoreset seed range from " + min + " to " + max + " holds no seed");
+    }
+    autoresetSeedMin = min;
+    autoresetSeedMax = max;
+  }
+
+  /** The lowest seed an autoreset episode starts at. */
+  public int autoresetSeedMin() {
+    return autoresetSeedMin;
+  }
+
+  /** The highest seed an autoreset episode starts at. */
+  public int autoresetSeedMax() {
+    return autoresetSeedMax;
+  }
+
+  /**
+   * The seed an environment's current episode started at, given by a reset or drawn by autoreset.
+   */
+  public int episodeSeed(int index) {
+    return episodeSeeds[index];
+  }
+
+  /**
+   * The next autoreset seed of an environment's sequence: its next integer for the whole range, as
+   * before ranges existed, or an even draw from the range.
+   */
+  private int nextSeed(SplittableRandom sequence) {
+    if (autoresetSeedMin == Integer.MIN_VALUE && autoresetSeedMax == Integer.MAX_VALUE) {
+      return sequence.nextInt();
+    }
+    return (int) sequence.nextLong(autoresetSeedMin, autoresetSeedMax + 1L);
   }
 
   /** The fault that ended an environment's current episode, or null. */
@@ -473,6 +532,7 @@ public final class VectorEnv implements AutoCloseable {
     BattleEnv env = envs[index];
     broken[index] = false;
     faults[index] = null;
+    episodeSeeds[index] = seed;
     try {
       env.reset(
           seed,
@@ -513,7 +573,7 @@ public final class VectorEnv implements AutoCloseable {
   private void stepEnv(int index) {
     BattleEnv env = envs[index];
     if (broken[index] || env.done()) {
-      resetEnv(index, seeds[index].nextInt(), true);
+      resetEnv(index, nextSeed(seeds[index]), true);
       return;
     }
     try {
@@ -631,11 +691,16 @@ public final class VectorEnv implements AutoCloseable {
 
   /**
    * The vector's metadata as JSON, to be kept with every run: the schema's version, sizes, field
-   * names and codes, the configuration, and for Ladder battles the vocabulary with its data
-   * version, content sha and hash ({@link Vocabulary#toJson()}).
+   * names and codes, the configuration, for Ladder battles the vocabulary with its data version,
+   * content sha and hash ({@link Vocabulary#toJson()}), and the range autoreset seeds are drawn
+   * from ({@code autoreset_seeds}, {@code min} and {@code max} included, as set now).
    */
   public String metadataJson() {
-    return metadataJson(config, vocabulary);
+    ObjectNode root = metadataNode(config, vocabulary);
+    ObjectNode range = root.putObject("autoreset_seeds");
+    range.put("min", autoresetSeedMin);
+    range.put("max", autoresetSeedMax);
+    return write(root);
   }
 
   /**
@@ -646,6 +711,10 @@ public final class VectorEnv implements AutoCloseable {
    * @param vocabulary the vocabulary, or null for none
    */
   public static String metadataJson(EnvConfig config, Vocabulary vocabulary) {
+    return write(metadataNode(config, vocabulary));
+  }
+
+  private static ObjectNode metadataNode(EnvConfig config, Vocabulary vocabulary) {
     ObjectNode root = JSON.createObjectNode();
     ObjectNode schema = root.putObject("schema");
     schema.put("version", Schema.VERSION);
@@ -693,6 +762,10 @@ public final class VectorEnv implements AutoCloseable {
     if (vocabulary != null) {
       root.set("vocabulary", vocabulary.toNode());
     }
+    return root;
+  }
+
+  private static String write(ObjectNode root) {
     try {
       return JSON.writeValueAsString(root);
     } catch (IOException e) {

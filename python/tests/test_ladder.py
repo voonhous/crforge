@@ -358,3 +358,22 @@ def test_the_new_fields_hold_their_bounds_and_the_buffs_their_own_list(install, 
         names[0], names[1] = names[1], names[0]
         with pytest.raises(ValueError, match="buff"):
             v.check_metadata(saved)
+
+
+def test_autoreset_battles_start_at_seeds_of_the_range_given(install, tables):
+    # A tick limit ends each episode within ten decisions, so the autoreset runs often.
+    config = LadderConfig(decision_ticks=5, max_ticks=50)
+    low, high = 10_000_000, 2**31 - 1
+    with VectorBattle(3, 2, install=install, tables=tables, config=config) as v:
+        v.set_autoreset_seeds(low, high)
+        v.reset([1, 2, 3], BLUE, RED)
+        restarts = 0
+        for _ in range(40):
+            v.step()
+            for i in np.flatnonzero(v.infos[:, v.schema.info["reset"]]):
+                seed = v.episode_seed(int(i))
+                assert low <= seed <= high
+                # The battle plays the seed the vector reports.
+                assert json.loads(v.replay_json(int(i)))["rndSeed"] == seed
+                restarts += 1
+        assert restarts >= 3
