@@ -94,6 +94,11 @@ class LadderConfig:
     """the folder a faulted episode's bundle (its replay and ``fault.json``) is written under, the
     first of each fault signature the vector meets; None writes none. Bundles are local files of
     the run and are never committed"""
+    mask_version: int | None = None
+    """the rule the mask's play tiles follow: 2 (``MASK_LANDING_TILES``, the default) opens only the
+    tiles a card lands on without being moved, 1 (``MASK_ALL_TILES``) every tile of an open hand
+    slot. Not part of the schema: a model trained under one rule reads the same observations and
+    actions under the other"""
 
 
 @dataclass(frozen=True)
@@ -292,6 +297,10 @@ class VectorBattle:
         self.threads = int(self._env.threads())
         self.metadata: dict[str, Any] = json.loads(str(self._env.metadataJson()))
         self.schema = Schema(self.metadata, Codes.from_java())
+        # The mask rule, kept apart from the schema and the configuration: None for a synthetic
+        # vector, which plays no battle.
+        mask_version = self.metadata.get("mask_version")
+        self.mask_version: int | None = None if mask_version is None else int(mask_version)
         vocabulary = self.metadata.get("vocabulary")
         if vocabulary is not None:
             self.vocabulary: list[str] = list(vocabulary["names"])
@@ -329,6 +338,7 @@ class VectorBattle:
             pick(config.tower_level, base.towerLevel()),
             pick(config.max_ticks, base.maxTicks()),
             None if config.fault_bundles is None else str(Path(config.fault_bundles).resolve()),
+            pick(config.mask_version, base.maskVersion()),
         )
 
     # -- episodes ------------------------------------------------------------------------------

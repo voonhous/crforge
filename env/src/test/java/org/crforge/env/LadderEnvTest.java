@@ -106,6 +106,36 @@ class LadderEnvTest {
     return env.masks().get((index * 2 + seat) * Schema.ACTIONS + action) == 1;
   }
 
+  /** Whether any tile of a seat's hand slot is open: the slot's card may be played now. */
+  private static boolean slotOpen(VectorEnv env, int index, int seat, int slot) {
+    for (int t = 0; t < Schema.TILES; t++) {
+      if (open(env, index, seat, 1 + slot * Schema.TILES + t)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The play of a seat's hand slot on its open tile nearest a tile of the seat's frame: the tile
+   * itself when the card lands there unmoved. The slot must be open.
+   */
+  private static int nearOpen(VectorEnv env, int index, int seat, int slot, int col, int row) {
+    int best = -1;
+    int bestDistance = Integer.MAX_VALUE;
+    for (int r = 0; r < Schema.ROWS; r++) {
+      for (int c = 0; c < Schema.COLS; c++) {
+        int distance = (c - col) * (c - col) + (r - row) * (r - row);
+        if (distance < bestDistance && open(env, index, seat, Schema.play(slot, c, r))) {
+          best = Schema.play(slot, c, r);
+          bestDistance = distance;
+        }
+      }
+    }
+    assertThat(best).as("an open tile of slot %d", slot).isPositive();
+    return best;
+  }
+
   private static int openCount(VectorEnv env, int index, int seat) {
     int open = 0;
     for (int a = 0; a < Schema.ACTIONS; a++) {
@@ -128,7 +158,7 @@ class LadderEnvTest {
   private static int otherOpenSlot(VectorEnv env, int index, int seat, String card) {
     for (int k = 0; k < Schema.HAND_SLOTS; k++) {
       if (header(env, index, seat, Schema.H_HAND_CARD + k) != vocabulary.id(card)
-          && open(env, index, seat, Schema.play(k, 0, 0))) {
+          && slotOpen(env, index, seat, k)) {
         return k;
       }
     }
@@ -285,8 +315,13 @@ class LadderEnvTest {
             for (int a = from; a < from + Schema.TILES; a++) {
               openTiles += open(env, 0, seat, a) ? 1 : 0;
             }
-            // Every tile of an open slot is open, none of a closed one.
-            assertThat(openTiles).isEqualTo(tried ? Schema.TILES : 0);
+            // Some tile of an open slot is open, none of a closed one (which tiles:
+            // LandingMaskTest).
+            if (tried) {
+              assertThat(openTiles).isPositive();
+            } else {
+              assertThat(openTiles).isZero();
+            }
             closedSeen += tried ? 0 : 1;
           }
           chosen[seat] = randomAction(env, 0, seat, random, 3);
@@ -380,7 +415,7 @@ class LadderEnvTest {
       while (slot < 0) {
         env.step();
         for (int k = 0; k < Schema.HAND_SLOTS && slot < 0; k++) {
-          slot = open(env, 0, 0, 1 + k * Schema.TILES) ? k : -1;
+          slot = slotOpen(env, 0, 0, k) ? k : -1;
         }
       }
       int cost = ladder.commands().tryCard(0, slot, config.level()).cost();
@@ -500,7 +535,7 @@ class LadderEnvTest {
               tables.table("spells_characters").rows().stream()
                   .map(GameRow::name)
                   .anyMatch(name::equals);
-          slot = troop && open(env, 0, 0, 1 + k * Schema.TILES) ? k : -1;
+          slot = troop && slotOpen(env, 0, 0, k) ? k : -1;
         }
       }
       int played = header(env, 0, 0, Schema.H_HAND_CARD + slot);
@@ -805,13 +840,13 @@ class LadderEnvTest {
         if (usedSlot < 0 && abilitySlot >= 0) {
           action = Schema.ability(abilitySlot);
           usedSlot = abilitySlot;
-        } else if (!played && queenSlot >= 0 && open(env, 0, 0, Schema.play(queenSlot, 0, 0))) {
-          action = Schema.play(queenSlot, 4, 6);
+        } else if (!played && queenSlot >= 0 && slotOpen(env, 0, 0, queenSlot)) {
+          action = nearOpen(env, 0, 0, queenSlot, 4, 6);
           played = true;
         } else if (!played && queenSlot < 0) {
           // Cycle the deck until she is dealt.
           int other = otherOpenSlot(env, 0, 0, "ArcherQueen");
-          action = other < 0 ? Schema.WAIT : Schema.play(other, 13, 2);
+          action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 13, 2);
         }
         actions.put(0, action);
         actions.put(1, Schema.WAIT);
@@ -868,11 +903,11 @@ class LadderEnvTest {
           break;
         }
         int action = Schema.WAIT;
-        if (slot >= 0 && open(env, 0, 0, Schema.play(slot, 0, 0))) {
-          action = Schema.play(slot, 13, 2);
+        if (slot >= 0 && slotOpen(env, 0, 0, slot)) {
+          action = nearOpen(env, 0, 0, slot, 13, 2);
         } else if (slot < 0) {
           int other = otherOpenSlot(env, 0, 0, "Knight");
-          action = other < 0 ? Schema.WAIT : Schema.play(other, 4, 2);
+          action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 4, 2);
         }
         actions.put(0, action);
         actions.put(1, Schema.WAIT);

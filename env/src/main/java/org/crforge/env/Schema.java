@@ -55,6 +55,26 @@ public final class Schema {
   /** The version of this layout; a change to any size, field order or code moves it. */
   public static final int VERSION = 2;
 
+  /**
+   * Mask rule 1: every tile of a hand slot whose card the client's try passes is open, as a drop
+   * anywhere is moved to the tile the placement search finds.
+   */
+  public static final int MASK_ALL_TILES = 1;
+
+  /**
+   * Mask rule 2: of a hand slot whose card the client's try passes, only the tiles the card lands
+   * on without being moved are open: those whose centre the placement search, run on the battle as
+   * the seat sees it, does not move off the tile.
+   */
+  public static final int MASK_LANDING_TILES = 2;
+
+  /**
+   * The mask rule an environment writes by default, the latest. The rule is versioned apart from
+   * the layout: the mask is not part of the observation, and both rules use the same actions, so a
+   * change of rule leaves {@link #VERSION} where it is.
+   */
+  public static final int MASK_VERSION = MASK_LANDING_TILES;
+
   /** Game units in one tile of the action grid: two routing cells. */
   public static final int TILE_UNITS = 2 * TileMap.CELL_UNITS;
 

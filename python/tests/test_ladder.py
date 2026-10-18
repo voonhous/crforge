@@ -277,3 +277,38 @@ def test_a_fault_writes_a_bundle_whose_folder_the_fault_info_names(install, tabl
         v.reset([3], THREE_CHAMPIONS, RED)
         assert v.fault(0).bundle is None
         assert v.seat_info(0, 0)["fault_bundle"] == ""
+
+
+def test_the_landing_mask_closes_tiles_and_the_old_rule_is_kept_apart(install, tables, tmp_path):
+    # The default mask opens only the tiles a card lands on unmoved; the old rule every tile of an
+    # open slot. The rule is kept apart from the schema and the configuration, so an export of one
+    # rule passes the other's check: a model trained under one is read under the other.
+    with (
+        VectorBattle(1, 1, install=install, tables=tables) as landing,
+        VectorBattle(
+            1, 1, install=install, tables=tables, config=LadderConfig(mask_version=1)
+        ) as old,
+    ):
+        assert landing.mask_version == 2 and old.mask_version == 1
+        assert landing.metadata["schema"] == old.metadata["schema"]
+        assert landing.metadata["config"] == old.metadata["config"]
+        path = tmp_path / "old.json"
+        old.write_metadata(path)
+        landing.check_metadata(path)
+        s = landing.schema
+        partial = full = 0
+        for v in (landing, old):
+            v.reset([5], BLUE, RED)
+            for _ in range(60):
+                v.step(np.zeros((1, 2), dtype=np.int32))
+            for seat in range(2):
+                plays = v.masks[0, seat, 1 : s.first_ability].reshape(s.hand_slots, -1)
+                for slot in plays:
+                    if slot.any() and v is landing:
+                        partial += int(not slot.all())
+                    if slot.any() and v is old:
+                        full += int(slot.all())
+                        assert slot.all()
+        assert partial > 0 and full > 0
+    with pytest.raises(Exception, match="mask version"):
+        VectorBattle(1, 1, install=install, tables=tables, config=LadderConfig(mask_version=3))

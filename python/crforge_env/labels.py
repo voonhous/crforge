@@ -151,6 +151,7 @@ def label_replays(
     check: bool = False,
     out_dir: str | Path | None = None,
     jvm_args: Iterable[str] = (),
+    mask_version: int | None = None,
 ) -> LabelRun:
     """Labels every replay of some files.
 
@@ -169,6 +170,9 @@ def label_replays(
         (:meth:`ReplayLabels.save`), ``metadata.json`` and ``counts.jsonl`` (one replay a line)
         beside them, and none is kept in memory
     :param jvm_args: options for the JVM, used only if this call starts it
+    :param mask_version: the mask rule the rows' masks follow, as ``LadderConfig.mask_version``
+        (None for the env module's default, the landing rule 2); under rule 2 a play is labelled
+        with the tile it landed on, which the row's mask opens
     :return: the metadata, each replay's rows (or, with ``out_dir``, none) and summaries
     """
     if shape not in SHAPES:
@@ -183,6 +187,8 @@ def label_replays(
     labeller = _jvm.java_class("org.crforge.env.ReplayLabeller").of(
         game_tables, int(decision_ticks), shape
     )
+    if mask_version is not None:
+        labeller = labeller.withMaskVersion(int(mask_version))
     run = LabelRun(metadata=json.loads(str(labeller.metadataJson())))
     folder = None if out_dir is None else Path(out_dir)
     if folder is not None:

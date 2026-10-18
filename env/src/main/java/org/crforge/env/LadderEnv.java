@@ -18,6 +18,10 @@ import java.util.Set;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.deploy.DeployMask;
+import org.crforge.core.battle.deploy.MaskEntity;
+import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -37,6 +41,7 @@ import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.env.EnvFault.CoreFailure;
 
 /**
@@ -49,12 +54,15 @@ import org.crforge.env.EnvFault.CoreFailure;
  *
  * <p>The legality mask is what the player's screen offers: no play before the match's start
  * cooldown; then a hand slot is open when the client's try of its card passes ({@link
- * PlayerCommands#tryCard}), and every tile of an open slot is open, as a drop anywhere is moved to
- * the tile the placement search finds. A champion slot's ability action is open when the client's
- * try of an ability command naming the slot's unit passes ({@link PlayerCommands#tryAbility}); the
- * unit is the one of the play the slot follows whose row names the champion's ability, by the name
- * the battle gave it. A play or ability command the mask let through may still be refused at its
- * run, as a player's can, and the seat is shown so.
+ * PlayerCommands#tryCard}), and of an open slot only the tiles its card lands on without being
+ * moved (mask rule {@link Schema#MASK_LANDING_TILES}, the default): those whose centre the
+ * placement search, on the deploy mask of the buildings and towers the seat sees, does not move.
+ * Under rule {@link Schema#MASK_ALL_TILES} every tile of an open slot is open, as a drop anywhere
+ * is moved to the tile the placement search finds. A champion slot's ability action is open when
+ * the client's try of an ability command naming the slot's unit passes ({@link
+ * PlayerCommands#tryAbility}); the unit is the one of the play the slot follows whose row names the
+ * champion's ability, by the name the battle gave it. A play or ability command the mask let
+ * through may still be refused at its run, as a player's can, and the seat is shown so.
  *
  * <p>An action the mask closed, out of range, or refused at its giving is taken as a wait and
  * counted as illegal, with its refusal code in the seat's header. A giving the battle core refuses
@@ -127,6 +135,20 @@ public final class LadderEnv extends BufferedEnv {
   private final List<Waiting> waiting = new ArrayList<>();
   private final List<List<String>> enemySeen = List.of(new ArrayList<>(), new ArrayList<>());
   private final List<AbilityWaiting> abilityWaiting = new ArrayList<>();
+
+  /** Per seat, the game grid's tile of each tile of the seat's frame. */
+  private static final int[][] GAME_TILES = gameTiles();
+
+  /**
+   * Per seat: the characters its deploy masks were last built on, the alive buildings and king
+   * towers it sees.
+   */
+  private final List<List<MaskEntity>> fieldSeen =
+      new ArrayList<>(List.of(new ArrayList<>(), new ArrayList<>()));
+
+  /** Per seat: the landing tiles of each card the screen's search placed, by its row name. */
+  private final List<Map<String, boolean[]>> landingSeen =
+      List.of(new HashMap<>(), new HashMap<>());
 
   /** Per seat and champion slot: the unit its ability action names, or null for none found. */
   private final CharacterEntity[][] abilityUnits = new CharacterEntity[2][Schema.ABILITY_SLOTS];
@@ -290,6 +312,8 @@ public final class LadderEnv extends BufferedEnv {
     enemySeen.get(1).clear();
     abilityWaiting.clear();
     for (int seat = 0; seat < 2; seat++) {
+      fieldSeen.set(seat, new ArrayList<>());
+      landingSeen.get(seat).clear();
       Arrays.fill(abilityUnits[seat], null);
       Arrays.fill(abilityChampions[seat], null);
       Arrays.fill(abilityIndices[seat], -1);
@@ -1014,15 +1038,18 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Writes a seat's mask: the wait; once the match takes card plays, every tile of each hand slot
-   * whose card the client's try passes; and each champion slot's ability action whose command's try
-   * passes. A try the battle core refuses as not modelled closes its action.
+   * Writes a seat's mask: the wait; once the match takes card plays, of each hand slot whose card
+   * the client's try passes, the tiles its card lands on unmoved (mask rule {@link
+   * Schema#MASK_LANDING_TILES}) or every tile (rule {@link Schema#MASK_ALL_TILES}); and each
+   * champion slot's ability action whose command's try passes. A try the battle core refuses as not
+   * modelled closes its action.
    */
   private void mask(int seat) {
     byte[] m = maskScratch;
     clearMaskScratch();
     m[Schema.WAIT] = 1;
-    if (!done && battle.getTick() >= match.getStartCooldownTicks()) {
+    boolean landing = config.maskVersion() == Schema.MASK_LANDING_TILES;
+    if (!done && !landing && battle.getTick() >= match.getStartCooldownTicks()) {
       for (int k = 0; k < Schema.HAND_SLOTS; k++) {
         PlayerCommands.Giving tried;
         try {
@@ -1035,6 +1062,27 @@ public final class LadderEnv extends BufferedEnv {
         if (tried.given()) {
           int from = 1 + k * Schema.TILES;
           Arrays.fill(m, from, from + Schema.TILES, (byte) 1);
+        }
+      }
+    }
+    if (!done && landing && battle.getTick() >= match.getStartCooldownTicks()) {
+      seeField(seat);
+      for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+        boolean[] lands;
+        try {
+          lands = landingTiles(seat, commands.searchCards(seat, k, config.level()));
+        } catch (UnsupportedOperationException e) {
+          continue;
+        } catch (RuntimeException | AssertionError | StackOverflowError e) {
+          throw new CoreFailure(e);
+        }
+        if (lands == null) {
+          continue;
+        }
+        int from = 1 + k * Schema.TILES;
+        int[] tiles = GAME_TILES[seat];
+        for (int t = 0; t < Schema.TILES; t++) {
+          m[from + t] = lands[tiles[t]] ? (byte) 1 : 0;
         }
       }
     }
@@ -1057,5 +1105,79 @@ public final class LadderEnv extends BufferedEnv {
       }
     }
     flushMask(seat);
+  }
+
+  /**
+   * Reads the characters the seat's deploy masks are built on now: those the placement search reads
+   * (alive buildings and king towers) that the seat sees, so an enemy building hidden from view
+   * closes no tile. When they differ from the last decision's, the landing tiles kept for the seat
+   * are dropped.
+   */
+  private void seeField(int seat) {
+    List<MaskEntity> now = new ArrayList<>();
+    try {
+      for (MaskEntity e : standard.placementEntities(w -> visible(seat, w))) {
+        if (DeployMask.reads(e)) {
+          now.add(e);
+        }
+      }
+    } catch (RuntimeException | AssertionError | StackOverflowError e) {
+      throw new CoreFailure(e);
+    }
+    if (!now.equals(fieldSeen.get(seat))) {
+      fieldSeen.set(seat, now);
+      landingSeen.get(seat).clear();
+    }
+  }
+
+  /**
+   * The tiles of the game's grid, row after row, a play of a hand slot lands on unmoved, from the
+   * cards the screen's search is handed for it: a tile is open when every card lands on it. Null
+   * when the client's try refuses the play. Kept per seat and card until the field the seat sees
+   * changes.
+   */
+  private boolean[] landingTiles(int seat, List<DeployCard> cards) {
+    if (cards.isEmpty()) {
+      return null;
+    }
+    TileMap map = standard.getWorld().getTileMap();
+    List<MaskEntity> field = fieldSeen.get(seat);
+    boolean[] lands = null;
+    for (DeployCard card : cards) {
+      boolean[] own =
+          landingSeen
+              .get(seat)
+              .computeIfAbsent(
+                  card.name(),
+                  name ->
+                      PlacementSearch.landingTiles(
+                          map, card, PlacementSearch.mask(map, card, seat, field)));
+      if (lands == null) {
+        lands = own;
+      } else {
+        // A Mirror whose item repeats a listed play: the giving searches both cards.
+        boolean[] both = lands.clone();
+        for (int t = 0; t < both.length; t++) {
+          both[t] &= own[t];
+        }
+        lands = both;
+      }
+    }
+    return lands;
+  }
+
+  /** Per seat, the game grid's tile of each tile of the seat's frame, row after row. */
+  private static int[][] gameTiles() {
+    int[][] tiles = new int[2][Schema.TILES];
+    for (int seat = 0; seat < 2; seat++) {
+      for (int row = 0; row < Schema.ROWS; row++) {
+        for (int col = 0; col < Schema.COLS; col++) {
+          int gameCol = Schema.gameX(seat, col) / Schema.TILE_UNITS;
+          int gameRow = Schema.gameY(seat, row) / Schema.TILE_UNITS;
+          tiles[seat][row * Schema.COLS + col] = gameRow * Schema.COLS + gameCol;
+        }
+      }
+    }
+    return tiles;
   }
 }

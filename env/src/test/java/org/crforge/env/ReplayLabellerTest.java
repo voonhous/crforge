@@ -118,8 +118,7 @@ class ReplayLabellerTest {
         }
         if (prefer != null && chosen[0] == Schema.WAIT) {
           for (int k = 0; k < Schema.HAND_SLOTS; k++) {
-            if (o[Schema.H_HAND_CARD + k] == vocabulary.id(prefer)
-                && m[1 + k * Schema.TILES] == 1) {
+            if (o[Schema.H_HAND_CARD + k] == vocabulary.id(prefer) && slotOpen(m, 0, k)) {
               chosen[0] = Schema.play(k, Schema.COLS / 2, 8);
             }
           }
@@ -162,13 +161,25 @@ class ReplayLabellerTest {
     return open.isEmpty() ? Schema.WAIT : open.get(random.nextInt(open.size()));
   }
 
+  /**
+   * Whether any tile of a seat's hand slot is open in both seats' masks: the card may be played.
+   */
+  private static boolean slotOpen(byte[] m, int seat, int slot) {
+    for (int t = 0; t < Schema.TILES; t++) {
+      if (m[seat * Schema.ACTIONS + 1 + slot * Schema.TILES + t] == 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Two open hand slots of seat 0 whose costs together the elixir covers, or null. */
   private static int[] affordablePair(int[] o, byte[] m) {
     int elixir = o[Schema.H_ELIXIR] / 10_000;
     for (int a = 0; a < Schema.HAND_SLOTS; a++) {
       for (int b = a + 1; b < Schema.HAND_SLOTS; b++) {
-        if (m[1 + a * Schema.TILES] == 1
-            && m[1 + b * Schema.TILES] == 1
+        if (slotOpen(m, 0, a)
+            && slotOpen(m, 0, b)
             && o[Schema.H_HAND_COST + a] + o[Schema.H_HAND_COST + b] <= elixir) {
           return new int[] {a, b};
         }

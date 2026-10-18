@@ -733,7 +733,8 @@ def test_the_unit_facts_are_troop_and_building_cards_of_the_tables(install, tabl
 
 def play_bot_battles(install, tables, deck, battles=4):
     """Bot-against-bot Ladder battles of the deck on both seats, played to their result: every play
-    as ``(card, col, row)``, and the illegal actions and faults counted."""
+    as ``(card, col, row)``, the illegal actions and faults counted, and each play's hand slot and
+    mask, as ``(slot, mask)`` in the order of the plays."""
     with VectorBattle(battles, 2, install=install, tables=tables) as v:
         bot = ScriptedBot().bind(v)
         s = v.schema
@@ -741,6 +742,7 @@ def play_bot_battles(install, tables, deck, battles=4):
         v.reset(list(range(battles)), deck, deck)
         finished = [False] * battles
         plays = [[] for _ in range(battles)]
+        masks = [[] for _ in range(battles)]
         illegal = faults = 0
         while not all(finished):
             for i in range(battles):
@@ -752,6 +754,7 @@ def play_bot_battles(install, tables, deck, battles=4):
                     if action and not s.is_ability(action):
                         slot, col, row = s.decode(action)
                         plays[i].append((int(s.field(o, "hand_card")[slot]), col, row))
+                        masks[i].append((slot, v.masks[i, seat].copy()))
                     v.actions[i, seat] = action
             v.step()
             for i in range(battles):
@@ -761,12 +764,12 @@ def play_bot_battles(install, tables, deck, battles=4):
                 if v.dones[i]:
                     finished[i] = True
                     faults += int(v.infos[i, s.info["fault"]] != 0)
-        return bot, plays, illegal, faults
+        return bot, plays, illegal, faults, masks
 
 
 @pytest.mark.ladder
 def test_a_win_condition_deck_plays_its_win_condition_in_ladder_battles(install, tables):
-    bot, plays, illegal, faults = play_bot_battles(install, tables, BLUE)
+    bot, plays, illegal, faults, _ = play_bot_battles(install, tables, BLUE)
     assert bot.attack_cards, "the test deck's win condition is not read from the tables"
     for battle in plays:
         attacks = [(card, row) for card, _, row in battle if card in bot.attack_cards]
@@ -787,7 +790,17 @@ def test_a_siege_deck_places_its_siege_building_at_the_bridge(install, tables):
         name = v.vocabulary[min(siege)]
         deck = [n for n in BLUE if not facts.get(v.card_id(n), UnitFacts(0, 0)).buildings_only]
         deck = [name, *deck][: len(BLUE)]
-    bot, plays, illegal, faults = play_bot_battles(install, tables, deck, battles=2)
-    sieges = [(col, row) for battle in plays for card, col, row in battle if card in siege]
-    assert sieges and all(row == bot.bridge_row for _, row in sieges)
+    bot, plays, illegal, faults, masks = play_bot_battles(install, tables, deck, battles=2)
+    s = bot.schema
+    sieges = [
+        (col, row, mask[s.play(slot, col, bot.bridge_row)])
+        for battle, battle_masks in zip(plays, masks, strict=True)
+        for (card, col, row), (slot, mask) in zip(battle, battle_masks, strict=True)
+        if card in siege
+    ]
+    # At the bridge, or on the open tile nearest to it when the building does not land there
+    # unmoved (the landing mask closes it).
+    assert sieges and all(
+        row == bot.bridge_row or (not bridge and row < bot.bridge_row) for _, row, bridge in sieges
+    )
     assert illegal == 0 and faults == 0

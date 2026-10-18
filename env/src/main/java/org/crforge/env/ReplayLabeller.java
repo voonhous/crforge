@@ -60,13 +60,17 @@ import org.crforge.env.EnvFault.CoreFailure;
  * <p><b>The label.</b> A card play is labelled with the hand slot its card holds in the row's
  * observation and the tile of the seat's frame whose centre the screen's placement search, run on
  * the battle as it stands at the giving, sends to the point the replay records: a replay records
- * the tile the search found, a tile centre or a building's tile corner, so the tile holding the
- * point is tried first, then the others touching it. An ability command is labelled with the
- * ability action of the champion slot whose unit it names. A seat's first command of a window gives
- * its label; a second one in the window is counted as a collision ({@link #COLLISION}). A command
- * the action space cannot say at the row is labelled the wait and flagged ({@link #INEXPRESSIBLE}):
- * its card not in the row's hand, its unit no champion slot's, or a variant card's option other
- * than the one the client would pick now. Nothing is dropped: each command is a label or a count.
+ * the tile the search found, a tile centre or a building's tile corner. Under the landing mask rule
+ * ({@link Schema#MASK_LANDING_TILES}, the default) the tile the card landed on unmoved is tried
+ * first, the tile of the game's grid holding the point, so a tap the screen moved is labelled with
+ * the tile it landed on, which the row's mask opens; then, and under the rule of every tile first,
+ * the tile of the seat's frame holding the point, then the others touching it. An ability command
+ * is labelled with the ability action of the champion slot whose unit it names. A seat's first
+ * command of a window gives its label; a second one in the window is counted as a collision ({@link
+ * #COLLISION}). A command the action space cannot say at the row is labelled the wait and flagged
+ * ({@link #INEXPRESSIBLE}): its card not in the row's hand, its unit no champion slot's, or a
+ * variant card's option other than the one the client would pick now. Nothing is dropped: each
+ * command is a label or a count.
  */
 public final class ReplayLabeller {
 
@@ -265,10 +269,29 @@ public final class ReplayLabeller {
    */
   public ReplayLabeller(
       GameTables tables, Vocabulary vocabulary, int decisionTicks, ScenarioShape shape) {
+    this(tables, vocabulary, EnvConfig.DEFAULT.withDecisionTicks(decisionTicks), shape);
+  }
+
+  private ReplayLabeller(
+      GameTables tables, Vocabulary vocabulary, EnvConfig config, ScenarioShape shape) {
     this.tables = tables;
     this.vocabulary = vocabulary;
-    this.config = EnvConfig.DEFAULT.withDecisionTicks(decisionTicks);
+    this.config = config;
     this.shape = shape;
+  }
+
+  /**
+   * This labeller writing its rows' masks under another mask rule, as {@link
+   * EnvConfig#maskVersion}: {@link Schema#MASK_LANDING_TILES}, the default, or {@link
+   * Schema#MASK_ALL_TILES}.
+   */
+  public ReplayLabeller withMaskVersion(int version) {
+    return new ReplayLabeller(tables, vocabulary, config.withMaskVersion(version), shape);
+  }
+
+  /** The mask rule the rows' masks follow. */
+  public int maskVersion() {
+    return config.maskVersion();
   }
 
   /**
@@ -288,6 +311,15 @@ public final class ReplayLabeller {
   public static ReplayLabeller of(GameTables tables, int decisionTicks, String shape) {
     return new ReplayLabeller(
         tables, VectorEnv.vocabulary(tables), decisionTicks, ScenarioShape.of(shape));
+  }
+
+  /**
+   * A labeller of a scenario shape by name whose rows' masks follow a mask rule ({@link
+   * #withMaskVersion}), for a caller that holds no enum.
+   */
+  public static ReplayLabeller of(
+      GameTables tables, int decisionTicks, String shape, int maskVersion) {
+    return of(tables, decisionTicks, shape).withMaskVersion(maskVersion);
   }
 
   /** The decision interval. */
@@ -841,7 +873,14 @@ public final class ReplayLabeller {
           optionDiffers++;
           label.flags |= INEXPRESSIBLE;
         } else {
-          int[] tile = tile(battle, searched, side, play.x(), play.y());
+          int[] tile =
+              tile(
+                  battle,
+                  searched,
+                  side,
+                  play.x(),
+                  play.y(),
+                  config.maskVersion() == Schema.MASK_LANDING_TILES);
           if (tile[2] == 0) {
             pointUnmatched++;
             label.flags |= POINT_UNMATCHED;
@@ -1030,6 +1069,40 @@ public final class ReplayLabeller {
    * search sends to the point now; {@code {col, row, 0}} for the tile holding it when none does.
    */
   static int[] tile(Standard1v1Battle battle, DeployCard card, int side, int x, int y) {
+    return tile(battle, card, side, x, y, false);
+  }
+
+  /**
+   * The tile of a seat's frame a recorded point is labelled with, as {@link
+   * #tile(Standard1v1Battle, DeployCard, int, int, int)}, but under the landing mask rule the tile
+   * the play landed on comes first: the tile of the game's grid holding the point, when the search
+   * from its centre sends to the point, as it does when the card lands there unmoved. That is the
+   * one tile the landing mask opens for the point; another touching tile whose centre the search
+   * moves onto the point is closed in it. A recorded point is where the screen's search put the
+   * tap, so the tap the player made, perhaps elsewhere, is labelled with the tile it landed on.
+   *
+   * @param landing whether the landing tile comes first
+   */
+  static int[] tile(
+      Standard1v1Battle battle, DeployCard card, int side, int x, int y, boolean landing) {
+    int gameCol = Math.floorDiv(x, Schema.TILE_UNITS);
+    int gameRow = Math.floorDiv(y, Schema.TILE_UNITS);
+    if (landing
+        && card != null
+        && gameCol >= 0
+        && gameCol < Schema.COLS
+        && gameRow >= 0
+        && gameRow < Schema.ROWS) {
+      int col = Schema.toSeatX(side, gameCol * Schema.TILE_UNITS + Schema.TILE_UNITS / 2);
+      int row = Schema.toSeatY(side, gameRow * Schema.TILE_UNITS + Schema.TILE_UNITS / 2);
+      col /= Schema.TILE_UNITS;
+      row /= Schema.TILE_UNITS;
+      int[] sent =
+          battle.searchPlacement(card, side, Schema.gameX(side, col), Schema.gameY(side, row));
+      if (sent != null && sent[0] == x && sent[1] == y) {
+        return new int[] {col, row, 1};
+      }
+    }
     int sx = Schema.toSeatX(side, x);
     int sy = Schema.toSeatY(side, y);
     int[] cols = around(sx, Schema.COLS);

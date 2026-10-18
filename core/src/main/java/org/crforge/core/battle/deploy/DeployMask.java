@@ -100,6 +100,14 @@ public final class DeployMask {
     }
   }
 
+  /**
+   * Whether the mask reads a character at all: an alive building or king tower. No other character
+   * writes a box, so two lists that agree on these build the same mask for every card.
+   */
+  public static boolean reads(MaskEntity e) {
+    return e.alive() && (e.building() || e.summoner());
+  }
+
   /** The box one entity writes, as {width, height, open}, or null for none. */
   private static int[] box(
       MaskEntity e,
@@ -109,10 +117,7 @@ public final class DeployMask {
       boolean touchdown,
       int startY,
       int endY) {
-    if (!e.alive()) {
-      return null;
-    }
-    if (!(e.building() || e.summoner())) {
+    if (!reads(e)) {
       return null;
     }
     boolean sameRows = startY == endY;

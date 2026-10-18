@@ -90,16 +90,10 @@ public final class PlacementSearch {
     int cy = y > 0 ? Math.min(y, ymax) : 0;
     int hw = w >> 1;
     int hh = h >> 1;
-    // A spell's search is for its projectile's spawned character, or for no unit at all: then the
-    // point snaps to the tile centre and no symmetrical adjustment follows.
-    // A card deployed as a spell that casts - a spell thrown as a projectile, or a troop card that
-    // makes an area effect as well - snaps to the tile centre whatever its search unit is; the
-    // symmetrical adjustment still follows the unit.
     UnitData unit = card.placementUnit();
-    boolean characterSnap = unit != null && !card.spellAsDeploy();
-    int fp = characterSnap && unit.building() ? footprint(unit) : 1;
-    int sx = characterSnap ? snap(unit, cx) : cx / 1000 * 1000 + 500;
-    int sy = characterSnap ? snap(unit, cy) : cy / 1000 * 1000 + 500;
+    int fp = searchFootprint(card);
+    int sx = snapped(card, cx);
+    int sy = snapped(card, cy);
     int margin = card.deployWTileMargin();
 
     long best = Integer.MAX_VALUE;
@@ -153,6 +147,58 @@ public final class PlacementSearch {
       by -= side & 1;
     }
     return new int[] {bx, by};
+  }
+
+  /**
+   * Whether a card's search snaps to its unit: a spell's search is for its projectile's spawned
+   * character, or for no unit at all, and then the point snaps to the tile centre and no
+   * symmetrical adjustment follows. A card deployed as a spell that casts - a spell thrown as a
+   * projectile, or a troop card that makes an area effect as well - snaps to the tile centre
+   * whatever its search unit is; the symmetrical adjustment still follows the unit.
+   */
+  private static boolean characterSnap(DeployCard card) {
+    return card.placementUnit() != null && !card.spellAsDeploy();
+  }
+
+  /** The tiles the search tests around a point: a building's footprint, else one. */
+  private static int searchFootprint(DeployCard card) {
+    return characterSnap(card) && card.placementUnit().building()
+        ? footprint(card.placementUnit())
+        : 1;
+  }
+
+  /** One clamped coordinate snapped as the search snaps it: to the unit, or to the tile centre. */
+  private static int snapped(DeployCard card, int v) {
+    return characterSnap(card) ? snap(card.placementUnit(), v) : v / 1000 * 1000 + 500;
+  }
+
+  /**
+   * For every tile of the deploy mask's grid, whether a card dropped at the tile's centre lands on
+   * that tile, not moved: the point the search snaps the centre to is itself legal, so the search
+   * ends on its first ring there ({@link #find}). The point it lands on is then the tile's centre,
+   * one unit less on an axis the symmetrical snap shifts, or for a building of an even footprint
+   * the tile's corner of the lowest coordinates; a drop anywhere else on the tile lands there too.
+   * A tile left closed is one a drop is moved off, to the nearest legal tile, or finds none.
+   *
+   * @param tileMap the arena's map
+   * @param card the card the search places
+   * @param mask the deploy mask of the placing side, one flag per 1000-unit tile ({@link #mask})
+   * @return one flag per tile, row after row as the mask is; true where the card lands unmoved
+   */
+  public static boolean[] landingTiles(TileMap tileMap, DeployCard card, boolean[] mask) {
+    int hw = tileMap.width() >> 1;
+    int hh = tileMap.height() >> 1;
+    int fp = searchFootprint(card);
+    int margin = card.deployWTileMargin();
+    boolean[] lands = new boolean[hw * hh];
+    for (int row = 0; row < hh; row++) {
+      int sy = snapped(card, row * 1000 + 500);
+      for (int col = 0; col < hw; col++) {
+        int sx = snapped(card, col * 1000 + 500);
+        lands[row * hw + col] = legal(tileMap, card, mask, hw, hh, fp, margin, sx, sy);
+      }
+    }
+    return lands;
   }
 
   /** Whether every tile of the footprint around a point may take the card. */
