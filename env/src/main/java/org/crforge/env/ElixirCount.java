@@ -42,6 +42,19 @@ final class ElixirCount {
     return elixir;
   }
 
+  /** A count standing where this one stands, to count on apart from it. */
+  ElixirCount copy() {
+    ElixirCount copy = new ElixirCount();
+    copy.set(this);
+    return copy;
+  }
+
+  /** Stands this count where another stands. */
+  void set(ElixirCount other) {
+    elixir = other.elixir;
+    stopMs = other.stopMs;
+  }
+
   /**
    * One tick's regeneration at the clock's rate, for a tick that stepped the entities: none while a
    * production stop runs, which loses the tick instead.

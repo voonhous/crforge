@@ -19,7 +19,7 @@ import numpy as np
 
 from ._jvm import java_class
 
-SUPPORTED_VERSION = 3
+SUPPORTED_VERSION = 4
 """The schema version this package reads."""
 
 INT32_MIN = int(np.iinfo(np.int32).min)
@@ -59,6 +59,7 @@ class Codes:
     form_hero: int
     no_state: int
     no_target: int
+    unknown: int
 
     @staticmethod
     def from_java() -> Codes:
@@ -88,6 +89,7 @@ class Codes:
             form_hero=int(s.FORM_HERO),
             no_state=int(s.NO_STATE),
             no_target=int(s.NO_TARGET),
+            unknown=int(s.UNKNOWN),
         )
 
 
@@ -104,6 +106,11 @@ class Schema:
       ``height_units``, ``ms_per_tick``, ``percent``, ``max_state``)
     - ``info[name]``: a field's index in an environment's info record
     - ``flags[name]``: an entity flag's bit value
+    - ``play_kinds[name]``: an enemy play row's kind code (``none`` 0 for an unused row)
+    - ``play_flags[name]``: an enemy play row's flag bit value
+    - ``unknown``: the value (-1) of a field the seat is not shown: an enemy character's ``hp`` and
+      ``shield`` without a health bar on the screen, a trail's ``row``, ``max_hp`` and ``level``, an
+      enemy play's card and point before the screen shows them
     - ``refusals[code]``: a refusal code's name
     - ``faults``: the fault kinds' names by the info record's number (``none`` first)
     """
@@ -142,6 +149,8 @@ class Schema:
         self.entity_fields = tuple(s["entity_fields"])
         self.info_fields = tuple(s["info_fields"])
         self.flag_names = tuple(s["flag_names"])
+        self.play_kind_names = tuple(s["play_kind_names"])
+        self.play_flag_names = tuple(s["play_flag_names"])
         self.fault_names = tuple(s["fault_names"])
         for name, fields, size in (
             ("header", self.header_fields, self.header_ints),
@@ -163,6 +172,8 @@ class Schema:
         self.entity = {f: i for i, f in enumerate(self.entity_fields) if f != "reserved"}
         self.info = {f: i for i, f in enumerate(self.info_fields)}
         self.flags = {f: 1 << bit for bit, f in enumerate(self.flag_names)}
+        self.play_kinds = {f: code for code, f in enumerate(self.play_kind_names)}
+        self.play_flags = {f: 1 << bit for bit, f in enumerate(self.play_flag_names)}
         self.refusals = {code: n for code, n in enumerate(s["refusal_names"]) if n is not None}
         self.refusal_codes = {n: code for code, n in self.refusals.items()}
         self.results = dict(codes.results)
@@ -179,6 +190,7 @@ class Schema:
         self.form_hero = codes.form_hero
         self.no_state = codes.no_state
         self.no_target = codes.no_target
+        self.unknown = codes.unknown
 
     # -- actions -------------------------------------------------------------------------------
 
@@ -243,8 +255,9 @@ class Schema:
         played, the queue, the waiting commands' cards, a champion slot's champion, an entity's
         row) is between -1 (none) and the last id; an entity's buff slot between -1 and the last
         buff id when ``buff_count`` is given; an entity's state between -1 and the last state; the
-        result, the seat, the overtime and pending marks, the deck's slot flags, the hand's and the
-        enemy plays' forms, an entity's kind, side and flags are between 0 and their largest code;
+        result, the seat, the overtime and pending marks, the deck's slot flags, the hand's form,
+        the enemy plays' kinds and flags, an entity's kind, side and flags are between 0 and their
+        largest code, the enemy plays' forms between -1 (not shown yet) and theirs;
         every other field (ticks, elixir, hit points, coordinates, codes of the match) is any
         int32. A cleared observation (all zeros) is within them.
         """
@@ -264,7 +277,11 @@ class Schema:
         bound(self.header["deck_slot"], 0, self.slot_evolution | self.slot_hero)
         forms = max(self.form_evolved, self.form_hero)
         bound(self.header["hand_form"], 0, forms)
-        bound(self.header["enemy_play_form"], 0, forms)
+        bound(self.header["enemy_play_form"], self.unknown, forms)
+        bound(self.header["enemy_play_kind"], 0, len(self.play_kind_names) - 1)
+        bound(self.header["enemy_play_flags"], 0, (1 << len(self.play_flag_names)) - 1)
+        bound(self.header["enemy_seen_evolution"], self.unknown, INT32_MAX)
+        bound(self.header["enemy_seen_evolution_need"], 0, INT32_MAX)
         rows = np.arange(self.max_entities) * self.entity_ints + self.header_ints
         for name in _ID_ENTITY_FIELDS:
             bound(rows + self.entity[name], -1, vocabulary_size - 1)

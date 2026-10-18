@@ -103,7 +103,7 @@ def test_the_bounds_hold_a_cleared_observation(vector):
     assert (low[row], high[row]) == (-1, vector.vocabulary_size - 1)
 
 
-def test_version_3_names_its_states_buff_slots_enemy_plays_and_scales(vector):
+def test_version_4_names_its_states_buff_slots_enemy_plays_and_scales(vector):
     s = vector.schema
     j = java_class("org.crforge.env.Schema")
     assert s.state_names == tuple(str(n) for n in j.stateNames())
@@ -114,7 +114,14 @@ def test_version_3_names_its_states_buff_slots_enemy_plays_and_scales(vector):
     assert [s.entity[f"buff_{b}"] for b in range(s.buff_slots)] == [
         int(j.E_BUFFS) + 2 * b for b in range(s.buff_slots)
     ]
-    assert s.entity["radius"] == s.entity_ints - 1
+    assert s.entity["ability_ticks"] == s.entity_ints - 1
+    assert s.unknown == int(j.UNKNOWN) == -1
+    assert s.play_kinds["tunnel"] == int(j.PLAY_TUNNEL)
+    assert s.play_kinds["launched"] == int(j.PLAY_LAUNCHED)
+    assert s.play_flags["point_shown"] == int(j.PLAY_POINT_SHOWN)
+    assert s.play_flags["evolution_diamond"] == int(j.PLAY_EVOLUTION_DIAMOND)
+    assert len(s.header["enemy_play_kind"]) == s.enemy_play_rows
+    assert len(s.header["enemy_seen_evolution"]) == s.deck_size
     assert len(s.header["enemy_play_card"]) == s.enemy_play_rows == int(j.ENEMY_PLAY_ROWS)
     assert s.header["enemy_elixir"] == (int(j.H_ENEMY_ELIXIR),)
     assert len(s.header["queue"]) == s.queue_slots

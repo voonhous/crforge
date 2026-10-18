@@ -198,10 +198,12 @@ class ScriptedBot:
         if not waiting:
             rows = s.entities(observation)
             e = s.entity
+            # A hidden building and a trail underground are shown but out of a spell's reach.
             enemy = rows[
                 (rows[:, e["kind"]] == s.kinds["character"])
                 & (rows[:, e["side"]] == 1)
                 & ((rows[:, e["flags"]] & s.flags["alive"]) != 0)
+                & ((rows[:, e["flags"]] & (s.flags["hidden"] | s.flags["underground"])) == 0)
             ]
             spells = self._hand_spells(observation)
             if spells:
@@ -303,8 +305,12 @@ class ScriptedBot:
             return None
         x = enemy[:, e["x"]].astype(np.int64)
         y = enemy[:, e["y"]].astype(np.int64)
-        health = (enemy[:, e["hp"]] + enemy[:, e["shield"]]).astype(np.float64)
-        whole = np.maximum(enemy[:, e["max_hp"]] + enemy[:, e["shield"]], 1).astype(np.float64)
+        # An enemy whose health bar the screen does not draw is taken as unhurt, with no shield.
+        shown = enemy[:, e["hp"]] != s.unknown
+        shield = np.where(shown, enemy[:, e["shield"]], 0)
+        hp = np.where(shown, enemy[:, e["hp"]], enemy[:, e["max_hp"]])
+        health = (hp + shield).astype(np.float64)
+        whole = np.maximum(enemy[:, e["max_hp"]] + shield, 1).astype(np.float64)
         air = (enemy[:, e["flags"]] & s.flags["air"]) != 0
         tiles = s.tile_units
         tiles_of_slot = s.cols * s.rows
