@@ -329,8 +329,9 @@ public final class Schema {
    * The enemy's elixir as the seat's player counts it, in ten-thousandths: the match's starting
    * elixir, the regeneration the clock's elixir rate gives each tick up to the maximum, less the
    * cost of each enemy play placed and of each enemy champion ability that ran, with a played row's
-   * production stop. Counted from nothing the player does not see; what the enemy's own elixir
-   * gains beyond the rate (a collector, an enemy's death that pays elixir) is not counted.
+   * production stop, plus each elixir gain the game shows the player as it is paid (a collector's
+   * production, a death that pays elixir). Counted from nothing the player does not see; a champion
+   * ability's refund, which the game does not show, is not counted.
    */
   public static final int H_ENEMY_ELIXIR = H_ENEMY_PLAY_COUNT + 1;
 
