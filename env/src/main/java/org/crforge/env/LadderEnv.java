@@ -22,17 +22,22 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.DeployMask;
 import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
+import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.Timeline;
+import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.replay.ReplayBattle;
 import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.unit.AbilityCommand;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectEntity;
+import org.crforge.core.battle.unit.BuffComponent;
+import org.crforge.core.battle.unit.BuffInstance;
 import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.PlayerCommands;
@@ -40,8 +45,13 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
+import org.crforge.core.pathfinding.EntityFlags;
+import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.combat.HitPoints;
+import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.target.TargetView;
+import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.env.EnvFault.CoreFailure;
 
 /**
@@ -98,6 +108,18 @@ public final class LadderEnv extends BufferedEnv {
    */
   private record AbilityWaiting(String name, int side, int slot, int runTick) {}
 
+  /**
+   * A play placed on the field, as the other side's player saw it run.
+   *
+   * @param card the vocabulary id of the deck card played
+   * @param cast the vocabulary id of the row it was cast as
+   * @param form its form: 0 plain, {@link Schema#FORM_EVOLVED} or {@link Schema#FORM_HERO}
+   * @param tick the tick it ran on
+   * @param x the point it was placed at, in game units
+   * @param y the point it was placed at, in game units
+   */
+  private record SeenPlay(int card, int cast, int form, int tick, int x, int y) {}
+
   private final GameTables tables;
   private final Vocabulary vocabulary;
   private final EnvConfig config;
@@ -135,6 +157,34 @@ public final class LadderEnv extends BufferedEnv {
   private final List<Waiting> waiting = new ArrayList<>();
   private final List<List<String>> enemySeen = List.of(new ArrayList<>(), new ArrayList<>());
   private final List<AbilityWaiting> abilityWaiting = new ArrayList<>();
+
+  /** Per side: its last plays placed, oldest first, at most {@link Schema#ENEMY_PLAY_ROWS}. */
+  private final List<List<SeenPlay>> playsPlaced = List.of(new ArrayList<>(), new ArrayList<>());
+
+  /** Per side: its plays placed in the episode. */
+  private final int[] placedCount = new int[2];
+
+  /** Per side: its elixir as the other side's player counts it. */
+  private final ElixirCount[] elixirCounts = {new ElixirCount(), new ElixirCount()};
+
+  /** The plays and ability commands the elixir counts have read, and the most elixir. */
+  private int playsCounted;
+
+  private int abilityUsesCounted;
+  private int maxElixir;
+
+  /**
+   * Per seat and entity kind, by the id's count within its kind ({@link
+   * BattleEntity#IDS_PER_KIND}): where the seat's observation numbered {@code shownAt} showed the
+   * entity, in the seat's frame, so a row gives the move since the seat's last observation.
+   */
+  private final int[][][] shownX = new int[2][0][];
+
+  private final int[][][] shownY = new int[2][0][];
+  private final int[][][] shownAt = new int[2][0][];
+
+  /** The number of the observation being written, counted over the environment's life. */
+  private int observation;
 
   /** Per seat, the game grid's tile of each tile of the seat's frame. */
   private static final int[][] GAME_TILES = gameTiles();
@@ -311,6 +361,13 @@ public final class LadderEnv extends BufferedEnv {
     enemySeen.get(0).clear();
     enemySeen.get(1).clear();
     abilityWaiting.clear();
+    playsPlaced.get(0).clear();
+    playsPlaced.get(1).clear();
+    Arrays.fill(placedCount, 0);
+    playsCounted = 0;
+    abilityUsesCounted = 0;
+    // No row of the last episode is the previous observation of this one's first.
+    observation += 2;
     for (int seat = 0; seat < 2; seat++) {
       fieldSeen.set(seat, new ArrayList<>());
       landingSeen.get(seat).clear();
@@ -337,6 +394,11 @@ public final class LadderEnv extends BufferedEnv {
   private void started() {
     battle = standard.getBattle();
     rememberTowers();
+    // Both sides start at the game mode's starting elixir, which every player knows.
+    int start = match.getTimeline().row().startingElixir() * MatchSide.SCALE;
+    maxElixir = standard.getWorld().getKingElixir().maxMana();
+    elixirCounts[0].start(start);
+    elixirCounts[1].start(start);
     observe();
   }
 
@@ -380,13 +442,68 @@ public final class LadderEnv extends BufferedEnv {
     notModelled = 0;
   }
 
-  /** Steps the battle one tick. */
+  /** Steps the battle one tick, and counts each side's elixir as the other's player does. */
   void advance() {
     try {
       battle.step();
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       throw new CoreFailure(e);
     }
+    countElixir();
+  }
+
+  /**
+   * Counts the tick just stepped into each side's elixir as the other side's player sees it: the
+   * plays placed and the champion abilities that ran in it, then the regeneration at the clock's
+   * rate, in the order the battle pays and regenerates.
+   */
+  private void countElixir() {
+    List<Standard1v1Battle.Play> plays = standard.getPlays();
+    for (; playsCounted < plays.size(); playsCounted++) {
+      Standard1v1Battle.Play play = plays.get(playsCounted);
+      if (play.result() == null || !play.result().placed()) {
+        continue;
+      }
+      ElixirCount count = elixirCounts[play.side() & 1];
+      if (play.mirror() != null) {
+        MirrorItem mirror = play.mirror();
+        count.play(
+            mirror.cost(),
+            mirror.repeats() == null ? 0 : mirror.repeats().elixirProductionStopTimeMs());
+      } else if (play.variant() != null) {
+        VariantItem variant = play.variant();
+        count.play(variant.cost(), variant.elixirProductionStopTimeMs());
+      } else if (play.evolution() != null) {
+        EvolutionItem item = play.evolution();
+        count.play(item.cost(), item.spell().elixirProductionStopTimeMs());
+      }
+    }
+    List<Standard1v1Battle.AbilityUse> uses = standard.getAbilityUses();
+    for (; abilityUsesCounted < uses.size(); abilityUsesCounted++) {
+      Standard1v1Battle.AbilityUse use = uses.get(abilityUsesCounted);
+      AbilityCommand.Outcome outcome = use.outcome();
+      if (outcome.code() == AbilityCommand.OK && !outcome.requested().isEmpty()) {
+        // The ability's cost, as its row publishes it: what the player sees used.
+        AbilityData ability = outcome.requested().get(0).getData().ability();
+        if (ability != null && ability.manaCost() >= 1) {
+          elixirCounts[use.side() & 1].spend(ability.manaCost() * MatchSide.SCALE);
+        }
+      }
+    }
+    int fullBarMs = match.getTimeline().getFullBarMs();
+    for (int side = 0; side < 2; side++) {
+      elixirCounts[side].regenerate(fullBarMs, maxElixir);
+    }
+  }
+
+  /**
+   * Side's elixir as the other side's player counts it, in ten-thousandths: the enemy elixir the
+   * other seat's header shows. For a diagnostic of the count against the truth.
+   *
+   * @param side the side counted, 0 or 1
+   */
+  public int elixirCounted(int side) {
+    return elixirCounts[side].elixir();
   }
 
   /** Whether the match is over. */
@@ -713,6 +830,9 @@ public final class LadderEnv extends BufferedEnv {
     List<Standard1v1Battle.Play> plays = standard.getPlays();
     for (; playsSeen < plays.size(); playsSeen++) {
       Standard1v1Battle.Play play = plays.get(playsSeen);
+      if (play.result() != null && play.result().placed()) {
+        place(play);
+      }
       String card = givenCards.get(play.name());
       if (card == null) {
         continue;
@@ -734,6 +854,45 @@ public final class LadderEnv extends BufferedEnv {
         see(seen, play.mirror().repeats().name());
       }
     }
+  }
+
+  /**
+   * Keeps a placed play as the other side's player saw it run: the deck card, the row it was cast
+   * as, its form and where it landed. A play outside a match carries no item and is not kept.
+   */
+  private void place(Standard1v1Battle.Play play) {
+    int side = play.side() & 1;
+    List<MatchCard> deck = match.side(side).deck();
+    int index;
+    String cast;
+    int form = 0;
+    if (play.mirror() != null) {
+      index = play.mirror().index();
+      cast = play.mirror().repeats() == null ? null : play.mirror().repeats().name();
+    } else if (play.variant() != null) {
+      index = play.variant().index();
+      cast = play.variant().spell();
+    } else if (play.evolution() != null) {
+      index = play.evolution().index();
+      cast = play.evolution().spell().name();
+      form = play.evolution().field();
+    } else {
+      return;
+    }
+    int card = vocabulary.id(deck.get(index).name());
+    List<SeenPlay> seen = playsPlaced.get(side);
+    if (seen.size() == Schema.ENEMY_PLAY_ROWS) {
+      seen.remove(0);
+    }
+    seen.add(
+        new SeenPlay(
+            card,
+            cast == null ? card : vocabulary.id(cast),
+            form,
+            play.tick(),
+            play.result().x(),
+            play.result().y()));
+    placedCount[side]++;
   }
 
   private static void see(List<String> seen, String card) {
@@ -779,6 +938,7 @@ public final class LadderEnv extends BufferedEnv {
 
   /** Writes both seats' observations and masks, the rewards and the info record. */
   private void observe() {
+    observation++;
     for (int seat = 0; seat < 2; seat++) {
       clearSeatScratch();
       header(seat);
@@ -845,6 +1005,10 @@ public final class LadderEnv extends BufferedEnv {
     List<Integer> queue = hand.queue();
     o[Schema.H_NEXT_CARD] =
         queue.isEmpty() ? -1 : vocabulary.id(own.deck().get(queue.get(0)).name());
+    for (int k = 0; k < Schema.QUEUE_SLOTS; k++) {
+      o[Schema.H_QUEUE + k] =
+          k < queue.size() ? vocabulary.id(own.deck().get(queue.get(k)).name()) : -1;
+    }
     List<String> seen = enemySeen.get(seat);
     for (int k = 0; k < Schema.DECK_SIZE; k++) {
       o[Schema.H_DECK + k] = k < own.deck().size() ? vocabulary.id(own.deck().get(k).name()) : -1;
@@ -897,6 +1061,36 @@ public final class LadderEnv extends BufferedEnv {
     }
     abilityRows(seat, tick);
     o[Schema.H_LAST_ABILITY_RUN_REFUSAL] = lastAbilityRunRefusal[seat];
+    for (int k = 0; k < Schema.DECK_SIZE && k < own.deck().size(); k++) {
+      o[Schema.H_DECK_LEVEL + k] = level(seat, k);
+    }
+    enemyRows(seat, tick);
+  }
+
+  /**
+   * Writes what the seat's player saw of the enemy's plays: their count, the last ones, the elixir.
+   */
+  private void enemyRows(int seat, int tick) {
+    int[] o = seatScratch;
+    int enemy = 1 - seat;
+    o[Schema.H_ENEMY_PLAY_COUNT] = placedCount[enemy];
+    o[Schema.H_ENEMY_ELIXIR] = elixirCounts[enemy].elixir();
+    List<SeenPlay> seen = playsPlaced.get(enemy);
+    for (int r = 0; r < Schema.ENEMY_PLAY_ROWS; r++) {
+      int at = Schema.H_ENEMY_PLAYS + r * Schema.ENEMY_PLAY_INTS;
+      if (r >= seen.size()) {
+        o[at] = -1;
+        o[at + 1] = -1;
+        continue;
+      }
+      SeenPlay play = seen.get(seen.size() - 1 - r);
+      o[at] = play.card();
+      o[at + 1] = play.cast();
+      o[at + 2] = play.form();
+      o[at + 3] = tick - play.tick();
+      o[at + 4] = Schema.toSeatX(seat, play.x());
+      o[at + 5] = Schema.toSeatY(seat, play.y());
+    }
   }
 
   /** Writes the seat's champion slot rows. */
@@ -926,7 +1120,8 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * Writes the seat's entity rows: towers and characters in holder order, then area effects and
    * projectiles newest first, so a full list leaves out the oldest projectiles and area effects
-   * before any character. Enemy characters that are hidden, invisible or underground are left out.
+   * before any character. The characters and towers the seat does not see ({@link SeatView}) are
+   * left out.
    */
   private void entities(int seat) {
     List<BattleEntity> list = battle.getHolder().entities();
@@ -935,7 +1130,7 @@ public final class LadderEnv extends BufferedEnv {
     for (BattleEntity entity : list) {
       if (entity instanceof WorldEntity world) {
         if (rows == Schema.MAX_ENTITIES) {
-          overflow += visible(seat, world) ? 1 : 0;
+          overflow += SeatView.sees(seat, world) ? 1 : 0;
         } else if (writeWorld(seat, rows, world)) {
           rows++;
         }
@@ -957,80 +1152,169 @@ public final class LadderEnv extends BufferedEnv {
     seatScratch[Schema.H_ENTITY_OVERFLOW] = overflow;
   }
 
-  /** Whether a seat's player sees a character or tower: not an enemy hidden from view. */
-  private static boolean visible(int seat, WorldEntity world) {
-    if (world.side() == seat || !(world instanceof CharacterEntity character)) {
-      return true;
-    }
-    return !character.hidden() && !character.invisible() && !character.underground();
-  }
-
   /** Writes a character or tower the seat sees at a row; false for one it does not see. */
   private boolean writeWorld(int seat, int row, WorldEntity world) {
-    if (!visible(seat, world)) {
+    if (!SeatView.sees(seat, world)) {
       return false;
     }
+    GridEntity view = world.getView();
+    EntityFlags bits = view.getFlagBits();
+    long tags = view.getFlags();
+    CharacterEntity character = world instanceof CharacterEntity c ? c : null;
     int flags = 0;
-    flags |= world.getView().isAlive() ? Schema.F_ALIVE : 0;
+    flags |= view.isAlive() ? Schema.F_ALIVE : 0;
     flags |= world.getData().air() ? Schema.F_AIR : 0;
     flags |= world.getData().building() ? Schema.F_BUILDING : 0;
     flags |= world.getData().king() ? Schema.F_KING : 0;
-    if (world instanceof CharacterEntity character) {
+    flags |= (tags & bits.noMove()) != 0 ? Schema.F_NO_MOVE : 0;
+    flags |= (tags & bits.noAttack()) != 0 ? Schema.F_NO_ATTACK : 0;
+    flags |= (tags & bits.charging()) != 0 ? Schema.F_CHARGED : 0;
+    if (character != null) {
       flags |= character.hidden() ? Schema.F_HIDDEN : 0;
       flags |= character.invisible() ? Schema.F_INVISIBLE : 0;
       flags |= character.underground() ? Schema.F_UNDERGROUND : 0;
+      flags |= character.isClone() ? Schema.F_CLONE : 0;
+    } else if (world instanceof TowerEntity tower) {
+      flags |= tower.isInactive() ? 0 : Schema.F_AWAKE;
     }
     int at = Schema.HEADER_INTS + row * Schema.ENTITY_INTS;
     int[] o = seatScratch;
+    int x = Schema.toSeatX(seat, view.getX());
+    int y = Schema.toSeatY(seat, view.getY());
     o[at + Schema.E_ID] = world.getId();
     o[at + Schema.E_KIND] =
         world instanceof TowerEntity ? Schema.KIND_TOWER : Schema.KIND_CHARACTER;
     o[at + Schema.E_SIDE] = relative(seat, world.side());
     o[at + Schema.E_ROW] = vocabulary.id(world.getData().name());
-    o[at + Schema.E_X] = Schema.toSeatX(seat, world.getView().getX());
-    o[at + Schema.E_Y] = Schema.toSeatY(seat, world.getView().getY());
+    o[at + Schema.E_X] = x;
+    o[at + Schema.E_Y] = y;
     HitPoints points = world.getHitPoints();
     if (points != null) {
       o[at + Schema.E_HP] = points.getHitPoints();
       o[at + Schema.E_MAX_HP] = points.getMaximum();
       o[at + Schema.E_SHIELD] = points.getShield();
     }
-    o[at + Schema.E_STATE] = world.getView().getState();
+    o[at + Schema.E_STATE] = view.getState();
     o[at + Schema.E_FLAGS] = flags;
+    o[at + Schema.E_LEVEL] = world.level();
+    moved(seat, at, world.getId(), x, y);
+    TargetingState targeting = world.getTargeting();
+    TargetView reference = targeting.getReference();
+    target(
+        seat, at, reference == null ? null : standard.getWorld().entityOf(reference.getEntity()));
+    o[at + Schema.E_DEPLOY_MS] = character != null ? view.getDeployCountdown() : 0;
+    o[at + Schema.E_ATTACK_MS] = targeting.getAttackTimerMs();
+    o[at + Schema.E_LOAD_MS] = targeting.getLoadTimerMs();
+    BuffComponent buffs = world.getBuffs();
+    o[at + Schema.E_SPEED_PERCENT] = buffs.speed(100);
+    o[at + Schema.E_HIT_SPEED_PERCENT] = buffs.hitSpeed(100);
+    List<BuffInstance> items = buffs.items();
+    o[at + Schema.E_BUFF_COUNT] = items.size();
+    for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
+      int slot = at + Schema.E_BUFFS + 2 * b;
+      if (b < items.size()) {
+        BuffInstance item = items.get(b);
+        o[slot] = vocabulary.buffId(item.getBuff().name());
+        o[slot + 1] = item.getRemaining();
+      } else {
+        o[slot] = -1;
+      }
+    }
     return true;
+  }
+
+  /**
+   * Writes the move of an entity since the seat's last observation, and keeps where this one shows
+   * it: 0, 0 for an entity that observation did not show.
+   */
+  private void moved(int seat, int at, int id, int x, int y) {
+    int kind = id / BattleEntity.IDS_PER_KIND;
+    int n = id % BattleEntity.IDS_PER_KIND;
+    if (kind >= shownAt[seat].length) {
+      shownAt[seat] = Arrays.copyOf(shownAt[seat], kind + 1);
+      shownX[seat] = Arrays.copyOf(shownX[seat], kind + 1);
+      shownY[seat] = Arrays.copyOf(shownY[seat], kind + 1);
+    }
+    int[] seen = shownAt[seat][kind];
+    if (seen == null || n >= seen.length) {
+      int size = Math.max(n + 1, seen == null ? 64 : seen.length * 2);
+      shownAt[seat][kind] = seen = seen == null ? new int[size] : Arrays.copyOf(seen, size);
+      shownX[seat][kind] = copyOf(shownX[seat][kind], size);
+      shownY[seat][kind] = copyOf(shownY[seat][kind], size);
+    }
+    if (seen[n] == observation - 1) {
+      seatScratch[at + Schema.E_DX] = x - shownX[seat][kind][n];
+      seatScratch[at + Schema.E_DY] = y - shownY[seat][kind][n];
+    }
+    seen[n] = observation;
+    shownX[seat][kind][n] = x;
+    shownY[seat][kind][n] = y;
+  }
+
+  private static int[] copyOf(int[] values, int size) {
+    return values == null ? new int[size] : Arrays.copyOf(values, size);
+  }
+
+  /** Writes a row's target: its id and position in the seat's frame, when the seat sees it. */
+  private void target(int seat, int at, WorldEntity target) {
+    if (target == null || !SeatView.sees(seat, target)) {
+      seatScratch[at + Schema.E_TARGET] = Schema.NO_TARGET;
+      return;
+    }
+    seatScratch[at + Schema.E_TARGET] = target.getId();
+    seatScratch[at + Schema.E_TARGET_X] = Schema.toSeatX(seat, target.getView().getX());
+    seatScratch[at + Schema.E_TARGET_Y] = Schema.toSeatY(seat, target.getView().getY());
   }
 
   /** Writes a projectile or area effect at a row. */
   private void writeOther(int seat, int row, BattleEntity entity) {
+    int at = Schema.HEADER_INTS + row * Schema.ENTITY_INTS;
+    int[] o = seatScratch;
     int kind;
     int side;
     int x;
     int y;
     String name;
+    int flags = Schema.F_ALIVE;
     if (entity instanceof ProjectileEntity projectile) {
       kind = Schema.KIND_PROJECTILE;
       side = projectile.side();
       x = projectile.x();
       y = projectile.y();
       name = projectile.getData().name();
+      o[at + Schema.E_LEVEL] = PackedLevel.level(projectile.getPackedLevel());
+      o[at + Schema.E_AIM_X] = Schema.toSeatX(seat, projectile.getAimX());
+      o[at + Schema.E_AIM_Y] = Schema.toSeatY(seat, projectile.getAimY());
+      target(seat, at, projectile.getTarget());
     } else if (entity instanceof AreaEffectEntity area) {
       kind = Schema.KIND_AREA;
       side = area.side();
       x = area.getX();
       y = area.getY();
       name = area.getData().name();
+      flags |= area.isClone() ? Schema.F_CLONE : 0;
+      o[at + Schema.E_LEVEL] = PackedLevel.level(area.getPackedLevel());
+      o[at + Schema.E_TIME_LEFT_MS] = area.getCountdown();
+      o[at + Schema.E_RADIUS] = area.radius();
+      o[at + Schema.E_TARGET] = Schema.NO_TARGET;
     } else {
       throw new IllegalStateException(
           "no encoding for an entity of " + entity.getClass().getSimpleName());
     }
-    int at = Schema.HEADER_INTS + row * Schema.ENTITY_INTS;
-    int[] o = seatScratch;
+    int seatX = Schema.toSeatX(seat, x);
+    int seatY = Schema.toSeatY(seat, y);
     o[at + Schema.E_ID] = entity.getId();
     o[at + Schema.E_KIND] = kind;
     o[at + Schema.E_SIDE] = relative(seat, side);
     o[at + Schema.E_ROW] = vocabulary.id(name);
-    o[at + Schema.E_X] = Schema.toSeatX(seat, x);
-    o[at + Schema.E_Y] = Schema.toSeatY(seat, y);
+    o[at + Schema.E_X] = seatX;
+    o[at + Schema.E_Y] = seatY;
+    o[at + Schema.E_STATE] = Schema.NO_STATE;
+    o[at + Schema.E_FLAGS] = flags;
+    moved(seat, at, entity.getId(), seatX, seatY);
+    for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
+      o[at + Schema.E_BUFFS + 2 * b] = -1;
+    }
   }
 
   private static int relative(int seat, int side) {
@@ -1116,7 +1400,7 @@ public final class LadderEnv extends BufferedEnv {
   private void seeField(int seat) {
     List<MaskEntity> now = new ArrayList<>();
     try {
-      for (MaskEntity e : standard.placementEntities(w -> visible(seat, w))) {
+      for (MaskEntity e : standard.placementEntities(w -> SeatView.sees(seat, w))) {
         if (DeployMask.reads(e)) {
           now.add(e);
         }

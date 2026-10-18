@@ -101,3 +101,33 @@ def test_the_bounds_hold_a_cleared_observation(vector):
     assert (low <= 0).all() and (high >= 0).all()
     row = vector.schema.header["hand_card"][0]
     assert (low[row], high[row]) == (-1, vector.vocabulary_size - 1)
+
+
+def test_version_3_names_its_states_buff_slots_enemy_plays_and_scales(vector):
+    s = vector.schema
+    j = java_class("org.crforge.env.Schema")
+    assert s.state_names == tuple(str(n) for n in j.stateNames())
+    assert len(s.state_names) == s.scales["max_state"] + 1
+    assert s.scales["elixir_scale"] == 10_000 and s.scales["tile_units"] == s.tile_units
+    assert s.no_state == int(j.NO_STATE) and s.no_target == int(j.NO_TARGET)
+    assert s.buff_slots == int(j.BUFF_SLOTS)
+    assert [s.entity[f"buff_{b}"] for b in range(s.buff_slots)] == [
+        int(j.E_BUFFS) + 2 * b for b in range(s.buff_slots)
+    ]
+    assert s.entity["radius"] == s.entity_ints - 1
+    assert len(s.header["enemy_play_card"]) == s.enemy_play_rows == int(j.ENEMY_PLAY_ROWS)
+    assert s.header["enemy_elixir"] == (int(j.H_ENEMY_ELIXIR),)
+    assert len(s.header["queue"]) == s.queue_slots
+    assert len(s.header["deck_level"]) == s.deck_size
+    assert s.flags["awake"] == int(j.F_AWAKE) and s.flags["charged"] == int(j.F_CHARGED)
+
+
+def test_the_columns_of_the_written_rows_are_read_by_name(vector):
+    s = vector.schema
+    vector.reset([3], ["a"] * s.deck_size, ["b"] * s.deck_size)
+    observation = vector.observations[0, 0]
+    columns = s.columns(observation)
+    rows = s.entities(observation)
+    assert set(columns) == set(s.entity)
+    for name, index in s.entity.items():
+        np.testing.assert_array_equal(columns[name], rows[:, index])

@@ -268,6 +268,13 @@ public final class GameTables {
     return inlineBuffs.get(name);
   }
 
+  /**
+   * The names of the buff rows the buff spawn rows write inline, in the order the data holds them.
+   */
+  public List<String> inlineBuffNames() {
+    return new ArrayList<>(inlineBuffs.keySet());
+  }
+
   /** The action row of the given name; fails when the data has none. */
   public GameAction action(String name) {
     GameAction action = actions.get(name);

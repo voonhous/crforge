@@ -19,7 +19,7 @@ import numpy as np
 
 from ._jvm import java_class
 
-SUPPORTED_VERSION = 2
+SUPPORTED_VERSION = 3
 """The schema version this package reads."""
 
 INT32_MIN = int(np.iinfo(np.int32).min)
@@ -34,6 +34,9 @@ _ID_HEADER_FIELDS = (
     "enemy_seen",
     "pending_card",
     "ability_champion",
+    "enemy_play_card",
+    "enemy_play_cast",
+    "queue",
 )
 _ID_ENTITY_FIELDS = ("row",)
 
@@ -54,6 +57,8 @@ class Codes:
     slot_hero: int
     form_evolved: int
     form_hero: int
+    no_state: int
+    no_target: int
 
     @staticmethod
     def from_java() -> Codes:
@@ -81,6 +86,8 @@ class Codes:
             slot_hero=int(s.SLOT_HERO),
             form_evolved=int(s.FORM_EVOLVED),
             form_hero=int(s.FORM_HERO),
+            no_state=int(s.NO_STATE),
+            no_target=int(s.NO_TARGET),
         )
 
 
@@ -89,7 +96,12 @@ class Schema:
 
     - ``header[name]``: the indices of a header field in a seat's observation, in order (a field of
       several values, such as ``hand_card``, has one index per value)
-    - ``entity[name]``: a field's index in an entity row
+    - ``entity[name]``: a field's index in an entity row (each has a name of its own: the buff
+      slots are ``buff_0``, ``buff_ms_0``, ...)
+    - ``state_names``: the names of the state numbers an entity row's ``state`` holds, a category
+      (``no_state``, -1, for a projectile or an area effect)
+    - ``scales``: the amounts' scales by name (``elixir_scale``, ``tile_units``, ``width_units``,
+      ``height_units``, ``ms_per_tick``, ``percent``, ``max_state``)
     - ``info[name]``: a field's index in an environment's info record
     - ``flags[name]``: an entity flag's bit value
     - ``refusals[code]``: a refusal code's name
@@ -119,6 +131,12 @@ class Schema:
         self.first_ability = int(s["first_ability"])
         self.ability_ints = int(s["ability_ints"])
         self.pending_rows = int(s["pending_rows"])
+        self.enemy_play_rows = int(s["enemy_play_rows"])
+        self.enemy_play_ints = int(s["enemy_play_ints"])
+        self.queue_slots = int(s["queue_slots"])
+        self.buff_slots = int(s["buff_slots"])
+        self.state_names = tuple(s["state_names"])
+        self.scales = {name: int(value) for name, value in s["scales"].items()}
         self.play_delay_ticks = int(s["play_delay_ticks"])
         self.header_fields = tuple(s["header_fields"])
         self.entity_fields = tuple(s["entity_fields"])
@@ -159,6 +177,8 @@ class Schema:
         self.slot_hero = codes.slot_hero
         self.form_evolved = codes.form_evolved
         self.form_hero = codes.form_hero
+        self.no_state = codes.no_state
+        self.no_target = codes.no_target
 
     # -- actions -------------------------------------------------------------------------------
 
@@ -209,15 +229,24 @@ class Schema:
         rows = observation[self.header_ints :].reshape(self.max_entities, self.entity_ints)
         return rows[: int(observation[self.header["entity_count"][0]])]
 
-    def observation_bounds(self, vocabulary_size: int) -> tuple[np.ndarray, np.ndarray]:
+    def columns(self, observation: np.ndarray) -> dict[str, np.ndarray]:
+        """A seat observation's written entity rows as one column per field, by field name."""
+        rows = self.entities(observation)
+        return {name: rows[:, index] for name, index in self.entity.items()}
+
+    def observation_bounds(
+        self, vocabulary_size: int, buff_count: int | None = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """The lowest and highest value of each integer of a seat's observation, as int32 arrays.
 
-        A vocabulary id field (the hand, the next card, the deck, the enemy's cards seen, the
-        waiting commands' cards, a champion slot's champion, an entity's row) is between -1 (none)
-        and the last id; the result, the seat, the overtime and pending marks, the deck's slot
-        flags, the hand's forms, an entity's kind, side and flags are between 0 and their largest
-        code; every other field (ticks, elixir, hit points, coordinates, codes of the match) is
-        any int32. A cleared observation (all zeros) is within them.
+        A vocabulary id field (the hand, the next card, the deck, the enemy's cards seen and
+        played, the queue, the waiting commands' cards, a champion slot's champion, an entity's
+        row) is between -1 (none) and the last id; an entity's buff slot between -1 and the last
+        buff id when ``buff_count`` is given; an entity's state between -1 and the last state; the
+        result, the seat, the overtime and pending marks, the deck's slot flags, the hand's and the
+        enemy plays' forms, an entity's kind, side and flags are between 0 and their largest code;
+        every other field (ticks, elixir, hit points, coordinates, codes of the match) is any
+        int32. A cleared observation (all zeros) is within them.
         """
         low = np.full(self.seat_ints, INT32_MIN, dtype=np.int32)
         high = np.full(self.seat_ints, INT32_MAX, dtype=np.int32)
@@ -233,10 +262,16 @@ class Schema:
         bound(self.header["overtime"], 0, 1)
         bound(self.header["hand_pending"], 0, 1)
         bound(self.header["deck_slot"], 0, self.slot_evolution | self.slot_hero)
-        bound(self.header["hand_form"], 0, max(self.form_evolved, self.form_hero))
+        forms = max(self.form_evolved, self.form_hero)
+        bound(self.header["hand_form"], 0, forms)
+        bound(self.header["enemy_play_form"], 0, forms)
         rows = np.arange(self.max_entities) * self.entity_ints + self.header_ints
         for name in _ID_ENTITY_FIELDS:
             bound(rows + self.entity[name], -1, vocabulary_size - 1)
+        if buff_count is not None:
+            for b in range(self.buff_slots):
+                bound(rows + self.entity[f"buff_{b}"], -1, buff_count - 1)
+        bound(rows + self.entity["state"], self.no_state, len(self.state_names) - 1)
         bound(rows + self.entity["kind"], 0, max(self.kinds.values()))
         bound(rows + self.entity["side"], 0, 2)
         bound(rows + self.entity["flags"], 0, (1 << len(self.flag_names)) - 1)

@@ -308,8 +308,13 @@ class VectorBattle:
             self.content_sha: str | None = vocabulary["content_sha"]
             self.vocabulary_hash: str | None = vocabulary["hash"]
             self.vocabulary_size = len(self.vocabulary)
+            # The buffs an entity row's buff slots name, numbered apart from the vocabulary.
+            self.buff_names: list[str] = list(vocabulary["buff_names"])
+            self.max_elixir: int | None = int(vocabulary["max_elixir"])
         else:
             self.vocabulary = []
+            self.buff_names = []
+            self.max_elixir = None
             self.data_version = self.content_sha = self.vocabulary_hash = None
             synthetic_size = _jvm.java_class("org.crforge.env.SyntheticEnv").VOCABULARY_SIZE
             self.vocabulary_size = int(synthetic_size)

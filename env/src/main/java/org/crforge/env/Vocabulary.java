@@ -32,9 +32,13 @@ import org.crforge.core.battle.data.GameTables;
  * the character it places share the id of their one name. The ids are fixed by the tables' content:
  * two environments on the same tables number the names the same way.
  *
+ * <p>The buffs an entity carries are numbered in a list of their own ({@link #buffNames()}: the
+ * rows of {@value #BUFF_TABLE} and the buff rows the actions' buff spawns write inline, sorted by
+ * name), apart from the rows above, so adding them moved no card's id.
+ *
  * <p>An id is only stable within a data version: a row added or removed by another version moves
  * every later name's id. So the vocabulary is exported with every run, keyed by name, with the data
- * version, the tables' content sha and a hash of the list ({@link #toJson()}); a model trained on
+ * version, the tables' content sha and a hash of each list ({@link #toJson()}); a model trained on
  * one export remaps its ids by name to another, and {@link #checkSame(String)} refuses an export
  * whose ids this vocabulary would read differently.
  */
@@ -53,11 +57,19 @@ public final class Vocabulary {
           "projectiles",
           "area_effect_objects");
 
+  /** The table of the buffs an entity carries, numbered in a list of their own. */
+  static final String BUFF_TABLE = "character_buffs";
+
   /** The tables of the cards a deck holds. */
   static final List<String> DECK_TABLES =
       List.of("spells_characters", "spells_other", "spells_buildings");
 
   private static final ObjectMapper JSON = new ObjectMapper();
+
+  private static final String GLOBALS = "globals";
+
+  /** The global of the most elixir a side holds, whole. */
+  private static final String MAX_MANA = "MAX_MANA";
 
   private final List<String> names;
   private final Map<String, Integer> ids = new HashMap<>();
@@ -65,6 +77,10 @@ public final class Vocabulary {
   private final String dataVersion;
   private final String contentSha;
   private final String hash;
+  private final List<String> buffNames;
+  private final Map<String, Integer> buffIds = new HashMap<>();
+  private final String buffHash;
+  private final int maxElixir;
 
   /**
    * The vocabulary of a data version's tables.
@@ -93,6 +109,20 @@ public final class Vocabulary {
     dataVersion = tables.version();
     contentSha = tables.contentSha();
     hash = hash(names);
+    // Every buff the battle core can list: a row of the buff table, or one an action's buff spawn
+    // writes inline, as the core reads them.
+    TreeSet<String> buffs = new TreeSet<>(tables.inlineBuffNames());
+    if (tables.tableNames().contains(BUFF_TABLE)) {
+      for (GameRow row : tables.table(BUFF_TABLE).rows()) {
+        buffs.add(row.name());
+      }
+    }
+    buffNames = List.copyOf(buffs);
+    for (int id = 0; id < buffNames.size(); id++) {
+      buffIds.put(buffNames.get(id), id);
+    }
+    buffHash = hash(buffNames);
+    maxElixir = tables.table(GLOBALS).row(MAX_MANA).intValue("NumberValue");
   }
 
   /** The names, by id. */
@@ -133,6 +163,34 @@ public final class Vocabulary {
     return id;
   }
 
+  /** The buff names, by buff id. */
+  public List<String> buffNames() {
+    return buffNames;
+  }
+
+  /** The SHA-256 of the buff names in id order, one per line. */
+  public String buffHash() {
+    return buffHash;
+  }
+
+  /**
+   * The buff id of a buff row's name.
+   *
+   * @throws IllegalArgumentException for a name of no buff row
+   */
+  public int buffId(String name) {
+    Integer id = buffIds.get(name);
+    if (id == null) {
+      throw new IllegalArgumentException("the tables have no buff named " + name);
+    }
+    return id;
+  }
+
+  /** The most elixir a side holds, whole: the tables' global. */
+  public int maxElixir() {
+    return maxElixir;
+  }
+
   /** Whether a name is a card a deck may hold: a row of a card table. */
   public boolean isDeckCard(String name) {
     return deckCards.contains(name);
@@ -140,7 +198,8 @@ public final class Vocabulary {
 
   /**
    * The vocabulary as JSON: {@code data_version}, {@code content_sha}, {@code hash} and {@code
-   * names}, the names by id.
+   * names}, the names by id, then {@code buff_hash} and {@code buff_names}, the buff names by buff
+   * id, and {@code max_elixir}.
    */
   public String toJson() {
     return toNode().toString();
@@ -154,6 +213,10 @@ public final class Vocabulary {
     node.put("hash", hash);
     ArrayNode list = node.putArray("names");
     names.forEach(list::add);
+    node.put("buff_hash", buffHash);
+    ArrayNode buffs = node.putArray("buff_names");
+    buffNames.forEach(buffs::add);
+    node.put("max_elixir", maxElixir);
     return node;
   }
 
@@ -206,6 +269,21 @@ public final class Vocabulary {
               + " names, these tables "
               + names.size()
               + ": remap the ids by name");
+    }
+    JsonNode buffs = node.get("buff_names");
+    List<String> exportedBuffs = new ArrayList<>();
+    if (buffs != null && buffs.isArray()) {
+      buffs.forEach(b -> exportedBuffs.add(b.asText()));
+    }
+    if (!exportedBuffs.equals(buffNames)) {
+      throw new IllegalArgumentException(
+          "the exported vocabulary ("
+              + node.path("data_version").asText()
+              + ") numbers its "
+              + exportedBuffs.size()
+              + " buffs otherwise than these tables' "
+              + buffNames.size()
+              + ": remap the buff ids by name");
     }
   }
 

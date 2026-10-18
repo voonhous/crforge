@@ -40,6 +40,10 @@ application {
     mainClass.set("org.crforge.env.VectorEnv")
 }
 
+// A replay labelled at 1-tick decisions holds a few thousand rows of a seat's observation each in
+// memory (about 27 kilobytes a row since schema version 3), more than the default test heap.
+tasks.test { maxHeapSize = "2g" }
+
 // The benchmarks are compiled with every check, so they keep compiling as the environment moves.
 tasks.check { dependsOn(tasks.named(jmh.classesTaskName)) }
 

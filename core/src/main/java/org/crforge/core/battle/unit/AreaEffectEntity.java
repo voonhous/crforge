@@ -470,6 +470,14 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     countdown = lifetimeMs;
   }
 
+  /**
+   * Its radius at its countdown now, in game units, worked out as its update works out the radius
+   * it hits with. A read for an observer; nothing in the battle asks it.
+   */
+  public int radius() {
+    return radiusNow(lifetime());
+  }
+
   /** Its lifetime: the one an ability gave it, or its row's. */
   private int lifetime() {
     return lifetimeOverride >= 0 ? lifetimeOverride : data.lifeDurationMs();
