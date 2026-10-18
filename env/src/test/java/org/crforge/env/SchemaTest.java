@@ -10,8 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.crforge.core.battle.unit.PlayerCommands;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.Test;
 
 class SchemaTest {
@@ -118,7 +120,21 @@ class SchemaTest {
     assertThat(Schema.infoFields().get(Schema.I_NOT_MODELLED)).isEqualTo("not_modelled");
     assertThat(Schema.SEAT_INTS)
         .isEqualTo(Schema.HEADER_INTS + Schema.MAX_ENTITIES * Schema.ENTITY_INTS);
-    assertThat(Schema.flagNames()).hasSize(Integer.numberOfTrailingZeros(Schema.F_KING) + 1);
+    assertThat(Schema.flagNames()).hasSize(Integer.numberOfTrailingZeros(Schema.F_CHARGED) + 1);
+    assertThat(Schema.flagNames().get(Integer.numberOfTrailingZeros(Schema.F_AWAKE)))
+        .isEqualTo("awake");
+    assertThat(Schema.headerFields().get(Schema.H_ENEMY_ELIXIR)).isEqualTo("enemy_elixir");
+    assertThat(Schema.headerFields().get(Schema.H_ENEMY_PLAYS)).isEqualTo("enemy_play_card");
+    assertThat(
+            Schema.headerFields()
+                .get(Schema.H_ENEMY_PLAYS + Schema.ENEMY_PLAY_ROWS * Schema.ENEMY_PLAY_INTS - 1))
+        .isEqualTo("enemy_play_y");
+    assertThat(Schema.headerFields().get(Schema.H_QUEUE + 3)).isEqualTo("queue");
+    assertThat(Schema.headerFields().get(Schema.H_DECK_LEVEL + 7)).isEqualTo("deck_level");
+    assertThat(Schema.entityFields().get(Schema.E_LEVEL)).isEqualTo("level");
+    assertThat(Schema.entityFields().get(Schema.E_BUFFS + 2 * Schema.BUFF_SLOTS - 1))
+        .isEqualTo("buff_ms_2");
+    assertThat(Schema.entityFields().get(Schema.ENTITY_INTS - 1)).isEqualTo("radius");
     assertThat(Schema.faultNames().get(Schema.FAULT_ENV_BUG)).isEqualTo("env_bug");
   }
 
@@ -140,13 +156,44 @@ class SchemaTest {
     assertThat(Schema.H_HAND_FORM + Schema.HAND_SLOTS).isEqualTo(Schema.H_ABILITY);
     assertThat(Schema.H_ABILITY + Schema.ABILITY_SLOTS * Schema.ABILITY_INTS)
         .isEqualTo(Schema.H_LAST_ABILITY_RUN_REFUSAL);
-    assertThat(Schema.H_LAST_ABILITY_RUN_REFUSAL + 1).isLessThanOrEqualTo(Schema.HEADER_INTS);
+    assertThat(Schema.H_LAST_ABILITY_RUN_REFUSAL + 1).isEqualTo(Schema.H_ENEMY_PLAY_COUNT);
+    assertThat(Schema.H_ENEMY_PLAY_COUNT + 1).isEqualTo(Schema.H_ENEMY_ELIXIR);
+    assertThat(Schema.H_ENEMY_ELIXIR + 1).isEqualTo(Schema.H_ENEMY_PLAYS);
+    assertThat(Schema.H_ENEMY_PLAYS + Schema.ENEMY_PLAY_ROWS * Schema.ENEMY_PLAY_INTS)
+        .isEqualTo(Schema.H_QUEUE);
+    assertThat(Schema.H_QUEUE + Schema.QUEUE_SLOTS).isEqualTo(Schema.H_DECK_LEVEL);
+    assertThat(Schema.H_DECK_LEVEL + Schema.DECK_SIZE).isLessThanOrEqualTo(Schema.HEADER_INTS);
+  }
+
+  @Test
+  void theEntityFieldsDoNotOverlapAndEndTheRow() {
+    List<String> fields = Schema.entityFields();
+    assertThat(fields).doesNotContainNull().doesNotContain("reserved").doesNotHaveDuplicates();
+    assertThat(Schema.E_BUFF_COUNT + 1).isEqualTo(Schema.E_BUFFS);
+    assertThat(Schema.E_BUFFS + 2 * Schema.BUFF_SLOTS).isEqualTo(Schema.E_AIM_X);
+    assertThat(Schema.E_RADIUS + 1).isEqualTo(Schema.ENTITY_INTS);
+  }
+
+  @Test
+  void theStateNamesAreTheBattleCoresStatesByNumber() {
+    // The state is a category: its names are exported, one per number the battle core gives.
+    assertThat(Schema.stateNames()).hasSize(GridEntityState.MAX_STATE + 1).doesNotHaveDuplicates();
+    assertThat(Schema.stateNames().get(GridEntityState.STANDING)).isEqualTo("standing");
+    assertThat(Schema.stateNames().get(GridEntityState.MOVING)).isEqualTo("moving");
+    assertThat(Schema.stateNames().get(GridEntityState.ATTACKING)).isEqualTo("attacking");
+    assertThat(Schema.stateNames().get(GridEntityState.DEPLOYING)).isEqualTo("deploying");
+    assertThat(Schema.stateNames().get(GridEntityState.WAITING_TO_DEPLOY))
+        .isEqualTo("waiting_to_deploy");
+    assertThat(Schema.stateNames().get(GridEntityState.ABILITY_FOLLOW_UP))
+        .isEqualTo("ability_follow_up");
+    assertThat(Schema.scales()).containsEntry("max_state", GridEntityState.MAX_STATE);
+    assertThat(Schema.NO_STATE).isNegative();
   }
 
   @Test
   void theRefusalCodesAreTheCommandsOwnAndPinnedByTheVersion() {
     // A change of the player's commands' refusals moves the codes, and with them the schema's
-    // version: this list is what version 2 means.
+    // version: this list is what version 3 means.
     assertThat(Schema.refusalNames().subList(0, 16))
         .containsExactly(
             "NONE",
@@ -169,6 +216,6 @@ class SchemaTest {
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NONE)).isEqualTo("NONE");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_MASKED)).isEqualTo("MASKED");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NOT_MODELLED)).isEqualTo("NOT_MODELLED");
-    assertThat(Schema.VERSION).isEqualTo(2);
+    assertThat(Schema.VERSION).isEqualTo(3);
   }
 }

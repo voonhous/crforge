@@ -8,11 +8,15 @@ package org.crforge.env;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.unit.BuffInstance;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
 
 /**
@@ -41,10 +45,12 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * tile the placement search finds from there.
  *
  * <p>What a seat is shown of the other side is what its player sees on the screen: the entities on
- * the field but enemy characters that are hidden, invisible or underground, the enemy's crowns and
- * towers, and the enemy's cards in the order their plays ran. The enemy's hand, cycle, elixir and
- * commands not yet run are not shown. Nothing here is held to a recording: it is the environment's
- * own contract, kept stable by its version and its tests.
+ * the field but enemy characters that are hidden, invisible or underground ({@link SeatView}, the
+ * one place that rule lives), the enemy's crowns and towers, the enemy's cards in the order their
+ * plays ran, its last plays with where and when they ran, and its elixir as a player counts it from
+ * those plays and the elixir rules. The enemy's hand, cycle, elixir and commands not yet run are
+ * not shown. Nothing here is held to a recording: it is the environment's own contract, kept stable
+ * by its version and its tests.
  */
 public final class Schema {
 
@@ -53,7 +59,7 @@ public final class Schema {
   }
 
   /** The version of this layout; a change to any size, field order or code moves it. */
-  public static final int VERSION = 2;
+  public static final int VERSION = 3;
 
   /**
    * Mask rule 1: every tile of a hand slot whose card the client's try passes is open, as a drop
@@ -125,6 +131,15 @@ public final class Schema {
 
   /** Fields of a waiting command row: card, x, y, ticks until its run. */
   public static final int PENDING_INTS = 4;
+
+  /** The enemy play rows of the header: the enemy's last plays, newest first. */
+  public static final int ENEMY_PLAY_ROWS = 8;
+
+  /** Fields of an enemy play row: card, the row it was cast as, form, ticks since, x, y. */
+  public static final int ENEMY_PLAY_INTS = 6;
+
+  /** The cards of the seat's own queue the header lists: the whole queue behind the hand. */
+  public static final int QUEUE_SLOTS = 4;
 
   // The header, by field index.
 
@@ -282,8 +297,44 @@ public final class Schema {
    */
   public static final int H_LAST_ABILITY_RUN_REFUSAL = H_ABILITY + ABILITY_SLOTS * ABILITY_INTS;
 
-  /** The header's size; fields after {@link #H_LAST_ABILITY_RUN_REFUSAL} are reserved and zero. */
-  public static final int HEADER_INTS = 128;
+  /**
+   * The enemy's plays placed so far in the episode, as the seat's player saw them run: each a card
+   * of the enemy's deck placed or cast on the field.
+   */
+  public static final int H_ENEMY_PLAY_COUNT = H_LAST_ABILITY_RUN_REFUSAL + 1;
+
+  /**
+   * The enemy's elixir as the seat's player counts it, in ten-thousandths: the match's starting
+   * elixir, the regeneration the clock's elixir rate gives each tick up to the maximum, less the
+   * cost of each enemy play placed and of each enemy champion ability that ran, with a played row's
+   * production stop. Counted from nothing the player does not see; what the enemy's own elixir
+   * gains beyond the rate (a collector, an enemy's death that pays elixir) is not counted.
+   */
+  public static final int H_ENEMY_ELIXIR = H_ENEMY_PLAY_COUNT + 1;
+
+  /**
+   * The enemy's last plays placed, newest first, {@link #ENEMY_PLAY_ROWS} rows of {@link
+   * #ENEMY_PLAY_INTS}: the vocabulary id of the deck card played, the vocabulary id of the row it
+   * was cast as (its evolved or hero row, a variant's option, the card a Mirror repeated; the card
+   * itself otherwise), its form (0 plain, {@link #FORM_EVOLVED} or {@link #FORM_HERO}), the ticks
+   * since it ran, and the point it was placed at in the seat's frame (x, y in game units); rows
+   * beyond the plays are -1, -1, 0, 0, 0, 0.
+   */
+  public static final int H_ENEMY_PLAYS = H_ENEMY_ELIXIR + 1;
+
+  /**
+   * The seat's own queue, the cards behind the hand in the order they come back, by vocabulary id,
+   * the first being {@link #H_NEXT_CARD}; -1 beyond; {@link #QUEUE_SLOTS} fields.
+   */
+  public static final int H_QUEUE = H_ENEMY_PLAYS + ENEMY_PLAY_ROWS * ENEMY_PLAY_INTS;
+
+  /**
+   * The level, counted from 1, each of the seat's deck cards is played at, by deck index; 8 fields.
+   */
+  public static final int H_DECK_LEVEL = H_QUEUE + QUEUE_SLOTS;
+
+  /** The header's size; fields after {@link #H_DECK_LEVEL}'s are reserved and zero. */
+  public static final int HEADER_INTS = 192;
 
   // The slot flags and the forms of a play.
 
@@ -348,14 +399,93 @@ public final class Schema {
 
   public static final int E_SHIELD = 8;
 
-  /** A character's state number, as the battle core holds it; 0 for other kinds. */
+  /**
+   * A character's or tower's state, a category ({@link #stateNames()}), not an amount; {@link
+   * #NO_STATE} for a projectile or an area effect.
+   */
   public static final int E_STATE = 9;
 
   /** Flag bits {@code F_*}. */
   public static final int E_FLAGS = 10;
 
-  /** An entity row's size; field 11 is reserved and zero. */
-  public static final int ENTITY_INTS = 12;
+  /** The entity's level, counted from 1. */
+  public static final int E_LEVEL = 11;
+
+  /**
+   * The move since the seat's last observation, in game units of the seat's frame (x, y); 0, 0 for
+   * an entity that observation did not show. 2 fields.
+   */
+  public static final int E_DX = 12;
+
+  public static final int E_DY = 13;
+
+  /**
+   * The battle id of the entity's target, {@link #NO_TARGET} for none or for one the seat does not
+   * see: a character's or tower's reference, a projectile's target.
+   */
+  public static final int E_TARGET = 14;
+
+  /** The target's position in the seat's frame, 0, 0 for none; 2 fields. */
+  public static final int E_TARGET_X = 15;
+
+  public static final int E_TARGET_Y = 16;
+
+  /** A character's deploy time left, in milliseconds. */
+  public static final int E_DEPLOY_MS = 17;
+
+  /** A character's or tower's attack timer as its targeting holds it: the attack time run. */
+  public static final int E_ATTACK_MS = 18;
+
+  /** A character's or tower's load countdown: the wind-up still to run, in milliseconds. */
+  public static final int E_LOAD_MS = 19;
+
+  /**
+   * A character's or tower's movement speed after its buffs, in percent of its own: 100 with none,
+   * 0 when they stop it; 0 for a projectile or an area effect.
+   */
+  public static final int E_SPEED_PERCENT = 20;
+
+  /**
+   * A character's or tower's attack pace after its buffs, in percent of its own: 100 with none, 0
+   * under a stun or a freeze; 0 for a projectile or an area effect.
+   */
+  public static final int E_HIT_SPEED_PERCENT = 21;
+
+  /** The buffs listed on a character or tower. */
+  public static final int E_BUFF_COUNT = 22;
+
+  /**
+   * The first {@link #BUFF_SLOTS} buffs listed, oldest first, each the buff's id in the buff list
+   * ({@link Vocabulary#buffNames()}, apart from the row vocabulary) and its time left in
+   * milliseconds ({@link #BUFF_FOREVER} for one that never runs out); unused slots -1, 0.
+   */
+  public static final int E_BUFFS = 23;
+
+  /** Buff slots of an entity row. */
+  public static final int BUFF_SLOTS = 3;
+
+  /** A projectile's aim, the point its flight ends at, in the seat's frame; 2 fields. */
+  public static final int E_AIM_X = E_BUFFS + 2 * BUFF_SLOTS;
+
+  public static final int E_AIM_Y = E_AIM_X + 1;
+
+  /** An area effect's life left, in milliseconds. */
+  public static final int E_TIME_LEFT_MS = E_AIM_Y + 1;
+
+  /** An area effect's radius at its last update, in game units. */
+  public static final int E_RADIUS = E_TIME_LEFT_MS + 1;
+
+  /** An entity row's size. */
+  public static final int ENTITY_INTS = E_RADIUS + 1;
+
+  /** {@link #E_STATE} of an entity that has no state: a projectile or an area effect. */
+  public static final int NO_STATE = -1;
+
+  /** {@link #E_TARGET} of an entity with no target the seat sees. */
+  public static final int NO_TARGET = -1;
+
+  /** A buff slot's time left for a buff that never runs out. */
+  public static final int BUFF_FOREVER = BuffInstance.FOREVER;
 
   /**
    * The most entities a seat's observation lists. Towers and characters are listed first, in the
@@ -377,13 +507,33 @@ public final class Schema {
 
   // The entity flags.
 
+  /**
+   * In play: a character or tower with hit points left (a fallen tower stays listed without it
+   * until the battle lets it go), and every projectile and area effect listed.
+   */
   public static final int F_ALIVE = 1;
+
   public static final int F_HIDDEN = 1 << 1;
   public static final int F_INVISIBLE = 1 << 2;
   public static final int F_UNDERGROUND = 1 << 3;
   public static final int F_AIR = 1 << 4;
   public static final int F_BUILDING = 1 << 5;
   public static final int F_KING = 1 << 6;
+
+  /** A clone. */
+  public static final int F_CLONE = 1 << 7;
+
+  /** A tower whose targeting is on: a princess tower, a king woken; 0 for other kinds. */
+  public static final int F_AWAKE = 1 << 8;
+
+  /** A character or tower whose tags forbid it to move. */
+  public static final int F_NO_MOVE = 1 << 9;
+
+  /** A character or tower whose tags forbid it to attack. */
+  public static final int F_NO_ATTACK = 1 << 10;
+
+  /** A character whose charge is complete. */
+  public static final int F_CHARGED = 1 << 11;
 
   // The per-environment info record, by field index.
 
@@ -629,24 +779,117 @@ public final class Schema {
       }
     }
     names[H_LAST_ABILITY_RUN_REFUSAL] = "last_ability_run_refusal";
+    names[H_ENEMY_PLAY_COUNT] = "enemy_play_count";
+    names[H_ENEMY_ELIXIR] = "enemy_elixir";
+    String[] play = {
+      "enemy_play_card",
+      "enemy_play_cast",
+      "enemy_play_form",
+      "enemy_play_ticks",
+      "enemy_play_x",
+      "enemy_play_y"
+    };
+    for (int r = 0; r < ENEMY_PLAY_ROWS; r++) {
+      for (int f = 0; f < ENEMY_PLAY_INTS; f++) {
+        names[H_ENEMY_PLAYS + r * ENEMY_PLAY_INTS + f] = play[f];
+      }
+    }
+    for (int k = 0; k < QUEUE_SLOTS; k++) {
+      names[H_QUEUE + k] = "queue";
+    }
+    for (int k = 0; k < DECK_SIZE; k++) {
+      names[H_DECK_LEVEL + k] = "deck_level";
+    }
     return List.of(names);
   }
 
-  /** An entity row's field names, in order. */
+  /** An entity row's field names, in order, each its own. */
   public static List<String> entityFields() {
-    return List.of(
-        "id",
-        "kind",
-        "side",
-        "row",
-        "x",
-        "y",
-        "hp",
-        "max_hp",
-        "shield",
-        "state",
-        "flags",
-        "reserved");
+    String[] names = new String[ENTITY_INTS];
+    names[E_ID] = "id";
+    names[E_KIND] = "kind";
+    names[E_SIDE] = "side";
+    names[E_ROW] = "row";
+    names[E_X] = "x";
+    names[E_Y] = "y";
+    names[E_HP] = "hp";
+    names[E_MAX_HP] = "max_hp";
+    names[E_SHIELD] = "shield";
+    names[E_STATE] = "state";
+    names[E_FLAGS] = "flags";
+    names[E_LEVEL] = "level";
+    names[E_DX] = "dx";
+    names[E_DY] = "dy";
+    names[E_TARGET] = "target";
+    names[E_TARGET_X] = "target_x";
+    names[E_TARGET_Y] = "target_y";
+    names[E_DEPLOY_MS] = "deploy_ms";
+    names[E_ATTACK_MS] = "attack_ms";
+    names[E_LOAD_MS] = "load_ms";
+    names[E_SPEED_PERCENT] = "speed_percent";
+    names[E_HIT_SPEED_PERCENT] = "hit_speed_percent";
+    names[E_BUFF_COUNT] = "buff_count";
+    // Named per slot, so every entity field has a name of its own.
+    for (int b = 0; b < BUFF_SLOTS; b++) {
+      names[E_BUFFS + 2 * b] = "buff_" + b;
+      names[E_BUFFS + 2 * b + 1] = "buff_ms_" + b;
+    }
+    names[E_AIM_X] = "aim_x";
+    names[E_AIM_Y] = "aim_y";
+    names[E_TIME_LEFT_MS] = "time_left_ms";
+    names[E_RADIUS] = "radius";
+    return List.of(names);
+  }
+
+  /**
+   * The state names, by the state number an entity row's {@link #E_STATE} holds: the battle core's
+   * states of a character or tower, a category each.
+   */
+  public static List<String> stateNames() {
+    return STATE_NAMES;
+  }
+
+  private static final List<String> STATE_NAMES =
+      List.of(
+          "standing",
+          "moving",
+          "attacking",
+          "dashing",
+          "deploying",
+          "jumping",
+          "spawn_pathfind",
+          "ingame_pathfind",
+          "clone_setup",
+          "morphing",
+          "casting",
+          "waiting_to_deploy",
+          "following_removed",
+          "following_removed_building",
+          "components_disabled",
+          "route_following_alternate",
+          "ability_follow_up");
+
+  /**
+   * The scales an encoder reads the amounts by, by name: the elixir's ten-thousandths to a whole
+   * elixir, game units to a tile, the arena's size, the milliseconds of a tick, the speed and
+   * attack pace percents' 100, and the highest state number.
+   */
+  public static Map<String, Integer> scales() {
+    return Map.of(
+        "elixir_scale",
+        MatchSide.SCALE,
+        "tile_units",
+        TILE_UNITS,
+        "width_units",
+        WIDTH_UNITS,
+        "height_units",
+        HEIGHT_UNITS,
+        "ms_per_tick",
+        Battle.STEP_MS,
+        "percent",
+        100,
+        "max_state",
+        GridEntityState.MAX_STATE);
   }
 
   /** The info record's field names, in order. */
@@ -668,6 +911,18 @@ public final class Schema {
 
   /** The entity flags' names, by bit, lowest first. */
   public static List<String> flagNames() {
-    return List.of("alive", "hidden", "invisible", "underground", "air", "building", "king");
+    return List.of(
+        "alive",
+        "hidden",
+        "invisible",
+        "underground",
+        "air",
+        "building",
+        "king",
+        "clone",
+        "awake",
+        "no_move",
+        "no_attack",
+        "charged");
   }
 }

@@ -47,7 +47,9 @@ def observation_space(vector: VectorBattle) -> spaces.Box:
     bounds of :meth:`Schema.observation_bounds`. Its values are categories (vocabulary ids, codes,
     flags) and integer amounts, not continuous features: an encoder embeds the ids and scales the
     amounts itself."""
-    low, high = vector.schema.observation_bounds(vector.vocabulary_size)
+    low, high = vector.schema.observation_bounds(
+        vector.vocabulary_size, len(vector.buff_names) or None
+    )
     return spaces.Box(low=low, high=high, shape=low.shape, dtype=np.int32)
 
 

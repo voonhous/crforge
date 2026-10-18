@@ -663,6 +663,10 @@ public final class VectorEnv implements AutoCloseable {
     schema.put("first_ability", Schema.FIRST_ABILITY);
     schema.put("ability_ints", Schema.ABILITY_INTS);
     schema.put("pending_rows", Schema.PENDING_ROWS);
+    schema.put("enemy_play_rows", Schema.ENEMY_PLAY_ROWS);
+    schema.put("enemy_play_ints", Schema.ENEMY_PLAY_INTS);
+    schema.put("queue_slots", Schema.QUEUE_SLOTS);
+    schema.put("buff_slots", Schema.BUFF_SLOTS);
     schema.put("play_delay_ticks", Schema.PLAY_DELAY_TICKS);
     list(schema, "header_fields", Schema.headerFields());
     list(schema, "entity_fields", Schema.entityFields());
@@ -670,6 +674,9 @@ public final class VectorEnv implements AutoCloseable {
     list(schema, "flag_names", Schema.flagNames());
     list(schema, "refusal_names", Schema.refusalNames());
     list(schema, "fault_names", Schema.faultNames());
+    list(schema, "state_names", Schema.stateNames());
+    ObjectNode scales = schema.putObject("scales");
+    new TreeMap<>(Schema.scales()).forEach(scales::put);
     if (config != null) {
       // The mask rule stands apart from the schema and the configuration: a model trained under
       // one rule reads the same observations and actions under the other.

@@ -312,3 +312,36 @@ def test_the_landing_mask_closes_tiles_and_the_old_rule_is_kept_apart(install, t
         assert partial > 0 and full > 0
     with pytest.raises(Exception, match="mask version"):
         VectorBattle(1, 1, install=install, tables=tables, config=LadderConfig(mask_version=3))
+
+
+def test_the_new_fields_hold_their_bounds_and_the_buffs_their_own_list(install, tables, tmp_path):
+    with VectorBattle(2, 1, install=install, tables=tables) as v:
+        v.reset([7, 8], BLUE, RED)
+        s = v.schema
+        assert v.buff_names == sorted(v.buff_names) and len(v.buff_names) > 0
+        assert v.max_elixir > 0
+        low, high = s.observation_bounds(v.vocabulary_size, len(v.buff_names))
+        rng = np.random.default_rng(1)
+        buffs = plays = 0
+        for _ in range(400):
+            v.step(draw_actions(v.masks, rng, 0.4))
+            for i in range(2):
+                for seat in range(2):
+                    o = v.observations[i, seat]
+                    assert ((o >= low) & (o <= high)).all()
+                    columns = s.columns(o)
+                    buffs += int((columns["buff_count"] > 0).sum())
+                    plays += int(s.field(o, "enemy_play_count"))
+                    # The enemy's elixir as counted stays within the bar.
+                    assert (
+                        0 <= s.field(o, "enemy_elixir") <= v.max_elixir * s.scales["elixir_scale"]
+                    )
+        assert buffs > 0 and plays > 0
+        # A saved export whose buff list moved is refused, as one whose ids moved.
+        path = tmp_path / "metadata.json"
+        v.write_metadata(path)
+        saved = json.loads(path.read_text())
+        names = saved["vocabulary"]["buff_names"]
+        names[0], names[1] = names[1], names[0]
+        with pytest.raises(ValueError, match="buff"):
+            v.check_metadata(saved)
