@@ -40,6 +40,7 @@ import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.BeforeAll;
@@ -327,6 +328,7 @@ class SeatObservationTest {
     try (VectorEnv env = ladder(EnvConfig.DEFAULT, AREAS, OTHER)) {
       env.setAutoreset(false);
       Standard1v1Battle battle = battle(env);
+      HitPointsCheck hitPoints = new HitPointsCheck(tables);
       SplittableRandom random = new SplittableRandom(7);
       List<Map<Integer, int[]>> before = List.of(rows(env, 0), rows(env, 1));
       // Per seat, the battle id each of its ids stood for when first named.
@@ -356,7 +358,7 @@ class SeatObservationTest {
           for (int[] row : now.get(seat).values()) {
             BattleEntity entity = core.get(battleId(env, seat, row[Schema.E_ID]));
             assertThat(entity).isNotNull();
-            checkRow(env, battle, seat, row, entity);
+            checkRow(env, battle, hitPoints, seat, row, entity);
             int[] last = before.get(seat).get(row[Schema.E_ID]);
             assertThat(row[Schema.E_DX])
                 .isEqualTo(last == null ? 0 : row[Schema.E_X] - last[Schema.E_X]);
@@ -494,7 +496,12 @@ class SeatObservationTest {
 
   /** One seat's row against the battle core's entity it names. */
   private static void checkRow(
-      VectorEnv env, Standard1v1Battle battle, int seat, int[] row, BattleEntity entity) {
+      VectorEnv env,
+      Standard1v1Battle battle,
+      HitPointsCheck hitPoints,
+      int seat,
+      int[] row,
+      BattleEntity entity) {
     assertThat(row[Schema.E_X]).isBetween(-Schema.WIDTH_UNITS, 2 * Schema.WIDTH_UNITS);
     if (entity instanceof WorldEntity world) {
       int flags = row[Schema.E_FLAGS];
@@ -510,7 +517,7 @@ class SeatObservationTest {
         assertThat(row[Schema.E_BUFF_COUNT]).isZero();
         return;
       }
-      HitPointsCheck.check(tables, seat, world, row);
+      hitPoints.check(seat, world, row);
       assertThat(row[Schema.E_LEVEL]).isEqualTo(world.level());
       assertThat((flags & Schema.F_ALIVE) != 0).isEqualTo(world.getView().isAlive());
       assertThat((flags & Schema.F_AWAKE) != 0)
@@ -876,6 +883,7 @@ class SeatObservationTest {
 
   @Test
   void anEnemyChampionsAbilityShowsOnItsOwnRowNotAsAPlay() {
+    HitPointsCheck hitPoints = new HitPointsCheck(tables);
     try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, CHAMPION)) {
       a.setAutoreset(false);
       int card = vocabulary.id(CHAMPION.get(0));
@@ -911,7 +919,7 @@ class SeatObservationTest {
         act(a, Schema.WAIT, Schema.WAIT);
         int[] row = rowOf(a, 0, champion.getId());
         assertThat(row).as("the champion's row, cloaked or not").isNotNull();
-        HitPointsCheck.check(tables, 0, champion, row);
+        hitPoints.check(0, champion, row);
         invisible += (row[Schema.E_FLAGS] & Schema.F_INVISIBLE) != 0 ? 1 : 0;
         if (row[Schema.E_ABILITY_TICKS] >= 1) {
           used++;
@@ -921,6 +929,98 @@ class SeatObservationTest {
       }
       assertThat(used).as("decisions showing the ability used").isPositive();
       assertThat(invisible).as("decisions with the champion cloaked, still shown").isPositive();
+
+      // Her row sets HideHealthbar: the enemy's screen draws her health bar only once she is
+      // damaged, so her hit points are -1 while she is unhurt and shown from her first damage.
+      assertThat(tables.table("characters").row(champion.getData().name()).bool("HideHealthbar"))
+          .as("the champion's row hides its health bar while unhurt")
+          .isTrue();
+      int unhurt = 0;
+      int damaged = 0;
+      for (int step = 0; step < 600 && champion.getView().isAlive() && damaged == 0; step++) {
+        act(a, Schema.WAIT, Schema.WAIT);
+        int[] row = rowOf(a, 0, champion.getId());
+        if (row == null || !champion.getView().isAlive()) {
+          break;
+        }
+        HitPoints points = champion.getHitPoints();
+        if (points.getHitPoints() < points.getMaximum()) {
+          assertThat(row[Schema.E_HP]).isEqualTo(points.getHitPoints());
+          assertThat(row[Schema.E_SHIELD]).isEqualTo(points.getShield());
+          damaged++;
+        } else {
+          assertThat(row[Schema.E_HP]).isEqualTo(Schema.UNKNOWN);
+          assertThat(row[Schema.E_SHIELD]).isEqualTo(Schema.UNKNOWN);
+          unhurt++;
+        }
+        hitPoints.check(0, champion, row);
+      }
+      assertThat(unhurt).as("decisions with the champion unhurt, her bar not drawn").isPositive();
+      assertThat(damaged).as("decisions with the champion damaged, her bar drawn").isPositive();
+    }
+  }
+
+  /** A deck whose first card is a shielded troop that hides its health bar while unhurt. */
+  private static final List<String> SHIELDED =
+      List.of(
+          "DarkPrince", "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Zap");
+
+  @Test
+  void anEnemyShieldedUnitThatHidesItsBarShowsItOnceItsShieldIsHit() {
+    HitPointsCheck hitPoints = new HitPointsCheck(tables);
+    try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, SHIELDED)) {
+      a.setAutoreset(false);
+      int card = vocabulary.id(SHIELDED.get(0));
+      int action = bringToHand(a, null, card, Schema.COLS / 2, 4);
+      assertThat(action).as("the shielded card in seat 1's hand, open").isPositive();
+      Standard1v1Battle battle = battle(a);
+      int plays = battle.getPlays().size();
+      act(a, Schema.WAIT, action);
+      CharacterEntity unit = null;
+      for (int step = 0; step < 100 && unit == null; step++) {
+        // The play's unit, once the command has run: seat 1's only play since.
+        if (battle.getPlays().size() > plays) {
+          Standard1v1Battle.Play play = battle.getPlays().get(plays);
+          assertThat(play.side()).isEqualTo(1);
+          unit = play.units().get(0);
+        } else {
+          act(a, Schema.WAIT, Schema.WAIT);
+        }
+      }
+      assertThat(unit).as("the shielded card's unit on the field").isNotNull();
+      assertThat(tables.table("characters").row(unit.getData().name()).bool("HideHealthbar"))
+          .as("the unit's row hides its health bar while unhurt")
+          .isTrue();
+      assertThat(unit.getHitPoints().getShieldMaximum()).as("the unit's shield").isPositive();
+      // Seat 0 waits while the unit walks into its tower's range: unhurt, its bar is not drawn;
+      // once the tower hits its shield the bar is drawn, its hit points still at their maximum.
+      int unhurt = 0;
+      int shieldOnly = 0;
+      for (int step = 0; step < 600 && unit.getView().isAlive() && shieldOnly == 0; step++) {
+        act(a, Schema.WAIT, Schema.WAIT);
+        int[] row = rowOf(a, 0, unit.getId());
+        if (row == null || !unit.getView().isAlive()) {
+          continue;
+        }
+        HitPoints points = unit.getHitPoints();
+        if (points.getShield() < points.getShieldMaximum()
+            || points.getHitPoints() < points.getMaximum()) {
+          assertThat(row[Schema.E_HP]).isEqualTo(points.getHitPoints());
+          assertThat(row[Schema.E_SHIELD]).isEqualTo(points.getShield());
+          if (points.getHitPoints() == points.getMaximum()) {
+            shieldOnly++;
+          }
+        } else {
+          assertThat(row[Schema.E_HP]).isEqualTo(Schema.UNKNOWN);
+          assertThat(row[Schema.E_SHIELD]).isEqualTo(Schema.UNKNOWN);
+          unhurt++;
+        }
+        hitPoints.check(0, unit, row);
+      }
+      assertThat(unhurt).as("decisions with the unit unhurt, its bar not drawn").isPositive();
+      assertThat(shieldOnly)
+          .as("decisions with only the unit's shield hit, its bar drawn")
+          .isPositive();
     }
   }
 
@@ -1012,6 +1112,7 @@ class SeatObservationTest {
 
   @Test
   void anEnemysHiddenBuildingShowsNothingOfItsCommandAndStaysOnTheScreenLowered() {
+    HitPointsCheck hitPoints = new HitPointsCheck(tables);
     // Seat 1 cycles its other cards alike in a and b until the building is open, then plays it
     // in a and waits in b; seat 0 waits in both.
     try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, HIDING);
@@ -1076,7 +1177,7 @@ class SeatObservationTest {
         assertThat(row[Schema.E_ROW]).isEqualTo(vocabulary.id(building.getData().name()));
         assertThat(row[Schema.E_X]).isEqualTo(Schema.toSeatX(0, building.getView().getX()));
         assertThat(row[Schema.E_Y]).isEqualTo(Schema.toSeatY(0, building.getView().getY()));
-        HitPointsCheck.check(tables, 0, building, row);
+        hitPoints.check(0, building, row);
       }
       assertThat(hiddenDecisions).as("decisions with the building hidden").isEqualTo(20);
     }

@@ -372,7 +372,7 @@ public final class LadderEnv extends BufferedEnv {
   /** The elixir gains the game shows both players, as the battle pays them. */
   private final ElixirCount.Gains shownGains = new ElixirCount.Gains();
 
-  /** The health bars the screen draws, by row. */
+  /** The health bars the screen draws, by row, and the units damaged since they came. */
   private final SeatView.Bars bars;
 
   /** The deck card rows' evolution cycle diamond timing, EvoInfoDelay and EvoInfoSpeed, by name. */
@@ -598,6 +598,7 @@ public final class LadderEnv extends BufferedEnv {
     }
     aimHidden.clear();
     abilityRan.clear();
+    bars.clear();
     Arrays.fill(placedCount, 0);
     playsTracked = 0;
     abilityUsesCounted = 0;
@@ -637,6 +638,7 @@ public final class LadderEnv extends BufferedEnv {
     elixirCounts[1].start(start);
     shownGains.clear();
     standard.getWorld().addObserver(shownGains);
+    bars.watch(battle.getHolder().entities());
     observe();
   }
 
@@ -681,8 +683,8 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Steps the battle one tick, follows what the screen shows of each side's plays, and counts each
-   * side's elixir as the other's player does.
+   * Steps the battle one tick, follows what the screen shows of each side's plays and the damage
+   * its health bars show, and counts each side's elixir as the other's player does.
    */
   void advance() {
     try {
@@ -690,6 +692,7 @@ public final class LadderEnv extends BufferedEnv {
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       throw new CoreFailure(e);
     }
+    bars.watch(battle.getHolder().entities());
     trackPlays();
     countElixir();
   }
