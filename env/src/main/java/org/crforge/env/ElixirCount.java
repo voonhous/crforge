@@ -13,8 +13,10 @@ import org.crforge.core.battle.unit.WorldObserver;
 
 /**
  * One side's elixir as the other side's player counts it, from what that player sees: the match's
- * starting elixir, then each tick the regeneration the clock's elixir rate gives (the same for both
- * sides, held to the maximum), less the cost of each of the side's plays placed and of each of its
+ * starting elixir, then each tick that steps the entities the regeneration the clock's elixir rate
+ * gives (the same for both sides, held to the maximum; the king regenerates in its step of the
+ * entity tick, so the tick that stops the battle after the end and the tiebreaker's ticks that run
+ * no update give none), less the cost of each of the side's plays placed and of each of its
  * champion abilities that ran, plus each gain the game shows the other player as it is paid (see
  * {@link Gains}), a played row's production stop holding the regeneration as the king's own count
  * does ({@link MatchSide}). It reads nothing of the side's hidden state. The one gain the game does
@@ -41,8 +43,8 @@ final class ElixirCount {
   }
 
   /**
-   * One tick's regeneration at the clock's rate: none while a production stop runs, which loses the
-   * tick instead.
+   * One tick's regeneration at the clock's rate, for a tick that stepped the entities: none while a
+   * production stop runs, which loses the tick instead.
    *
    * @param fullBarMs the time the current rate fills one bar in
    * @param maxElixir the most elixir a side holds, whole

@@ -478,6 +478,12 @@ public final class LadderEnv extends BufferedEnv {
    * then the regeneration at the clock's rate. The battle takes the costs in its command pass,
    * before any gain or regeneration of the tick; the gains and the regeneration only add up to the
    * maximum, so their order among themselves does not move the sum.
+   *
+   * <p>The regeneration is the king's, in its step of the entity tick, so a step that ticks no
+   * entities regenerates nothing: the step whose end timer reaches the end screen's delay, after
+   * which the battle stops, and each tiebreaker step that runs no update. Whether the step ticked
+   * the entities is the match's, the same on both players' screens, and says nothing of either
+   * side's elixir.
    */
   private void countElixir() {
     List<Standard1v1Battle.Play> plays = standard.getPlays();
@@ -514,6 +520,9 @@ public final class LadderEnv extends BufferedEnv {
     }
     for (int side = 0; side < 2; side++) {
       elixirCounts[side].gain(shownGains.take(side), maxElixir);
+    }
+    if (!match.isLastTicked()) {
+      return;
     }
     int fullBarMs = match.getTimeline().getFullBarMs();
     for (int side = 0; side < 2; side++) {
