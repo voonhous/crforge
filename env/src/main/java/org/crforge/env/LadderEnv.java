@@ -167,6 +167,9 @@ public final class LadderEnv extends BufferedEnv {
   /** Per side: its elixir as the other side's player counts it. */
   private final ElixirCount[] elixirCounts = {new ElixirCount(), new ElixirCount()};
 
+  /** The elixir gains the game shows both players, as the battle pays them. */
+  private final ElixirCount.Gains shownGains = new ElixirCount.Gains();
+
   /** The plays and ability commands the elixir counts have read, and the most elixir. */
   private int playsCounted;
 
@@ -414,6 +417,8 @@ public final class LadderEnv extends BufferedEnv {
     maxElixir = standard.getWorld().getKingElixir().maxMana();
     elixirCounts[0].start(start);
     elixirCounts[1].start(start);
+    shownGains.clear();
+    standard.getWorld().addObserver(shownGains);
     observe();
   }
 
@@ -469,8 +474,10 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * Counts the tick just stepped into each side's elixir as the other side's player sees it: the
-   * plays placed and the champion abilities that ran in it, then the regeneration at the clock's
-   * rate, in the order the battle pays and regenerates.
+   * plays placed and the champion abilities that ran in it, then the gains the game showed in it,
+   * then the regeneration at the clock's rate. The battle takes the costs in its command pass,
+   * before any gain or regeneration of the tick; the gains and the regeneration only add up to the
+   * maximum, so their order among themselves does not move the sum.
    */
   private void countElixir() {
     List<Standard1v1Battle.Play> plays = standard.getPlays();
@@ -497,18 +504,43 @@ public final class LadderEnv extends BufferedEnv {
     for (; abilityUsesCounted < uses.size(); abilityUsesCounted++) {
       Standard1v1Battle.AbilityUse use = uses.get(abilityUsesCounted);
       AbilityCommand.Outcome outcome = use.outcome();
-      if (outcome.code() == AbilityCommand.OK && !outcome.requested().isEmpty()) {
+      if (outcome.code() == AbilityCommand.OK) {
         // The ability's cost, as its row publishes it: what the player sees used.
-        AbilityData ability = outcome.requested().get(0).getData().ability();
+        AbilityData ability = usedAbility(use);
         if (ability != null && ability.manaCost() >= 1) {
           elixirCounts[use.side() & 1].spend(ability.manaCost() * MatchSide.SCALE);
         }
       }
     }
+    for (int side = 0; side < 2; side++) {
+      elixirCounts[side].gain(shownGains.take(side), maxElixir);
+    }
     int fullBarMs = match.getTimeline().getFullBarMs();
     for (int side = 0; side < 2; side++) {
       elixirCounts[side].regenerate(fullBarMs, maxElixir);
     }
+  }
+
+  /**
+   * The ability an ability command that passed was charged for: the battle charges the ability of
+   * the unit the command named, whether or not its slot requested any copy (a form of the champion
+   * on another row, such as the hero Wizard flying, is charged and requests none). The unit is the
+   * one a play of the side made under the name the use lists; one named by a game object id no play
+   * made falls back to the first copy requested. Null when neither is found.
+   */
+  private AbilityData usedAbility(Standard1v1Battle.AbilityUse use) {
+    for (Standard1v1Battle.Play play : standard.getPlays()) {
+      if (play.side() != use.side()) {
+        continue;
+      }
+      for (CharacterEntity unit : play.units()) {
+        if (unit.name().equals(use.unit())) {
+          return unit.getData().ability();
+        }
+      }
+    }
+    List<CharacterEntity> requested = use.outcome().requested();
+    return requested.isEmpty() ? null : requested.get(0).getData().ability();
   }
 
   /**
