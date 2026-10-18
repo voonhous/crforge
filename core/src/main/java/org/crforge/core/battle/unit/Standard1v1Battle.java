@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleCommand;
@@ -1558,11 +1559,16 @@ public class Standard1v1Battle {
    * the ones still queued.
    */
   private static List<MaskEntity> maskEntities(Battle target) {
+    return maskEntities(target, w -> true);
+  }
+
+  /** The characters of a battle as the deploy mask reads them, those a filter keeps. */
+  private static List<MaskEntity> maskEntities(Battle target, Predicate<? super WorldEntity> kept) {
     List<MaskEntity> entities = new ArrayList<>();
     List<BattleEntity> all = new ArrayList<>(target.getHolder().entities());
     all.addAll(target.getHolder().queued());
     for (BattleEntity entity : all) {
-      if (entity instanceof WorldEntity w) {
+      if (entity instanceof WorldEntity w && kept.test(w)) {
         entities.add(
             PlacementSearch.maskEntity(
                 w.getData(),
@@ -1573,6 +1579,19 @@ public class Standard1v1Battle {
       }
     }
     return entities;
+  }
+
+  /**
+   * The battle's characters as the placement search reads them now, the live list then the queued
+   * ones, those a filter keeps: what {@link #searchPlacement} builds its deploy mask from with
+   * every character kept. A tool that draws where a card may land, as a player's screen shades it,
+   * hands this to {@link PlacementSearch#mask} and {@link PlacementSearch#landingTiles}, keeping
+   * only what its player sees. Changes nothing.
+   *
+   * @param kept which characters and towers to keep
+   */
+  public List<MaskEntity> placementEntities(Predicate<? super WorldEntity> kept) {
+    return maskEntities(battle, kept);
   }
 
   /**

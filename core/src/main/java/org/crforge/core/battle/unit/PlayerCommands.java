@@ -330,6 +330,31 @@ public final class PlayerCommands {
   }
 
   /**
+   * The cards the screen's placement search is handed for a play of a hand slot given now, as
+   * {@link #playCard} hands them, or none when the client's try refuses the play ({@link #tryCard}
+   * passes exactly when this is not empty): the card in the form its play would place, an evolved
+   * or hero row, a variant card's option or the card a Mirror repeats; and second, for a Mirror
+   * whose item repeats a listed play other than the king's last card, that play's card, which the
+   * giving searches as well. Changes nothing.
+   *
+   * @param side the playing side
+   * @param slot the hand slot, 0 to 3
+   * @param level the level it would be played at, counted from 1
+   * @return the cards, in the order the giving searches them; empty when the try refuses the play
+   * @throws UnsupportedOperationException for a try the battle core does not model, as {@link
+   *     #tryCard}
+   */
+  public List<DeployCard> searchCards(int side, int slot, int level) {
+    Tried tried = tryCard(side, slot, level, "a play of slot " + slot);
+    if (tried.refused() != null) {
+      return List.of();
+    }
+    return tried.itemCard() == null
+        ? List.of(tried.searchCard())
+        : List.of(tried.searchCard(), tried.itemCard());
+  }
+
+  /**
    * Gives an ability command naming a unit a play of the side made, as its player taps the
    * champion's button now. Given, it runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks after
    * its stamp, and promises the ability's cost until then; refused, nothing changes.
