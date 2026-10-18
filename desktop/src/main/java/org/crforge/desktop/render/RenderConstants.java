@@ -210,6 +210,20 @@ public final class RenderConstants {
   /** Marker on the position a troop currently holds as its reference. */
   public static final Color COLOR_ROUTE_REFERENCE = new Color(1f, 0.85f, 0.2f, 0.9f);
 
+  // ---- Deploy overlay colors ----
+
+  /** Shade of a tile the selected card lands on without being moved. */
+  public static final Color COLOR_LANDING_OPEN = new Color(0.75f, 1f, 0.6f, 0.22f);
+
+  /** Outline of the open tiles' edge, so the shaded area reads on any ground. */
+  public static final Color COLOR_LANDING_EDGE = new Color(0.75f, 1f, 0.6f, 0.55f);
+
+  /** The tile a drop on a closed tile is moved to, and the line from the drop to it. */
+  public static final Color COLOR_LANDING_TARGET = new Color(1f, 0.85f, 0.2f, 0.95f);
+
+  /** A hovered tile whose drop finds no legal tile. */
+  public static final Color COLOR_LANDING_NONE = new Color(1f, 0.3f, 0.3f, 0.9f);
+
   // ---- Damage number colors ----
 
   /** Red color for floating HP damage numbers. */

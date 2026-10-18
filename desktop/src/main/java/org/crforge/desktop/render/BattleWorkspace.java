@@ -311,6 +311,14 @@ public final class BattleWorkspace implements Disposable {
         () -> command.accept(WorkspaceAction.CELL_COSTS));
     toggle(
         tools, "Routes [N]", renderer::isDrawRoutes, () -> command.accept(WorkspaceAction.ROUTES));
+    if (!replay) {
+      // Cards are selected on the Ladder screen only, so only it draws the deploy overlay.
+      toggle(
+          tools,
+          "Landing tiles [M]",
+          renderer::isDrawLanding,
+          () -> command.accept(WorkspaceAction.LANDING));
+    }
     tools.add().height(12).row();
     heading(tools, "SESSION");
     diagnostics = wrapped("");

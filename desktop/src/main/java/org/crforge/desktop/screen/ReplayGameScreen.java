@@ -377,6 +377,8 @@ public class ReplayGameScreen implements Screen {
               -1,
               null,
               null,
+              null,
+              null,
               status,
               List.of(),
               view),
