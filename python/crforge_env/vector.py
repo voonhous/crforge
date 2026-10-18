@@ -301,6 +301,11 @@ class VectorBattle:
         # vector, which plays no battle.
         mask_version = self.metadata.get("mask_version")
         self.mask_version: int | None = None if mask_version is None else int(mask_version)
+        # The id rule, kept apart from the schema too: 2, each seat numbers the entities in the
+        # order it is first shown them; None for a synthetic vector and for an export written
+        # before the rule (rule 1, the battle's own ids).
+        id_version = self.metadata.get("id_version")
+        self.id_version: int | None = None if id_version is None else int(id_version)
         vocabulary = self.metadata.get("vocabulary")
         if vocabulary is not None:
             self.vocabulary: list[str] = list(vocabulary["names"])

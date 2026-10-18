@@ -183,6 +183,9 @@ public final class LadderEnv extends BufferedEnv {
   private final int[][][] shownY = new int[2][0][];
   private final int[][][] shownAt = new int[2][0][];
 
+  /** Per seat: the ids its observation names entities by, in order of first sight. */
+  private final SeatIds seatIds = new SeatIds();
+
   /** The number of the observation being written, counted over the environment's life. */
   private int observation;
 
@@ -261,6 +264,17 @@ public final class LadderEnv extends BufferedEnv {
   public String abilityUnit(int seat, int slot) {
     CharacterEntity unit = findAbilityUnit(seat, slot);
     return unit == null ? null : unit.name();
+  }
+
+  /**
+   * The battle id an id of a seat's observation stands for ({@link SeatIds}), or -1 for an id the
+   * seat was not given in the episode.
+   *
+   * @param seat the seat, 0 or 1
+   * @param id an id of the seat's observation: a row's, a target's or a champion slot's unit's
+   */
+  int battleId(int seat, int id) {
+    return seatIds.battleId(seat, id);
   }
 
   @Override
@@ -368,6 +382,7 @@ public final class LadderEnv extends BufferedEnv {
     abilityUsesCounted = 0;
     // No row of the last episode is the previous observation of this one's first.
     observation += 2;
+    seatIds.clear();
     for (int seat = 0; seat < 2; seat++) {
       fieldSeen.set(seat, new ArrayList<>());
       landingSeen.get(seat).clear();
@@ -1103,7 +1118,7 @@ public final class LadderEnv extends BufferedEnv {
       UnitData champion = slot == null ? null : slot.getChampion();
       CharacterEntity unit = findAbilityUnit(seat, k);
       o[at] = champion == null ? -1 : vocabulary.id(champion.name());
-      o[at + 1] = unit != null && unit.getView().isAlive() ? unit.getId() : -1;
+      o[at + 1] = unit != null && unit.getView().isAlive() ? seatIds.of(seat, unit.getId()) : -1;
       o[at + 2] = slot == null ? 0 : slot.getState();
       o[at + 3] = slot == null ? 0 : slot.getCooldownMs();
       o[at + 4] = slot == null ? 0 : slot.getCharges();
@@ -1181,7 +1196,7 @@ public final class LadderEnv extends BufferedEnv {
     int[] o = seatScratch;
     int x = Schema.toSeatX(seat, view.getX());
     int y = Schema.toSeatY(seat, view.getY());
-    o[at + Schema.E_ID] = world.getId();
+    o[at + Schema.E_ID] = seatIds.of(seat, world.getId());
     o[at + Schema.E_KIND] =
         world instanceof TowerEntity ? Schema.KIND_TOWER : Schema.KIND_CHARACTER;
     o[at + Schema.E_SIDE] = relative(seat, world.side());
@@ -1255,13 +1270,16 @@ public final class LadderEnv extends BufferedEnv {
     return values == null ? new int[size] : Arrays.copyOf(values, size);
   }
 
-  /** Writes a row's target: its id and position in the seat's frame, when the seat sees it. */
+  /**
+   * Writes a row's target: the seat's id of it and its position in the seat's frame, when the seat
+   * sees it.
+   */
   private void target(int seat, int at, WorldEntity target) {
     if (target == null || !SeatView.sees(seat, target)) {
       seatScratch[at + Schema.E_TARGET] = Schema.NO_TARGET;
       return;
     }
-    seatScratch[at + Schema.E_TARGET] = target.getId();
+    seatScratch[at + Schema.E_TARGET] = seatIds.of(seat, target.getId());
     seatScratch[at + Schema.E_TARGET_X] = Schema.toSeatX(seat, target.getView().getX());
     seatScratch[at + Schema.E_TARGET_Y] = Schema.toSeatY(seat, target.getView().getY());
   }
@@ -1303,7 +1321,7 @@ public final class LadderEnv extends BufferedEnv {
     }
     int seatX = Schema.toSeatX(seat, x);
     int seatY = Schema.toSeatY(seat, y);
-    o[at + Schema.E_ID] = entity.getId();
+    o[at + Schema.E_ID] = seatIds.of(seat, entity.getId());
     o[at + Schema.E_KIND] = kind;
     o[at + Schema.E_SIDE] = relative(seat, side);
     o[at + Schema.E_ROW] = vocabulary.id(name);

@@ -8,13 +8,19 @@ package org.crforge.env;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SplittableRandom;
+import java.util.TreeSet;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameRow;
@@ -78,6 +84,11 @@ class SeatObservationTest {
     return ((LadderEnv) env.env(0)).battle();
   }
 
+  /** The battle id an id of a seat's observation stands for. */
+  private static int battleId(VectorEnv env, int seat, int id) {
+    return ((LadderEnv) env.env(0)).battleId(seat, id);
+  }
+
   private static int header(VectorEnv env, int seat, int field) {
     return env.observations().asIntBuffer().get(seat * Schema.SEAT_INTS + field);
   }
@@ -134,6 +145,31 @@ class SeatObservationTest {
       map.put(entity.getId(), entity);
     }
     return map;
+  }
+
+  /** A seat's written rows, by the battle id of the entity each shows. */
+  private static Map<Integer, int[]> byBattleId(VectorEnv env, int seat, Map<Integer, int[]> rows) {
+    Map<Integer, int[]> map = new HashMap<>();
+    rows.forEach((id, row) -> map.put(battleId(env, seat, id), row));
+    return map;
+  }
+
+  /** Every id a seat's observation names: its rows', their targets' and its champion units'. */
+  private static Set<Integer> idsNamed(VectorEnv env, int seat) {
+    Set<Integer> ids = new TreeSet<>();
+    for (int[] row : rows(env, seat).values()) {
+      ids.add(row[Schema.E_ID]);
+      if (row[Schema.E_TARGET] != Schema.NO_TARGET) {
+        ids.add(row[Schema.E_TARGET]);
+      }
+    }
+    for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+      int unit = header(env, seat, Schema.H_ABILITY + k * Schema.ABILITY_INTS + 1);
+      if (unit != -1) {
+        ids.add(unit);
+      }
+    }
+    return ids;
   }
 
   /** A seat's written rows, by entity id, each its whole row. */
@@ -262,21 +298,34 @@ class SeatObservationTest {
       Standard1v1Battle battle = battle(env);
       SplittableRandom random = new SplittableRandom(7);
       List<Map<Integer, int[]>> before = List.of(rows(env, 0), rows(env, 1));
+      // Per seat, the battle id each of its ids stood for when first named.
+      List<Map<Integer, Integer>> firstNamed = List.of(new HashMap<>(), new HashMap<>());
       int buffs = 0;
       int projectiles = 0;
       int areas = 0;
       int targets = 0;
+      int targetRows = 0;
       int deploying = 0;
       int moved = 0;
+      int numberedApart = 0;
       for (int step = 0; step < 500 && env.dones().get(0) == 0; step++) {
         act(env, randomAction(env, 0, random, 4), randomAction(env, 1, random, 4));
         Map<Integer, BattleEntity> core = byId(battle);
         List<Map<Integer, int[]>> now = List.of(rows(env, 0), rows(env, 1));
         for (int seat = 0; seat < 2; seat++) {
+          // An id stands for one entity through the episode, and an entity keeps its id.
+          Map<Integer, Integer> first = firstNamed.get(seat);
+          for (int id : idsNamed(env, seat)) {
+            first.putIfAbsent(id, battleId(env, seat, id));
+            assertThat(battleId(env, seat, id))
+                .as("seat %d id %d", seat, id)
+                .isEqualTo(first.get(id));
+          }
+          assertThat(new HashSet<>(first.values())).hasSameSizeAs(first.keySet());
           for (int[] row : now.get(seat).values()) {
-            BattleEntity entity = core.get(row[Schema.E_ID]);
+            BattleEntity entity = core.get(battleId(env, seat, row[Schema.E_ID]));
             assertThat(entity).isNotNull();
-            checkRow(battle, seat, row, entity);
+            checkRow(env, battle, seat, row, entity);
             int[] last = before.get(seat).get(row[Schema.E_ID]);
             assertThat(row[Schema.E_DX])
                 .isEqualTo(last == null ? 0 : row[Schema.E_X] - last[Schema.E_X]);
@@ -288,21 +337,35 @@ class SeatObservationTest {
             areas += row[Schema.E_KIND] == Schema.KIND_AREA ? 1 : 0;
             targets += row[Schema.E_TARGET] != Schema.NO_TARGET ? 1 : 0;
             deploying += row[Schema.E_DEPLOY_MS] > 0 ? 1 : 0;
+            // A target the seat has a row of is named by that row's id.
+            int[] target = now.get(seat).get(row[Schema.E_TARGET]);
+            if (row[Schema.E_TARGET] != Schema.NO_TARGET && target != null) {
+              assertThat(target[Schema.E_X]).isEqualTo(row[Schema.E_TARGET_X]);
+              assertThat(target[Schema.E_Y]).isEqualTo(row[Schema.E_TARGET_Y]);
+              targetRows++;
+            }
           }
         }
         // Both seats list an entity both see, half a turn apart; one listed for one seat alone
-        // is one the other does not see (a unit waiting its turn to deploy).
+        // is one the other does not see (a unit waiting its turn to deploy). Each seat numbers
+        // by its own sight, so the two ids of one entity may differ.
+        List<Map<Integer, int[]>> nowByBattle =
+            List.of(byBattleId(env, 0, now.get(0)), byBattleId(env, 1, now.get(1)));
+        List<Map<Integer, int[]>> beforeByBattle =
+            List.of(byBattleId(env, 0, before.get(0)), byBattleId(env, 1, before.get(1)));
         for (int seat = 0; seat < 2; seat++) {
-          for (int[] a : now.get(seat).values()) {
-            int[] b = now.get(1 - seat).get(a[Schema.E_ID]);
+          for (Map.Entry<Integer, int[]> entry : nowByBattle.get(seat).entrySet()) {
+            int[] a = entry.getValue();
+            int[] b = nowByBattle.get(1 - seat).get(entry.getKey());
             if (b == null) {
-              assertThat(SeatView.sees(1 - seat, (WorldEntity) core.get(a[Schema.E_ID]))).isFalse();
+              assertThat(SeatView.sees(1 - seat, (WorldEntity) core.get(entry.getKey()))).isFalse();
             } else if (seat == 0) {
               // A move is the same for both seats when both were shown the entity before.
               boolean bothBefore =
-                  before.get(0).containsKey(a[Schema.E_ID])
-                      && before.get(1).containsKey(a[Schema.E_ID]);
-              checkHalfATurn(a, b, bothBefore);
+                  beforeByBattle.get(0).containsKey(entry.getKey())
+                      && beforeByBattle.get(1).containsKey(entry.getKey());
+              checkHalfATurn(env, a, b, bothBefore);
+              numberedApart += a[Schema.E_ID] != b[Schema.E_ID] ? 1 : 0;
             }
           }
         }
@@ -312,13 +375,95 @@ class SeatObservationTest {
       assertThat(projectiles).as("projectile rows").isPositive();
       assertThat(areas).as("area effect rows").isPositive();
       assertThat(targets).as("rows with a target").isPositive();
+      assertThat(targetRows).as("rows whose target has a row").isPositive();
       assertThat(deploying).as("rows deploying").isPositive();
       assertThat(moved).as("rows that moved").isPositive();
+      assertThat(numberedApart).as("rows both seats show under other ids").isPositive();
+    }
+  }
+
+  @Test
+  void theIdRuleIsExportedApartFromTheSchema() throws IOException {
+    // The rule moves the ids' values alone, not the layout: a saved export of schema version 3
+    // still passes the schema's check, and the metadata tells which rule wrote the ids.
+    JsonNode ladder = new ObjectMapper().readTree(VectorEnv.metadataJson(EnvConfig.DEFAULT, null));
+    assertThat(ladder.path("id_version").asInt()).isEqualTo(Schema.ID_SEAT_FIRST_SIGHT);
+    assertThat(Schema.ID_VERSION).isEqualTo(Schema.ID_SEAT_FIRST_SIGHT);
+    assertThat(ladder.path("schema").has("id_version")).isFalse();
+    assertThat(ladder.path("config").has("id_version")).isFalse();
+    assertThat(VectorEnv.metadataJson(null, null)).doesNotContain("id_version");
+  }
+
+  @Test
+  void aSeatNumbersItsEntitiesInOrderOfFirstSightLeavingNoGapForAnEnemyItIsNotShown() {
+    // Goblins and Archers place units that wait their turn to deploy, hidden from the enemy.
+    try (VectorEnv env = ladder(EnvConfig.DEFAULT, OTHER, OTHER)) {
+      env.setAutoreset(false);
+      Standard1v1Battle battle = battle(env);
+      SplittableRandom random = new SplittableRandom(11);
+      int skipped = 0;
+      for (int episode = 0; episode < 2; episode++) {
+        // Per seat: the battle ids it was shown, by its id.
+        List<Map<Integer, Integer>> shown = List.of(new HashMap<>(), new HashMap<>());
+        for (int step = 0; step < 400 && env.dones().get(0) == 0; step++) {
+          for (int seat = 0; seat < 2; seat++) {
+            Map<Integer, Integer> known = shown.get(seat);
+            // The ids first named now follow on from the ids named before, with no gap.
+            List<Integer> fresh = new ArrayList<>();
+            for (int id : idsNamed(env, seat)) {
+              if (!known.containsKey(id)) {
+                fresh.add(id);
+              }
+            }
+            for (int k = 0; k < fresh.size(); k++) {
+              assertThat(fresh.get(k))
+                  .as("seat %d step %d", seat, step)
+                  .isEqualTo(known.size() + k);
+            }
+            for (int id : fresh) {
+              known.put(id, battleId(env, seat, id));
+            }
+            // Count the entities shown first now that the battle made after an enemy unit the
+            // seat is not shown and was never shown, and after one it was shown before.
+            for (int id : fresh) {
+              int made = known.get(id);
+              int kind = made / BattleEntity.IDS_PER_KIND;
+              boolean before = false;
+              for (int other : known.values()) {
+                before |= other / BattleEntity.IDS_PER_KIND == kind && other < made;
+              }
+              for (BattleEntity entity : battle.getBattle().getHolder().entities()) {
+                boolean between =
+                    entity instanceof CharacterEntity unit
+                        && unit.side() != seat
+                        && !SeatView.sees(seat, unit)
+                        && !known.containsValue(unit.getId())
+                        && unit.getId() / BattleEntity.IDS_PER_KIND == kind
+                        && unit.getId() < made;
+                skipped += before && between ? 1 : 0;
+              }
+            }
+          }
+          act(env, randomAction(env, 0, random, 4), randomAction(env, 1, random, 4));
+        }
+        env.reset(new int[] {200 + episode}, OTHER, OTHER);
+        battle = battle(env);
+        // A new episode numbers afresh: its first rows are 0, 1, 2, ... in row order.
+        for (int seat = 0; seat < 2; seat++) {
+          for (int r = 0; r < header(env, seat, Schema.H_ENTITY_COUNT); r++) {
+            assertThat(entity(env, seat, r, Schema.E_ID)).isEqualTo(r);
+          }
+        }
+      }
+      assertThat(skipped)
+          .as("entities shown after an enemy unit the seat was not shown")
+          .isPositive();
     }
   }
 
   /** One seat's row against the battle core's entity it names. */
-  private static void checkRow(Standard1v1Battle battle, int seat, int[] row, BattleEntity entity) {
+  private static void checkRow(
+      VectorEnv env, Standard1v1Battle battle, int seat, int[] row, BattleEntity entity) {
     assertThat(row[Schema.E_X]).isBetween(-Schema.WIDTH_UNITS, 2 * Schema.WIDTH_UNITS);
     if (entity instanceof WorldEntity world) {
       int flags = row[Schema.E_FLAGS];
@@ -354,7 +499,7 @@ class SeatObservationTest {
       }
       TargetView reference = world.getTargeting().getReference();
       GridEntity target = reference == null ? null : reference.getEntity();
-      checkTarget(battle, seat, row, target == null ? null : battle.getWorld().entityOf(target));
+      checkTarget(env, seat, row, target == null ? null : battle.getWorld().entityOf(target));
       assertThat(row[Schema.E_AIM_X]).isZero();
       assertThat(row[Schema.E_TIME_LEFT_MS]).isZero();
     } else if (entity instanceof ProjectileEntity projectile) {
@@ -363,7 +508,7 @@ class SeatObservationTest {
       assertThat(row[Schema.E_LEVEL]).isEqualTo(PackedLevel.level(projectile.getPackedLevel()));
       assertThat(row[Schema.E_AIM_X]).isEqualTo(Schema.toSeatX(seat, projectile.getAimX()));
       assertThat(row[Schema.E_AIM_Y]).isEqualTo(Schema.toSeatY(seat, projectile.getAimY()));
-      checkTarget(battle, seat, row, projectile.getTarget());
+      checkTarget(env, seat, row, projectile.getTarget());
       assertThat(row[Schema.E_BUFFS]).isEqualTo(-1);
     } else if (entity instanceof AreaEffectEntity area) {
       assertThat(row[Schema.E_FLAGS] & Schema.F_ALIVE).isNotZero();
@@ -375,21 +520,23 @@ class SeatObservationTest {
     }
   }
 
-  private static void checkTarget(
-      Standard1v1Battle battle, int seat, int[] row, WorldEntity target) {
+  private static void checkTarget(VectorEnv env, int seat, int[] row, WorldEntity target) {
     if (target == null || !SeatView.sees(seat, target)) {
       assertThat(row[Schema.E_TARGET]).isEqualTo(Schema.NO_TARGET);
       assertThat(row[Schema.E_TARGET_X]).isZero();
       assertThat(row[Schema.E_TARGET_Y]).isZero();
       return;
     }
-    assertThat(row[Schema.E_TARGET]).isEqualTo(target.getId());
+    assertThat(battleId(env, seat, row[Schema.E_TARGET])).isEqualTo(target.getId());
     assertThat(row[Schema.E_TARGET_X]).isEqualTo(Schema.toSeatX(seat, target.getView().getX()));
     assertThat(row[Schema.E_TARGET_Y]).isEqualTo(Schema.toSeatY(seat, target.getView().getY()));
   }
 
-  /** Seat 0's and seat 1's rows of one entity: every point half a turn apart, the rest alike. */
-  private static void checkHalfATurn(int[] a, int[] b, boolean moves) {
+  /**
+   * Seat 0's and seat 1's rows of one entity: every point half a turn apart, the ids each seat's
+   * own, the target the same entity, the rest alike.
+   */
+  private static void checkHalfATurn(VectorEnv env, int[] a, int[] b, boolean moves) {
     int[][] points = {
       {Schema.E_X, Schema.E_Y},
       {Schema.E_AIM_X, Schema.E_AIM_Y},
@@ -398,6 +545,11 @@ class SeatObservationTest {
     for (int f = 0; f < Schema.ENTITY_INTS; f++) {
       if (f == Schema.E_SIDE) {
         assertThat(b[f]).isEqualTo(a[f] == 2 ? 2 : 1 - a[f]);
+      } else if (f == Schema.E_ID) {
+        assertThat(battleId(env, 1, b[f])).isEqualTo(battleId(env, 0, a[f]));
+      } else if (f == Schema.E_TARGET) {
+        assertThat(b[f] == Schema.NO_TARGET ? -1 : battleId(env, 1, b[f]))
+            .isEqualTo(a[f] == Schema.NO_TARGET ? -1 : battleId(env, 0, a[f]));
       } else if (f == Schema.E_DX || f == Schema.E_DY) {
         if (moves) {
           assertThat(b[f]).isEqualTo(-a[f]);
@@ -441,6 +593,22 @@ class SeatObservationTest {
   private static boolean enemyPlayField(int field) {
     return field >= Schema.H_ENEMY_SEEN && field < Schema.H_ENEMY_SEEN + Schema.DECK_SIZE
         || field >= Schema.H_ENEMY_PLAY_COUNT && field < Schema.H_QUEUE;
+  }
+
+  /** Whether a seat field holds an id: a row's or its target's, a champion slot's unit's. */
+  private static boolean idField(int field) {
+    if (field >= Schema.HEADER_INTS) {
+      int f = (field - Schema.HEADER_INTS) % Schema.ENTITY_INTS;
+      return f == Schema.E_ID || f == Schema.E_TARGET;
+    }
+    return field >= Schema.H_ABILITY
+        && field < Schema.H_ABILITY + Schema.ABILITY_SLOTS * Schema.ABILITY_INTS
+        && (field - Schema.H_ABILITY) % Schema.ABILITY_INTS == 1;
+  }
+
+  /** The battle id behind an id field's value of seat 0, -1 for none. */
+  private static int entityOf(VectorEnv env, int id) {
+    return id == -1 ? -1 : battleId(env, 0, id);
   }
 
   @Test
@@ -501,17 +669,21 @@ class SeatObservationTest {
         hiddenDecisions++;
         // Hidden: no row, no target, no closed tile; the header differs from b's only by the
         // play seat 0 saw run.
-        Map<Integer, int[]> rows = rows(a, 0);
-        assertThat(rows).doesNotContainKey(building.getId());
-        for (int[] row : rows.values()) {
-          assertThat(row[Schema.E_TARGET]).isNotEqualTo(building.getId());
+        for (int id : idsNamed(a, 0)) {
+          assertThat(battleId(a, 0, id)).isNotEqualTo(building.getId());
         }
         byte[] seenA = seatBytes(a, 0);
         byte[] seenB = seatBytes(b, 0);
         IntBuffer intsA = ByteBuffer.wrap(seenA).order(a.observations().order()).asIntBuffer();
         IntBuffer intsB = ByteBuffer.wrap(seenB).order(b.observations().order()).asIntBuffer();
         for (int f = 0; f < Schema.SEAT_INTS; f++) {
-          if (!enemyPlayField(f)) {
+          if (idField(f)) {
+            // Seat 0 saw the building in a before it hid, so its later ids in a run one past
+            // b's: an id field names the same entity in both.
+            assertThat(entityOf(b, intsB.get(f)))
+                .as("seat 0 field %d", f)
+                .isEqualTo(entityOf(a, intsA.get(f)));
+          } else if (!enemyPlayField(f)) {
             assertThat(intsA.get(f)).as("seat 0 field %d", f).isEqualTo(intsB.get(f));
           }
         }

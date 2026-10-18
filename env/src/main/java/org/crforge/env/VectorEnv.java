@@ -681,6 +681,9 @@ public final class VectorEnv implements AutoCloseable {
       // The mask rule stands apart from the schema and the configuration: a model trained under
       // one rule reads the same observations and actions under the other.
       root.put("mask_version", config.maskVersion());
+      // So does the id rule: it moves the ids' values, not the layout, so an export of the schema
+      // before it still passes the schema's check.
+      root.put("id_version", Schema.ID_VERSION);
       ObjectNode node = root.putObject("config");
       node.put("decision_ticks", config.decisionTicks());
       node.put("level", config.level());

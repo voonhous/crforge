@@ -314,6 +314,19 @@ def test_the_landing_mask_closes_tiles_and_the_old_rule_is_kept_apart(install, t
         VectorBattle(1, 1, install=install, tables=tables, config=LadderConfig(mask_version=3))
 
 
+def test_each_seat_numbers_its_entities_in_order_of_first_sight(install, tables):
+    # An episode's first rows are numbered 0, 1, 2, ... in row order in each seat, whatever the
+    # battle's own ids; the rule is exported apart from the schema.
+    with VectorBattle(1, 1, install=install, tables=tables) as v:
+        assert v.id_version == 2
+        assert "id_version" not in v.metadata["schema"]
+        for seed in (3, 4):
+            v.reset([seed], BLUE, RED)
+            for seat in range(2):
+                ids = v.schema.columns(v.observations[0, seat])["id"]
+                assert len(ids) > 0 and list(ids) == list(range(len(ids)))
+
+
 def test_the_new_fields_hold_their_bounds_and_the_buffs_their_own_list(install, tables, tmp_path):
     with VectorBattle(2, 1, install=install, tables=tables) as v:
         v.reset([7, 8], BLUE, RED)
