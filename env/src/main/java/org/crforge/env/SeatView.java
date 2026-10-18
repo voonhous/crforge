@@ -6,12 +6,20 @@
 
 package org.crforge.env;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.action.ActionInstance;
+import org.crforge.core.battle.data.GameAction;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.CharacterEntity;
-import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -30,8 +38,9 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * sees a row at its current position with its underground flag, nothing of where it will come up,
  * and its row's name only when {@link #TRAIL_NAMES_CARD} says the trail tells the card ({@link
  * #trail}). An enemy character's hit points and shield are shown only where the screen draws its
- * health bar ({@link Bars#shown}). The seat's own entities, every tower, projectiles and area
- * effects are always shown.
+ * health bar ({@link Bars#shown}): always for most rows, and for a row that sets HideHealthbar from
+ * its first damage on. The seat's own entities, every tower, projectiles and area effects are
+ * always shown.
  */
 final class SeatView {
 
@@ -78,16 +87,29 @@ final class SeatView {
   }
 
   /**
-   * The rows' health bars, as the screen draws them for the other side's player: a character row
-   * that names a health bar row and does not set HideHealthbar has one, which the screen shows
-   * whenever the unit is on the field and not underground (every health bar row a character names
-   * shows on the enemy's screen always); a building row that does not set HideHealthbar has one,
-   * which the screen shows while it is damaged or carries a shield, and always for a building with
-   * a life time or an elixir production; a row that sets HideHealthbar, or a character row that
-   * names no health bar, shows none. The health bar rows themselves (which show always to the
-   * enemy) are not among the game tables the environment reads: every health bar row a character
-   * names in the tables of the data versions held shows to the enemy always, and the rule takes it
-   * so.
+   * The health bars as the screen draws them for the other side's player, by row, and which units
+   * have been damaged since they came on the field.
+   *
+   * <p>A character or building row that does not set HideHealthbar has the health bar its HealthBar
+   * column names, or, naming none, a default one picked by its hit points. Every health bar row
+   * those can reach shows on the enemy's screen always, so the enemy sees the hit points and shield
+   * always (an unhurt unit's hit points are its maximum). The health bar rows themselves are not
+   * among the game tables the environment reads; the rule takes their show-to-the-enemy-always
+   * column as set, which holds for every health bar row a character or building can reach in the
+   * tables of 16.402.18, 16.402.19 and 16.402.21.
+   *
+   * <p>A row that sets HideHealthbar (many champion, hero and evolution rows, the Dark Prince, the
+   * Guards) has no such bar. Its bar is the one its starting client actions build: a row whose
+   * starting client actions name a health bar shows its hit points and shield from the unit's first
+   * damage on, and keeps showing them for the unit's life, healed back to full or not, as a player
+   * sees on an enemy Dark Prince, Guards or Archer Queen. Damaged means its hit points not at their
+   * maximum, or its shield changed while the row has a shield: a hit, a lost shield and a shield
+   * that grows all count. While its action that sets HideHealthbarWhileRolling runs (the Barb Log
+   * hero's roll) the bar is hidden. A row that sets HideHealthbar and whose starting client actions
+   * name no health bar (dummies, ghosts and helper objects) never shows them.
+   *
+   * <p>The damage is watched at every tick ({@link #watch}), so a unit damaged and healed back to
+   * full between two decisions is shown as damaged.
    */
   static final class Bars {
 
@@ -97,13 +119,25 @@ final class SeatView {
     /** A row whose health bar shows to the other side always. */
     private static final byte ALWAYS = 2;
 
-    /** A building row whose health bar shows when damaged, or always with a life or production. */
-    private static final byte BUILDING = 3;
+    /** A row that sets HideHealthbar and builds its own bar: shown from its first damage on. */
+    private static final byte DAMAGED = 3;
 
     private static final String CHARACTERS = "characters";
     private static final String BUILDINGS = "buildings";
 
+    /** The text every starting client action that builds a health bar names. */
+    private static final String HEALTH_BAR_ACTION = "healthbar";
+
     private final Map<String, Byte> rules = new HashMap<>();
+
+    /** The action rows that hide the bar while they run. */
+    private final Set<String> hideWhileRunning = new HashSet<>();
+
+    /** The units of rows shown from their first damage on that have been damaged, by battle id. */
+    private final Set<Integer> damaged = new HashSet<>();
+
+    /** The shield each unit of such a row had when last watched, by battle id. */
+    private final Map<Integer, Integer> shields = new HashMap<>();
 
     /**
      * The health bar rules of the tables' character and building rows.
@@ -115,17 +149,80 @@ final class SeatView {
         if (!tables.tableNames().contains(table)) {
           continue;
         }
-        boolean building = table.equals(BUILDINGS);
         for (GameRow row : tables.table(table).rows()) {
           byte rule;
-          if (row.bool("HideHealthbar")) {
-            rule = NONE;
-          } else if (building) {
-            rule = BUILDING;
+          if (!row.bool("HideHealthbar")) {
+            rule = ALWAYS;
           } else {
-            rule = row.string("HealthBar").isEmpty() ? NONE : ALWAYS;
+            rule = buildsHealthBar(row) ? DAMAGED : NONE;
           }
           rules.put(row.name(), rule);
+        }
+      }
+      for (String name : tables.actionNames()) {
+        GameAction action = tables.action(name);
+        if (action.fields() != null
+            && action.fields().path("HideHealthbarWhileRolling").asBoolean(false)) {
+          hideWhileRunning.add(name);
+        }
+      }
+    }
+
+    /** Whether a row's starting client actions name a health bar. */
+    private static boolean buildsHealthBar(GameRow row) {
+      JsonNode actions = row.value("OnStartingClientActions");
+      if (actions == null) {
+        return false;
+      }
+      List<JsonNode> names = new ArrayList<>();
+      if (actions.isArray()) {
+        actions.forEach(names::add);
+      } else {
+        names.add(actions);
+      }
+      for (JsonNode name : names) {
+        if (name.asText().toLowerCase(Locale.ROOT).contains(HEALTH_BAR_ACTION)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /** Forgets the last episode's units. */
+    void clear() {
+      damaged.clear();
+      shields.clear();
+    }
+
+    /**
+     * Watches the field's units after a tick: a unit of a row shown from its first damage on is
+     * marked damaged, for its life, once its hit points are not at their maximum or its shield
+     * changed while the row has a shield. The first tick a unit is watched only keeps its shield.
+     *
+     * @param entities the battle's entities
+     */
+    void watch(List<BattleEntity> entities) {
+      for (BattleEntity entity : entities) {
+        if (!(entity instanceof CharacterEntity character)
+            || rules.getOrDefault(character.getData().name(), ALWAYS) != DAMAGED) {
+          continue;
+        }
+        HitPoints points = character.getHitPoints();
+        int id = character.getId();
+        if (points == null || damaged.contains(id)) {
+          continue;
+        }
+        Integer last = shields.get(id);
+        boolean shieldChanged = false;
+        if (last == null) {
+          // The first tick it is watched: its shield then is the one compared from.
+          shields.put(id, points.getShield());
+        } else if (points.getShieldMaximum() >= 1 && last != points.getShield()) {
+          shieldChanged = true;
+          shields.put(id, points.getShield());
+        }
+        if (shieldChanged || points.getHitPoints() != points.getMaximum()) {
+          damaged.add(id);
         }
       }
     }
@@ -145,17 +242,24 @@ final class SeatView {
       if (character.underground()) {
         return false;
       }
-      UnitData data = character.getData();
-      byte rule = rules.getOrDefault(data.name(), ALWAYS);
-      if (rule == NONE) {
+      byte rule = rules.getOrDefault(character.getData().name(), ALWAYS);
+      if (rule == DAMAGED) {
+        return damaged.contains(character.getId()) && !rolling(character);
+      }
+      return rule == ALWAYS;
+    }
+
+    /** Whether one of a unit's running actions hides its bar while it runs. */
+    private boolean rolling(CharacterEntity character) {
+      if (hideWhileRunning.isEmpty()) {
         return false;
       }
-      if (rule == ALWAYS || data.lifeTimeMs() > 0 || data.manaCollectAmount() > 0) {
-        return true;
+      for (ActionInstance instance : character.actionHolder().running()) {
+        if (!instance.isFinished() && hideWhileRunning.contains(instance.getAction().name())) {
+          return true;
+        }
       }
-      HitPoints points = character.getHitPoints();
-      return points != null
-          && (points.getHitPoints() < points.getMaximum() || points.getShield() > 0);
+      return false;
     }
   }
 }
