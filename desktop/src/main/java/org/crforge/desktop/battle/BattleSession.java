@@ -80,6 +80,9 @@ public final class BattleSession {
    */
   private final PlayerCommands commands;
 
+  /** The deploy overlay's tiles of the battle, kept until the field changes. */
+  private final LandingTiles landing;
+
   /** How many of the battle's plays have been read for refusals. */
   private int playsRead;
 
@@ -93,6 +96,7 @@ public final class BattleSession {
     this.battle = battle;
     this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
     this.commands = battle.getMatch() == null ? null : new PlayerCommands(battle);
+    this.landing = new LandingTiles(battle);
     // Attached before the first step, so it hears every tick of the battle.
     battle.getWorld().addObserver(areaHits);
   }
@@ -291,6 +295,65 @@ public final class BattleSession {
       return null;
     }
     return battle.getWorld().getRecords().card(card.name());
+  }
+
+  /**
+   * The tiles a hand slot's card lands on without being moved now, as the deploy overlay shades
+   * them ({@link LandingTiles}): from the cards the screen's search is handed for a play of the
+   * slot ({@link PlayerCommands#searchCards}), on the field the side sees.
+   *
+   * @param side 0 or 1
+   * @param slot the hand slot, 0 to 3
+   * @return the tiles, or null when the client's try refuses the play now, the battle has stopped,
+   *     there is no match, or the battle core refuses the try as not modelled
+   */
+  public LandingTiles.Tiles landingTiles(int side, int slot) {
+    List<DeployCard> cards = searchCards(side, slot);
+    if (cards.isEmpty()) {
+      return null;
+    }
+    try {
+      return landing.tiles(side, cards);
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Where a drop of a hand slot's card at a tile's centre goes now, as the screen sends the play:
+   * the point the battle's placement search finds, and whether the overlay shows the tile open.
+   *
+   * @param side 0 or 1
+   * @param slot the hand slot, 0 to 3
+   * @param tileX the tile's column
+   * @param tileY the tile's row
+   * @return the landing, or null when {@link #landingTiles} has no tiles
+   */
+  public LandingTiles.Landing landingAt(int side, int slot, int tileX, int tileY) {
+    List<DeployCard> cards = searchCards(side, slot);
+    if (cards.isEmpty()) {
+      return null;
+    }
+    try {
+      return landing.landing(side, cards, tileX, tileY);
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  /**
+   * The cards the screen's search is handed for a play of a hand slot now, or none when the play is
+   * not offered: the battle stopped, no match, an empty slot, or the client's try refuses it.
+   */
+  private List<DeployCard> searchCards(int side, int slot) {
+    if (commands == null || halted != null || isOver() || handCard(side, slot) == null) {
+      return List.of();
+    }
+    try {
+      return commands.searchCards(side, slot, handCardLevel(side, slot));
+    } catch (RuntimeException e) {
+      return List.of();
+    }
   }
 
   /**

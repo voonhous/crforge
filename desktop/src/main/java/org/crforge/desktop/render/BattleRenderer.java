@@ -31,6 +31,7 @@ import org.crforge.desktop.battle.ActionMeter;
 import org.crforge.desktop.battle.AreaHitLog;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.EntityView;
+import org.crforge.desktop.battle.LandingTiles;
 import org.crforge.desktop.battle.UnitStatus;
 
 /**
@@ -78,6 +79,7 @@ public class BattleRenderer {
   private final RouteOverlayRenderer routes;
   private final DamageNumberRenderer damageNumbers;
   private final AoeDamageRenderer areaHits;
+  private final LandingOverlayRenderer landing;
 
   @Getter private boolean drawPaths = false;
   @Getter private boolean drawRanges = false;
@@ -86,6 +88,10 @@ public class BattleRenderer {
   @Getter private boolean drawHpNumbers = true;
   @Getter private boolean drawCellCosts = false;
   @Getter private boolean drawRoutes = false;
+
+  /** The deploy overlay: the selected card's landing tiles, on by default; presets leave it. */
+  @Getter private boolean drawLanding = true;
+
   @Getter private boolean drawLabels = true;
   @Getter private boolean drawGrid = false;
   @Getter private boolean drawTargets = false;
@@ -147,6 +153,7 @@ public class BattleRenderer {
     this.routes = new RouteOverlayRenderer(ctx);
     this.damageNumbers = new DamageNumberRenderer(ctx);
     this.areaHits = new AoeDamageRenderer(ctx);
+    this.landing = new LandingOverlayRenderer(ctx);
   }
 
   public void toggleDrawPaths() {
@@ -177,6 +184,10 @@ public class BattleRenderer {
     drawRoutes = !drawRoutes;
   }
 
+  public void toggleDrawLanding() {
+    drawLanding = !drawLanding;
+  }
+
   public String hoveredCellStatus(BattleWorld world, int column, int row) {
     return drawCellCosts ? cellCosts.hoverStatus(world.getGrid(), column, row) : "";
   }
@@ -194,6 +205,9 @@ public class BattleRenderer {
    * @param selectedSlot the selected hand slot, or -1
    * @param selectedCard the battle's row of the selected card, or null
    * @param preview where the selected card would be placed at the hovered tile, or null
+   * @param landingTiles the tiles the selected card lands on unmoved, for the deploy overlay, or
+   *     null for none
+   * @param landing where a drop of the selected card on the hovered tile goes, or null
    * @param screenLines the screen's own status lines, such as a replay's
    * @param notes lines about controls this screen does not offer
    * @param view the screen's view settings: the orientation and whether annotations are shown
@@ -209,6 +223,8 @@ public class BattleRenderer {
       int selectedSlot,
       DeployCard selectedCard,
       CardPlacement.Result preview,
+      LandingTiles.Tiles landingTiles,
+      LandingTiles.Landing landing,
       List<String> screenLines,
       List<String> notes,
       ViewState view) {}
@@ -230,6 +246,9 @@ public class BattleRenderer {
     arena.render(tileMap, view, drawGrid);
     if (drawCellCosts) {
       cellCosts.render(inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY(), view);
+    }
+    if (drawLanding && inputs.landingTiles() != null) {
+      landing.render(inputs.landingTiles(), inputs.landing(), view);
     }
     renderAreaEffects(frame);
     renderBodies(frame);
@@ -945,6 +964,12 @@ public class BattleRenderer {
       lines.add(
           cellCosts.hoverStatus(
               inputs.world().getGrid(), inputs.hoverCellX(), inputs.hoverCellY()));
+    }
+    if (drawLanding && inputs.landingTiles() != null) {
+      lines.add("Landing: " + inputs.landingTiles().openCount() + " open tiles (M hides)");
+      if (inputs.landing() != null) {
+        lines.add(inputs.landing().status());
+      }
     }
     lines.addAll(inputs.screenLines());
     lines.add("engine: battle core");

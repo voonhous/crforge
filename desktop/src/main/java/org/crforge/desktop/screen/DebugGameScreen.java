@@ -28,6 +28,7 @@ import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
+import org.crforge.desktop.battle.LandingTiles;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.ViewOrientation;
@@ -51,6 +52,8 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>H: Toggle HP numbers
  *   <li>G: Toggle the routing cell cost overlay, read from the battle's own grid
  *   <li>N: Toggle the route, reference and state overlay
+ *   <li>M: Toggle the deploy overlay: the selected card's tiles it lands on unmoved, and on a
+ *       hovered tile it is moved off, the tile the placement search sends it to
  *   <li>V: Switch to the next data version built and start a new Ladder battle on it; a version the
  *       battle core refuses is reported in the messages and the battle stays
  *   <li>F: Not offered here: the view flips in the replay viewer only, since this screen's clicks,
@@ -177,6 +180,10 @@ public class DebugGameScreen implements Screen {
       case ROUTES -> {
         renderer.toggleDrawRoutes();
         log.info("Route overlay: {}", renderer.isDrawRoutes() ? "ON" : "OFF");
+      }
+      case LANDING -> {
+        renderer.toggleDrawLanding();
+        log.info("Deploy overlay: {}", renderer.isDrawLanding() ? "ON" : "OFF");
       }
       case FLIP -> {
         if (!view.flip()) {
@@ -425,6 +432,25 @@ public class DebugGameScreen implements Screen {
         status.add(
             renderer.hoveredCellStatus(session.getBattle().getWorld(), hoverCellX, hoverCellY));
       }
+      // The deploy overlay: the selected card's landing tiles for its side, kept by the session
+      // until the field changes, and where a drop on the hovered tile goes. The status column, as
+      // the cell cost line, reads the tile hovered when the last frame was drawn.
+      boolean landingShown =
+          renderer.isDrawLanding() && !workspace.isInspecting() && selectedSlot >= 0;
+      LandingTiles.Tiles landingTiles =
+          landingShown ? session.landingTiles(selectedSide, selectedSlot) : null;
+      LandingTiles.Landing landing = landingAt(landingTiles);
+      if (landingTiles != null) {
+        status.add(
+            "landing ("
+                + sideName(selectedSide)
+                + "): "
+                + landingTiles.openCount()
+                + " open tiles (M hides)");
+        if (landing != null) {
+          status.add(landing.status());
+        }
+      }
       workspace.update(
           frame,
           paused,
@@ -437,6 +463,9 @@ public class DebugGameScreen implements Screen {
           -1);
       workspace.beginArena();
       updateHover(Gdx.input.getX(), Gdx.input.getY());
+      if (landing == null || landing.tileX() != hoverTileX || landing.tileY() != hoverTileY) {
+        landing = landingAt(landingTiles);
+      }
       boolean previewing = !workspace.isInspecting() && selectedSlot >= 0 && hoverOnArena();
       MatchCard selected = selectedSlot >= 0 ? session.handCard(selectedSide, selectedSlot) : null;
       DeployCard selectedCard = session.deployCard(selected);
@@ -462,6 +491,8 @@ public class DebugGameScreen implements Screen {
               selectedSlot,
               selectedCard,
               preview,
+              landingTiles,
+              landing,
               List.of(),
               List.of(versions.statusLine(), F_NOTE),
               view),
@@ -473,6 +504,16 @@ public class DebugGameScreen implements Screen {
       paused = true;
       Gdx.app.exit();
     }
+  }
+
+  /**
+   * Where a drop of the selected card on the hovered tile goes, for the deploy overlay, or null
+   * with no tiles shown or no tile hovered.
+   */
+  private LandingTiles.Landing landingAt(LandingTiles.Tiles landingTiles) {
+    return landingTiles != null && hoverOnArena()
+        ? session.landingAt(selectedSide, selectedSlot, hoverTileX, hoverTileY)
+        : null;
   }
 
   @Override
@@ -509,6 +550,9 @@ public class DebugGameScreen implements Screen {
           P     - Toggle heading lines
           G     - Toggle routing cell cost overlay
           N     - Toggle route / reference / state overlay
+
+        Deploy:
+          M     - Toggle the selected card's landing tiles and where a drop is moved
 
         Data:
           V     - Switch to the next data version built (new Ladder battle)
