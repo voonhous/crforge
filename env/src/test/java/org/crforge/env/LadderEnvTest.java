@@ -30,6 +30,7 @@ import org.crforge.core.battle.unit.KingElixir;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.UnitData;
+import org.crforge.core.battle.unit.WorldEntity;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -564,10 +565,11 @@ class LadderEnvTest {
         }
       }
       assertThat(unit0).isNotNegative();
-      int id = entity(env, 0, 0, unit0, Schema.E_ID);
+      // Each seat names the unit by its own id; both stand for the same unit of the battle.
+      int id = ladderEnv(env, 0).battleId(0, entity(env, 0, 0, unit0, Schema.E_ID));
       int unit1 = -1;
       for (int row = 0; row < count1; row++) {
-        if (entity(env, 0, 1, row, Schema.E_ID) == id) {
+        if (ladderEnv(env, 0).battleId(1, entity(env, 0, 1, row, Schema.E_ID)) == id) {
           unit1 = row;
         }
       }
@@ -794,6 +796,7 @@ class LadderEnvTest {
       boolean openSeen = false;
       int usedSlot = -1;
       boolean closedAfterUse = false;
+      boolean unitNamed = false;
       for (int decision = 0; decision < 600 && env.dones().get(0) == 0; decision++) {
         for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
           ChampionController slot = battle.getWorld().kingTower(0).championSlot(k + 1);
@@ -805,6 +808,26 @@ class LadderEnvTest {
           assertThat(header(env, 0, 0, at + 2)).isEqualTo(slot.getState());
           assertThat(header(env, 0, 0, at + 3)).isEqualTo(slot.getCooldownMs());
           assertThat(header(env, 0, 0, at + 4)).isEqualTo(slot.getCharges());
+          // The slot's unit is named by the id of its row: the seat's own character, the unit
+          // the slot's action names.
+          int unitId = header(env, 0, 0, at + 1);
+          if (unitId != -1) {
+            int unitRow = -1;
+            for (int row = 0; row < header(env, 0, 0, Schema.H_ENTITY_COUNT); row++) {
+              unitRow = entity(env, 0, 0, row, Schema.E_ID) == unitId ? row : unitRow;
+            }
+            assertThat(unitRow).as("the row of the slot's unit").isNotNegative();
+            assertThat(entity(env, 0, 0, unitRow, Schema.E_SIDE)).isZero();
+            assertThat(entity(env, 0, 0, unitRow, Schema.E_KIND)).isEqualTo(Schema.KIND_CHARACTER);
+            int battleId = ladder.battleId(0, unitId);
+            assertThat(
+                    battle.getBattle().getHolder().entities().stream()
+                        .filter(e -> e.getId() == battleId && e instanceof WorldEntity)
+                        .map(e -> ((WorldEntity) e).name())
+                        .findFirst())
+                .contains(ladder.abilityUnit(0, k));
+            unitNamed = true;
+          }
           // The action is open exactly when the try of a command naming the slot's unit passes.
           String unit = ladder.abilityUnit(0, k);
           PlayerCommands.Giving tried = unit == null ? null : ladder.commands().tryAbility(0, unit);
@@ -865,6 +888,7 @@ class LadderEnvTest {
       assertThat(battle.getAbilityUses()).isNotEmpty();
       assertThat(battle.getAbilityUses().get(0).outcome().code()).isZero();
       assertThat(closedAfterUse).as("closed after its use").isTrue();
+      assertThat(unitNamed).as("a slot's unit named").isTrue();
       assertThat(header(env, 0, 0, Schema.H_LAST_ABILITY_RUN_REFUSAL)).isZero();
       assertThat(env.fault(0)).isNull();
     }

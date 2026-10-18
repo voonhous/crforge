@@ -81,6 +81,28 @@ public final class Schema {
    */
   public static final int MASK_VERSION = MASK_LANDING_TILES;
 
+  /**
+   * Id rule 1: an entity's id ({@link #E_ID}, {@link #E_TARGET}, a champion slot's unit) is the
+   * battle's own id, global and in creation order, the same for both seats. The rule of schema
+   * version 3 before 2026-10-18; a gap between two ids told a seat that entities it was not shown
+   * exist.
+   */
+  public static final int ID_BATTLE = 1;
+
+  /**
+   * Id rule 2: each seat numbers the entities 0, 1, 2, ... in the order it is first shown them, an
+   * id stable through the entity's life and never given to another within the episode, the two
+   * seats apart ({@link SeatIds}).
+   */
+  public static final int ID_SEAT_FIRST_SIGHT = 2;
+
+  /**
+   * The id rule an environment writes, versioned apart from the layout: both rules write the same
+   * fields with the same meaning (an id names one entity, a row's target names its row), only their
+   * values differ, so a change of rule leaves {@link #VERSION} where it is.
+   */
+  public static final int ID_VERSION = ID_SEAT_FIRST_SIGHT;
+
   /** Game units in one tile of the action grid: two routing cells. */
   public static final int TILE_UNITS = 2 * TileMap.CELL_UNITS;
 
@@ -281,10 +303,10 @@ public final class Schema {
   /**
    * The king's champion slots, {@link #ABILITY_SLOTS} rows of {@link #ABILITY_INTS}, the slot of
    * ability action {@code FIRST_ABILITY + k} in row {@code k}: the vocabulary id of the champion
-   * row it follows (-1 for none), the battle id of the unit its action names while that unit lives
-   * (-1 otherwise), the button state as the battle core works it out, the cooldown left in
-   * milliseconds, the charges left (-1 for uncounted), and the ticks until the seat's latest
-   * ability command for the slot runs (0 for none waiting).
+   * row it follows (-1 for none), the seat's id ({@link #E_ID}) of the unit its action names while
+   * that unit lives (-1 otherwise), the button state as the battle core works it out, the cooldown
+   * left in milliseconds, the charges left (-1 for uncounted), and the ticks until the seat's
+   * latest ability command for the slot runs (0 for none waiting).
    */
   public static final int H_ABILITY = H_HAND_FORM + HAND_SLOTS;
 
@@ -373,7 +395,10 @@ public final class Schema {
 
   // An entity row, by field index.
 
-  /** The entity's id in the battle, stable through its life. */
+  /**
+   * The seat's id of the entity, under id rule {@link #ID_VERSION}: the seat's own number of it, in
+   * the order the seat was first shown its entities, stable through its life ({@link SeatIds}).
+   */
   public static final int E_ID = 0;
 
   /**
@@ -420,7 +445,7 @@ public final class Schema {
   public static final int E_DY = 13;
 
   /**
-   * The battle id of the entity's target, {@link #NO_TARGET} for none or for one the seat does not
+   * The seat's id of the entity's target, {@link #NO_TARGET} for none or for one the seat does not
    * see: a character's or tower's reference, a projectile's target.
    */
   public static final int E_TARGET = 14;
