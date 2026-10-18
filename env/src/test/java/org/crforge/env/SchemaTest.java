@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.crforge.core.battle.unit.BuffInstance;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.junit.jupiter.api.Test;
@@ -128,13 +129,21 @@ class SchemaTest {
     assertThat(
             Schema.headerFields()
                 .get(Schema.H_ENEMY_PLAYS + Schema.ENEMY_PLAY_ROWS * Schema.ENEMY_PLAY_INTS - 1))
-        .isEqualTo("enemy_play_y");
+        .isEqualTo("enemy_play_point_ticks");
     assertThat(Schema.headerFields().get(Schema.H_QUEUE + 3)).isEqualTo("queue");
     assertThat(Schema.headerFields().get(Schema.H_DECK_LEVEL + 7)).isEqualTo("deck_level");
     assertThat(Schema.entityFields().get(Schema.E_LEVEL)).isEqualTo("level");
     assertThat(Schema.entityFields().get(Schema.E_BUFFS + 2 * Schema.BUFF_SLOTS - 1))
         .isEqualTo("buff_ms_2");
-    assertThat(Schema.entityFields().get(Schema.ENTITY_INTS - 1)).isEqualTo("radius");
+    assertThat(Schema.entityFields().get(Schema.ENTITY_INTS - 1)).isEqualTo("ability_ticks");
+    assertThat(Schema.headerFields().get(Schema.H_ENEMY_SEEN_EVOLUTION + 7))
+        .isEqualTo("enemy_seen_evolution");
+    assertThat(Schema.headerFields().get(Schema.H_ENEMY_SEEN_EVOLUTION_NEED + 7))
+        .isEqualTo("enemy_seen_evolution_need");
+    assertThat(Schema.playKindNames()).hasSize(Schema.PLAY_TUNNEL + 1);
+    assertThat(Schema.playKindNames().get(Schema.PLAY_LAUNCHED)).isEqualTo("launched");
+    assertThat(Schema.playFlagNames())
+        .hasSize(Integer.numberOfTrailingZeros(Schema.PLAY_EVOLUTION_DIAMOND) + 1);
     assertThat(Schema.faultNames().get(Schema.FAULT_ENV_BUG)).isEqualTo("env_bug");
   }
 
@@ -162,7 +171,11 @@ class SchemaTest {
     assertThat(Schema.H_ENEMY_PLAYS + Schema.ENEMY_PLAY_ROWS * Schema.ENEMY_PLAY_INTS)
         .isEqualTo(Schema.H_QUEUE);
     assertThat(Schema.H_QUEUE + Schema.QUEUE_SLOTS).isEqualTo(Schema.H_DECK_LEVEL);
-    assertThat(Schema.H_DECK_LEVEL + Schema.DECK_SIZE).isLessThanOrEqualTo(Schema.HEADER_INTS);
+    assertThat(Schema.H_DECK_LEVEL + Schema.DECK_SIZE).isEqualTo(Schema.H_ENEMY_SEEN_EVOLUTION);
+    assertThat(Schema.H_ENEMY_SEEN_EVOLUTION + Schema.DECK_SIZE)
+        .isEqualTo(Schema.H_ENEMY_SEEN_EVOLUTION_NEED);
+    assertThat(Schema.H_ENEMY_SEEN_EVOLUTION_NEED + Schema.DECK_SIZE)
+        .isLessThanOrEqualTo(Schema.HEADER_INTS);
   }
 
   @Test
@@ -171,7 +184,8 @@ class SchemaTest {
     assertThat(fields).doesNotContainNull().doesNotContain("reserved").doesNotHaveDuplicates();
     assertThat(Schema.E_BUFF_COUNT + 1).isEqualTo(Schema.E_BUFFS);
     assertThat(Schema.E_BUFFS + 2 * Schema.BUFF_SLOTS).isEqualTo(Schema.E_AIM_X);
-    assertThat(Schema.E_RADIUS + 1).isEqualTo(Schema.ENTITY_INTS);
+    assertThat(Schema.E_RADIUS + 1).isEqualTo(Schema.E_ABILITY_TICKS);
+    assertThat(Schema.E_ABILITY_TICKS + 1).isEqualTo(Schema.ENTITY_INTS);
   }
 
   @Test
@@ -193,7 +207,7 @@ class SchemaTest {
   @Test
   void theRefusalCodesAreTheCommandsOwnAndPinnedByTheVersion() {
     // A change of the player's commands' refusals moves the codes, and with them the schema's
-    // version: this list is what version 3 means.
+    // version: this list is what version 4 means.
     assertThat(Schema.refusalNames().subList(0, 16))
         .containsExactly(
             "NONE",
@@ -216,6 +230,35 @@ class SchemaTest {
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NONE)).isEqualTo("NONE");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_MASKED)).isEqualTo("MASKED");
     assertThat(Schema.refusalNames().get(Schema.REFUSAL_NOT_MODELLED)).isEqualTo("NOT_MODELLED");
-    assertThat(Schema.VERSION).isEqualTo(3);
+    assertThat(Schema.VERSION).isEqualTo(4);
+  }
+
+  @Test
+  void aBuffThatStopsOrSlowsRanksAheadOfOnesThatLastForever() {
+    // Synthetic buffs, by their movement and attack pace changes and their time left.
+    int forever = BuffInstance.FOREVER;
+    assertThat(BuffSlots.rank(-100, -100, 500)).isEqualTo(BuffSlots.STOPS);
+    assertThat(BuffSlots.rank(0, -100, 500)).isEqualTo(BuffSlots.STOPS);
+    assertThat(BuffSlots.rank(-30, 0, forever)).isEqualTo(BuffSlots.SLOWS);
+    assertThat(BuffSlots.rank(0, -30, 800)).isEqualTo(BuffSlots.SLOWS);
+    assertThat(BuffSlots.rank(35, 35, 800)).isEqualTo(BuffSlots.TIMED);
+    assertThat(BuffSlots.rank(0, 0, forever)).isEqualTo(BuffSlots.FOREVER);
+    assertThat(BuffSlots.STOPS).isLessThan(BuffSlots.SLOWS);
+    assertThat(BuffSlots.SLOWS).isLessThan(BuffSlots.TIMED);
+    assertThat(BuffSlots.TIMED).isLessThan(BuffSlots.FOREVER);
+    // Four permanent buffs, then a slow, then a stun, oldest first: the slots list the stun, the
+    // slow and the oldest permanent one.
+    List<Integer> ranks =
+        List.of(
+            BuffSlots.FOREVER,
+            BuffSlots.FOREVER,
+            BuffSlots.FOREVER,
+            BuffSlots.FOREVER,
+            BuffSlots.SLOWS,
+            BuffSlots.STOPS);
+    int[] slots = new int[Schema.BUFF_SLOTS];
+    assertThat(BuffSlots.fill(ranks, Integer::intValue, slots)).isEqualTo(3);
+    assertThat(slots).containsExactly(5, 4, 0);
+    assertThat(BuffSlots.fill(List.of(BuffSlots.TIMED), Integer::intValue, slots)).isEqualTo(1);
   }
 }

@@ -24,7 +24,6 @@ import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.replay.ReplayScenario;
 import org.crforge.core.battle.replay.ScenarioPlan;
-import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -63,10 +62,7 @@ class LandingMaskTest {
 
   /** Whether a seat's player sees a character or tower, as the observation shows it. */
   private static boolean seen(int seat, WorldEntity world) {
-    if (world.side() == seat || !(world instanceof CharacterEntity character)) {
-      return true;
-    }
-    return !character.hidden() && !character.invisible() && !character.underground();
+    return SeatView.sees(seat, world);
   }
 
   /** The point the screen's search sends a drop at a seat tile's centre to, on a field. */
@@ -186,7 +182,9 @@ class LandingMaskTest {
       assertThat(checked).isGreaterThan(10_000);
       assertThat(closed).as("tiles closed in open slots").isPositive();
       assertThat(plays).isGreaterThan(20);
-      assertThat(hiddenFields).as("decisions with an enemy building out of view").isPositive();
+      // The screen draws every building of both sides, a hidden Tesla lowered included, and no
+      // building waits its turn to deploy: the field the mask reads is the whole field's.
+      assertThat(hiddenFields).as("decisions with an enemy building out of view").isZero();
     }
   }
 

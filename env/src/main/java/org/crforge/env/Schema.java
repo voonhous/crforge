@@ -45,12 +45,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * tile the placement search finds from there.
  *
  * <p>What a seat is shown of the other side is what its player sees on the screen: the entities on
- * the field but enemy characters that are hidden, invisible or underground ({@link SeatView}, the
- * one place that rule lives), the enemy's crowns and towers, the enemy's cards in the order their
- * plays ran, its last plays with where and when they ran, and its elixir as a player counts it from
- * those plays and the elixir rules. The enemy's hand, cycle, elixir and commands not yet run are
- * not shown. Nothing here is held to a recording: it is the environment's own contract, kept stable
- * by its version and its tests.
+ * the field but an enemy unit waiting its turn to deploy, a tunnelling enemy unit as its trail
+ * alone, an enemy character's hit points only where its health bar shows ({@link SeatView}, the one
+ * place that rule lives), the enemy's crowns and towers, the enemy's cards in the order the screen
+ * showed them, its last plays as the screen showed them, its evolution progress counted from the
+ * diamonds the screen shows, and its elixir as a player counts it from those plays and the elixir
+ * rules. The enemy's hand, cycle, elixir, evolution count and commands not yet run are not shown.
+ * Nothing here is held to a recording: it is the environment's own contract, kept stable by its
+ * version and its tests.
  */
 public final class Schema {
 
@@ -59,7 +61,7 @@ public final class Schema {
   }
 
   /** The version of this layout; a change to any size, field order or code moves it. */
-  public static final int VERSION = 3;
+  public static final int VERSION = 4;
 
   /**
    * Mask rule 1: every tile of a hand slot whose card the client's try passes is open, as a drop
@@ -157,8 +159,11 @@ public final class Schema {
   /** The enemy play rows of the header: the enemy's last plays, newest first. */
   public static final int ENEMY_PLAY_ROWS = 8;
 
-  /** Fields of an enemy play row: card, the row it was cast as, form, ticks since, x, y. */
-  public static final int ENEMY_PLAY_INTS = 6;
+  /**
+   * Fields of an enemy play row: card, the row it was cast as, form, ticks since its run, x, y, its
+   * kind, its flags and the ticks since its point was shown.
+   */
+  public static final int ENEMY_PLAY_INTS = 9;
 
   /** The cards of the seat's own queue the header lists: the whole queue behind the hand. */
   public static final int QUEUE_SLOTS = 4;
@@ -337,11 +342,15 @@ public final class Schema {
 
   /**
    * The enemy's last plays placed, newest first, {@link #ENEMY_PLAY_ROWS} rows of {@link
-   * #ENEMY_PLAY_INTS}: the vocabulary id of the deck card played, the vocabulary id of the row it
-   * was cast as (its evolved or hero row, a variant's option, the card a Mirror repeated; the card
-   * itself otherwise), its form (0 plain, {@link #FORM_EVOLVED} or {@link #FORM_HERO}), the ticks
-   * since it ran, and the point it was placed at in the seat's frame (x, y in game units); rows
-   * beyond the plays are -1, -1, 0, 0, 0, 0.
+   * #ENEMY_PLAY_INTS}, each entering on the tick the play runs, as the seat's player sees it then:
+   * the vocabulary id of the deck card played, the vocabulary id of the row it was cast as (its
+   * evolved or hero row, a variant's option, the card a Mirror repeated; the card itself otherwise)
+   * and its form (0 plain, {@link #FORM_EVOLVED} or {@link #FORM_HERO}), all three -1 until the
+   * screen shows the card ({@link #PLAY_CARD_SHOWN}); the ticks since it ran; the point the screen
+   * shows it at in the seat's frame (x, y in game units), -1, -1 until shown ({@link
+   * #PLAY_POINT_SHOWN}); its kind ({@link #PLAY_TROOP} ... {@link #PLAY_TUNNEL}); its flags ({@code
+   * PLAY_*} bits); and the ticks since its point was shown, -1 before. Rows beyond the plays are
+   * -1, -1 and zeros.
    */
   public static final int H_ENEMY_PLAYS = H_ENEMY_ELIXIR + 1;
 
@@ -356,8 +365,27 @@ public final class Schema {
    */
   public static final int H_DECK_LEVEL = H_QUEUE + QUEUE_SLOTS;
 
-  /** The header's size; fields after {@link #H_DECK_LEVEL}'s are reserved and zero. */
-  public static final int HEADER_INTS = 192;
+  /**
+   * The enemy's evolution progress as the seat's player counts it, by the place of the card in
+   * {@link #H_ENEMY_SEEN}: for a card the screen marked as the enemy's evolution card (one of its
+   * plays showed the evolution cycle diamond, or it was played evolved), its plays that showed the
+   * diamond since its last evolved play, held to {@link #H_ENEMY_SEEN_EVOLUTION_NEED}; -1 for a
+   * card not marked or no card. Counted from the diamonds the screen shows alone, never read from
+   * the enemy's own count; 8 fields.
+   */
+  public static final int H_ENEMY_SEEN_EVOLUTION = H_DECK_LEVEL + DECK_SIZE;
+
+  /**
+   * The plays of base form a card marked in {@link #H_ENEMY_SEEN_EVOLUTION} needs before it is
+   * played evolved, its evolved row's cycle cost as the tables list it; 0 for a card not marked; 8
+   * fields.
+   */
+  public static final int H_ENEMY_SEEN_EVOLUTION_NEED = H_ENEMY_SEEN_EVOLUTION + DECK_SIZE;
+
+  /**
+   * The header's size; fields after {@link #H_ENEMY_SEEN_EVOLUTION_NEED}'s are reserved and zero.
+   */
+  public static final int HEADER_INTS = 224;
 
   // The slot flags and the forms of a play.
 
@@ -372,6 +400,50 @@ public final class Schema {
 
   /** The form of a play in its hero form. */
   public static final int FORM_HERO = EvolutionItem.HERO;
+
+  // The kinds of an enemy play, by what its card puts on the field.
+
+  /** A troop or building card that does not tunnel: its units appear at the placed point. */
+  public static final int PLAY_TROOP = 1;
+
+  /** A spell cast as an area effect at the placed point. */
+  public static final int PLAY_AREA = 2;
+
+  /**
+   * A spell launched from the king tower: its projectile leaves the playing side's king tower and
+   * the point shows where it lands.
+   */
+  public static final int PLAY_LAUNCHED = 3;
+
+  /** A spell thrown onto the placed point, starting a short way behind it (a rolling spell). */
+  public static final int PLAY_THROWN = 4;
+
+  /**
+   * A troop card whose unit tunnels from its king tower to the placed point: a trail is shown from
+   * the run, the card and the point where the unit surfaces.
+   */
+  public static final int PLAY_TUNNEL = 5;
+
+  // The flags of an enemy play row.
+
+  /** The card, the row cast and the form are shown. */
+  public static final int PLAY_CARD_SHOWN = 1;
+
+  /** The point is shown. */
+  public static final int PLAY_POINT_SHOWN = 1 << 1;
+
+  /** A Mirror's play: the row cast is the card the Mirror repeated. */
+  public static final int PLAY_MIRROR = 1 << 2;
+
+  /**
+   * The play showed the evolution cycle diamond: an evolution slot's card played in its base form.
+   */
+  public static final int PLAY_EVOLUTION_DIAMOND = 1 << 3;
+
+  /**
+   * {@link #E_ROW}, {@link #E_HP}, {@link #E_SHIELD} and the like of a value the seat is not shown.
+   */
+  public static final int UNKNOWN = -1;
 
   // The results.
 
@@ -418,7 +490,10 @@ public final class Schema {
 
   public static final int E_Y = 5;
 
-  /** Hit points, maximum and shield; 0 for an entity without hit points. */
+  /**
+   * Hit points, maximum and shield; 0 for an entity without hit points. An enemy character's hit
+   * points and shield are {@link #UNKNOWN} unless its health bar is shown on the seat's screen.
+   */
   public static final int E_HP = 6;
 
   public static final int E_MAX_HP = 7;
@@ -481,9 +556,11 @@ public final class Schema {
   public static final int E_BUFF_COUNT = 22;
 
   /**
-   * The first {@link #BUFF_SLOTS} buffs listed, oldest first, each the buff's id in the buff list
-   * ({@link Vocabulary#buffNames()}, apart from the row vocabulary) and its time left in
-   * milliseconds ({@link #BUFF_FOREVER} for one that never runs out); unused slots -1, 0.
+   * The first {@link #BUFF_SLOTS} buffs listed, by rank then oldest first ({@link BuffSlots#rank}:
+   * buffs that stop moving or attacking, then slows, then other buffs with a time, then buffs that
+   * never run out), each the buff's id in the buff list ({@link Vocabulary#buffNames()}, apart from
+   * the row vocabulary) and its time left in milliseconds ({@link #BUFF_FOREVER} for one that never
+   * runs out); unused slots -1, 0.
    */
   public static final int E_BUFFS = 23;
 
@@ -501,8 +578,14 @@ public final class Schema {
   /** An area effect's radius at its last update, in game units. */
   public static final int E_RADIUS = E_TIME_LEFT_MS + 1;
 
+  /**
+   * The ticks since a character's champion ability last ran, the seat's player seeing it cast; -1
+   * for none.
+   */
+  public static final int E_ABILITY_TICKS = E_RADIUS + 1;
+
   /** An entity row's size. */
-  public static final int ENTITY_INTS = E_RADIUS + 1;
+  public static final int ENTITY_INTS = E_ABILITY_TICKS + 1;
 
   /** {@link #E_STATE} of an entity that has no state: a projectile or an area effect. */
   public static final int NO_STATE = -1;
@@ -813,7 +896,10 @@ public final class Schema {
       "enemy_play_form",
       "enemy_play_ticks",
       "enemy_play_x",
-      "enemy_play_y"
+      "enemy_play_y",
+      "enemy_play_kind",
+      "enemy_play_flags",
+      "enemy_play_point_ticks"
     };
     for (int r = 0; r < ENEMY_PLAY_ROWS; r++) {
       for (int f = 0; f < ENEMY_PLAY_INTS; f++) {
@@ -825,6 +911,8 @@ public final class Schema {
     }
     for (int k = 0; k < DECK_SIZE; k++) {
       names[H_DECK_LEVEL + k] = "deck_level";
+      names[H_ENEMY_SEEN_EVOLUTION + k] = "enemy_seen_evolution";
+      names[H_ENEMY_SEEN_EVOLUTION_NEED + k] = "enemy_seen_evolution_need";
     }
     return List.of(names);
   }
@@ -864,6 +952,7 @@ public final class Schema {
     names[E_AIM_Y] = "aim_y";
     names[E_TIME_LEFT_MS] = "time_left_ms";
     names[E_RADIUS] = "radius";
+    names[E_ABILITY_TICKS] = "ability_ticks";
     return List.of(names);
   }
 
@@ -933,6 +1022,16 @@ public final class Schema {
         "truncated",
         "first_side",
         "not_modelled");
+  }
+
+  /** The enemy play kinds' names, by code: 0 for an unused row. */
+  public static List<String> playKindNames() {
+    return List.of("none", "troop", "area", "launched", "thrown", "tunnel");
+  }
+
+  /** The enemy play flags' names, by bit, lowest first. */
+  public static List<String> playFlagNames() {
+    return List.of("card_shown", "point_shown", "mirror", "evolution_diamond");
   }
 
   /** The entity flags' names, by bit, lowest first. */

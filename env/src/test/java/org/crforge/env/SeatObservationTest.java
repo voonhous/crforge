@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,8 +26,10 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.unit.AreaEffectEntity;
@@ -36,6 +39,7 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.BeforeAll;
@@ -253,6 +257,8 @@ class SeatObservationTest {
       Standard1v1Battle battle = battle(env);
       SplittableRandom random = new SplittableRandom(31);
       int listed = 0;
+      int flying = 0;
+      int landed = 0;
       for (int step = 0; step < 600 && env.dones().get(0) == 0; step++) {
         act(env, randomAction(env, 0, random, 3), randomAction(env, 1, random, 3));
         int tick = battle.getBattle().getTick();
@@ -274,20 +280,45 @@ class SeatObservationTest {
             Standard1v1Battle.Play play = placed.get(r);
             EvolutionItem item = play.evolution();
             int at = Schema.H_ENEMY_PLAYS + r * Schema.ENEMY_PLAY_INTS;
+            // These decks hold no tunnelling card: every card shows at its run.
+            int flags = header(env, seat, at + 7);
+            assertThat(flags & Schema.PLAY_CARD_SHOWN).isNotZero();
             assertThat(header(env, seat, at))
                 .isEqualTo(vocabulary.id(side.deck().get(item.index()).name()));
             assertThat(header(env, seat, at + 1)).isEqualTo(vocabulary.id(item.spell().name()));
             assertThat(header(env, seat, at + 2)).isEqualTo(item.field());
             assertThat(header(env, seat, at + 3)).isEqualTo(tick - play.tick());
-            assertThat(header(env, seat, at + 4))
-                .isEqualTo(Schema.toSeatX(seat, play.result().x()));
-            assertThat(header(env, seat, at + 5))
-                .isEqualTo(Schema.toSeatY(seat, play.result().y()));
+            DeployCard card = battle.getWorld().getRecords().card(item.spell().name());
+            boolean launched = card.spell() && card.projectile() != null && !card.spellAsDeploy();
+            assertThat(header(env, seat, at + 6))
+                .isEqualTo(
+                    launched
+                        ? Schema.PLAY_LAUNCHED
+                        : card.spell()
+                            ? card.spellAsDeploy() ? Schema.PLAY_THROWN : Schema.PLAY_AREA
+                            : Schema.PLAY_TROOP);
+            if ((flags & Schema.PLAY_POINT_SHOWN) != 0) {
+              assertThat(header(env, seat, at + 4))
+                  .isEqualTo(Schema.toSeatX(seat, play.result().x()));
+              assertThat(header(env, seat, at + 5))
+                  .isEqualTo(Schema.toSeatY(seat, play.result().y()));
+              assertThat(header(env, seat, at + 8)).isBetween(1, tick - play.tick());
+              landed += launched ? 1 : 0;
+            } else {
+              // Only a spell launched from the king hides its point, until it lands.
+              assertThat(launched).isTrue();
+              assertThat(header(env, seat, at + 4)).isEqualTo(Schema.UNKNOWN);
+              assertThat(header(env, seat, at + 5)).isEqualTo(Schema.UNKNOWN);
+              assertThat(header(env, seat, at + 8)).isEqualTo(Schema.UNKNOWN);
+              flying++;
+            }
             listed++;
           }
         }
       }
       assertThat(listed).as("enemy plays listed").isPositive();
+      assertThat(flying).as("launched spells listed before they landed").isPositive();
+      assertThat(landed).as("launched spells listed after they landed").isPositive();
     }
   }
 
@@ -468,6 +499,18 @@ class SeatObservationTest {
     if (entity instanceof WorldEntity world) {
       int flags = row[Schema.E_FLAGS];
       assertThat(row[Schema.E_STATE]).isEqualTo(world.getView().getState());
+      if (isTrail(row)) {
+        // An enemy unit underground: its trail, at its position, and nothing more.
+        assertThat(world.side()).isNotEqualTo(seat);
+        assertThat(((CharacterEntity) world).underground()).isTrue();
+        assertThat(row[Schema.E_HP]).isEqualTo(Schema.UNKNOWN);
+        assertThat(row[Schema.E_MAX_HP]).isEqualTo(Schema.UNKNOWN);
+        assertThat(row[Schema.E_LEVEL]).isEqualTo(Schema.UNKNOWN);
+        assertThat(row[Schema.E_TARGET]).isEqualTo(Schema.NO_TARGET);
+        assertThat(row[Schema.E_BUFF_COUNT]).isZero();
+        return;
+      }
+      HitPointsCheck.check(tables, seat, world, row);
       assertThat(row[Schema.E_LEVEL]).isEqualTo(world.level());
       assertThat((flags & Schema.F_ALIVE) != 0).isEqualTo(world.getView().isAlive());
       assertThat((flags & Schema.F_AWAKE) != 0)
@@ -485,8 +528,16 @@ class SeatObservationTest {
       assertThat(row[Schema.E_LOAD_MS]).isEqualTo(world.getTargeting().getLoadTimerMs());
       assertThat(row[Schema.E_SPEED_PERCENT]).isEqualTo(world.getBuffs().speed(100));
       assertThat(row[Schema.E_HIT_SPEED_PERCENT]).isEqualTo(world.getBuffs().hitSpeed(100));
-      List<BuffInstance> items = world.getBuffs().items();
+      List<BuffInstance> items = new ArrayList<>(world.getBuffs().items());
       assertThat(row[Schema.E_BUFF_COUNT]).isEqualTo(items.size());
+      // The slots list the buffs by rank, then oldest first.
+      items.sort(
+          Comparator.comparingInt(
+              item ->
+                  BuffSlots.rank(
+                      item.getBuff().speedMultiplier(),
+                      item.getBuff().hitSpeedMultiplier(),
+                      item.getRemaining())));
       for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
         int at = Schema.E_BUFFS + 2 * b;
         if (b < items.size()) {
@@ -506,8 +557,14 @@ class SeatObservationTest {
       assertThat(row[Schema.E_FLAGS]).isEqualTo(Schema.F_ALIVE);
       assertThat(row[Schema.E_STATE]).isEqualTo(Schema.NO_STATE);
       assertThat(row[Schema.E_LEVEL]).isEqualTo(PackedLevel.level(projectile.getPackedLevel()));
-      assertThat(row[Schema.E_AIM_X]).isEqualTo(Schema.toSeatX(seat, projectile.getAimX()));
-      assertThat(row[Schema.E_AIM_Y]).isEqualTo(Schema.toSeatY(seat, projectile.getAimY()));
+      if (row[Schema.E_AIM_X] == Schema.UNKNOWN) {
+        // An enemy spell from the king in flight: where it lands is not shown.
+        assertThat(projectile.side()).isNotEqualTo(seat);
+        assertThat(row[Schema.E_AIM_Y]).isEqualTo(Schema.UNKNOWN);
+      } else {
+        assertThat(row[Schema.E_AIM_X]).isEqualTo(Schema.toSeatX(seat, projectile.getAimX()));
+        assertThat(row[Schema.E_AIM_Y]).isEqualTo(Schema.toSeatY(seat, projectile.getAimY()));
+      }
       checkTarget(env, seat, row, projectile.getTarget());
       assertThat(row[Schema.E_BUFFS]).isEqualTo(-1);
     } else if (entity instanceof AreaEffectEntity area) {
@@ -537,6 +594,12 @@ class SeatObservationTest {
    * own, the target the same entity, the rest alike.
    */
   private static void checkHalfATurn(VectorEnv env, int[] a, int[] b, boolean moves) {
+    if (isTrail(a) || isTrail(b)) {
+      // One seat's own unit is the other's trail: only where it is is shown alike.
+      assertThat(b[Schema.E_X]).isEqualTo(Schema.WIDTH_UNITS - a[Schema.E_X]);
+      assertThat(b[Schema.E_Y]).isEqualTo(Schema.HEIGHT_UNITS - a[Schema.E_Y]);
+      return;
+    }
     int[][] points = {
       {Schema.E_X, Schema.E_Y},
       {Schema.E_AIM_X, Schema.E_AIM_Y},
@@ -554,6 +617,10 @@ class SeatObservationTest {
         if (moves) {
           assertThat(b[f]).isEqualTo(-a[f]);
         }
+      } else if ((f == Schema.E_HP || f == Schema.E_SHIELD)
+          && (a[f] == Schema.UNKNOWN || b[f] == Schema.UNKNOWN)) {
+        // Shown to the owner, not to the enemy whose screen draws no health bar for it.
+        assertThat(a[Schema.E_SIDE] == 1 || b[Schema.E_SIDE] == 1).isTrue();
       } else if (!isPoint(points, f)) {
         assertThat(b[f]).as("field %s", Schema.entityFields().get(f)).isEqualTo(a[f]);
       }
@@ -561,6 +628,12 @@ class SeatObservationTest {
     for (int[] point : points) {
       boolean none = point[0] == Schema.E_TARGET_X && a[Schema.E_TARGET] == Schema.NO_TARGET;
       boolean unused = point[0] == Schema.E_AIM_X && a[Schema.E_KIND] != Schema.KIND_PROJECTILE;
+      boolean hidden =
+          point[0] == Schema.E_AIM_X
+              && (a[Schema.E_AIM_X] == Schema.UNKNOWN || b[Schema.E_AIM_X] == Schema.UNKNOWN);
+      if (hidden) {
+        continue;
+      }
       if (none || unused) {
         assertThat(b[point[0]]).isZero();
         assertThat(b[point[1]]).isZero();
@@ -569,6 +642,14 @@ class SeatObservationTest {
         assertThat(b[point[1]]).isEqualTo(Schema.HEIGHT_UNITS - a[point[1]]);
       }
     }
+  }
+
+  /** Whether a row is an enemy unit's underground trail. */
+  static boolean isTrail(int[] row) {
+    return row[Schema.E_KIND] == Schema.KIND_CHARACTER
+        && (row[Schema.E_FLAGS] & Schema.F_UNDERGROUND) != 0
+        && row[Schema.E_SIDE] == 1
+        && row[Schema.E_LEVEL] == Schema.UNKNOWN;
   }
 
   private static boolean isPoint(int[][] points, int field) {
@@ -589,10 +670,15 @@ class SeatObservationTest {
     return bytes;
   }
 
-  /** Whether a header field is one a placed enemy play may move: the cards seen and counted. */
+  /**
+   * Whether a header field is one a placed enemy play may move: the cards seen and counted, the
+   * play rows, the elixir counted and the evolution progress.
+   */
   private static boolean enemyPlayField(int field) {
     return field >= Schema.H_ENEMY_SEEN && field < Schema.H_ENEMY_SEEN + Schema.DECK_SIZE
-        || field >= Schema.H_ENEMY_PLAY_COUNT && field < Schema.H_QUEUE;
+        || field >= Schema.H_ENEMY_PLAY_COUNT && field < Schema.H_QUEUE
+        || field >= Schema.H_ENEMY_SEEN_EVOLUTION
+            && field < Schema.H_ENEMY_SEEN_EVOLUTION_NEED + Schema.DECK_SIZE;
   }
 
   /** Whether a seat field holds an id: a row's or its target's, a champion slot's unit's. */
@@ -611,8 +697,321 @@ class SeatObservationTest {
     return id == -1 ? -1 : battleId(env, 0, id);
   }
 
+  /** Tunnelling, launched and champion decks for seat 1. */
+  private static final List<String> TUNNEL =
+      List.of("Miner", "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows");
+
+  private static final List<String> CHAMPION =
+      List.of(
+          "ArcherQueen", "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Zap");
+
+  /**
+   * Cycles seat 1's other cards alike in both battles, seat 0 waiting, until a card is in seat 1's
+   * hand with a play open near a tile of its frame: that play's action, or -1 for none found.
+   */
+  private static int bringToHand(VectorEnv a, VectorEnv b, int card, int col, int row) {
+    for (int step = 0; step < 400; step++) {
+      int cycle = Schema.WAIT;
+      boolean inHand = false;
+      for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+        int open = nearestOpen(a, 1, k, col, row);
+        if (header(a, 1, Schema.H_HAND_CARD + k) == card) {
+          if (open > 0) {
+            return open;
+          }
+          // In the hand: wait for the elixir to play it.
+          inHand = true;
+        } else if (open > 0 && cycle == Schema.WAIT) {
+          cycle = open;
+        }
+      }
+      if (inHand) {
+        cycle = Schema.WAIT;
+      }
+      act(a, Schema.WAIT, cycle);
+      if (b != null) {
+        act(b, Schema.WAIT, cycle);
+      }
+    }
+    return -1;
+  }
+
+  /** Steps both battles, seat 0 waiting, seat 1 playing in a alone, until the play has run. */
+  private static void runInA(VectorEnv a, VectorEnv b, int action) {
+    act(a, Schema.WAIT, action);
+    act(b, Schema.WAIT, Schema.WAIT);
+    while (header(a, 1, Schema.H_PENDING_COUNT) > 0) {
+      // The command waits: seat 0 is shown nothing of it.
+      assertThat(seatBytes(a, 0)).isEqualTo(seatBytes(b, 0));
+      act(a, Schema.WAIT, Schema.WAIT);
+      act(b, Schema.WAIT, Schema.WAIT);
+    }
+  }
+
+  /** Seat 0's enemy cards seen, in order. */
+  private static List<Integer> enemySeen(VectorEnv env) {
+    List<Integer> seen = new ArrayList<>();
+    for (int k = 0; k < Schema.DECK_SIZE; k++) {
+      seen.add(header(env, 0, Schema.H_ENEMY_SEEN + k));
+    }
+    return seen;
+  }
+
+  /** Seat 0's newest enemy play row. */
+  private static int[] newestPlay(VectorEnv env) {
+    int[] row = new int[Schema.ENEMY_PLAY_INTS];
+    for (int f = 0; f < row.length; f++) {
+      row[f] = header(env, 0, Schema.H_ENEMY_PLAYS + f);
+    }
+    return row;
+  }
+
   @Test
-  void anEnemysHiddenBuildingShowsItsCardButNeitherItsCommandNorItsRowNorItsTiles() {
+  void anEnemyTunnellerShowsItsTrailFromTheRunAndItsCardAndPointOnlyWhereItComesUp() {
+    try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, TUNNEL);
+        VectorEnv b = ladder(EnvConfig.DEFAULT, BASIC, TUNNEL)) {
+      int card = vocabulary.id(TUNNEL.get(0));
+      // Deep in seat 0's half, far from seat 1's king tower.
+      int action = bringToHand(a, b, card, Schema.COLS / 2 - 3, Schema.ROWS - 8);
+      assertThat(action).as("the tunnelling card in seat 1's hand, open").isPositive();
+      int count = header(b, 0, Schema.H_ENEMY_PLAY_COUNT);
+      runInA(a, b, action);
+      Standard1v1Battle battle = battle(a);
+      Standard1v1Battle.Play play = battle.getPlays().get(battle.getPlays().size() - 1);
+      CharacterEntity unit = play.units().get(0);
+      int tunnelling = 0;
+      for (int step = 0; step < 100; step++) {
+        if (unit.getView().getState() != GridEntityState.SPAWN_PATHFIND) {
+          break;
+        }
+        tunnelling++;
+        // The trail: a row where the unit is now, underground, naming nothing.
+        int[] row = rowOf(a, 0, unit.getId());
+        assertThat(row).as("the trail's row").isNotNull();
+        assertThat(isTrail(row)).isTrue();
+        assertThat(row[Schema.E_ROW]).isEqualTo(Schema.UNKNOWN);
+        assertThat(row[Schema.E_HP]).isEqualTo(Schema.UNKNOWN);
+        assertThat(row[Schema.E_X]).isEqualTo(Schema.toSeatX(0, unit.getView().getX()));
+        assertThat(row[Schema.E_Y]).isEqualTo(Schema.toSeatY(0, unit.getView().getY()));
+        // The play: a tunnel from the run, with neither its card nor any point.
+        int[] shown = newestPlay(a);
+        assertThat(header(a, 0, Schema.H_ENEMY_PLAY_COUNT)).isEqualTo(count + 1);
+        assertThat(shown[6]).isEqualTo(Schema.PLAY_TUNNEL);
+        assertThat(shown[7]).isZero();
+        assertThat(shown[0]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[1]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[2]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[4]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[5]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[8]).isEqualTo(Schema.UNKNOWN);
+        // Neither the card seen nor its cost counted tells the card.
+        assertThat(enemySeen(a)).isEqualTo(enemySeen(b));
+        assertThat(header(a, 0, Schema.H_ENEMY_ELIXIR))
+            .isEqualTo(header(b, 0, Schema.H_ENEMY_ELIXIR));
+        act(a, Schema.WAIT, Schema.WAIT);
+        act(b, Schema.WAIT, Schema.WAIT);
+      }
+      assertThat(tunnelling).as("decisions with the unit tunnelling").isGreaterThan(1);
+      assertThat(unit.getView().getState()).isNotEqualTo(GridEntityState.SPAWN_PATHFIND);
+      // It came up: its card, where it came up, and its cost counted as of its run.
+      int[] shown = newestPlay(a);
+      assertThat(shown[7] & Schema.PLAY_CARD_SHOWN).isNotZero();
+      assertThat(shown[7] & Schema.PLAY_POINT_SHOWN).isNotZero();
+      assertThat(shown[0]).isEqualTo(card);
+      assertThat(shown[4]).isEqualTo(Schema.toSeatX(0, unit.getView().getX()));
+      assertThat(shown[5]).isEqualTo(Schema.toSeatY(0, unit.getView().getY()));
+      assertThat(shown[8]).isBetween(1, shown[3] - 1);
+      assertThat(enemySeen(a)).contains(card);
+      assertThat(header(a, 0, Schema.H_ENEMY_ELIXIR))
+          .isEqualTo(battle.getMatch().side(1).getElixir());
+      int[] row = rowOf(a, 0, unit.getId());
+      assertThat(isTrail(row)).isFalse();
+      assertThat(row[Schema.E_ROW]).isEqualTo(vocabulary.id(unit.getData().name()));
+    }
+  }
+
+  @Test
+  void anEnemySpellFromTheKingShowsItsCardAtTheRunAndItsPointWhereItLands() {
+    try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, BASIC);
+        VectorEnv b = ladder(EnvConfig.DEFAULT, BASIC, BASIC)) {
+      int card = vocabulary.id("Fireball");
+      int action = bringToHand(a, b, card, Schema.COLS / 2 - 3, Schema.ROWS - 7);
+      assertThat(action).as("the spell in seat 1's hand, open").isPositive();
+      runInA(a, b, action);
+      Standard1v1Battle battle = battle(a);
+      Standard1v1Battle.Play play = battle.getPlays().get(battle.getPlays().size() - 1);
+      int flying = 0;
+      for (int step = 0; step < 100; step++) {
+        int[] shown = newestPlay(a);
+        assertThat(shown[0]).isEqualTo(card);
+        assertThat(shown[6]).isEqualTo(Schema.PLAY_LAUNCHED);
+        if ((shown[7] & Schema.PLAY_POINT_SHOWN) != 0) {
+          break;
+        }
+        flying++;
+        assertThat(shown[4]).isEqualTo(Schema.UNKNOWN);
+        assertThat(shown[5]).isEqualTo(Schema.UNKNOWN);
+        // Its projectile is shown leaving the king tower, with no aim.
+        int projectiles = 0;
+        for (int[] row : rows(a, 0).values()) {
+          if (row[Schema.E_KIND] == Schema.KIND_PROJECTILE && row[Schema.E_SIDE] == 1) {
+            assertThat(row[Schema.E_AIM_X]).isEqualTo(Schema.UNKNOWN);
+            assertThat(row[Schema.E_AIM_Y]).isEqualTo(Schema.UNKNOWN);
+            projectiles++;
+          }
+        }
+        assertThat(projectiles).isPositive();
+        assertThat(enemySeen(a)).contains(card);
+        act(a, Schema.WAIT, Schema.WAIT);
+        act(b, Schema.WAIT, Schema.WAIT);
+      }
+      assertThat(flying).as("decisions with the spell in flight").isGreaterThan(1);
+      int[] shown = newestPlay(a);
+      assertThat(shown[7] & Schema.PLAY_POINT_SHOWN).isNotZero();
+      assertThat(shown[4]).isEqualTo(Schema.toSeatX(0, play.result().x()));
+      assertThat(shown[5]).isEqualTo(Schema.toSeatY(0, play.result().y()));
+      assertThat(shown[8]).isBetween(1, shown[3] - 1);
+    }
+  }
+
+  @Test
+  void anEnemyChampionsAbilityShowsOnItsOwnRowNotAsAPlay() {
+    try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, CHAMPION)) {
+      a.setAutoreset(false);
+      int card = vocabulary.id(CHAMPION.get(0));
+      int action = bringToHand(a, null, card, Schema.COLS / 2, 4);
+      assertThat(action).as("the champion in seat 1's hand, open").isPositive();
+      act(a, Schema.WAIT, action);
+      int ability = -1;
+      for (int step = 0; step < 200 && ability < 0; step++) {
+        act(a, Schema.WAIT, Schema.WAIT);
+        for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+          if (open(a, 1, Schema.ability(k))) {
+            ability = Schema.ability(k);
+          }
+        }
+      }
+      assertThat(ability).as("the champion's ability open").isPositive();
+      Standard1v1Battle battle = battle(a);
+      Standard1v1Battle.Play play = null;
+      for (Standard1v1Battle.Play p : battle.getPlays()) {
+        if (p.side() == 1 && !p.units().isEmpty() && p.units().get(0).getData().champion()) {
+          play = p;
+        }
+      }
+      assertThat(play).isNotNull();
+      CharacterEntity champion = play.units().get(0);
+      int plays = header(a, 0, Schema.H_ENEMY_PLAY_COUNT);
+      int[] before = rowOf(a, 0, champion.getId());
+      assertThat(before[Schema.E_ABILITY_TICKS]).isEqualTo(-1);
+      act(a, Schema.WAIT, ability);
+      int used = 0;
+      int invisible = 0;
+      for (int step = 0; step < 40 && champion.getView().isAlive(); step++) {
+        act(a, Schema.WAIT, Schema.WAIT);
+        int[] row = rowOf(a, 0, champion.getId());
+        assertThat(row).as("the champion's row, cloaked or not").isNotNull();
+        HitPointsCheck.check(tables, 0, champion, row);
+        invisible += (row[Schema.E_FLAGS] & Schema.F_INVISIBLE) != 0 ? 1 : 0;
+        if (row[Schema.E_ABILITY_TICKS] >= 1) {
+          used++;
+        }
+        // The ability is no play: the play rows and their count stay as they were.
+        assertThat(header(a, 0, Schema.H_ENEMY_PLAY_COUNT)).isEqualTo(plays);
+      }
+      assertThat(used).as("decisions showing the ability used").isPositive();
+      assertThat(invisible).as("decisions with the champion cloaked, still shown").isPositive();
+    }
+  }
+
+  @Test
+  void anEvolutionSlotsCardPlayedInBaseFormShowsTheDiamondAndIsCountedFromItAlone() {
+    List<String> deck = BASIC;
+    int index = deck.indexOf("Knight");
+    int[] slots = new int[Schema.DECK_SIZE];
+    slots[index] = Schema.SLOT_EVOLUTION;
+    // a: the Knight in seat 1's evolution slot; b: no slot. Seat 1 plays alike in both.
+    try (VectorEnv a = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1);
+        VectorEnv b = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+      a.reset(new int[] {100}, BASIC, deck, null, slots);
+      b.reset(new int[] {100}, BASIC, deck, null, null);
+      a.setAutoreset(false);
+      b.setAutoreset(false);
+      // The slot is not shown before a play shows the diamond.
+      assertThat(seatBytes(a, 0)).isEqualTo(seatBytes(b, 0));
+      int card = vocabulary.id("Knight");
+      MatchSide side = battle(a).getMatch().side(1);
+      int need = side.deck().get(index).formRow(MatchCard.EVO_FORM).darkElixirCost();
+      assertThat(need).isPositive();
+      int diamonds = 0;
+      int evolved = 0;
+      for (int round = 0; round < 6 && evolved == 0; round++) {
+        int action = bringToHand(a, b, card, Schema.COLS / 2, 4);
+        assertThat(action).isPositive();
+        boolean formEvolved = false;
+        for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+          if (header(a, 1, Schema.H_HAND_CARD + k) == card) {
+            formEvolved = header(a, 1, Schema.H_HAND_FORM + k) == Schema.FORM_EVOLVED;
+          }
+        }
+        act(a, Schema.WAIT, action);
+        act(b, Schema.WAIT, action);
+        while (header(a, 1, Schema.H_PENDING_COUNT) > 0) {
+          act(a, Schema.WAIT, Schema.WAIT);
+          act(b, Schema.WAIT, Schema.WAIT);
+        }
+        int[] shown = newestPlay(a);
+        int[] other = newestPlay(b);
+        assertThat(other[7] & Schema.PLAY_EVOLUTION_DIAMOND).isZero();
+        int at = enemySeen(a).indexOf(card);
+        assertThat(at).isNotNegative();
+        if (formEvolved) {
+          // Played evolved: no diamond, the count starts again.
+          assertThat(shown[7] & Schema.PLAY_EVOLUTION_DIAMOND).isZero();
+          assertThat(shown[2]).isEqualTo(Schema.FORM_EVOLVED);
+          assertThat(header(a, 0, Schema.H_ENEMY_SEEN_EVOLUTION + at)).isZero();
+          evolved++;
+        } else {
+          assertThat(shown[7] & Schema.PLAY_EVOLUTION_DIAMOND).isNotZero();
+          diamonds++;
+          assertThat(header(a, 0, Schema.H_ENEMY_SEEN_EVOLUTION + at))
+              .isEqualTo(Math.min(diamonds, need));
+        }
+        assertThat(header(a, 0, Schema.H_ENEMY_SEEN_EVOLUTION_NEED + at)).isEqualTo(need);
+        // Counted from the diamonds alone, it is the king's count while every play showed one.
+        assertThat(header(a, 0, Schema.H_ENEMY_SEEN_EVOLUTION + at))
+            .isEqualTo(side.evolutionCount(index));
+        // Without the slot nothing is marked; the rest of seat 0's view is alike while the plays
+        // are alike.
+        assertThat(header(b, 0, Schema.H_ENEMY_SEEN_EVOLUTION + at)).isEqualTo(-1);
+        assertThat(header(b, 0, Schema.H_ENEMY_SEEN_EVOLUTION_NEED + at)).isZero();
+        if (!formEvolved) {
+          IntBuffer intsA = a.observations().asIntBuffer();
+          IntBuffer intsB = b.observations().asIntBuffer();
+          for (int f = 0; f < Schema.SEAT_INTS; f++) {
+            if (!enemyPlayField(f)) {
+              assertThat(intsA.get(f)).as("seat 0 field %d", f).isEqualTo(intsB.get(f));
+            }
+          }
+        }
+      }
+      assertThat(diamonds).as("plays that showed the diamond").isEqualTo(need);
+      assertThat(evolved).as("the evolved play").isEqualTo(1);
+    }
+  }
+
+  /** A seat's row of a battle entity, or null when the seat has none. */
+  static int[] rowOf(VectorEnv env, int seat, int battleId) {
+    for (int[] row : rows(env, seat).values()) {
+      if (battleId(env, seat, row[Schema.E_ID]) == battleId) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  @Test
+  void anEnemysHiddenBuildingShowsNothingOfItsCommandAndStaysOnTheScreenLowered() {
     // Seat 1 cycles its other cards alike in a and b until the building is open, then plays it
     // in a and waits in b; seat 0 waits in both.
     try (VectorEnv a = ladder(EnvConfig.DEFAULT, BASIC, HIDING);
@@ -653,6 +1052,7 @@ class SeatObservationTest {
       assertThat(header(a, 0, Schema.H_ENEMY_PLAY_COUNT))
           .isEqualTo(header(b, 0, Schema.H_ENEMY_PLAY_COUNT) + 1);
       assertThat(header(a, 0, Schema.H_ENEMY_PLAYS)).isEqualTo(card);
+      assertThat(header(a, 0, Schema.H_ENEMY_PLAYS + 6)).isEqualTo(Schema.PLAY_TROOP);
       assertThat(header(a, 0, Schema.H_ENEMY_ELIXIR))
           .isLessThan(header(b, 0, Schema.H_ENEMY_ELIXIR));
       Standard1v1Battle battle = battle(a);
@@ -667,31 +1067,16 @@ class SeatObservationTest {
           continue;
         }
         hiddenDecisions++;
-        // Hidden: no row, no target, no closed tile; the header differs from b's only by the
-        // play seat 0 saw run.
-        for (int id : idsNamed(a, 0)) {
-          assertThat(battleId(a, 0, id)).isNotEqualTo(building.getId());
-        }
-        byte[] seenA = seatBytes(a, 0);
-        byte[] seenB = seatBytes(b, 0);
-        IntBuffer intsA = ByteBuffer.wrap(seenA).order(a.observations().order()).asIntBuffer();
-        IntBuffer intsB = ByteBuffer.wrap(seenB).order(b.observations().order()).asIntBuffer();
-        for (int f = 0; f < Schema.SEAT_INTS; f++) {
-          if (idField(f)) {
-            // Seat 0 saw the building in a before it hid, so its later ids in a run one past
-            // b's: an id field names the same entity in both.
-            assertThat(entityOf(b, intsB.get(f)))
-                .as("seat 0 field %d", f)
-                .isEqualTo(entityOf(a, intsA.get(f)));
-          } else if (!enemyPlayField(f)) {
-            assertThat(intsA.get(f)).as("seat 0 field %d", f).isEqualTo(intsB.get(f));
-          }
-        }
-        for (int m = 0; m < Schema.ACTIONS; m++) {
-          assertThat(seenA[Schema.SEAT_INTS * 4 + m])
-              .as("action %d", m)
-              .isEqualTo(seenB[Schema.SEAT_INTS * 4 + m]);
-        }
+        // Hidden, it is drawn lowered (until 2026-10-18 the rule left it out, as the core's
+        // targeting test does): seat 0 has its row where it stands, with the hidden flag, and
+        // its hit points as its health bar shows them.
+        int[] row = rowOf(a, 0, building.getId());
+        assertThat(row).as("the hidden building's row").isNotNull();
+        assertThat(row[Schema.E_FLAGS] & Schema.F_HIDDEN).isNotZero();
+        assertThat(row[Schema.E_ROW]).isEqualTo(vocabulary.id(building.getData().name()));
+        assertThat(row[Schema.E_X]).isEqualTo(Schema.toSeatX(0, building.getView().getX()));
+        assertThat(row[Schema.E_Y]).isEqualTo(Schema.toSeatY(0, building.getView().getY()));
+        HitPointsCheck.check(tables, 0, building, row);
       }
       assertThat(hiddenDecisions).as("decisions with the building hidden").isEqualTo(20);
     }

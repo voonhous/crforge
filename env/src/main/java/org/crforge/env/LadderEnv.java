@@ -12,11 +12,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.DeployMask;
@@ -47,9 +49,11 @@ import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
+import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingState;
 import org.crforge.env.EnvFault.CoreFailure;
@@ -109,16 +113,196 @@ public final class LadderEnv extends BufferedEnv {
   private record AbilityWaiting(String name, int side, int slot, int runTick) {}
 
   /**
-   * A play placed on the field, as the other side's player saw it run.
-   *
-   * @param card the vocabulary id of the deck card played
-   * @param cast the vocabulary id of the row it was cast as
-   * @param form its form: 0 plain, {@link Schema#FORM_EVOLVED} or {@link Schema#FORM_HERO}
-   * @param tick the tick it ran on
-   * @param x the point it was placed at, in game units
-   * @param y the point it was placed at, in game units
+   * A play placed on the field, as the other side's player is shown it: what it is from its run,
+   * and what the screen has shown of it so far. The card, the point and the evolution cycle diamond
+   * each show on their own tick (see {@link #trackPlays}).
    */
-  private record SeenPlay(int card, int cast, int form, int tick, int x, int y) {}
+  private static final class SeenPlay {
+
+    /** The playing side. */
+    final int side;
+
+    /** The deck card played, by row name and deck index, and the row it was cast as. */
+    final String cardName;
+
+    final int index;
+
+    final String castName;
+
+    /** The vocabulary ids of the deck card and the row cast, and the form. */
+    final int card;
+
+    final int cast;
+    final int form;
+
+    /** The tick it ran on, as the battle counts a step. */
+    final int tick;
+
+    /** The point it was placed at, in game units. */
+    final int placedX;
+
+    final int placedY;
+
+    /** Its kind, {@link Schema#PLAY_TROOP} ... {@link Schema#PLAY_TUNNEL}. */
+    final int kind;
+
+    /** Whether a Mirror played it. */
+    final boolean mirror;
+
+    /** The cost the play took and the production stop its row starts. */
+    final int cost;
+
+    final int productionStopMs;
+
+    /** The evolved row's cycle cost of an evolution slot's card played in its base form, else 0. */
+    final int evolutionNeed;
+
+    /**
+     * The tick the evolution cycle diamond shows from, for an evolution slot's card played in its
+     * base form; -1 for a play that shows none.
+     */
+    final int diamondTick;
+
+    /** The units of a tunnelling play, which show the card and the point as they come up. */
+    final List<CharacterEntity> tunnellers;
+
+    /** The projectiles a spell launched from the king cast; the first's landing shows the point. */
+    final List<ProjectileEntity> projectiles = new ArrayList<>();
+
+    /** What the screen has shown: the card, the point and where, and the diamond. */
+    boolean cardShown;
+
+    boolean pointShown;
+    int x;
+    int y;
+    int pointTick = -1;
+    boolean diamondShown;
+
+    SeenPlay(
+        int side,
+        String cardName,
+        int index,
+        String castName,
+        int card,
+        int cast,
+        int form,
+        int tick,
+        int placedX,
+        int placedY,
+        int kind,
+        boolean mirror,
+        int cost,
+        int productionStopMs,
+        int evolutionNeed,
+        int diamondTick,
+        List<CharacterEntity> tunnellers) {
+      this.side = side;
+      this.cardName = cardName;
+      this.index = index;
+      this.castName = castName;
+      this.card = card;
+      this.cast = cast;
+      this.form = form;
+      this.tick = tick;
+      this.placedX = placedX;
+      this.placedY = placedY;
+      this.kind = kind;
+      this.mirror = mirror;
+      this.cost = cost;
+      this.productionStopMs = productionStopMs;
+      this.evolutionNeed = evolutionNeed;
+      this.diamondTick = diamondTick;
+      this.tunnellers = tunnellers;
+    }
+
+    /** Whether everything it will show is shown. */
+    boolean settled() {
+      return cardShown && pointShown && (diamondTick < 0 || diamondShown);
+    }
+  }
+
+  /**
+   * One tick of a side's elixir as the other side's player counts it: the plays placed in it, the
+   * ability costs and the shown gains, and the clock's rate.
+   */
+  private record CountedTick(List<SeenPlay> plays, int spend, int gain, int fullBarMs) {
+
+    /** Whether a play of the tick has its card, so its cost, not shown yet. */
+    boolean withholds() {
+      for (SeenPlay play : plays) {
+        if (!play.cardShown) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    /**
+     * Counts the tick on a count, in the battle's order: the costs of the plays whose card is
+     * shown, the ability costs, the gains, then the regeneration.
+     *
+     * @return whether a play's cost was left out, its card not shown yet
+     */
+    boolean count(ElixirCount count, int maxElixir) {
+      boolean left = false;
+      for (SeenPlay play : plays) {
+        if (play.cardShown) {
+          count.play(play.cost, play.productionStopMs);
+        } else {
+          left = true;
+        }
+      }
+      count.spend(spend);
+      count.gain(gain, maxElixir);
+      count.regenerate(fullBarMs, maxElixir);
+      return left;
+    }
+  }
+
+  /**
+   * A side's elixir as the other side's player counts it, while a play's cost is not known: a play
+   * whose card the screen does not show at its run (a tunnelling card) is counted only once its
+   * card shows, and then as of its run, the count worked out again from where it stood before that
+   * run, as a player who learns the card counts back. Until then the count leaves the play out, so
+   * it never tells the card by its cost.
+   */
+  private static final class EnemyElixir {
+
+    final ElixirCount count = new ElixirCount();
+
+    /** Where the count stood before the first tick with a play withheld; null for none. */
+    private ElixirCount before;
+
+    /** The ticks counted since, to count again as plays show. */
+    private final List<CountedTick> since = new ArrayList<>();
+
+    void start(int elixir) {
+      count.start(elixir);
+      before = null;
+      since.clear();
+    }
+
+    void count(CountedTick tick, int maxElixir) {
+      if (before == null && !tick.withholds()) {
+        tick.count(count, maxElixir);
+        return;
+      }
+      if (before == null) {
+        before = count.copy();
+      }
+      since.add(tick);
+      ElixirCount again = before.copy();
+      boolean left = false;
+      for (CountedTick counted : since) {
+        left |= counted.count(again, maxElixir);
+      }
+      count.set(again);
+      if (!left) {
+        before = null;
+        since.clear();
+      }
+    }
+  }
 
   private final GameTables tables;
   private final Vocabulary vocabulary;
@@ -161,17 +345,41 @@ public final class LadderEnv extends BufferedEnv {
   /** Per side: its last plays placed, oldest first, at most {@link Schema#ENEMY_PLAY_ROWS}. */
   private final List<List<SeenPlay>> playsPlaced = List.of(new ArrayList<>(), new ArrayList<>());
 
+  /** Per side: its plays placed that the screen has not shown all of yet, oldest first. */
+  private final List<List<SeenPlay>> playsOpen = List.of(new ArrayList<>(), new ArrayList<>());
+
+  /** Per side: its plays placed in the tick just stepped, for the elixir count. */
+  private final List<List<SeenPlay>> playsNow = List.of(new ArrayList<>(), new ArrayList<>());
+
   /** Per side: its plays placed in the episode. */
   private final int[] placedCount = new int[2];
 
+  /**
+   * Per side: its evolution progress as the other side's player counts it, by deck card name: the
+   * plays that showed the diamond since its last evolved play, and the cycle cost.
+   */
+  private final List<Map<String, int[]>> evolutionSeen = List.of(new HashMap<>(), new HashMap<>());
+
+  /** The enemy projectiles whose aim is not shown yet, with the play that launched them. */
+  private final Map<ProjectileEntity, SeenPlay> aimHidden = new IdentityHashMap<>();
+
+  /** The tick each character's champion ability last ran, by battle id. */
+  private final Map<Integer, Integer> abilityRan = new HashMap<>();
+
   /** Per side: its elixir as the other side's player counts it. */
-  private final ElixirCount[] elixirCounts = {new ElixirCount(), new ElixirCount()};
+  private final EnemyElixir[] elixirCounts = {new EnemyElixir(), new EnemyElixir()};
 
   /** The elixir gains the game shows both players, as the battle pays them. */
   private final ElixirCount.Gains shownGains = new ElixirCount.Gains();
 
-  /** The plays and ability commands the elixir counts have read, and the most elixir. */
-  private int playsCounted;
+  /** The health bars the screen draws, by row. */
+  private final SeatView.Bars bars;
+
+  /** The deck card rows' evolution cycle diamond timing, EvoInfoDelay and EvoInfoSpeed, by name. */
+  private final Map<String, int[]> evolutionInfo = new HashMap<>();
+
+  /** The plays the play tracking and the ability commands the elixir counts have read. */
+  private int playsTracked;
 
   private int abilityUsesCounted;
   private int maxElixir;
@@ -185,6 +393,9 @@ public final class LadderEnv extends BufferedEnv {
 
   private final int[][][] shownY = new int[2][0][];
   private final int[][][] shownAt = new int[2][0][];
+
+  /** The buff slots' indices into an entity's buffs, reused row to row. */
+  private final int[] buffSlots = new int[Schema.BUFF_SLOTS];
 
   /** Per seat: the ids its observation names entities by, in order of first sight. */
   private final SeatIds seatIds = new SeatIds();
@@ -244,6 +455,7 @@ public final class LadderEnv extends BufferedEnv {
     this.tables = tables;
     this.vocabulary = vocabulary;
     this.config = config;
+    this.bars = new SeatView.Bars(tables);
   }
 
   /** The battle, for a test or a tool that reads more than the observation. */
@@ -378,10 +590,16 @@ public final class LadderEnv extends BufferedEnv {
     enemySeen.get(0).clear();
     enemySeen.get(1).clear();
     abilityWaiting.clear();
-    playsPlaced.get(0).clear();
-    playsPlaced.get(1).clear();
+    for (int side = 0; side < 2; side++) {
+      playsPlaced.get(side).clear();
+      playsOpen.get(side).clear();
+      playsNow.get(side).clear();
+      evolutionSeen.get(side).clear();
+    }
+    aimHidden.clear();
+    abilityRan.clear();
     Arrays.fill(placedCount, 0);
-    playsCounted = 0;
+    playsTracked = 0;
     abilityUsesCounted = 0;
     // No row of the last episode is the previous observation of this one's first.
     observation += 2;
@@ -462,13 +680,17 @@ public final class LadderEnv extends BufferedEnv {
     notModelled = 0;
   }
 
-  /** Steps the battle one tick, and counts each side's elixir as the other's player does. */
+  /**
+   * Steps the battle one tick, follows what the screen shows of each side's plays, and counts each
+   * side's elixir as the other's player does.
+   */
   void advance() {
     try {
       battle.step();
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       throw new CoreFailure(e);
     }
+    trackPlays();
     countElixir();
   }
 
@@ -477,7 +699,8 @@ public final class LadderEnv extends BufferedEnv {
    * plays placed and the champion abilities that ran in it, then the gains the game showed in it,
    * then the regeneration at the clock's rate. The battle takes the costs in its command pass,
    * before any gain or regeneration of the tick; the gains and the regeneration only add up to the
-   * maximum, so their order among themselves does not move the sum.
+   * maximum, so their order among themselves does not move the sum. A play whose card the screen
+   * does not show yet is counted once it does, as of its run ({@link EnemyElixir}).
    *
    * <p>The regeneration is the king's, in its step of the entity tick, so a step that ticks no
    * entities regenerates nothing: the step whose end timer reaches the end screen's delay, after
@@ -486,26 +709,7 @@ public final class LadderEnv extends BufferedEnv {
    * side's elixir.
    */
   private void countElixir() {
-    List<Standard1v1Battle.Play> plays = standard.getPlays();
-    for (; playsCounted < plays.size(); playsCounted++) {
-      Standard1v1Battle.Play play = plays.get(playsCounted);
-      if (play.result() == null || !play.result().placed()) {
-        continue;
-      }
-      ElixirCount count = elixirCounts[play.side() & 1];
-      if (play.mirror() != null) {
-        MirrorItem mirror = play.mirror();
-        count.play(
-            mirror.cost(),
-            mirror.repeats() == null ? 0 : mirror.repeats().elixirProductionStopTimeMs());
-      } else if (play.variant() != null) {
-        VariantItem variant = play.variant();
-        count.play(variant.cost(), variant.elixirProductionStopTimeMs());
-      } else if (play.evolution() != null) {
-        EvolutionItem item = play.evolution();
-        count.play(item.cost(), item.spell().elixirProductionStopTimeMs());
-      }
-    }
+    int[] spend = new int[2];
     List<Standard1v1Battle.AbilityUse> uses = standard.getAbilityUses();
     for (; abilityUsesCounted < uses.size(); abilityUsesCounted++) {
       Standard1v1Battle.AbilityUse use = uses.get(abilityUsesCounted);
@@ -514,19 +718,22 @@ public final class LadderEnv extends BufferedEnv {
         // The ability's cost, as its row publishes it: what the player sees used.
         AbilityData ability = usedAbility(use);
         if (ability != null && ability.manaCost() >= 1) {
-          elixirCounts[use.side() & 1].spend(ability.manaCost() * MatchSide.SCALE);
+          spend[use.side() & 1] += ability.manaCost() * MatchSide.SCALE;
         }
       }
     }
+    // A step that ticked no entities regenerates nothing: its tick counts with no rate.
+    int fullBarMs = match.isLastTicked() ? match.getTimeline().getFullBarMs() : 0;
     for (int side = 0; side < 2; side++) {
-      elixirCounts[side].gain(shownGains.take(side), maxElixir);
-    }
-    if (!match.isLastTicked()) {
-      return;
-    }
-    int fullBarMs = match.getTimeline().getFullBarMs();
-    for (int side = 0; side < 2; side++) {
-      elixirCounts[side].regenerate(fullBarMs, maxElixir);
+      List<SeenPlay> now = playsNow.get(side);
+      CountedTick tick =
+          new CountedTick(
+              now.isEmpty() ? List.of() : List.copyOf(now),
+              spend[side],
+              shownGains.take(side),
+              fullBarMs);
+      now.clear();
+      elixirCounts[side].count(tick, maxElixir);
     }
   }
 
@@ -553,13 +760,35 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
+   * The units an ability command that passed cast with: the live copies its slot requested, else
+   * the unit it named, found as {@link #usedAbility} finds it; none when neither is found.
+   */
+  private List<CharacterEntity> abilityCasters(Standard1v1Battle.AbilityUse use) {
+    List<CharacterEntity> requested = use.outcome().requested();
+    if (!requested.isEmpty()) {
+      return requested;
+    }
+    for (Standard1v1Battle.Play play : standard.getPlays()) {
+      if (play.side() != use.side()) {
+        continue;
+      }
+      for (CharacterEntity unit : play.units()) {
+        if (unit.name().equals(use.unit())) {
+          return List.of(unit);
+        }
+      }
+    }
+    return List.of();
+  }
+
+  /**
    * Side's elixir as the other side's player counts it, in ten-thousandths: the enemy elixir the
    * other seat's header shows. For a diagnostic of the count against the truth.
    *
    * @param side the side counted, 0 or 1
    */
   public int elixirCounted(int side) {
-    return elixirCounts[side].elixir();
+    return elixirCounts[side].count.elixir();
   }
 
   /** Whether the match is over. */
@@ -865,6 +1094,12 @@ public final class LadderEnv extends BufferedEnv {
     List<Standard1v1Battle.AbilityUse> uses = standard.getAbilityUses();
     for (; abilityUsesSeen < uses.size(); abilityUsesSeen++) {
       Standard1v1Battle.AbilityUse use = uses.get(abilityUsesSeen);
+      if (use.outcome().code() == AbilityCommand.OK) {
+        // Both players see the champion cast: its row shows when its ability last ran.
+        for (CharacterEntity unit : abilityCasters(use)) {
+          abilityRan.put(unit.getId(), use.tick());
+        }
+      }
       if (abilityWaiting.removeIf(w -> w.name().equals(use.name()))
           && use.outcome().code() != AbilityCommand.OK) {
         lastAbilityRunRefusal[use.side()] = use.outcome().code();
@@ -879,16 +1114,14 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Reads the plays that ran since the last read: each leaves the waiting list; a play refused at
-   * its run is shown to its seat, a placed one to the enemy's.
+   * Reads the plays that ran since the last read for their giving seat: each leaves the waiting
+   * list, and a play refused at its run is shown to its seat. What the enemy's seat is shown of a
+   * placed play is followed tick by tick ({@link #trackPlays}).
    */
   private void readPlays() {
     List<Standard1v1Battle.Play> plays = standard.getPlays();
     for (; playsSeen < plays.size(); playsSeen++) {
       Standard1v1Battle.Play play = plays.get(playsSeen);
-      if (play.result() != null && play.result().placed()) {
-        place(play);
-      }
       String card = givenCards.get(play.name());
       if (card == null) {
         continue;
@@ -901,54 +1134,269 @@ public final class LadderEnv extends BufferedEnv {
       }
       if (play.result() == null || !play.result().placed()) {
         lastRunRefusal[side] = Schema.RUN_NOT_PLACED;
-        continue;
-      }
-      List<String> seen = enemySeen.get(1 - side);
-      see(seen, card);
-      // A Mirror's play shows the card it repeated too.
-      if (play.mirror() != null && play.mirror().repeats() != null) {
-        see(seen, play.mirror().repeats().name());
       }
     }
   }
 
   /**
-   * Keeps a placed play as the other side's player saw it run: the deck card, the row it was cast
-   * as, its form and where it landed. A play outside a match carries no item and is not kept.
+   * Follows, after each tick, what the other side's player is shown of each side's placed plays:
+   * the plays placed in the tick enter the rows, and the card, the point and the evolution cycle
+   * diamond of each play show on their tick (see {@link Schema#H_ENEMY_PLAYS}):
+   *
+   * <ul>
+   *   <li>a troop or building card that does not tunnel, an area spell and a thrown spell show the
+   *       card and the placed point at the run (the units, the enemy deploy timer or the area
+   *       appear there);
+   *   <li>a spell launched from the king shows its card at the run (its projectile leaves the king
+   *       tower) and its point when its first projectile lands, nothing marking the point before;
+   *   <li>a tunnelling card shows a trail from its king tower at the run, and its card and the
+   *       point where its unit comes up only then; the placed point is never shown;
+   *   <li>an evolution slot's card played in its base form shows the evolution cycle diamond at the
+   *       placed point, a generic mark naming no card, once the play's card and point are shown and
+   *       the diamond's own delay ran (the deck card row's EvoInfoDelay, and its distance from the
+   *       king tower at EvoInfoSpeed where the row sets one).
+   * </ul>
+   *
+   * Each card shown enters the cards seen of the side (a Mirror's play with the card it repeated),
+   * and each diamond shown, or evolved play shown, moves the side's evolution progress as the other
+   * player counts it.
+   */
+  private void trackPlays() {
+    int step = battle.getTick() - 1;
+    List<Standard1v1Battle.Play> plays = standard.getPlays();
+    for (; playsTracked < plays.size(); playsTracked++) {
+      Standard1v1Battle.Play play = plays.get(playsTracked);
+      if (play.result() != null && play.result().placed()) {
+        place(play);
+      }
+    }
+    for (int side = 0; side < 2; side++) {
+      List<SeenPlay> open = playsOpen.get(side);
+      for (int i = 0; i < open.size(); i++) {
+        SeenPlay play = open.get(i);
+        follow(play, step);
+        if (play.settled()) {
+          open.remove(i--);
+        }
+      }
+    }
+  }
+
+  /**
+   * Keeps a placed play as the other side's player is shown it run: the deck card, the row it was
+   * cast as, its form, its kind and what it shows at once. A play outside a match carries no item
+   * and is not kept.
    */
   private void place(Standard1v1Battle.Play play) {
     int side = play.side() & 1;
-    List<MatchCard> deck = match.side(side).deck();
+    MatchSide own = match.side(side);
+    List<MatchCard> deck = own.deck();
     int index;
     String cast;
     int form = 0;
+    int cost;
+    int stopMs;
     if (play.mirror() != null) {
-      index = play.mirror().index();
-      cast = play.mirror().repeats() == null ? null : play.mirror().repeats().name();
+      MirrorItem mirror = play.mirror();
+      index = mirror.index();
+      cast = mirror.repeats() == null ? null : mirror.repeats().name();
+      cost = mirror.cost();
+      stopMs = mirror.repeats() == null ? 0 : mirror.repeats().elixirProductionStopTimeMs();
     } else if (play.variant() != null) {
-      index = play.variant().index();
-      cast = play.variant().spell();
+      VariantItem variant = play.variant();
+      index = variant.index();
+      cast = variant.spell();
+      cost = variant.cost();
+      stopMs = variant.elixirProductionStopTimeMs();
     } else if (play.evolution() != null) {
-      index = play.evolution().index();
-      cast = play.evolution().spell().name();
-      form = play.evolution().field();
+      EvolutionItem item = play.evolution();
+      index = item.index();
+      cast = item.spell().name();
+      form = item.field();
+      cost = item.cost();
+      stopMs = item.spell().elixirProductionStopTimeMs();
     } else {
       return;
     }
-    int card = vocabulary.id(deck.get(index).name());
-    List<SeenPlay> seen = playsPlaced.get(side);
-    if (seen.size() == Schema.ENEMY_PLAY_ROWS) {
-      seen.remove(0);
+    // The play's count among the side's placed plays is the deploy count its cast carries.
+    int deployIndex = placedCount[side]++;
+    String cardName = deck.get(index).name();
+    String castName = cast == null ? cardName : cast;
+    DeployCard castCard = standard.getWorld().getRecords().card(castName);
+    int kind = kind(castCard);
+    int need = 0;
+    int diamondTick = -1;
+    if (play.evolution() != null
+        && form == 0
+        && (own.slotFlags(index) & MatchSide.EVOLUTION_SLOT) != 0) {
+      need = deck.get(index).formRow(MatchCard.EVO_FORM).darkElixirCost();
+      diamondTick = diamondTick(side, cardName, play);
     }
-    seen.add(
+    SeenPlay seen =
         new SeenPlay(
-            card,
-            cast == null ? card : vocabulary.id(cast),
+            side,
+            cardName,
+            index,
+            cast,
+            vocabulary.id(cardName),
+            vocabulary.id(castName),
             form,
             play.tick(),
             play.result().x(),
-            play.result().y()));
-    placedCount[side]++;
+            play.result().y(),
+            kind,
+            play.mirror() != null,
+            cost,
+            stopMs,
+            need,
+            diamondTick,
+            kind == Schema.PLAY_TUNNEL ? List.copyOf(play.units()) : List.of());
+    if (kind == Schema.PLAY_LAUNCHED) {
+      for (BattleEntity entity : battle.getHolder().entities()) {
+        if (entity instanceof ProjectileEntity projectile
+            && projectile.side() == side
+            && projectile.getDeployIndex() == deployIndex
+            && !aimHidden.containsKey(projectile)) {
+          seen.projectiles.add(projectile);
+          aimHidden.put(projectile, seen);
+        }
+      }
+    }
+    List<SeenPlay> rows = playsPlaced.get(side);
+    if (rows.size() == Schema.ENEMY_PLAY_ROWS) {
+      rows.remove(0);
+    }
+    rows.add(seen);
+    playsOpen.get(side).add(seen);
+    playsNow.get(side).add(seen);
+    follow(seen, play.tick());
+    if (seen.settled()) {
+      playsOpen.get(side).remove(seen);
+    }
+  }
+
+  /**
+   * A play's kind by the row it was cast as: a troop card whose first unit tunnels, any other troop
+   * or building card, a spell that launches a projectile from the king tower, a thrown spell, or an
+   * area spell.
+   */
+  private static int kind(DeployCard card) {
+    if (!card.spell()) {
+      return card.unitAt(0).spawnPathfindSpeed() != 0 ? Schema.PLAY_TUNNEL : Schema.PLAY_TROOP;
+    }
+    if (card.spellAsDeploy()) {
+      return Schema.PLAY_THROWN;
+    }
+    return card.projectile() != null ? Schema.PLAY_LAUNCHED : Schema.PLAY_AREA;
+  }
+
+  /**
+   * The tick the evolution cycle diamond of a play shows from: its run, plus the deck card row's
+   * EvoInfoDelay in ticks, plus, where the row sets an EvoInfoSpeed, the distance from the playing
+   * side's king tower to the placed point at that speed in game units a tick.
+   */
+  private int diamondTick(int side, String cardName, Standard1v1Battle.Play play) {
+    int[] info = evolutionInfo.computeIfAbsent(cardName, this::readEvolutionInfo);
+    int ticks = info[0] / Battle.STEP_MS;
+    if (info[1] >= 1) {
+      TowerEntity king = standard.getWorld().kingTower(side);
+      int distance =
+          FixedMath.guardedDistance(
+              play.result().x() - king.getView().getX(), play.result().y() - king.getView().getY());
+      ticks += distance / info[1];
+    }
+    return play.tick() + ticks;
+  }
+
+  /** A deck card row's EvoInfoDelay and EvoInfoSpeed, 0 for a column the row does not set. */
+  private int[] readEvolutionInfo(String cardName) {
+    for (String table : Vocabulary.DECK_TABLES) {
+      if (tables.tableNames().contains(table) && tables.table(table).has(cardName)) {
+        GameRow row = tables.table(table).row(cardName);
+        return new int[] {row.intValue("EvoInfoDelay"), row.intValue("EvoInfoSpeed")};
+      }
+    }
+    return new int[] {0, 0};
+  }
+
+  /** Moves what the screen has shown of a play by a tick: its card, its point, its diamond. */
+  private void follow(SeenPlay play, int step) {
+    if (!play.pointShown) {
+      switch (play.kind) {
+        case Schema.PLAY_TUNNEL -> {
+          for (CharacterEntity unit : play.tunnellers) {
+            if (unit.getView().getState() != GridEntityState.SPAWN_PATHFIND) {
+              // It came up: its card, and where it came up.
+              showPoint(play, unit.getView().getX(), unit.getView().getY(), step);
+              break;
+            }
+          }
+        }
+        case Schema.PLAY_LAUNCHED -> {
+          // Shown where it lands, the placed point; a cast whose projectile was not found shows
+          // the point at once rather than never.
+          boolean landed = play.projectiles.isEmpty();
+          for (ProjectileEntity projectile : play.projectiles) {
+            landed |= projectile.isReleased();
+          }
+          if (landed) {
+            showPoint(play, play.placedX, play.placedY, step);
+          }
+        }
+        default -> showPoint(play, play.placedX, play.placedY, step);
+      }
+    }
+    if (!play.cardShown && (play.kind != Schema.PLAY_TUNNEL || SeatView.TRAIL_NAMES_CARD)) {
+      showCard(play);
+    }
+    if (play.pointShown && !play.cardShown) {
+      showCard(play);
+    }
+    if (play.diamondTick >= 0
+        && !play.diamondShown
+        && play.cardShown
+        && play.pointShown
+        && step >= play.diamondTick) {
+      play.diamondShown = true;
+      int[] progress = evolutionSeen.get(play.side).get(play.cardName);
+      if (progress == null) {
+        progress = new int[] {0, play.evolutionNeed};
+        evolutionSeen.get(play.side).put(play.cardName, progress);
+      }
+      progress[0] = Math.min(progress[0] + 1, progress[1]);
+    }
+  }
+
+  private void showPoint(SeenPlay play, int x, int y, int step) {
+    for (ProjectileEntity projectile : play.projectiles) {
+      aimHidden.remove(projectile);
+    }
+    play.pointShown = true;
+    play.x = x;
+    play.y = y;
+    play.pointTick = step;
+  }
+
+  /**
+   * Shows a play's card: it enters the side's cards seen, and an evolved play marks the card as the
+   * side's evolution card with no diamond counted since; a hero play of a marked card starts its
+   * count again too, as the king's count does.
+   */
+  private void showCard(SeenPlay play) {
+    play.cardShown = true;
+    List<String> seen = enemySeen.get(1 - play.side);
+    see(seen, play.cardName);
+    // A Mirror's play shows the card it repeated too.
+    if (play.mirror && play.castName != null) {
+      see(seen, play.castName);
+    }
+    Map<String, int[]> progress = evolutionSeen.get(play.side);
+    if (play.form == Schema.FORM_EVOLVED && !play.mirror) {
+      MatchCard card = match.side(play.side).deck().get(play.index);
+      progress.put(play.cardName, new int[] {0, card.formRow(MatchCard.EVO_FORM).darkElixirCost()});
+    } else if (play.form == Schema.FORM_HERO && progress.containsKey(play.cardName)) {
+      progress.get(play.cardName)[0] = 0;
+    }
   }
 
   private static void see(List<String> seen, String card) {
@@ -1124,13 +1572,14 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Writes what the seat's player saw of the enemy's plays: their count, the last ones, the elixir.
+   * Writes what the seat's player saw of the enemy's plays: their count, the last ones, the elixir,
+   * and the evolution progress of the enemy's cards seen.
    */
   private void enemyRows(int seat, int tick) {
     int[] o = seatScratch;
     int enemy = 1 - seat;
     o[Schema.H_ENEMY_PLAY_COUNT] = placedCount[enemy];
-    o[Schema.H_ENEMY_ELIXIR] = elixirCounts[enemy].elixir();
+    o[Schema.H_ENEMY_ELIXIR] = elixirCounts[enemy].count.elixir();
     List<SeenPlay> seen = playsPlaced.get(enemy);
     for (int r = 0; r < Schema.ENEMY_PLAY_ROWS; r++) {
       int at = Schema.H_ENEMY_PLAYS + r * Schema.ENEMY_PLAY_INTS;
@@ -1140,12 +1589,27 @@ public final class LadderEnv extends BufferedEnv {
         continue;
       }
       SeenPlay play = seen.get(seen.size() - 1 - r);
-      o[at] = play.card();
-      o[at + 1] = play.cast();
-      o[at + 2] = play.form();
-      o[at + 3] = tick - play.tick();
-      o[at + 4] = Schema.toSeatX(seat, play.x());
-      o[at + 5] = Schema.toSeatY(seat, play.y());
+      int flags = 0;
+      flags |= play.cardShown ? Schema.PLAY_CARD_SHOWN : 0;
+      flags |= play.pointShown ? Schema.PLAY_POINT_SHOWN : 0;
+      flags |= play.mirror && play.cardShown ? Schema.PLAY_MIRROR : 0;
+      flags |= play.diamondShown ? Schema.PLAY_EVOLUTION_DIAMOND : 0;
+      o[at] = play.cardShown ? play.card : Schema.UNKNOWN;
+      o[at + 1] = play.cardShown ? play.cast : Schema.UNKNOWN;
+      o[at + 2] = play.cardShown ? play.form : Schema.UNKNOWN;
+      o[at + 3] = tick - play.tick;
+      o[at + 4] = play.pointShown ? Schema.toSeatX(seat, play.x) : Schema.UNKNOWN;
+      o[at + 5] = play.pointShown ? Schema.toSeatY(seat, play.y) : Schema.UNKNOWN;
+      o[at + 6] = play.kind;
+      o[at + 7] = flags;
+      o[at + 8] = play.pointShown ? tick - play.pointTick : Schema.UNKNOWN;
+    }
+    List<String> cards = enemySeen.get(seat);
+    Map<String, int[]> progress = evolutionSeen.get(enemy);
+    for (int k = 0; k < Schema.DECK_SIZE; k++) {
+      int[] marked = k < cards.size() ? progress.get(cards.get(k)) : null;
+      o[Schema.H_ENEMY_SEEN_EVOLUTION + k] = marked == null ? Schema.UNKNOWN : marked[0];
+      o[Schema.H_ENEMY_SEEN_EVOLUTION_NEED + k] = marked == null ? 0 : marked[1];
     }
   }
 
@@ -1176,8 +1640,8 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * Writes the seat's entity rows: towers and characters in holder order, then area effects and
    * projectiles newest first, so a full list leaves out the oldest projectiles and area effects
-   * before any character. The characters and towers the seat does not see ({@link SeatView}) are
-   * left out.
+   * before any character. The characters the seat does not see ({@link SeatView}) are left out, and
+   * an enemy unit travelling underground is written as its trail.
    */
   private void entities(int seat) {
     List<BattleEntity> list = battle.getHolder().entities();
@@ -1213,6 +1677,10 @@ public final class LadderEnv extends BufferedEnv {
     if (!SeatView.sees(seat, world)) {
       return false;
     }
+    if (SeatView.trail(seat, world)) {
+      writeTrail(seat, row, world);
+      return true;
+    }
     GridEntity view = world.getView();
     EntityFlags bits = view.getFlagBits();
     long tags = view.getFlags();
@@ -1246,9 +1714,12 @@ public final class LadderEnv extends BufferedEnv {
     o[at + Schema.E_Y] = y;
     HitPoints points = world.getHitPoints();
     if (points != null) {
-      o[at + Schema.E_HP] = points.getHitPoints();
+      // The maximum is the row's at its level, which the player knows from the card; the hit
+      // points and the shield only where the screen draws the health bar.
+      boolean bar = bars.shown(seat, world);
+      o[at + Schema.E_HP] = bar ? points.getHitPoints() : Schema.UNKNOWN;
       o[at + Schema.E_MAX_HP] = points.getMaximum();
-      o[at + Schema.E_SHIELD] = points.getShield();
+      o[at + Schema.E_SHIELD] = bar ? points.getShield() : Schema.UNKNOWN;
     }
     o[at + Schema.E_STATE] = view.getState();
     o[at + Schema.E_FLAGS] = flags;
@@ -1266,17 +1737,54 @@ public final class LadderEnv extends BufferedEnv {
     o[at + Schema.E_HIT_SPEED_PERCENT] = buffs.hitSpeed(100);
     List<BuffInstance> items = buffs.items();
     o[at + Schema.E_BUFF_COUNT] = items.size();
+    int listed = BuffSlots.fill(items, buffSlots);
     for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
       int slot = at + Schema.E_BUFFS + 2 * b;
-      if (b < items.size()) {
-        BuffInstance item = items.get(b);
+      if (b < listed) {
+        BuffInstance item = items.get(buffSlots[b]);
         o[slot] = vocabulary.buffId(item.getBuff().name());
         o[slot + 1] = item.getRemaining();
       } else {
         o[slot] = -1;
       }
     }
+    Integer ran = abilityRan.get(world.getId());
+    o[at + Schema.E_ABILITY_TICKS] = ran == null ? -1 : battle.getTick() - ran;
     return true;
+  }
+
+  /**
+   * Writes an enemy unit travelling underground as the screen shows it, a moving trail: where it is
+   * now, its move, its state and its underground flag; its row's name only when the trail tells the
+   * card ({@link SeatView#TRAIL_NAMES_CARD}), and nothing of its hit points, level, target, timers,
+   * buffs or where it will come up.
+   */
+  private void writeTrail(int seat, int row, WorldEntity world) {
+    GridEntity view = world.getView();
+    int at = Schema.HEADER_INTS + row * Schema.ENTITY_INTS;
+    int[] o = seatScratch;
+    int x = Schema.toSeatX(seat, view.getX());
+    int y = Schema.toSeatY(seat, view.getY());
+    o[at + Schema.E_ID] = seatIds.of(seat, world.getId());
+    o[at + Schema.E_KIND] = Schema.KIND_CHARACTER;
+    o[at + Schema.E_SIDE] = relative(seat, world.side());
+    o[at + Schema.E_ROW] =
+        SeatView.TRAIL_NAMES_CARD ? vocabulary.id(world.getData().name()) : Schema.UNKNOWN;
+    o[at + Schema.E_X] = x;
+    o[at + Schema.E_Y] = y;
+    o[at + Schema.E_HP] = Schema.UNKNOWN;
+    o[at + Schema.E_MAX_HP] = Schema.UNKNOWN;
+    o[at + Schema.E_SHIELD] = Schema.UNKNOWN;
+    o[at + Schema.E_STATE] = view.getState();
+    o[at + Schema.E_FLAGS] =
+        (view.isAlive() ? Schema.F_ALIVE : 0) | Schema.F_HIDDEN | Schema.F_UNDERGROUND;
+    o[at + Schema.E_LEVEL] = Schema.UNKNOWN;
+    moved(seat, at, world.getId(), x, y);
+    o[at + Schema.E_TARGET] = Schema.NO_TARGET;
+    for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
+      o[at + Schema.E_BUFFS + 2 * b] = -1;
+    }
+    o[at + Schema.E_ABILITY_TICKS] = -1;
   }
 
   /**
@@ -1342,8 +1850,14 @@ public final class LadderEnv extends BufferedEnv {
       y = projectile.y();
       name = projectile.getData().name();
       o[at + Schema.E_LEVEL] = PackedLevel.level(projectile.getPackedLevel());
-      o[at + Schema.E_AIM_X] = Schema.toSeatX(seat, projectile.getAimX());
-      o[at + Schema.E_AIM_Y] = Schema.toSeatY(seat, projectile.getAimY());
+      if (side != seat && aimHidden.containsKey(projectile)) {
+        // An enemy spell launched from the king: nothing marks where it lands until it does.
+        o[at + Schema.E_AIM_X] = Schema.UNKNOWN;
+        o[at + Schema.E_AIM_Y] = Schema.UNKNOWN;
+      } else {
+        o[at + Schema.E_AIM_X] = Schema.toSeatX(seat, projectile.getAimX());
+        o[at + Schema.E_AIM_Y] = Schema.toSeatY(seat, projectile.getAimY());
+      }
       target(seat, at, projectile.getTarget());
     } else if (entity instanceof AreaEffectEntity area) {
       kind = Schema.KIND_AREA;
@@ -1374,6 +1888,7 @@ public final class LadderEnv extends BufferedEnv {
     for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
       o[at + Schema.E_BUFFS + 2 * b] = -1;
     }
+    o[at + Schema.E_ABILITY_TICKS] = -1;
   }
 
   private static int relative(int seat, int side) {

@@ -744,6 +744,8 @@ public final class VectorEnv implements AutoCloseable {
     list(schema, "refusal_names", Schema.refusalNames());
     list(schema, "fault_names", Schema.faultNames());
     list(schema, "state_names", Schema.stateNames());
+    list(schema, "play_kind_names", Schema.playKindNames());
+    list(schema, "play_flag_names", Schema.playFlagNames());
     ObjectNode scales = schema.putObject("scales");
     new TreeMap<>(Schema.scales()).forEach(scales::put);
     if (config != null) {
