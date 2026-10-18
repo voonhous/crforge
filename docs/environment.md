@@ -273,6 +273,7 @@ What the drive found, at 1-tick decisions: every recorded replay whose labels ar
 
 ## What is not offered yet
 
+- **A fork's copy by generated code**: `LadderEnv.fork` copies the battle by reflection (`DeepCopy`), through `sun.misc.Unsafe` (deprecated for removal from JDK 23) and the JDK's own layout of a lambda's captures. The plan: an annotation processor that writes each battle state class's copy at build time, with the lambdas that capture state made named classes, and `DeepCopy` kept as the test oracle that a copy reaches no original but the shared data. Waiting on a profile of the search: a fork's copy is about 1 ms against a look ahead's 160 ticks of a few milliseconds, so it is not yet what a look ahead mostly costs.
 - **Champion abilities of spawned champions**: an ability action names a unit a card play of the side made (`PlayerCommands.useAbility` names units by the play's name); a champion slot that follows a champion an action spawned keeps its action closed.
 - **The enemy's champion slots and slot flags**: a seat sees only its own; the enemy's champion shows on the field as an entity.
 - **Deck slot rules**: the environment checks the slot flags' shape only; which cards a slot may hold, and how many slots a deck has, are the battle core's to refuse as the match starts.

@@ -73,6 +73,15 @@ import sun.misc.Unsafe;
  * <p>A plain object's fields are read and written through {@code sun.misc.Unsafe} at their offsets:
  * the reflective accessors cost several times as much. Its memory access methods are deprecated for
  * removal from JDK 23; the build is on JDK 17.
+ *
+ * <p>TODO: replace this with copy code generated at build time: an annotation processor writing a
+ * {@code copyInto(CopyContext)} for each class of battle state, with the lambdas that capture state
+ * (about 25 fields, most in {@code GridStateSetter} and {@code SelectionChain}) made named classes.
+ * That drops {@code Unsafe}, the reflection and the reliance on the JDK's lambda layout (captures
+ * in fields {@code arg$1}, {@code arg$2}... in its constructor's order), and copies faster. Keep
+ * this class as the test oracle then: a copy must reach no original but the shared data. Do it once
+ * a profile of the search shows the copy costs enough to matter (docs/environment.md, "What is not
+ * offered yet").
  */
 public final class DeepCopy {
 
