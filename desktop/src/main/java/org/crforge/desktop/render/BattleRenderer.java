@@ -33,6 +33,7 @@ import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.EntityView;
 import org.crforge.desktop.battle.LandingTiles;
 import org.crforge.desktop.battle.UnitStatus;
+import org.crforge.desktop.model.ModelView;
 
 /**
  * Draws a battle core session from the frames {@link org.crforge.desktop.battle.BattleAdapter}
@@ -80,6 +81,22 @@ public class BattleRenderer {
   private final DamageNumberRenderer damageNumbers;
   private final AoeDamageRenderer areaHits;
   private final LandingOverlayRenderer landing;
+  private final ModelOverlayRenderer modelTiles;
+
+  /**
+   * The model's tile heatmap ({@code K}), off by default: shown when the screen hands a model view
+   * ({@link #showModel}).
+   */
+  @Getter private boolean drawModelTiles = false;
+
+  /**
+   * The model's odds ({@code J}), off by default: the screen lists the model's first choice
+   * probabilities and its win estimate among the status lines.
+   */
+  @Getter private boolean drawModelOdds = false;
+
+  /** The model view the screen handed for the next frames, or null. */
+  private ModelView model;
 
   @Getter private boolean drawPaths = false;
   @Getter private boolean drawRanges = false;
@@ -154,6 +171,23 @@ public class BattleRenderer {
     this.damageNumbers = new DamageNumberRenderer(ctx);
     this.areaHits = new AoeDamageRenderer(ctx);
     this.landing = new LandingOverlayRenderer(ctx);
+    this.modelTiles = new ModelOverlayRenderer(ctx);
+  }
+
+  public void toggleDrawModelTiles() {
+    drawModelTiles = !drawModelTiles;
+  }
+
+  public void toggleDrawModelOdds() {
+    drawModelOdds = !drawModelOdds;
+  }
+
+  /**
+   * The model's last decision to draw as a heatmap while {@link #isDrawModelTiles}, or null for
+   * none (a battle without a model, or before its first decision).
+   */
+  public void showModel(ModelView view) {
+    this.model = view;
   }
 
   public void toggleDrawPaths() {
@@ -249,6 +283,9 @@ public class BattleRenderer {
     }
     if (drawLanding && inputs.landingTiles() != null) {
       landing.render(inputs.landingTiles(), inputs.landing(), view);
+    }
+    if (drawModelTiles && model != null) {
+      modelTiles.render(model, view);
     }
     renderAreaEffects(frame);
     renderBodies(frame);

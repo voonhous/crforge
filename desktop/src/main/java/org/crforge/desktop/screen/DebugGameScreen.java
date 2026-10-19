@@ -29,6 +29,8 @@ import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.LandingTiles;
+import org.crforge.desktop.model.ModelOpponent;
+import org.crforge.desktop.model.ModelView;
 import org.crforge.desktop.render.BattleRenderer;
 import org.crforge.desktop.render.BattleWorkspace;
 import org.crforge.desktop.render.ViewOrientation;
@@ -184,6 +186,14 @@ public class DebugGameScreen implements Screen {
       case LANDING -> {
         renderer.toggleDrawLanding();
         log.info("Deploy overlay: {}", renderer.isDrawLanding() ? "ON" : "OFF");
+      }
+      case MODEL_TILES -> {
+        renderer.toggleDrawModelTiles();
+        log.info("Model tile heatmap: {}", renderer.isDrawModelTiles() ? "ON" : "OFF");
+      }
+      case MODEL_ODDS -> {
+        renderer.toggleDrawModelOdds();
+        log.info("Model odds: {}", renderer.isDrawModelOdds() ? "ON" : "OFF");
       }
       case FLIP -> {
         if (!view.flip()) {
@@ -451,6 +461,14 @@ public class DebugGameScreen implements Screen {
           status.add(landing.status());
         }
       }
+      // A model opponent's last decision: its heatmap (K) and its odds among the status lines (J).
+      ModelView model = modelView();
+      renderer.showModel(model);
+      if (model != null && renderer.isDrawModelOdds()) {
+        status.addAll(model.lines());
+      } else if (session.getModel() != null && renderer.isDrawModelOdds()) {
+        status.add("model: no decision yet");
+      }
       workspace.update(
           frame,
           paused,
@@ -506,6 +524,20 @@ public class DebugGameScreen implements Screen {
     }
   }
 
+  /** The view of the model opponent's last decision, or null without a model or a decision. */
+  private ModelView modelView() {
+    ModelOpponent opponent = session.getModel();
+    if (opponent == null || opponent.last() == null) {
+      return null;
+    }
+    return ModelView.of(
+        opponent.last(),
+        opponent.side(),
+        opponent.lastHand(),
+        sideName(opponent.side()),
+        opponent.policy().readsOtherSide());
+  }
+
   /**
    * Where a drop of the selected card on the hovered tile goes, for the deploy overlay, or null
    * with no tiles shown or no tile hovered.
@@ -553,6 +585,10 @@ public class DebugGameScreen implements Screen {
 
         Deploy:
           M     - Toggle the selected card's landing tiles and where a drop is moved
+
+        Model opponent (--model):
+          K     - Toggle the model's tile heatmap for its card played (or most likely)
+          J     - Toggle the model's choice probabilities and win estimate
 
         Data:
           V     - Switch to the next data version built (new Ladder battle)

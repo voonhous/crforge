@@ -318,6 +318,17 @@ public final class BattleWorkspace implements Disposable {
           "Landing tiles [M]",
           renderer::isDrawLanding,
           () -> command.accept(WorkspaceAction.LANDING));
+      // A model opponent's last decision (--model): its tile heatmap and its odds.
+      toggle(
+          tools,
+          "Model tiles [K]",
+          renderer::isDrawModelTiles,
+          () -> command.accept(WorkspaceAction.MODEL_TILES));
+      toggle(
+          tools,
+          "Model odds [J]",
+          renderer::isDrawModelOdds,
+          () -> command.accept(WorkspaceAction.MODEL_ODDS));
     }
     tools.add().height(12).row();
     heading(tools, "SESSION");

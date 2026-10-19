@@ -43,6 +43,9 @@ public final class ModelOpponent {
   /** The last decision the model took, or null before its first. */
   private ModelPolicy.Decision last;
 
+  /** The cards of the model's hand slots when it took its last decision. */
+  private final String[] lastHand = new String[Schema.HAND_SLOTS];
+
   private int decisions;
   private int plays;
   private int refused;
@@ -199,6 +202,11 @@ public final class ModelOpponent {
     return last;
   }
 
+  /** The cards of the model's hand slots when it took its last decision (null for empty). */
+  public String[] lastHand() {
+    return lastHand.clone();
+  }
+
   /** The decisions taken. */
   public int decisions() {
     return decisions;
@@ -231,6 +239,9 @@ public final class ModelOpponent {
     ModelPolicy.Decision decision =
         policy.decide(live.observation(side), live.mask(side), other, random);
     last = decision;
+    for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+      lastHand[k] = handCard(side, k);
+    }
     decisions++;
     int action = decision.action();
     String card = null;

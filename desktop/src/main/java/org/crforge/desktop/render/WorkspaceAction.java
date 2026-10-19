@@ -23,6 +23,8 @@ public enum WorkspaceAction {
   CELL_COSTS,
   ROUTES,
   LANDING,
+  MODEL_TILES,
+  MODEL_ODDS,
   FLIP,
   SIDEBAR,
   NEXT_VERSION,
@@ -57,6 +59,8 @@ public enum WorkspaceAction {
       case Input.Keys.G -> CELL_COSTS;
       case Input.Keys.N -> ROUTES;
       case Input.Keys.M -> LANDING;
+      case Input.Keys.K -> MODEL_TILES;
+      case Input.Keys.J -> MODEL_ODDS;
       case Input.Keys.F -> FLIP;
       case Input.Keys.T -> SIDEBAR;
       case Input.Keys.V -> NEXT_VERSION;
