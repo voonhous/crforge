@@ -12,12 +12,18 @@ Two more from the ranked list of the profile at a606c90c, measured back to back 
 | the crowns counted without walking every entity | 102,384 +- 1,343 (+5.0%) | 102,900 +- 1,302 (+0.6%) | 177,355 +- 4,957 (+0.8%) | 695,031 +- 7,976 (+2.8%) | 70.6 MB | 14.8 MB |
 | and each unit row built once per battle | 104,290 +- 1,193 (+7.0%) | 104,509 +- 953 (+2.1%) | 182,162 +- 5,507 (+3.5%) | 704,085 +- 6,456 (+4.1%) | 67.2 MB | 14.0 MB |
 
-- The crowns counted without walking every entity: the Ladder match remembers each side's princess towers from its first count and asks the holder whether each is still listed, a binary search by id, instead of walking the whole live list several times a step; the world remembers each side's king tower likewise. The base's first `replays` round has a wide error; against its second the gain is within the error.
-- Each unit row built once per battle: the battle's records built a unit from its row on every ask, for every card play (through the card and its champion) and every spawn; a unit is immutable, so the first build per name now stands for every later ask. Both together run above 100,000 steps a second on the replays in both rounds.
+- The crowns counted without walking every entity: the Ladder match remembers each side's princess towers from its first count and asks the holder whether each is still listed, a binary search by id, instead of walking the whole live list several times a step. The world remembers each side's king tower likewise. The base's first `replays` round has a wide error. Against its second the gain is within the error.
+- Each unit row built once per battle: the battle's records built a unit from its row on every ask, for every card play (through the card and its champion) and every spawn. A unit is immutable, so the first build per name now stands for every later ask. Both together run above 100,000 steps a second on the replays in both rounds.
 
 ## Baseline at a606c90c (2026-10-11)
 
-The baseline after the third optimisations, kept with its profile. Source `battle_core` 594d47d6 with the endpoint scan's tests skipped for a cell that cannot win and each side's king tower remembered (the third optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as in [The benchmark](performance.md#the-benchmark); score and error as JMH prints them. Load average 3.2 to 4.6 during the run, the four-thread workload's own threads included.
+The baseline after the third optimisations, kept with its profile:
+
+- Source `battle_core` 594d47d6, with the endpoint scan's tests skipped for a cell that cannot win and each side's king tower remembered (the third optimisations, below).
+- Data version 16.402.19, with the references at the commit `crforge-data.lock` names (599 of 599 cases run, 25 of them replays).
+- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- JMH defaults as in [The benchmark](performance.md#the-benchmark). Score and error as JMH prints them.
+- Load average 3.2 to 4.6 during the run, the four-thread workload's own threads included.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -55,12 +61,18 @@ Two smaller changes from the ranked list of the profile at 8c51ccfb, measured ba
 | the endpoint scan's tests skipped for a cell that cannot win | 95,417 +- 1,799 (+3.6%) | 95,060 +- 1,189 (+1.7%) | 163,173 +- 9,357 (+4.3%) | 640,381 +- 7,874 (+4.1%) | 76.1 MB | 16.4 MB |
 | and each side's king tower remembered | 98,469 +- 4,963 (+6.9%) | 97,793 +- 3,579 (+4.6%) | 169,260 +- 4,739 (+8.2%) | 677,451 +- 6,836 (+10.1%) | 71.5 MB | 15.7 MB |
 
-- The endpoint scan's tests skipped for a cell that cannot win: once the best cell of the scan for the cell a unit walks to is of the preferred rank, a cell no nearer to the unit cannot beat it, so its distance to the target and its rank are not asked. The acceptance test is still asked of every cell.
-- Each side's king tower remembered: the Ladder match looked its kings up in the holder's live list several times a step (the crowns, whether a king is alive, the tiebreaker); a king tower never leaves the holder, so the first lookup is kept. It also saves each lookup's iterator: the replays allocated 76.1 MB a battle before it and 71.5 MB after, in the first round (80.7 and 73.2 MB in the second; the spread from run to run is about 4%).
+- The endpoint scan's tests skipped for a cell that cannot win: once the best cell of the scan for the cell a unit walks to is of the preferred rank, a cell no nearer to the unit cannot beat it. So its distance to the target and its rank are not asked. The acceptance test is still asked of every cell.
+- Each side's king tower remembered: the Ladder match looked its kings up in the holder's live list several times a step (the crowns, whether a king is alive, the tiebreaker). A king tower never leaves the holder, so the first lookup is kept. It also saves each lookup's iterator: the replays allocated 76.1 MB a battle before it and 71.5 MB after, in the first round (80.7 and 73.2 MB in the second). The spread from run to run is about 4%.
 
 ## Baseline at 287b0c7d (2026-10-11)
 
-The baseline after the second optimisations, kept with its profile. Source `battle_core` 8c51ccfb with the slot marks of the spatial index and the route search's cells priced as it reaches them (the second optimisations, below), data version 16.402.19 with the references at the commit `crforge-data.lock` names (544 of 544 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as in [The benchmark](performance.md#the-benchmark); score and error as JMH prints them. Load average 4.1 to 6.3 during the run, the four-thread workload's own threads included.
+The baseline after the second optimisations, kept with its profile:
+
+- Source `battle_core` 8c51ccfb, with the slot marks of the spatial index and the route search's cells priced as it reaches them (the second optimisations, below).
+- Data version 16.402.19, with the references at the commit `crforge-data.lock` names (544 of 544 cases run, 24 of them replays).
+- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- JMH defaults as in [The benchmark](performance.md#the-benchmark). Score and error as JMH prints them.
+- Load average 4.1 to 6.3 during the run, the four-thread workload's own threads included.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -94,14 +106,20 @@ The changes the profile at 8c51ccfb pointed to, measured back to back against 8c
 | slot marks in the spatial index | 88,286 +- 1,451 (+8.1%) | 90,217 +- 923 (+8.4%) | 155,654 +- 4,408 (+7.0%) | 606,776 +- 9,557 (+8.4%) | 81.9 MB | 16.9 MB |
 | and the cells priced as the search reaches them | 92,834 +- 1,086 (+13.6%) | 93,712 +- 1,060 (+12.6%) | 158,199 +- 4,812 (+8.7%) | 624,528 +- 11,867 (+11.6%) | 77.9 MB | 17.0 MB |
 
-- Slot marks in the spatial index: each entity put in the index takes a slot and the buckets hold slots; a query marks the slots it has accepted in a word per 64 slots instead of looking through its result for every entry it meets.
-- The cells priced as the search reaches them: the route search prices a cell from the cost lookup the first time it reads it, instead of all 2304 cells of the arena before every search. On top of the slot marks it adds about 4 to 5% on the replays; on all the cases, whose battles are mostly short, less than its error.
+- Slot marks in the spatial index: each entity put in the index takes a slot and the buckets hold slots. A query marks the slots it has accepted in a word per 64 slots instead of looking through its result for every entry it meets.
+- The cells priced as the search reaches them: the route search prices a cell from the cost lookup the first time it reads it, instead of all 2304 cells of the arena before every search. On top of the slot marks it adds about 4 to 5% on the replays. On all the cases, whose battles are mostly short, it adds less than its error.
 
 The bytes allocated did not move beyond the spread from run to run (about 4%): the changes save time, not objects.
 
 ## Baseline at 2afbb93d (2026-10-10)
 
-The baseline after the first optimisations, kept with its profile. Source `battle_core` 2afbb93d, data version 16.402.19 with the references at the commit `crforge-data.lock` names (459 of 459 cases run, 24 of them replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as in [The benchmark](performance.md#the-benchmark); score and error as JMH prints them. Load average 2.3 to 4.1 during the run.
+The baseline after the first optimisations, kept with its profile:
+
+- Source `battle_core` 2afbb93d.
+- Data version 16.402.19, with the references at the commit `crforge-data.lock` names (459 of 459 cases run, 24 of them replays).
+- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- JMH defaults as in [The benchmark](performance.md#the-benchmark). Score and error as JMH prints them.
+- Load average 2.3 to 4.1 during the run.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -148,13 +166,18 @@ The three changes the first profile pointed to, each measured on its own and all
 | #480: the route search's arrays kept | 59,814 +- 1,220 | 94,183 +- 6,045 | 144.1 MB (-20%) | 35.7 MB (-12%) |
 | all three (2afbb93d) | 72,699 +- 1,133 (+20%) | 124,019 +- 6,959 (+30%) | 79.7 MB (-56%) | 17.8 MB (-56%) |
 
-The speed came from the spatial queries; the other two cut the bytes allocated but not the time on one thread, where the collector was already cheap. Together they more than halved the bytes. On four threads the baseline above runs 494,770 steps a second against 370,143 in the first baseline below (+34%, on a slightly different set of references).
+The speed came from the spatial queries. The other two cut the bytes allocated but not the time on one thread, where the collector was already cheap. Together they more than halved the bytes. On four threads the baseline above runs 494,770 steps a second against 370,143 in the first baseline below (+34%, on a slightly different set of references).
 
 ## First baseline (2026-10-10, 71b09ba6)
 
 The baseline before the first optimisations, kept with its profile as the picture they started from.
 
-Source `battle_core` 71b09ba6 (the battle core as it was; the benchmark itself came after), data version 16.402.19 on an earlier set of its references (450 of 451 cases run, 1 refused, 23 replays), Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB. JMH defaults as in [The benchmark](performance.md#the-benchmark); score and error as JMH prints them. The four-thread workload was run again on its own, as the machine was busy during its first run.
+- Source `battle_core` 71b09ba6 (the battle core as it was; the benchmark itself came after).
+- Data version 16.402.19, on an earlier set of its references (450 of 451 cases run, 1 refused, 23 replays).
+- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- JMH defaults as in [The benchmark](performance.md#the-benchmark). Score and error as JMH prints them.
+
+The four-thread workload was run again on its own, as the machine was busy during its first run.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
@@ -177,7 +200,11 @@ What the profile of the replays showed then (async-profiler, as in [Profiling](p
 | 18% | preparing routes (`RoutePreparation`), 12% of it the route search |
 | 8% | following routes |
 
-Of the bytes allocated, 99% are allocated in the steps (building the battle is under 1%): the routing overlay's fresh, zeroed array at the end of every step (`CellGrid.swap`, from `BattleWorld.postPass`: about 23%), the route search's arrays, new for every search (`RouteSearch$Run`, `CellCostField.costField`: about 22%), and `SpatialIndex.query`'s result lists and identity sets (about 15%).
+Of the bytes allocated, 99% are allocated in the steps (building the battle is under 1%). The largest sites:
+
+- the routing overlay's fresh, zeroed array at the end of every step (`CellGrid.swap`, from `BattleWorld.postPass`: about 23%)
+- the route search's arrays, new for every search (`RouteSearch$Run`, `CellCostField.costField`: about 22%)
+- `SpatialIndex.query`'s result lists and identity sets (about 15%)
 
 Its flame graphs, cut to `Battle.step` (the benchmark's own frames left out, classes without their packages) and drawn root first: the width of a frame is its share of the step time or of the bytes allocated. The interactive pages come from the commands in [Profiling](performance.md#profiling).
 
