@@ -14,6 +14,10 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.deploy.CardPlacement;
+import org.crforge.core.battle.match.EvolutionItem;
+import org.crforge.core.battle.match.Hand;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -30,23 +34,71 @@ class BattleSessionTest {
       List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
 
   @Test
-  @DisplayName("the default decks deal, and every card of them plays without halting the battle")
+  @DisplayName(
+      "the default decks deal, and every card of them plays without halting the battle, blue's"
+          + " hero slots in their hero form and its evolution slot's card evolved")
   void theDefaultDecksPlay() {
     BattleSession session = BattleSession.ladder(GameData.tables());
-    // Each side plays whatever its first slot holds whenever it can, for two minutes of battle.
-    for (int step = 0; step < 2400; step++) {
+    List<List<String>> decks = List.of(BattleDecks.BLUE, BattleDecks.RED);
+    List<int[]> slotFlags = List.of(BattleDecks.blueSlots(), BattleDecks.redSlots());
+    // Each side plays its hand slots in turn, each as soon as the client offers it, so its hand
+    // cycles through its whole deck; an evolution slot's card is played whenever it is offered, so
+    // its count is reached within the battle. Up to five minutes of battle, the regular time and
+    // the overtime, or until the match is over.
+    int[] turn = new int[2];
+    for (int step = 0; step < 6000 && !session.isOver(); step++) {
       for (int side = 0; side < 2; side++) {
         int y = side == 0 ? 8500 : 23500;
-        if (session.handCard(side, 0) != null && !session.isPending(side, 0)) {
-          session.play(side, 0, step % 2 == 0 ? 3500 : 14500, y);
+        int evolution = offeredEvolutionSlot(session, side, slotFlags.get(side));
+        if (evolution >= 0) {
+          session.play(side, evolution, 3500, y);
+        } else if (session.cardUnavailableReason(side, turn[side]) == null
+            && session.play(side, turn[side], 3500, y)) {
+          turn[side] = (turn[side] + 1) % 4;
         }
       }
       assertThat(session.step()).as("step %d: %s", step, session.messages()).isTrue();
     }
     assertThat(session.getHalted()).isNull();
-    assertThat(session.getBattle().getPlays())
-        .extracting(Standard1v1Battle.Play::name)
-        .hasSizeGreaterThan(16);
+    List<Standard1v1Battle.Play> plays = session.getBattle().getPlays();
+    assertThat(plays).hasSizeGreaterThan(16);
+    // Every play is placed as it runs, but one given before the match was decided and run after.
+    assertThat(plays)
+        .allSatisfy(
+            play -> {
+              if (play.matchCode() != LadderMatch.OVER) {
+                assertThat(play.matchCode()).as("%s's match code", play.name()).isZero();
+                assertThat(play.result().placed()).as("%s placed", play.name()).isTrue();
+              }
+            });
+
+    // Every card of both decks is played, a hero slot's card always in its hero form, an evolution
+    // slot's card evolved once its count is reached and plain otherwise, any other card plain.
+    for (int side = 0; side < 2; side++) {
+      int s = side;
+      List<EvolutionItem> items =
+          plays.stream()
+              .filter(play -> play.side() == s && play.matchCode() == 0)
+              .map(Standard1v1Battle.Play::evolution)
+              .toList();
+      for (int index = 0; index < decks.get(side).size(); index++) {
+        int deckIndex = index;
+        List<EvolutionItem> card = items.stream().filter(i -> i.index() == deckIndex).toList();
+        String name = "side " + side + "'s " + decks.get(side).get(index);
+        int flags = slotFlags.get(side)[index];
+        assertThat(card).as(name).isNotEmpty();
+        if ((flags & MatchSide.HERO_SLOT) != 0) {
+          assertThat(card).as(name).allMatch(i -> i.field() == EvolutionItem.HERO);
+        } else if ((flags & MatchSide.EVOLUTION_SLOT) != 0) {
+          assertThat(card)
+              .as(name)
+              .anyMatch(i -> i.field() == EvolutionItem.EVOLVED)
+              .anyMatch(i -> i.field() == 0);
+        } else {
+          assertThat(card).as(name).allMatch(i -> i.field() == 0);
+        }
+      }
+    }
   }
 
   @Test
@@ -308,6 +360,19 @@ class BattleSessionTest {
       assertThat(session.step()).isTrue();
     }
     return session;
+  }
+
+  /** The hand slot of a side's evolution slot's card when the client offers it now, else -1. */
+  private static int offeredEvolutionSlot(BattleSession session, int side, int[] slotFlags) {
+    int[] hand = session.match().side(side).getHand().slots();
+    for (int slot = 0; slot < 4; slot++) {
+      if (hand[slot] != Hand.EMPTY
+          && (slotFlags[hand[slot]] & MatchSide.EVOLUTION_SLOT) != 0
+          && session.cardUnavailableReason(side, slot) == null) {
+        return slot;
+      }
+    }
+    return -1;
   }
 
   /** The first slot of side 0's hand holding a card. */

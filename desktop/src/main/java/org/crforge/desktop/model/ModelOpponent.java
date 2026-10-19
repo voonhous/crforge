@@ -122,8 +122,13 @@ public final class ModelOpponent {
       // A deck file given and no deck of the screen's own: a mirror match.
       mine = model;
     } else {
-      List<String> cards = 1 - side == 0 ? BattleDecks.BLUE : BattleDecks.RED;
-      mine = new DeckFile.Deck("the visualizer's", cards, new int[Schema.DECK_SIZE]);
+      // The visualizer's deck of the screen's side, with its slot flags.
+      boolean blue = 1 - side == 0;
+      mine =
+          new DeckFile.Deck(
+              "the visualizer's",
+              blue ? BattleDecks.BLUE : BattleDecks.RED,
+              blue ? BattleDecks.blueSlots() : BattleDecks.redSlots());
     }
     LiveBattle live = new LiveBattle(tables, vocabulary, config);
     int seed = settings.seed() + battleIndex;

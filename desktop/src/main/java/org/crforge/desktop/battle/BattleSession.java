@@ -129,9 +129,23 @@ public final class BattleSession {
    * @param red side 1's deck, by card row name
    */
   public static BattleSession ladder(GameTables tables, List<String> blue, List<String> red) {
+    return ladder(tables, blue, new int[blue.size()], red, new int[red.size()]);
+  }
+
+  /**
+   * A Ladder battle between two decks whose slot flags mark their evolution and hero slots.
+   *
+   * @param tables the game tables
+   * @param blue side 0's deck, by card row name
+   * @param blueSlots side 0's slot flags, by deck index
+   * @param red side 1's deck, by card row name
+   * @param redSlots side 1's slot flags, by deck index
+   */
+  public static BattleSession ladder(
+      GameTables tables, List<String> blue, int[] blueSlots, List<String> red, int[] redSlots) {
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL);
     // Both players' words are 0, so every new session deals and plays the same way.
-    battle.startLadderMatch(blue, red, 0, 0);
+    battle.startLadderMatch(blue, red, 0, 0, blueSlots, redSlots);
     return new BattleSession(battle, null);
   }
 
@@ -151,9 +165,12 @@ public final class BattleSession {
     return new BattleSession(battle, List.of(levels, levels.clone()), opponent);
   }
 
-  /** A Ladder battle between the visualizer's default decks, {@link BattleDecks}. */
+  /**
+   * A Ladder battle between the visualizer's default decks and their slots, {@link BattleDecks}.
+   */
   public static BattleSession ladder(GameTables tables) {
-    return ladder(tables, BattleDecks.BLUE, BattleDecks.RED);
+    return ladder(
+        tables, BattleDecks.BLUE, BattleDecks.blueSlots(), BattleDecks.RED, BattleDecks.redSlots());
   }
 
   /**

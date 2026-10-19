@@ -23,6 +23,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.StatusSmokeFixture;
 import org.crforge.desktop.battle.BattleAdapter;
+import org.crforge.desktop.battle.BattleDecks;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.UnitStatus;
@@ -39,10 +40,39 @@ public class WorkspaceSmoke extends CRForgeGame {
   private CharacterEntity statusClone;
   private List<UnitStatus> pausedStatuses;
 
+  /** The blue hand slot the smoke selects with a click and plays, see {@link #blueOnlySlot}. */
+  private final int blueSlot;
+
+  /** The selected blue card's button text, which the hand checks of {@link #capture} look for. */
+  private static String blueCard;
+
+  /** The name of the unit the smoke inspects, which the inspector's header shows. */
+  private String inspected;
+
   WorkspaceSmoke(DataVersions versions, BattleSession session) {
     super(versions, session);
     this.session = session;
     this.versions = versions;
+    this.blueSlot = blueOnlySlot(session);
+    blueCard = buttonText(session.handCard(0, blueSlot).name());
+  }
+
+  /**
+   * The first slot of blue's opening hand whose card red's deck does not hold, so a search for its
+   * button by text finds blue's and never red's.
+   */
+  private static int blueOnlySlot(BattleSession session) {
+    for (int slot = 0; slot < 4; slot++) {
+      if (!BattleDecks.RED.contains(session.handCard(0, slot).name())) {
+        return slot;
+      }
+    }
+    throw new IllegalStateException("every card of blue's opening hand is in red's deck");
+  }
+
+  /** A card row name as the hand shows it on its button: a space before each inner capital. */
+  private static String buttonText(String name) {
+    return name.replaceAll("(?<=[a-z])(?=[A-Z])", " ");
   }
 
   public static void main(String[] args) {
@@ -150,12 +180,12 @@ public class WorkspaceSmoke extends CRForgeGame {
       }
       if (frames == 23) {
         require(labels(stage().getRoot()).contains("DEPLOY: select"), "Deploy button changes mode");
-        click("Witch", false);
+        click(blueCard, false);
         click("Data details", true);
         require(session.getBattle().getPlays().isEmpty(), "toolbar click cannot deploy");
         click("Data details", true);
         clickArena(0.3f, 0.25f);
-        require(session.isPending(0, 0), "arena click queues selected card");
+        require(session.isPending(0, blueSlot), "arena click queues selected card");
       }
       if (frames == 26) {
         capture("queued-card");
@@ -169,6 +199,7 @@ public class WorkspaceSmoke extends CRForgeGame {
                 .filter(value -> value.kind() == org.crforge.desktop.battle.EntityView.Kind.TROOP)
                 .findFirst()
                 .orElseThrow();
+        inspected = entity.name();
         clickArena(entity.x() / 18000f, entity.y() / 32000f);
       }
       if (frames == 30) {
@@ -190,7 +221,9 @@ public class WorkspaceSmoke extends CRForgeGame {
         require(log.getScrollY() == 0, "new events preserve scroll position");
         click("+ Latest", true);
         require(log.getScrollPercentY() == 1, "Latest resumes following events");
-        require(labels(stage().getRoot()).contains("Witch #"), "inspection uses arena projection");
+        require(
+            labels(stage().getRoot()).contains(inspected + " #"),
+            "inspection uses arena projection");
         session.halt("Smoke check: unsupported behavior");
         key(Input.Keys.T);
       }
@@ -400,13 +433,13 @@ public class WorkspaceSmoke extends CRForgeGame {
     require(arenaOrigin.y + arena.getHeight() <= summaryY, "arena stays below summary: " + name);
     require(arenaOrigin.y >= noticeTop, "arena stays above notice: " + name);
     System.out.println("ARENA " + name + ": " + bounds.width() + "x" + bounds.height());
-    TextButton witch = find(stage().getRoot(), "Witch", false);
-    if (witch != null) {
-      Vector2 pos = witch.localToStageCoordinates(new Vector2());
+    TextButton card = find(stage().getRoot(), blueCard, false);
+    if (card != null) {
+      Vector2 pos = card.localToStageCoordinates(new Vector2());
       System.out.println(
-          "HAND " + name + ": " + pos + " size=" + witch.getWidth() + "," + witch.getHeight());
+          "HAND " + name + ": " + pos + " size=" + card.getWidth() + "," + card.getHeight());
       require(
-          pos.y >= 0 && pos.y + witch.getHeight() <= Gdx.graphics.getHeight(),
+          pos.y >= 0 && pos.y + card.getHeight() <= Gdx.graphics.getHeight(),
           "hand stays visible: " + name);
     }
     Pixmap image =
