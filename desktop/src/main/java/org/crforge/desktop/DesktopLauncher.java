@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ReplayCapture;
@@ -293,7 +294,16 @@ public class DesktopLauncher {
             + policy.dataVersion()
             + ") plays side "
             + opponent.side()
-            + (settings.sample() ? ", drawing its choices" : ", its most likely choices")
+            + (!settings.draws()
+                ? ", its most likely choices"
+                : settings.temperature() == 1.0
+                        && settings.temperatureMode() == ModelPolicy.TemperatureMode.ALL
+                    ? ", drawing its choices"
+                    : ", drawing its choices at temperature "
+                        + settings.temperature()
+                        + " ("
+                        + settings.temperatureMode().name().toLowerCase(Locale.ROOT)
+                        + ")")
             + ", a decision every "
             + opponent.live().config().decisionTicks()
             + " ticks, cards at level "

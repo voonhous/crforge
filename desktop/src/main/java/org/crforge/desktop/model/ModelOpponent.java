@@ -73,7 +73,7 @@ public final class ModelOpponent {
     this.modelDeck = modelDeck.cards();
     this.modelDeckName = modelDeck.name();
     this.myDeckName = myDeck.name();
-    this.random = settings.sample() ? new Random(settings.seed()) : null;
+    this.random = settings.draws() ? new Random(settings.seed()) : null;
   }
 
   /**
@@ -242,7 +242,13 @@ public final class ModelOpponent {
     int side = side();
     int[] other = live.observation(1 - side);
     ModelPolicy.Decision decision =
-        policy.decide(live.observation(side), live.mask(side), other, random);
+        policy.decide(
+            live.observation(side),
+            live.mask(side),
+            other,
+            random,
+            settings.temperature(),
+            settings.temperatureMode());
     last = decision;
     for (int k = 0; k < Schema.HAND_SLOTS; k++) {
       lastHand[k] = handCard(side, k);

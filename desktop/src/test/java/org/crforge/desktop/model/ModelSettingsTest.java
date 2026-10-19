@@ -33,7 +33,9 @@ class ModelSettingsTest {
     assertThat(settings.myDeck()).isNull();
     assertThat(settings.level()).isEqualTo(ModelSettings.LEVEL);
     assertThat(settings.towerLevel()).isEqualTo(ModelSettings.LEVEL);
-    assertThat(settings.sample()).isFalse();
+    assertThat(settings.temperature()).as("the most likely choices").isZero();
+    assertThat(settings.temperatureMode()).isEqualTo(ModelPolicy.TemperatureMode.ALL);
+    assertThat(settings.draws()).isFalse();
     assertThat(settings.seed()).isZero();
   }
 
@@ -54,7 +56,8 @@ class ModelSettingsTest {
     assertThat(settings.mySlots()).containsExactly(0, 0, 0, 0, 0, 0, 0, 1);
     assertThat(settings.level()).isEqualTo(14);
     assertThat(settings.towerLevel()).as("the card level by default").isEqualTo(14);
-    assertThat(settings.sample()).isTrue();
+    assertThat(settings.temperature()).as("--model-sample is temperature 1").isEqualTo(1.0);
+    assertThat(settings.draws()).isTrue();
     assertThat(settings.seed()).isEqualTo(9);
     assertThat(
             ModelSettings.parse(new String[] {"--model", "m", "--tower-level", "12"})
@@ -63,6 +66,39 @@ class ModelSettingsTest {
         .isEqualTo(12);
     assertThat(ModelSettings.cards(DECK, "x"))
         .isEqualTo(List.of("A", "B", "C", "D", "E", "F", "G", "H"));
+  }
+
+  @Test
+  void aTemperatureAndItsModeAreRead() {
+    ModelSettings settings =
+        ModelSettings.parse(
+                new String[] {
+                  "--model", "m", "--model-temperature", "0.5", "--model-temperature-mode", "inner"
+                })
+            .orElseThrow();
+    assertThat(settings.temperature()).isEqualTo(0.5);
+    assertThat(settings.temperatureMode()).isEqualTo(ModelPolicy.TemperatureMode.INNER);
+    assertThat(settings.draws()).isTrue();
+    ModelSettings innerArgmax =
+        ModelSettings.parse(new String[] {"--model", "m", "--model-temperature-mode", "inner"})
+            .orElseThrow();
+    assertThat(innerArgmax.temperature()).isZero();
+    assertThat(innerArgmax.draws()).as("whether to act is still drawn").isTrue();
+    assertThatThrownBy(
+            () ->
+                ModelSettings.parse(
+                    new String[] {"--model", "m", "--model-sample", "--model-temperature", "0.5"}))
+        .hasMessageContaining("give one of the two");
+    assertThatThrownBy(
+            () -> ModelSettings.parse(new String[] {"--model", "m", "--model-temperature", "-1"}))
+        .hasMessageContaining("0 or more");
+    assertThatThrownBy(
+            () ->
+                ModelSettings.parse(
+                    new String[] {"--model", "m", "--model-temperature-mode", "outer"}))
+        .hasMessageContaining("all or inner");
+    assertThatThrownBy(() -> ModelSettings.parse(new String[] {"--model-temperature", "0.5"}))
+        .hasMessageContaining("name it with --model");
   }
 
   @Test

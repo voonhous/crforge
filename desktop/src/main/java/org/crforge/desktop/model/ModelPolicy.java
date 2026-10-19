@@ -61,6 +61,9 @@ public final class ModelPolicy implements AutoCloseable {
   /** The first choice's log-probabilities of a closed choice are below this. */
   public static final float CLOSED = -1e8f;
 
+  /** The log-probability a closed choice is given at a temperature ({@link #atTemperature}). */
+  private static final double CLOSED_LOGP = -1e9;
+
   private static final ObjectMapper JSON = new ObjectMapper();
 
   private final OrtEnvironment environment;
@@ -83,6 +86,20 @@ public final class ModelPolicy implements AutoCloseable {
    * @param action the action picked
    */
   public record Decision(float[] first, float[][] tiles, float value, float winLogit, int action) {}
+
+  /**
+   * Where a temperature applies ({@link #atTemperature}): how a move is picked from the policy, not
+   * the policy.
+   */
+  public enum TemperatureMode {
+    /** The first choice (the wait, a hand slot or an ability) and the tile. */
+    ALL,
+    /**
+     * The tile, and which hand slot or ability given that the model acts: the wait's probability,
+     * and so the probability to act at all, stays as the policy gives it.
+     */
+    INNER
+  }
 
   private ModelPolicy(OrtEnvironment environment, OrtSession session, String source)
       throws OrtException {
@@ -311,6 +328,26 @@ public final class ModelPolicy implements AutoCloseable {
    * @return the decision
    */
   public Decision decide(int[] observation, byte[] mask, int[] otherHeader, Random random) {
+    return decide(observation, mask, otherHeader, random, 1.0, TemperatureMode.ALL);
+  }
+
+  /**
+   * As {@link #decide(int[], byte[], int[], Random)}, the action drawn at a temperature ({@link
+   * #atTemperature}). The decision's log-probabilities are the policy's, as at temperature 1.
+   *
+   * @param random the generator to draw from; null takes the most likely choices whatever the
+   *     temperature
+   * @param temperature 1 the policy's own probabilities, below 1 sharper, 0 the most likely
+   * @param mode where the temperature applies
+   */
+  public Decision decide(
+      int[] observation,
+      byte[] mask,
+      int[] otherHeader,
+      Random random,
+      double temperature,
+      TemperatureMode mode) {
+    checkTemperature(temperature);
     if (observation.length != Schema.SEAT_INTS || mask.length != Schema.ACTIONS) {
       throw new IllegalArgumentException(
           "an observation is "
@@ -347,7 +384,7 @@ public final class ModelPolicy implements AutoCloseable {
         float[][] tiles = ((float[][][]) value(result, "tile_logp"))[0];
         float value = ((float[]) value(result, "value"))[0];
         float win = wins ? ((float[]) value(result, "win_logit"))[0] : Float.NaN;
-        int action = pick(first, tiles, mask, random);
+        int action = pick(first, tiles, mask, random, temperature, mode);
         return new Decision(first, tiles, value, win, action);
       }
     } catch (OrtException e) {
@@ -368,17 +405,147 @@ public final class ModelPolicy implements AutoCloseable {
    * closed in the mask.
    */
   static int pick(float[] first, float[][] tiles, byte[] mask, Random random) {
-    int choice = choose(first, random);
+    return pick(first, tiles, mask, random, 1.0, TemperatureMode.ALL);
+  }
+
+  /**
+   * As {@link #pick(float[], float[][], byte[], Random)}, each choice drawn from its probabilities
+   * at a temperature ({@link #atTemperature}); a choice at temperature 0 is its most likely, so
+   * draws nothing (in {@link TemperatureMode#INNER} the wait or not is still drawn).
+   */
+  static int pick(
+      float[] first,
+      float[][] tiles,
+      byte[] mask,
+      Random random,
+      double temperature,
+      TemperatureMode mode) {
+    boolean tempered = random != null && temperature != 1.0;
+    boolean drawFirst = !(temperature == 0.0 && mode == TemperatureMode.ALL);
+    int choice =
+        choose(
+            tempered ? atTemperature(first, temperature, mode) : first, drawFirst ? random : null);
     int action;
     if (choice == 0) {
       action = Schema.WAIT;
     } else if (choice <= Schema.HAND_SLOTS) {
-      int tile = choose(tiles[choice - 1], random);
+      float[] slot = tiles[choice - 1];
+      int tile =
+          choose(
+              tempered ? atTemperature(slot, temperature, TemperatureMode.ALL) : slot,
+              temperature == 0.0 ? null : random);
       action = 1 + (choice - 1) * Schema.TILES + tile;
     } else {
       action = Schema.FIRST_ABILITY + (choice - 1 - Schema.HAND_SLOTS);
     }
     return action < mask.length && mask[action] != 0 ? action : Schema.WAIT;
+  }
+
+  /**
+   * One choice's log-probabilities (the first choice, or a slot's tiles) at a temperature: the
+   * probabilities raised to {@code 1 / temperature} and normalised again, so below 1 the likely
+   * choices gain and the unlikely lose; at 0 the most likely has it all. A closed choice stays
+   * closed. {@link TemperatureMode#INNER}, for the first choice, keeps the wait's probability (and
+   * so the probability to act at all) and sharpens only which of the other choices is taken given
+   * that one is.
+   *
+   * @param logp the log-probabilities, a closed choice below {@link #CLOSED}
+   * @param temperature 0 or more
+   * @param mode where the temperature applies
+   * @return the log-probabilities at the temperature, a closed choice at {@code -1e9}
+   */
+  static float[] atTemperature(float[] logp, double temperature, TemperatureMode mode) {
+    checkTemperature(temperature);
+    double[] values = new double[logp.length];
+    for (int i = 0; i < logp.length; i++) {
+      values[i] = logp[i];
+    }
+    double[] out;
+    if (mode == TemperatureMode.ALL) {
+      out = sharpen(values, 0, temperature);
+    } else {
+      // The wait as it is; the rest sharpened among themselves, then scaled back to the
+      // probability to act.
+      double act = logSumExp(values, 1);
+      out = sharpen(values, 1, temperature);
+      out[0] = values[0];
+      for (int i = 1; i < out.length; i++) {
+        out[i] = Math.max(act + out[i], CLOSED_LOGP);
+      }
+    }
+    float[] result = new float[out.length];
+    for (int i = 0; i < out.length; i++) {
+      result[i] = (float) out[i];
+    }
+    return result;
+  }
+
+  /**
+   * The entries from {@code from} on at a temperature, normalised over them; a closed entry stays
+   * at {@link #CLOSED_LOGP}, the entries before {@code from} are left at 0 for the caller.
+   */
+  private static double[] sharpen(double[] logp, int from, double temperature) {
+    double[] out = new double[logp.length];
+    int best = -1;
+    double top = Double.NEGATIVE_INFINITY;
+    for (int i = from; i < logp.length; i++) {
+      boolean closed = logp[i] < CLOSED;
+      out[i] = closed ? CLOSED_LOGP : temperature == 0.0 ? 0.0 : logp[i] / temperature;
+      if (!closed && (best < 0 || logp[i] > logp[best])) {
+        best = i;
+      }
+      if (!closed) {
+        top = Math.max(top, out[i]);
+      }
+    }
+    if (best < 0) {
+      return out; // every entry closed
+    }
+    if (temperature == 0.0) {
+      for (int i = from; i < logp.length; i++) {
+        out[i] = i == best ? 0.0 : CLOSED_LOGP;
+      }
+      return out;
+    }
+    double sum = 0;
+    for (int i = from; i < logp.length; i++) {
+      if (logp[i] >= CLOSED) {
+        sum += Math.exp(out[i] - top);
+      }
+    }
+    double norm = top + Math.log(sum);
+    for (int i = from; i < logp.length; i++) {
+      if (logp[i] >= CLOSED) {
+        out[i] -= norm;
+      }
+    }
+    return out;
+  }
+
+  /** The log of the summed probabilities of the open entries from {@code from} on. */
+  private static double logSumExp(double[] logp, int from) {
+    double top = Double.NEGATIVE_INFINITY;
+    for (int i = from; i < logp.length; i++) {
+      if (logp[i] >= CLOSED) {
+        top = Math.max(top, logp[i]);
+      }
+    }
+    if (top == Double.NEGATIVE_INFINITY) {
+      return CLOSED_LOGP;
+    }
+    double sum = 0;
+    for (int i = from; i < logp.length; i++) {
+      if (logp[i] >= CLOSED) {
+        sum += Math.exp(logp[i] - top);
+      }
+    }
+    return top + Math.log(sum);
+  }
+
+  private static void checkTemperature(double temperature) {
+    if (!(temperature >= 0.0) || Double.isInfinite(temperature)) {
+      throw new IllegalArgumentException("a temperature is 0 or more, got " + temperature);
+    }
   }
 
   private static int choose(float[] logp, Random random) {
