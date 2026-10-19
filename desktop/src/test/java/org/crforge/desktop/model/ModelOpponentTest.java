@@ -65,7 +65,8 @@ class ModelOpponentTest {
         null,
         ModelSettings.LEVEL,
         ModelSettings.LEVEL,
-        sample,
+        sample ? 1.0 : 0.0,
+        ModelPolicy.TemperatureMode.ALL,
         0);
   }
 

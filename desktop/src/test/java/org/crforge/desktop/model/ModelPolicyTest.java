@@ -154,6 +154,127 @@ class ModelPolicyTest {
   }
 
   @Test
+  void atTemperatureOneTheDrawsAreThoseWithoutATemperature() {
+    for (JsonNode seat : seats) {
+      for (ModelPolicy.TemperatureMode mode : ModelPolicy.TemperatureMode.values()) {
+        Random plain = new Random(11);
+        Random tempered = new Random(11);
+        for (int i = 0; i < 20; i++) {
+          int expected = policy.decide(observation(seat), mask(seat), null, plain).action();
+          assertThat(policy.decide(observation(seat), mask(seat), null, tempered, 1.0, mode))
+              .extracting(ModelPolicy.Decision::action)
+              .isEqualTo(expected);
+        }
+      }
+    }
+  }
+
+  @Test
+  void aTemperatureNearZeroTakesTheMostLikelyOnTheChosenChoices() {
+    int acted = 0;
+    int waited = 0;
+    for (JsonNode seat : seats) {
+      ModelPolicy.Decision greedy = policy.decide(observation(seat), mask(seat), null, null);
+      // The most likely action given that the model acts: the wait closed, then the most likely.
+      float[] acting = greedy.first().clone();
+      acting[0] = -1e9f;
+      int mostLikelyAct = ModelPolicy.pick(acting, greedy.tiles(), mask(seat), null);
+      for (double temperature : new double[] {0.0, 1e-6}) {
+        Random random = new Random(7);
+        for (int i = 0; i < 30; i++) {
+          int all =
+              policy
+                  .decide(
+                      observation(seat),
+                      mask(seat),
+                      null,
+                      random,
+                      temperature,
+                      ModelPolicy.TemperatureMode.ALL)
+                  .action();
+          assertThat(all).isEqualTo(greedy.action());
+          int inner =
+              policy
+                  .decide(
+                      observation(seat),
+                      mask(seat),
+                      null,
+                      random,
+                      temperature,
+                      ModelPolicy.TemperatureMode.INNER)
+                  .action();
+          if (inner == Schema.WAIT) {
+            waited++;
+          } else {
+            assertThat(inner).isEqualTo(mostLikelyAct);
+            acted++;
+          }
+        }
+      }
+    }
+    assertThat(acted).as("inner still draws whether to act").isPositive();
+    assertThat(waited).isPositive();
+  }
+
+  @Test
+  void innerKeepsTheProbabilityToActAndAClosedChoiceStaysClosed() {
+    for (JsonNode seat : seats) {
+      ModelPolicy.Decision decision = policy.decide(observation(seat), mask(seat), null, null);
+      float[] first = decision.first();
+      for (double temperature : new double[] {0.0, 0.25, 0.5, 0.75, 1.0, 2.0}) {
+        float[] inner =
+            ModelPolicy.atTemperature(first, temperature, ModelPolicy.TemperatureMode.INNER);
+        assertThat(inner[0]).isEqualTo(first[0]);
+        assertThat(probability(inner, 1)).isCloseTo(probability(first, 1), within(1e-5));
+        float[] all =
+            ModelPolicy.atTemperature(first, temperature, ModelPolicy.TemperatureMode.ALL);
+        assertThat(probability(all, 0)).isCloseTo(1.0, within(1e-5));
+        for (float[] tiles : decision.tiles()) {
+          float[] sharper =
+              ModelPolicy.atTemperature(tiles, temperature, ModelPolicy.TemperatureMode.ALL);
+          for (int t = 0; t < tiles.length; t++) {
+            if (tiles[t] < ModelPolicy.CLOSED) {
+              assertThat(sharper[t]).isLessThan(ModelPolicy.CLOSED);
+            }
+          }
+        }
+        for (int i = 0; i < first.length; i++) {
+          if (first[i] < ModelPolicy.CLOSED) {
+            assertThat(inner[i]).isLessThan(ModelPolicy.CLOSED);
+            assertThat(all[i]).isLessThan(ModelPolicy.CLOSED);
+          }
+        }
+      }
+    }
+    // A sharper first choice in "all": probabilities squared at 0.5, normalised again.
+    float[] logp = {(float) Math.log(0.6), (float) Math.log(0.3), (float) Math.log(0.1)};
+    float[] all = ModelPolicy.atTemperature(logp, 0.5, ModelPolicy.TemperatureMode.ALL);
+    assertThat(Math.exp(all[0])).isCloseTo(0.36 / 0.46, within(1e-5));
+    float[] inner = ModelPolicy.atTemperature(logp, 0.5, ModelPolicy.TemperatureMode.INNER);
+    assertThat(Math.exp(inner[0])).isCloseTo(0.6, within(1e-5));
+    assertThat(Math.exp(inner[1])).isCloseTo(0.4 * 0.9, within(1e-5));
+  }
+
+  @Test
+  void aBadTemperatureIsRefused() {
+    float[] logp = {0f};
+    assertThatThrownBy(() -> ModelPolicy.atTemperature(logp, -0.5, ModelPolicy.TemperatureMode.ALL))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("0 or more");
+  }
+
+  /** The summed probabilities of the open entries from {@code from} on. */
+  private static double probability(float[] logp, int from) {
+    double sum = 0;
+    for (int i = from; i < logp.length; i++) {
+      if (logp[i] >= ModelPolicy.CLOSED) {
+        sum += Math.exp(logp[i]);
+      }
+    }
+    return sum;
+  }
+
+  @Test
   void aPickTheMaskClosesIsTakenAsAWait() {
     float[] first = new float[1 + Schema.HAND_SLOTS + Schema.ABILITY_SLOTS];
     Arrays.fill(first, -1e9f);

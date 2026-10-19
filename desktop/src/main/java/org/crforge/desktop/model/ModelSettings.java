@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.crforge.desktop.model.ModelPolicy.TemperatureMode;
 import org.crforge.env.Schema;
 
 /**
@@ -33,7 +34,16 @@ import org.crforge.env.Schema;
  *       {@value #LEVEL} by default (the tower level defaults to the card level), the levels the
  *       models are trained and evaluated at
  *   <li>{@code --model-sample}: draw each choice from the policy's probabilities rather than take
- *       the most likely
+ *       the most likely (temperature 1)
+ *   <li>{@code --model-temperature <t>}: draw each choice at temperature {@code t} instead: 1 the
+ *       policy's own probabilities, below 1 sharper (the likely choices more likely), 0 the most
+ *       likely; without it or {@code --model-sample} the model takes its most likely choices
+ *   <li>{@code --model-temperature-mode all|inner}: where the temperature applies, {@code all} (the
+ *       default) to the first choice (the wait, a card or an ability) and the tile, {@code inner}
+ *       to the tile and to which card or ability given that the model acts, the wait's probability
+ *       kept as the policy gives it ({@link TemperatureMode}). A model's most likely first choice
+ *       is nearly always the wait, so a low temperature on it makes the model play less; {@code
+ *       inner} keeps its rate of play
  *   <li>{@code --seed <n>}: the first battle's seed, 0 by default; each new battle ({@code R})
  *       takes the next
  * </ul>
@@ -47,7 +57,8 @@ import org.crforge.env.Schema;
  * @param mySlots the screen's side's slot flags for a deck of cards given, or null
  * @param level the card level
  * @param towerLevel the tower level
- * @param sample whether the choices are drawn rather than the most likely taken
+ * @param temperature the temperature the choices are drawn at, 0 for the most likely
+ * @param temperatureMode where the temperature applies
  * @param seed the first battle's seed
  */
 public record ModelSettings(
@@ -60,7 +71,8 @@ public record ModelSettings(
     int[] mySlots,
     int level,
     int towerLevel,
-    boolean sample,
+    double temperature,
+    TemperatureMode temperatureMode,
     int seed) {
 
   /** The argument that names the model file. */
@@ -81,6 +93,8 @@ public record ModelSettings(
           "--level",
           "--tower-level",
           "--model-sample",
+          "--model-temperature",
+          "--model-temperature-mode",
           "--seed");
 
   /**
@@ -101,6 +115,8 @@ public record ModelSettings(
     int level = LEVEL;
     int towerLevel = 0;
     boolean sample = false;
+    Double temperature = null;
+    TemperatureMode temperatureMode = TemperatureMode.ALL;
     int seed = 0;
     for (int i = 0; i < args.length; i++) {
       String name = args[i];
@@ -120,6 +136,17 @@ public record ModelSettings(
         case "--level" -> level = positive(args, ++i, name);
         case "--tower-level" -> towerLevel = positive(args, ++i, name);
         case "--model-sample" -> sample = true;
+        case "--model-temperature" -> temperature = temperature(args, ++i, name);
+        case "--model-temperature-mode" -> {
+          String mode = value(args, ++i, name);
+          temperatureMode =
+              switch (mode) {
+                case "all" -> TemperatureMode.ALL;
+                case "inner" -> TemperatureMode.INNER;
+                default ->
+                    throw new IllegalArgumentException(name + " is all or inner, got " + mode);
+              };
+        }
         case "--seed" -> seed = integer(args, ++i, name);
         default -> {
           // another program argument, such as --replay
@@ -134,6 +161,10 @@ public record ModelSettings(
       }
       return Optional.empty();
     }
+    if (sample && temperature != null) {
+      throw new IllegalArgumentException(
+          "--model-sample is --model-temperature 1: give one of the two");
+    }
     checkSlots(modelDeck, modelSlots, "--model");
     checkSlots(myDeck, mySlots, "--my");
     return Optional.of(
@@ -147,8 +178,17 @@ public record ModelSettings(
             mySlots,
             level,
             towerLevel == 0 ? level : towerLevel,
-            sample,
+            sample ? 1.0 : temperature == null ? 0.0 : temperature,
+            temperatureMode,
             seed));
+  }
+
+  /**
+   * Whether the model draws its choices rather than takes the most likely: at any temperature but
+   * 0, and at 0 in {@link TemperatureMode#INNER} (the wait or not is still drawn).
+   */
+  public boolean draws() {
+    return temperature > 0.0 || temperatureMode == TemperatureMode.INNER;
   }
 
   /** Slot flags go with a deck of cards given, not with a deck of the file (which has its own). */
@@ -181,6 +221,20 @@ public record ModelSettings(
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(name + " is a whole number, got " + text);
     }
+  }
+
+  private static double temperature(String[] args, int at, String name) {
+    String text = value(args, at, name);
+    double t;
+    try {
+      t = Double.parseDouble(text.trim());
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(name + " is a number, got " + text);
+    }
+    if (!(t >= 0.0) || Double.isInfinite(t)) {
+      throw new IllegalArgumentException(name + " is 0 or more, got " + text);
+    }
+    return t;
   }
 
   private static int positive(String[] args, int at, String name) {
