@@ -166,7 +166,7 @@ At startup the launcher prints the tables folder, the data version, the content 
 game tables: /home/me/.crforge/tables/16.402.19
 data version: 16.402.19
 content sha: 7e76080b...
-data versions: 16.402.18, 16.402.19, 16.402.21 (V switches)
+data versions: 16.402.18, 16.402.19, 16.402.21, 16.402.22 (V switches)
 ```
 
 Without the properties it stops with a message saying to run `./gradlew :desktop:run` with `crforge.assetSource` set; with a version that was not built it stops naming the folder and the versions built; and when the battle core refuses a battle on the tables (it refuses tables it does not model as a battle on them is built) it stops with the reason.
