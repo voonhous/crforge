@@ -27,6 +27,7 @@ import org.crforge.desktop.battle.BattleDecks;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
 import org.crforge.desktop.battle.UnitStatus;
+import org.crforge.desktop.render.ViewOrientation;
 import org.crforge.desktop.replay.SmokeReplayFixture;
 import org.crforge.desktop.screen.DebugGameScreen;
 import org.crforge.desktop.screen.ReplayGameScreen;
@@ -177,6 +178,14 @@ public class WorkspaceSmoke extends CRForgeGame {
             labels(stage().getRoot()).contains("INSPECT: click"),
             "Inspect selects rather than toggles mode");
         click("Deploy", true);
+        // No card can be played before the battle's start cooldown, and the hand disables its
+        // buttons until then: step until blue's card is playable, so the next frame's hand
+        // enables its button before the click below.
+        for (int i = 0; i < 400 && session.cardUnavailableReason(0, blueSlot) != null; i++)
+          key(Input.Keys.PERIOD);
+        require(
+            session.cardUnavailableReason(0, blueSlot) == null,
+            "blue's card becomes playable after the start cooldown");
       }
       if (frames == 23) {
         require(labels(stage().getRoot()).contains("DEPLOY: select"), "Deploy button changes mode");
@@ -200,7 +209,7 @@ public class WorkspaceSmoke extends CRForgeGame {
                 .findFirst()
                 .orElseThrow();
         inspected = entity.name();
-        clickArena(entity.x() / 18000f, entity.y() / 32000f);
+        clickUnit(ViewOrientation.SIDE_0, entity.x(), entity.y());
       }
       if (frames == 30) {
         capture("inspector");
@@ -276,7 +285,8 @@ public class WorkspaceSmoke extends CRForgeGame {
         Gdx.graphics.setWindowedMode(1120, 1040);
       }
       if (frames == 56) {
-        clickArena(statusClone.getView().getX() / 18000f, statusClone.getView().getY() / 32000f);
+        clickUnit(
+            ViewOrientation.SIDE_0, statusClone.getView().getX(), statusClone.getView().getY());
       }
       if (frames == 58) {
         require(
@@ -329,7 +339,7 @@ public class WorkspaceSmoke extends CRForgeGame {
         for (int i = 0; i < 262; i++) key(Input.Keys.PERIOD);
       }
       if (frames == 75) {
-        clickArena(14500 / 18000f, (32000 - 25500) / 32000f);
+        clickUnit(ViewOrientation.SIDE_1, 14500, 25500);
       }
       if (frames == 77) {
         require(labels(stage().getRoot()).contains("Frozen -"), "replay reads real Freeze spell");
@@ -385,6 +395,14 @@ public class WorkspaceSmoke extends CRForgeGame {
     int screenY = Gdx.graphics.getHeight() - (int) (bounds.y() + bounds.height() * y);
     Gdx.input.getInputProcessor().touchDown(screenX, screenY, 0, Input.Buttons.LEFT);
     Gdx.input.getInputProcessor().touchUp(screenX, screenY, 0, Input.Buttons.LEFT);
+  }
+
+  /**
+   * Clicks a battle position as the screen draws it: the Ladder screen shows the game's view of
+   * side 0, the width mirrored, and a replay opens on the view of side 1, the length mirrored.
+   */
+  static void clickUnit(ViewOrientation view, float x, float y) {
+    clickArena(view.x(x) / view.widthUnits(), view.y(y) / view.heightUnits());
   }
 
   static void key(int key) {
