@@ -184,6 +184,14 @@ public final class ModelPolicy implements AutoCloseable {
     return properties.get(PREFIX + key);
   }
 
+  /**
+   * Whether the model's win estimate reads the other side's header (a privileged critic of
+   * training): the estimate then knows what the model's player does not see.
+   */
+  public boolean readsOtherSide() {
+    return privileged;
+  }
+
   /** Whether the model gives a win estimate. */
   public boolean givesWinLogit() {
     return wins;

@@ -224,6 +224,14 @@ public final class RenderConstants {
   /** A hovered tile whose drop finds no legal tile. */
   public static final Color COLOR_LANDING_NONE = new Color(1f, 0.3f, 0.3f, 0.9f);
 
+  // ---- Model overlay colors ----
+
+  /** A tile of the model's heatmap, its alpha set by the tile's probability. */
+  public static final Color COLOR_MODEL_TILE = new Color(1f, 0.45f, 0.1f, 0.6f);
+
+  /** The tile the model played on. */
+  public static final Color COLOR_MODEL_CHOSEN = new Color(1f, 1f, 0.6f, 0.95f);
+
   // ---- Damage number colors ----
 
   /** Red color for floating HP damage numbers. */

@@ -268,7 +268,7 @@ How it plays (`org.crforge.desktop.model`):
 | `--model-sample` | draw each choice from the model's probabilities rather than take the most likely |
 | `--seed <n>` | the first battle's seed, 0 by default; each new battle (`R`) takes the next |
 
-The model's plays and refusals appear in Recent events. `R` starts a new battle against the model, and `V` switches data version as usual, refused when the model does not fit the new tables. `./gradlew :desktop:test -Pcrforge.modelFile=<file.onnx>` plays a whole battle against a model headless (`ModelOpponentTest`).
+The model's plays and refusals appear in Recent events. `K` shades each tile by the model's probability of playing there, for the card it played at its last decision or, when it waited, its most likely card, and outlines the tile it played on. `J` lists, among the status lines, its last decision's probabilities of the wait, each hand card and each champion ability, and its win estimate (the probability its win head gives; a model trained with a privileged critic reads the other side's hand for it, said in the line) and value. Both are off by default. `R` starts a new battle against the model, and `V` switches data version as usual, refused when the model does not fit the new tables. `./gradlew :desktop:test -Pcrforge.modelFile=<file.onnx>` plays a whole battle against a model headless (`ModelOpponentTest`).
 
 ### Controls
 
@@ -286,6 +286,8 @@ The model's plays and refusals appear in Recent events. `R` starts a new battle 
 | `G`           | Toggle the routing cell cost overlay                                          |
 | `N`           | Toggle the route, reference and state overlay                                 |
 | `M`           | Toggle the deploy overlay: where the selected card lands unmoved (on by default) |
+| `K`           | Toggle the model opponent's tile heatmap (with `--model`)                  |
+| `J`           | Toggle the model opponent's choice odds and win estimate (with `--model`) |
 | `V`           | Switch to the next data version built (a new Ladder battle on it)             |
 | `F`           | Not offered here (logs a note): the view flips in the replay viewer only      |
 | `T`           | Hide / show the diagnostics sidebar                                           |
