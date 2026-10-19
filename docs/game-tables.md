@@ -4,13 +4,37 @@ The battle core reads the game's own tables, which this repository does not ship
 
 ## The game tables
 
-A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables, `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_tags` - and `actions.json`, all of one data version. A table file is a header (`table`, `id`, `version`, `content_sha`) and its `rows` by name in creation order, each with its `index`, its `class` and its `columns` under the game's own names. Values are as the game reads them: integer milliseconds, game units (1000 per tile), the published speed column, references as row names. A game tag's `index` is its bit in an object's tag word.
+A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables, `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_tags` - and `actions.json`, all of one data version.
 
-`org.crforge.core.battle.data.GameTables`, in the core module beside the battle it serves, reads such a folder. The tests read the folder the build makes for them (see [Building the game tables](#building-the-game-tables)), which the build names by the system property `crforge.gameTables`. In CI the game data repository, which is private, is checked out when the repository variable `GAME_TABLES_REPOSITORY` and the secret `GAME_TABLES_KEY` - the private half of a read-only deploy key on that repository - are set. It is checked out at the commit `crforge-data.lock` (repository root) names, so a change and the data it was built against always agree; move the lock in the change that needs newer data. The lock names the data versions: `version`, the data version under work, which the tests and the debug visualizer use by default, and `compatible`, every data version CI tests: the data versions served to the client range the battle follows ([Compatibility](compatibility.md)), `version` among them. They share the client's battle rules, so CI runs the unit tests (`./gradlew test`) on the tables of each one, built from the repository's copy of the asset files, and the reference battles (below) of each one that has them. The unit tests hard-code no game data, so they pass on each compatible version unchanged; run them locally on another one with `-Pcrforge.dataVersion=<version>`. A pull request from a fork gets no secrets, so its build stops for want of an asset source.
+A table file is a header (`table`, `id`, `version`, `content_sha`) and its `rows` by name in creation order, each with its `index`, its `class` and its `columns` under the game's own names. Values are as the game reads them: integer milliseconds, game units (1000 per tile), the published speed column, references as row names. A game tag's `index` is its bit in an object's tag word.
+
+`org.crforge.core.battle.data.GameTables`, in the core module beside the battle it serves, reads such a folder. The tests read the folder the build makes for them (see [Building the game tables](#building-the-game-tables)), which the build names by the system property `crforge.gameTables`.
+
+### The data lock and CI
+
+In CI the game data repository, which is private, is checked out when the repository variable `GAME_TABLES_REPOSITORY` and the secret `GAME_TABLES_KEY` are set. `GAME_TABLES_KEY` is the private half of a read-only deploy key on that repository. The repository is checked out at the commit `crforge-data.lock` (repository root) names, so a change and the data it was built against always agree. Move the lock in the change that needs newer data.
+
+The lock names the data versions:
+
+- `version`: the data version under work, which the tests and the debug visualizer use by default.
+- `compatible`: every data version CI tests: the data versions served to the client range the battle follows ([Compatibility](compatibility.md)), `version` among them.
+
+These data versions share the client's battle rules, so CI runs the unit tests (`./gradlew test`) on the tables of each one, built from the repository's copy of the asset files, and the reference battles (below) of each one that has them. The unit tests hard-code no game data, so they pass on each compatible version unchanged. Run them locally on another one with `-Pcrforge.dataVersion=<version>`.
+
+A pull request from a fork gets no secrets, so its build stops for want of an asset source.
 
 ## The client schema
 
-The game tables are the game's own files read the way the game client reads them. Which file feeds which table, which section type goes to which table, which class a row is, which columns name a row of another table, how a column is read and when an `[EXT.Name]` row is linked to its base are rules of the client, not of the data, so they hold for every data version that client is served. The `tables` module keeps them, one file per client version: `tables/src/main/resources/org/crforge/tables/schema/<client version>.json`, read by `org.crforge.tables.ClientSchema`. It holds the facts alone, none of the game's data:
+The game tables are the game's own files read the way the game client reads them. These are rules of the client, not of the data, so they hold for every data version that client is served:
+
+- which file feeds which table
+- which section type goes to which table
+- which class a row is
+- which columns name a row of another table
+- how a column is read
+- when an `[EXT.Name]` row is linked to its base
+
+The `tables` module keeps them, one file per client version: `tables/src/main/resources/org/crforge/tables/schema/<client version>.json`, read by `org.crforge.tables.ClientSchema`. It holds the facts alone, none of the game's data:
 
 | Part | What it says |
 | --- | --- |
@@ -33,7 +57,11 @@ The `tables` module builds the game tables on your machine from the game's own f
 - `crforge.assetSource=cdn`: the game's asset CDN. This is an opt-in: the CDN is never a default.
 - `crforge.assetSource=file:///path/to/crforge-data/cdn/`: a local copy laid out as the CDN, such as the `cdn/` folder of the game data repository.
 
-Without it, any task that needs the tables stops at the task that builds them (`:tables:gameTables` or `:tables:dataVersionTables`, below) and names the setting. `./gradlew test`, `./gradlew build`, `:desktop:run` and `:desktop:uiSmoke` depend on `:tables:gameTables` (a second or two the first time, nothing after). It builds the data version (`-Pcrforge.dataVersion=<version>`, by default the lock's `version=`) and every version the lock lists as `compatible`, each in its own folder beside the others, as some tests and the visualizer's `V` key read them. The tasks that read the data version's tables alone, the reference battles (`:conformance:referenceTest`), `updateReferenceExpectations`, `coverageScore` and `tickBenchmark`, depend on `:tables:dataVersionTables` instead, which builds that one version with the same settings, so a CI job that scores one version builds no other.
+Without it, any task that needs the tables stops at the task that builds them (`:tables:gameTables` or `:tables:dataVersionTables`, below) and names the setting.
+
+`./gradlew test`, `./gradlew build`, `:desktop:run` and `:desktop:uiSmoke` depend on `:tables:gameTables` (a second or two the first time, nothing after). It builds the data version (`-Pcrforge.dataVersion=<version>`, by default the lock's `version=`) and every version the lock lists as `compatible`, each in its own folder beside the others, as some tests and the visualizer's `V` key read them.
+
+The tasks that read the data version's tables alone, the reference battles (`:conformance:referenceTest`), `updateReferenceExpectations`, `coverageScore` and `tickBenchmark`, depend on `:tables:dataVersionTables` instead. It builds that one version with the same settings, so a CI job that scores one version builds no other.
 
 ```
 ./gradlew -q :tables:gameTables
@@ -42,16 +70,46 @@ Without it, any task that needs the tables stops at the task that builds them (`
 builds them alone and prints their folders.
 
 - **Where the files come from.** The game's asset CDN serves a data version's files under its content sha: `<content sha>/fingerprint.json`, the list of every file with its SHA-1, and `<content sha>/<path>`. An asset source is a base URI laid out the same way. Only the files the client's table loaders read are fetched: those under `csv_logic/` and `csv_client/`, and `data_manifest.toml`.
-- **The cache.** `~/.crforge`, or the folder the Gradle property `crforge.cache` names. A fetched file is kept under `assets/` by its SHA-1, so it is fetched once, and a file shared by several data versions is kept once. A file that does not match the SHA-1 its fingerprint lists is refused, naming it. The tables of a data version go to `tables/<data version>/`, with a `build.properties` naming the content sha, the client schema and the decoder they were built with; a folder built the same way is used again as it is.
-- **The data versions.** The decoder names a data version by the game client's label, never the CDN's (one content sha has both, see [Game Versions](game-versions.md)): `tables/src/main/resources/org/crforge/tables/data-versions.json` pairs each data version with its client version, whose schema reads it, and its content sha.
+- **The cache.** `~/.crforge`, or the folder the Gradle property `crforge.cache` names. A fetched file is kept under `assets/` by its SHA-1, so it is fetched once, and a file shared by several data versions is kept once. A file that does not match the SHA-1 its fingerprint lists is refused, naming it. The tables of a data version go to `tables/<data version>/`, with a `build.properties` naming the content sha, the client schema and the decoder they were built with. A folder built the same way is used again as it is.
+- **The data versions.** The decoder names a data version by the game client's label, never the CDN's (one content sha has both, see [Game Versions](game-versions.md)). `tables/src/main/resources/org/crforge/tables/data-versions.json` pairs each data version with its client version, whose schema reads it, and its content sha.
 - **How the files are read.** A file as served is 5 bytes of LZMA properties, the 4-byte little-endian size of the text, then an LZMA1 stream. The decoder (`org.crforge.tables.TableBuild`) stacks each row's layers in the client's load order (`LoadModel`), resolves them as the client does (`TableResolver`: EXT inheritance at the schema's link points, operators, the patch tables, inline rows) and writes the tables (`TableExport`), each JSON file as these tables have always been written.
 
-The decoder is held to the game data repository: for each data version it knows, the tables it builds from the repository's copy of the asset files (`cdn/`) are the repository's tables, byte for byte (`TableBuildReferenceTest`, given `-Pcrforge.dataRoot=<data checkout>`). CI sets its asset source to that copy, so every job's tables are built from it; it never reaches the game's CDN.
+The decoder is held to the game data repository: for each data version it knows, the tables it builds from the repository's copy of the asset files (`cdn/`) are the repository's tables, byte for byte (`TableBuildReferenceTest`, given `-Pcrforge.dataRoot=<data checkout>`). CI sets its asset source to that copy, so every job's tables are built from it. It never reaches the game's CDN.
 
 ## Reference battles
 
-The same repository holds recorded reference battles under `references/<version>/`: one folder per battle under `battles/` (`scenario.json`, `reference.json` and the observation trace, zstd-compressed `observations.jsonl.zst`; `trace_sha256` names the uncompressed trace) and `corpora/*.json` listing the cases. `./gradlew :conformance:referenceTest -Pcrforge.references=<data checkout>/references/<version>` runs every case in one JVM, in parallel, through the same code path as the `conformance` command line run, compares each trace with its reference observation by observation, and holds each case's outcome (`diagnostic_match`, `mismatch` with its first divergent observation and field, `unsupported` with the refusal, or `invalid` with the error) to `conformance/reference-expectations/<version>.json`. Any difference fails, a case that newly matches included, so a change that moves an outcome updates that file with `./gradlew :conformance:updateReferenceExpectations` and the diff is reviewed with it. Without a references folder the task is skipped; `./gradlew test` never runs it. The tables and the references must be of one content version (the task refuses a mismatch), so name the version too: `-Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>`. CI runs the reference battles of each version in the lock's `compatible` that has them at the locked commit, each held to its own expectations file. `-Pcrforge.references.shard` / `-Pcrforge.references.shards` run one shard of the cases (CI splits the cases over a job matrix), and each run writes a scorecard of every case to `conformance/build/reference-scorecard/`. `diagnostic_match` is agreement with a recorded reference battle on the observation schema, not a release pass.
+The same repository holds recorded reference battles under `references/<version>/`:
+
+- `battles/`: one folder per battle (`scenario.json`, `reference.json` and the observation trace, zstd-compressed `observations.jsonl.zst`). `trace_sha256` names the uncompressed trace.
+- `corpora/*.json`: listing the cases.
+
+`./gradlew :conformance:referenceTest -Pcrforge.references=<data checkout>/references/<version>` runs every case in one JVM, in parallel, through the same code path as the `conformance` command line run. It compares each trace with its reference observation by observation, and holds each case's outcome to `conformance/reference-expectations/<version>.json`. The outcome is one of:
+
+- `diagnostic_match`
+- `mismatch` with its first divergent observation and field
+- `unsupported` with the refusal
+- `invalid` with the error
+
+Any difference fails, a case that newly matches included. So a change that moves an outcome updates that file with `./gradlew :conformance:updateReferenceExpectations`, and the diff is reviewed with it.
+
+Without a references folder the task is skipped. `./gradlew test` never runs it. The tables and the references must be of one content version (the task refuses a mismatch), so name the version too: `-Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>`.
+
+CI runs the reference battles of each version in the lock's `compatible` that has them at the locked commit, each held to its own expectations file. `-Pcrforge.references.shard` / `-Pcrforge.references.shards` run one shard of the cases (CI splits the cases over a job matrix). Each run writes a scorecard of every case to `conformance/build/reference-scorecard/`.
+
+`diagnostic_match` is agreement with a recorded reference battle on the observation schema, not a release pass.
 
 ## Records
 
-`org.crforge.core.battle.data.BattleRecords` builds the battle core's records from those rows: a unit or building (`UnitData`) from the characters or buildings table, a projectile (`ProjectileData`) from the projectiles table and a troop card (`DeployCard`) from the spells characters table, every field the column of the same name in the column's own units. Three fields are not a column: a unit flies when its `FlyingHeight` is above 0, a projectile's damage scaling rule is the one its `DamageScalingMode` names (`KingTower`, `PrincessTower`, else the card rule), and a rarity is the published row of that name. The battle tests take their units and cards from it.
+`org.crforge.core.battle.data.BattleRecords` builds the battle core's records from those rows, every field the column of the same name in the column's own units:
+
+- a unit or building (`UnitData`) from the characters or buildings table
+- a projectile (`ProjectileData`) from the projectiles table
+- a troop card (`DeployCard`) from the spells characters table
+
+Three fields are not a column:
+
+- a unit flies when its `FlyingHeight` is above 0
+- a projectile's damage scaling rule is the one its `DamageScalingMode` names (`KingTower`, `PrincessTower`, else the card rule)
+- a rarity is the published row of that name
+
+The battle tests take their units and cards from it.

@@ -8,7 +8,7 @@
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment steps a vector of battles behind flat buffers a Python trainer reads without a copy ([docs/environment.md](docs/environment.md)).
 
-- **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports; CI replays all of them on each change and fails if any outcome moves, and the outcome of each is listed in [conformance/reference-expectations](conformance/reference-expectations/) ([conformance](conformance/README.md))
+- **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports. CI replays all of them on each change and fails if any outcome moves. The outcome of each is listed in [conformance/reference-expectations](conformance/reference-expectations/) ([conformance](conformance/README.md))
 - **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
 
 <p align="center">
@@ -23,7 +23,11 @@ Porting crforge's logic to another language, by hand or by asking an AI assistan
 // Ported from crforge core/src/main/java/org/crforge/core/pathfinding/target/TargetingVisit.java @ <commit> (https://github.com/voonhous/crforge)
 ```
 
-It is a request, not a license condition (crforge is Apache 2.0), and it is mostly for your benefit. crforge is held tick by tick to battles recorded in the game, and its rules get corrected whenever a recording shows them wrong. With the file and commit in your code, `git log <commit>..origin/battle_core -- <file>` lists every change to that logic since you read it (`battle_core` is the development branch), and the repository URL in the comment lets us find your port and tell you when we fix something it carries. To hear about fixes, watch the repository's releases (the release notes list behaviour corrections per mechanic), or open an issue to ask about one.
+It is a request, not a license condition (crforge is Apache 2.0), and it is mostly for your benefit. crforge is held tick by tick to battles recorded in the game, and its rules get corrected whenever a recording shows them wrong.
+
+With the file and commit in your code, `git log <commit>..origin/battle_core -- <file>` lists every change to that logic since you read it (`battle_core` is the development branch). The repository URL in the comment lets us find your port and tell you when we fix something it carries.
+
+To hear about fixes, watch the repository's releases (the release notes list behaviour corrections per mechanic), or open an issue to ask about one.
 
 ## Why a tick-accurate simulator
 
@@ -65,7 +69,14 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 
 > **macOS:** The visualizer needs `-XstartOnFirstThread`. The Gradle task handles this; add it to VM options if running from an IDE.
 
-The debug visualizer and the tests run the battle core, which needs the game tables. This repository does not ship them; the build makes them on your machine from the game's own files once you say where those come from, with the Gradle property `crforge.assetSource` (in `~/.gradle/gradle.properties`, or `-Pcrforge.assetSource=...`): `cdn` fetches them from the game's asset CDN (an opt-in, never a default), and a `file:` URI names a local copy ([Building the game tables](docs/game-tables.md#building-the-game-tables)). That is the only way the tables are found. It prints the tables folder, data version and content sha at startup, and its key map; see [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
+The debug visualizer and the tests run the battle core, which needs the game tables. This repository does not ship them. The build makes them on your machine from the game's own files once you say where those come from, with the Gradle property `crforge.assetSource` (in `~/.gradle/gradle.properties`, or `-Pcrforge.assetSource=...`):
+
+- `cdn` fetches them from the game's asset CDN (an opt-in, never a default)
+- a `file:` URI names a local copy
+
+That is the only way the tables are found ([Building the game tables](docs/game-tables.md#building-the-game-tables)).
+
+The debug visualizer prints the tables folder, data version and content sha at startup, and its key map. See [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
 
 ## Modules
 
