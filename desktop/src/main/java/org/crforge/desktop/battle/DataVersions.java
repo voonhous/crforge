@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.desktop.DataSelection;
 
@@ -41,6 +42,12 @@ public final class DataVersions {
   private Path currentFolder;
   private String source;
   private final String developmentVersion;
+
+  /**
+   * How a Ladder battle is started on a version's tables: between the visualizer's decks, or
+   * against a model ({@link #startWith}).
+   */
+  private Function<GameTables, BattleSession> start = BattleSession::ladder;
 
   /** The index into {@link #versions} of the version {@code V} last tried, or -1. */
   private int cursor;
@@ -141,7 +148,18 @@ public final class DataVersions {
 
   /** A new Ladder battle on the current tables, which is what {@code R} starts. */
   public BattleSession ladder() {
-    return BattleSession.ladder(current);
+    return start.apply(current);
+  }
+
+  /**
+   * Starts every Ladder battle from now on, on any version's tables, with a factory of its own,
+   * such as a battle against a model; a factory that refuses the tables throws, and a switch to
+   * them is refused as for tables the battle core refuses.
+   *
+   * @param factory the battle of a version's tables
+   */
+  public void startWith(Function<GameTables, BattleSession> factory) {
+    this.start = factory;
   }
 
   /**
@@ -186,7 +204,7 @@ public final class DataVersions {
     }
     BattleSession session;
     try {
-      session = BattleSession.ladder(tables);
+      session = start.apply(tables);
     } catch (RuntimeException e) {
       return new Switched(
           version,

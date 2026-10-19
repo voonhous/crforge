@@ -8,6 +8,7 @@ package org.crforge.desktop.battle;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,8 @@ import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.PlayerCommands.Giving;
 import org.crforge.core.battle.unit.Standard1v1Battle;
+import org.crforge.desktop.model.ModelOpponent;
+import org.crforge.env.Schema;
 
 /**
  * One battle on the battle core as the visualizer plays it: the battle, how its cards are played
@@ -45,6 +48,10 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * search finds no tile, as for a Mirror whose king has no last card. A play the battle refuses when
  * it runs, against the battle as it stands then, a point where its placement finds no tile among
  * them, is reported the same way from the battle's own record of the play.
+ *
+ * <p>A session against a model ({@link #withModel}) plays the environment's battle: one side is the
+ * model's, which acts as each decision opens through the environment's own path ({@link
+ * ModelOpponent}), and the screen plays the other through the same player's commands.
  *
  * <p>The battle core refuses what it does not model by throwing from inside a step. The session
  * then stops stepping and keeps the message: a battle interrupted part way through a step is not
@@ -92,10 +99,23 @@ public final class BattleSession {
   /** Why the battle stopped stepping, or null while it steps. */
   @Getter private String halted;
 
+  /** The model playing one side, or null when the screen plays both. */
+  @Getter private final ModelOpponent model;
+
   private BattleSession(Standard1v1Battle battle, List<int[]> deckLevels) {
+    this(battle, deckLevels, null);
+  }
+
+  private BattleSession(Standard1v1Battle battle, List<int[]> deckLevels, ModelOpponent model) {
     this.battle = battle;
     this.deckLevels = deckLevels == null ? null : List.copyOf(deckLevels);
-    this.commands = battle.getMatch() == null ? null : new PlayerCommands(battle);
+    this.model = model;
+    // Against a model, the environment's commands: the screen's plays and the model's share their
+    // promises (plays waiting to run, the elixir they hold back).
+    this.commands =
+        model != null
+            ? model.live().commands()
+            : battle.getMatch() == null ? null : new PlayerCommands(battle);
     this.landing = new LandingTiles(battle);
     // Attached before the first step, so it hears every tick of the battle.
     battle.getWorld().addObserver(areaHits);
@@ -113,6 +133,22 @@ public final class BattleSession {
     // Both players' words are 0, so every new session deals and plays the same way.
     battle.startLadderMatch(blue, red, 0, 0);
     return new BattleSession(battle, null);
+  }
+
+  /**
+   * A Ladder battle against a model, on the environment's battle the model's opponent started,
+   * before its first step: every card of both sides at the level the environment plays.
+   *
+   * @param opponent the model and its battle
+   */
+  public static BattleSession withModel(ModelOpponent opponent) {
+    Standard1v1Battle battle = opponent.live().battle();
+    if (battle.getBattle().getTick() != 0) {
+      throw new IllegalArgumentException("a session starts before the battle's first step");
+    }
+    int[] levels = new int[Schema.DECK_SIZE];
+    Arrays.fill(levels, opponent.live().config().level());
+    return new BattleSession(battle, List.of(levels, levels.clone()), opponent);
   }
 
   /** A Ladder battle between the visualizer's default decks, {@link BattleDecks}. */
@@ -178,7 +214,7 @@ public final class BattleSession {
 
   /** Whether the battle has stopped by its own rule: the match is over and its end has run. */
   public boolean isOver() {
-    return battle.getBattle().getMode().isOver();
+    return battle.getBattle().getMode().isOver() || (model != null && model.live().done());
   }
 
   /**
@@ -192,7 +228,14 @@ public final class BattleSession {
       return false;
     }
     try {
-      battle.getBattle().step();
+      if (model == null) {
+        battle.getBattle().step();
+      } else {
+        if (model.atDecision()) {
+          tell(model.act());
+        }
+        model.live().step();
+      }
     } catch (RuntimeException e) {
       halted = e.getClass().getSimpleName() + ": " + e.getMessage();
       say("battle stopped on tick " + tick() + ", " + halted + " (R resets)");
@@ -200,6 +243,26 @@ public final class BattleSession {
     }
     readPlays();
     return true;
+  }
+
+  /** Tells the player what the model did as a decision opened: a play given, or refused. */
+  private void tell(ModelOpponent.Turn turn) {
+    int action = turn.decision().action();
+    if (action == Schema.WAIT) {
+      return;
+    }
+    String what =
+        Schema.isAbility(action)
+            ? "champion ability " + (Schema.abilitySlot(action) + 1)
+            : turn.card() == null ? "an empty slot" : turn.card();
+    if (turn.refusal() != Schema.REFUSAL_NONE) {
+      say(model.side(), ": the model's " + what + " was refused (code " + turn.refusal() + ")");
+      return;
+    }
+    if (turn.command() != null) {
+      playedCards.put(turn.command().name(), what);
+      say(model.side(), ": the model plays " + what + ", runs on tick " + turn.command().tick());
+    }
   }
 
   /**
@@ -388,6 +451,10 @@ public final class BattleSession {
    * @return true when the play was given
    */
   public boolean play(int side, int slot, int x, int y) {
+    if (model != null && side == model.side()) {
+      say(side, ": played by the model");
+      return false;
+    }
     String unavailable = cardUnavailableReason(side, slot);
     if (unavailable != null) {
       say(side, ": " + unavailable);
@@ -399,7 +466,11 @@ public final class BattleSession {
     String name = (side == 0 ? "b" : "r") + (playsGiven + 1);
     Giving giving;
     try {
-      giving = commands.playCard(side, slot, cardLevel(side, deckIndex), x, y, name);
+      giving =
+          model == null
+              ? commands.playCard(side, slot, cardLevel(side, deckIndex), x, y, name)
+              // through the environment, which keeps the play as it keeps its seats' plays
+              : model.live().play(side, slot, x, y, name);
     } catch (RuntimeException e) {
       say(side, ": " + card.name() + " refused, " + e.getMessage());
       return false;

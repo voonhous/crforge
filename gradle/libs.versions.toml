@@ -6,6 +6,9 @@ slf4j = "2.0.18"
 xz = "1.12"
 aircompressor = "2.0.3"
 
+# A trained model's policy in the debug visualizer (desktop)
+onnxruntime = "1.31.0"
+
 # Benchmarks
 jmh = "1.37"
 
@@ -25,6 +28,9 @@ aircompressor = { module = "io.airlift:aircompressor", version.ref = "aircompres
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+
+# The model opponent of the debug visualizer: ONNX Runtime
+onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
 
 # Benchmarks
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }

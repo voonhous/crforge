@@ -16,12 +16,16 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
+import org.crforge.desktop.model.ModelOpponent;
+import org.crforge.desktop.model.ModelPolicy;
+import org.crforge.desktop.model.ModelSettings;
 import org.crforge.desktop.replay.ReplayArchive;
 import org.crforge.desktop.replay.ReplayFile;
 
@@ -46,6 +50,12 @@ import org.crforge.desktop.replay.ReplayFile;
  * ReplayArchive}) opens the same way, given to {@code --replay} or dropped: the viewer lists its
  * replays and opens the first one that can be read, each on the data its record names ({@link
  * #openEntry}).
+ *
+ * <p>{@code --model <file>} plays one side of the Ladder screen's battles with a trained model, an
+ * ONNX file exported from a checkpoint, given at run time only (see {@link ModelSettings} for the
+ * deck, side, level and sampling arguments, and {@link ModelOpponent}). The launcher reads the
+ * model, checks it against the tables (its observation schema and vocabulary) and stops with the
+ * reason when it does not fit them.
  */
 public class DesktopLauncher {
 
@@ -56,6 +66,9 @@ public class DesktopLauncher {
   static final int NO_REPLAY = 2;
 
   private static final ObjectMapper JSON = new ObjectMapper();
+
+  /** The exit code when the model given cannot be read or does not fit the tables. */
+  static final int NO_MODEL = 3;
 
   /** The argument that names a replay file to open. */
   static final String REPLAY_ARGUMENT = "--replay";
@@ -79,6 +92,12 @@ public class DesktopLauncher {
       System.exit(NO_REPLAY);
       return;
     }
+    if (replayFile.isPresent() && Arrays.asList(args).contains(ModelSettings.MODEL)) {
+      System.err.println(
+          ModelSettings.MODEL + " plays the Ladder screen; the replay viewer takes no model");
+      System.exit(NO_MODEL);
+      return;
+    }
     if (replayFile.isPresent()) {
       // A replay lists the battle core's refusal of the tables among its reasons, so no first
       // Ladder battle is built for it.
@@ -93,15 +112,36 @@ public class DesktopLauncher {
         return;
       }
     } else {
-      first = firstSession(versions, System.err);
-      if (first == null) {
-        System.exit(NO_TABLES);
+      Optional<ModelSettings> model;
+      try {
+        model = ModelSettings.parse(args);
+      } catch (IllegalArgumentException e) {
+        System.err.println(e.getMessage());
+        System.exit(NO_MODEL);
         return;
+      }
+      if (model.isPresent()) {
+        first = modelSession(model.get(), versions, System.out, System.err);
+        if (first == null) {
+          System.exit(NO_MODEL);
+          return;
+        }
+      } else {
+        first = firstSession(versions, System.err);
+        if (first == null) {
+          System.exit(NO_TABLES);
+          return;
+        }
       }
     }
 
     Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-    config.setTitle(replay != null ? "CRForge - Replay Viewer" : "CRForge - Debug Visualizer");
+    config.setTitle(
+        replay != null
+            ? "CRForge - Replay Viewer"
+            : first.getModel() != null
+                ? "CRForge - Debug Visualizer, against a model"
+                : "CRForge - Debug Visualizer");
     config.setWindowedMode(1120, 1040);
     config.setResizable(true);
     config.setWindowSizeLimits(1000, 760, -1, -1);
@@ -194,6 +234,61 @@ public class DesktopLauncher {
               + "=<v>.");
       return null;
     }
+  }
+
+  /**
+   * Reads a model, makes every Ladder battle of the screen one against it, and starts the first.
+   * Each new battle ({@code R}, or a switch of data version) is checked against its tables as the
+   * first is.
+   *
+   * @param settings how the model is played
+   * @param versions the versions, on the tables loaded
+   * @param out where the startup lines go
+   * @param err where the failure goes
+   * @return the first battle, or null when the model cannot be read or does not fit the tables
+   */
+  static BattleSession modelSession(
+      ModelSettings settings, DataVersions versions, PrintStream out, PrintStream err) {
+    ModelPolicy policy;
+    try {
+      policy = ModelPolicy.load(settings.model());
+    } catch (IOException | RuntimeException e) {
+      err.println("Cannot read the model at " + settings.model() + ": " + e.getMessage());
+      return null;
+    }
+    int[] battles = {0};
+    versions.startWith(
+        tables ->
+            BattleSession.withModel(ModelOpponent.start(policy, settings, tables, battles[0]++)));
+    BattleSession first;
+    try {
+      first = versions.ladder();
+    } catch (RuntimeException e) {
+      err.println(
+          "The model cannot play on data version "
+              + versions.current().version()
+              + ": "
+              + e.getMessage());
+      return null;
+    }
+    ModelOpponent opponent = first.getModel();
+    out.println(
+        "model: "
+            + policy.source()
+            + " ("
+            + policy.property("name")
+            + ", trained on data version "
+            + policy.dataVersion()
+            + ") plays side "
+            + opponent.side()
+            + (settings.sample() ? ", drawing its choices" : ", its most likely choices")
+            + ", a decision every "
+            + opponent.live().config().decisionTicks()
+            + " ticks, cards at level "
+            + opponent.live().config().level()
+            + ", towers at "
+            + opponent.live().config().towerLevel());
+    return first;
   }
 
   /**
