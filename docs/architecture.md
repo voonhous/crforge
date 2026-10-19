@@ -252,7 +252,7 @@ Every entity kind is drawn in its side's colour: troops (a ring for air units), 
 
 How it plays (`org.crforge.desktop.model`):
 
-- **The battle is the environment's.** The battle is a Ladder environment's (`org.crforge.env.LiveBattle`), set up as in training, with the model's decision interval, mask rule and levels. The environment writes the model's observation and legality mask with the code it trains on, so the model reads exactly what it read in training.
+- **The battle is the environment's.** The battle is a Ladder environment's (`org.crforge.env.LiveBattle`), set up as in training, with the model's decision interval and mask rule, the decks' slot flags, and cards and towers at level 16 unless asked otherwise (the debug screen's own battles play at level 11). The environment writes the model's observation and legality mask with the code it trains on, so the model reads exactly what it read in training.
 - **A decision every 5 ticks.** As each decision opens (every decision interval of the model, 5 ticks for the models so far, four a second), ONNX Runtime runs the model on its side's observation and mask, and the model's most likely action is taken (`--model-sample` draws it from the model's probabilities instead).
 - **The same path as a player's play.** The action goes through the environment as in training: a play goes through the battle's player's commands, runs 20 ticks later and is refused at its run as a player's is. A play from the screen goes through the same commands between any two ticks.
 - **A model that does not fit is refused.** The file's metadata carries the observation schema and the vocabulary the model was trained on. A model of another schema, or whose vocabulary numbers the cards otherwise than the tables open (another data version), is refused at start with what differs.
@@ -261,9 +261,10 @@ How it plays (`org.crforge.desktop.model`):
 |---|---|
 | `--model <file>` | the model, an exported ONNX file |
 | `--model-side 0` or `1` | the side the model plays, 1 (red, top) by default |
-| `--model-deck <8 cards>`, `--model-slots <8 flags>` | the model's deck by card row names and its slot flags (evolution 1, hero 2), separated by commas; by default the deck the model file names, if its export named one. Play the deck the model was trained on |
-| `--player-deck`, `--player-slots` | the screen's side's deck, by default the visualizer's deck of that side |
-| `--level <n>`, `--tower-level <n>` | the card and tower levels of both sides, by default the ones the model file names |
+| `--deck-file <file>` | a deck file to name the decks below from: a JSON object whose `decks` list holds `name`, `cards` (8 card row names) and `slots` (8 slot flags, evolution 1, hero 2), read at run time only |
+| `--model-deck <deck>` | the model's deck: a deck of the deck file by name, with its slot flags, or 8 card row names separated by commas (with `--model-slots <8 flags>`); by default the deck the model file names, if its export named one. Play the deck the model was trained on |
+| `--my-deck <deck>` | your deck, the same way (with `--my-slots`); by default the model's deck (a mirror match) when a deck file is given, else the visualizer's deck of your side |
+| `--level <n>`, `--tower-level <n>` | the card and tower levels of both sides, 16 by default (the tower level follows the card level), the levels the models are trained and evaluated at |
 | `--model-sample` | draw each choice from the model's probabilities rather than take the most likely |
 | `--seed <n>` | the first battle's seed, 0 by default; each new battle (`R`) takes the next |
 

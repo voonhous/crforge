@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A battle against a model, headless: the model acts as each decision opens through the
@@ -29,6 +32,10 @@ class ModelOpponentTest {
 
   private static final List<String> BASIC =
       List.of("Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap");
+
+  private static final List<String> OTHER =
+      List.of(
+          "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Goblins");
 
   /** The system property naming an exported model to play a whole battle against. */
   static final String MODEL_FILE = "crforge.modelFile";
@@ -49,7 +56,17 @@ class ModelOpponentTest {
 
   private static ModelSettings settings(int side, boolean sample, List<String> deck) {
     return new ModelSettings(
-        Paths.get("model.onnx"), side, deck, null, null, null, 0, 0, sample, 0);
+        Paths.get("model.onnx"),
+        side,
+        null,
+        deck == null ? null : String.join(",", deck),
+        null,
+        null,
+        null,
+        ModelSettings.LEVEL,
+        ModelSettings.LEVEL,
+        sample,
+        0);
   }
 
   /**
@@ -83,7 +100,7 @@ class ModelOpponentTest {
   void theModelActsEveryDecisionAndTheScreenPlaysBetween() {
     for (int side = 0; side < 2; side++) {
       ModelOpponent opponent =
-          ModelOpponent.start(fixture, settings(side, true, BASIC), tables, 0, false);
+          ModelOpponent.start(fixture, settings(side, true, BASIC), null, tables, 0, false);
       BattleSession session = BattleSession.withModel(opponent);
       int given = play(session, 1 - side, 1200);
       assertThat(session.getHalted()).isNull();
@@ -103,7 +120,7 @@ class ModelOpponentTest {
     long[] commands = new long[2];
     for (int run = 0; run < 2; run++) {
       ModelOpponent opponent =
-          ModelOpponent.start(fixture, settings(1, false, BASIC), tables, 3, false);
+          ModelOpponent.start(fixture, settings(1, false, BASIC), null, tables, 3, false);
       BattleSession session = BattleSession.withModel(opponent);
       play(session, 0, 600);
       ticks[run] = session.tick();
@@ -117,9 +134,86 @@ class ModelOpponentTest {
   }
 
   @Test
+  void decksAreNamedFromADeckFileWithTheirSlotsAndTheScreensSideMirrorsTheModel(
+      @TempDir Path folder) throws IOException {
+    Path file = folder.resolve("decks.json");
+    Files.writeString(
+        file,
+        "{\"decks\": [{\"name\": \"first\", \"cards\": "
+            + cardsJson(BASIC)
+            + ", \"slots\": [0, 0, 0, 0, 0, 0, 0, 0], \"share\": 0.5},"
+            + " {\"name\": \"second\", \"cards\": "
+            + cardsJson(OTHER)
+            + "}]}");
+    DeckFile decks = DeckFile.read(file);
+    ModelSettings mirror =
+        ModelSettings.parse(
+                new String[] {
+                  "--model", "m.onnx", "--deck-file", file.toString(), "--model-deck", "first"
+                })
+            .orElseThrow();
+    ModelOpponent opponent = ModelOpponent.start(fixture, mirror, decks, tables, 0, false);
+    assertThat(opponent.deck()).isEqualTo(BASIC);
+    assertThat(deckOf(opponent, 0)).isEqualTo(BASIC);
+    assertThat(opponent.live().config().level()).isEqualTo(ModelSettings.LEVEL);
+    assertThat(opponent.live().config().towerLevel()).isEqualTo(ModelSettings.LEVEL);
+
+    ModelSettings chosen =
+        ModelSettings.parse(
+                new String[] {
+                  "--model",
+                  "m.onnx",
+                  "--deck-file",
+                  file.toString(),
+                  "--model-deck",
+                  "first",
+                  "--my-deck",
+                  "second",
+                  "--model-side",
+                  "0"
+                })
+            .orElseThrow();
+    opponent = ModelOpponent.start(fixture, chosen, decks, tables, 0, false);
+    assertThat(deckOf(opponent, 0)).isEqualTo(BASIC);
+    assertThat(deckOf(opponent, 1)).isEqualTo(OTHER);
+
+    assertThatThrownBy(() -> decks.deck("third")).hasMessageContaining("no deck named third");
+    ModelSettings noFile =
+        ModelSettings.parse(new String[] {"--model", "m.onnx", "--model-deck", "first"})
+            .orElseThrow();
+    assertThatThrownBy(() -> ModelOpponent.start(fixture, noFile, null, tables, 0, false))
+        .hasMessageContaining("--deck-file");
+  }
+
+  @Test
+  void aDeckFilesSlotFlagsAreRead(@TempDir Path folder) throws IOException {
+    Path file = folder.resolve("decks.json");
+    Files.writeString(
+        file,
+        "{\"decks\": [{\"name\": \"marked\", \"cards\": "
+            + cardsJson(BASIC)
+            + ", \"slots\": [1, 0, 0, 0, 0, 0, 0, 0]}]}");
+    DeckFile decks = DeckFile.read(file);
+    assertThat(decks.deck("marked").slots()).containsExactly(1, 0, 0, 0, 0, 0, 0, 0);
+    Path bad = folder.resolve("bad.json");
+    Files.writeString(bad, "{\"decks\": [{\"name\": \"short\", \"cards\": [\"Knight\"]}]}");
+    assertThatThrownBy(() -> DeckFile.read(bad)).hasMessageContaining("8 card row names");
+  }
+
+  private static String cardsJson(List<String> cards) {
+    return "[\"" + String.join("\", \"", cards) + "\"]";
+  }
+
+  private static List<String> deckOf(ModelOpponent opponent, int side) {
+    return opponent.live().battle().getMatch().side(side).deck().stream()
+        .map(card -> card.name())
+        .toList();
+  }
+
+  @Test
   void aModelThatNamesNoDeckAsksForOne() {
     assertThatThrownBy(
-            () -> ModelOpponent.start(fixture, settings(1, false, null), tables, 0, false))
+            () -> ModelOpponent.start(fixture, settings(1, false, null), null, tables, 0, false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("--model-deck");
   }
@@ -136,9 +230,10 @@ class ModelOpponentTest {
   void aTrainedModelPlaysAWholeBattle() throws IOException {
     try (ModelPolicy policy = ModelPolicy.load(Paths.get(System.getProperty(MODEL_FILE)))) {
       ModelSettings settings =
-          new ModelSettings(
-              Paths.get(System.getProperty(MODEL_FILE)), 1, null, null, null, null, 0, 0, true, 0);
-      ModelOpponent opponent = ModelOpponent.start(policy, settings, tables, 0);
+          ModelSettings.parse(
+                  new String[] {"--model", System.getProperty(MODEL_FILE), "--model-sample"})
+              .orElseThrow();
+      ModelOpponent opponent = ModelOpponent.start(policy, settings, null, tables, 0);
       BattleSession session = BattleSession.withModel(opponent);
       long started = System.nanoTime();
       play(session, 0, 6000);

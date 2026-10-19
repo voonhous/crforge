@@ -24,13 +24,15 @@ class ModelSettingsTest {
   }
 
   @Test
-  void theDefaultsAreTheModelsOnTheRedSide() {
+  void theDefaultsAreTheModelsOnTheRedSideAtTheTrainedLevel() {
     ModelSettings settings = ModelSettings.parse(new String[] {"--model", "m.onnx"}).orElseThrow();
     assertThat(settings.model()).isEqualTo(Paths.get("m.onnx"));
     assertThat(settings.side()).isEqualTo(1);
-    assertThat(settings.deck()).isNull();
-    assertThat(settings.slots()).isNull();
-    assertThat(settings.level()).isZero();
+    assertThat(settings.deckFile()).isNull();
+    assertThat(settings.modelDeck()).isNull();
+    assertThat(settings.myDeck()).isNull();
+    assertThat(settings.level()).isEqualTo(ModelSettings.LEVEL);
+    assertThat(settings.towerLevel()).isEqualTo(ModelSettings.LEVEL);
     assertThat(settings.sample()).isFalse();
     assertThat(settings.seed()).isZero();
   }
@@ -40,36 +42,27 @@ class ModelSettingsTest {
     ModelSettings settings =
         ModelSettings.parse(
                 new String[] {
-                  "--model",
-                  "m.onnx",
-                  "--model-side",
-                  "0",
-                  "--model-deck",
-                  DECK,
-                  "--model-slots",
-                  "1,2,0,0,0,0,0,0",
-                  "--player-deck",
-                  DECK,
-                  "--player-slots",
-                  "0,0,0,0,0,0,0,1",
-                  "--level",
-                  "16",
-                  "--tower-level",
-                  "15",
-                  "--model-sample",
-                  "--seed",
-                  "9"
+                  "--model", "m.onnx", "--model-side", "0", "--deck-file", "d.json",
+                  "--model-deck", "first", "--my-deck", DECK, "--my-slots", "0,0,0,0,0,0,0,1",
+                  "--level", "14", "--model-sample", "--seed", "9"
                 })
             .orElseThrow();
     assertThat(settings.side()).isZero();
-    assertThat(settings.deck()).isEqualTo(List.of("A", "B", "C", "D", "E", "F", "G", "H"));
-    assertThat(settings.slots()).containsExactly(1, 2, 0, 0, 0, 0, 0, 0);
-    assertThat(settings.playerDeck()).hasSize(8);
-    assertThat(settings.playerSlots()).containsExactly(0, 0, 0, 0, 0, 0, 0, 1);
-    assertThat(settings.level()).isEqualTo(16);
-    assertThat(settings.towerLevel()).isEqualTo(15);
+    assertThat(settings.deckFile()).isEqualTo(Paths.get("d.json"));
+    assertThat(settings.modelDeck()).isEqualTo("first");
+    assertThat(settings.myDeck()).isEqualTo(DECK);
+    assertThat(settings.mySlots()).containsExactly(0, 0, 0, 0, 0, 0, 0, 1);
+    assertThat(settings.level()).isEqualTo(14);
+    assertThat(settings.towerLevel()).as("the card level by default").isEqualTo(14);
     assertThat(settings.sample()).isTrue();
     assertThat(settings.seed()).isEqualTo(9);
+    assertThat(
+            ModelSettings.parse(new String[] {"--model", "m", "--tower-level", "12"})
+                .orElseThrow()
+                .towerLevel())
+        .isEqualTo(12);
+    assertThat(ModelSettings.cards(DECK, "x"))
+        .isEqualTo(List.of("A", "B", "C", "D", "E", "F", "G", "H"));
   }
 
   @Test
@@ -79,12 +72,18 @@ class ModelSettingsTest {
     assertThatThrownBy(
             () -> ModelSettings.parse(new String[] {"--model", "m", "--model-side", "2"}))
         .hasMessageContaining("0 or 1");
-    assertThatThrownBy(
-            () -> ModelSettings.parse(new String[] {"--model", "m", "--model-deck", "A,B"}))
+    assertThatThrownBy(() -> ModelSettings.cards("A,B", "--model-deck"))
         .hasMessageContaining("8 card row names");
     assertThatThrownBy(() -> ModelSettings.parse(new String[] {"--model", "m", "--level", "0"}))
         .hasMessageContaining("counted from 1");
     assertThatThrownBy(() -> ModelSettings.parse(new String[] {"--model-deck", DECK}))
         .hasMessageContaining("name it with --model");
+    assertThatThrownBy(
+            () ->
+                ModelSettings.parse(
+                    new String[] {
+                      "--model", "m", "--model-deck", "top", "--model-slots", "0,0,0,0,0,0,0,0"
+                    }))
+        .hasMessageContaining("has its own slots");
   }
 }

@@ -23,6 +23,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ReplayCapture;
 import org.crforge.desktop.battle.BattleSession;
 import org.crforge.desktop.battle.DataVersions;
+import org.crforge.desktop.model.DeckFile;
 import org.crforge.desktop.model.ModelOpponent;
 import org.crforge.desktop.model.ModelPolicy;
 import org.crforge.desktop.model.ModelSettings;
@@ -256,10 +257,21 @@ public class DesktopLauncher {
       err.println("Cannot read the model at " + settings.model() + ": " + e.getMessage());
       return null;
     }
+    DeckFile decks = null;
+    if (settings.deckFile() != null) {
+      try {
+        decks = DeckFile.read(settings.deckFile());
+      } catch (IOException | RuntimeException e) {
+        err.println("Cannot read the deck file at " + settings.deckFile() + ": " + e.getMessage());
+        return null;
+      }
+    }
+    DeckFile deckFile = decks;
     int[] battles = {0};
     versions.startWith(
         tables ->
-            BattleSession.withModel(ModelOpponent.start(policy, settings, tables, battles[0]++)));
+            BattleSession.withModel(
+                ModelOpponent.start(policy, settings, deckFile, tables, battles[0]++)));
     BattleSession first;
     try {
       first = versions.ladder();
@@ -287,7 +299,13 @@ public class DesktopLauncher {
             + " ticks, cards at level "
             + opponent.live().config().level()
             + ", towers at "
-            + opponent.live().config().towerLevel());
+            + opponent.live().config().towerLevel()
+            + (policy.property("level") == null
+                    || policy.property("level").equals(String.valueOf(settings.level()))
+                ? ""
+                : " (the model file names level " + policy.property("level") + ")")
+            + "; "
+            + opponent.deckNames());
     return first;
   }
 
