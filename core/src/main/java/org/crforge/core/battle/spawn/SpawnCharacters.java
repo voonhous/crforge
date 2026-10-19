@@ -23,8 +23,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>A champion it spawns is then handed to its side's champion slots, which follow its play.
  *
  * <p>A row that validates its point as a building's places its child where the point is free of
- * buildings other than the row's owner and its cell can be stood on; a blocked point, whose search
- * for another row is not modelled, is refused.
+ * buildings other than the row's owner and its cell can be stood on; a blocked point moves to the
+ * first of the next rows of its column that passes, and a point no row frees is spawned from as it
+ * was asked for.
  *
  * <p>Refused rather than guessed: a row with no source, and a row whose spawn would make any other
  * call after it - the shared-target schedule or the clone - neither of which is modelled.
@@ -36,8 +37,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " spawner, the group link after the spawn and the champion hand-over after it; a"
             + " building placement's free point kept, the owner passed by, held by hero_goblins"
             + " and seen in ability_hero_musketeer, whose dummy building places its turret on its"
-            + " own point. Not modelled: the"
-            + " action's target, the building placement's search off a blocked point and the other"
+            + " own point; its search off a blocked point, held by goblinhero-flag-row-v1, and a"
+            + " point no row frees, spawned from as asked, held by"
+            + " musketeer-turret-no-free-row-v1. Not modelled: the action's target and the other"
             + " calls after the spawn; a row that needs one of them is refused.")
 public final class SpawnCharacters extends RowAction {
 

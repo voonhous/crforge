@@ -7,7 +7,6 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,7 +24,7 @@ import org.junit.jupiter.api.Test;
  * two edges, half the child's footprint below and above it, can be stood on and no building at all,
  * the owner included, overlaps the child's circle at the middle of the two; the point then moves to
  * the lower edge, a further footprint of rows on the side's way, in whole half tiles. When no row
- * passes the battle is refused.
+ * passes the point is answered as it was asked for, unclamped.
  */
 class BattleBuildingPlacementTest {
 
@@ -107,30 +106,27 @@ class BattleBuildingPlacementTest {
       }
     }
     assertThat(open).isPositive();
-    assertThatThrownBy(() -> battle.getWorld().buildingPlacement(king, row).place(kx, ky))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("no free row");
+    // No row passes, so the king's own point comes back.
+    assertThat(battle.getWorld().buildingPlacement(king, row).place(kx, ky))
+        .containsExactly(kx, ky);
   }
 
   @Test
-  @DisplayName("a point with no passing row in the nine is refused")
-  void noFreeRowIsRefused() {
+  @DisplayName(
+      "a point with no passing row in the nine is answered as it was asked for, outside the arena"
+          + " too, unclamped")
+  void noFreeRowKeepsTheRequestedPoint() {
     Standard1v1Battle battle = battle();
     UnitData banner = GameData.records().unit(BANNER);
     TileMap map = battle.getWorld().getTileMap();
-    // The arena's top row, for side 1: every row above it lies outside the map.
-    int x = 0;
-    int y = map.height() * CELL - 1;
+    // Beyond the arena's top left corner, for side 1: the point clamps to the corner cell, which
+    // cannot be stood on, and every row above it lies outside the map.
+    int x = -300;
+    int y = map.height() * CELL + 200;
     assertThat(map.bits(0, map.height() - 1) & TileMap.NOT_PLACEABLE_BIT).isNotZero();
-    assertThatThrownBy(
-            () ->
-                battle
-                    .getWorld()
-                    .buildingPlacement(battle.getWorld().kingTower(1), banner)
-                    .place(x, y))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining(BANNER + " is placed as a building at (" + x + ", " + y + ")")
-        .hasMessageContaining("no free row");
+    assertThat(
+            battle.getWorld().buildingPlacement(battle.getWorld().kingTower(1), banner).place(x, y))
+        .containsExactly(x, y);
   }
 
   private static boolean standable(Standard1v1Battle battle, int col, int row) {

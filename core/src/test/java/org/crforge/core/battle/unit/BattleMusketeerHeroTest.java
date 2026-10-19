@@ -56,6 +56,18 @@ class BattleMusketeerHeroTest {
 
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
+  private static final String CAGE = "GoblinCage";
+
+  /** The Musketeer first, in the hero slot, the Goblin Cage and six other cards. */
+  private static final List<String> CAGE_DECK =
+      List.of("Musketeer", CAGE, "Knight", "Giant", "Minions", "Valkyrie", "Fireball", "Arrows");
+
+  /** The lowest level of a rare card, the hero's and side 0's cage's. */
+  private static final int LOW_LEVEL = 3;
+
+  /** The level of side 1's cage, which outlasts the low hero's shots until the ability. */
+  private static final int STRONG_LEVEL = 15;
+
   @Test
   @DisplayName(
       "the ability places the dummy building its spawn's half tiles ahead of the hero; the"
@@ -172,6 +184,92 @@ class BattleMusketeerHeroTest {
                 + " owner");
   }
 
+  @Test
+  @DisplayName(
+      "a turret whose point is blocked, and whose nine rows down the arena are blocked too, by the"
+          + " river and by buildings, is spawned from the dummy's point as a row that does not"
+          + " validate it spawns it: over the circle of the building that blocks it")
+  void aTurretWithNoFreeRowIsSpawnedFromTheDummysPoint() {
+    Standard1v1Battle battle = turretWithNoFreeRow();
+    CharacterEntity hero = named(battle, HERO).get(0);
+    CharacterEntity dummy = named(battle, DUMMY).get(0);
+    CharacterEntity turret = named(battle, TURRET).get(0);
+    CharacterEntity cage =
+        named(battle, CAGE).stream().filter(unit -> unit.side() == 1).findFirst().orElseThrow();
+    int x = dummy.getView().getX();
+    int y = dummy.getView().getY();
+    // The dummy stands on its own point, ahead of the hero on the far bank of the river.
+    assertThat(new int[] {x, y})
+        .containsExactly(
+            hero.getView().getX(),
+            hero.getView().getY() + 500 * Shipped.number(SPAWN_DUMMY, "RelativeY"));
+    // Side 1's cage blocks the point for the turret's circle, though not the dummy's own.
+    long dx = cage.getView().getX() - x;
+    long dy = cage.getView().getY() - y;
+    int reach = cage.getView().getCollisionRadius() + turret.getView().getCollisionRadius();
+    assertThat(dx * dx + dy * dy).isLessThan((long) reach * reach);
+    int own = cage.getView().getCollisionRadius() + dummy.getView().getCollisionRadius();
+    assertThat(dx * dx + dy * dy).isGreaterThanOrEqualTo((long) own * own);
+    // No row passes, so the turret is spawned from the point itself: the spawner's own test, a
+    // square one unit around the point, reaches the river below it, so it stands the turret one
+    // unit right.
+    assertThat(new int[] {turret.getView().getX(), turret.getView().getY()})
+        .containsExactly(x + 1, y);
+  }
+
+  /**
+   * A battle whose hero Musketeer's turret has no free row: side 1's Goblin Cage stands across the
+   * river at (8500, 18500), its circle over the dummy's point (8499, 17000) for the turret's
+   * circle; side 0's own Goblin Cage at (8500, 12500) covers the four dry rows below the river,
+   * whose five rows above have an edge on the water. The hero is played between them at (8500,
+   * 14000), shoots side 1's cage, which is strong enough to stand until the turret, and uses its
+   * ability once it has deployed; the battle is stepped until the dummy has placed the turret.
+   */
+  private static Standard1v1Battle turretWithNoFreeRow() {
+    Standard1v1Battle battle = null;
+    LadderMatch match = null;
+    for (int word = 0;
+        match == null
+            || !inHand(match, 0, "Musketeer")
+            || !inHand(match, 0, CAGE)
+            || !inHand(match, 1, CAGE);
+        word++) {
+      battle = new Standard1v1Battle(GameData.tables());
+      match = battle.startLadderMatch(CAGE_DECK, CAGE_DECK, word, word, heroFirst(), new int[8]);
+    }
+    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
+        || match.side(0).wholeElixir() < GameData.records().matchCard(CAGE).cost()) {
+      step(battle);
+    }
+    int tick = battle.getBattle().getTick();
+    battle.play(tick, GameData.card(CAGE), STRONG_LEVEL, 1, 8500, 18500, "enemy");
+    battle.play(tick, GameData.card(CAGE), LOW_LEVEL, 0, 8500, 12500, "own");
+    // The plays run, and pay, a play delay after their giving; the hero is played once side 0
+    // holds its cost and the ability's, so the ability follows its deploy.
+    int cost = GameData.records().matchCard("Musketeer").cost();
+    int abilityCost = Shipped.number(ABILITY, "ManaCost");
+    while (named(battle, CAGE).size() < 2 || match.side(0).wholeElixir() < cost + abilityCost) {
+      step(battle);
+    }
+    battle.play(
+        battle.getBattle().getTick(), GameData.card("Musketeer"), LOW_LEVEL, 0, 8500, 14000, "m");
+    int limit = battle.getBattle().getTick() + 400;
+    while (named(battle, HERO).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    // The hero deploys for a second; then side 0 waits for the ability's cost.
+    for (int i = 0; i < 40 || match.side(0).wholeElixir() < abilityCost; i++) {
+      step(battle);
+    }
+    battle.useAbility(battle.getBattle().getTick(), 0, named(battle, HERO).get(0).name(), "a");
+    while (named(battle, TURRET).isEmpty()) {
+      assertThat(battle.getBattle().getTick()).isLessThan(limit);
+      step(battle);
+    }
+    return battle;
+  }
+
   /**
    * A battle with the hero Musketeer played at (3500, 14000), its ability used as soon as side 0
    * holds the ability's cost once the hero has deployed.
@@ -213,8 +311,12 @@ class BattleMusketeerHeroTest {
   }
 
   private static boolean inHand(LadderMatch match, String card) {
-    List<MatchCard> deck = match.side(0).deck();
-    return Arrays.stream(match.side(0).getHand().slots())
+    return inHand(match, 0, card);
+  }
+
+  private static boolean inHand(LadderMatch match, int side, String card) {
+    List<MatchCard> deck = match.side(side).deck();
+    return Arrays.stream(match.side(side).getHand().slots())
         .anyMatch(index -> index >= 0 && deck.get(index).name().equals(card));
   }
 
