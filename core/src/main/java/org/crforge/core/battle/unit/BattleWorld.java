@@ -7735,8 +7735,9 @@ public class BattleWorld implements HolderPasses {
    * at the clamped x and at its lower edge moved a further footprint of rows along the side's way,
    * in whole half tiles.
    *
-   * <p>Refused: a point for which none of the nine rows passes, which the game leaves at the
-   * requested point, unclamped.
+   * <p>When none of the nine rows passes, the search answers the requested point as it was asked
+   * for, unclamped, and the child is spawned there as a row that does not validate its point would
+   * spawn it: on a building's circle or a cell that cannot be stood on.
    *
    * @param owner the object whose action spawns the child
    * @param child the row of the child
@@ -7768,15 +7769,7 @@ public class BattleWorld implements HolderPasses {
         }
         return new int[] {clampedX, (low + (down ? -footprint : footprint)) * TileMap.CELL_UNITS};
       }
-      throw new UnsupportedOperationException(
-          child.name()
-              + " is placed as a building at ("
-              + x
-              + ", "
-              + y
-              + "), which is blocked, and none of the next "
-              + PLACEMENT_ROWS
-              + " rows passes; the placement at a point with no free row is not modelled");
+      return new int[] {x, y};
     };
   }
 
