@@ -96,7 +96,7 @@ final class SeatView {
    * always (an unhurt unit's hit points are its maximum). The health bar rows themselves are not
    * among the game tables the environment reads; the rule takes their show-to-the-enemy-always
    * column as set, which holds for every health bar row a character or building can reach in the
-   * tables of 16.402.18, 16.402.19 and 16.402.21.
+   * tables of 16.402.18, 16.402.19, 16.402.21 and 16.402.22.
    *
    * <p>A row that sets HideHealthbar (many champion, hero and evolution rows, the Dark Prince, the
    * Guards) has no such bar. Its bar is the one its starting client actions build: a row whose
