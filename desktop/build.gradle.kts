@@ -81,6 +81,12 @@ tasks.register<JavaExec>("uiSmoke") {
     systemProperty("crforge.tablesRoot", rootProject.extra["crforge.builtTablesRoot"] as String)
     systemProperty("crforge.dataVersion", rootProject.extra["crforge.dataVersion"] as String)
     systemProperty("crforge.lockVersion", rootProject.extra["crforge.lockVersion"] as String)
+    // and the data version's folder, as the test tasks are given it (root build): the smoke's
+    // replay fixtures are the replay tests' own, which read the tables through it
+    systemProperty(
+        "crforge.gameTables",
+        "${rootProject.extra["crforge.builtTablesRoot"]}/${rootProject.extra["crforge.dataVersion"]}",
+    )
 }
 
 // An exported model to play a whole battle against in the desktop tests
