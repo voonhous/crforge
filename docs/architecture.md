@@ -225,10 +225,12 @@ If loading or battle construction fails, the existing battle, active version and
 
 ### The battle
 
-The two decks are in `org.crforge.desktop.battle.BattleDecks`, the decks the visualizer showed before it ran on the battle core, by the tables' card row names:
+The two decks are in `org.crforge.desktop.battle.BattleDecks`, by the tables' card row names, each with its slot flags by deck index:
 
-- Blue (side 0, bottom): DarkPrince, Prince, Fisherman, InfernoDragon, ElectroWizard, Witch, Zap, SkeletonArmy
+- Blue (side 0, bottom): LavaHound, MegaMinion (hero slot, played as MegaMinion_hero), SkeletonArmy (evolution slot, played as SkeletonArmy_EV1 once its count is reached), Lightning, Minions, Tombstone (hero slot, played as Tombstone_hero), Arrows, Miner
 - Red (side 1, top): MegaKnight, ElectroGiant, Assassin (Bandit), SkeletonWarriors (Guards), Tombstone, DarkWitch (Night Witch), SkeletonArmy, RamRider
+
+Red marks no slot, so its cards are played in their basic form. The screen gives no ability command, so a hero's ability is never tapped.
 
 Hands, elixir, the next card, the clock and its elixir rate, the crowns and the result are the match's own. A click gives the selected card's play as a player's client gives it (`PlayerCommands`, in the battle core), so it runs 20 ticks later as a player's play does. A play is sent on the tile the placement search finds from the clicked point now, as the player's screen sends it.
 
@@ -263,7 +265,7 @@ How it plays (`org.crforge.desktop.model`):
 | `--model-side 0` or `1` | the side the model plays, 1 (red, top) by default |
 | `--deck-file <file>` | a deck file to name the decks below from: a JSON object whose `decks` list holds `name`, `cards` (8 card row names) and `slots` (8 slot flags, evolution 1, hero 2), read at run time only |
 | `--model-deck <deck>` | the model's deck: a deck of the deck file by name, with its slot flags, or 8 card row names separated by commas (with `--model-slots <8 flags>`); by default the deck the model file names, if its export named one. Play the deck the model was trained on |
-| `--my-deck <deck>` | your deck, the same way (with `--my-slots`); by default the model's deck (a mirror match) when a deck file is given, else the visualizer's deck of your side |
+| `--my-deck <deck>` | your deck, the same way (with `--my-slots`); by default the model's deck (a mirror match) when a deck file is given, else the visualizer's deck of your side, with its slot flags |
 | `--level <n>`, `--tower-level <n>` | the card and tower levels of both sides, 16 by default (the tower level follows the card level), the levels the models are trained and evaluated at |
 | `--model-sample` | draw each choice from the model's probabilities rather than take the most likely |
 | `--seed <n>` | the first battle's seed, 0 by default; each new battle (`R`) takes the next |
