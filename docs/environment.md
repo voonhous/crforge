@@ -25,6 +25,7 @@ env/                     org.crforge.env
   BattleEnv              one battle between two seats, writing into its share of the vector's buffers
   BufferedEnv            what every environment shares: the buffer views, the scratch arrays, the end by a fault
   LadderEnv              the environment on the battle core: plays, the mask, the observation, the result
+  LiveBattle             a Ladder environment's battle stepped tick by tick: a seat acts as each decision opens, a player plays between any two ticks (the debug visualizer's model opponent)
   SyntheticEnv           an environment that is no battle: full-size observations from a pseudo-random source
   EnvFault               a fault's kind, message, signature and bundle folder
   FaultBundle            a faulted episode written as a replay and fault.json

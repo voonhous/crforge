@@ -12,6 +12,11 @@ plugins {
 dependencies {
     implementation(project(":core"))
 
+    // The model opponent (--model): the environment builds the model's observation and mask and
+    // takes its actions as in training, and ONNX Runtime runs the exported policy
+    implementation(project(":env"))
+    implementation(libs.onnxruntime)
+
     // The configured game tables, their shipped rows and the synthetic replay scenarios of the
     // core's test fixtures
     testImplementation(testFixtures(project(":core")))
@@ -76,4 +81,11 @@ tasks.register<JavaExec>("uiSmoke") {
     systemProperty("crforge.tablesRoot", rootProject.extra["crforge.builtTablesRoot"] as String)
     systemProperty("crforge.dataVersion", rootProject.extra["crforge.dataVersion"] as String)
     systemProperty("crforge.lockVersion", rootProject.extra["crforge.lockVersion"] as String)
+}
+
+// An exported model to play a whole battle against in the desktop tests
+// (-Pcrforge.modelFile=<file.onnx>, ModelOpponentTest); a trained model is never part of this
+// repository, so the test is skipped without one.
+tasks.test {
+    (findProperty("crforge.modelFile") as String?)?.let { systemProperty("crforge.modelFile", it) }
 }

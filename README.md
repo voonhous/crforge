@@ -89,7 +89,7 @@ The debug visualizer prints the tables folder, data version and content sha at s
 | `tables`      | The table decoder: builds the game tables of a data version from the game's files           |
 | `python/`     | The `crforge-env` Python package: the environment's vector and wrappers for Python trainers ([README](python/README.md)) |
 
-`core` has no GUI dependencies. `desktop`, `conformance` and `env` depend on `core` only, and `tables` on nothing in the project. `python/` is not a Gradle module: it runs the `env` module's installed jars in the JVM. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
+`core` has no GUI dependencies. `conformance` and `env` depend on `core` only, `desktop` on `core` and `env` (and ONNX Runtime, for a model opponent), and `tables` on nothing in the project. `python/` is not a Gradle module: it runs the `env` module's installed jars in the JVM. The recorded battles live in a separate game data repository, at the commit `crforge-data.lock` names.
 
 ## Docs
 

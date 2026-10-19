@@ -887,9 +887,10 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * Gives a seat's action to the battle through the player's commands: nothing for a wait, a play
    * or an ability command for an action the seat's mask left open; an action refused is counted as
-   * illegal.
+   * illegal. {@link #step} gives each decision's two actions so, and a {@link LiveBattle} the one
+   * seat's that acts.
    */
-  private void apply(int side, int action) {
+  void apply(int side, int action) {
     lastRefusal[side] = Schema.REFUSAL_NONE;
     if (action == Schema.WAIT) {
       return;
@@ -1108,6 +1109,14 @@ public final class LadderEnv extends BufferedEnv {
         lastAbilityRunRefusal[use.side()] = use.outcome().code();
       }
     }
+  }
+
+  /**
+   * The refusal code of a seat's action of the decision under way, {@link Schema#REFUSAL_NONE} for
+   * a wait or an action given.
+   */
+  int lastRefusal(int side) {
+    return lastRefusal[side];
   }
 
   private void refuse(int side, int code) {
