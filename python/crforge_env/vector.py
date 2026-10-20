@@ -482,6 +482,7 @@ class VectorBattle:
         seat: int,
         targets: Sequence[int],
         shuffles: Sequence[int] | None = None,
+        seeds: Sequence[int] | None = None,
     ) -> None:
         """Puts a fork of battle ``index`` of ``source`` (this vector or another on the same tables)
         into this vector's battles ``targets`` (``VectorEnv.forkFrom``): a copy of the battle as
@@ -491,7 +492,13 @@ class VectorBattle:
         read. ``shuffles`` (one seed a target, for a seat's fork) deals again what the seat cannot
         see of the enemy's hand: the enemy's cards it has never seen played are shuffled among the
         places of the hand and queue they hold (``LadderEnv.shuffleUnseenEnemyCards``); the
-        enemy's own observation is stale until the next step."""
+        enemy's own observation is stale until the next step. Known leak: the shuffle deals the
+        enemy's real unseen cards, so the fork knows which cards the enemy's deck holds.
+
+        ``seeds`` (one a target) starts each fork's battle random numbers from a state of its own,
+        so a fork does not draw the battle's own coming numbers, which the seat cannot know; the
+        same seed gives the same fork. A seat's fork must be given them (``ValueError`` without);
+        seat -1 keeps the battle's own draws when given none."""
         if self.engine != "ladder" or source.engine != "ladder":
             raise ValueError("only ladder vectors fork")
         java_ints = jpype.JArray(jpype.JInt)
@@ -503,6 +510,7 @@ class VectorBattle:
                 int(seat),
                 java_ints(np.asarray(targets, dtype=np.int32)),
                 None if shuffles is None else java_longs([int(s) for s in shuffles]),
+                None if seeds is None else java_longs([int(s) for s in seeds]),
             )
         except self._illegal_argument as e:
             raise ValueError(str(e.getMessage())) from None

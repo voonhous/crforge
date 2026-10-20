@@ -422,6 +422,23 @@ public final class PlayerCommands {
   }
 
   /**
+   * Takes back a command that has not run yet, as though it was never given: its battle commands
+   * leave the battle ({@link Standard1v1Battle#withdraw}), and the promise its client keeps for it
+   * goes with it, so its cost is no longer held back from the side's elixir and its card is offered
+   * again. The hand and the king's elixir are untouched, as a play takes them only at its run. A
+   * command queued on the battle without this object, as a replay's, promises nothing here and only
+   * leaves the battle. A tool that looks ahead with a side's commands it has not seen taken out
+   * uses it; a battle played as the game plays it never does.
+   *
+   * @param name the command's name
+   * @throws IllegalArgumentException when no command of that name waits to run; nothing changes
+   */
+  public void withdraw(String name) {
+    battle.withdraw(name);
+    given.removeIf(command -> command.name().equals(name));
+  }
+
+  /**
    * The whole elixir a side's client holds back now for the commands given through this object:
    * each waiting command's cost, and each play refused at its run whose promise is kept. A refused
    * play's promise within two ticks of its expiry is counted too, as the client may still keep it.

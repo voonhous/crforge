@@ -428,3 +428,27 @@ def test_a_fork_put_into_a_vector_steps_on_as_the_battle(install, tables):
                 break
         with pytest.raises(ValueError):
             forks.fork_from(forks, 1, -1, [1])
+
+
+def test_a_seats_fork_draws_from_the_seeds_it_is_given(install, tables):
+    with (
+        VectorBattle(1, 1, install=install, tables=tables) as source,
+        VectorBattle(3, 2, install=install, tables=tables) as forks,
+    ):
+        source.reset([7], BLUE, RED)
+        forks.reset([1, 2, 3], BLUE, RED)
+        rng = np.random.default_rng(6)
+        for _ in range(150):
+            source.step(draw_actions(source.masks, rng, 0.3))
+        with pytest.raises(ValueError):
+            forks.fork_from(source, 0, 0, [0, 1])
+        with pytest.raises(ValueError):
+            forks.fork_from(source, 0, 0, [0, 1], seeds=[4])
+        forks.fork_from(source, 0, 0, [0, 1, 2], shuffles=[9, 9, 9], seeds=[4, 4, 5])
+        assert (forks.dones == 0).all()
+        for _ in range(40):
+            forks.step(np.repeat(draw_actions(forks.masks[:1], rng, 0.3), 3, axis=0))
+            # The same shuffle and the same seed make the same fork.
+            assert np.array_equal(forks.observations[0], forks.observations[1])
+            if forks.dones[0]:
+                break
