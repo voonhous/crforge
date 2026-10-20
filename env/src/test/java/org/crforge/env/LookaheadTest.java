@@ -180,6 +180,34 @@ class LookaheadTest {
   }
 
   @Test
+  void aSeatsCopiedForkShowsTheEnemyWhatItsReplayedForkShows() {
+    for (int seat = 0; seat < 2; seat++) {
+      try (VectorEnv env = ladder(1, 1)) {
+        LadderEnv original = ladderEnv(env, 0);
+        play(env, 0, 200, new SplittableRandom(13 + seat));
+        int enemy = 1 - seat;
+        int hidden = openPlay(original, enemy);
+        original.step(seat == 0 ? Schema.WAIT : hidden, seat == 0 ? hidden : Schema.WAIT);
+        int[] header = new int[Schema.SEAT_INTS];
+        original.copyObservation(enemy, header, 0);
+        assertThat(header[Schema.H_ELIXIR_RESERVED]).as("the enemy holds elixir back").isPositive();
+        LadderEnv copied = original.fork(seat);
+        LadderEnv replayed = original.replayed(seat);
+        // The fork shows what the battle last wrote until its first step writes again; from then
+        // on the enemy's client is as one that never gave the play: its elixir not held back, its
+        // card offered, its slot refilled as the replayed battle's.
+        for (int d = 0; d < 60 && !replayed.done(); d++) {
+          copied.step(Schema.WAIT, Schema.WAIT);
+          replayed.step(Schema.WAIT, Schema.WAIT);
+          assertThat(written(copied))
+              .as("seat %d, decision %d", seat, d)
+              .isEqualTo(written(replayed));
+        }
+      }
+    }
+  }
+
+  @Test
   void aSeatsForkLeavesOutTheEnemyCommandsTheSeatHasNotSeenRun() {
     try (VectorEnv env = ladder(1, 1)) {
       LadderEnv original = ladderEnv(env, 0);
@@ -310,6 +338,42 @@ class LookaheadTest {
   }
 
   @Test
+  void eachForkPutIntoAVectorDrawsFromTheSeedItIsGiven() {
+    try (VectorEnv source = ladder(1, 1);
+        VectorEnv forks = ladder(4, 2)) {
+      LadderEnv original = ladderEnv(source, 0);
+      play(source, 0, 100, new SplittableRandom(4));
+      // The battle as it is, put aside before any fork is made.
+      LadderEnv twin = original.fork(-1);
+      int state = original.battle().getWorld().getRandom().getState();
+      int[] targets = {0, 1, 2, 3};
+      forks.forkFrom(source, 0, 0, targets, null, new long[] {5, 6, 5, 7});
+
+      int[] draws = new int[targets.length];
+      for (int target : targets) {
+        draws[target] = ladderEnv(forks, target).battle().getWorld().getRandom().next(1 << 30);
+      }
+      assertThat(draws[2]).as("the same seed draws the same").isEqualTo(draws[0]);
+      assertThat(draws[1]).as("another seed draws otherwise").isNotEqualTo(draws[0]);
+      assertThat(draws[3]).isNotEqualTo(draws[0]).isNotEqualTo(draws[1]);
+      int real = twin.battle().getWorld().getRandom().next(1 << 30);
+      assertThat(draws).as("no fork draws the battle's own next number").doesNotContain(real);
+      // Forking leaves the battle's own draws as they were.
+      assertThat(original.battle().getWorld().getRandom().getState()).isEqualTo(state);
+      assertThat(original.battle().getWorld().getRandom().next(1 << 30)).isEqualTo(real);
+
+      // A seat's fork is given a seed for each target, and the battle as it is may be too.
+      assertThatThrownBy(() -> forks.forkFrom(source, 0, 0, new int[] {0}))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(() -> forks.forkFrom(source, 0, 1, new int[] {0, 1}, null, new long[] {1}))
+          .isInstanceOf(IllegalArgumentException.class);
+      forks.forkFrom(source, 0, -1, new int[] {0}, null, new long[] {5});
+      assertThat(ladderEnv(forks, 0).battle().getWorld().getRandom().next(1 << 30))
+          .isEqualTo(draws[0]);
+    }
+  }
+
+  @Test
   void aShuffledForkDealsAgainOnlyTheEnemyCardsTheSeatHasNotSeen() {
     try (VectorEnv source = ladder(1, 1);
         VectorEnv forks = ladder(4, 2)) {
@@ -320,7 +384,7 @@ class LookaheadTest {
       int[] slots = hand.slots();
       List<Integer> queue = hand.queue();
       int[] targets = {0, 1, 2, 3};
-      forks.forkFrom(source, 0, 0, targets, new long[] {1, 2, 3, 1});
+      forks.forkFrom(source, 0, 0, targets, new long[] {1, 2, 3, 1}, new long[] {1, 2, 3, 4});
       List<String> seen = original.enemySeen(0);
       boolean moved = false;
       for (int target : targets) {

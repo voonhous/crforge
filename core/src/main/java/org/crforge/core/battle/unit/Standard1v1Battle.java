@@ -370,9 +370,11 @@ public class Standard1v1Battle {
   /**
    * Takes back a player's command that has not run yet, as though it was never given: its battle
    * commands leave the battle's queue, and it leaves the commands, plays and ability commands
-   * queued. What the player's side gave for it before its run (a hand slot's card, elixir set aside
-   * by the client) is not given back. A tool that looks ahead with a side's commands it has not
-   * seen taken out uses it; a battle played as the game plays it never does.
+   * queued. The side's hand and elixir are untouched, as a play takes them only at its run; the
+   * promise the player's client keeps for a command it gave (elixir held back, the card not offered
+   * again) is {@link PlayerCommands}', which {@link PlayerCommands#withdraw} takes back along with
+   * this. A tool that looks ahead with a side's commands it has not seen taken out uses it; a
+   * battle played as the game plays it never does.
    *
    * @param name the command's name
    * @throws IllegalArgumentException when no command of that name waits to run

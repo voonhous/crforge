@@ -602,22 +602,43 @@ public final class VectorEnv implements AutoCloseable {
    * @param sourceIndex the battle's environment there, a Ladder one that is running
    * @param seat the seat whose knowledge each fork keeps, 0 or 1, or -1 for the battle as it is
    * @param targets this vector's environments to put the forks into, none of them the source
+   * @throws IllegalArgumentException for a seat's fork, which is given a seed for each target: see
+   *     {@link #forkFrom(VectorEnv, int, int, int[], long[], long[])}
    */
   public void forkFrom(VectorEnv source, int sourceIndex, int seat, int[] targets) {
-    forkFrom(source, sourceIndex, seat, targets, null);
+    forkFrom(source, sourceIndex, seat, targets, null, null);
   }
 
   /**
-   * As {@link #forkFrom(VectorEnv, int, int, int[])}, each seat's fork with what the seat cannot
-   * see of the enemy's hand dealt again ({@link LadderEnv#shuffleUnseenEnemyCards}): a
-   * determinization of the enemy's hand per target.
+   * As {@link #forkFrom(VectorEnv, int, int, int[])}, each fork drawing the battle's random numbers
+   * from a seed of its own, and each seat's fork with what the seat cannot see of the enemy's hand
+   * dealt again.
+   *
+   * <p>A fork copies the battle's random source, whose coming draws (a projectile's spread, a
+   * random pick, a random delay) the seat cannot know; a fork drawing them would look ahead into
+   * the battle's own future. Each target's fork therefore starts the random source from a state its
+   * seed gives ({@link LadderEnv#reseed}), so the same seed gives the same fork and the source's
+   * own draws are untouched. A seat's fork must be given one; the battle as it is (seat -1) keeps
+   * the battle's own draws when given none.
+   *
+   * <p>The shuffle deals the enemy's cards the seat has never seen played among the places of the
+   * hand and queue they hold ({@link LadderEnv#shuffleUnseenEnemyCards}): a determinization of the
+   * enemy's hand per target. Known leak: it deals the enemy's real unseen cards, so the fork still
+   * knows which cards the enemy's deck holds before the seat has seen them, which matters when the
+   * seat cannot tell the enemy's deck (a mirror match it can).
    *
    * @param shuffles each target's shuffle seed, or null to keep the enemy's hand as it is
+   * @param seeds each target's random seed, or null (for seat -1 only) to keep the battle's own
+   *     draws
    */
   public void forkFrom(
-      VectorEnv source, int sourceIndex, int seat, int[] targets, long[] shuffles) {
+      VectorEnv source, int sourceIndex, int seat, int[] targets, long[] shuffles, long[] seeds) {
     if (shuffles != null && (seat == -1 || shuffles.length != targets.length)) {
       throw new IllegalArgumentException("a shuffle seed for each target of a seat's fork");
+    }
+    if (seeds == null ? seat != -1 : seeds.length != targets.length) {
+      throw new IllegalArgumentException(
+          "a random seed for each target: a seat's fork does not draw the battle's own numbers");
     }
     if (source.vocabulary != vocabulary || vocabulary == null) {
       throw new IllegalArgumentException("a fork moves between Ladder vectors on the same tables");
@@ -664,6 +685,9 @@ public final class VectorEnv implements AutoCloseable {
                   .asIntBuffer();
           if (shuffles != null) {
             fork.shuffleUnseenEnemyCards(seat, new SplittableRandom(shuffles[r]));
+          }
+          if (seeds != null) {
+            fork.reseed(new SplittableRandom(seeds[r]).nextInt());
           }
           fork.moveTo(o, m, w, i);
           envs[target] = fork;

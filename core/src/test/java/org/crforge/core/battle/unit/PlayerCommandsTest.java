@@ -291,6 +291,81 @@ class PlayerCommandsTest {
 
   @Test
   @DisplayName(
+      "a play withdrawn before its run is as never given: its promise released, its card offered"
+          + " again, nothing run, the battle as one where it was not given")
+  void aWithdrawnPlayIsAsNeverGiven() {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    Standard1v1Battle untouched = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    int cost = Shipped.cost("Knight");
+    stepTo(battle, OPEN + 10);
+    stepTo(untouched, OPEN + 10);
+    while (battle.getMatch().side(0).wholeElixir() < cost) {
+      battle.getBattle().step();
+      untouched.getBattle().step();
+    }
+    int deckIndex = battle.getMatch().side(0).getHand().slots()[0];
+    Giving giving = commands.playCard(0, 0, LEVEL, X, Y, "k");
+    assertThat(giving.given()).isTrue();
+    assertThat(commands.promised(0)).isEqualTo(cost);
+    assertThat(commands.isPending(0, deckIndex)).isTrue();
+
+    commands.withdraw("k");
+
+    assertThat(commands.promised(0)).isZero();
+    assertThat(commands.isPending(0, deckIndex)).isFalse();
+    assertThat(commands.tryCard(0, 0, LEVEL).given()).as("the card is offered again").isTrue();
+    assertThat(battle.getCommands()).isEmpty();
+    // Past the tick it would have run on, nothing ran and nothing is held back for it.
+    stepTo(battle, giving.runTick() + 5);
+    stepTo(untouched, giving.runTick() + 5);
+    assertThat(battle.getPlays()).isEmpty();
+    assertThat(commands.promised(0)).isZero();
+    assertThat(commands.isPending(0, deckIndex)).isFalse();
+    assertThat(state(battle)).isEqualTo(state(untouched));
+    assertThat(commands.playCard(0, 0, LEVEL, X, Y, "again").given()).isTrue();
+    // A command that is not waiting is not withdrawn, and changes nothing.
+    stepTo(battle, battle.getBattle().getTick() + Standard1v1Battle.PLAY_DELAY_TICKS + 1);
+    assertThat(battle.getPlays()).hasSize(1);
+    assertThatThrownBy(() -> commands.withdraw("again"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> commands.withdraw("nobody"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  @DisplayName("an ability command withdrawn before its run releases its promise and does not run")
+  void aWithdrawnAbilityCommandReleasesItsPromise() {
+    Standard1v1Battle battle = dealt(QUEEN_SKELETONS, "ArcherQueen");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    int queenCost = Shipped.cost("ArcherQueen");
+    stepTo(battle, OPEN);
+    while (match.side(0).wholeElixir() < queenCost) {
+      battle.getBattle().step();
+    }
+    Giving queen = commands.playCard(0, slot(match, "ArcherQueen"), LEVEL, X, 4000, "q");
+    assertThat(queen.given()).isTrue();
+    int abilityCost = battle.getWorld().getRecords().unit("ArcherQueen").ability().manaCost();
+    int deployed =
+        queen.runTick() + Shipped.number(Shipped.unitRow("ArcherQueen"), "DeployTime") / 50;
+    while (battle.getBattle().getTick() <= deployed || match.side(0).wholeElixir() < abilityCost) {
+      battle.getBattle().step();
+    }
+    Giving giving = commands.useAbility(0, "q_0", "a");
+    assertThat(giving.given()).isTrue();
+    assertThat(commands.promised(0)).isEqualTo(abilityCost);
+
+    commands.withdraw("a");
+
+    assertThat(commands.promised(0)).isZero();
+    stepTo(battle, giving.runTick() + 5);
+    assertThat(battle.getAbilityUses()).isEmpty();
+    assertThat(commands.promised(0)).isZero();
+  }
+
+  @Test
+  @DisplayName(
       "a play refused at its run keeps its promise until 60 ticks after the tick counter it was"
           + " given at, and the elixir check sets it aside until then")
   void aRefusedPlaysPromiseExpires() {

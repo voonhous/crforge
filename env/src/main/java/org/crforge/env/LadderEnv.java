@@ -858,8 +858,10 @@ public final class LadderEnv extends BufferedEnv {
    *
    * <p>With a seat named, the fork is the battle as that seat's player knows it: the enemy's plays
    * and ability commands still waiting to run, which the seat's observation does not show, are
-   * withdrawn from it ({@link Standard1v1Battle#withdraw}). What the enemy gave for them (the cards
-   * and the elixir) is not given back; the seat sees neither.
+   * withdrawn from it, from the battle's queue and from the enemy client's promises alike ({@link
+   * PlayerCommands#withdraw}): the enemy's elixir is no longer held back for them and their cards
+   * are offered to it again, as though it had never given them. Its hand and elixir are untouched,
+   * as a play takes them only at its run.
    *
    * <p>The fork writes into buffers of its own and no fault bundles. Forking only reads this
    * environment, so several threads may fork one environment at once while nothing steps it.
@@ -888,7 +890,7 @@ public final class LadderEnv extends BufferedEnv {
       int enemy = 1 - seat;
       for (Waiting w : List.copyOf(fork.waiting)) {
         if (w.side() == enemy) {
-          fork.standard.withdraw(w.name());
+          fork.commands.withdraw(w.name());
           fork.withdrawn++;
           fork.waiting.remove(w);
           fork.givenCards.remove(w.name());
@@ -896,7 +898,7 @@ public final class LadderEnv extends BufferedEnv {
       }
       for (AbilityWaiting w : List.copyOf(fork.abilityWaiting)) {
         if (w.side() == enemy) {
-          fork.standard.withdraw(w.name());
+          fork.commands.withdraw(w.name());
           fork.withdrawn++;
           fork.abilityWaiting.remove(w);
         }
