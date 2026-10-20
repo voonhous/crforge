@@ -452,3 +452,36 @@ def test_a_seats_fork_draws_from_the_seeds_it_is_given(install, tables):
             assert np.array_equal(forks.observations[0], forks.observations[1])
             if forks.dones[0]:
                 break
+
+
+def test_a_seats_fork_deals_the_unseen_cards_given(install, tables):
+    believed = ["Valkyrie", "HogRider", "Wizard", "Bomber", "Barbarians", "MegaMinion"]
+    believed += ["Minions", "SpearGoblins"]
+    with (
+        VectorBattle(1, 1, install=install, tables=tables) as source,
+        VectorBattle(2, 2, install=install, tables=tables) as forks,
+    ):
+        source.reset([7], BLUE, RED)
+        forks.reset([1, 2], BLUE, RED)
+        rng = np.random.default_rng(6)
+        for _ in range(100):
+            source.step(draw_actions(source.masks, rng, 0.3))
+        seen = source.enemy_seen(0, 0)
+        slots = source.enemy_unseen_slots(0, 0)
+        assert set(seen) <= set(RED)
+        assert len(seen) + len(slots) == len(RED)
+        given = [c for c in believed if c not in RED][: len(slots)]
+        assert len(given) == len(slots)
+        with pytest.raises(ValueError):
+            forks.fork_from(source, 0, 0, [0], [1], [1], unseen_cards=[given[:-1]])
+        forks.fork_from(
+            source, 0, 0, [0, 1], [1, 2], [1, 2], unseen_cards=[given, given], unseen_slots=None
+        )
+        forks.step(np.zeros((2, 2), dtype=np.int32))
+        # The enemy's own view holds only cards seen or given, none of its real unseen ones.
+        hand = list(forks.schema.header["hand_card"])
+        allowed = {forks.vocabulary.index(c) for c in seen + given}
+        for target in (0, 1):
+            ids = forks.observations[target, 1, hand]
+            assert set(ids[ids >= 0].tolist()) <= allowed
+        assert (forks.dones == 0).all()

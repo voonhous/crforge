@@ -483,6 +483,8 @@ class VectorBattle:
         targets: Sequence[int],
         shuffles: Sequence[int] | None = None,
         seeds: Sequence[int] | None = None,
+        unseen_cards: Sequence[Sequence[str]] | None = None,
+        unseen_slots: Sequence[Sequence[int]] | None = None,
     ) -> None:
         """Puts a fork of battle ``index`` of ``source`` (this vector or another on the same tables)
         into this vector's battles ``targets`` (``VectorEnv.forkFrom``): a copy of the battle as
@@ -492,8 +494,19 @@ class VectorBattle:
         read. ``shuffles`` (one seed a target, for a seat's fork) deals again what the seat cannot
         see of the enemy's hand: the enemy's cards it has never seen played are shuffled among the
         places of the hand and queue they hold (``LadderEnv.shuffleUnseenEnemyCards``); the
-        enemy's own observation is stale until the next step. Known leak: the shuffle deals the
-        enemy's real unseen cards, so the fork knows which cards the enemy's deck holds.
+        enemy's own observation is stale until the next step. Known leak: without
+        ``unseen_cards`` the shuffle deals the enemy's real unseen cards, so the fork knows which
+        cards the enemy's deck holds.
+
+        ``unseen_cards`` (one list a target, for a seat's fork with ``shuffles``) deals the cards
+        given in place of the enemy's cards the seat has never seen played, one card for each such
+        deck place (``LadderEnv.dealUnseenEnemyCards``): the fork's enemy holds and plays them as
+        though its deck had held them from the start, the seen cards keep their places, and the
+        target's shuffle seed deals their order. Each place keeps its slot flags: with
+        ``unseen_slots`` (each card's flags, one list a target) each card goes to a place of its
+        flags, which must be the places' flags (:meth:`enemy_unseen_slots`) in some order; without,
+        the cards are dealt so that each evolution or hero slot holds a card it can. Cards the
+        places cannot hold raise ``ValueError``. :meth:`enemy_seen` gives the seen cards.
 
         ``seeds`` (one a target) starts each fork's battle random numbers from a state of its own,
         so a fork does not draw the battle's own coming numbers, which the seat cannot know; the
@@ -511,7 +524,30 @@ class VectorBattle:
                 java_ints(np.asarray(targets, dtype=np.int32)),
                 None if shuffles is None else java_longs([int(s) for s in shuffles]),
                 None if seeds is None else java_longs([int(s) for s in seeds]),
+                None
+                if unseen_cards is None
+                else jpype.JArray(jpype.JString, 2)([[str(c) for c in cs] for cs in unseen_cards]),
+                None
+                if unseen_slots is None
+                else jpype.JArray(jpype.JInt, 2)([[int(f) for f in fs] for fs in unseen_slots]),
             )
+        except self._illegal_argument as e:
+            raise ValueError(str(e.getMessage())) from None
+
+    def enemy_seen(self, index: int, seat: int) -> list[str]:
+        """The enemy's cards ``seat`` of battle ``index`` has seen played, first play first
+        (``VectorEnv.enemySeen``): the cards a seat's fork keeps."""
+        try:
+            return [str(c) for c in self._env.enemySeen(int(index), int(seat))]
+        except self._illegal_argument as e:
+            raise ValueError(str(e.getMessage())) from None
+
+    def enemy_unseen_slots(self, index: int, seat: int) -> list[int]:
+        """The slot flags (evolution 1, hero 2) of the enemy's deck places whose cards ``seat`` of
+        battle ``index`` has not seen played, in deck order (``VectorEnv.enemyUnseenSlots``): one
+        card of ``fork_from``'s ``unseen_cards`` goes to each."""
+        try:
+            return [int(f) for f in self._env.enemyUnseenSlots(int(index), int(seat))]
         except self._illegal_argument as e:
             raise ValueError(str(e.getMessage())) from None
 

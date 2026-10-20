@@ -1039,6 +1039,207 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
+   * The slot flags of the enemy's deck places whose cards a seat has never seen played, in deck
+   * order: what {@link #dealUnseenEnemyCards} deals into. A player can count them, as a Ladder
+   * deck's evolution and hero slots are known in number and the seen cards' are shown.
+   *
+   * @param seat the seat whose knowledge counts
+   */
+  int[] enemyUnseenSlots(int seat) {
+    int enemy = 1 - seat;
+    return unseenEnemyPlaces(seat).stream().mapToInt(index -> slots[enemy][index]).toArray();
+  }
+
+  /** The enemy's deck indices whose cards a seat has never seen played, in deck order. */
+  private List<Integer> unseenEnemyPlaces(int seat) {
+    List<String> deck = decks.get(1 - seat);
+    Set<String> seen = new HashSet<>(enemySeen.get(seat));
+    List<Integer> places = new ArrayList<>();
+    for (int index = 0; index < deck.size(); index++) {
+      if (!seen.contains(deck.get(index))) {
+        places.add(index);
+      }
+    }
+    return places;
+  }
+
+  /**
+   * Deals, in a seat's fork, other cards in place of the enemy's cards the seat has never seen
+   * played: the cards a caller believes the enemy's deck holds besides those seen, so the fork does
+   * not know which cards the enemy's real deck holds. Each card takes one of the unseen deck
+   * places, with that place's slot flags, and the enemy's match holds it as though its deck had
+   * held it from the start ({@link Standard1v1Battle#replaceUnplayedCards}); the seen cards keep
+   * their places. With slot flags given for the cards, each card goes to a place of its flags, in a
+   * random order within each flag; without, the cards are dealt in a random order that puts a card
+   * each evolution or hero slot holds into each such place. Call {@link #shuffleUnseenEnemyCards}
+   * after it to deal their places in the hand and queue again too.
+   *
+   * @param seat the seat whose knowledge the fork keeps
+   * @param cards the cards, by card row name, one for each unseen place: deck cards of the tables,
+   *     each once, none a card the seat has seen played
+   * @param cardSlots each card's slot flags, or null to deal the cards into the places' flags
+   * @param random the deal's draws
+   * @throws IllegalArgumentException for cards or slot flags the unseen places cannot hold
+   */
+  void dealUnseenEnemyCards(
+      int seat, List<String> cards, int[] cardSlots, SplittableRandom random) {
+    int enemy = 1 - seat;
+    List<Integer> places = unseenEnemyPlaces(seat);
+    if (cards.size() != places.size()) {
+      throw new IllegalArgumentException(
+          "the seat has not seen "
+              + places.size()
+              + " of the enemy's cards, and "
+              + cards.size()
+              + " cards are given: "
+              + cards);
+    }
+    Set<String> seen = new HashSet<>(enemySeen.get(seat));
+    Set<String> given = new HashSet<>();
+    for (String card : cards) {
+      if (card == null || !vocabulary.isDeckCard(card)) {
+        throw new IllegalArgumentException(
+            "the tables (" + vocabulary.dataVersion() + ") have no card named " + card);
+      }
+      if (seen.contains(card)) {
+        throw new IllegalArgumentException(card + " is a card the seat has seen played");
+      }
+      if (!given.add(card)) {
+        throw new IllegalArgumentException("a deck holds " + card + " twice: " + cards);
+      }
+    }
+    int[] flags = places.stream().mapToInt(index -> slots[enemy][index]).toArray();
+    int[] dealt =
+        cardSlots == null
+            ? dealIntoSlots(flags, cards, random)
+            : dealBySlots(flags, cards, cardSlots, random);
+    List<String> placed = new ArrayList<>();
+    for (int card : dealt) {
+      placed.add(cards.get(card));
+    }
+    standard.replaceUnplayedCards(
+        enemy, places.stream().mapToInt(Integer::intValue).toArray(), placed);
+    List<String> deck = new ArrayList<>(decks.get(enemy));
+    for (int k = 0; k < places.size(); k++) {
+      deck.set(places.get(k), placed.get(k));
+    }
+    decks =
+        enemy == 0
+            ? List.of(List.copyOf(deck), decks.get(1))
+            : List.of(decks.get(0), List.copyOf(deck));
+  }
+
+  /**
+   * Which card goes to each unseen place, by the cards' own slot flags: the flags given must be
+   * those of the places, and each card goes to a place of its flags, the places of each flag drawn
+   * in a random order.
+   */
+  private static int[] dealBySlots(
+      int[] flags, List<String> cards, int[] cardSlots, SplittableRandom random) {
+    if (cardSlots.length != cards.size()
+        || !Arrays.equals(
+            Arrays.stream(flags).sorted().toArray(), Arrays.stream(cardSlots).sorted().toArray())) {
+      throw new IllegalArgumentException(
+          "the unseen places hold the slot flags "
+              + Arrays.toString(Arrays.stream(flags).sorted().toArray())
+              + ", the cards given "
+              + Arrays.toString(cardSlots));
+    }
+    int[] dealt = new int[flags.length];
+    List<Integer> order = shuffled(flags.length, random);
+    boolean[] taken = new boolean[flags.length];
+    for (int card = 0; card < cards.size(); card++) {
+      for (int place : order) {
+        if (!taken[place] && flags[place] == cardSlots[card]) {
+          taken[place] = true;
+          dealt[place] = card;
+          break;
+        }
+      }
+    }
+    return dealt;
+  }
+
+  /**
+   * Which card goes to each unseen place, by the places' slot flags: the cards in a random order,
+   * the first order found, card by card, that puts into each evolution or hero slot a card the
+   * match's set up lets it hold ({@link LadderMatch#slotHolds}); the other places take the rest.
+   */
+  private int[] dealIntoSlots(int[] flags, List<String> cards, SplittableRandom random) {
+    List<Integer> order = shuffled(cards.size(), random);
+    List<Integer> flagged = new ArrayList<>();
+    for (int place = 0; place < flags.length; place++) {
+      if (flags[place] != 0) {
+        flagged.add(place);
+      }
+    }
+    int[] dealt = new int[flags.length];
+    boolean[] used = new boolean[cards.size()];
+    if (!fillSlots(flagged, 0, flags, cards, order, used, dealt)) {
+      throw new IllegalArgumentException(
+          "no deal of the cards "
+              + cards
+              + " puts a card each evolution or hero slot holds into the unseen places of slot"
+              + " flags "
+              + Arrays.toString(flags));
+    }
+    int next = 0;
+    for (int place = 0; place < flags.length; place++) {
+      if (flags[place] == 0) {
+        while (used[order.get(next)]) {
+          next++;
+        }
+        used[order.get(next)] = true;
+        dealt[place] = order.get(next);
+      }
+    }
+    return dealt;
+  }
+
+  /**
+   * Puts a card into each flagged place from the k-th on, trying the cards in order; false if none.
+   */
+  private boolean fillSlots(
+      List<Integer> flagged,
+      int k,
+      int[] flags,
+      List<String> cards,
+      List<Integer> order,
+      boolean[] used,
+      int[] dealt) {
+    if (k == flagged.size()) {
+      return true;
+    }
+    int place = flagged.get(k);
+    for (int card : order) {
+      if (!used[card]
+          && LadderMatch.slotHolds(
+              standard.getWorld().getRecords(), cards.get(card), flags[place])) {
+        used[card] = true;
+        dealt[place] = card;
+        if (fillSlots(flagged, k + 1, flags, cards, order, used, dealt)) {
+          return true;
+        }
+        used[card] = false;
+      }
+    }
+    return false;
+  }
+
+  /** 0 to n - 1 in a random order. */
+  private static List<Integer> shuffled(int n, SplittableRandom random) {
+    List<Integer> order = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+      order.add(i);
+    }
+    for (int i = n - 1; i > 0; i--) {
+      int k = random.nextInt(i + 1);
+      order.set(k, order.set(i, order.get(k)));
+    }
+    return order;
+  }
+
+  /**
    * Starts the battle's random source from another state, for a fork that should not know the
    * battle's own coming draws.
    *

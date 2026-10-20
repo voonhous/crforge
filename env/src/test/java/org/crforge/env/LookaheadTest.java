@@ -12,11 +12,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.SplittableRandom;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.Hand;
+import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.core.battle.unit.Standard1v1Battle.Command;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,6 +36,18 @@ class LookaheadTest {
   private static final List<String> OTHER =
       List.of(
           "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Goblins");
+
+  /** Plain troop cards neither deck holds: cards a seat may believe the enemy's deck holds. */
+  private static final List<String> BELIEVED =
+      List.of(
+          "Valkyrie",
+          "HogRider",
+          "Wizard",
+          "Bomber",
+          "Barbarians",
+          "MegaMinion",
+          "Minions",
+          "SpearGoblins");
 
   private static GameTables tables;
 
@@ -415,6 +433,240 @@ class LookaheadTest {
       // The enemy's hand of the battle itself is untouched.
       assertThat(hand.slots()).isEqualTo(slots);
     }
+  }
+
+  /** A side's deck in a Ladder environment's match, by card row name. */
+  private static List<String> deckOf(LadderEnv env, int side) {
+    return env.battle().getMatch().side(side).deck().stream().map(MatchCard::name).toList();
+  }
+
+  /** A side's hand slots then queue, by card row name, null for an empty slot. */
+  private static List<String> handOf(LadderEnv env, int side) {
+    Hand hand = env.battle().getMatch().side(side).getHand();
+    List<String> deck = deckOf(env, side);
+    List<String> cards = new ArrayList<>();
+    for (int index : hand.slots()) {
+      cards.add(index == Hand.EMPTY ? null : deck.get(index));
+    }
+    hand.queue().forEach(index -> cards.add(deck.get(index)));
+    return cards;
+  }
+
+  @Test
+  void aForkDealsTheCardsGivenInPlaceOfTheEnemyCardsTheSeatHasNotSeen() {
+    try (VectorEnv source = ladder(1, 1);
+        VectorEnv forks = ladder(2, 2)) {
+      LadderEnv original = ladderEnv(source, 0);
+      play(source, 0, 120, new SplittableRandom(8));
+      List<String> seen = original.enemySeen(0);
+      List<String> real = deckOf(original, 1);
+      List<String> realHand = handOf(original, 1);
+      List<String> unseen = real.stream().filter(card -> !seen.contains(card)).toList();
+      assertThat(unseen).isNotEmpty();
+      assertThat(source.enemySeen(0, 0)).containsExactlyElementsOf(seen);
+      List<String> given = BELIEVED.subList(0, unseen.size());
+      String[] cards = given.toArray(String[]::new);
+      forks.forkFrom(
+          source,
+          0,
+          0,
+          new int[] {0, 1},
+          new long[] {1, 2},
+          new long[] {1, 2},
+          new String[][] {cards, cards},
+          null);
+
+      Vocabulary vocabulary = VectorEnv.vocabulary(tables);
+      Set<Integer> realUnseenIds = new HashSet<>();
+      unseen.forEach(card -> realUnseenIds.add(vocabulary.id(card)));
+      for (int target = 0; target < 2; target++) {
+        LadderEnv fork = ladderEnv(forks, target);
+        List<String> deck = deckOf(fork, 1);
+        for (int index = 0; index < deck.size(); index++) {
+          if (seen.contains(real.get(index))) {
+            assertThat(deck.get(index))
+                .as("a seen card keeps its deck index")
+                .isEqualTo(real.get(index));
+          }
+        }
+        assertThat(deck).containsExactlyInAnyOrderElementsOf(concat(seen, given));
+        List<String> dealt = handOf(fork, 1);
+        for (int k = 0; k < realHand.size(); k++) {
+          if (realHand.get(k) != null && seen.contains(realHand.get(k))) {
+            assertThat(dealt.get(k)).as("a seen card keeps its place").isEqualTo(realHand.get(k));
+          } else if (realHand.get(k) != null) {
+            assertThat(given).contains(dealt.get(k));
+          }
+        }
+        // The enemy's own view shows the hand it was dealt, none of its real unseen cards.
+        fork.step(Schema.WAIT, Schema.WAIT);
+        int[] view = new int[Schema.SEAT_INTS];
+        fork.copyObservation(1, view, 0);
+        List<String> now = handOf(fork, 1);
+        for (int k = 0; k < Hand.SLOTS; k++) {
+          if (now.get(k) != null) {
+            assertThat(view[Schema.H_HAND_CARD + k]).isEqualTo(vocabulary.id(now.get(k)));
+            assertThat(realUnseenIds).doesNotContain(view[Schema.H_HAND_CARD + k]);
+          }
+        }
+        // And it plays them: a dealt card's play runs as that card.
+        String played = null;
+        int action = Schema.WAIT;
+        while (played == null && !fork.done()) {
+          for (int a = 1; a < Schema.ACTIONS && played == null; a++) {
+            if (!Schema.isAbility(a) && fork.open(1, a)) {
+              String card = handOf(fork, 1).get((a - 1) / Schema.TILES);
+              if (given.contains(card)) {
+                played = card;
+                action = a;
+              }
+            }
+          }
+          if (played == null) {
+            fork.step(Schema.WAIT, Schema.WAIT);
+          }
+        }
+        assertThat(played).isNotNull();
+        int plays = fork.battle().getPlays().size();
+        fork.step(Schema.WAIT, action);
+        for (int d = 0; d < 10; d++) {
+          fork.step(Schema.WAIT, Schema.WAIT);
+        }
+        assertThat(fork.battle().getPlays().subList(plays, fork.battle().getPlays().size()))
+            .filteredOn(p -> p.side() == 1)
+            .extracting(p -> p.evolution().spell().name())
+            .contains(played);
+      }
+      assertThat(deckOf(original, 1)).as("the battle itself keeps its deck").isEqualTo(real);
+      assertThat(handOf(original, 1)).isEqualTo(realHand);
+    }
+  }
+
+  @Test
+  void aDealPutsTheCardsGivenInTheSlotsGivenAndFollowsAChampionDealt() {
+    int[] heroFirst = {Schema.SLOT_HERO, 0, 0, 0, 0, 0, 0, 0};
+    try (VectorEnv source = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1);
+        VectorEnv forks = ladder(1, 1)) {
+      source.reset(new int[] {300}, BASIC, OTHER, new int[Schema.DECK_SIZE], heroFirst);
+      LadderEnv original = ladderEnv(source, 0);
+      original.step(Schema.WAIT, Schema.WAIT);
+      assertThat(original.enemySeen(0)).isEmpty();
+      assertThat(source.enemyUnseenSlots(0, 0))
+          .containsExactlyInAnyOrder(Schema.SLOT_HERO, 0, 0, 0, 0, 0, 0, 0);
+      List<String> given = new ArrayList<>(BELIEVED.subList(0, 7));
+      given.add("ArcherQueen");
+      int[] slots = {0, 0, 0, 0, 0, 0, 0, 0};
+      slots[2] = Schema.SLOT_HERO;
+      forks.forkFrom(
+          source,
+          0,
+          0,
+          new int[] {0},
+          new long[] {4},
+          new long[] {4},
+          new String[][] {given.toArray(String[]::new)},
+          new int[][] {slots});
+      LadderEnv fork = ladderEnv(forks, 0);
+      List<String> deck = deckOf(fork, 1);
+      assertThat(deck.get(0)).as("the card given for the hero slot").isEqualTo(given.get(2));
+      assertThat(deck).containsExactlyInAnyOrderElementsOf(given);
+      MatchSide side = fork.battle().getMatch().side(1);
+      assertThat(side.slotFlags(0)).isEqualTo(Schema.SLOT_HERO);
+      // The champion dealt has one of the king's slots, at its deck index; the real deck's king
+      // has none for it.
+      List<String> followed = new ArrayList<>();
+      List<String> real = new ArrayList<>();
+      for (int n = 1; n <= 2; n++) {
+        ChampionController slot = fork.battle().getWorld().kingTower(1).championSlot(n);
+        if (slot.getChampion() != null) {
+          followed.add(deck.get(slot.getDeckIndex()));
+        }
+        ChampionController before = original.battle().getWorld().kingTower(1).championSlot(n);
+        if (before.getChampion() != null) {
+          real.add(deckOf(original, 1).get(before.getDeckIndex()));
+        }
+      }
+      assertThat(followed).contains("ArcherQueen");
+      assertThat(real).doesNotContain("ArcherQueen");
+      fork.step(Schema.WAIT, Schema.WAIT);
+      assertThat(fork.fault()).isNull();
+    }
+  }
+
+  @Test
+  void aDealTheEnemysDeckCannotHoldIsRefused() {
+    int[] heroFirst = {Schema.SLOT_HERO, 0, 0, 0, 0, 0, 0, 0};
+    try (VectorEnv source = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1);
+        VectorEnv forks = ladder(1, 1)) {
+      source.reset(new int[] {300}, BASIC, OTHER, new int[Schema.DECK_SIZE], heroFirst);
+      ladderEnv(source, 0).step(Schema.WAIT, Schema.WAIT);
+      int[] target = {0};
+      long[] one = {1};
+      String[] seven = BELIEVED.subList(0, 7).toArray(String[]::new);
+      String[] twice = BELIEVED.toArray(String[]::new);
+      twice[7] = twice[0];
+      String[] unknown = BELIEVED.toArray(String[]::new);
+      unknown[7] = "NoSuchCard";
+      // Cards none of which a hero slot holds: spells or buildings with no hero form, as the
+      // match's set up checks.
+      Vocabulary vocabulary = VectorEnv.vocabulary(tables);
+      String[] noHero =
+          vocabulary.names().stream()
+              .filter(vocabulary::isDeckCard)
+              .filter(card -> !OTHER.contains(card))
+              .filter(
+                  card ->
+                      !LadderMatch.slotHolds(
+                          ladderEnv(source, 0).battle().getWorld().getRecords(),
+                          card,
+                          MatchSide.HERO_SLOT))
+              .limit(Schema.DECK_SIZE)
+              .toArray(String[]::new);
+      assertThat(noHero).hasSize(Schema.DECK_SIZE);
+      String[] believed = BELIEVED.toArray(String[]::new);
+      for (String[][] cards :
+          List.of(
+              new String[][] {seven},
+              new String[][] {twice},
+              new String[][] {unknown},
+              new String[][] {noHero},
+              new String[][] {believed, believed})) {
+        assertThatThrownBy(() -> forks.forkFrom(source, 0, 0, target, one, one, cards, null))
+            .as(Arrays.toString(cards[0]))
+            .isInstanceOf(IllegalArgumentException.class);
+      }
+      // Slot flags given that are not those of the unseen places.
+      assertThatThrownBy(
+              () ->
+                  forks.forkFrom(
+                      source,
+                      0,
+                      0,
+                      target,
+                      one,
+                      one,
+                      new String[][] {believed},
+                      new int[][] {new int[Schema.DECK_SIZE]}))
+          .isInstanceOf(IllegalArgumentException.class);
+      // Cards dealt without a shuffle seed, or into the battle as it is.
+      assertThatThrownBy(
+              () ->
+                  forks.forkFrom(source, 0, 0, target, null, one, new String[][] {believed}, null))
+          .isInstanceOf(IllegalArgumentException.class);
+      assertThatThrownBy(
+              () ->
+                  forks.forkFrom(source, 0, -1, target, null, one, new String[][] {believed}, null))
+          .isInstanceOf(IllegalArgumentException.class);
+      // The legal deal goes through.
+      forks.forkFrom(source, 0, 0, target, one, one, new String[][] {believed}, null);
+      assertThat(deckOf(ladderEnv(forks, 0), 1)).containsExactlyInAnyOrderElementsOf(BELIEVED);
+    }
+  }
+
+  private static List<String> concat(List<String> first, List<String> second) {
+    List<String> all = new ArrayList<>(first);
+    all.addAll(second);
+    return all;
   }
 
   @Test

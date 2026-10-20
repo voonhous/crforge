@@ -366,6 +366,34 @@ class PlayerCommandsTest {
 
   @Test
   @DisplayName(
+      "cards a side has never played are dealt again in place, its hand untouched; a card it has"
+          + " played is not")
+  void onlyUnplayedCardsAreReplaced() {
+    Standard1v1Battle battle = dealt(KNIGHT_SKELETONS, "Knight");
+    PlayerCommands commands = new PlayerCommands(battle);
+    MatchSide side = battle.getMatch().side(0);
+    int knight = side.getHand().slots()[slot(battle.getMatch(), "Knight")];
+    playAndRun(battle, commands, "Knight", "k");
+    int unplayed = knight == 0 ? 1 : 0;
+    int[] hand = side.getHand().slots();
+    List<Integer> queue = side.getHand().queue();
+
+    battle.replaceUnplayedCards(0, new int[] {unplayed}, List.of("Archer"));
+
+    assertThat(side.deck().get(unplayed).name()).isEqualTo("Archer");
+    assertThat(side.deck().get(knight).name()).isEqualTo("Knight");
+    assertThat(side.getHand().slots()).isEqualTo(hand);
+    assertThat(side.getHand().queue()).isEqualTo(queue);
+    assertThatThrownBy(() -> battle.replaceUnplayedCards(0, new int[] {knight}, List.of("Archer")))
+        .isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(
+            () -> battle.replaceUnplayedCards(0, new int[] {unplayed, unplayed}, List.of("A", "B")))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(side.deck().get(unplayed).name()).isEqualTo("Archer");
+  }
+
+  @Test
+  @DisplayName(
       "a play refused at its run keeps its promise until 60 ticks after the tick counter it was"
           + " given at, and the elixir check sets it aside until then")
   void aRefusedPlaysPromiseExpires() {

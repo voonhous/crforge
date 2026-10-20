@@ -66,7 +66,8 @@ public final class MatchSide {
   /** The slot flag of a card in the deck's hero slot. */
   public static final int HERO_SLOT = 2;
 
-  private final List<MatchCard> deck;
+  /** The deck, by index: replaced whole only by {@link #replaceDeck}. */
+  private List<MatchCard> deck;
 
   @Getter private final Hand hand = new Hand();
 
@@ -204,6 +205,17 @@ public final class MatchSide {
   /** The deck, by index. */
   public List<MatchCard> deck() {
     return deck;
+  }
+
+  /**
+   * Holds another deck from now on, of as many cards, the slot flags and every count kept by deck
+   * index: a fork's deal of cards its side has never played ({@link LadderMatch#replaceDeck}).
+   *
+   * @param replaced the deck, by index
+   */
+  void replaceDeck(List<MatchCard> replaced) {
+    checkArgument(replaced.size() == deck.size(), () -> "a deck is replaced by one as long");
+    deck = List.copyOf(replaced);
   }
 
   /** The last card played that was not the Mirror, or null before any. */

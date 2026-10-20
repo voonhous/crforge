@@ -11,10 +11,13 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import lombok.Getter;
 import org.crforge.core.battle.Battle;
@@ -507,39 +510,143 @@ public class Standard1v1Battle {
       world.kingTower(side).makeChampionSlots();
     }
     for (int side = 0; side < 2; side++) {
-      List<UnitData> champions = new ArrayList<>();
-      int championCards = 0;
-      MatchSide matchSide = ladder.side(side);
-      for (int index = 0; index < matchSide.deck().size(); index++) {
-        // The Mirror and a variant card summon nothing of their own. A hero slot's card is asked
-        // in its hero form, whose linked champion comes first.
-        MatchCard matchCard = matchSide.deck().get(index);
-        boolean hero = (matchSide.slotFlags(index) & MatchSide.HERO_SLOT) != 0;
-        String form = matchCard.formRow(hero ? MatchCard.HERO_FORM : MatchCard.BASIC_FORM).name();
-        UnitData champion =
-            matchCard.mirror() || matchCard.variant() != null
-                ? null
-                : world.getRecords().cardChampion(form);
-        champions.add(champion);
-        if (champion != null) {
-          championCards++;
-        }
-      }
-      // A deck may hold two champion cards - a hero slot's card counts as one, so a hero next to a
-      // champion card, or two hero slots, as Ladder decks of 16.402.18 do - and the deck pass gives
-      // each a slot. The pass stops after the second, so a third would get none, which no
-      // reference holds.
-      if (championCards > 2) {
-        throw new UnsupportedOperationException(
-            "side "
-                + side
-                + "'s deck holds "
-                + championCards
-                + " champion cards, more than the king's two slots, which no reference holds");
-      }
-      world.kingTower(side).championDeckPass(champions);
+      world.kingTower(side).championDeckPass(deckChampions(side, ladder.side(side).deck()));
     }
     return ladder;
+  }
+
+  /**
+   * The champion each card of a side's deck summons, by deck index, or null, as the deck pass over
+   * the king's champion slots asks them.
+   *
+   * @param side the side, whose slot flags apply
+   * @param deck the deck, by index
+   * @throws UnsupportedOperationException for a deck of more than two champion cards
+   */
+  private List<UnitData> deckChampions(int side, List<MatchCard> deck) {
+    MatchSide matchSide = match.side(side);
+    List<UnitData> champions = new ArrayList<>();
+    int championCards = 0;
+    for (int index = 0; index < deck.size(); index++) {
+      // The Mirror and a variant card summon nothing of their own. A hero slot's card is asked
+      // in its hero form, whose linked champion comes first.
+      MatchCard matchCard = deck.get(index);
+      boolean hero = (matchSide.slotFlags(index) & MatchSide.HERO_SLOT) != 0;
+      String form = matchCard.formRow(hero ? MatchCard.HERO_FORM : MatchCard.BASIC_FORM).name();
+      UnitData champion =
+          matchCard.mirror() || matchCard.variant() != null
+              ? null
+              : world.getRecords().cardChampion(form);
+      champions.add(champion);
+      if (champion != null) {
+        championCards++;
+      }
+    }
+    // A deck may hold two champion cards - a hero slot's card counts as one, so a hero next to a
+    // champion card, or two hero slots, as Ladder decks of 16.402.18 do - and the deck pass gives
+    // each a slot. The pass stops after the second, so a third would get none, which no
+    // reference holds.
+    if (championCards > 2) {
+      throw new UnsupportedOperationException(
+          "side "
+              + side
+              + "'s deck holds "
+              + championCards
+              + " champion cards, more than the king's two slots, which no reference holds");
+    }
+    return champions;
+  }
+
+  /**
+   * Puts other cards in place of cards of a side's deck it has never played, as though its deck had
+   * held them from the start: each in the deck index, and so the hand slot or queue place, of the
+   * card it replaces, with that index's slot flags. Every count the match keeps by deck index stays
+   * as it was, which for a card never played is as at the start. When the cards change the
+   * champions the king's deck pass gives its two slots, the pass is made again over the new deck,
+   * which only a king whose slots have followed no play yet allows. A tool that deals a side's
+   * unseen cards again from the cards a player believes its deck holds uses it, on a battle no
+   * command of that side waits in; a battle played as the game plays it never does.
+   *
+   * <p>Refused, with nothing changed: a deck index out of the deck or named twice, a card that is
+   * not one of the tables' cards, a card in a slot the match's set up refuses ({@link
+   * LadderMatch#slotHolds}), more than two champion cards, a replaced card that a play of the side
+   * was queued for or whose count has moved, and a change of the champion slots once either has
+   * followed a play.
+   *
+   * @param side the side, 0 or 1
+   * @param indices the deck indices whose cards are replaced
+   * @param cards the cards put there, by card row name, one for each index
+   * @throws IllegalArgumentException for a deck index, a card or a slot refused
+   * @throws IllegalStateException for a replaced card the side has played, or champion slots that
+   *     have followed a play
+   */
+  public void replaceUnplayedCards(int side, int[] indices, List<String> cards) {
+    checkState(match != null, () -> "only a match's deck is dealt again");
+    MatchSide matchSide = match.side(side);
+    Set<Integer> named = new HashSet<>();
+    for (int index : indices) {
+      checkArgument(
+          index >= 0 && index < matchSide.deck().size() && named.add(index),
+          () -> "deck indices in the deck, each once: " + Arrays.toString(indices));
+      String card = matchSide.deck().get(index).name();
+      boolean queued = false;
+      for (QueuedPlay play : queuedPlays) {
+        queued |= play.side() == side && play.card().equals(card);
+      }
+      checkState(
+          !queued
+              && matchSide.evolutionCount(index) == 0
+              && !matchSide.evolutionCountUnknown(index),
+          () -> "side " + side + " has played " + card + ", which is not dealt again");
+    }
+    List<MatchCard> deck;
+    List<UnitData> champions;
+    try {
+      deck = match.deckWith(side, indices, cards);
+      champions = deckChampions(side, deck);
+    } catch (UnsupportedOperationException e) {
+      throw new IllegalArgumentException(
+          "the cards "
+              + cards
+              + " cannot be dealt into side "
+              + side
+              + "'s deck: "
+              + e.getMessage(),
+          e);
+    }
+    TowerEntity king = world.kingTower(side);
+    boolean repass = false;
+    int found = 0;
+    for (int index = Math.min(champions.size(), 8) - 1; index >= 0 && found < 2; index--) {
+      if (champions.get(index) != null) {
+        found++;
+        ChampionController slot = king.championSlot(found);
+        repass |= slot.getChampion() != champions.get(index) || slot.getDeckIndex() != index;
+      }
+    }
+    for (int n = found + 1; n <= 2; n++) {
+      repass |= king.championSlot(n).getChampion() != null;
+    }
+    if (repass) {
+      for (int n = 1; n <= 2; n++) {
+        ChampionController slot = king.championSlot(n);
+        checkState(
+            slot.getDeployIndex() == -1
+                && slot.getCooldownMs() == 0
+                && (slot.getState() == ChampionController.UNKNOWN
+                    || slot.getState() == ChampionController.ABSENT),
+            () ->
+                "side "
+                    + side
+                    + "'s champion slots have followed a play: the cards "
+                    + cards
+                    + " would change them");
+      }
+    }
+    match.replaceDeck(side, deck);
+    if (repass) {
+      king.championDeckPass(champions);
+    }
   }
 
   /**
