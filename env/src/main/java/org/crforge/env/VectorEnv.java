@@ -623,9 +623,10 @@ public final class VectorEnv implements AutoCloseable {
    *
    * <p>The shuffle deals the enemy's cards the seat has never seen played among the places of the
    * hand and queue they hold ({@link LadderEnv#shuffleUnseenEnemyCards}): a determinization of the
-   * enemy's hand per target. Known leak: it deals the enemy's real unseen cards, so the fork still
-   * knows which cards the enemy's deck holds before the seat has seen them, which matters when the
-   * seat cannot tell the enemy's deck (a mirror match it can).
+   * enemy's hand per target. Known leak: alone it deals the enemy's real unseen cards, so the fork
+   * still knows which cards the enemy's deck holds before the seat has seen them, which matters
+   * when the seat cannot tell the enemy's deck (a mirror match it can); the overload with cards
+   * deals the cards a caller believes the deck holds instead.
    *
    * @param shuffles each target's shuffle seed, or null to keep the enemy's hand as it is
    * @param seeds each target's random seed, or null (for seat -1 only) to keep the battle's own
@@ -633,8 +634,44 @@ public final class VectorEnv implements AutoCloseable {
    */
   public void forkFrom(
       VectorEnv source, int sourceIndex, int seat, int[] targets, long[] shuffles, long[] seeds) {
+    forkFrom(source, sourceIndex, seat, targets, shuffles, seeds, null, null);
+  }
+
+  /**
+   * As {@link #forkFrom(VectorEnv, int, int, int[], long[], long[])}, each seat's fork dealt the
+   * cards given in place of the enemy's cards the seat has never seen played ({@link
+   * LadderEnv#dealUnseenEnemyCards}), then their places in the hand and queue shuffled with the
+   * target's shuffle seed: the fork no longer knows which cards the enemy's real deck holds, only
+   * the cards the caller believes it holds besides those seen. The seen cards keep their deck
+   * places and hand places. {@link #enemySeen} and {@link #enemyUnseenSlots} tell a caller what to
+   * deal: one card for each unseen place.
+   *
+   * @param cards each target's cards, by card row name, one for each of the enemy's deck places the
+   *     seat has not seen played, or null to deal the enemy's real cards again
+   * @param cardSlots each target's slot flags of its cards, one for each card, which must be the
+   *     unseen places' flags in some order; or null (for all targets) to deal the cards in a random
+   *     order that fills each evolution or hero slot with a card it holds
+   * @throws IllegalArgumentException for cards the unseen places cannot hold, or cards with no
+   *     shuffle seed or in the battle as it is (seat -1)
+   */
+  public void forkFrom(
+      VectorEnv source,
+      int sourceIndex,
+      int seat,
+      int[] targets,
+      long[] shuffles,
+      long[] seeds,
+      String[][] cards,
+      int[][] cardSlots) {
     if (shuffles != null && (seat == -1 || shuffles.length != targets.length)) {
       throw new IllegalArgumentException("a shuffle seed for each target of a seat's fork");
+    }
+    if (cards != null && (shuffles == null || cards.length != targets.length)) {
+      throw new IllegalArgumentException(
+          "cards for each target of a seat's fork, which deals them with its shuffle seed");
+    }
+    if (cardSlots != null && (cards == null || cardSlots.length != targets.length)) {
+      throw new IllegalArgumentException("slot flags for each target's cards");
     }
     if (seeds == null ? seat != -1 : seeds.length != targets.length) {
       throw new IllegalArgumentException(
@@ -684,7 +721,17 @@ public final class VectorEnv implements AutoCloseable {
                   .order(ByteOrder.nativeOrder())
                   .asIntBuffer();
           if (shuffles != null) {
-            fork.shuffleUnseenEnemyCards(seat, new SplittableRandom(shuffles[r]));
+            SplittableRandom deal = new SplittableRandom(shuffles[r]);
+            try {
+              if (cards != null) {
+                fork.dealUnseenEnemyCards(
+                    seat, Arrays.asList(cards[r]), cardSlots == null ? null : cardSlots[r], deal);
+              }
+            } catch (RuntimeException e) {
+              thrown[r] = e;
+              return;
+            }
+            fork.shuffleUnseenEnemyCards(seat, deal);
           }
           if (seeds != null) {
             fork.reseed(new SplittableRandom(seeds[r]).nextInt());
@@ -710,6 +757,41 @@ public final class VectorEnv implements AutoCloseable {
       dones.put(target, (byte) 0);
     }
     started = true;
+  }
+
+  /**
+   * The enemy's cards a seat of an environment has seen played, first play first: the cards a
+   * seat's fork keeps ({@link #forkFrom}).
+   *
+   * @param index the environment, a Ladder one
+   * @param seat the seat, 0 or 1
+   */
+  public String[] enemySeen(int index, int seat) {
+    return ladderAt(index, seat).enemySeen(seat).toArray(String[]::new);
+  }
+
+  /**
+   * The slot flags of the enemy's deck places whose cards a seat of an environment has not seen
+   * played, in deck order: the places a seat's fork deals cards given into ({@link #forkFrom}).
+   *
+   * @param index the environment, a Ladder one
+   * @param seat the seat, 0 or 1
+   */
+  public int[] enemyUnseenSlots(int index, int seat) {
+    return ladderAt(index, seat).enemyUnseenSlots(seat);
+  }
+
+  private LadderEnv ladderAt(int index, int seat) {
+    if (index < 0 || index >= envs.length) {
+      throw new IllegalArgumentException("no environment " + index + " in " + envs.length);
+    }
+    if (!(envs[index] instanceof LadderEnv ladder)) {
+      throw new IllegalArgumentException("environment " + index + " plays no Ladder battle");
+    }
+    if (seat != 0 && seat != 1) {
+      throw new IllegalArgumentException("a seat is 0 or 1, got " + seat);
+    }
+    return ladder;
   }
 
   /**

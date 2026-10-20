@@ -21,6 +21,7 @@ import org.crforge.core.battle.unit.AreaEffectEntity;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.KingElixir;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.fidelity.Fidelity;
@@ -405,6 +406,64 @@ public final class LadderMatch implements BattleMode {
                 + "'s deck, which no reference holds");
       }
     }
+  }
+
+  /**
+   * Whether a card may sit in a deck slot of the given flags, as a deck set up here is checked: any
+   * card in a slot of no flags; in an evolution or hero slot, a card the set up does not refuse
+   * there.
+   *
+   * @param records the battle's records
+   * @param card the card row's name
+   * @param flags the slot's flags: {@link MatchSide#EVOLUTION_SLOT}, {@link MatchSide#HERO_SLOT},
+   *     both or neither
+   */
+  public static boolean slotHolds(BattleRecords records, String card, int flags) {
+    try {
+      checkSlots(0, List.of(records.matchCard(card)), new int[] {flags}, records);
+      return true;
+    } catch (UnsupportedOperationException e) {
+      return false;
+    }
+  }
+
+  /**
+   * The deck a side would hold with other cards at some of its deck indices, each in the index's
+   * slot flags, checked as a deck set up here is. Changes nothing.
+   *
+   * @param side 0 or 1
+   * @param indices the deck indices whose cards are replaced
+   * @param cards the cards put there, by card row name, one for each index
+   * @return the deck, by index
+   * @throws UnsupportedOperationException for a card in a slot the set up refuses
+   */
+  public List<MatchCard> deckWith(int side, int[] indices, List<String> cards) {
+    checkArgument(indices.length == cards.size(), () -> "one card for each deck index replaced");
+    MatchSide matchSide = sides.get(side);
+    List<MatchCard> deck = new ArrayList<>(matchSide.deck());
+    int[] flags = new int[deck.size()];
+    for (int index = 0; index < deck.size(); index++) {
+      flags[index] = matchSide.slotFlags(index);
+    }
+    for (int k = 0; k < indices.length; k++) {
+      int index = indices[k];
+      checkArgument(index >= 0 && index < deck.size(), () -> "no deck index " + index);
+      deck.set(index, world.getRecords().matchCard(cards.get(k)));
+    }
+    checkSlots(side, deck, flags, world.getRecords());
+    return deck;
+  }
+
+  /**
+   * Puts a deck {@link #deckWith} made in place of a side's: what {@link
+   * Standard1v1Battle#replaceUnplayedCards} applies once it has checked the cards replaced were
+   * never played.
+   *
+   * @param side 0 or 1
+   * @param deck the deck, by index, as long as the side's
+   */
+  public void replaceDeck(int side, List<MatchCard> deck) {
+    sides.get(side).replaceDeck(deck);
   }
 
   /** How many players the match was set up between. */
