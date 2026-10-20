@@ -377,3 +377,54 @@ def test_autoreset_battles_start_at_seeds_of_the_range_given(install, tables):
                 assert json.loads(v.replay_json(int(i)))["rndSeed"] == seed
                 restarts += 1
         assert restarts >= 3
+
+
+def test_a_look_ahead_plays_forks_and_leaves_the_battles_as_they_were(install, tables):
+    with VectorBattle(2, 2, install=install, tables=tables) as v:
+        v.reset([5, 6], BLUE, RED)
+        s = v.schema
+        rng = np.random.default_rng(3)
+        for _ in range(200):
+            v.step(draw_actions(v.masks, rng, 0.3))
+        while not v.masks[0, 0, 1 : s.first_ability].any():
+            v.step(np.zeros((2, 2), dtype=np.int32))
+        play = 1 + int(np.flatnonzero(v.masks[0, 0, 1 : s.first_ability])[0])
+        before = (v.observations.copy(), v.masks.copy(), v.infos.copy())
+        indices = np.array([0, 0, 1])
+        seats = np.array([0, 0, 1])
+        actions = np.array([s.wait, play, s.wait])
+        observations, infos = v.lookahead(indices, seats, actions, 160)
+        assert observations.shape == (3, s.seat_ints) and infos.shape == (3, s.info_ints)
+        assert (infos[:, s.info["fault"]] == 0).all()
+        assert (infos[:, s.info["tick"]] >= v.infos[indices, s.info["tick"]] + 160).all()
+        assert (observations[:, s.header["seat"][0]] == seats).all()
+        assert not np.array_equal(observations[0], observations[1])
+        again, _ = v.lookahead(indices, seats, actions, 160)
+        assert np.array_equal(again, observations)
+        for now, then in zip((v.observations, v.masks, v.infos), before, strict=True):
+            assert np.array_equal(now, then)
+
+
+def test_a_fork_put_into_a_vector_steps_on_as_the_battle(install, tables):
+    with (
+        VectorBattle(1, 1, install=install, tables=tables) as source,
+        VectorBattle(3, 2, install=install, tables=tables) as forks,
+    ):
+        source.reset([7], BLUE, RED)
+        forks.reset([1, 2, 3], BLUE, RED)
+        rng = np.random.default_rng(5)
+        for _ in range(150):
+            source.step(draw_actions(source.masks, rng, 0.3))
+        forks.fork_from(source, 0, -1, [0, 2])
+        for _ in range(60):
+            for target in (0, 2):
+                assert np.array_equal(forks.observations[target], source.observations[0])
+                assert np.array_equal(forks.masks[target], source.masks[0])
+                assert forks.dones[target] == 0
+            actions = draw_actions(source.masks, rng, 0.3)
+            source.step(actions)
+            forks.step(np.concatenate([actions, np.zeros((1, 2), np.int32), actions]))
+            if source.dones[0]:
+                break
+        with pytest.raises(ValueError):
+            forks.fork_from(forks, 1, -1, [1])

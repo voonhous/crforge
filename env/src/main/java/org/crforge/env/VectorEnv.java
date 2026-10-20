@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -176,17 +177,7 @@ public final class VectorEnv implements AutoCloseable {
     uncounted = new boolean[count];
     for (int i = 0; i < count; i++) {
       BattleEnv env = factory.get();
-      env.bind(
-          observations
-              .slice(i * 2 * Schema.SEAT_INTS * 4, 2 * Schema.SEAT_INTS * 4)
-              .order(ByteOrder.nativeOrder())
-              .asIntBuffer(),
-          masks.slice(i * 2 * Schema.ACTIONS, 2 * Schema.ACTIONS),
-          rewards.slice(i * 8, 8).order(ByteOrder.nativeOrder()).asFloatBuffer(),
-          infos
-              .slice(i * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
-              .order(ByteOrder.nativeOrder())
-              .asIntBuffer());
+      bindSlot(env, i);
       envs[i] = env;
       seeds[i] = new SplittableRandom(i);
       deck0s.add(List.of());
@@ -570,6 +561,218 @@ public final class VectorEnv implements AutoCloseable {
     countFaults();
   }
 
+  /** Draws each look ahead's fresh random state, or null to keep the battle's own. */
+  private SplittableRandom lookaheadReseed;
+
+  /**
+   * Whether each fork of {@link #lookahead} starts the battle's random source from a fresh state
+   * rather than keeping the battle's own coming draws, which the seat cannot know. The states are
+   * drawn from a sequence this seed starts, so the same calls give the same look aheads.
+   *
+   * @param seed the sequence's seed, or null to keep the battle's own draws (the default)
+   */
+  public void setLookaheadReseed(Long seed) {
+    lookaheadReseed = seed == null ? null : new SplittableRandom(seed);
+  }
+
+  /** Binds an environment to its share of the vector's buffers. */
+  private void bindSlot(BattleEnv env, int i) {
+    env.bind(
+        observations
+            .slice(i * 2 * Schema.SEAT_INTS * 4, 2 * Schema.SEAT_INTS * 4)
+            .order(ByteOrder.nativeOrder())
+            .asIntBuffer(),
+        masks.slice(i * 2 * Schema.ACTIONS, 2 * Schema.ACTIONS),
+        rewards.slice(i * 8, 8).order(ByteOrder.nativeOrder()).asFloatBuffer(),
+        infos
+            .slice(i * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
+            .order(ByteOrder.nativeOrder())
+            .asIntBuffer());
+  }
+
+  /**
+   * Puts a fork of a battle of a vector (this one or another on the same tables) into some of this
+   * vector's environments ({@link LadderEnv#fork}): each target then plays the fork's episode from
+   * the source's decision, with the fork's observations, masks and info record in the target's
+   * share of the buffers and its done flag clear, and is stepped by {@link #step} like any other.
+   * An autoreset of a target starts a new episode on the source's decks. The forks are made on the
+   * vector's threads; the source is only read.
+   *
+   * @param source the vector holding the battle
+   * @param sourceIndex the battle's environment there, a Ladder one that is running
+   * @param seat the seat whose knowledge each fork keeps, 0 or 1, or -1 for the battle as it is
+   * @param targets this vector's environments to put the forks into, none of them the source
+   */
+  public void forkFrom(VectorEnv source, int sourceIndex, int seat, int[] targets) {
+    forkFrom(source, sourceIndex, seat, targets, null);
+  }
+
+  /**
+   * As {@link #forkFrom(VectorEnv, int, int, int[])}, each seat's fork with what the seat cannot
+   * see of the enemy's hand dealt again ({@link LadderEnv#shuffleUnseenEnemyCards}): a
+   * determinization of the enemy's hand per target.
+   *
+   * @param shuffles each target's shuffle seed, or null to keep the enemy's hand as it is
+   */
+  public void forkFrom(
+      VectorEnv source, int sourceIndex, int seat, int[] targets, long[] shuffles) {
+    if (shuffles != null && (seat == -1 || shuffles.length != targets.length)) {
+      throw new IllegalArgumentException("a shuffle seed for each target of a seat's fork");
+    }
+    if (source.vocabulary != vocabulary || vocabulary == null) {
+      throw new IllegalArgumentException("a fork moves between Ladder vectors on the same tables");
+    }
+    if (sourceIndex < 0 || sourceIndex >= source.envs.length) {
+      throw new IllegalArgumentException(
+          "no environment " + sourceIndex + " in " + source.envs.length);
+    }
+    if (!(source.envs[sourceIndex] instanceof LadderEnv from) || from.done()) {
+      throw new IllegalArgumentException("environment " + sourceIndex + " is not running");
+    }
+    for (int target : targets) {
+      if (target < 0 || target >= envs.length) {
+        throw new IllegalArgumentException("no environment " + target + " in " + envs.length);
+      }
+      if (source == this && target == sourceIndex) {
+        throw new IllegalArgumentException("a fork is not put into its own source");
+      }
+    }
+    RuntimeException[] thrown = new RuntimeException[targets.length];
+    run(
+        targets.length,
+        r -> {
+          int target = targets[r];
+          LadderEnv fork;
+          try {
+            fork = from.fork(seat);
+          } catch (RuntimeException e) {
+            thrown[r] = e;
+            return;
+          }
+          IntBuffer o =
+              observations
+                  .slice(target * 2 * Schema.SEAT_INTS * 4, 2 * Schema.SEAT_INTS * 4)
+                  .order(ByteOrder.nativeOrder())
+                  .asIntBuffer();
+          ByteBuffer m = masks.slice(target * 2 * Schema.ACTIONS, 2 * Schema.ACTIONS);
+          FloatBuffer w =
+              rewards.slice(target * 8, 8).order(ByteOrder.nativeOrder()).asFloatBuffer();
+          IntBuffer i =
+              infos
+                  .slice(target * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
+                  .order(ByteOrder.nativeOrder())
+                  .asIntBuffer();
+          if (shuffles != null) {
+            fork.shuffleUnseenEnemyCards(seat, new SplittableRandom(shuffles[r]));
+          }
+          fork.moveTo(o, m, w, i);
+          envs[target] = fork;
+        });
+    for (RuntimeException e : thrown) {
+      if (e != null) {
+        // A fork the battle core cannot copy is a bug of the copy, not of an episode: thrown.
+        throw e;
+      }
+    }
+    for (int target : targets) {
+      broken[target] = false;
+      faults[target] = null;
+      uncounted[target] = false;
+      episodeSeeds[target] = source.episodeSeeds[sourceIndex];
+      deck0s.set(target, source.deck0s.get(sourceIndex));
+      deck1s.set(target, source.deck1s.get(sourceIndex));
+      slots0s.set(target, source.slots0s.get(sourceIndex).clone());
+      slots1s.set(target, source.slots1s.get(sourceIndex).clone());
+      dones.put(target, (byte) 0);
+    }
+    started = true;
+  }
+
+  /**
+   * Looks ahead from the environments' decisions: for each request, a fork of an environment as one
+   * of its seats knows it ({@link LadderEnv#fork}) takes the request's action for that seat, with
+   * the wait for the other, then both seats wait until {@code horizonTicks} have passed, in whole
+   * decisions, or the battle ends. The requests are run on the vector's threads; nothing of the
+   * vector or its environments changes.
+   *
+   * <p>The fork stands for what the seat's player can foresee with the battle core, and no more: it
+   * never gives the enemy's commands the seat has not seen run. It does draw on the battle's own
+   * random numbers and on the enemy's hand, which the seat does not know; with both seats waiting
+   * after the request's action, only the random numbers count.
+   *
+   * @param indices each request's environment, a Ladder one that is running
+   * @param seats each request's seat, 0 or 1
+   * @param actions each request's action for its seat
+   * @param horizonTicks the ticks to look ahead, at least one decision's
+   * @return per request, the seat's observation at the end ({@link Schema#SEAT_INTS} integers) then
+   *     the fork's info record ({@link Schema#INFO_INTS}); a request whose fork faulted has its
+   *     observation zero and the fault's kind code in the record's {@link Schema#I_FAULT}
+   */
+  public int[] lookahead(int[] indices, int[] seats, int[] actions, int horizonTicks) {
+    int count = indices.length;
+    if (seats.length != count || actions.length != count) {
+      throw new IllegalArgumentException(
+          "one seat and one action a request: "
+              + count
+              + " environments, "
+              + seats.length
+              + " seats, "
+              + actions.length
+              + " actions");
+    }
+    if (horizonTicks < 1) {
+      throw new IllegalArgumentException("a horizon of at least one tick, got " + horizonTicks);
+    }
+    LadderEnv[] sources = new LadderEnv[count];
+    for (int r = 0; r < count; r++) {
+      int index = indices[r];
+      if (index < 0 || index >= envs.length) {
+        throw new IllegalArgumentException("no environment " + index + " in " + envs.length);
+      }
+      if (!(envs[index] instanceof LadderEnv ladder)) {
+        throw new IllegalArgumentException("environment " + index + " plays no Ladder battle");
+      }
+      if (seats[r] != 0 && seats[r] != 1) {
+        throw new IllegalArgumentException("a seat is 0 or 1, got " + seats[r]);
+      }
+      if (ladder.done()) {
+        throw new IllegalArgumentException("environment " + index + " is done");
+      }
+      sources[r] = ladder;
+    }
+    int stride = Schema.SEAT_INTS + Schema.INFO_INTS;
+    int[] out = new int[count * stride];
+    // A fresh random state for each request's fork when asked, drawn in the vector's own order so
+    // that the same calls give the same draws.
+    int[] reseed = lookaheadReseed == null ? null : new int[count];
+    for (int r = 0; reseed != null && r < count; r++) {
+      reseed[r] = lookaheadReseed.nextInt();
+    }
+    run(
+        count,
+        r -> {
+          int seat = seats[r];
+          try {
+            LadderEnv fork = sources[r].fork(seat);
+            if (reseed != null) {
+              fork.reseed(reseed[r]);
+            }
+            int until = fork.tick() + horizonTicks;
+            int action = actions[r];
+            fork.step(seat == 0 ? action : Schema.WAIT, seat == 0 ? Schema.WAIT : action);
+            while (!fork.done() && fork.tick() < until) {
+              fork.step(Schema.WAIT, Schema.WAIT);
+            }
+            fork.copyObservation(seat, out, r * stride);
+            fork.copyInfo(out, r * stride + Schema.SEAT_INTS);
+          } catch (RuntimeException | AssertionError | StackOverflowError e) {
+            Arrays.fill(out, r * stride, (r + 1) * stride, 0);
+            out[r * stride + Schema.SEAT_INTS + Schema.I_FAULT] = EnvFault.of(e, -1).kind().code();
+          }
+        });
+    return out;
+  }
+
   private void stepEnv(int index) {
     BattleEnv env = envs[index];
     if (broken[index] || env.done()) {
@@ -657,7 +860,11 @@ public final class VectorEnv implements AutoCloseable {
    * holds its own fault boundary, so every environment of a share is run whatever another does.
    */
   private void run(EnvTask task) {
-    int count = envs.length;
+    run(envs.length, task);
+  }
+
+  /** Runs a task on each of {@code count} items, numbered from 0, as {@link #run(EnvTask)}. */
+  private void run(int count, EnvTask task) {
     if (pool == null) {
       for (int i = 0; i < count; i++) {
         task.run(i);

@@ -7,15 +7,22 @@
 package org.crforge.env;
 
 import java.io.IOException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SplittableRandom;
+import java.util.WeakHashMap;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.data.GameRow;
@@ -56,6 +63,7 @@ import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.crforge.core.pathfinding.target.TargetingState;
+import org.crforge.core.util.DeepCopy;
 import org.crforge.env.EnvFault.CoreFailure;
 
 /**
@@ -304,6 +312,14 @@ public final class LadderEnv extends BufferedEnv {
     }
   }
 
+  /**
+   * The decision a play or ability command this environment gave was given in.
+   *
+   * @param side the giving side
+   * @param decision the decision, counted from 0 as {@link #episodeStep} counts them
+   */
+  private record Given(int side, int decision) {}
+
   private final GameTables tables;
   private final Vocabulary vocabulary;
   private final EnvConfig config;
@@ -323,8 +339,8 @@ public final class LadderEnv extends BufferedEnv {
   private int[][] deckLevels;
 
   /**
-   * Both seats' actions of each decision of the episode, seat 0's then seat 1's, kept for a fault
-   * bundle only when bundles are written.
+   * Both seats' actions of each decision of the episode, seat 0's then seat 1's: what a fault
+   * bundle writes and what a {@link #fork} steps again.
    */
   private int[] actionLog = new int[0];
 
@@ -337,6 +353,9 @@ public final class LadderEnv extends BufferedEnv {
 
   /** The deck card each play this environment gave played, by the play's name. */
   private final Map<String, String> givenCards = new HashMap<>();
+
+  /** The side and decision of each play and ability command given, by the command's name. */
+  private final Map<String, Given> givenAt = new HashMap<>();
 
   private final List<Waiting> waiting = new ArrayList<>();
   private final List<List<String>> enemySeen = List.of(new ArrayList<>(), new ArrayList<>());
@@ -437,6 +456,13 @@ public final class LadderEnv extends BufferedEnv {
   private final int[] illegalNow = new int[2];
   private final int[] illegalTotal = new int[2];
   private int notModelled;
+
+  /**
+   * The enemy commands a fork withdrew from its battle, counted into a new command's name so that
+   * it stays new: 0 in an environment that is not a seat's fork.
+   */
+  private int withdrawn;
+
   private int firstSide;
   private int playsSeen;
   private int abilityUsesSeen;
@@ -586,6 +612,7 @@ public final class LadderEnv extends BufferedEnv {
     match = null;
     commands = null;
     givenCards.clear();
+    givenAt.clear();
     waiting.clear();
     enemySeen.get(0).clear();
     enemySeen.get(1).clear();
@@ -618,6 +645,7 @@ public final class LadderEnv extends BufferedEnv {
     Arrays.fill(illegalNow, 0);
     Arrays.fill(illegalTotal, 0);
     notModelled = 0;
+    withdrawn = 0;
     firstSide = 0;
     playsSeen = 0;
     abilityUsesSeen = 0;
@@ -655,9 +683,7 @@ public final class LadderEnv extends BufferedEnv {
     if (done) {
       throw new IllegalStateException("the episode is over: reset the environment");
     }
-    if (config.faultBundles() != null) {
-      logActions(action0, action1);
-    }
+    logActions(action0, action1);
     beginDecision();
     apply(firstSide, firstSide == 0 ? action0 : action1);
     apply(1 - firstSide, firstSide == 0 ? action1 : action0);
@@ -817,6 +843,231 @@ public final class LadderEnv extends BufferedEnv {
     return done;
   }
 
+  /** The battle's tick. */
+  int tick() {
+    return battle.getTick();
+  }
+
+  /**
+   * A new environment at this episode's decision: a deep copy of this one ({@link DeepCopy}), its
+   * battle, match and everything the environment keeps, sharing only the game tables, the
+   * vocabulary and the configuration. The battle core is deterministic, so with no seat named the
+   * fork is the same battle: the same observations and masks, and stepped on with the same actions,
+   * the same battle to its end. Nothing of the episode is played again: a fork costs the copy of
+   * the battle as it stands, whatever its age.
+   *
+   * <p>With a seat named, the fork is the battle as that seat's player knows it: the enemy's plays
+   * and ability commands still waiting to run, which the seat's observation does not show, are
+   * withdrawn from it ({@link Standard1v1Battle#withdraw}). What the enemy gave for them (the cards
+   * and the elixir) is not given back; the seat sees neither.
+   *
+   * <p>The fork writes into buffers of its own and no fault bundles. Forking only reads this
+   * environment, so several threads may fork one environment at once while nothing steps it.
+   *
+   * @param seat the seat whose knowledge the fork keeps, 0 or 1, or -1 for the battle as it is
+   * @return the fork, not done
+   * @throws IllegalStateException when there is no episode or it is over
+   */
+  public LadderEnv fork(int seat) {
+    checkForkable(seat);
+    Set<Object> data = SHARED.computeIfAbsent(tables, DeepCopy::reachable);
+    LadderEnv fork =
+        DeepCopy.of(
+            this,
+            object ->
+                object == vocabulary
+                    || object == config
+                    || object instanceof Buffer
+                    || data.contains(object));
+    fork.bind(
+        IntBuffer.allocate(2 * Schema.SEAT_INTS),
+        ByteBuffer.allocate(2 * Schema.ACTIONS),
+        FloatBuffer.allocate(2),
+        IntBuffer.allocate(Schema.INFO_INTS));
+    if (seat != -1) {
+      int enemy = 1 - seat;
+      for (Waiting w : List.copyOf(fork.waiting)) {
+        if (w.side() == enemy) {
+          fork.standard.withdraw(w.name());
+          fork.withdrawn++;
+          fork.waiting.remove(w);
+          fork.givenCards.remove(w.name());
+        }
+      }
+      for (AbilityWaiting w : List.copyOf(fork.abilityWaiting)) {
+        if (w.side() == enemy) {
+          fork.standard.withdraw(w.name());
+          fork.withdrawn++;
+          fork.abilityWaiting.remove(w);
+        }
+      }
+    }
+    // The fork shows what this environment last wrote. Observing again would count a second
+    // observation of the same tick, so every unit's move since the last decision would read 0;
+    // withdrawn enemy commands change nothing the seat is shown, and the enemy's own view of them
+    // is written again by the fork's next step.
+    fork.observations.put(0, observations, 0, 2 * Schema.SEAT_INTS);
+    fork.masks.put(0, masks, 0, 2 * Schema.ACTIONS);
+    fork.rewards.put(0, rewards, 0, 2);
+    fork.info.put(0, info, 0, Schema.INFO_INTS);
+    return fork;
+  }
+
+  /**
+   * Every object the game tables hold, by tables: what a {@link #fork} shares rather than copies.
+   * Walked once per tables, as the tables never change.
+   */
+  private static final Map<GameTables, Set<Object>> SHARED =
+      Collections.synchronizedMap(new WeakHashMap<>());
+
+  private void checkForkable(int seat) {
+    if (seat < -1 || seat > 1) {
+      throw new IllegalArgumentException("a seat is 0 or 1, or -1 for none, got " + seat);
+    }
+    if (standard == null || done || fault() != null) {
+      throw new IllegalStateException("only a running episode is forked");
+    }
+  }
+
+  /**
+   * The fork {@link #fork} gives, made the slow way, for the tests that hold one to the other: a
+   * new environment reset on the episode's seed and decks and stepped with every decision's actions
+   * as they were taken. With a seat named, from the decision the first enemy command still waiting
+   * was given in, each enemy action is stepped as a wait, unless it gave a command that has run.
+   *
+   * @throws IllegalStateException as {@link #fork} does, and for an episode reset on a replay's
+   *     setup, whose commands were not all given by {@link #step}
+   */
+  LadderEnv replayed(int seat) {
+    checkForkable(seat);
+    if (deckLevels != null) {
+      throw new IllegalStateException(
+          "an episode reset on a replay's setup is not played again: its commands were not all"
+              + " given by step");
+    }
+    int decisions = actionCount / 2;
+    boolean[] hidden = new boolean[decisions];
+    if (seat != -1) {
+      int enemy = 1 - seat;
+      Set<String> unseen = new HashSet<>();
+      waiting.stream().filter(w -> w.side() == enemy).forEach(w -> unseen.add(w.name()));
+      abilityWaiting.stream().filter(w -> w.side() == enemy).forEach(w -> unseen.add(w.name()));
+      int first = decisions;
+      for (String name : unseen) {
+        first = Math.min(first, givenAt.get(name).decision());
+      }
+      Arrays.fill(hidden, first, decisions, true);
+      for (Map.Entry<String, Given> given : givenAt.entrySet()) {
+        Given at = given.getValue();
+        if (at.side() == enemy && at.decision() >= first && !unseen.contains(given.getKey())) {
+          hidden[at.decision()] = false;
+        }
+      }
+    }
+    LadderEnv fork = new LadderEnv(tables, vocabulary, config.withFaultBundles(null));
+    fork.bind(
+        IntBuffer.allocate(2 * Schema.SEAT_INTS),
+        ByteBuffer.allocate(2 * Schema.ACTIONS),
+        FloatBuffer.allocate(2),
+        IntBuffer.allocate(Schema.INFO_INTS));
+    fork.reset(seed, decks.get(0), decks.get(1), slots[0], slots[1]);
+    for (int d = 0; d < decisions; d++) {
+      int action0 = actionLog[2 * d];
+      int action1 = actionLog[2 * d + 1];
+      if (hidden[d]) {
+        if (seat == 0) {
+          action1 = Schema.WAIT;
+        } else {
+          action0 = Schema.WAIT;
+        }
+      }
+      if (fork.done()) {
+        // Only a fork that left enemy commands out can end sooner, and none has run yet; the
+        // match does not end on a play that has not run.
+        throw new IllegalStateException("the fork ended at decision " + d + " of " + decisions);
+      }
+      fork.step(action0, action1);
+    }
+    return fork;
+  }
+
+  /** The enemy's cards a seat has seen played, first play first. */
+  List<String> enemySeen(int seat) {
+    return List.copyOf(enemySeen.get(seat));
+  }
+
+  /**
+   * Deals again, in a seat's fork, what the seat cannot see of the enemy's hand: the enemy's cards
+   * the seat has never seen played, in the hand's slots or its queue, are shuffled among the places
+   * they hold. The cards it has seen played keep their places, which the seat can work out from the
+   * order they ran in. The observations written before are not written again: the enemy's own view
+   * of its hand is stale until the fork's next step.
+   *
+   * @param seat the seat whose knowledge the fork keeps
+   * @param random the shuffle's draws
+   */
+  void shuffleUnseenEnemyCards(int seat, SplittableRandom random) {
+    int enemy = 1 - seat;
+    Hand hand = match.side(enemy).getHand();
+    List<String> deck = decks.get(enemy);
+    Set<String> seen = new HashSet<>(enemySeen.get(seat));
+    List<Integer> places = new ArrayList<>();
+    List<Integer> cards = new ArrayList<>();
+    int[] slotCards = hand.slots();
+    for (int k = 0; k < Hand.SLOTS; k++) {
+      if (slotCards[k] != Hand.EMPTY && !seen.contains(deck.get(slotCards[k]))) {
+        places.add(k);
+        cards.add(slotCards[k]);
+      }
+    }
+    List<Integer> queue = hand.queue();
+    for (int j = 0; j < queue.size(); j++) {
+      if (!seen.contains(deck.get(queue.get(j)))) {
+        places.add(Hand.SLOTS + j);
+        cards.add(queue.get(j));
+      }
+    }
+    for (int i = cards.size() - 1; i > 0; i--) {
+      int k = random.nextInt(i + 1);
+      cards.set(k, cards.set(i, cards.get(k)));
+    }
+    hand.rearrange(
+        places.stream().mapToInt(Integer::intValue).toArray(),
+        cards.stream().mapToInt(Integer::intValue).toArray());
+  }
+
+  /**
+   * Starts the battle's random source from another state, for a fork that should not know the
+   * battle's own coming draws.
+   *
+   * @param state the state the next draw steps
+   */
+  void reseed(int state) {
+    standard.getWorld().seed(state);
+  }
+
+  /**
+   * Binds this environment to other buffers, first copying into them what it last wrote: a fork
+   * moved into a vector's share of its buffers ({@link VectorEnv#forkFrom}).
+   */
+  void moveTo(IntBuffer observations, ByteBuffer masks, FloatBuffer rewards, IntBuffer info) {
+    observations.put(0, this.observations, 0, 2 * Schema.SEAT_INTS);
+    masks.put(0, this.masks, 0, 2 * Schema.ACTIONS);
+    rewards.put(0, this.rewards, 0, 2);
+    info.put(0, this.info, 0, Schema.INFO_INTS);
+    bind(observations, masks, rewards, info);
+  }
+
+  /** A seat's observation as last written, {@link Schema#SEAT_INTS} integers, into an array. */
+  void copyObservation(int seat, int[] into, int at) {
+    observations.get(seat * Schema.SEAT_INTS, into, at, Schema.SEAT_INTS);
+  }
+
+  /** The info record as last written, {@link Schema#INFO_INTS} integers, into an array. */
+  void copyInfo(int[] into, int at) {
+    info.get(0, into, at, Schema.INFO_INTS);
+  }
+
   @Override
   public boolean writeFaultBundle(Path folder, int index, Throwable thrown) throws IOException {
     FaultBundle.write(folder, this, index, thrown);
@@ -855,7 +1106,7 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * Both seats' actions of each decision of the episode, seat 0's then seat 1's, the step that
-   * faulted last; empty when bundles are not written.
+   * faulted last.
    */
   int[] actionLog() {
     return Arrays.copyOf(actionLog, actionCount);
@@ -909,7 +1160,7 @@ public final class LadderEnv extends BufferedEnv {
     int y = Schema.gameY(side, tile / Schema.COLS);
     // Named as a replay of the battle names its commands, by their order: a fault's message reads
     // the same in the episode and in its bundle's replay.
-    String name = "cmd" + standard.getCommands().size();
+    String name = "cmd" + (standard.getCommands().size() + withdrawn);
     PlayerCommands.Giving giving;
     try {
       giving = givePlay(side, slot, x, y, name);
@@ -975,6 +1226,7 @@ public final class LadderEnv extends BufferedEnv {
    */
   void trackPlay(String name, int side, String card, int x, int y, int runTick) {
     givenCards.put(name, card);
+    givenAt.put(name, new Given(side, episodeStep));
     waiting.add(new Waiting(name, side, vocabulary.id(card), x, y, runTick));
   }
 
@@ -988,6 +1240,7 @@ public final class LadderEnv extends BufferedEnv {
    * @param runTick the tick it runs on
    */
   void trackAbility(String name, int side, int slot, int runTick) {
+    givenAt.put(name, new Given(side, episodeStep));
     abilityWaiting.add(new AbilityWaiting(name, side, slot, runTick));
   }
 
@@ -1002,7 +1255,7 @@ public final class LadderEnv extends BufferedEnv {
       return;
     }
     // Named by its order among the battle's commands, as a replay names it.
-    String name = "cmd" + standard.getCommands().size();
+    String name = "cmd" + (standard.getCommands().size() + withdrawn);
     PlayerCommands.Giving giving;
     try {
       giving = giveAbility(side, slot, unit.name(), name);
