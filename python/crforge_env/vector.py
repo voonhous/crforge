@@ -468,6 +468,81 @@ class VectorBattle:
             np.copyto(self.actions, np.asarray(actions, dtype=np.int32).reshape(self.count, 2))
         self._env.step()
 
+    def set_lookahead_reseed(self, seed: int | None) -> None:
+        """Whether each fork of :meth:`lookahead` draws fresh random numbers
+        (``VectorEnv.setLookaheadReseed``): its battle's random source starts from a state drawn
+        from a sequence ``seed`` starts, so a look ahead does not know the battle's own coming
+        draws, which the seat cannot; None keeps the battle's own draws (the default)."""
+        self._env.setLookaheadReseed(None if seed is None else jpype.JLong(int(seed)))
+
+    def fork_from(
+        self,
+        source: VectorBattle,
+        index: int,
+        seat: int,
+        targets: Sequence[int],
+        shuffles: Sequence[int] | None = None,
+    ) -> None:
+        """Puts a fork of battle ``index`` of ``source`` (this vector or another on the same tables)
+        into this vector's battles ``targets`` (``VectorEnv.forkFrom``): a copy of the battle as
+        ``seat`` knows it (the enemy's commands it has not seen run withdrawn), or as it is for
+        seat -1. Each target then shows the fork's observations, masks and info record, its done
+        flag clear, and is stepped on by :meth:`step` like any other battle; ``source`` is only
+        read. ``shuffles`` (one seed a target, for a seat's fork) deals again what the seat cannot
+        see of the enemy's hand: the enemy's cards it has never seen played are shuffled among the
+        places of the hand and queue they hold (``LadderEnv.shuffleUnseenEnemyCards``); the
+        enemy's own observation is stale until the next step."""
+        if self.engine != "ladder" or source.engine != "ladder":
+            raise ValueError("only ladder vectors fork")
+        java_ints = jpype.JArray(jpype.JInt)
+        java_longs = jpype.JArray(jpype.JLong)
+        try:
+            self._env.forkFrom(
+                source._env,
+                int(index),
+                int(seat),
+                java_ints(np.asarray(targets, dtype=np.int32)),
+                None if shuffles is None else java_longs([int(s) for s in shuffles]),
+            )
+        except self._illegal_argument as e:
+            raise ValueError(str(e.getMessage())) from None
+
+    def lookahead(
+        self,
+        indices: np.ndarray,
+        seats: np.ndarray,
+        actions: np.ndarray,
+        horizon_ticks: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Looks ahead from the battles' decisions (``VectorEnv.lookahead``): for each request, a
+        fork of battle ``indices[r]`` as seat ``seats[r]`` knows it (the enemy's commands it has
+        not seen run left out) takes ``actions[r]`` for the seat and the wait for the other, then
+        both seats wait for ``horizon_ticks``, in whole decisions, or until the battle ends. The
+        requests run on the vector's threads; the vector and its battles are left as they were.
+
+        :return: the seat's observation at the end of each request, int32 ``(n, seat_ints)``, and
+            the fork's info record, int32 ``(n, info_ints)``; a request whose fork faulted has its
+            observation zero and the fault's code in the record's ``fault``
+        """
+        if self.engine != "ladder":
+            raise ValueError("only a ladder vector looks ahead")
+        s = self.schema
+        count = len(indices)
+        if count == 0:
+            return (
+                np.zeros((0, s.seat_ints), dtype=np.int32),
+                np.zeros((0, s.info_ints), dtype=np.int32),
+            )
+        java_ints = jpype.JArray(jpype.JInt)
+        out = self._env.lookahead(
+            java_ints(np.asarray(indices, dtype=np.int32)),
+            java_ints(np.asarray(seats, dtype=np.int32)),
+            java_ints(np.asarray(actions, dtype=np.int32)),
+            int(horizon_ticks),
+        )
+        flat = np.asarray(out, dtype=np.int32).reshape(count, s.seat_ints + s.info_ints)
+        return flat[:, : s.seat_ints].copy(), flat[:, s.seat_ints :].copy()
+
     # -- faults --------------------------------------------------------------------------------
 
     def fault(self, index: int) -> Fault | None:

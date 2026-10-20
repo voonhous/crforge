@@ -95,6 +95,22 @@ public class Battle {
     commands.add(command);
   }
 
+  /**
+   * Takes a queued command off the queue before it runs.
+   *
+   * @param command the command, as it was queued
+   * @return whether it was queued and not yet run
+   */
+  public boolean unqueue(BattleCommand command) {
+    for (int i = 0; i < commands.size(); i++) {
+      if (commands.get(i) == command) {
+        commands.remove(i);
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Advances the battle by one 50 ms step. */
   public void step() {
     if (mode.isOver()) {

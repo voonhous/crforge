@@ -84,6 +84,43 @@ public final class Hand {
   }
 
   /**
+   * Puts the cards some places of the hand hold in another order: for a tool that samples what a
+   * player cannot see of the other side's hand, such as a search's fork; a battle played as the
+   * game plays it never does.
+   *
+   * @param places the places, 0 to 3 a slot and from 4 the queue, its front first
+   * @param cards the deck index each place takes, the same cards those places hold now
+   * @throws IllegalArgumentException for a place out of range or other cards
+   */
+  public void rearrange(int[] places, int[] cards) {
+    if (places.length != cards.length) {
+      throw new IllegalArgumentException("one card a place");
+    }
+    int[] now = new int[places.length];
+    for (int i = 0; i < places.length; i++) {
+      int place = places[i];
+      if (place < 0 || place >= SLOTS + queue.size()) {
+        throw new IllegalArgumentException("no place " + place + " in " + this);
+      }
+      now[i] = place < SLOTS ? slots[place] : queue.get(place - SLOTS);
+    }
+    int[] given = cards.clone();
+    Arrays.sort(now);
+    Arrays.sort(given);
+    if (!Arrays.equals(now, given)) {
+      throw new IllegalArgumentException(
+          "the places hold " + Arrays.toString(now) + ", not " + Arrays.toString(given));
+    }
+    for (int i = 0; i < places.length; i++) {
+      if (places[i] < SLOTS) {
+        slots[places[i]] = cards[i];
+      } else {
+        queue.set(places[i] - SLOTS, cards[i]);
+      }
+    }
+  }
+
+  /**
    * Moves the card of a slot to the back of the queue and empties the slot, as a play does. A slot
    * out of range or already empty changes nothing.
    *
