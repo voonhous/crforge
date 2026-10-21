@@ -232,6 +232,38 @@ class BattleGiantHeroAbilityTest {
     assertThat(slap.giant().getView().getState()).isEqualTo(GridEntityState.STANDING);
   }
 
+  @Test
+  @DisplayName(
+      "a Giant killed after the pick and then the Knight before the push: the push is let go with"
+          + " its cause gone, nothing follows it and the battle goes on")
+  void aKnightKilledAfterTheGiantBeforeThePushEndsTheSlap() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    Slap slap = slap();
+    // The Giant leaves on the step after the pick, the Knight on the next: both before the push.
+    stepTo(slap.battle(), CAST + PICK + 1);
+    slap.battle().getWorld().kill(slap.giant(), null);
+    stepTo(slap.battle(), CAST + PICK + 2);
+    assertThat(named(slap.battle(), "GiantHero")).isEmpty();
+    slap.battle().getWorld().kill(slap.knight(), null);
+    assertLetGoQuietly(slap, PICK + 3, land);
+  }
+
+  @Test
+  @DisplayName(
+      "a Giant and the Knight it picked leaving in the same removal before the push: the push is"
+          + " let go with its cause leaving too, nothing follows it and the battle goes on")
+  void aGiantAndItsKnightLeavingTogetherEndTheSlap() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    Slap slap = slap();
+    // Both killed between two steps: the next step's cleanup takes them in one removal.
+    stepTo(slap.battle(), CAST + PICK + 1);
+    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().kill(slap.knight(), null);
+    assertLetGoQuietly(slap, PICK + 2, land);
+  }
+
   /** The Giant's slap cast on the Knight, stepped to the cast. */
   private record Slap(Standard1v1Battle battle, CharacterEntity giant, CharacterEntity knight) {}
 
@@ -278,6 +310,20 @@ class BattleGiantHeroAbilityTest {
             .asInt();
     assertThat(slap.knight().getHitPoints().getHitPoints())
         .isEqualTo(hp - Shipped.scaled(base, slap.giant()));
+  }
+
+  /**
+   * A push let go with the Giant gone: from the step after the Knight left, the battle steps past
+   * the push and the landing it would have had with neither the Giant nor the Knight listed and no
+   * landing area effect spawned.
+   */
+  private static void assertLetGoQuietly(Slap slap, int from, int land) {
+    for (int k = from; k <= land + 2; k++) {
+      stepTo(slap.battle(), CAST + k);
+      assertThat(named(slap.battle(), "GiantHero")).as("step %d", k).isEmpty();
+      assertThat(named(slap.battle(), "Knight")).as("step %d", k).isEmpty();
+      assertThat(areaEffects(slap.battle())).as("step %d", k).isEmpty();
+    }
   }
 
   /** Slot flags with the first card in the hero slot. */
