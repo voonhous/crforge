@@ -28,9 +28,14 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " before its due tick, as the unit leaves: the failure action on the cause, held by"
             + " recorded battles where the hero Giant slaps again; with the cause gone, before or"
             + " in the same removal, nothing, held by recorded battles where the hero Giant leaves"
-            + " first. Refused: a cause dead but still listed at the push, a cause that moved after"
-            + " the run started and then left, and a run let go before its push while its cause is"
-            + " dead but still listed.")
+            + " first and where it leaves in the unit's removal, listed before or after the unit."
+            + " Refused: a cause that moved after the run started and then left. Refused too,"
+            + " though no shipped battle reaches them: a cause dead but still listed at the push"
+            + " (the cause is the hero Giant, which has no lifetime, so its hit points run out only"
+            + " after the run pass, in the post-hooks or the damage drain, and the step's closing"
+            + " cleanup takes it), and a run let go before its push while its cause is dead but"
+            + " still listed (the cleanup takes every entity whose hit points are spent off the"
+            + " list before it stops any run).")
 final class PushbackFromInstigatorRun extends ActionInstance {
 
   private final DoPushbackFromInstigator row;
@@ -72,7 +77,12 @@ final class PushbackFromInstigatorRun extends ActionInstance {
     finish();
   }
 
-  /** The push and the actions its answer schedules. */
+  /**
+   * The push and the actions its answer schedules. A cause dead but still listed is refused: the
+   * cause is the hero Giant, whose row has no lifetime, so its hit points reach zero only in the
+   * post-hooks or the damage drain, after the run pass this update runs in, and the closing cleanup
+   * of that step takes it before the next. No shipped battle reaches the refusal.
+   */
   private void push() {
     DoPushbackFromInstigator.Columns c = row.getColumns();
     if (!causeGone && !instigator.actionAlive()) {
@@ -136,7 +146,11 @@ final class PushbackFromInstigatorRun extends ActionInstance {
    * as its own cause, as when the push fails. A run let go on or after its due tick does nothing.
    * Nor does a run whose cause has left the battle, in an earlier removal or in the one that takes
    * the unit: the failure action goes to the cause only, and the kept cause is not an object the
-   * battle runs any more. A cause dead but still listed is refused: no recording holds it.
+   * battle runs any more. The game takes the entities of one removal one at a time in list order,
+   * so a cause listed after the unit is still listed, dead, as the unit is let go: the failure
+   * action is queued on it and goes with it in the same removal, and nothing reaches the battle
+   * either way. A cause dead but still listed cannot reach the refusal below: the cleanup takes
+   * every entity whose hit points are spent off the list before it stops any run.
    */
   @Override
   protected void stop(ActionHolder holder) {
