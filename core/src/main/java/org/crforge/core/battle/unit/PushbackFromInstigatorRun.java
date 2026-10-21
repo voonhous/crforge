@@ -26,9 +26,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the push still runs, its direction from where the cause stood, the schedules on the"
             + " cause skipped and the success action taken with the cause kept. A run let go"
             + " before its due tick, as the unit leaves: the failure action on the cause, held by"
-            + " recorded battles where the hero Giant slaps again. Refused: a cause dead but still"
-            + " listed at the push, a cause that moved after the run started and then left, and a"
-            + " run let go before its push while its cause is dead or gone.")
+            + " recorded battles where the hero Giant slaps again; with the cause gone, before or"
+            + " in the same removal, nothing, held by recorded battles where the hero Giant leaves"
+            + " first. Refused: a cause dead but still listed at the push, a cause that moved after"
+            + " the run started and then left, and a run let go before its push while its cause is"
+            + " dead but still listed.")
 final class PushbackFromInstigatorRun extends ActionInstance {
 
   private final DoPushbackFromInstigator row;
@@ -131,24 +133,29 @@ final class PushbackFromInstigatorRun extends ActionInstance {
 
   /**
    * As the unit leaves before the push is due: the failure action on the cause runs, with the cause
-   * as its own cause, as when the push fails. A run let go on or after its due tick does nothing. A
-   * cause dead, gone or leaving with the unit is refused: no recording holds it.
+   * as its own cause, as when the push fails. A run let go on or after its due tick does nothing.
+   * Nor does a run whose cause has left the battle, in an earlier removal or in the one that takes
+   * the unit: the failure action goes to the cause only, and the kept cause is not an object the
+   * battle runs any more. A cause dead but still listed is refused: no recording holds it.
    */
   @Override
   protected void stop(ActionHolder holder) {
     if (unit.world().tick() >= due) {
       return;
     }
-    if (causeGone
-        || !instigator.actionAlive()
-        || unit.world().liveOrQueued(instigator.getId()) != instigator) {
+    if (causeGone || unit.world().liveOrQueued(instigator.getId()) != instigator) {
+      // The cause left in an earlier removal (kept as gone) or leaves in this one (no longer
+      // listed): the failure action has no object to run on.
+      return;
+    }
+    if (!instigator.actionAlive()) {
       throw new UnsupportedOperationException(
           row.name()
               + " on "
               + unit.name()
               + " was let go before its push with its cause "
               + instigator.name()
-              + " dead or gone, not modelled");
+              + " dead but still listed, not modelled");
     }
     schedule(instigator, instigator, row.getColumns().failureOnInstigator());
   }
