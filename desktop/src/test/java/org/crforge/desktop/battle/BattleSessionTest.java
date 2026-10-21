@@ -8,20 +8,24 @@ package org.crforge.desktop.battle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.unit.Standard1v1Battle;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A visualizer session on the battle core: its plays go through the battle's play path, and a
@@ -32,6 +36,9 @@ class BattleSessionTest {
   /** A Knight and an Archer, then the Mirrors the shuffle holds back for the refills. */
   private static final List<String> MIRRORS =
       List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  /** A deck of Zaps only. */
+  private static final List<String> ZAPS = Collections.nCopies(8, "Zap");
 
   @Test
   @DisplayName(
@@ -271,21 +278,44 @@ class BattleSessionTest {
   }
 
   @Test
-  @Disabled(
-      "the filter form's hit pass, every area effect's on 16.402.18, tells no observer of its"
-          + " circle, so the indicators miss it")
-  @DisplayName("an area spell's hits are collected for the area damage indicators")
-  void areaHitsAreCollected() {
-    BattleSession session = only("Zap");
+  @DisplayName(
+      "each hit of an area spell in the filter form is collected for the area damage indicators,"
+          + " its circle about the spell's point")
+  void areaHitsAreCollected(@TempDir Path folder) throws IOException {
+    // The Zap's area effect, as its card names it, written to one hit in a circle of 2500 on its
+    // first update, with no hit switch, so it takes the filter form whatever the tables ship.
+    String area = GameData.card("Zap").areaEffect();
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "area_effect_objects",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, area);
+              columns.remove(List.of("HitsAir", "HitsGround", "MaxRadius", "HitSpeedOffset"));
+              columns.put("Radius", 2500);
+              columns.put("LifeDuration", 1);
+            });
+    BattleSession session = open(BattleSession.ladder(tables, ZAPS, ZAPS));
+    assertThat(session.getBattle().getWorld().getRecords().areaEffect(area).filterHits())
+        .as("%s in the filter form", area)
+        .isTrue();
+
     assertThat(session.play(1, 0, 9500, 20500)).isTrue();
     List<AreaHitLog.AreaHit> hits = new ArrayList<>();
     for (int i = 0; i < 40; i++) {
       session.step();
       hits.addAll(session.getAreaHits().drain());
     }
-    assertThat(hits).isNotEmpty();
-    assertThat(hits).allSatisfy(hit -> assertThat(hit.side()).isEqualTo(1));
-    assertThat(hits.get(0).radius()).isPositive();
+
+    assertThat(hits)
+        .singleElement()
+        .satisfies(
+            hit -> {
+              assertThat(hit.side()).isEqualTo(1);
+              assertThat(hit.x()).isEqualTo(9500);
+              assertThat(hit.y()).isEqualTo(20500);
+              assertThat(hit.radius()).isEqualTo(2500);
+            });
     assertThat(session.getAreaHits().drain()).isEmpty();
   }
 
