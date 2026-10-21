@@ -2110,6 +2110,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
+  public int actionX() {
+    return x();
+  }
+
+  @Override
   public int y() {
     return view.getY();
   }

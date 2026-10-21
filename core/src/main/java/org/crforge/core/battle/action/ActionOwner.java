@@ -30,6 +30,15 @@ public interface ActionOwner {
   /** Writes a variable for the owner, replacing what it held. */
   void setVariable(int key, int value);
 
+  /**
+   * Where the owner stands along the width, as an action it causes keeps it: the game makes the
+   * reference to the cause as the action is scheduled and copies the cause's point into it then. An
+   * owner the battle does not place answers 0.
+   */
+  default int actionX() {
+    return 0;
+  }
+
   /** True while the owner is alive; an owner without hit points counts as alive. */
   default boolean actionAlive() {
     return HitPoints.alive(actionHitPoints());
@@ -696,10 +705,11 @@ public interface ActionOwner {
    * @param action the push
    * @param phase the phase of the pending pass that ran the action, or 0 outside every pass
    * @param instigator what caused it
+   * @param causeX where the cause stood along the width as the push was scheduled
    * @return the run
    */
   default ActionInstance pushbackFromInstigator(
-      DoPushbackFromInstigator action, int phase, ActionOwner instigator) {
+      DoPushbackFromInstigator action, int phase, ActionOwner instigator, int causeX) {
     throw new UnsupportedOperationException(
         action.name() + " on an owner other than a character, not modelled");
   }

@@ -24,17 +24,19 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled from the listing: the due tick from the start, the exact test, the push and"
             + " its schedules; held by ability_hero_giant_slap. A cause that left before the push:"
             + " the push still runs, its direction from where the cause stood, the schedules on the"
-            + " cause skipped and the success action taken with the cause kept. A run let go"
-            + " before its due tick, as the unit leaves: the failure action on the cause, held by"
-            + " recorded battles where the hero Giant slaps again; with the cause gone, before or"
-            + " in the same removal, nothing, held by recorded battles where the hero Giant leaves"
-            + " first and where it leaves in the unit's removal, listed before or after the unit."
-            + " Refused: a cause that moved after the run started and then left. Refused too,"
-            + " though no shipped battle reaches them: a cause dead but still listed at the push"
-            + " (the cause is the hero Giant, which has no lifetime, so its hit points run out only"
-            + " after the run pass, in the post-hooks or the damage drain, and the step's closing"
-            + " cleanup takes it), and a run let go before its push while its cause is dead but"
-            + " still listed (the cleanup takes every entity whose hit points are spent off the"
+            + " cause skipped and the success action taken with the cause kept; the point is where"
+            + " the cause stood as the push was scheduled, also when it moved before it left, held"
+            + " by recorded battles where the hero Giant is pushed across the centre line. A run"
+            + " let go before its due tick, as the unit leaves: the failure action on the cause,"
+            + " held by recorded battles where the hero Giant slaps again; with the cause gone,"
+            + " before or in the same removal, nothing, held by recorded battles where the hero"
+            + " Giant leaves first and where it leaves in the unit's removal, listed before or"
+            + " after the unit."
+            + " Refused, though no shipped battle reaches them: a cause dead but still listed at"
+            + " the push (the cause is the hero Giant, which has no lifetime, so its hit points run"
+            + " out only after the run pass, in the post-hooks or the damage drain, and the step's"
+            + " closing cleanup takes it), and a run let go before its push while its cause is dead"
+            + " but still listed (the cleanup takes every entity whose hit points are spent off the"
             + " list before it stops any run).")
 final class PushbackFromInstigatorRun extends ActionInstance {
 
@@ -45,7 +47,12 @@ final class PushbackFromInstigatorRun extends ActionInstance {
   /** The battle tick the push is due on. */
   private final int due;
 
-  /** Where the cause stood along the width as the run started. */
+  /**
+   * Where the cause stood along the width as the push was scheduled: the point a cause that leaves
+   * is kept with. The game copies the cause's point into the reference to the cause it makes as the
+   * selector schedules the push, and never writes it again: not as the cause moves, nor as it
+   * leaves.
+   */
   private final int causeX;
 
   /** Whether the cause has left the battle before the push; it is then kept as it left. */
@@ -57,15 +64,16 @@ final class PushbackFromInstigatorRun extends ActionInstance {
    * @param row the push
    * @param unit the character it runs on
    * @param instigator what caused it
+   * @param causeX where the cause stood along the width as the push was scheduled
    */
   PushbackFromInstigatorRun(
-      DoPushbackFromInstigator row, CharacterEntity unit, WorldEntity instigator) {
+      DoPushbackFromInstigator row, CharacterEntity unit, WorldEntity instigator, int causeX) {
     super(row);
     this.row = row;
     this.unit = unit;
     this.instigator = instigator;
     this.due = row.dueTick(unit.world().tick());
-    this.causeX = instigator.x();
+    this.causeX = causeX;
   }
 
   @Override
@@ -94,7 +102,8 @@ final class PushbackFromInstigatorRun extends ActionInstance {
       // The point lies on the owner's line along the length, the offset beside it toward the
       // side of the arena's centre line the cause stands on.
       int centre = unit.world().getTileMap().width() * 250;
-      // A cause that has left gives the point it is kept with, where it stood.
+      // A cause that has left gives the point it is kept with, where it stood as the push was
+      // scheduled.
       int from = causeGone ? causeX : instigator.x();
       int x = unit.getView().getX() + (centre > from ? -1 : 1) * c.directionalOffset();
       int y = unit.getView().getY();
@@ -127,16 +136,8 @@ final class PushbackFromInstigatorRun extends ActionInstance {
   @Override
   protected void objectLeft(int leftId) {
     if (!isFinished() && leftId == instigator.getId()) {
-      // The cause is kept with its side and the point it stood on; which point - where the run
-      // started or where the cause left - no recording tells, so a cause that moved in between is
-      // refused.
-      if (instigator.x() != causeX) {
-        throw new UnsupportedOperationException(
-            row.name()
-                + "'s cause "
-                + instigator.name()
-                + " moved and left before its push, which no recording holds");
-      }
+      // The cause is kept with its side and the point it stood on as the push was scheduled,
+      // wherever it has moved since.
       causeGone = true;
     }
   }

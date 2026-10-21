@@ -23,10 +23,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  * mode toward the horizontal centre from the cause, the point it is pushed away from lies on the
  * owner's own line along the length, the row's directional offset to the side of the arena's
  * vertical centre line the cause stands on: toward the left for a cause left of the centre, so the
- * owner goes right, and toward the right otherwise. The request lifts the row's gates when it is
- * forced, counts as an attack's when it says so, takes the separation off when the push is
- * proportional, keeps a longer pushback in flight when it resets only for a stronger one, and
- * pushes a hidden owner when it may.
+ * owner goes right, and toward the right otherwise. A cause that has left the battle by then counts
+ * where it stood as the push was scheduled, wherever it moved before it left. The request lifts the
+ * row's gates when it is forced, counts as an attack's when it says so, takes the separation off
+ * when the push is proportional, keeps a longer pushback in flight when it resets only for a
+ * stronger one, and pushes a hidden owner when it may.
  *
  * <p>On success the row's action on the cause is scheduled on the cause, the owner its cause; then
  * the row's success action on the owner, the cause its cause; and, when the row resets avoidance,
@@ -38,8 +39,7 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Refused as the row is built: a push with no delay, which the action's perform makes at once; a
  * mode other than toward the horizontal centre from the cause; the push that skips the request's
  * checks; and a failure action on the owner. Refused as it runs: a cause dead but still listed at
- * the push, a cause that moved after the run started and then left, and a run let go before its
- * push while its cause is dead or gone.
+ * the push, and a run let go before its push while its cause is dead but still listed.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -50,8 +50,8 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " schedules and the blend reset; held by ability_hero_giant_slap, a Knight pushed"
             + " along the width by the Giant hero form's slap; the failure of a run let go before"
             + " its push held by recorded battles. Refused: no delay, the other three modes, the"
-            + " unchecked push, a failure action on the owner, a cause dead or moved and gone by"
-            + " the push, and a run let go before it with its cause dead or gone.")
+            + " unchecked push, a failure action on the owner, a cause dead but still listed at"
+            + " the push, and a run let go before it with its cause dead but still listed.")
 public final class DoPushbackFromInstigator extends RowAction {
 
   /**
@@ -119,6 +119,7 @@ public final class DoPushbackFromInstigator extends RowAction {
     }
     return holder
         .getOwner()
-        .pushbackFromInstigator(this, holder.passPhase(), instigator.getOwner());
+        .pushbackFromInstigator(
+            this, holder.passPhase(), instigator.getOwner(), holder.startingCauseX());
   }
 }

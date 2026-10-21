@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.EntityActions;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -217,5 +218,74 @@ class ActionHolderTest {
 
     holder.instigatorLeft(EntityActions.NONE);
     assertThat(holder.queued()).as("an entity without actions caused nothing").hasSize(2);
+  }
+
+  @Test
+  @DisplayName(
+      "an action caused by an owner keeps the point the owner stood on as it was scheduled: a"
+          + " queued one starts with it after the owner moved, one started at once with the point"
+          + " then")
+  void anActionKeepsTheCausesPointAsItWasScheduled() {
+    PointOwner owner = new PointOwner();
+    ActionHolder cause = new ActionHolder(owner);
+    List<Integer> points = new ArrayList<>();
+    BattleAction push =
+        new BattleAction() {
+          @Override
+          public String name() {
+            return "push";
+          }
+
+          @Override
+          public ActionInstance start(ActionHolder h) {
+            return start(h, null);
+          }
+
+          @Override
+          public ActionInstance start(ActionHolder h, ActionHolder instigator) {
+            points.add(h.startingCauseX());
+            return null;
+          }
+        };
+    ActionHolder holder = holder();
+
+    // Queued outside a pending pass at 100; the owner moves to 900 before the pass starts it.
+    owner.x = 100;
+    holder.schedule(push, 0, false, cause);
+    owner.x = 900;
+    holder.pendingPass(EntityActions.PHASE_POST_TICK_INIT);
+    // Started at once where it is scheduled: the point then.
+    holder.schedule(push, 0, true, cause);
+
+    assertThat(points).containsExactly(100, 900);
+  }
+
+  /** An owner with a point along the width the test moves. */
+  private static final class PointOwner implements ActionOwner {
+    private int x;
+
+    @Override
+    public HitPoints actionHitPoints() {
+      return null;
+    }
+
+    @Override
+    public int variable(int key) {
+      return 0;
+    }
+
+    @Override
+    public void setVariable(int key, int value) {}
+
+    @Override
+    public void killBy(ActionOwner killer) {}
+
+    @Override
+    public void queueTypedHit(ActionOwner source, int amount, DamageType type) {}
+
+    @Override
+    public int actionX() {
+      return x;
+    }
   }
 }

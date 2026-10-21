@@ -2728,14 +2728,14 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public ActionInstance pushbackFromInstigator(
-      DoPushbackFromInstigator action, int phase, ActionOwner instigator) {
+      DoPushbackFromInstigator action, int phase, ActionOwner instigator, int causeX) {
     refuseCloneOrRider(action.name());
     WorldEntity cause = instigator(instigator);
     if (cause == null) {
       throw new UnsupportedOperationException(
           action.name() + " on " + name() + " has a cause that is not an object, not modelled");
     }
-    return new PushbackFromInstigatorRun(action, this, cause);
+    return new PushbackFromInstigatorRun(action, this, cause, causeX);
   }
 
   /**
