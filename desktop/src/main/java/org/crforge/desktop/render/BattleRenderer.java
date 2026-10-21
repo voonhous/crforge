@@ -23,6 +23,7 @@ import java.util.Map;
 import lombok.Getter;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.BattleWorld;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -313,7 +314,8 @@ public class BattleRenderer {
       damageNumbers.render();
     }
     for (AreaHitLog.AreaHit hit : inputs.newAreaHits()) {
-      areaHits.add(view.x(hit.x()), view.y(hit.y()), hit.radius(), view.blue(hit.side()));
+      areaHits.add(
+          view.x(hit.x()), view.y(hit.y()), hit.radius(), hit.halfHeight(), view.blue(hit.side()));
     }
     areaHits.age();
     if (drawAoeDamage) {
@@ -477,7 +479,12 @@ public class BattleRenderer {
       if (preview.units().isEmpty()) {
         shapes.setColor(COLOR_SPELL_RADIUS);
         float radius = spellRadius(inputs.world(), card);
-        shapes.circle(px(preview.x()), py(preview.y()), unitsToPixels(radius), CIRCLE_SEGMENTS);
+        float halfHeight = spellHalfHeight(inputs.world(), card);
+        if (halfHeight > 0) {
+          box(shapes, preview.x(), preview.y(), radius, halfHeight);
+        } else {
+          shapes.circle(px(preview.x()), py(preview.y()), unitsToPixels(radius), CIRCLE_SEGMENTS);
+        }
       } else {
         shapes.setColor(ghost);
         for (CardPlacement.Unit unit : preview.units()) {
@@ -533,7 +540,47 @@ public class BattleRenderer {
     return GameUnits.UNITS_PER_TILE;
   }
 
-  /** Projectiles: a dot, and the landing circle of one with an area. */
+  /**
+   * The half height along the arena's length of a spell's preview when it is a box: its
+   * projectile's RadiusY when the preview's radius is its projectile's area radius and the row
+   * makes that area a box, the radius then its half width; else 0, a circle.
+   */
+  static float spellHalfHeight(BattleWorld world, DeployCard card) {
+    if (card.areaEffect() != null && world.getRecords().areaEffect(card.areaEffect()) != null) {
+      if (world.getRecords().areaEffect(card.areaEffect()).radius() > 0) {
+        return 0;
+      }
+    }
+    if (card.radius() > 0) {
+      return 0;
+    }
+    if (card.projectile() != null && world.getRecords().projectile(card.projectile()) != null) {
+      ProjectileData projectile = world.getRecords().projectile(card.projectile());
+      if (projectile.radius() > 0) {
+        return projectile.radiusY();
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Draws a box as the battle tests one, in the renderer's current colour and shape type: its sides
+   * along the arena's width and length about its centre, as the view draws it.
+   *
+   * @param x the centre along the width, in game units
+   * @param y the centre along the length, in game units
+   * @param halfWidth half its width across the arena, in game units
+   * @param halfHeight half its height along the arena's length, in game units
+   */
+  private void box(ShapeRenderer shapes, float x, float y, float halfWidth, float halfHeight) {
+    ViewOrientation.PixelBox box = view.box(x, y, halfWidth, halfHeight);
+    shapes.rect(box.left(), box.bottom(), box.width(), box.height());
+  }
+
+  /**
+   * Projectiles: a dot, the landing area of one with an area, a circle or the box its row makes it,
+   * and the box of a flying body its row makes a box, about where the projectile is.
+   */
   private void renderProjectiles(BattleFrame frame) {
     ShapeRenderer shapes = ctx.getShapeRenderer();
     Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -542,14 +589,31 @@ public class BattleRenderer {
       if (projectile.kind() != EntityView.Kind.PROJECTILE) {
         continue;
       }
-      if (projectile.radius() > 0) {
-        shapes.setColor(
-            view.blue(projectile.side()) ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE);
+      Color zone = view.blue(projectile.side()) ? COLOR_BLUE_LANDING_ZONE : COLOR_RED_LANDING_ZONE;
+      if (projectile.radius() > 0 && projectile.radiusY() > 0) {
+        shapes.setColor(zone);
+        box(
+            shapes,
+            projectile.aimX(),
+            projectile.aimY(),
+            projectile.radius(),
+            projectile.radiusY());
+      } else if (projectile.radius() > 0) {
+        shapes.setColor(zone);
         shapes.circle(
             px(projectile.aimX()),
             py(projectile.aimY()),
             unitsToPixels(projectile.radius()),
             CIRCLE_SEGMENTS);
+      }
+      if (projectile.bodyRadiusY() > 0) {
+        shapes.setColor(zone);
+        box(
+            shapes,
+            projectile.x(),
+            projectile.y(),
+            projectile.bodyRadius(),
+            projectile.bodyRadiusY());
       }
       shapes.setColor(COLOR_PROJECTILE);
       shapes.circle(px(projectile.x()), py(projectile.y()), PROJECTILE_RADIUS);

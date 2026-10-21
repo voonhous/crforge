@@ -10,6 +10,7 @@ import static org.crforge.desktop.render.RenderConstants.*;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -17,7 +18,8 @@ import java.util.List;
 
 /**
  * Renders fading circles for instantaneous AOE damage bursts (melee splash, projectile impact AOE,
- * death explosions, instant spells). The screen hands over the battle's area hits of each frame.
+ * death explosions, instant spells), and fading boxes for the areas that are boxes. The screen
+ * hands over the battle's area hits of each frame.
  */
 public class AoeDamageRenderer {
 
@@ -37,14 +39,16 @@ public class AoeDamageRenderer {
    *
    * @param centerX the circle's centre along the width, in game units
    * @param centerY the circle's centre along the length, in game units
-   * @param radius the circle's radius, in game units
+   * @param radius the circle's radius, or a box's half width across the arena, in game units
+   * @param halfHeight a box's half height along the arena's length, in game units; 0 for a circle
    * @param blue whether the side whose hit it was is drawn blue, which colours it
    */
-  public void add(float centerX, float centerY, float radius, boolean blue) {
+  public void add(float centerX, float centerY, float radius, float halfHeight, boolean blue) {
     float worldX = unitsToPixels(centerX);
     float worldY = unitsToPixels(centerY) + BOTTOM_UI_HEIGHT;
     float worldRadius = unitsToPixels(radius);
-    activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, blue));
+    float worldHalfHeight = unitsToPixels(halfHeight);
+    activeIndicators.add(new AoeIndicator(worldX, worldY, worldRadius, worldHalfHeight, blue));
   }
 
   /**
@@ -80,7 +84,7 @@ public class AoeDamageRenderer {
       float alpha = 1.0f - (indicator.elapsed / INDICATOR_DURATION);
       float fillAlpha = alpha * FILL_ALPHA_MAX;
       setSideColor(indicator.blue, fillAlpha);
-      ctx.getShapeRenderer().circle(indicator.x, indicator.y, indicator.radius, CIRCLE_SEGMENTS);
+      indicator.draw(ctx.getShapeRenderer());
     }
     ctx.getShapeRenderer().end();
 
@@ -90,7 +94,7 @@ public class AoeDamageRenderer {
       float alpha = 1.0f - (indicator.elapsed / INDICATOR_DURATION);
       float outlineAlpha = alpha * OUTLINE_ALPHA_MAX;
       setSideColor(indicator.blue, outlineAlpha);
-      ctx.getShapeRenderer().circle(indicator.x, indicator.y, indicator.radius, CIRCLE_SEGMENTS);
+      indicator.draw(ctx.getShapeRenderer());
     }
     ctx.getShapeRenderer().end();
 
@@ -105,20 +109,31 @@ public class AoeDamageRenderer {
     }
   }
 
-  /** A fading AOE damage indicator. */
+  /** A fading AOE damage indicator: a circle, or a box when it has a half height. */
   private static class AoeIndicator {
     final float x;
     final float y;
     final float radius;
+    final float halfHeight;
     final boolean blue;
     float elapsed;
 
-    AoeIndicator(float x, float y, float radius, boolean blue) {
+    AoeIndicator(float x, float y, float radius, float halfHeight, boolean blue) {
       this.x = x;
       this.y = y;
       this.radius = radius;
+      this.halfHeight = halfHeight;
       this.blue = blue;
       this.elapsed = 0f;
+    }
+
+    /** Draws its shape in the renderer's current colour and shape type. */
+    void draw(ShapeRenderer shapes) {
+      if (halfHeight > 0) {
+        shapes.rect(x - radius, y - halfHeight, 2 * radius, 2 * halfHeight);
+      } else {
+        shapes.circle(x, y, radius, CIRCLE_SEGMENTS);
+      }
     }
   }
 }

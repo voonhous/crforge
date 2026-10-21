@@ -16,13 +16,15 @@ import org.crforge.core.battle.unit.WorldObserver;
 import org.crforge.core.pathfinding.combat.AreaDamage;
 
 /**
- * Collects the circle of every area hit the battle deals, for the visualizer's area damage
+ * Collects the area of every area hit the battle deals, for the visualizer's area damage
  * indicators: an entity's splash and a death's area (the world's {@code areaDamaged}), each hit of
  * an area effect, with hit switches ({@code areaEffectDamaged}) or in the filter form ({@code
  * areaEffectFilterHit}), and the arrival of a projectile whose row has an area. The world tells no
  * observer of a projectile's area, so that one is read from the projectiles the tick visited: one
  * released in the tick with an area radius hit around its aim, or its chain's ring point, as its
- * impact does. It only listens; the screen drains what it collected after each frame's steps.
+ * impact does. An area is a circle, or a box when its row makes it one: a projectile row with a
+ * RadiusY, or an area effect shaped as a rectangle. It only listens; the screen drains what it
+ * collected after each frame's steps.
  */
 public final class AreaHitLog implements WorldObserver {
 
@@ -33,9 +35,21 @@ public final class AreaHitLog implements WorldObserver {
    * @param side the side of the entity whose hit it was
    * @param x the circle's centre along the width, in game units
    * @param y the circle's centre along the length, in game units
-   * @param radius the circle's radius, in game units
+   * @param radius the circle's radius, or a box's half width across the arena, in game units
+   * @param halfHeight a box's half height along the arena's length, in game units; 0 for a circle
    */
-  public record AreaHit(int tick, int side, int x, int y, int radius) {}
+  public record AreaHit(int tick, int side, int x, int y, int radius, int halfHeight) {
+
+    /** A circle. */
+    public AreaHit(int tick, int side, int x, int y, int radius) {
+      this(tick, side, x, y, radius, 0);
+    }
+
+    /** Whether it is a box rather than a circle. */
+    public boolean box() {
+      return halfHeight > 0;
+    }
+  }
 
   private final List<AreaHit> pending = new ArrayList<>();
 
@@ -53,7 +67,7 @@ public final class AreaHitLog implements WorldObserver {
 
   /**
    * Each hit of an area effect in the filter form, as every damaging area effect row of the game's
-   * tables is: the circle it listed in. A rectangle is not drawn; the indicators are circles.
+   * tables is: the circle it listed in, or the box of a row shaped as a rectangle.
    */
   @Override
   public void areaEffectFilterHit(
@@ -66,6 +80,8 @@ public final class AreaHitLog implements WorldObserver {
       int halfHeight) {
     if (radius >= 1) {
       pending.add(new AreaHit(tick, areaEffect.side(), x, y, radius));
+    } else if (halfWidth >= 1 && halfHeight >= 1) {
+      pending.add(new AreaHit(tick, areaEffect.side(), x, y, halfWidth, halfHeight));
     }
   }
 
@@ -81,7 +97,9 @@ public final class AreaHitLog implements WorldObserver {
       boolean onRing = chain != null && chain.isRingPoints();
       int x = onRing ? projectile.getRingX() : projectile.getAimX();
       int y = onRing ? projectile.getRingY() : projectile.getAimY();
-      pending.add(new AreaHit(tick, projectile.getSide(), x, y, radius));
+      // A row with a RadiusY makes its area a box: the radius across the arena, RadiusY along it.
+      pending.add(
+          new AreaHit(tick, projectile.getSide(), x, y, radius, projectile.getData().radiusY()));
     }
   }
 
