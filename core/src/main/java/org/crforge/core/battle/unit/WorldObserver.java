@@ -825,6 +825,31 @@ public interface WorldObserver {
   default void areaEffectDamaged(
       int tick, AreaEffectEntity areaEffect, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
 
+  /**
+   * One hit of an area effect's filter form fell: the area it lists what it reaches in, told once
+   * the list is taken and before anything on it is dealt. A row without a shape lists in the circle
+   * of its radius now and a row shaped as a circle in its shape's circle, both told with no half
+   * sizes; a row shaped as a rectangle lists in its rectangle, told by its half sizes with a radius
+   * of 0. The area is always about the area effect's point. A read for an observer; nothing in the
+   * battle asks it.
+   *
+   * @param tick the battle tick
+   * @param areaEffect the area effect
+   * @param x the area's centre along the width, in game units
+   * @param y the area's centre along the length, in game units
+   * @param radius the circle's radius, or 0 for a rectangle
+   * @param halfWidth half the rectangle's width, or 0 for a circle
+   * @param halfHeight half the rectangle's height, or 0 for a circle
+   */
+  default void areaEffectFilterHit(
+      int tick,
+      AreaEffectEntity areaEffect,
+      int x,
+      int y,
+      int radius,
+      int halfWidth,
+      int halfHeight) {}
+
   /** An area effect left the battle, at the cleanup that removed it. */
   default void areaEffectRemoved(int tick, AreaEffectEntity areaEffect) {}
 

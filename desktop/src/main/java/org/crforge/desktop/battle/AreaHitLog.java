@@ -18,11 +18,11 @@ import org.crforge.core.pathfinding.combat.AreaDamage;
 /**
  * Collects the circle of every area hit the battle deals, for the visualizer's area damage
  * indicators: an entity's splash and a death's area (the world's {@code areaDamaged}), each hit of
- * an area effect ({@code areaEffectDamaged}) and the arrival of a projectile whose row has an area.
- * The world tells no observer of a projectile's area, so that one is read from the projectiles the
- * tick visited: one released in the tick with an area radius hit around its aim, or its chain's
- * ring point, as its impact does. It only listens; the screen drains what it collected after each
- * frame's steps.
+ * an area effect, with hit switches ({@code areaEffectDamaged}) or in the filter form ({@code
+ * areaEffectFilterHit}), and the arrival of a projectile whose row has an area. The world tells no
+ * observer of a projectile's area, so that one is read from the projectiles the tick visited: one
+ * released in the tick with an area radius hit around its aim, or its chain's ring point, as its
+ * impact does. It only listens; the screen drains what it collected after each frame's steps.
  */
 public final class AreaHitLog implements WorldObserver {
 
@@ -49,6 +49,24 @@ public final class AreaHitLog implements WorldObserver {
   public void areaEffectDamaged(
       int tick, AreaEffectEntity areaEffect, AreaDamage.Area area, AreaDamage.Outcome outcome) {
     pending.add(new AreaHit(tick, areaEffect.side(), area.x(), area.y(), area.radius()));
+  }
+
+  /**
+   * Each hit of an area effect in the filter form, as every damaging area effect row of the game's
+   * tables is: the circle it listed in. A rectangle is not drawn; the indicators are circles.
+   */
+  @Override
+  public void areaEffectFilterHit(
+      int tick,
+      AreaEffectEntity areaEffect,
+      int x,
+      int y,
+      int radius,
+      int halfWidth,
+      int halfHeight) {
+    if (radius >= 1) {
+      pending.add(new AreaHit(tick, areaEffect.side(), x, y, radius));
+    }
   }
 
   @Override

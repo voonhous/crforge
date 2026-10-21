@@ -9787,6 +9787,14 @@ public class BattleWorld implements HolderPasses {
     }
   }
 
+  /** Tells the observers the area one hit of an area effect's filter form lists in. */
+  void areaEffectFilterHit(
+      AreaEffectEntity areaEffect, int x, int y, int radius, int halfWidth, int halfHeight) {
+    for (WorldObserver observer : observers) {
+      observer.areaEffectFilterHit(tick, areaEffect, x, y, radius, halfWidth, halfHeight);
+    }
+  }
+
   /**
    * Deals one victim its share of an area effect's hit, tells the observers, and runs the death it
    * causes, with the area effect as what killed it. A victim that has left takes nothing.

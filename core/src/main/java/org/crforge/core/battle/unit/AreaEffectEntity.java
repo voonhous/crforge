@@ -719,6 +719,15 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
               .thenComparing(Comparator.comparingInt(AreaEffectEntity::size).reversed()));
     }
     world.shapeListed(this, listed);
+    // The area the hit listed in, told to the observers before the list is dealt, as the area
+    // damage of a row with hit switches tells its circle; nothing in the battle reads it.
+    if (data.shaped() && data.shapeRadius() >= 1) {
+      world.areaEffectFilterHit(this, x, y, data.shapeRadius(), 0, 0);
+    } else if (data.shaped()) {
+      world.areaEffectFilterHit(this, x, y, 0, half(data.shapeWidth()), half(data.shapeHeight()));
+    } else {
+      world.areaEffectFilterHit(this, x, y, radius, 0, 0);
+    }
     BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
     ProjectileData projectile =
         data.projectile() == null ? null : world.getRecords().projectile(data.projectile());
