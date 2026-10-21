@@ -152,13 +152,23 @@ public class ActionHolder implements EntityActions {
     private final BattleAction action;
     private final ActionHolder instigator;
     private final ActionContext context;
+
+    /** Where the cause stood along the width as the action was scheduled. */
+    private final int causeX;
+
     private int ticks;
 
-    private Entry(BattleAction action, ActionHolder instigator, int ticks, ActionContext context) {
+    private Entry(
+        BattleAction action,
+        ActionHolder instigator,
+        int ticks,
+        ActionContext context,
+        int causeX) {
       this.action = action;
       this.instigator = instigator;
       this.ticks = ticks;
       this.context = context;
+      this.causeX = causeX;
     }
   }
 
@@ -167,6 +177,13 @@ public class ActionHolder implements EntityActions {
 
   /** The phase of the pending pass in progress, or 0 outside every pending pass. */
   private int passPhase;
+
+  /**
+   * Where the cause of the action being started stood along the width as the action was scheduled,
+   * which the game keeps in the reference to the cause it makes then; 0 outside a start and for an
+   * action with no cause.
+   */
+  private int startingCauseX;
 
   /**
    * Whether a pending pass is in progress, as the battle answers it for every entity at once, or
@@ -270,10 +287,12 @@ public class ActionHolder implements EntityActions {
       ActionHolder instigator,
       ActionContext context) {
     int delay = delayMs == OWN_DELAY ? action.delayMs() : delayMs;
+    // The reference to the cause is made here, with the cause's point as it stands now.
+    int causeX = causeX(instigator);
     if (delay <= 0 && (immediate || inPendingPass())) {
-      start(action, instigator, false, context);
+      start(action, instigator, false, context, causeX);
     } else {
-      pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS, context));
+      pending.add(new Entry(action, instigator, Math.max(delay, 0) / TICK_MS, context, causeX));
     }
     ActionContext before = current;
     ActionContext activeBefore = ACTIVE.get();
@@ -314,7 +333,21 @@ public class ActionHolder implements EntityActions {
    * @param instigator the holder of the entity that caused it, or null for none
    */
   public void start(BattleAction action, ActionHolder instigator) {
-    start(action, instigator, false, null);
+    start(action, instigator, false, null, causeX(instigator));
+  }
+
+  /**
+   * Where the cause of the action being started stood along the width as the action was scheduled:
+   * the point the game copies into the reference to the cause as it schedules the action, whatever
+   * the cause has done since. 0 outside a start and for an action with no cause.
+   */
+  public int startingCauseX() {
+    return startingCauseX;
+  }
+
+  /** Where the holder's owner stands along the width, or 0 for no holder or no owner. */
+  private static int causeX(ActionHolder instigator) {
+    return instigator == null || instigator.owner == null ? 0 : instigator.owner.actionX();
   }
 
   /**
@@ -323,7 +356,11 @@ public class ActionHolder implements EntityActions {
    * action that waits is scheduled with it.
    */
   private void start(
-      BattleAction action, ActionHolder instigator, boolean queued, ActionContext context) {
+      BattleAction action,
+      ActionHolder instigator,
+      boolean queued,
+      ActionContext context,
+      int causeX) {
     if (action.singleton()) {
       // A row is one of the game's rows, whichever entity's tree it was built in: a second tree
       // built from the same row finds the first one's run. The first listed run of the row ends
@@ -350,8 +387,10 @@ public class ActionHolder implements EntityActions {
     }
     ActionContext before = current;
     ActionContext activeBefore = ACTIVE.get();
+    int causeXBefore = startingCauseX;
     current = context;
     ACTIVE.set(context);
+    startingCauseX = causeX;
     try {
       if (!holds(action.executeIf(), true)) {
         return;
@@ -374,6 +413,7 @@ public class ActionHolder implements EntityActions {
     } finally {
       current = before;
       ACTIVE.set(activeBefore);
+      startingCauseX = causeXBefore;
     }
   }
 
@@ -459,7 +499,7 @@ public class ActionHolder implements EntityActions {
             && (wanted == BattleAction.ANY_PHASE || wanted == phase)
             && !holds(entry.action.pausedIf(), false)) {
           removeBySwap(pending, i);
-          start(entry.action, entry.instigator, true, entry.context);
+          start(entry.action, entry.instigator, true, entry.context, entry.causeX);
         } else {
           i++;
         }

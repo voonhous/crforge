@@ -188,6 +188,33 @@ class BattleGiantHeroAbilityTest {
 
   @Test
   @DisplayName(
+      "a Giant moved across the centre line after the pick and then killed before the push: the"
+          + " Knight is pushed away from where the Giant stood at the pick, not where it left")
+  void theSlapHoldsWhereAMovedGiantStoodAtThePick() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    Slap slap = slap();
+    stepTo(slap.battle(), CAST + PICK + 1);
+    // The Giant stands left of the centre line from the pick; a warp's one write puts it as far to
+    // the right of it, and it is killed there: it leaves before the push is due.
+    int centre = slap.battle().getWorld().getTileMap().width() * 250;
+    int pickedFrom = slap.giant().getView().getX();
+    assertThat(pickedFrom).isLessThan(centre);
+    slap.giant().warpTo(2 * centre - pickedFrom, slap.giant().getView().getY());
+    assertThat(slap.giant().getView().getX()).isGreaterThan(centre);
+    slap.battle().getWorld().kill(slap.giant(), null);
+    stepTo(slap.battle(), CAST + push - 1);
+    assertThat(named(slap.battle(), "GiantHero")).isEmpty();
+    int pushedFrom = slap.knight().getView().getX();
+    // Pushed to the right, away from the Giant's point at the pick: its point as it left would
+    // push the Knight to the left.
+    stepTo(slap.battle(), CAST + push);
+    assertThat(slap.knight().getView().getX()).isEqualTo(pushedFrom + 250);
+    assertLanding(slap, land);
+  }
+
+  @Test
+  @DisplayName(
       "a Giant killed between the push and the landing: the Knight lands on an area effect of the"
           + " Giant's side, which hurts it as the Giant's own")
   void theLandingOutlivesAGiantKilledAfterThePush() {

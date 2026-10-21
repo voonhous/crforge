@@ -1472,6 +1472,11 @@ public class ProjectileEntity extends BattleEntity
   }
 
   @Override
+  public int actionX() {
+    return x();
+  }
+
+  @Override
   public int y() {
     return y;
   }

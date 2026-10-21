@@ -1530,6 +1530,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   @Override
+  public int actionX() {
+    return x();
+  }
+
+  @Override
   public int y() {
     return y;
   }
