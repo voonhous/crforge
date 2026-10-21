@@ -1,0 +1,12 @@
+{
+  "content_version": "16.402.19",
+  "battles": 1733,
+  "to_the_end": 100.0,
+  "ticks_agreed": 100.0,
+  "outcomes": {
+    "diagnostic_match": 1733
+  },
+  "first_failures": {},
+  "set": "dcc19aa63a03c58e",
+  "commit": "b35f6796597cbfc13f1fa4d65d9aa19380c55d3d"
+}
