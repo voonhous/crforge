@@ -16,6 +16,7 @@ import org.crforge.core.util.GameUnits;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleFrame;
 import org.crforge.desktop.battle.BattleSession;
+import org.crforge.desktop.battle.BoxRows;
 import org.crforge.desktop.battle.EntityView;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -96,6 +97,25 @@ class BattleRendererTest {
     assertThat(BattleRenderer.spellRadius(world, world.getRecords().card("Poison")))
         .isEqualTo(
             world.getRecords().areaEffect(world.getRecords().card("Poison").areaEffect()).radius());
+  }
+
+  @Test
+  @DisplayName(
+      "a spell whose preview comes from a projectile with a box shows that box's half height, a"
+          + " circle none")
+  void spellHalfHeight() {
+    GameTables tables = GameTables.loadConfigured();
+    BattleWorld world = BattleSession.ladder(tables).getBattle().getWorld();
+    String card = BoxRows.boxCard();
+    assertThat(BattleRenderer.spellRadius(world, world.getRecords().card(card)))
+        .isEqualTo(BoxRows.thrown(card).radius());
+    assertThat(BattleRenderer.spellHalfHeight(world, world.getRecords().card(card)))
+        .isEqualTo(BoxRows.thrown(card).radiusY());
+    for (String spell : new String[] {"Zap", "Fireball", "Poison", "Arrows", "Rage"}) {
+      assertThat(BattleRenderer.spellHalfHeight(world, world.getRecords().card(spell)))
+          .as("%s's preview half height", spell)
+          .isZero();
+    }
   }
 
   /** The first row with a water cell. */

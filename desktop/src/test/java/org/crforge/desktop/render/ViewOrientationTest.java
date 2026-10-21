@@ -7,7 +7,9 @@
 package org.crforge.desktop.render;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
+import java.util.List;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.util.GameUnits;
@@ -76,6 +78,41 @@ class ViewOrientationTest {
     assertThat(view.cellRowAt(view.py(6750))).isEqualTo(13);
     assertThat(view.dx(1f)).isEqualTo(1f);
     assertThat(view.dy(1f)).isEqualTo(-1f);
+  }
+
+  @Test
+  @DisplayName(
+      "a box is drawn about the point the view draws its centre at, its half width across the"
+          + " arena and its half height along it, in both views")
+  void aBoxIsDrawnAboutItsCentre() {
+    // A box as the battle tests one: its half width along the arena's width, its half height along
+    // the length, both kept by either view's mirror.
+    int x = 4500;
+    int y = 10200;
+    int halfWidth = 1950;
+    int halfHeight = 600;
+    for (ViewOrientation view : List.of(ViewOrientation.SIDE_0, ViewOrientation.SIDE_1)) {
+      ViewOrientation.PixelBox box = view.box(x, y, halfWidth, halfHeight);
+      assertThat(box.left())
+          .as("%s left", view)
+          .isCloseTo(view.px(x) - RenderConstants.unitsToPixels(halfWidth), within(0.001f));
+      assertThat(box.bottom())
+          .as("%s bottom", view)
+          .isCloseTo(view.py(y) - RenderConstants.unitsToPixels(halfHeight), within(0.001f));
+      assertThat(box.width())
+          .isCloseTo(RenderConstants.unitsToPixels(2 * halfWidth), within(0.001f));
+      assertThat(box.height())
+          .isCloseTo(RenderConstants.unitsToPixels(2 * halfHeight), within(0.001f));
+    }
+    // The view of side 0 mirrors the width: the box's drawn left edge is its far edge mirrored.
+    assertThat(ViewOrientation.SIDE_0.box(x, y, halfWidth, halfHeight).left())
+        .isCloseTo(RenderConstants.unitsToPixels(WIDTH - (x + halfWidth)), within(0.001f));
+    // The view of side 1 mirrors the length: its drawn bottom edge is its far edge mirrored.
+    assertThat(ViewOrientation.SIDE_1.box(x, y, halfWidth, halfHeight).bottom())
+        .isCloseTo(
+            RenderConstants.unitsToPixels(HEIGHT - (y + halfHeight))
+                + RenderConstants.BOTTOM_UI_HEIGHT,
+            within(0.001f));
   }
 
   @Test

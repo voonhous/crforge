@@ -140,6 +140,32 @@ public record ViewOrientation(int bottomSide, int widthUnits, int heightUnits) {
     return unitsToPixels(y(y)) + BOTTOM_UI_HEIGHT;
   }
 
+  /**
+   * A box in window pixels: its lower left corner and its size.
+   *
+   * @param left the pixel column of its left edge
+   * @param bottom the pixel row of its bottom edge
+   * @param width its width in pixels
+   * @param height its height in pixels
+   */
+  public record PixelBox(float left, float bottom, float width, float height) {}
+
+  /**
+   * A box as the battle tests one, drawn: its sides along the arena's width and length, its half
+   * width across the arena and its half height along it, about its centre. Either view's mirror
+   * moves only the centre, the box being the same on both sides of it.
+   *
+   * @param x the centre along the width, in game units
+   * @param y the centre along the length, in game units
+   * @param halfWidth half its width across the arena, in game units
+   * @param halfHeight half its height along the arena's length, in game units
+   */
+  public PixelBox box(float x, float y, float halfWidth, float halfHeight) {
+    float width = unitsToPixels(halfWidth);
+    float height = unitsToPixels(halfHeight);
+    return new PixelBox(px(x) - width, py(y) - height, 2 * width, 2 * height);
+  }
+
   /** A direction along the width as drawn: reversed in the view of side 0. */
   public float dx(float dx) {
     return mirrorsWidth() ? -dx : dx;

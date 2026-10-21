@@ -22,6 +22,7 @@ import org.crforge.core.battle.match.EvolutionItem;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -317,6 +318,33 @@ class BattleSessionTest {
               assertThat(hit.radius()).isEqualTo(2500);
             });
     assertThat(session.getAreaHits().drain()).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "the impact of a projectile whose area is a box is collected as that box, its half width"
+          + " the row's Radius and its half height its RadiusY, not as a circle")
+  void boxAreaHitsAreCollected() {
+    String card = BoxRows.boxCard();
+    ProjectileData thrown = BoxRows.thrown(card);
+    BattleSession session = only(card);
+
+    assertThat(session.play(1, 0, 9500, 20500)).isTrue();
+    List<AreaHitLog.AreaHit> hits = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      session.step();
+      hits.addAll(session.getAreaHits().drain());
+    }
+
+    assertThat(hits)
+        .as("%s's impact", thrown.name())
+        .anySatisfy(
+            hit -> {
+              assertThat(hit.side()).isEqualTo(1);
+              assertThat(hit.radius()).isEqualTo(thrown.radius());
+              assertThat(hit.halfHeight()).isEqualTo(thrown.radiusY());
+            });
+    assertThat(hits).noneMatch(hit -> hit.halfHeight() == 0);
   }
 
   @Test

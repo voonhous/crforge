@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
 import org.junit.jupiter.api.DisplayName;
@@ -143,6 +144,9 @@ class BattleAdapterTest {
     EntityView fireball = await(session, e -> e.kind() == EntityView.Kind.PROJECTILE);
     assertThat(fireball.side()).isZero();
     assertThat(fireball.radius()).isPositive();
+    // A circle: no half height for its area, and no box for a body.
+    assertThat(fireball.radiusY()).isZero();
+    assertThat(fireball.bodyRadiusY()).isZero();
     assertThat(fireball.hasHitPoints()).isFalse();
     assertThat(Math.abs(fireball.aimX() - target.x())).isLessThanOrEqualTo(1000);
 
@@ -152,6 +156,31 @@ class BattleAdapterTest {
         session,
         e -> e.id() == target.id() && e.hitPoints() < maximum,
         "the tower to take the Fireball's damage");
+  }
+
+  @Test
+  @DisplayName(
+      "a projectile whose impact area is a box shows its half height, and the projectile it"
+          + " spawns shows its flying body's box")
+  void boxProjectiles() {
+    String card = BoxRows.boxCard();
+    ProjectileData thrown = BoxRows.thrown(card);
+    ProjectileData rolling = BoxRows.rolling(card);
+    BattleSession session = only(card);
+    assertThat(session.play(1, 0, 9500, 20500)).isTrue();
+
+    EntityView flying =
+        await(
+            session, e -> e.kind() == EntityView.Kind.PROJECTILE && e.name().equals(thrown.name()));
+    assertThat(flying.radius()).isEqualTo(thrown.radius());
+    assertThat(flying.radiusY()).isEqualTo(thrown.radiusY());
+
+    EntityView body =
+        await(
+            session,
+            e -> e.kind() == EntityView.Kind.PROJECTILE && e.name().equals(rolling.name()));
+    assertThat(body.bodyRadius()).isEqualTo(rolling.projectileRadius());
+    assertThat(body.bodyRadiusY()).isEqualTo(rolling.projectileRadiusY()).isPositive();
   }
 
   @Test

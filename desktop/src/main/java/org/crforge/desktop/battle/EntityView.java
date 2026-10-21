@@ -47,6 +47,13 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param lifetimeMs an area effect's whole lifetime in milliseconds, 0 otherwise
  * @param aimX a projectile's aim along the width, 0 otherwise
  * @param aimY a projectile's aim along the length, 0 otherwise
+ * @param radiusY the half height along the arena's length of a projectile's area when its row makes
+ *     it a box (its RadiusY), the radius then its half width across the arena; 0 for a circle and
+ *     for anything but a projectile
+ * @param bodyRadius the half width across the arena of a projectile's flying body when its row
+ *     makes the body a box (its ProjectileRadius); 0 otherwise
+ * @param bodyRadiusY the half height along the arena's length of that box (its ProjectileRadiusY);
+ *     0 for a body that is a circle, a projectile without a body and anything but a projectile
  * @param speed the distance a character's movement visit asked for in the last tick
  * @param grid a character's grid state, for the route overlay; null otherwise
  * @param meter the bar an action running on a character shows over it, such as the Royal Chef's
@@ -83,6 +90,9 @@ public record EntityView(
     int lifetimeMs,
     int aimX,
     int aimY,
+    int radiusY,
+    int bodyRadius,
+    int bodyRadiusY,
     int speed,
     GridUnitState grid,
     ActionMeter meter,
