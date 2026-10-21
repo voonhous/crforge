@@ -230,6 +230,39 @@ class BattleChampionRefundTest {
 
   @Test
   @DisplayName(
+      "a cast with no cast time and no trigger delay counts the window down on the use's own step:"
+          + " a window of one step is shut by a death on that step, a window of two is not")
+  void aCastWithNoTimeCountsTheWindowOnItsOwnStep(@TempDir Path folder) throws IOException {
+    // The hero Giant's ability is such a cast: its slap then waits for a target, which neither
+    // casts nor holds the window, so its cost is never given back once the use's step has run.
+    Scene oneStep =
+        new Scene(
+            Files.createDirectories(folder.resolve("one")),
+            ability -> ability.put("RefundWindow", 50).put("TriggerDelay", 0).put("CastTime", 0));
+    CharacterEntity queen = oneStep.playQueen(0);
+    oneStep.afterDeployWithElixir();
+    // Her death lands at the damage drain of the step the use comes in, after the slot's step.
+    oneStep.battle.getWorld().kill(queen, null);
+    oneStep.useAbility();
+    oneStep.step(4);
+    assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();
+    assertThat(oneStep.refunds).isEmpty();
+
+    Scene twoSteps =
+        new Scene(
+            Files.createDirectories(folder.resolve("two")),
+            ability -> ability.put("RefundWindow", 100).put("TriggerDelay", 0).put("CastTime", 0));
+    queen = twoSteps.playQueen(0);
+    twoSteps.afterDeployWithElixir();
+    twoSteps.battle.getWorld().kill(queen, null);
+    twoSteps.useAbility();
+    twoSteps.step(4);
+    assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();
+    assertThat(twoSteps.refunds).hasSize(1);
+  }
+
+  @Test
+  @DisplayName(
       "a refund window that holds while she waits to cast gives her cost back at her death, long"
           + " past the window's length")
   void aHeldWindowStillRefunds(@TempDir Path folder) throws IOException {

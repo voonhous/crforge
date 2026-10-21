@@ -34,7 +34,10 @@ import org.crforge.core.pathfinding.GridEntityState;
  * the last use counts down 50 a step while a copy casts (in the casting state, or carrying the tag
  * of a cast) and holds while every live copy does neither; with no copy left while it is open the
  * ability's cost is given back once, however long it held: a copy that never casts, its ability
- * left waiting, keeps it open until it dies.
+ * left waiting, keeps it open until it dies. A cast with neither a cast time nor a trigger delay
+ * still carries the tag of a cast on the step it is used, the slot's step coming after the tag
+ * recompute: a window of one step, the hero Giant's, is spent on that step, whatever its activation
+ * then waits for, and a death after the use gives nothing back.
  *
  * <p>A paid ability reaches every run of the king, from the last to the first; the slot that
  * follows the unit's row requests the ability of every live copy, opens the refund window for the
@@ -64,9 +67,12 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " the trigger delay, held by tv_replay_004 and tv_replay_016; a copy kept on another"
             + " row of the same ability, held by hero_berserker. The window held while no copy"
             + " casts and the refund it lets through at a death long after, held by"
-            + " monk_refund_y14000_t310_arrows520 and monk_refund_y12000_t306_arrows560. Not"
-            + " carried: the limited availability and the reservation, which nothing in a battle"
-            + " here sets.")
+            + " monk_refund_y14000_t310_arrows520 and monk_refund_y12000_t306_arrows560. A"
+            + " window of one step spent on the use's own step by a cast with no cast time, the"
+            + " hero Giant's slap then waiting for a target, held by refund_wait_t870,"
+            + " refund_wait_t910, refund_wait_t919 and refund_wait_t920, a slap first by"
+            + " refund_slap_t895. Not carried: the limited availability and the reservation,"
+            + " which nothing in a battle here sets.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
