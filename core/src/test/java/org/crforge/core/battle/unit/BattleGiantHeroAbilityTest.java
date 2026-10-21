@@ -54,6 +54,9 @@ class BattleGiantHeroAbilityTest {
   /** The step the selector picks the Knight on, the one after the cast. */
   private static final int PICK = 2;
 
+  /** A tick the Knight is played on before the Giant, which is played on 220. */
+  private static final int KNIGHT_FIRST = 200;
+
   @Test
   @DisplayName(
       "the slap casts in the casting state's entry and the Giant walks on; it stops for the slap,"
@@ -264,10 +267,41 @@ class BattleGiantHeroAbilityTest {
     assertLetGoQuietly(slap, PICK + 2, land);
   }
 
+  @Test
+  @DisplayName(
+      "a Knight played before the Giant, listed ahead of it, and the Giant leaving in the same"
+          + " removal before the push: the push is let go before the Giant is taken, nothing"
+          + " follows it and the battle goes on")
+  void aKnightListedAheadOfItsGiantLeavingTogetherEndsTheSlap() {
+    int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
+    int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
+    // The Knight is played first, so the holder lists it ahead of the Giant and a removal that
+    // takes both takes the Knight first.
+    Slap slap = slap(KNIGHT_FIRST);
+    assertThat(slap.knight().getId()).isLessThan(slap.giant().getId());
+    stepTo(slap.battle(), CAST + PICK + 1);
+    assertThat(slap.knight().actionHolder().running())
+        .anyMatch(PushbackFromInstigatorRun.class::isInstance);
+    // Both killed between two steps: the next step's cleanup takes them in one removal.
+    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().kill(slap.knight(), null);
+    assertLetGoQuietly(slap, PICK + 2, land);
+  }
+
   /** The Giant's slap cast on the Knight, stepped to the cast. */
   private record Slap(Standard1v1Battle battle, CharacterEntity giant, CharacterEntity knight) {}
 
+  /** The Giant and the Knight played as in the first test, the Knight after the Giant. */
   private static Slap slap() {
+    return slap(260);
+  }
+
+  /**
+   * The Giant played on 220 and the Knight on the tick given, then the slap cast.
+   *
+   * @param knightPlay the tick the Knight is played on
+   */
+  private static Slap slap(int knightPlay) {
     Standard1v1Battle battle = null;
     LadderMatch match = null;
     for (int word = 0; match == null || !inHand(match, "Giant"); word++) {
@@ -275,7 +309,7 @@ class BattleGiantHeroAbilityTest {
       match = battle.startLadderMatch(GIANT_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
     }
     battle.play(220, GameData.card("Giant"), LEVEL, 0, 3500, 14000, "g");
-    battle.play(260, GameData.card("Knight"), LEVEL, 1, 3500, 22000, "k");
+    battle.play(knightPlay, GameData.card("Knight"), LEVEL, 1, 3500, 22000, "k");
     stepTo(battle, CAST - 20);
     CharacterEntity giant = named(battle, "GiantHero").get(0);
     CharacterEntity knight = named(battle, "Knight").get(0);
