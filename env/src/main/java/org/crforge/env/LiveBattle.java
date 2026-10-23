@@ -187,6 +187,25 @@ public final class LiveBattle {
   }
 
   /**
+   * Gives an ability command naming a unit for a champion slot, between two ticks, as a player taps
+   * the slot's button: through the battle's player's commands. The environment keeps a command
+   * given as waiting for the slot, as it keeps its seats' ability commands.
+   *
+   * @param side the commanding side
+   * @param slot the champion slot, 0 or 1
+   * @param unit the name of the unit it names ({@link PlayerCommands#championUnit})
+   * @param name the command's name, new to the battle
+   * @return what the giving came to
+   * @throws UnsupportedOperationException for a giving the battle core does not model
+   */
+  public PlayerCommands.Giving useAbility(int side, int slot, String unit, String name) {
+    if (env.done()) {
+      throw new IllegalStateException("the battle is over");
+    }
+    return env.giveAbility(side, slot, unit, name);
+  }
+
+  /**
    * Steps the battle one tick. The tick that opens a decision opens it (when no seat acted in it)
    * and the tick that ends it, or ends the match, writes the seats' observations after it.
    *

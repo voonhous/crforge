@@ -138,7 +138,14 @@ public class ReplayGameScreen implements Screen {
     this.camera = new OrthographicCamera();
     setupInput();
     workspace =
-        new BattleWorkspace(camera, renderer, view, true, this::handleAction, (side, slot) -> {});
+        new BattleWorkspace(
+            camera,
+            renderer,
+            view,
+            true,
+            this::handleAction,
+            (side, slot) -> {},
+            (side, slot) -> {});
     showData();
     if (browser != null) {
       ReplayArchive archive = browser.archive();

@@ -41,7 +41,13 @@ class HudTextTest {
 
   private static BattleFrame.SideView side(int side, int crowns) {
     return new BattleFrame.SideView(
-        side, 50000, 5, crowns, Arrays.asList(new BattleFrame.CardView[4]), null);
+        side,
+        50000,
+        5,
+        crowns,
+        Arrays.asList(new BattleFrame.CardView[4]),
+        null,
+        Arrays.asList(new BattleFrame.AbilityView[2]));
   }
 
   @Test

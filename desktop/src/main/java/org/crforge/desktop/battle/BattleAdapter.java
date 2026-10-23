@@ -373,6 +373,10 @@ public final class BattleAdapter {
       }
     }
     MatchCard next = session.nextCard(side);
+    List<BattleFrame.AbilityView> abilities = new ArrayList<>(BattleSession.ABILITY_SLOTS);
+    for (int slot = 0; slot < BattleSession.ABILITY_SLOTS; slot++) {
+      abilities.add(session.abilityView(side, slot));
+    }
     return new BattleFrame.SideView(
         side,
         matchSide.getElixir(),
@@ -382,6 +386,7 @@ public final class BattleAdapter {
         next == null
             ? null
             : new BattleFrame.CardView(
-                next.name(), next.cost(), session.nextCardLevel(side), false, "not in hand"));
+                next.name(), next.cost(), session.nextCardLevel(side), false, "not in hand"),
+        Collections.unmodifiableList(abilities));
   }
 }

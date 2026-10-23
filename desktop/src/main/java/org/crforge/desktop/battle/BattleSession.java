@@ -22,6 +22,9 @@ import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
+import org.crforge.core.battle.unit.AbilityCommand;
+import org.crforge.core.battle.unit.ChampionController;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.PlayerCommands.Giving;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -49,6 +52,12 @@ import org.crforge.env.Schema;
  * it runs, against the battle as it stands then, a point where its placement finds no tile among
  * them, is reported the same way from the battle's own record of the play.
  *
+ * <p>A champion's or hero's ability is used as its player taps the button of the king's champion
+ * slot that follows it ({@link #useAbility}): an ability command naming the slot's unit, given
+ * through the same player's commands and refused on the spot when the client's try of its gates
+ * refuses it, or while a command given for the slot still waits to run. A command the battle
+ * refuses when it runs is reported from the battle's own record of its run.
+ *
  * <p>A session against a model ({@link #withModel}) plays the environment's battle: one side is the
  * model's, which acts as each decision opens through the environment's own path ({@link
  * ModelOpponent}), and the screen plays the other through the same player's commands.
@@ -61,6 +70,9 @@ public final class BattleSession {
 
   /** The level every card is played at and every tower stands at: standard Ladder play. */
   public static final int LEVEL = Standard1v1Battle.DEFAULT_LEVEL;
+
+  /** How many champion slots a king has, each with its ability's button. */
+  public static final int ABILITY_SLOTS = 2;
 
   /** How many messages the session keeps, newest last. */
   public static final int MESSAGES_KEPT = 6;
@@ -93,7 +105,16 @@ public final class BattleSession {
   /** How many of the battle's plays have been read for refusals. */
   private int playsRead;
 
-  /** How many plays have been given, which numbers their names. */
+  /** How many of the battle's ability commands that ran have been read for refusals. */
+  private int abilityUsesRead;
+
+  /**
+   * Per side and champion slot, the name of the ability command given from the screen that has not
+   * run yet, or null for none.
+   */
+  private final String[][] abilityWaiting = new String[2][ABILITY_SLOTS];
+
+  /** How many plays and ability commands have been given, which numbers their names. */
   private int playsGiven;
 
   /** Why the battle stopped stepping, or null while it steps. */
@@ -502,6 +523,144 @@ public final class BattleSession {
     return true;
   }
 
+  /**
+   * One of a king's champion slots as its button shows it, or null when the slot follows no
+   * champion or there is no match.
+   *
+   * @param side 0 or 1
+   * @param slot the champion slot, 0 or 1
+   */
+  public BattleFrame.AbilityView abilityView(int side, int slot) {
+    ChampionController controller = championSlot(side, slot);
+    if (controller == null || controller.getChampion() == null) {
+      return null;
+    }
+    int deckIndex = controller.getDeckIndex();
+    return new BattleFrame.AbilityView(
+        deckIndex < 0
+            ? controller.getChampion().name()
+            : match().side(side).deck().get(deckIndex).name(),
+        abilityCost(controller),
+        controller.getState(),
+        controller.getCooldownMs(),
+        controller.getCharges(),
+        abilityWaiting[side][slot] != null,
+        abilityUnavailableReason(side, slot));
+  }
+
+  /**
+   * Why a champion slot's button cannot be tapped now, or null: the client's checks of {@link
+   * PlayerCommands#tryAbility} on the unit the slot names ({@link PlayerCommands#championUnit}),
+   * and the screen's own: a command given for the slot still waiting to run.
+   *
+   * @param side 0 or 1
+   * @param slot the champion slot, 0 or 1
+   */
+  public String abilityUnavailableReason(int side, int slot) {
+    if (match() == null) return "no champion slots in a battle without a match";
+    if (halted != null || isOver()) return "the battle has stopped (R resets)";
+    ChampionController controller = championSlot(side, slot);
+    if (controller == null || controller.getChampion() == null) {
+      return "champion slot " + (slot + 1) + " follows no champion";
+    }
+    String champion = controller.getChampion().name();
+    if (abilityWaiting[side][slot] != null) {
+      return champion + "'s ability is already used and waits to run";
+    }
+    Giving tried;
+    try {
+      CharacterEntity unit = commands.championUnit(side, slot);
+      if (unit == null) {
+        return champion + " is not on the field";
+      }
+      tried = commands.tryAbility(side, unit.name());
+    } catch (RuntimeException e) {
+      return champion + "'s ability refused, " + e.getMessage();
+    }
+    return tried.given() ? null : abilityReason(champion, tried.code());
+  }
+
+  /**
+   * Gives an ability command for a champion slot, as the side's player taps the slot's button:
+   * naming the unit the slot names, refused on the spot with a message, or queued to run {@link
+   * Standard1v1Battle#PLAY_DELAY_TICKS} ticks later.
+   *
+   * @param side 0 or 1
+   * @param slot the champion slot, 0 or 1
+   * @return true when the command was given
+   */
+  public boolean useAbility(int side, int slot) {
+    if (model != null && side == model.side()) {
+      say(side, ": played by the model");
+      return false;
+    }
+    String unavailable = abilityUnavailableReason(side, slot);
+    if (unavailable != null) {
+      say(side, ": " + unavailable);
+      return false;
+    }
+    String champion = championSlot(side, slot).getChampion().name();
+    String unit = commands.championUnit(side, slot).name();
+    String name = (side == 0 ? "b" : "r") + (playsGiven + 1);
+    Giving giving;
+    try {
+      giving =
+          model == null
+              ? commands.useAbility(side, unit, name)
+              // through the environment, which keeps the command as it keeps its seats' commands
+              : model.live().useAbility(side, slot, unit, name);
+    } catch (RuntimeException e) {
+      say(side, ": " + champion + "'s ability refused, " + e.getMessage());
+      return false;
+    }
+    if (!giving.given()) {
+      say(side, ": " + abilityReason(champion, giving.code()));
+      return false;
+    }
+    playsGiven++;
+    abilityWaiting[side][slot] = name;
+    playedCards.put(name, champion + "'s ability");
+    say(side, ": " + champion + "'s ability used, runs on tick " + giving.runTick());
+    return true;
+  }
+
+  /** A side's champion slot, or null for none or no match. */
+  private ChampionController championSlot(int side, int slot) {
+    if (match() == null || slot < 0 || slot >= ABILITY_SLOTS) {
+      return null;
+    }
+    return battle.getWorld().kingTower(side).championSlot(slot + 1);
+  }
+
+  /** The cost of the ability of the champion a slot follows, in whole elixir. */
+  private static int abilityCost(ChampionController controller) {
+    return controller.getChampion().ability() == null
+        ? 0
+        : controller.getChampion().ability().manaCost();
+  }
+
+  /** What the player is told of an ability command refused, by its gate's code. */
+  private static String abilityReason(String champion, int code) {
+    return champion + "'s ability refused, " + abilityRefusal(code);
+  }
+
+  /** What an ability gate's refusal code means. */
+  static String abilityRefusal(int code) {
+    return switch (code) {
+      case AbilityCommand.KING_GONE -> "the king is dead";
+      case AbilityCommand.NO_CHAMPION -> "no champion found";
+      case AbilityCommand.COOLDOWN -> "its cooldown runs";
+      case AbilityCommand.NO_CHARGES -> "no charges left";
+      case AbilityCommand.NOT_CHAMPION -> "not a champion's ability";
+      case AbilityCommand.PENDING -> "its ability is pending";
+      case AbilityCommand.CLONE -> "a clone cannot use it";
+      case AbilityCommand.FROZEN -> "it cannot act";
+      case AbilityCommand.DISABLED -> "its ability is disabled";
+      case AbilityCommand.ELIXIR -> "not enough elixir";
+      default -> "code " + hex(code);
+    };
+  }
+
   /** What the player is told of a giving the client or the screen refused. */
   private static String reason(MatchCard card, Giving giving) {
     return switch (giving.refusal()) {
@@ -578,8 +737,27 @@ public final class BattleSession {
     return lines;
   }
 
-  /** Reads the plays that ran since the last read and reports each one the battle refused. */
+  /**
+   * Reads the plays and ability commands that ran since the last read and reports each one the
+   * battle refused.
+   */
   private void readPlays() {
+    List<Standard1v1Battle.AbilityUse> uses = battle.getAbilityUses();
+    for (; abilityUsesRead < uses.size(); abilityUsesRead++) {
+      Standard1v1Battle.AbilityUse use = uses.get(abilityUsesRead);
+      String[] waiting = abilityWaiting[use.side()];
+      for (int slot = 0; slot < ABILITY_SLOTS; slot++) {
+        if (use.name().equals(waiting[slot])) {
+          waiting[slot] = null;
+        }
+      }
+      if (use.outcome().code() != AbilityCommand.OK) {
+        String what = playedCards.getOrDefault(use.name(), use.unit() + "'s ability");
+        say(
+            use.side(),
+            ": " + what + " refused as it ran, " + abilityRefusal(use.outcome().code()));
+      }
+    }
     List<Standard1v1Battle.Play> plays = battle.getPlays();
     for (; playsRead < plays.size(); playsRead++) {
       Standard1v1Battle.Play play = plays.get(playsRead);

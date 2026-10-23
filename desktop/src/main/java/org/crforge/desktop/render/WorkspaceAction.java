@@ -38,6 +38,10 @@ public enum WorkspaceAction {
   CARD_6,
   CARD_7,
   CARD_8,
+  ABILITY_1,
+  ABILITY_2,
+  ABILITY_3,
+  ABILITY_4,
   DEPLOY,
   INSPECT,
   REPLAYS,
@@ -74,6 +78,10 @@ public enum WorkspaceAction {
       case Input.Keys.NUM_6 -> CARD_6;
       case Input.Keys.NUM_7 -> CARD_7;
       case Input.Keys.NUM_8 -> CARD_8;
+      case Input.Keys.Q -> ABILITY_1;
+      case Input.Keys.W -> ABILITY_2;
+      case Input.Keys.NUM_9 -> ABILITY_3;
+      case Input.Keys.NUM_0 -> ABILITY_4;
       case Input.Keys.L -> REPLAYS;
       case Input.Keys.LEFT_BRACKET -> PREVIOUS_REPLAY;
       case Input.Keys.RIGHT_BRACKET -> NEXT_REPLAY;

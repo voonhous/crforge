@@ -1512,10 +1512,11 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * The unit a seat's ability action of a champion slot names: the unit of the play the slot
-   * follows whose row names the champion's ability, not a clone; null when the slot follows no
-   * play, or no play of the side that has run made such a unit (a champion an action spawned, which
-   * the player's commands cannot name). Found once per play the slot follows.
+   * The unit a seat's ability action of a champion slot names: the one the player's commands find
+   * for the slot ({@link PlayerCommands#championUnit}), the unit of the play the slot follows whose
+   * row names the champion's ability, not a clone; null when the slot follows no play, or no play
+   * of the side that has run made such a unit (a champion an action spawned, which the player's
+   * commands cannot name). Found once per play the slot follows.
    */
   private CharacterEntity findAbilityUnit(int seat, int slot) {
     ChampionController controller = standard.getWorld().kingTower(seat).championSlot(slot + 1);
@@ -1529,25 +1530,13 @@ public final class LadderEnv extends BufferedEnv {
         && abilityIndices[seat][slot] == index) {
       return abilityUnits[seat][slot];
     }
-    String ability = champion.ability().name();
-    for (Standard1v1Battle.Play play : standard.getPlays()) {
-      if (play.side() != seat) {
-        continue;
-      }
-      for (CharacterEntity unit : play.units()) {
-        AbilityData data = unit.getData().ability();
-        if (unit.getDeployIndex() == index
-            && !unit.isClone()
-            && data != null
-            && data.name().equals(ability)) {
-          abilityUnits[seat][slot] = unit;
-          abilityChampions[seat][slot] = champion;
-          abilityIndices[seat][slot] = index;
-          return unit;
-        }
-      }
+    CharacterEntity unit = commands.championUnit(seat, slot);
+    if (unit != null) {
+      abilityUnits[seat][slot] = unit;
+      abilityChampions[seat][slot] = champion;
+      abilityIndices[seat][slot] = index;
     }
-    return null;
+    return unit;
   }
 
   /**
