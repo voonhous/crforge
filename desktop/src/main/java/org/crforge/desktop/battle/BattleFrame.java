@@ -7,6 +7,7 @@
 package org.crforge.desktop.battle;
 
 import java.util.List;
+import org.crforge.core.battle.unit.ChampionController;
 
 /**
  * What the visualizer draws of a battle core session at one moment, read by {@link BattleAdapter}
@@ -48,9 +49,16 @@ public record BattleFrame(
    * @param crowns the crowns the side has taken
    * @param hand the four hand slots, null for an empty slot
    * @param next the card that refills the hand next, or null
+   * @param abilities the king's two champion slots, null for a slot that follows no champion
    */
   public record SideView(
-      int side, int elixir, int wholeElixir, int crowns, List<CardView> hand, CardView next) {}
+      int side,
+      int elixir,
+      int wholeElixir,
+      int crowns,
+      List<CardView> hand,
+      CardView next,
+      List<AbilityView> abilities) {}
 
   /**
    * One card of a hand.
@@ -63,4 +71,26 @@ public record BattleFrame(
    */
   public record CardView(
       String name, int cost, int level, boolean pending, String unavailableReason) {}
+
+  /**
+   * One champion slot of a king: the champion or hero it follows and its ability's button.
+   *
+   * @param champion the name of the deck card the slot's champion was found in, or the champion's
+   *     row name when it was found in none
+   * @param cost the ability's cost in whole elixir
+   * @param state the slot's button state as the game works it out, one of {@link
+   *     ChampionController}'s states
+   * @param cooldownMs the slot's cooldown left, in milliseconds
+   * @param charges the slot's charges left, or -1 when its uses are not counted
+   * @param pending whether an ability command given from the screen for the slot waits to run
+   * @param unavailableReason why the button cannot be tapped now, or null when it can
+   */
+  public record AbilityView(
+      String champion,
+      int cost,
+      int state,
+      int cooldownMs,
+      int charges,
+      boolean pending,
+      String unavailableReason) {}
 }

@@ -743,6 +743,40 @@ class PlayerCommandsTest {
     assertThat(battle.getAbilityUses()).isEmpty();
   }
 
+  @Test
+  @DisplayName(
+      "a champion slot names no unit until its champion's play has run, then the champion that"
+          + " play made, which an ability command naming it passes")
+  void aChampionSlotNamesTheUnitItsPlayMade() {
+    Standard1v1Battle battle = dealt(QUEEN_SKELETONS, "ArcherQueen");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, OPEN);
+    while (match.side(0).wholeElixir() < Shipped.cost("ArcherQueen")) {
+      battle.getBattle().step();
+    }
+    assertThat(commands.championUnit(0, 0)).as("before any play").isNull();
+    Giving queen = commands.playCard(0, slot(match, "ArcherQueen"), LEVEL, X, 4000, "q");
+    stepTo(battle, queen.runTick());
+    assertThat(commands.championUnit(0, 0)).as("before the play runs").isNull();
+    battle.getBattle().step();
+
+    CharacterEntity unit = commands.championUnit(0, 0);
+
+    assertThat(unit).isNotNull();
+    assertThat(unit.name()).isEqualTo("q_0");
+    assertThat(unit.getData().ability().champion()).isTrue();
+    assertThat(commands.championUnit(0, 1)).as("the second slot follows nothing").isNull();
+    assertThat(commands.championUnit(1, 0)).as("side 1 played no champion").isNull();
+    int abilityCost = unit.getData().ability().manaCost();
+    int deployed =
+        queen.runTick() + Shipped.number(Shipped.unitRow("ArcherQueen"), "DeployTime") / 50;
+    while (battle.getBattle().getTick() <= deployed || match.side(0).wholeElixir() < abilityCost) {
+      battle.getBattle().step();
+    }
+    assertThat(commands.useAbility(0, unit.name(), "a").given()).isTrue();
+  }
+
   /** A Ladder battle, side 0 shuffled with a word. */
   private static Standard1v1Battle ladder(List<String> deck0, List<String> deck1, int word) {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());

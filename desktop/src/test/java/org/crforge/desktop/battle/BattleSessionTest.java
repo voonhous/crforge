@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.crforge.core.battle.GameData;
@@ -23,6 +24,7 @@ import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileData;
+import org.crforge.core.battle.unit.AbilityCommand;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,9 @@ class BattleSessionTest {
   /** A Knight and an Archer, then the Mirrors the shuffle holds back for the refills. */
   private static final List<String> MIRRORS =
       List.of("Knight", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
+
+  /** A deck of Knights only. */
+  private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   /** A deck of Zaps only. */
   private static final List<String> ZAPS = Collections.nCopies(8, "Zap");
@@ -404,6 +409,118 @@ class BattleSessionTest {
     assertThat(session.getBattle().getPlays().get(0).variant()).isNotNull();
     assertThat(session.getBattle().getPlays().get(0).tick())
         .isEqualTo(given + Standard1v1Battle.PLAY_DELAY_TICKS);
+  }
+
+  @Test
+  @DisplayName(
+      "a champion's ability is used from its king's champion slot: refused while the champion"
+          + " is not on the field, given once it is deployed and the elixir covers it, queued"
+          + " until it runs")
+  void aChampionsAbilityIsUsedFromItsSlot() {
+    BattleSession session =
+        open(BattleSession.ladder(GameData.tables(), withSkeletons("ArcherQueen"), KNIGHTS));
+    // The slot follows the deck's champion from the start, before it is played.
+    assertThat(session.abilityView(0, 0).champion()).isEqualTo("ArcherQueen");
+    assertThat(session.abilityUnavailableReason(0, 0)).contains("not on the field");
+    assertThat(session.abilityView(0, 1)).isNull();
+    assertThat(session.abilityUnavailableReason(0, 1)).contains("follows no champion");
+    assertThat(session.useAbility(0, 0)).isFalse();
+    assertThat(session.messages()).last().asString().contains("not on the field");
+
+    deployAndAfford(session, 0);
+
+    BattleFrame.AbilityView view = BattleAdapter.frame(session).sides().get(0).abilities().get(0);
+    assertThat(view.champion()).isEqualTo("ArcherQueen");
+    assertThat(view.unavailableReason()).isNull();
+    assertThat(view.pending()).isFalse();
+    assertThat(BattleAdapter.frame(session).sides().get(0).abilities().get(1)).isNull();
+    assertAbilityRuns(session, 0, 0);
+  }
+
+  @Test
+  @DisplayName(
+      "a hero's ability is used from the champion slot its hero play fills, as a champion's is")
+  void aHerosAbilityIsUsedFromItsSlot() {
+    int[] heroSlot = new int[8];
+    heroSlot[0] = MatchSide.HERO_SLOT;
+    BattleSession session =
+        open(
+            BattleSession.ladder(
+                GameData.tables(), withSkeletons("Valkyrie"), heroSlot, KNIGHTS, new int[8]));
+
+    deployAndAfford(session, 0);
+
+    assertThat(session.abilityView(0, 0)).isNotNull();
+    assertAbilityRuns(session, 0, 0);
+  }
+
+  @Test
+  @DisplayName("a battle with no match started on it has no champion slots, and a tap is refused")
+  void aBattleWithoutAMatchHasNoChampionSlots() {
+    BattleSession session = BattleSession.of(new Standard1v1Battle(GameData.tables()));
+
+    assertThat(session.abilityView(0, 0)).isNull();
+    assertThat(session.useAbility(0, 0)).isFalse();
+    assertThat(session.messages()).last().asString().contains("without a match");
+  }
+
+  /** A card then seven Skeletons, so the card is the deck's only champion or hero. */
+  private static List<String> withSkeletons(String card) {
+    List<String> deck = new ArrayList<>(Collections.nCopies(8, "Skeletons"));
+    deck.set(0, card);
+    return deck;
+  }
+
+  /**
+   * Plays side 0's deck card 0 at a point of its own half, cycling the hand with the other cards
+   * until it is dealt, then steps until the champion slot it fills offers its ability.
+   */
+  private static void deployAndAfford(BattleSession session, int slot) {
+    boolean played = false;
+    for (int step = 0; step < 2000 && !played; step++) {
+      int[] hand = session.match().side(0).getHand().slots();
+      int dealt = Arrays.stream(hand).boxed().toList().indexOf(0);
+      for (int hs = 0; hs < 4 && !played; hs++) {
+        // Once dealt, the card waits for its elixir; until then the others cycle the hand.
+        if ((dealt < 0 || hs == dealt)
+            && hand[hs] != Hand.EMPTY
+            && session.cardUnavailableReason(0, hs) == null) {
+          boolean given = session.play(0, hs, 3500, hs == dealt ? 4000 : 8500);
+          played = hs == dealt && given;
+        }
+      }
+      assertThat(session.step()).isTrue();
+    }
+    assertThat(played).as("deck card 0 played: %s", session.messages()).isTrue();
+    for (int step = 0; step < 1000 && session.abilityUnavailableReason(0, slot) != null; step++) {
+      assertThat(session.step()).isTrue();
+    }
+    assertThat(session.abilityUnavailableReason(0, slot)).isNull();
+  }
+
+  /**
+   * Taps a side's champion slot whose ability is offered now: given, refused again while it waits,
+   * run with the gates passed {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks later, and then no
+   * longer waiting.
+   */
+  private static void assertAbilityRuns(BattleSession session, int side, int slot) {
+    int given = session.tick();
+    assertThat(session.useAbility(side, slot)).as("%s", session.messages()).isTrue();
+    assertThat(session.messages()).last().asString().contains("ability used");
+    assertThat(session.abilityView(side, slot).pending()).isTrue();
+    assertThat(session.abilityUnavailableReason(side, slot)).contains("waits to run");
+    assertThat(session.useAbility(side, slot)).isFalse();
+
+    for (int i = 0; i <= Standard1v1Battle.PLAY_DELAY_TICKS + 1; i++) {
+      assertThat(session.step()).isTrue();
+    }
+
+    List<Standard1v1Battle.AbilityUse> uses = session.getBattle().getAbilityUses();
+    assertThat(uses).hasSize(1);
+    assertThat(uses.get(0).side()).isEqualTo(side);
+    assertThat(uses.get(0).tick()).isEqualTo(given + Standard1v1Battle.PLAY_DELAY_TICKS);
+    assertThat(uses.get(0).outcome().code()).isEqualTo(AbilityCommand.OK);
+    assertThat(session.abilityView(side, slot).pending()).isFalse();
   }
 
   /** A Ladder battle in which both decks are eight copies of one card. */

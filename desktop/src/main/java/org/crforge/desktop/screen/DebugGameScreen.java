@@ -64,8 +64,11 @@ import org.crforge.desktop.render.WorkspaceAction;
  *   <li>T: Hide or show the text annotations (status column, messages)
  *   <li>1-4: Select a card from the blue player's hand
  *   <li>5-8: Select a card from the red player's hand
+ *   <li>Q/W: Use the ability of the blue king's first/second champion slot (a champion or hero)
+ *   <li>9/0: Use the ability of the red king's first/second champion slot
  *   <li>+/-: Speed up/slow down simulation
- *   <li>Click: Select a card from a hand, or play the selected one at the tile
+ *   <li>Click: Select a card from a hand, or play the selected one at the tile; a champion slot's
+ *       button uses its ability
  *   <li>Right click: Deselect
  * </ul>
  */
@@ -131,7 +134,8 @@ public class DebugGameScreen implements Screen {
     this.session = first;
     setupInput();
     workspace =
-        new BattleWorkspace(camera, renderer, view, false, this::handleAction, this::selectCard);
+        new BattleWorkspace(
+            camera, renderer, view, false, this::handleAction, this::selectCard, this::useAbility);
     workspace.configureVersions(
         versions.versions(),
         versions.current().version(),
@@ -221,6 +225,12 @@ public class DebugGameScreen implements Screen {
       case CARD_6 -> selectCard(1, 1);
       case CARD_7 -> selectCard(1, 2);
       case CARD_8 -> selectCard(1, 3);
+
+      // Use a champion slot's ability: blue's first and second, then red's
+      case ABILITY_1 -> useAbility(0, 0);
+      case ABILITY_2 -> useAbility(0, 1);
+      case ABILITY_3 -> useAbility(1, 0);
+      case ABILITY_4 -> useAbility(1, 1);
 
       default -> {
         return false;
@@ -328,6 +338,12 @@ public class DebugGameScreen implements Screen {
         sideName(side),
         card.name(),
         card.cost());
+  }
+
+  /** Taps a champion slot's ability button, as the side's player does; logs what came of it. */
+  private void useAbility(int side, int slot) {
+    session.useAbility(side, slot);
+    logLatestMessage();
   }
 
   private void deselect() {
@@ -568,6 +584,8 @@ public class DebugGameScreen implements Screen {
         Cards:
           1-4   - Select blue card
           5-8   - Select red card
+          Q/W   - Use blue champion slot 1/2 ability
+          9/0   - Use red champion slot 1/2 ability
           Click - Select a card, or play the selected one
           Right click - Deselect
           I     - Toggle unit inspection

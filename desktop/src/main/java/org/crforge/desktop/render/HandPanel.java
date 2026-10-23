@@ -16,10 +16,20 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import org.crforge.core.battle.unit.ChampionController;
 import org.crforge.desktop.battle.BattleFrame;
 
-/** One side's compact hand; availability comes from the session snapshot. */
+/**
+ * One side's compact hand and its king's two champion slots, each slot's ability a button;
+ * availability comes from the session snapshot.
+ */
 final class HandPanel {
+  /** The height of a champion slot's button: two lines, the cost and state, then the champion. */
+  private static final int ABILITY_HEIGHT = 46;
+
+  /** The height of a champion slot's button in a small window: one line. */
+  private static final int ABILITY_HEIGHT_COMPACT = 26;
+
   private final Map<String, String> names = new HashMap<>();
 
   private String displayName(String name) {
@@ -33,7 +43,15 @@ final class HandPanel {
   private final Label[] costs = new Label[4];
   private final Label[] shortcuts = new Label[4];
   private final Label[] cardStates = new Label[4];
+  private final TextButton[] abilities = new TextButton[2];
+  private final Label[] abilityCosts = new Label[2];
+  private final Label[] abilityStates = new Label[2];
+
+  /** Whether the champion slots' row is shown: hidden while neither slot follows a champion. */
+  private boolean abilitiesShown = true;
+
   private final ElixirMeter elixir;
+  private final Table meter;
   private final Label elixirValue;
   private int side;
   private boolean compact;
@@ -45,7 +63,8 @@ final class HandPanel {
       WorkspaceTheme theme,
       ViewState view,
       boolean replay,
-      BiConsumer<Integer, Integer> selectCard) {
+      BiConsumer<Integer, Integer> selectCard,
+      BiConsumer<Integer, Integer> useAbility) {
     this.view = view;
     this.replay = replay;
     title = new Label("", theme.skin, "heading");
@@ -56,7 +75,7 @@ final class HandPanel {
     table.pad(8);
     title.setWrap(true);
     table.add(title).colspan(2).growX().left().padBottom(6).row();
-    Table meter = new Table();
+    meter = new Table();
     meter.add(elixir).growX().height(6).padRight(8);
     meter.add(elixirValue).minWidth(54);
     table.add(meter).colspan(2).growX().padBottom(10).row();
@@ -88,6 +107,35 @@ final class HandPanel {
           .padBottom(6);
       if (slot % 2 == 1) table.row();
     }
+    for (int slot = 0; slot < abilities.length; slot++) {
+      final int index = slot;
+      abilities[slot] = theme.button("", () -> useAbility.accept(side, index));
+      TextButton ability = abilities[slot];
+      ability.clearChildren();
+      ability.pad(3, 7, 3, 7);
+      // The cost, the champion's card and the button's state (arrangeAbilities); the keys are
+      // named in the notice under the arena.
+      ability.getLabel().setWrap(false);
+      ability.getLabel().setEllipsis(true);
+      ability.getLabel().setAlignment(Align.left);
+      abilityCosts[slot] = theme.label("");
+      abilityCosts[slot].setColor(Color.valueOf("d6adffff"));
+      abilityStates[slot] = theme.label("");
+      abilityStates[slot].setColor(MUTED);
+      if (replay) ability.setTouchable(Touchable.disabled);
+      // No width of their own: the name shortens to the width the cards give the column.
+      table
+          .add(ability)
+          .prefWidth(0)
+          .minWidth(0)
+          .growX()
+          .uniformX()
+          .height(ABILITY_HEIGHT)
+          .padRight(slot % 2 == 0 ? 6 : 0)
+          .padBottom(6);
+    }
+    arrangeAbilities();
+    table.row();
     next.setColor(MUTED);
     table.add(next).colspan(2).growX().minHeight(22).left();
   }
@@ -101,6 +149,11 @@ final class HandPanel {
       cardStates[i].setVisible(!compact);
       cards[i].invalidateHierarchy();
     }
+    // The champion slots' row fits a small window by the header's gaps.
+    table.getCell(title).padBottom(compact ? 3 : 6);
+    table.getCell(meter).padBottom(compact ? 5 : 10);
+    arrangeAbilities();
+    sizeAbilities();
     table.invalidateHierarchy();
   }
 
@@ -146,6 +199,30 @@ final class HandPanel {
       cardStates[slot].setColor(
           card != null && card.pending() ? Color.GOLD : button.isChecked() ? ACCENT : MUTED);
     }
+    boolean anyAbility = false;
+    for (int slot = 0; slot < abilities.length; slot++) {
+      BattleFrame.AbilityView ability =
+          player == null || player.abilities() == null ? null : player.abilities().get(slot);
+      anyAbility |= ability != null;
+      TextButton button = abilities[slot];
+      button.setDisabled(ability == null || ability.unavailableReason() != null);
+      if (ability == null) {
+        abilityCosts[slot].setText("");
+        abilityStates[slot].setText("");
+        button.setText("No champion");
+        continue;
+      }
+      abilityCosts[slot].setText(
+          ability.cost() + (ability.charges() >= 0 ? " x" + ability.charges() : ""));
+      abilityStates[slot].setText(abilityState(ability, compact));
+      abilityStates[slot].setColor(
+          ability.pending() ? Color.GOLD : ability.unavailableReason() == null ? ACCENT : MUTED);
+      button.setText(displayName(ability.champion()));
+    }
+    if (anyAbility != abilitiesShown) {
+      abilitiesShown = anyAbility;
+      sizeAbilities();
+    }
     next.setText(
         player == null || player.next() == null
             ? ""
@@ -153,5 +230,68 @@ final class HandPanel {
                 + displayName(player.next().name())
                 + " "
                 + BattleRenderer.levelText(player.next().level()));
+  }
+
+  /**
+   * Lays out each champion slot's button: in a small window one line, the cost, the champion and a
+   * short state; else the cost and the state over the champion.
+   */
+  private void arrangeAbilities() {
+    for (int slot = 0; slot < abilities.length; slot++) {
+      TextButton ability = abilities[slot];
+      ability.clearChildren();
+      if (compact) {
+        ability.add(abilityCosts[slot]).left().padRight(5);
+        ability.add(ability.getLabel()).minWidth(0).growX().left();
+        ability.add(abilityStates[slot]).right().padLeft(5);
+      } else {
+        ability.add(abilityCosts[slot]).left();
+        ability.add(abilityStates[slot]).right().expandX().row();
+        ability.add(ability.getLabel()).colspan(2).minWidth(0).growX().left();
+      }
+    }
+  }
+
+  /** Sizes the champion slots' row: hidden while neither slot follows a champion. */
+  private void sizeAbilities() {
+    for (TextButton ability : abilities) {
+      ability.setVisible(abilitiesShown);
+      table
+          .getCell(ability)
+          .height(abilitiesShown ? (compact ? ABILITY_HEIGHT_COMPACT : ABILITY_HEIGHT) : 0)
+          .padBottom(abilitiesShown ? 6 : 0);
+      ability.invalidateHierarchy();
+    }
+    table.invalidateHierarchy();
+  }
+
+  /**
+   * The state a champion slot's button shows: queued while a command given for it waits to run,
+   * else the button state the game works out for the slot, the cooldown left in seconds; in a small
+   * window only a short one.
+   */
+  private static String abilityState(BattleFrame.AbilityView ability, boolean compact) {
+    if (ability.pending()) return "Queued";
+    if (compact) {
+      // One line leaves room for a short state only: the disabled button tells the rest.
+      if (ability.unavailableReason() == null) return "Ready";
+      return ability.state() == ChampionController.ON_COOLDOWN
+          ? String.format(Locale.ROOT, "%.1fs", ability.cooldownMs() / 1000f)
+          : "";
+    }
+    return switch (ability.state()) {
+      case ChampionController.READY ->
+          ability.unavailableReason() == null ? "Ready" : "Unavailable";
+      case ChampionController.ABSENT -> "Not on field";
+      case ChampionController.DEPLOYING -> "Deploying";
+      case ChampionController.ON_COOLDOWN ->
+          String.format(Locale.ROOT, "%.1f s", ability.cooldownMs() / 1000f);
+      case ChampionController.NOT_ENOUGH_ELIXIR -> "Elixir";
+      case ChampionController.CASTING -> "Casting";
+      case ChampionController.PENDING -> "Pending";
+      case ChampionController.ALL_CHARGES_CONSUMED -> "Used";
+      case ChampionController.DISABLED -> "Disabled";
+      default -> ability.unavailableReason() == null ? "Ready" : "Unavailable";
+    };
   }
 }

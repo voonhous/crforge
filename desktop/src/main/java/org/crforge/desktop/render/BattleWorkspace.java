@@ -109,7 +109,8 @@ public final class BattleWorkspace implements Disposable {
       ViewState view,
       boolean replay,
       Consumer<WorkspaceAction> command,
-      BiConsumer<Integer, Integer> selectCard) {
+      BiConsumer<Integer, Integer> selectCard,
+      BiConsumer<Integer, Integer> useAbility) {
     this.renderer = renderer;
     this.view = view;
     this.replay = replay;
@@ -229,8 +230,8 @@ public final class BattleWorkspace implements Disposable {
     root.add(summary).left().padBottom(8).row();
 
     Table content = new Table();
-    topHand = new HandPanel(theme, view, replay, selectCard);
-    bottomHand = new HandPanel(theme, view, replay, selectCard);
+    topHand = new HandPanel(theme, view, replay, selectCard, useAbility);
+    bottomHand = new HandPanel(theme, view, replay, selectCard, useAbility);
     handRail.add(topHand.table).growX().padBottom(10).row();
     Table logHeader = new Table();
     Label logTitle = label("RECENT EVENTS");
@@ -676,7 +677,8 @@ public final class BattleWorkspace implements Disposable {
                     ? "NO MATCH: R starts a Ladder battle."
                     : inspecting
                         ? "INSPECT: click a unit to pin its details."
-                        : "DEPLOY: select a card [1-8], then click the arena. Right click cancels.");
+                        : "DEPLOY: select a card [1-8], then click the arena. Right click"
+                            + " cancels. Abilities: blue [Q W], red [9 0].");
     notice.setColor(frame.halted() != null ? Color.SALMON : ACCENT);
     String text = String.join("\n", frame.messages());
     if (!text.equals(lastEvents)) {

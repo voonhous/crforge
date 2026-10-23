@@ -396,6 +396,41 @@ public final class PlayerCommands {
     return tryAbility(side, unit, "an ability command naming " + unit);
   }
 
+  /**
+   * The unit an ability command for one of a side's champion slots names now, as the player's
+   * button for the slot names it: the unit of the play the slot follows (its deploy count) whose
+   * row names the champion's ability, not a clone, found among the side's plays that have run.
+   *
+   * @param side the commanding side
+   * @param slot the champion slot, 0 for the king's first, 1 for its second
+   * @return the unit, or null when the slot follows no play, or no play of the side that has run
+   *     made such a unit (a champion an action spawned, which the player's commands cannot name)
+   */
+  public CharacterEntity championUnit(int side, int slot) {
+    ChampionController controller = battle.getWorld().kingTower(side).championSlot(slot + 1);
+    UnitData champion = controller == null ? null : controller.getChampion();
+    int index = controller == null ? -1 : controller.getDeployIndex();
+    if (champion == null || champion.ability() == null || index < 0) {
+      return null;
+    }
+    String ability = champion.ability().name();
+    for (Standard1v1Battle.Play play : battle.getPlays()) {
+      if (play.side() != side) {
+        continue;
+      }
+      for (CharacterEntity unit : play.units()) {
+        AbilityData data = unit.getData().ability();
+        if (unit.getDeployIndex() == index
+            && !unit.isClone()
+            && data != null
+            && data.name().equals(ability)) {
+          return unit;
+        }
+      }
+    }
+    return null;
+  }
+
   /** The client's try of an ability command: the run's gates, the promised costs set aside. */
   private Giving tryAbility(int side, String unit, String name) {
     int givenTick = stamp(battle.getBattle().getTick());

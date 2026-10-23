@@ -16,8 +16,8 @@ import org.crforge.core.battle.match.MatchSide;
  * <p>The blue deck marks an evolution slot and two hero slots, so an evolved form and two hero
  * forms are on show; the red deck is the one the visualizer has always shown and marks no slot, so
  * every red card is played in its basic form. Neither holds the Mirror, a variant card or a
- * champion card, and every card is at {@link BattleSession#LEVEL}. The screen gives no ability
- * command, so a hero's ability is never tapped.
+ * champion card, and every card is at {@link BattleSession#LEVEL}. A hero's ability is used from
+ * its king's champion slot button ({@link BattleSession#useAbility}).
  */
 public final class BattleDecks {
 
