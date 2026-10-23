@@ -59,6 +59,7 @@ import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
+import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
@@ -851,10 +852,12 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * A new environment at this episode's decision: a deep copy of this one ({@link DeepCopy}), its
    * battle, match and everything the environment keeps, sharing only the game tables, the
-   * vocabulary and the configuration. The battle core is deterministic, so with no seat named the
-   * fork is the same battle: the same observations and masks, and stepped on with the same actions,
-   * the same battle to its end. Nothing of the episode is played again: a fork costs the copy of
-   * the battle as it stands, whatever its age.
+   * vocabulary, the configuration and the published rarity rows ({@link RarityTable}): the rows a
+   * battle builds hold those constants, and the battle compares rarities by identity, so a row
+   * built after the fork must find the rarity of a row copied with it the same. The battle core is
+   * deterministic, so with no seat named the fork is the same battle: the same observations and
+   * masks, and stepped on with the same actions, the same battle to its end. Nothing of the episode
+   * is played again: a fork costs the copy of the battle as it stands, whatever its age.
    *
    * <p>With a seat named, the fork is the battle as that seat's player knows it: the enemy's plays
    * and ability commands still waiting to run, which the seat's observation does not show, are
@@ -880,6 +883,7 @@ public final class LadderEnv extends BufferedEnv {
                 object == vocabulary
                     || object == config
                     || object instanceof Buffer
+                    || object instanceof RarityTable
                     || data.contains(object));
     fork.bind(
         IntBuffer.allocate(2 * Schema.SEAT_INTS),

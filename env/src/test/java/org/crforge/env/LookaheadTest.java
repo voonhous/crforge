@@ -176,6 +176,65 @@ class LookaheadTest {
     }
   }
 
+  /** The Wizard first, in the hero slot: its hero form's ability swaps it onto a flying row. */
+  private static final List<String> WIZARD_HERO =
+      List.of("Wizard", "Knight", "Archer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap");
+
+  /**
+   * Seat 0's ability action when one is open, else the Wizard (deck index 0) on a random open tile
+   * when it is in the hand, else a random open play as {@link #randomAction}, which cycles the
+   * hand.
+   */
+  private static int heroAndAbility(LadderEnv env, SplittableRandom random) {
+    for (int a = Schema.FIRST_ABILITY; a < Schema.ACTIONS; a++) {
+      if (env.open(0, a)) {
+        return a;
+      }
+    }
+    int[] slots = env.battle().getMatch().side(0).getHand().slots();
+    for (int h = 0; h < slots.length; h++) {
+      if (slots[h] == 0) {
+        List<Integer> open = new ArrayList<>();
+        for (int t = 0; t < Schema.TILES; t++) {
+          if (env.open(0, 1 + h * Schema.TILES + t)) {
+            open.add(1 + h * Schema.TILES + t);
+          }
+        }
+        return open.isEmpty() ? Schema.WAIT : open.get(random.nextInt(open.size()));
+      }
+    }
+    return randomAction(env, 0, random);
+  }
+
+  @Test
+  void aCopiedForkSwapsAHerosRowAsTheBattleDoes() {
+    int[] heroFirst = {Schema.SLOT_HERO, 0, 0, 0, 0, 0, 0, 0};
+    for (int at : new int[] {1, 200}) {
+      try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+        env.reset(new int[] {300}, WIZARD_HERO, OTHER, heroFirst, new int[Schema.DECK_SIZE]);
+        LadderEnv original = ladderEnv(env, 0);
+        SplittableRandom random = new SplittableRandom(11);
+        for (int d = 0; d < at; d++) {
+          original.step(heroAndAbility(original, random), randomAction(original, 1, random));
+        }
+        LadderEnv fork = original.fork(-1);
+        int abilities = 0;
+        while (!original.done()) {
+          int action0 = heroAndAbility(original, random);
+          int action1 = randomAction(original, 1, random);
+          abilities += action0 >= Schema.FIRST_ABILITY ? 1 : 0;
+          original.step(action0, action1);
+          fork.step(action0, action1);
+          assertThat(fork.fault()).as("the fork's fault after %d", at).isNull();
+          assertThat(written(fork)).isEqualTo(written(original));
+        }
+        assertThat(original.fault()).isNull();
+        // the hero was played and its ability used, its row swapped, in the fork
+        assertThat(abilities).as("abilities used after the fork at %d", at).isPositive();
+      }
+    }
+  }
+
   @Test
   void aSeatsCopiedForkSeesWhatItsReplayedForkSees() {
     try (VectorEnv env = ladder(1, 1)) {
