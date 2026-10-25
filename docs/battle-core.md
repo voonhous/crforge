@@ -1375,6 +1375,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A clone's run started by a cause, a character or a tower, whose own holder lists a run of the same singleton row copies the first such run, its phase and its counter. It runs at the height the clone's own row flies at, never a hovering unit's hold, and schedules no action once on the ground. That is the run a Clone's creator starts on the clone of a held unit (see the Clone below).
 
+  Any other clone's run starts as any unit's does, whatever the clone's height or layer. Vines' cause is its area effect and the evolved Hunter's net's its projectile, neither a character, so a clone they reach is held as any unit is: one on the ground held where it is, one in the air (a cloned Baby Dragon or Skeleton Balloon) pulled down, held and let climb back, a hovering one held from the start. A clone dies at its first damage, so Vines' snare kills a clone it holds about 20 steps into its hold, before any climb.
+
   A clone has the row's action once on the ground, at the start or at the end of its descent, only when the row lets a clone trigger its landing actions (CloneTriggersLandingActions, true unless the row says not). The evolved Royal Hog's fall says not.
 
   The snare stops movement, attacks and spawns for 2000 ms and deals 153 twice at level 11, 38 on a crown tower, which drops its target and shoots nothing until the snare goes.
@@ -1384,7 +1386,6 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - a selector that waits, pauses, runs actions on its owner, scores by maximum or distance or has a shape other than a circle
   - an air-to-ground row with landing actions or a path reset at landing
   - a held rider
-  - a held clone at a flying height or hovering whose run is not such a copy
   - a clone's action once on the ground when its row lets a clone trigger it, which no row does
   - a hovering unit a force tag already holds as its run starts, which the run would hold as a plain ground unit
 

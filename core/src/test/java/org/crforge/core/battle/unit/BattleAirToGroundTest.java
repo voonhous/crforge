@@ -33,10 +33,11 @@ import org.junit.jupiter.api.io.TempDir;
  * Vines' air-to-ground run where the reference runs do not reach: an air unit that lives through
  * its hold, whose climb ends in the path reset; the ground tag a held ground unit carries, and none
  * without the row's flag; a Goblin Giant held like any ground unit while its riders are left alone;
- * a hovering unit, held from the start for the whole run; and a clone on the ground, as the
- * Skeleton King's graveyard makes each skeleton, held like any other ground unit, while a clone in
- * the air and one whose run's cause runs the row too are refused; and an evolved Royal Hog Vines
- * already holds on the ground, whose fall starts held and lands it at once.
+ * a hovering unit, held from the start for the whole run; a clone on the ground, as the Skeleton
+ * King's graveyard makes each skeleton, held like any other ground unit, a clone in the air pulled
+ * down like any other air unit and a hovering clone held like any other hovering unit, while one
+ * whose run's cause runs the row too copies that run; and an evolved Royal Hog Vines already holds
+ * on the ground, whose fall starts held and lands it at once.
  *
  * <p>Each scene writes the timings it counts on into Vines' rows: its area effect hits 900 ms after
  * it is placed, and the air-to-ground run lasts 2000 ms, its pull down and its climb 50 ms each.
@@ -360,16 +361,51 @@ class BattleAirToGroundTest {
   }
 
   @Test
-  @DisplayName("a run on a clone at a flying height, which no reference holds, is refused")
-  void anAirCloneIsRefused(@TempDir Path folder) throws IOException {
+  @DisplayName(
+      "a clone at a flying height, its run caused by an area effect, is pulled down in two steps"
+          + " and is a ground unit at height 0 from the next pre-hooks, as any air unit is")
+  void anAirCloneIsPulledDown(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(vines(folder, fields -> {}));
     CharacterEntity dragon =
         scene.match.deploy(0, GameData.unit("BabyDragon"), LEVEL, 1, X, Y, "cloned dragon");
     dragon.markClone(null);
+    int height = dragon.getData().flyingHeight();
     scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
-    assertThatThrownBy(() -> scene.steps(19))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("holds the clone cloned dragon at a flying height or hovering");
+    scene.steps(21);
+    assertThat(scene.held).containsExactly(dragon.name());
+    assertThat(scene.runs)
+        .containsExactly(
+            "18 start phase 1 counter 50 height " + height,
+            "20 phase 1 2 counter 0 1900 done false pushes [" + -height + "]");
+    scene.steps(1);
+    assertThat(dragon.getTargetView().z()).as("its live height").isZero();
+    scene.steps(1);
+    assertThat(scene.forcedOntoTheGround(dragon)).isTrue();
+    assertThat(dragon.getView().isAir()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a hovering clone, its run caused by an area effect, is held from its run's start for the"
+          + " whole duration, as any hovering unit is")
+  void aHoveringCloneIsHeld(@TempDir Path folder) throws IOException {
+    vines(folder, fields -> {});
+    // A Knight written as a hovering row: on the ground (no flying height), hovering.
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("Hovering", true));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity knight =
+        scene.match.deploy(
+            0, new BattleRecords(tables).unit("Knight"), LEVEL, 1, X, Y, "hovering clone");
+    knight.markClone(null);
+    scene.match.placeAreaEffect(0, "Vines_AeO", LEVEL, 0, X, Y, "vines");
+    scene.steps(20);
+    assertThat(scene.held).containsExactly(knight.name());
+    assertThat(scene.runs).containsExactly("18 start phase 2 counter 2000 height -1");
+    assertThat(scene.forcedOntoTheGround(knight)).isFalse();
+    scene.steps(1);
+    assertThat(scene.forcedOntoTheGround(knight)).isTrue();
   }
 
   @Test

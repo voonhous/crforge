@@ -1924,11 +1924,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * the clone's row flies at, with no action once on the ground scheduled. That is the run the
    * clone's creator starts again on the clone of a unit an air-to-ground action holds, the unit the
    * cause, so the clone is held as its unit is and let go with it. Any other clone starts as any
-   * unit does: one on the ground, such as each skeleton the Skeleton King's graveyard makes, is
-   * held like any other ground unit, and has the action once on the ground scheduled only when the
-   * row lets a clone trigger its landing actions. A clone started at a flying height or hovering
-   * outside the copy, a unit that rides another, and a hovering row a force tag already holds,
-   * which the run would take for a plain ground unit, are refused: no reference holds one.
+   * unit does, whatever its height or layer: one on the ground, such as each skeleton the Skeleton
+   * King's graveyard makes, is held like any other ground unit, one in the air, such as a cloned
+   * Baby Dragon Vines reaches, is pulled down, and a hovering one is held from the start; it has
+   * the action once on the ground scheduled only when the row lets a clone trigger its landing
+   * actions. A unit that rides another and a hovering row a force tag already holds, which the run
+   * would take for a plain ground unit, are refused: no reference holds one.
    *
    * @param action the row
    * @param phase the pending pass it starts in
@@ -1966,15 +1967,6 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
-    if (this instanceof CharacterEntity unit
-        && unit.isClone()
-        && run.phase() != AirToGroundRun.GROUND) {
-      throw new UnsupportedOperationException(
-          action.name()
-              + " holds the clone "
-              + name()
-              + " at a flying height or hovering, which no reference holds");
-    }
     world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
     if (run.startsOnTheGround()
         && action.getOnGround() != null
