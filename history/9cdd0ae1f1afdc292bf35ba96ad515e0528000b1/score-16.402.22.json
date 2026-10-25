@@ -1,0 +1,17 @@
+{
+  "content_version": "16.402.22",
+  "battles": 10000,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 9998,
+    "mismatch": 1,
+    "unsupported": 1
+  },
+  "first_failures": {
+    "mismatch $.entities[].state": 1,
+    "unsupported: changing the level of ChefTowerKing_0_0, a tower, is not established": 1
+  },
+  "set": "4538b689e55ed6ec",
+  "commit": "9cdd0ae1f1afdc292bf35ba96ad515e0528000b1"
+}
