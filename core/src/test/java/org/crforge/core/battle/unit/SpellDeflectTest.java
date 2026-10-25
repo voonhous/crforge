@@ -76,11 +76,23 @@ class SpellDeflectTest {
 
     final GameTables tables = GameData.tables();
     final BattleRecords records = new BattleRecords(tables);
-    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    final Standard1v1Battle match;
     final List<Deflection> deflections = new ArrayList<>();
     int ticks;
 
     Scene() {
+      this(Standard1v1Battle.PRINCESS_TOWERS);
+    }
+
+    /** A battle whose top side's towers are placed from the given spawn group, all passive. */
+    Scene(String topTowers) {
+      match =
+          new Standard1v1Battle(
+              tables,
+              List.of(
+                  new Standard1v1Battle.Towers(Standard1v1Battle.PRINCESS_TOWERS, LEVEL, LEVEL),
+                  new Standard1v1Battle.Towers(topTowers, LEVEL, LEVEL)),
+              false);
       match
           .getWorld()
           .addObserver(
@@ -342,4 +354,83 @@ class SpellDeflectTest {
     assertThat(second.aimY()).isEqualTo(tower.getView().getY());
     assertThat(second.side()).isEqualTo(1);
   }
+
+  /**
+   * A bottom Monk in front of the enemy's king tower, nearer it than either enemy princess tower,
+   * casts its Deflect, and the enemy casts a Fireball onto it: the Fireball is sent, with no
+   * target, at the king tower's position and lands on the king tower, none of the others.
+   */
+  private static void fireballIsSentAtTheKingTower(String topTowers) {
+    Scene scene = new Scene(topTowers);
+    CharacterEntity monk = scene.monkWithDeflect(0, KING_FRONT_X, KING_FRONT_Y);
+    AreaEffectEntity deflect = scene.deflectOf(monk);
+    WorldEntity king = scene.nearestCrownTower(1, deflect.getX(), deflect.getY());
+    assertThat(king.getData().king()).as("the enemy king tower is the nearest here").isTrue();
+    List<WorldEntity> towers = scene.crownTowers();
+    List<Integer> towersBefore = new ArrayList<>();
+    for (WorldEntity t : towers) {
+      towersBefore.add(t.getHitPoints().getHitPoints());
+    }
+    int monkBefore = monk.getHitPoints().getHitPoints();
+    scene.match.play(
+        scene.tick() + 1,
+        scene.records.card("Fireball"),
+        LEVEL,
+        1,
+        KING_FRONT_X,
+        KING_FRONT_Y,
+        "fireball");
+    while (scene.deflections.isEmpty()) {
+      scene.step();
+    }
+    Deflection d = scene.deflections.get(0);
+    assertThat(d.projectile().getData().name()).isEqualTo(FIREBALL);
+    assertThat(d.parent()).isSameAs(monk);
+    assertThat(d.source()).as("sent at a point, not back at its source").isNull();
+    assertThat(d.side()).isEqualTo(monk.side());
+    assertThat(d.aimX()).isEqualTo(king.getView().getX());
+    assertThat(d.aimY()).isEqualTo(king.getView().getY());
+    assertThat(d.target()).isNull();
+    assertThat(d.root()).isSameAs(monk);
+    ProjectileEntity fireball = d.projectile();
+    while (!fireball.isReleased()) {
+      scene.step();
+    }
+    scene.step();
+    assertThat(monk.getHitPoints().getHitPoints()).isLessThan(monkBefore);
+    for (int i = 0; i < towers.size(); i++) {
+      if (towers.get(i) == king) {
+        assertThat(king.getHitPoints().getHitPoints()).isLessThan(towersBefore.get(i));
+      } else {
+        assertThat(towers.get(i).getHitPoints().getHitPoints())
+            .as(towers.get(i).name())
+            .isEqualTo(towersBefore.get(i));
+      }
+    }
+    assertThat(scene.deflections).hasSize(1);
+  }
+
+  /** Where the Monk of the king tower scenes stands: in front of the enemy's king tower. */
+  private static final int KING_FRONT_X = 9000;
+
+  private static final int KING_FRONT_Y = 25000;
+
+  @Test
+  @DisplayName(
+      "a Fireball turned by a Deflect nearer the enemy king tower than any enemy princess tower is"
+          + " sent, with no target, at the king tower, where it lands")
+  void fireballIsSentAtTheNearestKingTower() {
+    fireballIsSentAtTheKingTower(Standard1v1Battle.PRINCESS_TOWERS);
+  }
+
+  @Test
+  @DisplayName(
+      "a Fireball turned by a Deflect nearer the enemy Royal Chef's king tower than either of his"
+          + " towers is sent, with no target, at that king tower, where it lands")
+  void fireballIsSentAtTheNearestChefKingTower() {
+    fireballIsSentAtTheKingTower(CHEF_TOWERS);
+  }
+
+  /** The spawn group of the Royal Chef's tower selection: his king tower and two towers. */
+  private static final String CHEF_TOWERS = "King_ChefTowers";
 }

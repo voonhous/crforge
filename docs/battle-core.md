@@ -2123,6 +2123,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - an impact spawning projectiles along the length (the Fire Wall's)
   - a chain other than a wave of Arrows
   - a king tower's homing shot that has lost its target
+  - a Goblin Barrel the search would send at a king tower
   - one without a root owner that is spell-like (a bomb whose area effect has left) or has an action on reaching its target
   - one carrying copies that change its damage
   - a deflection past MAX_DEFLECTION_TIMES
@@ -2135,6 +2136,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - A turned throw is sent back at the Bomber and, landing there, bounces on for the deflector's side, the deflector's parent its root, along the line from where it was turned.
   - A turned bounce, which has a range and no body, is aimed its range from where it stands toward the Bomber, with no target, and bounces on as often from where it lands.
+
+  A spell-like projectile, whose only deflection behaviour is UseSpellsTowerDamageMul (a Fireball, a Rocket, a Snowball), cast with no target, is sent at a point with no target, for the deflector's side: the position of the crown tower of the caster's side nearest the area effect, a princess tower or the king tower alike (the Royal Chef's king tower too), among those the projectile has not hit and the shared validator lets it reach, the first in the live list on a tie. With none it goes back at its root owner. So a spell turned nearer the caster's king tower than any princess tower of his still standing lands on the king tower.
 
   A cast Goblin Barrel (the evolved one and its decoy too) has its king tower as its root and neither a target nor a deflection behaviour. It is sent as a cast spell is, with no target, at the crown tower of the caster's side nearest the area effect, for the deflector's side, so its impact there makes its Goblins for that side.
 
