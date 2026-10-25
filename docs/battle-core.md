@@ -721,6 +721,8 @@ The child takes its id and one visit of each active component at once, over the 
 
 The pending passes run over every entity together, and an action with no delay scheduled onto any entity inside one of them starts at once.
 
+A row's UpdatePhase of PostGameObjectTick has its queued runs taken only by the last pending pass, after the post-hooks. Such a run waits in the queue through the earlier passes, and since a pass takes an entry by swapping the last one into its place, it changes the order the entries around it start in. The Giant hero's slap push, queued on an evolved Mega Knight behind the actions its hit queued, so lets the hit's counter update start before its uppercut, and the hit after an uppercut uppercuts again.
+
 ### Pushback
 
 A unit whose row pushes it back asks for that pushback after each projectile it launches, away from the projectile's aim. The pushback visit flies it over the next movement visits. The Sparky, recoiling from an enemy Knight, is pushed onto the river and moved off it to the nearest land before that visit's step.
@@ -2840,10 +2842,6 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
 - The mode never ends the match and always lets the entity tick run.
 
-- A row's UpdatePhase of PostGameObjectTick is read as any phase, while the game starts such a run in the pending pass after the post-hooks, once the tick's queued hits have landed.
-
-  Every row that writes it today queues its runs where either reading starts them in the same tick, and nothing they do differs in what a battle shows. The Tombstone hero's hit point write is the only one that reads a different value, which is only ever tested for zero and reaches zero before it is next tested either way.
-
-  The game's other phase names (Any, PostTickInit, PostComponentTick) are refused. The one row that writes PostComponentTick is named by no other row.
+- The game's phase names other than PostGameObjectTick (Any, PostTickInit, PostComponentTick) are refused. The one row that writes PostComponentTick is named by no other row.
 
 - The assumptions of the movement and targeting rules themselves are listed in [Troop Pathfinding](pathfinding.md#assumptions) and apply unchanged.
