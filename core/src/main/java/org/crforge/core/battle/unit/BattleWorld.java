@@ -4786,17 +4786,19 @@ public class BattleWorld implements HolderPasses {
    * owner, a character, stands within DOUBLEDEFLECT_SPELL_MIN_DISTANCE of the area effect is not
    * deflected at all: it passes on untouched. One without a target - a cast spell - is sent at a
    * point instead of its root owner: the position of the crown tower of the other team than the
-   * area effect's nearest the area effect (see {@link #nearestEnemyCrownTower}), with no target, as
-   * a cast Fireball or an arrow of Arrows is; with no such tower it is sent back at its root owner
-   * after all. A bomb a barrage drops onto its area effect has that area effect as its root and its
-   * target while the area effect is in the battle: it is sent back at it, at its point, which it
-   * keeps as what it was dropped onto. The parent takes the projectile's damage either way, before
-   * the redirect.
+   * area effect's nearest the area effect (see {@link #nearestEnemyCrownTower}), a princess tower
+   * or the king tower alike, with no target, as a cast Fireball or an arrow of Arrows is; with no
+   * such tower it is sent back at its root owner after all. So a spell turned nearer the caster's
+   * king tower than any of his princess towers standing - one fallen, or the Deflect right in front
+   * of the king - is sent at the king tower, the Royal Chef's too, and lands on it. A bomb a
+   * barrage drops onto its area effect has that area effect as its root and its target while the
+   * area effect is in the battle: it is sent back at it, at its point, which it keeps as what it
+   * was dropped onto. The parent takes the projectile's damage either way, before the redirect.
    *
    * <p>A spell-like projectile whose row names its own deflection action, as the evolved Snowball's
    * rolling snowball, goes that way up to the redirect - the gate, the search and the parent's
    * damage - and is then not turned: the redirect schedules that action on it instead (see {@link
-   * ProjectileEntity#deflectAt}). The search's tower is never read, so a king tower is no bar.
+   * ProjectileEntity#deflectAt}). The search's tower is never read.
    *
    * <p>A rolling body (see {@link #rollingBody}) inverts its direction instead, whatever its root:
    * no gate and no search. The parent takes its damage as above, and it is sent on, with no target,
@@ -4859,7 +4861,7 @@ public class BattleWorld implements HolderPasses {
    * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
    * effect has left - or has an action on reaching its target, which no recording holds; a homing
    * shot a king tower fired that has lost its target, which searches for the nearest enemy crown
-   * tower instead, and one carrying copies that change its damage; a projectile the search would
+   * tower instead, and one carrying copies that change its damage; a Goblin Barrel the search would
    * send at a king tower, which no recording holds; a projectile an area effect launched that was
    * not dropped onto it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns
    * it around all the same and then ends its flight.
@@ -4949,16 +4951,21 @@ public class BattleWorld implements HolderPasses {
             && projectile.getTarget() == null
             && projectile.getAreaTarget() == null)
         || kingSearch) {
+      // A king tower is searched as a princess tower is: the nearest of them takes a spell-like
+      // projectile, the Royal Chef's king tower too. A row with its own deflection action is not
+      // sent anywhere: the point is never read.
       tower = nearestEnemyCrownTower(deflector, projectile);
-      // A row with its own deflection action is not sent anywhere: the point is never read.
-      if (tower != null
-          && tower.getData().king()
-          && projectile.getData().customDeflectAction() == null) {
+      // The Goblin Barrel sent at a king tower, which no recording holds: refused.
+      if (kingSearch && tower != null && tower.getData().king()) {
         throw new UnsupportedOperationException(
             deflector.name()
                 + " sends "
                 + projectile.name()
-                + " at the king tower "
+                + " ("
+                + projectile.getData().name()
+                + "), cast from the king tower "
+                + source.name()
+                + ", at the king tower "
                 + tower.name()
                 + ", which is not modelled");
       }

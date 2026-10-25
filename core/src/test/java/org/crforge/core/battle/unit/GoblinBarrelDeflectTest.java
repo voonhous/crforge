@@ -248,4 +248,28 @@ class GoblinBarrelDeflectTest {
     assertThat(scene.deflections).hasSize(1);
     assertThat(scene.deflections.get(0).parent()).isSameAs(bottom);
   }
+
+  @Test
+  @DisplayName(
+      "a Goblin Barrel turned by a Deflect nearer the enemy king tower than either enemy princess"
+          + " tower is refused: its turn at the king tower is held by no recording")
+  void barrelSentAtTheKingTowerIsRefused() {
+    Scene scene = new Scene();
+    // In front of the enemy's king tower, nearer it than either princess tower.
+    CharacterEntity monk = scene.monkWithDeflect(0, 9000, 25000);
+    AreaEffectEntity deflect = scene.deflectOf(monk);
+    WorldEntity king = scene.nearestCrownTower(1, deflect.getX(), deflect.getY());
+    assertThat(king.getData().king()).as("the enemy king tower is the nearest here").isTrue();
+    scene.castBarrel(1, 9000, 25000);
+    assertThatThrownBy(
+            () -> {
+              while (scene.deflections.isEmpty()) {
+                scene.step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("(" + BARREL + "), cast from the king tower")
+        .hasMessageContaining("at the king tower " + king.name() + ", which is not modelled");
+    assertThat(scene.deflections).isEmpty();
+  }
 }
