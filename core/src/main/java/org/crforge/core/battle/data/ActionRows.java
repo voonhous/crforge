@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Stream;
+import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
@@ -151,9 +152,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " as its bit in the tag word, a damage type's switches defaulting on. Supplied: an"
             + " interval's rate, which the spawn speed would set, is the usual 100 with no buffs;"
             + " a variable's key is its row's index, which only has to agree between the actions"
-            + " that write a variable and the expressions that read it. Kept as read, told apart"
-            + " by no recorded battle: UpdatePhase PostGameObjectTick as any phase, which the game"
-            + " reads as the pending pass after the post-hooks; the other phase names are refused."
+            + " that write a variable and the expressions that read it. UpdatePhase"
+            + " PostGameObjectTick as the pending pass after the post-hooks, held by the Giant"
+            + " hero's slap push queued on an evolved Mega Knight behind its hit's actions"
+            + " (megaknight-slap-push-uppercut-v1); the other phase names are refused."
             + " Refused: every other class, and every column not modelled.")
 public final class ActionRows {
 
@@ -4136,18 +4138,20 @@ public final class ActionRows {
    * a queued run whose delay has run out: a run scheduled with no delay inside a pending pass
    * starts at once, whatever its phase.
    *
-   * <p>PostGameObjectTick is read here as any phase, not as the last pass, and no recorded battle
-   * tells the two apart. The Giant hero's slap push and the Tombstone hero's hit point write are
-   * queued from the run pass, so either reading starts them in the same tick, before or after the
-   * post-hooks. The push's run starts the same either way. The write reads the Tombstone's hit
-   * points before or after that tick's queued hits, but its share is only ever tested for zero, and
-   * the Tombstone's death gives its monster zero before the monster's next run pass either way. The
-   * Bowler hero's two rows that write it only play an effect, and one of them is named by no other
-   * row. The other three names are refused: the one row that writes PostComponentTick, the Dark
-   * Prince hero's mount charge, is named by no other row, so no battle builds it.
+   * <p>Of the four names the battle reads PostGameObjectTick only. A run of it queued with others
+   * waits in the queue through the earlier passes. The pending pass takes an entry by swapping the
+   * last one into its place and looks at the same place again, so a skipped entry changes the order
+   * the others start in. The Giant hero's slap push, queued on an evolved Mega Knight from the
+   * selector's run behind the actions the Mega Knight's hit queued in its targeting visit, so lets
+   * the hit's counter update start before its uppercut, whose gate reads the counter as updated.
+   * The Tombstone hero's hit point write reads the Tombstone's hit points after that tick's queued
+   * hits; its share is only ever tested for zero. The Bowler hero's two rows that write it only
+   * play an effect, and one of them is named by no other row. The other three names are refused:
+   * the one row that writes PostComponentTick, the Dark Prince hero's mount charge, is named by no
+   * other row, so no battle builds it.
    */
   private static final Map<String, Integer> UPDATE_PHASES =
-      Map.of("PostGameObjectTick", BattleAction.ANY_PHASE);
+      Map.of("PostGameObjectTick", EntityActions.PHASE_POST_GAME_OBJECT_TICK);
 
   /**
    * A row's update phase: any phase when it sets none; a phase name the reader reads as above.
