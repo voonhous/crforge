@@ -635,6 +635,8 @@
   "musketeer-snipe-v1/evo_musketeer_snipe_keep_in_reach": {"outcome": "diagnostic_match"},
   "musketeer-snipe-v1/evo_musketeer_snipe_zapped": {"outcome": "diagnostic_match"},
   "musketeer-turret-no-free-row-v1/musketeerhero_turret_no_free_row": {"outcome": "diagnostic_match"},
+  "net-clone-hold-v1/netclone_babydragon_hold": {"outcome": "diagnostic_match"},
+  "net-clone-hold-v1/netclone_battlehealer_hover": {"outcome": "diagnostic_match"},
   "new-content-v2/card_miniongiant": {"outcome": "diagnostic_match"},
   "new-content-v2/card_ronin": {"outcome": "diagnostic_match"},
   "new-content-v2/deck_hero_and_champion": {"outcome": "diagnostic_match"},
