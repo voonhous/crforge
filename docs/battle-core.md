@@ -2042,6 +2042,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A row swap reads the new row from then on: the maximum hit points at the unchanged level, the hit points kept, the damage, the collision radius, mass and speed, and the targeting columns. The reference is cleared as it stands and a kept target stored again through the setter.
 
+  A unit may take a row with neither a charge nor a river jump, as the hero Dark Prince takes its walking row as it dismounts. The swap leaves the movement component as it stands, and its next displacement reads the new row: a charge under way ends there and no jump starts. A full charge is given up too while the unit casts, as when the tap waited out a river jump and the cast starts on the landing step with the charge full (dismount-charge-cast-v1). The casting unit does not walk, and it strikes only when its ability keeps its target. Its next displacement outside the walking state, or at the latest its leaving the casting state, sets the charge again from the new row, which has none. Refused: such a swap mid-jump, a full charge outside the casting state or under an ability that keeps its target, and any other swap to or from a row with a charge or a jump.
+
   A walking unit may take a building row that stands still and drains over a lifetime, as the Moving Cannon breaks into BrokenCannon below half its hit points:
 
   - its movement component is freed

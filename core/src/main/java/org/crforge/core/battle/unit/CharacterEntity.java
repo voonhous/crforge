@@ -1719,13 +1719,25 @@ public class CharacterEntity extends WorldEntity {
     // A unit may give up its charge and its river jump for a row with neither, as the hero Dark
     // Prince takes its walking row: the swap leaves the movement component as it stands, and every
     // later visit reads the new row, so a charge under way ends at the next displacement and no
-    // jump starts. Refused mid-jump, and once charged, whose strike the new row would carry.
+    // jump starts. Refused mid-jump, and once charged outside the casting state, whose strike the
+    // new row would carry.
+    // A charged unit that casts gives its charge up all the same, as the hero Dark Prince does when
+    // its tap waited out a river jump and the cast starts on the landing step with the charge
+    // full. A casting unit does not walk, and it strikes only when the new row's ability keeps its
+    // target, which is refused; its next displacement outside the walking state, or at the latest
+    // its leaving the casting state, sets the charge again from the row it has then: no charge for
+    // a row without a charge range.
+    boolean castsWithoutStriking =
+        state == GridEntityState.CASTING
+            && (next.ability() == null || !next.ability().keepCurrentTarget());
+    boolean chargeGivenUp =
+        chargeProgress() < MovementState.CHARGE_COMPLETE || castsWithoutStriking;
     boolean dropsChargeAndJump =
         next.chargeRange() == 0
             && !next.jumpEnabled()
             && getBuffs().overrideChargeRange() == 0
             && state != GridEntityState.JUMPING
-            && chargeProgress() < MovementState.CHARGE_COMPLETE;
+            && chargeGivenUp;
     String refused = null;
     if ((next.air() || current.air()) && !sameFlight && !liftedToFlight && !landedFromFlight
         || (current.building() || next.building()) && !breaksDown && !buildingToBuilding) {
