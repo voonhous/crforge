@@ -1,0 +1,15 @@
+{
+  "content_version": "16.402.22",
+  "battles": 10000,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 9999,
+    "mismatch": 1
+  },
+  "first_failures": {
+    "mismatch $.entities[].state": 1
+  },
+  "set": "4538b689e55ed6ec",
+  "commit": "d40a8bbae24249f1358bd2caf47e9cb2204d3526"
+}
