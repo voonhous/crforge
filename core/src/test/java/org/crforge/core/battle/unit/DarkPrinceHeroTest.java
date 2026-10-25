@@ -21,6 +21,8 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
+import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -101,6 +103,52 @@ class DarkPrinceHeroTest {
     expected.addAll(Collections.nCopies(4, 0));
     assertThat(steps).containsExactlyElementsOf(expected);
     assertThat(before - last).isEqualTo(-warpY * warps);
+  }
+
+  @Test
+  @DisplayName(
+      "a tap during a charged river jump casts on the landing step and swaps the hero onto its"
+          + " walking row with the charge full; the charge is given up before the hero walks again")
+  void aChargedHeroGivesItsChargeUpAsItDismounts() {
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle battle = battle(tables);
+    // Placed in the middle, the hero walks toward a princess tower over open water: it charges
+    // on its own half and jumps the river charged.
+    battle.play(220, records.card("DarkPrince"), LEVEL, 0, 8000, 11000, "h");
+    int tap = 300;
+    stepTo(battle, tap - 20);
+    CharacterEntity hero = named(battle, "DarkPrinceHero").get(0);
+    battle.useAbility(tap, 0, hero.name(), "a");
+    stepTo(battle, tap);
+    // A guard: the tap runs while the hero jumps the river with its charge full.
+    assertThat(hero.getView().getState()).isEqualTo(GridEntityState.JUMPING);
+    assertThat(hero.chargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
+    String mounted = hero.getData().name();
+    String walking =
+        Shipped.text(Shipped.actionNames(ACTIVATION, "SubActions").get(1), "NewCharacterData");
+    // The cast waits for the landing; the step the hero takes its walking row it was charged.
+    int charge = hero.chargeProgress();
+    while (hero.getData().name().equals(mounted)) {
+      assertThat(battle.getBattle().getTick()).as("the swap comes").isLessThan(tap + 40);
+      charge = hero.chargeProgress();
+      battle.getBattle().step();
+    }
+    assertThat(charge).as("charged as it dismounts").isEqualTo(MovementState.CHARGE_COMPLETE);
+    assertThat(hero.getData().name()).isEqualTo(walking);
+    assertThat(hero.getView().getState()).isEqualTo(GridEntityState.CASTING);
+    // The next step's displacement outside the walking state reads the walking row: no charge.
+    battle.getBattle().step();
+    assertThat(hero.chargeProgress()).isEqualTo(MovementState.CHARGE_INACTIVE);
+    // Once the cast is over it walks on, uncharged.
+    while (hero.getView().getState() == GridEntityState.CASTING) {
+      battle.getBattle().step();
+    }
+    int x = hero.getView().getX();
+    int y = hero.getView().getY();
+    stepTo(battle, battle.getBattle().getTick() + 10);
+    assertThat(hero.getView().getX() != x || hero.getView().getY() != y).as("walks").isTrue();
+    assertThat(hero.chargeProgress()).isEqualTo(MovementState.CHARGE_INACTIVE);
   }
 
   /** The number a pattern's one group finds in an expression. */
