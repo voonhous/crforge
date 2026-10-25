@@ -1169,7 +1169,7 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - Without names the filtered objects counted.
   - No filter doing nothing.
   - Each branch run on the owner as its own cause.
-- `BattleLevelChangeTest` holds a level change on units in the battle: the cause changed and not the owner, the hit points keeping their share on a rise and kept on a fall, the damage and maxima of the new level, the absolute level, the same level left as it is, a dead cause or none left alone, and a tower refused.
+- `BattleLevelChangeTest` holds a level change on units in the battle: the cause changed and not the owner, the hit points keeping their share on a rise and kept on a fall, the damage and maxima of the new level, the absolute level, the same level left as it is, a dead cause or none left alone, a king tower taking the Royal Chef's level-up, and a princess-slot tower refused.
 
 A test can play a battle with the towers passive: `Standard1v1Battle` takes a flag that keeps every tower's targeting component off for the whole battle.
 - `LevelScalingTest` holds the two scaling rules to the published tables and percentages: for every level a card can have the card rule is the iterated floor of a tenth per step, and at the published values the tower rule is 1.07 (king hit points) or 1.08 per level up to the tournament cap and 1.10 from there.
@@ -2038,7 +2038,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
 - A level change moves an entity's packed level, its damage from the next hit, its maximum and team pools, and on a rise its hit points by their share of the old maximum, never lowering them. A fall keeps them as they stand.
 
-  The growth percentage the share is taken at is the usual 100, as no unit that grows is modelled. A tower's level change and one on an entity carrying a shield are refused.
+  The growth percentage the share is taken at is the usual 100, as no unit that grows is modelled. A king tower takes a level change as any unit does, its maximum worked out by the king's own rule at the new level, as the Royal Chef's pancake turned back at its king by a Monk's Deflect gives it (chef-king-level-v1). A princess-slot tower's level change and one on an entity carrying a shield are refused.
 
   A row swap reads the new row from then on: the maximum hit points at the unchanged level, the hit points kept, the damage, the collision radius, mass and speed, and the targeting columns. The reference is cleared as it stands and a kept target stored again through the setter.
 
