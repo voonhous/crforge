@@ -220,6 +220,7 @@
   "changedata-shield-v1/dpshield_tap_heal": {"outcome": "diagnostic_match"},
   "changedata-shield-v1/dpshield_zap_heal_notap": {"outcome": "diagnostic_match"},
   "changedata-shield-v1/dpshield_zap_tap_heal": {"outcome": "diagnostic_match"},
+  "chef-king-level-v1/chef_king_deflected_pancake": {"outcome": "diagnostic_match"},
   "chef-tower-v2/chef_cooks_back_giant": {"outcome": "diagnostic_match"},
   "chef-tower-v2/chef_cooks_damaged_giant": {"outcome": "diagnostic_match"},
   "chef-tower-v2/chef_cooks_giant_or_musketeer": {"outcome": "diagnostic_match"},

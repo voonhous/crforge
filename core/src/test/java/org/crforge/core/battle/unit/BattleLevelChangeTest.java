@@ -322,7 +322,8 @@ class BattleLevelChangeTest {
   }
 
   @Test
-  @DisplayName("a dead cause, or none, is left alone, and a tower's level change is refused")
+  @DisplayName(
+      "a dead cause, or none, is left alone, and a princess-slot tower's level change is refused")
   void whatIsLeftAloneOrRefused() {
     Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), 11, false);
     CharacterEntity knight = knight(match, 11, "Knight", 3500);
@@ -338,6 +339,39 @@ class BattleLevelChangeTest {
     TowerEntity tower = BattleTowers.towerNamed(match.getBattle(), "PrincessTower_0_1");
     assertThatThrownBy(() -> tower.actionHolder().start(relative(1), tower.actionHolder()))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a tower");
+        .hasMessageContaining("a princess-slot tower");
+  }
+
+  @Test
+  @DisplayName(
+      "a king tower takes the Royal Chef's level-up as a unit does: its hit points keep their"
+          + " share of a maximum that is a king's a level up, and its hits follow")
+  void aKingTowerTakesTheLevelUp() {
+    GameTables tables = GameData.tables();
+    Standard1v1Battle match = new Standard1v1Battle(tables, 11, false);
+    TowerEntity king = BattleTowers.towerNamed(match.getBattle(), "KingTower_0_0");
+    TowerEntity twelve =
+        BattleTowers.towerNamed(
+            new Standard1v1Battle(tables, 12, false).getBattle(), "KingTower_0_0");
+    match.getBattle().step();
+    int oldMaximum = king.getHitPoints().getMaximum();
+    int hitPoints = oldMaximum / 3;
+    king.getHitPoints().setHitPoints(hitPoints);
+
+    king.actionHolder()
+        .start(
+            match.getWorld().getActions().build(CHEF_LEVEL_UP, match.getWorld().binding(king)),
+            king.actionHolder());
+
+    int maximum = twelve.getHitPoints().getMaximum();
+    assertThat(king.level()).isEqualTo(12);
+    assertThat(maximum).as("a king a level up has more hit points").isGreaterThan(oldMaximum);
+    assertThat(king.getHitPoints().getMaximum()).isEqualTo(maximum);
+    assertThat(king.getHitPoints().teamPool(0)).isEqualTo(maximum);
+    assertThat(king.getHitPoints().teamPool(1)).isEqualTo(maximum);
+    assertThat(king.getHitPoints().getHitPoints())
+        .as("the share of the old maximum, in hundred-thousandths, of the new one")
+        .isEqualTo(maximum * (hitPoints * 100_000 / oldMaximum) / 100_000);
+    assertThat(king.getDamage()).isEqualTo(twelve.getDamage());
   }
 }

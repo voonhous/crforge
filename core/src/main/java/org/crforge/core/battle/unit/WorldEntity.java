@@ -2320,12 +2320,16 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * worked out again from the new maximum and the row's lifetime, as the entity's creation works it
    * out, and the hundredths it carries are kept.
    *
-   * <p>Refused rather than guessed: a tower, whose maximum is worked out on a branch of its own,
-   * The shield's maximum follows the level too when the row has a shield (a row without one keeps
-   * the maximum a swap away from a row with a shield left), and a shield that is up, under an old
-   * maximum of at least 1, keeps its share as the hit points do, never lowered on a rise and never
-   * below 1 on a fall; a broken one stays at 0. The growth percentage the share is taken at is the
-   * usual 100, as no unit that grows is modelled.
+   * <p>A king tower takes it the same way: its maximum is worked out at the new level by the king's
+   * own rule, the one its creation uses, and its hits follow, as the Royal Chef's level-up does
+   * when a deflected pancake lands back on the king. A princess-slot tower is refused rather than
+   * guessed: no shipped content changes its level, so no recording holds it.
+   *
+   * <p>The shield's maximum follows the level too when the row has a shield (a row without one
+   * keeps the maximum a swap away from a row with a shield left), and a shield that is up, under an
+   * old maximum of at least 1, keeps its share as the hit points do, never lowered on a rise and
+   * never below 1 on a fall; a broken one stays at 0. The growth percentage the share is taken at
+   * is the usual 100, as no unit that grows is modelled.
    *
    * @param packed the new level, packed
    */
@@ -2335,9 +2339,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (delta == 0) {
       return;
     }
-    if (data.king() || data.summonerTower()) {
+    if (data.summonerTower()) {
       throw new UnsupportedOperationException(
-          "changing the level of " + name() + ", a tower, is not established");
+          "changing the level of " + name() + ", a princess-slot tower, is not established");
     }
     packedLevel = PackedLevel.pack(packed, data.rarity());
     targetView.setPendingDamageKey(packedLevel);
