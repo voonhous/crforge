@@ -790,6 +790,53 @@ class BattleUppercutWindTest {
   }
 
   @Test
+  @DisplayName(
+      "a dragon that leaves cuts its live wind's life to the action's stay, but a wind made in the"
+          + " step the dragon leaves, still waiting for the cleanup, keeps its whole life")
+  void aWindStillQueuedAsItsDragonLeavesKeepsItsLife() {
+    // The wind's life, its area effect row's LifeDuration, and the most of it a wind keeps as its
+    // dragon leaves, the action's StayAliveAfterParentDiesDuration.
+    int life = Shipped.number(WIND_AREA, "LifeDuration");
+    int stay = Shipped.number(WIND, "StayAliveAfterParentDiesDuration");
+    assertThat(stay).as("a stay shorter than the life").isLessThan(life - 50);
+    for (boolean admitted : List.of(true, false)) {
+      Scene scene = new Scene();
+      CharacterEntity dragon = scene.unit(0, "BabyDragon_EV1", 3500, 12000, "bd");
+      scene.step(30);
+      dragon.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+
+      BattleAction wind = scene.row("baby_dragon_evo_wind_action", dragon);
+      if (admitted) {
+        // Started now, the wind joins the battle in the next step; the dragon is killed in the
+        // step after.
+        dragon.actionHolder().start(wind, null);
+        scene.step(1);
+        assertThat(scene.areaEffects()).hasSize(1);
+      } else {
+        // Scheduled with no delay, the wind starts in the next step's pending pass, the step
+        // whose damage drain kills the dragon.
+        dragon.actionHolder().schedule(wind, 0);
+      }
+      scene.world().kill(dragon, null);
+      scene.step(1);
+      assertThat(scene.match.getBattle().getHolder().isListed(dragon))
+          .as("the dragon left")
+          .isFalse();
+
+      List<AreaEffectEntity> winds = scene.areaEffects();
+      assertThat(winds).hasSize(1);
+      if (admitted) {
+        // Its update first, then cut to the stay as the dragon leaves at the step's cleanup.
+        assertThat(winds.get(0).getCountdown()).as("admitted first").isEqualTo(stay);
+      } else {
+        // Not found by the lookup of the live objects as the dragon leaves: no cut; it joins the
+        // battle after that, at the end of the same cleanup, with its whole life.
+        assertThat(winds.get(0).getCountdown()).as("still queued").isEqualTo(life);
+      }
+    }
+  }
+
+  @Test
   @DisplayName("a choice by team with no cause is refused")
   void aChoiceByTeamWithoutACauseIsRefused() {
     Scene scene = new Scene();

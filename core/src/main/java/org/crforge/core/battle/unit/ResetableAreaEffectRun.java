@@ -22,7 +22,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * character is on; the area effect, following the character, keeps the same offsets. The run ends
  * on the update after its area effect has left. A singleton row started again gives a live area
  * effect its whole lifetime back. As the character leaves, after every notice of it, a live area
- * effect keeps no more of its life than the row's stay.
+ * effect keeps no more of its life than the row's stay; both find the area effect among the live
+ * objects only, so one made in the step the character leaves, still queued, keeps its whole life.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -30,7 +31,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled line for line: the start, the update's end, the re-trigger, the release and the"
             + " leave notice; held by the reference battle evo_babydragon_vs_musketeer. The"
             + " release as the run pass removes the finished run finds no area effect, which has"
-            + " left by then.")
+            + " left by then. The re-trigger and the release look the area effect up among the"
+            + " live objects only: a wind made in the step its dragon leaves, still queued,"
+            + " keeps its whole life, held by the reference battle wind_leave_t1650.")
 final class ResetableAreaEffectRun extends ActionInstance {
 
   /** The id of no area effect. */
@@ -107,8 +110,12 @@ final class ResetableAreaEffectRun extends ActionInstance {
     unit.world().resetableReleased(unit, areaEffectName, before, areaEffect.getCountdown());
   }
 
-  /** The area effect by its id among the live and the queued objects, or null. */
+  /**
+   * The area effect by its id among the live objects, or null: one still queued, made in this step
+   * and waiting for the cleanup to join the battle, is not found, so the release as the character
+   * leaves in that cleanup leaves its life whole.
+   */
   private BattleEntity live() {
-    return areaEffectId == NONE ? null : unit.world().liveOrQueued(areaEffectId);
+    return areaEffectId == NONE ? null : unit.world().liveObject(areaEffectId);
   }
 }
