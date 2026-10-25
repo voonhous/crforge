@@ -25,19 +25,19 @@ import org.crforge.core.fidelity.FidelityStatus;
  * evolved Royal Hog Vines or an evolved Hunter's net already holds, hit, turns into its grounded
  * form at once.
  *
- * <p>A clone on the ground is held as any other ground unit is, unless the entity that caused the
- * run is a character or a tower whose own holder lists a run of the same row: the run then takes
- * that run's phase and counter, at the height the clone's row flies at. That is how a Clone's
- * creator starts the row again on the clone of a unit it holds, the unit the cause, so the clone is
- * held as its unit is and let go with it. A clone has the action once on the ground only when the
- * row lets a clone trigger its landing actions (CloneTriggersLandingActions, true unless the row
- * says not); a row that says not, as the evolved Royal Hog's fall does, schedules nothing on a
- * clone.
+ * <p>A clone is held as any other unit is, on the ground, in the air or hovering, unless the entity
+ * that caused the run is a character or a tower whose own holder lists a run of the same row: the
+ * run then takes that run's phase and counter, at the height the clone's row flies at. That is how
+ * a Clone's creator starts the row again on the clone of a unit it holds, the unit the cause, so
+ * the clone is held as its unit is and let go with it. A clone has the action once on the ground
+ * only when the row lets a clone trigger its landing actions (CloneTriggersLandingActions, true
+ * unless the row says not); a row that says not, as the evolved Royal Hog's fall does, schedules
+ * nothing on a clone.
  *
  * <p>Refused as the row is built: the landing and landing end actions, a path reset at landing and
- * a next action. As it starts: an owner that rides another, a clone at a flying height or hovering
- * whose run is not a copy, a hovering owner a force tag already holds, and an action once on the
- * ground for a clone whose row lets a clone trigger it, none of which a reference holds.
+ * a next action. As it starts: an owner that rides another, a hovering owner a force tag already
+ * holds, and an action once on the ground for a clone whose row lets a clone trigger it, none of
+ * which a reference holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -58,10 +58,13 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " among them. Refused: the landing and landing end actions, a path reset at"
             + " landing, a next action, the action once on the ground for a clone whose row lets a"
             + " clone trigger it, a riding"
-            + " owner, a clone at a flying height or hovering whose run is not a copy, and a"
-            + " hovering owner a force tag already holds. A clone on the ground held as any"
-            + " ground unit is, by BattleAirToGroundTest; recorded battles of the Skeleton"
-            + " King's graveyard skeletons held run on through it. The row started again on a"
+            + " owner and a hovering owner a force tag already holds. A clone on the ground held"
+            + " as any ground unit is, by BattleAirToGroundTest; recorded battles of the Skeleton"
+            + " King's graveyard skeletons held run on through it. A clone in the air pulled down"
+            + " as any air unit is, by BattleAirToGroundTest and recorded Vines on a cloned Baby"
+            + " Dragon over its own princess tower, which it lands on; a hovering clone held from"
+            + " the start, by BattleAirToGroundTest and a recorded Vines on a cloned Ghost on the"
+            + " river, which no observation tells from no hold. The row started again on a"
             + " Clone's clone, its run a copy of its unit's, by recorded Clones of a Baby Dragon"
             + " Vines or an evolved Hunter's net holds and of falling and grounded evolved Royal"
             + " Hogs, whose clones skip the landing actions.")
