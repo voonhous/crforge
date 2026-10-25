@@ -1,0 +1,19 @@
+{
+  "content_version": "16.402.22",
+  "battles": 10000,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 9995,
+    "mismatch": 3,
+    "unsupported": 2
+  },
+  "first_failures": {
+    "mismatch $.entities.length": 2,
+    "mismatch $.entities[].state": 1,
+    "unsupported: changing the level of ChefTowerKing_0_0, a tower, is not established": 1,
+    "unsupported: cmd# taking DarkPrinceHero_Walking asks for a charge or a river jump, which is not modelled": 1
+  },
+  "set": "4538b689e55ed6ec",
+  "commit": "9942a843befad3018b072af859a5c8db2845d444"
+}
