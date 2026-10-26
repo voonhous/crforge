@@ -26,10 +26,13 @@ The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_40
 | 16.402.17 | the reference client | 2026-10-04 |
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
+The range's minimum was checked against the game server on 2026-10-26: it refused client 16.402.11 with an update-required status and accepted 16.402.12. It accepted every patch tried above that too, 16.402.13, .15 and .21 included, which are not known as released clients, so the server checks only the minimum; being accepted does not show that a client version exists.
+
 Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_402_17_DATA` lists the ones the simulator has game tables for (16.402.18, 16.402.19, 16.402.21 and 16.402.22), and CI tests each of them (`compatible` in `crforge-data.lock`).
 
 ## Keeping this page
 
 - Add a client version to the reference client's range when it is first seen.
+- When the range's minimum is checked again, replace the date and the versions of the last check.
 - A new data version goes into the pairs table of [Game Versions](game-versions.md); it is compatible when it is served to a client of the range.
 - A required update closes the reference client's range: record it, and start a new reference client section for the new range when the simulator moves to it.
