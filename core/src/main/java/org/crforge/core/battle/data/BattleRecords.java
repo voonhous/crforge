@@ -142,6 +142,7 @@ public final class BattleRecords {
           "ControlledByParent",
           "EnableStacking",
           "PlayerSpecificBuff",
+          "CastIdSpecificBuff",
           "NoEffectToCrownTowers",
           "IgnoreBuildings",
           "DeathSpawn",
@@ -2296,6 +2297,8 @@ public final class BattleRecords {
         .controlledByParent(row.bool("ControlledByParent"))
         .enableStacking(row.bool("EnableStacking"))
         .playerSpecificBuff(row.bool("PlayerSpecificBuff"))
+        // A row that leaves the column out reads false, the client's default for it.
+        .castIdSpecificBuff(row.bool("CastIdSpecificBuff"))
         .noEffectToCrownTowers(row.bool("NoEffectToCrownTowers"))
         .ignoreBuildings(row.bool("IgnoreBuildings"))
         .deathSpawn(sets(row, "DeathSpawn") ? row.string("DeathSpawn") : null)

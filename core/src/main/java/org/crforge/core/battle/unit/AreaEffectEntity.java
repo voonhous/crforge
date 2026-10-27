@@ -219,8 +219,14 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " Lightning, Vines and Royal Delivery plays; an end on its first hit with such a"
             + " projectile held by no run. Its pull of each object it lists for an attracting"
             + " buff, after the push and before the damage, held by the 16.402.18 references'"
-            + " Tornado and evolved Valkyrie plays.")
+            + " Tornado and evolved Valkyrie plays."
+            + " Traced on client 16.635.1 and held by no reference yet: the cast id a spell's"
+            + " cast, a barrage, a projectile's impact and an action's spawn stamp on the area"
+            + " effect, read by a cast-specific buff; any other creation carries none here.")
 public final class AreaEffectEntity extends BattleEntity implements ActionOwner, SpawnHost {
+
+  /** The cast it belongs to; see {@link #castId()}. */
+  private int castId = UNMODELLED_CAST_ID;
 
   /** Milliseconds one update takes off the countdown. */
   private static final int STEP_MS = 50;
@@ -1521,6 +1527,22 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    */
   public ActionBinding binding() {
     return new AreaEffectBinding(world, this);
+  }
+
+  /**
+   * The cast the area effect belongs to (see {@link SpawnHost#castId()}): a spell's cast stamps it,
+   * a barrage's bomb area takes its character's and a projectile's impact area the projectile's;
+   * any other area effect carries none here.
+   *
+   * @param castId the cast id
+   */
+  public void setCastId(int castId) {
+    this.castId = castId;
+  }
+
+  @Override
+  public int castId() {
+    return castId;
   }
 
   @Override

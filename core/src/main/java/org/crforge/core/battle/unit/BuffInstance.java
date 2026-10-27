@@ -45,6 +45,13 @@ public final class BuffInstance {
   private final int side;
 
   /**
+   * The cast id of what applied it, kept as it was listed (see {@link SpawnHost#castId()}): a
+   * cast-specific row's instance is refreshed only from a source of the same cast. -1 for an
+   * instance listed with no source, and for one of any other row, which nothing reads.
+   */
+  private int castId = -1;
+
+  /**
    * The id of the entity that launched the projectile that applied it, kept as it was applied and
    * after the projectile has gone; -1 when no projectile applied it, or one with no launcher left.
    */
@@ -87,6 +94,10 @@ public final class BuffInstance {
     this.packedLevel = packedLevel;
     this.source = source;
     this.side = side;
+    // A cast-specific row's application has made sure its source carries a cast id.
+    if (buff.castIdSpecificBuff() && source != null) {
+      this.castId = source.castId();
+    }
     if (source instanceof ProjectileEntity projectile && projectile.getOwner() != null) {
       this.sourceLauncherId = projectile.getOwner().getId();
     }
@@ -99,7 +110,8 @@ public final class BuffInstance {
 
   /**
    * A copy of the instance under a new key, as a clone takes its original's buffs: the time it has
-   * left and its whole time, the visits it has counted, its level, source, side and parent.
+   * left and its whole time, the visits it has counted, its level, source, side, cast id and
+   * parent.
    *
    * @param key the copy's name in logs
    */
@@ -108,6 +120,7 @@ public final class BuffInstance {
     copy.total = total;
     copy.hitCounter = hitCounter;
     copy.sourceLauncherId = sourceLauncherId;
+    copy.castId = castId;
     return copy;
   }
 
