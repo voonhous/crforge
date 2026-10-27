@@ -494,4 +494,25 @@ public record UnitData(
   public boolean pushesOnDeploy() {
     return spawnPushback != 0 && spawnPushbackRadius != 0;
   }
+
+  /**
+   * True for a unit whose direct hit may apply a buff on damage: its row sets BuffOnDamage, or, in
+   * an order of two or more, which is where the drain reads an entry's, one of its attack sequence
+   * entries sets CustomBuffOnDamage. The refusals that hold a buff on damage out of a path ask
+   * this.
+   */
+  public boolean mayBuffOnDamage() {
+    if (buffOnDamage != null) {
+      return true;
+    }
+    if (!attackSequence.replacesAttack()) {
+      return false;
+    }
+    for (AttackSequence.Entry entry : attackSequence.entries()) {
+      if (entry.customBuffOnDamage() != null) {
+        return true;
+      }
+    }
+    return false;
+  }
 }

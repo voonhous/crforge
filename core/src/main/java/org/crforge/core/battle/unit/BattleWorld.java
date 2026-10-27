@@ -172,7 +172,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " action, and a death hook with no attacker or no pending pass ahead of it. Left"
             + " out: the elixir a death gives. Not modelled: the game mode's own per-tick work"
             + " beside the index and the overlay, and the copy of the attacker the game makes as"
-            + " a death hook's cause.")
+            + " a death hook's cause. Traced on game client 16.635.1, held by no reference yet:"
+            + " the drain's buff on damage of a direct hit taken from the attacker's attack"
+            + " sequence entry where it sets one (WorldEntity), and nothing applied for a time"
+            + " of 0. Still refused, reached by no row: a buff on damage beside an area radius,"
+            + " whose area branch the 16.635.1 drain no longer has; the rest of that path is not"
+            + " traced.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -6490,7 +6495,7 @@ public class BattleWorld implements HolderPasses {
       // The game applies a buff on damage at the drain, so it applies the source's after a typed
       // hit it lets through as well, one after the battle's end included; no reference holds a
       // typed hit from such a source.
-      if (result.accepted() && source != null && source.getData().buffOnDamage() != null) {
+      if (result.accepted() && source != null && source.getData().mayBuffOnDamage()) {
         throw new UnsupportedOperationException(
             source.name() + " deals a typed hit with a BuffOnDamage, not modelled");
       }
@@ -6623,7 +6628,7 @@ public class BattleWorld implements HolderPasses {
     if (result.died()) {
       target.die(attacker);
     }
-    if (result.accepted() && source != null && source.getData().buffOnDamage() != null) {
+    if (result.accepted() && source != null && source.getData().mayBuffOnDamage()) {
       throw new UnsupportedOperationException(
           source.name() + " deals a damage-taking action's hit with a BuffOnDamage, not modelled");
     }
@@ -9131,12 +9136,20 @@ public class BattleWorld implements HolderPasses {
    * of such a hit as well, which no reference holds, so it is refused. A hit with no attacker
    * carries none.
    *
+   * <p>The buff and its time are read here, at the drain, from the attacker as it is then: its
+   * attack sequence entry's CustomBuffOnDamage and CustomBuffOnDamageTime where it has them (see
+   * {@link WorldEntity#buffOnDamageAtDrain()}), else its row's. No buff, or a time of 0, applies
+   * nothing.
+   *
    * @param attacker the entity whose hit it is, or null for none
    * @param target the view the hit resolved against
    * @param result what the hit's damage did
    */
   private void drainBuffOnDamage(WorldEntity attacker, TargetView target, DamageResult result) {
-    if (!result.accepted() || attacker == null || attacker.getData().buffOnDamage() == null) {
+    if (!result.accepted()
+        || attacker == null
+        || attacker.buffOnDamageAtDrain() == null
+        || attacker.buffOnDamageTimeAtDrain() == 0) {
       return;
     }
     if (!result.landed()) {
@@ -9154,17 +9167,19 @@ public class BattleWorld implements HolderPasses {
   /**
    * A hit's buff on damage on what it reached, after its direct hit: nothing for a target
    * untouchable at that moment, the immunity left after a dash counted; otherwise applied with the
-   * attacker as the source, at its level and for its side, for its row's BuffOnDamageTime. There is
-   * no alive test, so a target the hit has just killed takes it too and leaves at the tick's
-   * closing cleanup; the buff decides for itself whether the target takes it. A second hit, of the
-   * same attack or another attacker, refreshes the one instance.
+   * attacker as the source, at its level and for its side, for its BuffOnDamageTime. The buff and
+   * the time are the attacker's attack sequence entry's where it has them, else its row's (see
+   * {@link WorldEntity#buffOnDamageAtDrain()}). There is no alive test, so a target the hit has
+   * just killed takes it too and leaves at the tick's closing cleanup; the buff decides for itself
+   * whether the target takes it. A second hit, of the same attack or another attacker, refreshes
+   * the one instance.
    *
    * @param attacker the entity whose hit it is
    * @param target what the hit reached
    */
   void buffOnDamage(WorldEntity attacker, WorldEntity target) {
     UnitData data = attacker.getData();
-    BuffData buff = buffData(data.buffOnDamage());
+    BuffData buff = buffData(attacker.buffOnDamageAtDrain());
     // A hit applies its buff with the attacker as its parent, which a stacking buff keeps: its
     // instance would leave with the attacker and bar another from the same parent. No row does.
     if (buff.enableStacking()) {
@@ -9176,7 +9191,7 @@ public class BattleWorld implements HolderPasses {
           .getBuffs()
           .apply(
               buff,
-              data.buffOnDamageTimeMs(),
+              attacker.buffOnDamageTimeAtDrain(),
               attacker.getPackedLevel(),
               attacker,
               attacker.side());

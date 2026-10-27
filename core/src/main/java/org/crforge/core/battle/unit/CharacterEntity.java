@@ -3194,7 +3194,7 @@ public class CharacterEntity extends WorldEntity {
               false,
               ValidatorQueries.standard1v1())
           && RangeTest.referenceInRange(t, reference, DASH_HIT_EXTENSION)) {
-        if (data.buffOnDamage() != null) {
+        if (data.mayBuffOnDamage()) {
           throw new UnsupportedOperationException(
               name()
                   + " landed its dash's hit with a buff on damage, whose drain for a dash's hit"
@@ -3547,9 +3547,7 @@ public class CharacterEntity extends WorldEntity {
     }
     if (data.multipleTargets() >= 3
         || data.multipleTargets() >= 2 && data.uniqueMultipleTargets()
-        || data.buffOnDamage() != null
-            && data.projectile() == null
-            && data.areaDamageRadius() >= 1) {
+        || data.mayBuffOnDamage() && data.projectile() == null && data.areaDamageRadius() >= 1) {
       throw new UnsupportedOperationException(
           name()
               + " hits with MultipleTargets "
@@ -4735,7 +4733,7 @@ public class CharacterEntity extends WorldEntity {
       }
       // The attacker's buff on damage is applied as its hit is dealt, before the drain counters
       // the hit, where the game applies it only to a hit the entry lets through.
-      if (attacker.getData().buffOnDamage() != null) {
+      if (attacker.getData().mayBuffOnDamage()) {
         throw new UnsupportedOperationException(
             action.name()
                 + " counters a hit of "

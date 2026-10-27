@@ -85,6 +85,11 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
    *     or null to keep the row's; read at any length of the order
    * @param attackStartDelay milliseconds the attack timer is held at 0 when an attack starts while
    *     the index selects the entry
+   * @param customBuffOnDamage the buff a direct hit applies to what it reached in place of the
+   *     row's BuffOnDamage, or null to keep the row's; read in an order of two or more, at the
+   *     damage drain, from the entry the index then selects
+   * @param customBuffOnDamageTime how long that buff lasts in place of the row's BuffOnDamageTime,
+   *     or -1 (the loader's default) to keep the row's; read as the buff is
    */
   public record Entry(
       int damage,
@@ -103,7 +108,12 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
       int customMultipleTargets,
       int customRememberMultipleTargets,
       String customOnAttackAction,
-      int attackStartDelay) {
+      int attackStartDelay,
+      String customBuffOnDamage,
+      int customBuffOnDamageTime) {
+
+    /** The buff on damage time of an entry that leaves it to the row's. */
+    public static final int ROW_BUFF_ON_DAMAGE_TIME = -1;
 
     /**
      * True when the entry sets a variable damage time outside a timer-driven mode, which walks no
