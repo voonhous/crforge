@@ -435,7 +435,12 @@ public class BattleWorld implements HolderPasses {
    * @param directionY direction of the hit along the arena's length
    */
   private record CarriedPushHitDue(
-      WorldEntity attacker, TargetView target, int damage, int directionX, int directionY)
+      WorldEntity attacker,
+      TargetView target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean noCounter)
       implements QueuedHit {}
 
   /**
@@ -1143,9 +1148,15 @@ public class BattleWorld implements HolderPasses {
    * @param directionY direction of the hit along the arena's length
    */
   public void dealCarriedPushDamage(
-      WorldEntity attacker, WorldEntity target, int damage, int directionX, int directionY) {
+      WorldEntity attacker,
+      WorldEntity target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean noCounter) {
     queuedHits.add(
-        new CarriedPushHitDue(attacker, target.getTargetView(), damage, directionX, directionY));
+        new CarriedPushHitDue(
+            attacker, target.getTargetView(), damage, directionX, directionY, noCounter));
   }
 
   private DamageResult dealDamage(
@@ -1173,13 +1184,32 @@ public class BattleWorld implements HolderPasses {
       int directionY,
       boolean passesHidden,
       int side) {
+    return dealDamage(attacker, target, damage, directionX, directionY, passesHidden, side, false);
+  }
+
+  /**
+   * Deals one hit as {@link #dealDamage(WorldEntity, TargetView, int, int, int, boolean, int)}
+   * does, with the hit's NoCounter flag.
+   *
+   * @param noCounter true for a hit whose damage is flagged NoCounter, which no counter answers
+   */
+  private DamageResult dealDamage(
+      WorldEntity attacker,
+      TargetView target,
+      int damage,
+      int directionX,
+      int directionY,
+      boolean passesHidden,
+      int side,
+      boolean noCounter) {
     WorldEntity entity = known.get(target.getEntity());
     if (entity == null) {
       return DamageResult.NOTHING;
     }
     int before = hitPointsOf(entity);
     DamageResult result =
-        entity.takeDamage(damage, 0, directionX, directionY, passesHidden, attacker, attacker);
+        entity.takeDamage(
+            damage, 0, directionX, directionY, passesHidden, attacker, attacker, null, noCounter);
     reflect(entity, attacker, before, result, directionX, directionY);
     for (WorldObserver observer : observers) {
       observer.damageDealt(tick, entity, damage, result);
@@ -6336,7 +6366,9 @@ public class BattleWorld implements HolderPasses {
             push.damage(),
             push.directionX(),
             push.directionY(),
-            true);
+            true,
+            -1,
+            push.noCounter());
         continue;
       }
       if (queued instanceof ProjectileAreaHitDue share) {

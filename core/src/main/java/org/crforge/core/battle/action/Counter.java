@@ -22,8 +22,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  *
  * <p>Every hit that reaches the owner's damage entry, after the two sides' percentages and before
  * the bookkeeping, is told to the owner's runs from the last listed to the first. The run counters
- * it only when the hit is not a reflected one, has a source and the cooldown is not running, and
- * the owner's answers pass ({@link Host#counterTarget}). It then sets the cooldown, schedules
+ * it only when the hit is not a reflected one, its damage is not flagged NoCounter (on game client
+ * 16.635.1, whose data writes that flag), it has a source and the cooldown is not running, and the
+ * owner's answers pass ({@link Host#counterTarget}). It then sets the cooldown, schedules
  * SelfAction on the owner, the hit's source its cause, and InstigatorAction on the source, the
  * owner its cause, both with the run's context and their rows' own delays; writes the hit's amount
  * under DamageKey into the context's main board; counts the counter against TriggerCount, finishing
@@ -36,7 +37,9 @@ import org.crforge.core.fidelity.FidelityStatus;
         "Settled: the run's elapsed time and cooldown steps, the gates in their order, the"
             + " owner's attack cleared and its one-step no-pushback tag, the cooldown set, the two"
             + " actions with their causes and the run's context, the amount written before the"
-            + " scale, the trigger count and the scale. Refused: CounterProjectiles, whose source"
+            + " scale, the trigger count and the scale. Traced on game client 16.635.1, no"
+            + " reference holds it yet: a hit whose damage is flagged NoCounter is not answered,"
+            + " as a reflected hit is not. Refused: CounterProjectiles, whose source"
             + " is the projectile's shooter, which no row sets.")
 public final class Counter extends RowAction {
 
@@ -137,7 +140,7 @@ public final class Counter extends RowAction {
 
     @Override
     protected void damageHeard(ActionHolder holder, DamageHeard hit) {
-      if (hit.reflected() || hit.source() == null || cooldownMs >= 1) {
+      if (hit.reflected() || hit.noCounter() || hit.source() == null || cooldownMs >= 1) {
         return;
       }
       ActionHolder struck =
