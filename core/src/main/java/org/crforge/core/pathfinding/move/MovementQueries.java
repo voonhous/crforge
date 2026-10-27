@@ -220,6 +220,25 @@ public interface MovementQueries {
     return 0;
   }
 
+  /**
+   * The Speed of the entity's row, which the pushback visit's test of a disabled movement reads.
+   * Supplied as 0, so only a no-move tag disables movement.
+   */
+  default int rowSpeed() {
+    return 0;
+  }
+
+  /**
+   * A speed scaled by the entity's buffs' speed percents: the largest boost, then what the largest
+   * slow leaves, each division truncating; 0 under a stun. Asked only of an entity with the
+   * modifier component. Supplied as the speed itself.
+   *
+   * @param base the speed to scale
+   */
+  default int speedThroughModifiers(int base) {
+    return base;
+  }
+
   /** A counter route preparation reports after each search. Supplied as 0. */
   default int searchCounter() {
     return 0;

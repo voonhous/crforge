@@ -3243,6 +3243,17 @@ public final class BattleRecords {
   }
 
   /**
+   * A published global's flag, clear when the tables do not publish the global: for a global that
+   * only a later game client reads, which the data versions of an earlier client have no row for.
+   *
+   * @param name the global's name
+   */
+  public boolean publishedGlobalBoolean(String name) {
+    GameTable globals = tables.table(GLOBALS);
+    return globals.has(name) && globals.row(name).bool("BooleanValue");
+  }
+
+  /**
    * A published global's text.
    *
    * @param name the global's name

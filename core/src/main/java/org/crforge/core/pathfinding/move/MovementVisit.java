@@ -8,6 +8,7 @@ package org.crforge.core.pathfinding.move;
 
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.Route;
@@ -25,7 +26,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *   <li>a morphing entity does nothing;
  *   <li>an entity whose movement countdown is running replays the last displacement and counts the
  *       countdown down;
- *   <li>an entity with a pushback in flight runs the pushback visit;
+ *   <li>an entity with a pushback in flight runs the pushback visit, and then, under the global
+ *       game client 16.635.1 publishes for it, loses its charge when its movement is disabled;
  *   <li>otherwise it prepares a route when its state asks for one and then follows it.
  * </ol>
  *
@@ -44,7 +46,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " attacking rider, the pushback visit's end action, the block countdown. Collision"
             + " checks are always on. The route dropped at a flight's end, which the battle core"
             + " always sets, is held by the reference battles of a Monk's push on a Giant, the"
-            + " Zap Machine's recoil and two death explosions' pushes.")
+            + " Zap Machine's recoil and two death explosions' pushes. Traced on game client"
+            + " 16.635.1, no reference holds it yet: the charge reset after the pushback visit"
+            + " under FIX_RESET_CHARGE_DURING_PUSHBACK_WHEN_MOVEMENT_DISABLED, for a no-move tag or"
+            + " buffs that scale the row's speed to 0.")
 public final class MovementVisit {
 
   /** The x value that marks an entity's position as never having been written. */
@@ -106,6 +111,14 @@ public final class MovementVisit {
     }
     if (component.getPushbackInFlight() != 0) {
       pushbackVisit(component, owner, config, queries, noCheckCollisions, chain);
+      // Game client 16.635.1, under its published global: an entity whose movement is disabled
+      // loses its charge after the flight's step, which keeps the charge of an attack's own
+      // pushback, so a stun during an evolved Battle Ram's recoil takes its charge at once.
+      if (chain.globals().resetChargeDuringPushbackWhenMovementDisabled()
+          && component.getChargeProgress() != MovementState.CHARGE_INACTIVE
+          && movementDisabled(owner, queries)) {
+        ChargeBookkeeping.resetCharge(component, config, queries, chain);
+      }
       return;
     }
     chain.mark("route_query");
@@ -113,6 +126,23 @@ public final class MovementVisit {
       chain.prepareRoute();
     }
     chain.follow();
+  }
+
+  /**
+   * Whether the entity's movement is disabled, as the pushback visit's charge reset asks: its tag
+   * word holds NO_MOVE or NO_MOVE_ALLOW_ATTRACT, or its row has a Speed of at least 1 that its
+   * buffs scale to 0, which only an entity with the modifier component can be.
+   */
+  static boolean movementDisabled(GridEntity owner, MovementQueries queries) {
+    EntityFlags bits = owner.getFlagBits();
+    if ((owner.getFlags() & (bits.noMove() | bits.noMoveAllowAttract())) != 0) {
+      return true;
+    }
+    int speed = queries.rowSpeed();
+    if (speed < 1 || !queries.hasModifierComponent()) {
+      return false;
+    }
+    return queries.speedThroughModifiers(speed) == 0;
   }
 
   /**

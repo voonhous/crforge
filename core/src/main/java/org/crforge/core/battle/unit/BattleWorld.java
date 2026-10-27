@@ -193,9 +193,17 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * The match-wide movement settings: the standard game's, with a pushback's end dropping the
-   * route.
+   * route, and once the tables are loaded the pushback's charge reset their global asks for.
    */
-  @Getter private final MovementGlobals movementGlobals;
+  @Getter private MovementGlobals movementGlobals;
+
+  /**
+   * The global under which a pushback's visit resets the charge of an entity whose movement is
+   * disabled: published by the data of game client 16.635.1 (set), not by the data versions of
+   * client 16.402.17, which run without the reset.
+   */
+  static final String RESET_CHARGE_DURING_PUSHBACK =
+      "FIX_RESET_CHARGE_DURING_PUSHBACK_WHEN_MOVEMENT_DISABLED";
 
   /** The neighbour answers the push pass and the avoidance handler ask for. */
   @Getter private final NeighbourQuery neighbourQuery;
@@ -854,6 +862,9 @@ public class BattleWorld implements HolderPasses {
     this.flagBits = EntityFlags.of(tables);
     this.records = new BattleRecords(tables);
     this.actions = new ActionRows(tables, records);
+    this.movementGlobals =
+        movementGlobals.withResetChargeDuringPushbackWhenMovementDisabled(
+            records.publishedGlobalBoolean(RESET_CHARGE_DURING_PUSHBACK));
   }
 
   /**

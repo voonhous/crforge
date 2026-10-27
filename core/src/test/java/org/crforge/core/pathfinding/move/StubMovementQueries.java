@@ -40,6 +40,8 @@ class StubMovementQueries implements MovementQueries {
   int gameModeGoal = -1;
   boolean hasModifierComponent;
   int chargeRangeFromModifiers;
+  int rowSpeed;
+  int[] speedPercents = new int[0];
   int touchdownModeActive;
   int touchdownEdgeSeparate;
   int pushDisplacementEnabled;
@@ -164,6 +166,16 @@ class StubMovementQueries implements MovementQueries {
   @Override
   public int chargeRangeFromModifiers() {
     return chargeRangeFromModifiers;
+  }
+
+  @Override
+  public int rowSpeed() {
+    return rowSpeed;
+  }
+
+  @Override
+  public int speedThroughModifiers(int base) {
+    return SpeedBudget.speedModifier(speedPercents, base);
   }
 
   @Override

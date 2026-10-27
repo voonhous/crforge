@@ -99,21 +99,40 @@ public final class ChargeBookkeeping {
         || owner.getState() == GridEntityState.JUMPING
         || owner.getState() == GridEntityState.CLONE_SETUP) {
       // An attack pushback, a jump and clone setup all leave the charge exactly as it was.
-    } else if (config.chargeRange() != 0) {
-      component.setChargeProgress(0);
-      clearChargeStrike(queries, chain);
     } else {
-      chain.mark("modifier_component");
-      if (queries.hasModifierComponent() && queries.chargeRangeFromModifiers() != 0) {
-        component.setChargeProgress(0);
-      } else {
-        component.setChargeProgress(MovementState.CHARGE_INACTIVE);
-      }
-      clearChargeStrike(queries, chain);
+      resetCharge(component, config, queries, chain);
     }
     if (component.getChargeProgress() >= MovementState.CHARGE_COMPLETE) {
       Displacement.markCharging(owner);
     }
+  }
+
+  /**
+   * The charge reset: to 0 for an entity whose row has a charge range or whose modifiers give one,
+   * to no charge otherwise, and the targeting component's strike-now byte cleared.
+   *
+   * @param component the entity's movement component, whose charge progress this writes
+   * @param config the entity's movement configuration columns
+   * @param queries the answers the reset pulls from the rest of the simulation
+   * @param chain the chain that records what the reset looked up
+   */
+  static void resetCharge(
+      MovementState component,
+      MovementConfig config,
+      MovementQueries queries,
+      MovementChain chain) {
+    if (config.chargeRange() != 0) {
+      component.setChargeProgress(0);
+      clearChargeStrike(queries, chain);
+      return;
+    }
+    chain.mark("modifier_component");
+    if (queries.hasModifierComponent() && queries.chargeRangeFromModifiers() != 0) {
+      component.setChargeProgress(0);
+    } else {
+      component.setChargeProgress(MovementState.CHARGE_INACTIVE);
+    }
+    clearChargeStrike(queries, chain);
   }
 
   /** Clears the targeting component's strike-now byte, whenever the entity carries one. */
