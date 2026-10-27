@@ -1144,8 +1144,8 @@ public final class BattleRecords {
   /**
    * The fields of an attack sequence entry its loader reads: its damage, projectile, timing, range
    * overrides, push and attack action, its first projectile, its number of targets and whether it
-   * remembers them, the action its hit runs in place of the row's attack action, and its start
-   * delay.
+   * remembers them, the action its hit runs in place of the row's attack action, its start delay,
+   * and the buff its direct hit applies at the damage drain and for how long.
    */
   private static final Set<String> SEQUENCE_ENTRY_FIELDS =
       Set.of(
@@ -1165,7 +1165,9 @@ public final class BattleRecords {
           "CustomMultipleTargets",
           "CustomRememberMultipleTargets",
           "CustomOnAttackAction",
-          "AttackStartDelay");
+          "AttackStartDelay",
+          "CustomBuffOnDamage",
+          "CustomBuffOnDamageTime");
 
   /**
    * The fields of an attack sequence entry that only show something: its effects, the stats its
@@ -1613,7 +1615,9 @@ public final class BattleRecords {
         -1,
         -1,
         null,
-        0);
+        0,
+        null,
+        AttackSequence.Entry.ROW_BUFF_ON_DAMAGE_TIME);
   }
 
   /** An entry of an AttackSequenceList element, with the entry columns' defaults. */
@@ -1622,6 +1626,10 @@ public final class BattleRecords {
     row.tableElement(column, element);
     String projectile = row.textField(column, element, "Projectile");
     String first = row.textField(column, element, "CustomFirstProjectile");
+    // The entry's own buff on damage: no buff and a time of -1 when it leaves them out, the
+    // loader's defaults, which keep the row's BuffOnDamage and BuffOnDamageTime.
+    // The buff is resolved as the drain applies it, as the row's BuffOnDamage is.
+    String buff = row.textField(column, element, "CustomBuffOnDamage");
     return new AttackSequence.Entry(
         row.intField(column, element, "Damage", 0),
         projectile.isEmpty() ? null : projectile(projectile),
@@ -1639,7 +1647,13 @@ public final class BattleRecords {
         row.intField(column, element, "CustomMultipleTargets", -1),
         row.intField(column, element, "CustomRememberMultipleTargets", -1),
         actionName(row.name(), "CustomOnAttackAction", element.path("CustomOnAttackAction")),
-        row.intField(column, element, "AttackStartDelay", 0));
+        row.intField(column, element, "AttackStartDelay", 0),
+        buff.isEmpty() ? null : buff,
+        row.intField(
+            column,
+            element,
+            "CustomBuffOnDamageTime",
+            AttackSequence.Entry.ROW_BUFF_ON_DAMAGE_TIME));
   }
 
   /** The columns of a row's death that are not modelled, those of its death spawn only with one. */

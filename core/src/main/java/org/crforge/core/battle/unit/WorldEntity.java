@@ -152,7 +152,12 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " entry reached applied to itself and the counter back to 0 at the last, held by"
             + " evo_barbarians_vs_musketeer and evo_bats_vs_musketeer; a list of counts, a"
             + " projectile's shooter and a reflecting unit by BattleBuffAfterHitsTest; a typed"
-            + " hit's and damage over time's count of a BuffAfterHits row refused.")
+            + " hit's and damage over time's count of a BuffAfterHits row refused. Traced on game"
+            + " client 16.635.1, held by no reference yet: the buff on damage the drain applies"
+            + " and its time read at the drain from the attack sequence entry the index then"
+            + " selects, in an order of two or more, its CustomBuffOnDamage when it names one and"
+            + " its CustomBuffOnDamageTime when 0 or more, else the row's; no buff or a time of 0"
+            + " applying nothing; by BattleAttackSequenceBuffOnDamageTest alone.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -996,7 +1001,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param target what the hit was aimed at, or null
    */
   private void buffOnDamage(TargetView target) {
-    if (data.buffOnDamage() != null && target == null) {
+    if (data.mayBuffOnDamage() && target == null) {
       throw new UnsupportedOperationException(
           name() + " applies its BuffOnDamage with a hit on nothing, not modelled");
     }
@@ -2929,6 +2934,38 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * entity's level and falling back to the entry's projectile as the row's damage does, when the
    * sequence has two or more in its order; otherwise the row's.
    */
+  /**
+   * The buff the damage drain applies to what one of the entity's direct hits reached, read as the
+   * drain deals the hit: the CustomBuffOnDamage of the entry the index then selects, in an order of
+   * two or more, when the entry names one; otherwise the row's BuffOnDamage, or null for none.
+   */
+  String buffOnDamageAtDrain() {
+    AttackSequence sequence = data.attackSequence();
+    if (sequence.replacesAttack()) {
+      String custom = sequence.entryAt(targeting.getAttackSequenceIndex()).customBuffOnDamage();
+      if (custom != null) {
+        return custom;
+      }
+    }
+    return data.buffOnDamage();
+  }
+
+  /**
+   * How long the buff of {@link #buffOnDamageAtDrain()} lasts, read with it: the
+   * CustomBuffOnDamageTime of the entry the index then selects, in an order of two or more, when it
+   * is 0 or more; otherwise the row's BuffOnDamageTime. A time of 0 applies nothing.
+   */
+  int buffOnDamageTimeAtDrain() {
+    AttackSequence sequence = data.attackSequence();
+    if (sequence.replacesAttack()) {
+      int custom = sequence.entryAt(targeting.getAttackSequenceIndex()).customBuffOnDamageTime();
+      if (custom >= 0) {
+        return custom;
+      }
+    }
+    return data.buffOnDamageTimeMs();
+  }
+
   /** The MeleePushback of the attack sequence step the next hit lands with; 0 without one. */
   int stepMeleePushback() {
     AttackSequence sequence = data.attackSequence();
