@@ -17,7 +17,7 @@ It follows for the data too. The game only serves a data version to clients that
 
 The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_402_17`). What it is compatible with:
 
-### Client range: 16.402.12 to current
+### Client range: 16.402.12 to 16.402.20 (closed 2026-10-27)
 
 | Client version | Seen as | First seen |
 | --- | --- | --- |
@@ -27,6 +27,8 @@ The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_40
 | 16.402.20 | the App Store's version in most countries (released 2026-10-07 08:50 UTC) | 2026-10-07 |
 
 The range's minimum was checked against the game server on 2026-10-26: it refused client 16.402.11 with an update-required status and accepted 16.402.12. It accepted every patch tried above that too, 16.402.13, .15 and .21 included, which are not known as released clients, so the server checks only the minimum; being accepted does not show that a client version exists.
+
+The range closed with a required update on 2026-10-27: the game server refused client 16.402.21, which it had accepted the day before, with the update-required status. The server checks only a minimum, so every client of the range is refused. Client 16.635.1 was first seen the same day, installed on a test phone (pairs in [Game Versions](game-versions.md)). The simulator's last state on this range is the release [v16.402.17-range-16.402.12-16.402.20](https://github.com/voonhous/crforge/releases/tag/v16.402.17-range-16.402.12-16.402.20); the next reference client's section is added here when the simulator moves to it.
 
 Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_402_17_DATA` lists the ones the simulator has game tables for (16.402.18, 16.402.19, 16.402.21 and 16.402.22), and CI tests each of them (`compatible` in `crforge-data.lock`).
 
