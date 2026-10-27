@@ -24,10 +24,17 @@ import org.crforge.core.pathfinding.GridEntityState;
  * first that holds rejecting: a shared tag, then dead, building, hidden, underground, tower,
  * summoner, flying, without hit points, princess tower, a row of the given name and clone, each
  * asked only when its column is set. For a character alone there follow an attached child (unless
- * allowed), jumping, dash immunity while dashing, dragging, invisibility, cloning and ignoring
- * pushback, then the include and the exclude lists of rows.
+ * allowed), jumping, dash immunity, dragging, invisibility, cloning and ignoring pushback, then the
+ * include and the exclude lists of rows.
  *
- * <p>{@code filterDead} is the one column set by default.
+ * <p>The dash immunity exclusion leaves out a character in its dash whose row has a dash immunity
+ * time, and, while {@code respectDodgingDamageCooldown} is on, also one whose immunity after its
+ * dash still counts: so an area made just after a Bandit's dash lands, the explosion of a shield
+ * the dash broke among them, neither pushes nor damages it. Client 16.402.17 had no such column and
+ * asked the dash alone; a row that leaves the column out takes the default of client 16.635.1's
+ * loader, on, and one that writes it off keeps the 16.402.17 test.
+ *
+ * <p>{@code filterDead} and {@code respectDodgingDamageCooldown} are the columns set by default.
  *
  * <p>{@code matchSelf} passes only the object that asks: a filter that sets it is asked with
  * whether the object is its asker, and refused when asked without.
@@ -57,7 +64,13 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " Wizard hero's tap. The Filters list's kinds Self, Kamikaze and IgnoreResurrect"
             + " from the same test: the object's id against the asker's, and"
             + " the character row's Kamikaze and IgnoreResurrect columns; IgnoreResurrect, which the"
-            + " Skeleton King's death listener asks, held by BattleFilterKindsTest.")
+            + " Skeleton King's death listener asks, held by BattleFilterKindsTest."
+            + " RespectDodgingDamageCooldown is client 16.635.1's: its DashImmune kind asks the same"
+            + " dodge test as 16.402.17 with the column as the flag that counts the immunity left"
+            + " after a dash, where 16.402.17 passed none; a row that leaves it out takes the"
+            + " 16.635.1 loader's default, on; traced, no reference holds it yet, and the 16.402"
+            + " recordings of an area made just after a dash follow the old test"
+            + " (BattleDashShieldLostPushTest).")
 @Getter
 @Builder(toBuilder = true)
 public final class GameObjectFilter {
@@ -88,6 +101,14 @@ public final class GameObjectFilter {
   private final long filterTags;
   private final boolean filterPrincessTowers;
   @Builder.Default private final boolean filterDead = true;
+
+  /**
+   * RespectDodgingDamageCooldown: the dash immunity exclusion also leaves out a character whose
+   * immunity after its dash still counts. On unless the row writes it off: the 16.635.1 loader's
+   * default.
+   */
+  @Builder.Default private final boolean respectDodgingDamageCooldown = true;
+
   private final boolean filterClones;
   private final boolean matchSelf;
 
@@ -189,6 +210,16 @@ public final class GameObjectFilter {
     return refuseBuffsFromAsker.isEmpty() || !object.buffedBy(refuseBuffsFromAsker, askerId);
   }
 
+  /**
+   * The dash immunity exclusion's question: a character dashing under a row with a dash immunity
+   * time, or, while the filter respects the dodging cooldown, one with immunity left after its
+   * dash.
+   */
+  private boolean dodgingDamage(FilterSubject object, int state) {
+    return state == GridEntityState.DASHING && object.dashImmuneMs() > 0
+        || respectDodgingDamageCooldown && object.dashImmunityLeftMs() > 0;
+  }
+
   /** The test of every column but {@code matchSelf}, {@code filterSelf} and the buff checkers. */
   private boolean passes(FilterSubject object, int team, String name) {
     if (object.team() == team ? !matchTeamOwn : !matchTeamEnemy) {
@@ -240,7 +271,7 @@ public final class GameObjectFilter {
     int state = object.state();
     if (!matchAttachedChildren && object.attachedChild()
         || filterJumping && state == GridEntityState.JUMPING
-        || filterDashImmune && state == GridEntityState.DASHING && object.dashImmuneMs() > 0
+        || filterDashImmune && dodgingDamage(object, state)
         || filterDragging
             && (state == GridEntityState.FOLLOWING_REMOVED
                 || state == GridEntityState.FOLLOWING_REMOVED_BUILDING)

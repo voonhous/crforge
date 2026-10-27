@@ -119,6 +119,11 @@ final class KindOnlySubject implements FilterSubject {
   }
 
   @Override
+  public int dashImmunityLeftMs() {
+    throw unmodelled();
+  }
+
+  @Override
   public int invisibleCounter() {
     throw unmodelled();
   }
