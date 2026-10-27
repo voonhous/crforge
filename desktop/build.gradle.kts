@@ -95,3 +95,27 @@ tasks.register<JavaExec>("uiSmoke") {
 tasks.test {
     (findProperty("crforge.modelFile") as String?)?.let { systemProperty("crforge.modelFile", it) }
 }
+
+// The example replay the repository ships (examples/replays/ladder.json, ExampleReplay): a battle
+// the battle core plays with a fixed script, written as a replay of the data version the build
+// makes the tables of. A data version bump runs it; ExampleReplayTest holds the shipped file to it.
+val exampleReplay = rootProject.file("examples/replays/ladder.json")
+
+tasks.register<JavaExec>("exampleReplay") {
+    group = "application"
+    description = "Plays the scripted example battle and writes it to examples/replays/ladder.json."
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("org.crforge.desktop.replay.ExampleReplay")
+    dependsOn(":tables:gameTables")
+    systemProperty(
+        "crforge.gameTables",
+        "${rootProject.extra["crforge.builtTablesRoot"]}/${rootProject.extra["crforge.dataVersion"]}",
+    )
+    args(exampleReplay.absolutePath)
+}
+
+tasks.test {
+    systemProperty("crforge.exampleReplay", exampleReplay.absolutePath)
+    // an input, so an edit of the file runs the tests again
+    inputs.file(exampleReplay).withPropertyName("exampleReplay")
+}

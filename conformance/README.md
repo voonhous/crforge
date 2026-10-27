@@ -220,4 +220,6 @@ crforge works on one data version at a time, the lock's `version`, and tests eve
 
 3. Run `updateReferenceExpectations` to write `reference-expectations/<new version>.json` and review it with the change. The older versions of the same client range stay in `compatible` with their files. When a required client update starts a new range, the old range's versions leave `compatible` and their files are removed.
 
+4. Run `./gradlew :desktop:exampleReplay` to write the example replay ([examples](../examples/README.md)) on the new version's tables, and commit it with the change: `ExampleReplayTest` fails while the shipped file is not the one the script plays on the lock's version.
+
 See [Game tables and reference battles](../docs/game-tables.md) for the folder layout and the settings.
