@@ -26,7 +26,7 @@ Porting crforge's logic to another language, by hand or by asking an AI assistan
 
 It is a request, not a license condition (crforge is Apache 2.0), and it is mostly for your benefit. crforge is held tick by tick to battles recorded in the game, and its rules get corrected whenever a recording shows them wrong.
 
-With the file and commit in your code, `git log <commit>..origin/battle_core -- <file>` lists every change to that logic since you read it (`battle_core` is the development branch). The repository URL in the comment lets us find your port and tell you when we fix something it carries.
+With the file and commit in your code, `git log <commit>..origin/main -- <file>` lists every change to that logic since you read it (`main` is the development branch). The repository URL in the comment lets us find your port and tell you when we fix something it carries.
 
 To hear about fixes, watch the repository's releases (the release notes list behaviour corrections per mechanic), or open an issue to ask about one.
 
@@ -78,6 +78,64 @@ The debug visualizer and the tests run the battle core, which needs the game tab
 That is the only way the tables are found ([Building the game tables](docs/game-tables.md#building-the-game-tables)).
 
 The debug visualizer prints the tables folder, data version and content sha at startup, and its key map. See [Debug Visualizer](docs/architecture.md#debug-visualizer) for the full list, including the routing overlays (`G`, `N`).
+
+## Playing a battle
+
+```bash
+./gradlew :desktop:run -Pcrforge.assetSource=<source>
+```
+
+This opens the debug screen on a Ladder 1v1 battle on the standard arena, with towers and cards at level 11. You play both sides from the hand panels beside the arena: blue (side 0) at the bottom, red (side 1) at the top. The two decks are fixed, in `org.crforge.desktop.battle.BattleDecks`.
+
+To play a card:
+
+1. Select it: click it in its hand, or press `1`-`4` for blue's hand and `5`-`8` for red's. A number key only selects the card.
+2. Move the mouse over the arena. The hovered tile shows where the card would be placed: each unit's outline and attack range, a spell's circle, or a red tile where the card cannot be placed.
+3. Left click to play it. Right click deselects the card.
+
+A play runs 20 ticks (one second) after the click, as a player's play does in the game. A play the game would not accept (not enough elixir, a card already waiting to be played, no tile to place it on) is refused on the spot with a message.
+
+| Key | Action |
+| --- | --- |
+| `SPACE` | Pause / resume |
+| `.` | Pause and advance exactly one tick |
+| `+` / `-` | Speed up / slow down (0.25x to 8x) |
+| `R` | Start a new battle |
+| `I` | Switch between Deploy and Inspect; in Inspect, click a unit to pin its details |
+| `O`, `D`, `A`, `H` | Range circles, damage numbers, area damage, HP numbers |
+| `V` | Switch to the next data version built (a new battle on it) |
+| `T` | Hide / show the diagnostics sidebar |
+
+The full key list, including the routing overlays, is in [Controls](docs/architecture.md#controls).
+
+To play against a trained model instead of playing both sides, pass it as an ONNX file with `--args="--model <file.onnx>"` ([Playing against a model](docs/architecture.md#playing-against-a-model)).
+
+## Watching a replay
+
+```bash
+./gradlew :desktop:run -Pcrforge.assetSource=<source> --args="--replay <file>"
+```
+
+This opens the replay viewer on a replay file instead of a Ladder battle. You can also drop a replay file on the window of the debug screen or of the viewer. The viewer reads:
+
+- a replay file (`.json`): one battle and the plays of both sides
+- a file of many replays, one a line (`.jsonl`, or compressed as `.jsonl.zst` or `.jsonl.gz`): the viewer lists them above the arena, and `[` and `]` open the previous and next
+
+This repository ships no replays. The battle core can write any battle it plays as a replay file (`org.crforge.core.battle.replay.ScenarioWriter`), and the environment writes one for a battle that faults ([fault bundles](docs/environment.md#fault-bundles)).
+
+A replay plays only on the tables of the data version it was recorded on. When the replay names its data version, the viewer switches to that version if you have built its tables, and refuses the replay with the reason if you have not. Build a version's tables with `-Pcrforge.dataVersion=<version>`. A replay the battle core cannot play in full is refused with every reason, never played in part.
+
+| Key | Action |
+| --- | --- |
+| `SPACE` | Pause / resume |
+| `.` / `,` | Pause and step one tick forward / back |
+| `+` / `-` | Speed up / slow down |
+| `R` | Restart the replay from tick 0 |
+| `F` | Flip the view: the game's view of side 1 (the default, as the game shows a replay) or of side 0 |
+| `[` / `]`, `L` | Previous / next replay of a file of many, hide or show the list |
+| Left click | Inspect a unit |
+
+The plays are the replay's own: cards cannot be selected or played in the viewer. More in [Replays](docs/architecture.md#replays).
 
 ## Modules
 
