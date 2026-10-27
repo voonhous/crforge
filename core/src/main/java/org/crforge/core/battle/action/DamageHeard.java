@@ -23,6 +23,9 @@ public final class DamageHeard {
   /** True for a hit whose damage is flagged Reflected. */
   private final boolean reflected;
 
+  /** True for a hit whose damage is flagged NoCounter, which no counter answers. */
+  private final boolean noCounter;
+
   /** What the hit came from - a unit, a projectile, an area effect - or null for nothing. */
   private final SpawnHost source;
 
@@ -32,14 +35,30 @@ public final class DamageHeard {
    * @param source what the hit came from, or null for nothing
    */
   public DamageHeard(int amount, boolean reflected, SpawnHost source) {
+    this(amount, reflected, false, source);
+  }
+
+  /**
+   * @param amount the hit's amount
+   * @param reflected true for a reflected hit
+   * @param noCounter true for a hit whose damage is flagged NoCounter
+   * @param source what the hit came from, or null for nothing
+   */
+  public DamageHeard(int amount, boolean reflected, boolean noCounter, SpawnHost source) {
     this.amount = amount;
     this.reflected = reflected;
+    this.noCounter = noCounter;
     this.source = source;
   }
 
   /** True for a hit whose damage is flagged Reflected. */
   public boolean reflected() {
     return reflected;
+  }
+
+  /** True for a hit whose damage is flagged NoCounter, which no counter answers. */
+  public boolean noCounter() {
+    return noCounter;
   }
 
   /** What the hit came from, or null for nothing. */

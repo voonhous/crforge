@@ -27,9 +27,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  * it is hit for the push damage at the unit's level, through the unit's listening actions, and
  * listed; the first hit of a step also counts as an ended attack for them.
  *
+ * <p>The push damage is a whole number in the data of game client 16.402.17. Client 16.635.1 reads
+ * it as a damage type, written inline in its data: the hit deals the type's BaseDamage at the
+ * unit's level, and its flags are added to each hit's, so a NoCounter type's hits are not answered
+ * by a counter.
+ *
  * <p>Refused as the row is built: tags, a singleton, a next action, the run and pause gates and a
- * phase of its own, which no shipped row sets, and a row without either filter. As it starts: an
- * owner other than a character.
+ * phase of its own, which no shipped row sets, and a row without either filter; a push damage
+ * naming a damage type row, an inline type with a field other than BaseDamage and Flags or a flag
+ * other than NoCounter. As it starts: an owner other than a character.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -43,7 +49,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " battle_ram_evolved_knight_after_20, battle_ram_evolved_knight_after_50 and"
             + " battle_ram_evolved_knight_after_80, which then part over the ram's own recoil"
             + " after a direct hit. Not modelled: that recoil, the push effect and its interval,"
-            + " and the hit's presentation, which only show something.")
+            + " and the hit's presentation, which only show something. Traced on game client"
+            + " 16.635.1, no reference holds it yet: the push damage as a damage type, its"
+            + " BaseDamage at the unit's level and its NoCounter flag added to each hit; another"
+            + " field or flag of the type, and a damage type named by row, are refused.")
 public final class DamagingPushBack extends RowAction {
 
   /**
@@ -53,7 +62,10 @@ public final class DamagingPushBack extends RowAction {
    * @param pushBackRadius the radius of the query
    * @param continuousPushBack true to push while a push is in flight, keeping the longer one
    * @param distanceProportionalPush true to take the current separation off a push
-   * @param pushBackDamage the damage of a hit, at the first level
+   * @param pushBackDamage the damage of a hit, at the first level: the whole number of the data of
+   *     game client 16.402.17, or the BaseDamage of the inline damage type of client 16.635.1
+   * @param noCounter true when that damage type is flagged NoCounter: the hits are queued with the
+   *     flag, and a counter does not answer them
    * @param pushToSide true to push away from the line along the facing rather than the centre
    * @param pushRadiusDirectionalOffset how far ahead of the unit, along its facing, the query is
    *     centred
@@ -67,6 +79,7 @@ public final class DamagingPushBack extends RowAction {
       boolean continuousPushBack,
       boolean distanceProportionalPush,
       int pushBackDamage,
+      boolean noCounter,
       boolean pushToSide,
       int pushRadiusDirectionalOffset,
       GameObjectFilter gameObjectFilter,

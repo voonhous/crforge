@@ -115,6 +115,22 @@ class BattleChargeTest {
       CharacterEntity[] knight,
       int[] hitPoints,
       int[] widths) {
+    return chargeThen(match, records, ram, "Knight", knight, hitPoints, widths);
+  }
+
+  /**
+   * As {@link #chargeThenKnight}, with an enemy of the named row placed where the Knight is.
+   *
+   * @param row the row of the enemy placed beside the ram's path
+   */
+  private static int chargeThen(
+      Standard1v1Battle match,
+      BattleRecords records,
+      CharacterEntity ram,
+      String row,
+      CharacterEntity[] knight,
+      int[] hitPoints,
+      int[] widths) {
     int completed = -1;
     for (int tick = 0; tick < 200 && completed < 0; tick++) {
       match.getBattle().step();
@@ -126,8 +142,7 @@ class BattleChargeTest {
     // The ram walks 120 units a step once charged; the push pass is centred 800 ahead of it, with
     // a radius of 1000. The Knight, still deploying, stands 300 to the side of that centre.
     int y = ram.getView().getY() + 16 * 120 + 800;
-    knight[0] =
-        match.deploy(completed + 1, records.unit("Knight"), 3, 1, ram.getView().getX() + 300, y);
+    knight[0] = match.deploy(completed + 1, records.unit(row), 3, 1, ram.getView().getX() + 300, y);
     for (int i = 0; i < 30; i++) {
       match.getBattle().step();
       hitPoints[i] =
@@ -166,6 +181,85 @@ class BattleChargeTest {
     }
     // The push carries it away from the ram's line, to the side it stood on.
     assertThat(widths[first + 5]).isGreaterThan(widths[first - 1] + 500);
+  }
+
+  /**
+   * The push tables with the push's damage written as the 16.635.1 data writes it, an inline damage
+   * type of the same base damage flagged NoCounter.
+   */
+  private static GameTables inlinePushDamageTables(Path folder) throws IOException {
+    pushTables(folder);
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          ObjectNode damage =
+              GameData.fields(rows, "BattleRam_EV1_PushBack").putObject("PushBackDamage");
+          damage.put("BaseDamage", 83);
+          damage.put("Flags", "NoCounter");
+        });
+    return GameTables.load(folder);
+  }
+
+  /**
+   * Runs the evolved ram's push past an enemy Ronin beside its path. Answers the Ronin's hit points
+   * after each of the 30 steps after it is placed, its full hit points last, and fills in the buffs
+   * the ram was given.
+   */
+  private static int[] pushPastRonin(GameTables tables, List<String> ramBuffs) {
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity ram = match.deploy(0, records.unit("BattleRam_EV1"), 3, 0, 14500, 9000);
+    match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void buffApplied(int at, WorldEntity target, BuffInstance buff) {
+                if (target == ram) {
+                  ramBuffs.add(buff.getBuff().name());
+                }
+              }
+            });
+    CharacterEntity[] ronin = new CharacterEntity[1];
+    int[] hitPoints = new int[31];
+    chargeThen(match, records, ram, "Ronin", ronin, hitPoints, new int[30]);
+    hitPoints[30] = ronin[0].getHitPoints().getMaximum();
+    return hitPoints;
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Battle Ram's push damage written as a whole number is countered by a Ronin's"
+          + " parry, as any hit is")
+  void aWholeNumberPushIsParried(@TempDir Path folder) throws IOException {
+    List<String> ramBuffs = new ArrayList<>();
+    int[] hitPoints = pushPastRonin(pushTables(folder), ramBuffs);
+    for (int i = 0; i < 30; i++) {
+      assertThat(hitPoints[i]).as("the Ronin after step %d", i).isEqualTo(hitPoints[30]);
+    }
+    assertThat(ramBuffs)
+        .as("the parry's reflect stuns the ram")
+        .contains("ronin_reflect_stun_buff");
+  }
+
+  @Test
+  @DisplayName(
+      "the evolved Battle Ram's push damage written as an inline damage type flagged NoCounter"
+          + " deals its base damage at the ram's level and is not countered by a Ronin's parry")
+  void aNoCounterPushIsNotParried(@TempDir Path folder) throws IOException {
+    List<String> ramBuffs = new ArrayList<>();
+    int[] hitPoints = pushPastRonin(inlinePushDamageTables(folder), ramBuffs);
+    // Index i holds the hit points after the step of tick completed + 1 + i; the push pass first
+    // runs on tick completed + 16. BaseDamage 83 at level 3 of the Common rarity, 83 * 121 / 100,
+    // as the whole number deals it.
+    for (int i = 0; i < 15; i++) {
+      assertThat(hitPoints[i]).as("the Ronin after step %d", i).isEqualTo(hitPoints[30]);
+    }
+    for (int i = 15; i < 30; i++) {
+      assertThat(hitPoints[i]).as("the Ronin after step %d", i).isEqualTo(hitPoints[30] - 100);
+    }
+    assertThat(ramBuffs).doesNotContain("ronin_reflect_stun_buff");
   }
 
   @Test

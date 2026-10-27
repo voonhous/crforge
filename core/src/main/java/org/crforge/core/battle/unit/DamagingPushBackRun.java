@@ -49,7 +49,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " battle_ram_evolved_knight_after_20, battle_ram_evolved_knight_after_50 and"
             + " battle_ram_evolved_knight_after_80, which then part over the ram's own recoil"
             + " after a direct hit. Not modelled: that recoil, the push effect and the hit's"
-            + " presentation.")
+            + " presentation. Traced on game client 16.635.1, no reference holds it yet: the push"
+            + " damage's NoCounter flag carried by each queued hit.")
 final class DamagingPushBackRun extends ActionInstance {
 
   /** The scale the side point's position along the facing is kept in. */
@@ -125,7 +126,8 @@ final class DamagingPushBackRun extends ActionInstance {
           object,
           amount,
           object.getView().getX() - view.getX(),
-          object.getView().getY() - view.getY());
+          object.getView().getY() - view.getY(),
+          columns.noCounter());
       if (!noticed) {
         unit.actionHolder().attackEnded();
         noticed = true;

@@ -418,6 +418,26 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       WorldEntity dealer,
       SpawnHost cause,
       Runnable heard) {
+    return takeDamage(
+        damage, dedupeId, directionX, directionY, passesHidden, dealer, cause, heard, false);
+  }
+
+  /**
+   * Deals one damage event to the entity, as {@link #takeDamage(int, int, int, int)} does.
+   *
+   * @param noCounter true for a hit whose damage is flagged NoCounter: the entity's runs are told
+   *     so, and a counter does not answer it
+   */
+  DamageResult takeDamage(
+      int damage,
+      int dedupeId,
+      int directionX,
+      int directionY,
+      boolean passesHidden,
+      WorldEntity dealer,
+      SpawnHost cause,
+      Runnable heard,
+      boolean noCounter) {
     if (hitPoints == null) {
       return DamageResult.NOTHING;
     }
@@ -429,7 +449,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             dedupeId,
             directionX,
             directionY,
-            damageQueries(passesHidden, dealer, true, heard, cause, false));
+            damageQueries(passesHidden, dealer, true, heard, cause, false, noCounter));
     shieldHit(damage, shieldBefore, cause);
     refreshHitPoints();
     return result;
@@ -1108,6 +1128,23 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       Runnable heard,
       SpawnHost cause,
       boolean reflected) {
+    return damageQueries(passesHidden, dealer, buffAfterHitsHeld, heard, cause, reflected, false);
+  }
+
+  /**
+   * What the damage chain asks about the entity, as the overload above, with the hit's NoCounter
+   * flag.
+   *
+   * @param noCounter true for a hit whose damage is flagged NoCounter
+   */
+  private DamageQueries damageQueries(
+      boolean passesHidden,
+      WorldEntity dealer,
+      boolean buffAfterHitsHeld,
+      Runnable heard,
+      SpawnHost cause,
+      boolean reflected,
+      boolean noCounter) {
     return new DamageQueries() {
       // The entry tells the entity's runs of the hit, from the last listed to the first, when it
       // has a holder at all.
@@ -1116,7 +1153,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         if (actionHolder == null) {
           return amount;
         }
-        DamageHeard hit = new DamageHeard(amount, reflected, cause);
+        DamageHeard hit = new DamageHeard(amount, reflected, noCounter, cause);
         actionHolder.damageHeard(hit);
         return hit.getAmount();
       }

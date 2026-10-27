@@ -2529,12 +2529,69 @@ public final class ActionRows {
               .pushBackRadius(integer(f, "PushBackRadius"))
               .continuousPushBack(bool(f, "ContinuosPushBack"))
               .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
-              .pushBackDamage(integer(f, "PushBackDamage"))
+              .pushBackDamage(pushBackDamage(name, f))
+              .noCounter(pushBackNoCounter(name, f))
               .pushToSide(bool(f, "PushToSide"))
               .pushRadiusDirectionalOffset(integer(f, "PushRadiusDirectionalOffset"))
               .gameObjectFilter(records.filter(f.get("GameObjectFilter").asText()))
               .pushFilter(records.filter(f.get("PushFilter").asText()))
               .build());
+    }
+
+    /**
+     * A carried push's damage at the first level: the whole number the data of game client
+     * 16.402.17 writes, or the BaseDamage (0 when left out) of the inline damage type the data of
+     * client 16.635.1 writes. Refused: a damage type named by row, an inline type with a field
+     * other than BaseDamage and Flags, or with a flag other than NoCounter, whose effect on the
+     * push's hit is not traced.
+     */
+    private static int pushBackDamage(String name, JsonNode f) {
+      JsonNode value = f.get("PushBackDamage");
+      if (value == null || !value.isObject()) {
+        if (value != null && value.isTextual() && !value.asText().isEmpty()) {
+          throw new UnsupportedOperationException(
+              name + " names the damage type row " + value.asText() + ", which is not modelled");
+        }
+        return integer(f, "PushBackDamage");
+      }
+      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
+        String field = it.next();
+        if (!field.equals("BaseDamage") && !field.equals("Flags")) {
+          throw new UnsupportedOperationException(
+              name + " sets " + field + " in its PushBackDamage, which is not modelled");
+        }
+      }
+      for (String flag : pushBackFlags(value)) {
+        if (!flag.equals("NoCounter")) {
+          throw new UnsupportedOperationException(
+              name + " sets the damage flag " + flag + " on its push, which is not modelled");
+        }
+      }
+      return integer(value, "BaseDamage", 0);
+    }
+
+    /** Whether a carried push's inline damage type is flagged NoCounter. */
+    private static boolean pushBackNoCounter(String name, JsonNode f) {
+      JsonNode value = f.get("PushBackDamage");
+      return value != null && value.isObject() && pushBackFlags(value).contains("NoCounter");
+    }
+
+    /** The flags of an inline damage type, written as one comma-separated text or as a list. */
+    private static Set<String> pushBackFlags(JsonNode type) {
+      JsonNode written = type.get("Flags");
+      List<String> names = new ArrayList<>();
+      if (written != null && written.isArray()) {
+        written.forEach(flag -> names.add(flag.asText()));
+      } else if (written != null && !written.isNull()) {
+        names.addAll(List.of(written.asText().split(",")));
+      }
+      Set<String> flags = new HashSet<>();
+      for (String flag : names) {
+        if (!flag.isBlank()) {
+          flags.add(flag.trim());
+        }
+      }
+      return flags;
     }
 
     /**
