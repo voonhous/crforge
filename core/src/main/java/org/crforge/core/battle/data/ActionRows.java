@@ -659,6 +659,7 @@ public final class ActionRows {
                   "DashFollowUpTrackEffect",
                   "DashFollowUpStartEffect",
                   "ResetAvoidanceAtPushback",
+                  "LockTargetAfterUppercut",
                   "ActionOnTargets")),
           // The four switches are loaded but read by nothing the class does, and the push effect
           // and its interval only show something.
@@ -2448,15 +2449,27 @@ public final class ActionRows {
      * does anything, the same for every class it starts.
      */
     private void refuseUnread(String name, JsonNode f, boolean singleton, boolean startGated) {
+      refuseUnread(name, f, singleton, startGated, false);
+    }
+
+    /**
+     * Refuses a row that sets one of the shared columns its class's run does not read, as {@link
+     * #refuseUnread(String, JsonNode, boolean, boolean)} does; with {@code tagged} the row's tags
+     * are left to the runtime, which sets them on the run as it starts, the same for every class.
+     */
+    private void refuseUnread(
+        String name, JsonNode f, boolean singleton, boolean startGated, boolean tagged) {
       List<String> columns =
           new ArrayList<>(
               List.of(
-                  "GameTagsToSet",
                   "NextAction",
                   "ActionPausedIfTrue",
                   "ForceStopIfTrue",
                   "ActionDelay",
                   "UpdatePhase"));
+      if (!tagged) {
+        columns.add("GameTagsToSet");
+      }
       if (!startGated) {
         columns.add("ExecuteIfTrue");
       }
@@ -2479,13 +2492,15 @@ public final class ActionRows {
     /**
      * An uppercut's columns, a column it leaves out taking the loader's default: an offset of 50, a
      * longer pushback kept, no proportional push, the follow-up dash, a delay of 1000, the target's
-     * avoidance blend cleared after the push and the action on the target only after a push that
-     * went through. A row that pushes through the request's gates or dashes after the delay is
-     * refused.
+     * avoidance blend cleared after the push, the action on the target only after a push that went
+     * through and the unit's target locked for one step after it. A row that pushes through the
+     * request's gates or dashes after the delay is refused.
      */
     private MegaKnightUppercut uppercut(String name, ActionRow shared, JsonNode f) {
-      // The start gate is the runtime's: asked as the uppercut starts, before its hold and target.
-      refuseUnread(name, f, true, true);
+      // The start gate is the runtime's: asked as the uppercut starts, before its target. So are
+      // the row's tags, which the runtime sets on the run as it starts and keeps on the unit while
+      // the run is listed: the run's start begins with the start every run shares, which sets them.
+      refuseUnread(name, f, true, true, true);
       if (!bool(f, "IgnorePushbackChecks", false)) {
         throw new UnsupportedOperationException(
             name + " pushes through the pushback request's gates, which is not modelled");
@@ -2503,6 +2518,7 @@ public final class ActionRows {
           integer(f, "DashFollowUpDelay", 1000),
           bool(f, "ResetAvoidanceAtPushback", true),
           bool(f, "OnlyRunActionOnPushback", true),
+          bool(f, "LockTargetAfterUppercut", true),
           action(f.get("ActionOnTargets")));
     }
 

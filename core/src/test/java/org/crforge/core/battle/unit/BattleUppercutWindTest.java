@@ -183,8 +183,8 @@ class BattleUppercutWindTest {
 
   @Test
   @DisplayName(
-      "an uppercut on a target without a movement component ends as it starts, the unit held for"
-          + " one step and nothing pushed")
+      "an uppercut on a target without a movement component ends as it starts, the unit carrying"
+          + " the row's tags for one step and nothing pushed")
   void anUppercutOnATowerEndsAtOnce() {
     Scene scene = new Scene();
     CharacterEntity mk = scene.unit(0, "MegaKnight_EV1", 3500, 23500, "mk");
@@ -196,14 +196,20 @@ class BattleUppercutWindTest {
     mk.setVariable(scene.world().variableKey("MegaKnight_EV1_Do_Uppercut_Counter"), 0);
     scene.log.clear();
 
-    mk.actionHolder().start(scene.row("MegaKnight_EV1_uppercut", mk), tower.actionHolder());
+    BattleAction uppercut = scene.row("MegaKnight_EV1_uppercut", mk);
+    mk.actionHolder().start(uppercut, tower.actionHolder());
     scene.step(2);
 
-    assertThat(scene.log)
-        .containsExactly(
-            "start mk " + tower.name() + " true",
-            "tags mk " + Long.toHexString(BITS.noMove() | BITS.noAttack()),
-            "tags mk 0");
+    // The finished run stays listed until the next run pass, its row's tags on the unit for that
+    // step; the run raises none of its own.
+    List<String> expected = new ArrayList<>();
+    expected.add("start mk " + tower.name() + " true");
+    long rowTags = uppercut.tags() & mk.watchedTagMask();
+    if (rowTags != 0) {
+      expected.add("tags mk " + Long.toHexString(rowTags));
+      expected.add("tags mk 0");
+    }
+    assertThat(scene.log).containsExactlyElementsOf(expected);
   }
 
   @Test
@@ -317,8 +323,10 @@ class BattleUppercutWindTest {
           + " nothing is scheduled on it, and the run ends without holding the unit")
   void aPushOnANoPushbackTargetIsRefused() {
     Uppercut pushed = uppercutOnAKnight(false, null);
-    String hold =
-        "tags mk " + Long.toHexString(BITS.noAttack() | BITS.noMove() | BITS.lockTarget());
+    // The run's row's tags, and the lock the run raises after a push for one step.
+    MegaKnightUppercut row = pushed.shippedRow();
+    long lock = row.isLockTargetAfterUppercut() ? BITS.lockTarget() : 0;
+    String hold = "tags mk " + Long.toHexString((row.tags() & pushed.mk().watchedTagMask()) | lock);
     // Without the tag, as the reference battles hold: pushed, the action on the Knight, the hold.
     assertThat(pushed.updates()).containsExactly("update mk pushed 1000", "update mk waiting 950");
     assertThat(pushed.knight().getUnit().movement().getAttackPushback()).isEqualTo(1);
@@ -358,6 +366,7 @@ class BattleUppercutWindTest {
                   shipped.getDashFollowUpDelayMs(),
                   shipped.isResetAvoidanceAtPushback(),
                   false,
+                  shipped.isLockTargetAfterUppercut(),
                   shipped.getActionOnTargets());
             });
 

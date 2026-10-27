@@ -14,12 +14,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  * The evolved Mega Knight's uppercut, run as the unit attacks: a run on the unit that keeps the
  * target it attacks, pushes that target on its first update toward the nearest tower of the
  * target's own side, past every gate of the pushback request, schedules its action on the target
- * with the unit as the cause, and then holds the unit for its follow-up delay, neither moving nor
- * attacking. A push that went through also clears the target's avoidance blend unless the row turns
- * that off, so the target flies straight. A target without a movement component ends the run at
- * once. A target carrying NO_PUSHBACK, as a counter's parry leaves it, is not pushed: the run ends
- * without the hold, and the action on the target is scheduled only when the row asks for it on a
- * refused push too.
+ * with the unit as the cause, and then waits out its follow-up delay. While it is listed the run
+ * sets the row's GameTagsToSet on the unit, as every run does, and nothing of its own but
+ * LOCK_TARGET for one step after a push that went through, while LockTargetAfterUppercut is on: so
+ * whether the unit stands, attacks or can be pulled through the uppercut is the row's to say. A
+ * push that went through also clears the target's avoidance blend unless the row turns that off, so
+ * the target flies straight. A target without a movement component ends the run at once. A target
+ * carrying NO_PUSHBACK, as a counter's parry leaves it, is not pushed: the run ends without the
+ * wait, and the action on the target is scheduled only when the row asks for it on a refused push
+ * too.
  *
  * <p>Refused as the row is built: a push through the request's gates, the follow-up dash, and the
  * shared columns its run does not read.
@@ -27,17 +30,21 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start's hold and target, the push point by the nearest tower"
-            + " of the target's side and then the opposite king, the push through the entry past"
-            + " the gates, the action on the target, the blend cleared after a push that went"
-            + " through, the hold for the follow-up delay, the end with another target in range"
+        "Settled line for line: the start's target, the push point by the nearest tower of the"
+            + " target's side and then the opposite king, the push through the entry past the"
+            + " gates, the action on the target, the blend cleared after a push that went"
+            + " through, the wait for the follow-up delay, the end with another target in range"
             + " or none, the mark of the target in the targeting queue and the target forgotten"
             + " as it leaves; held by the reference battles cg_megaknight_evo_uppercut_giant and"
             + " evo_megaknight_vs_musketeer. The push refused on a NO_PUSHBACK target, with no"
             + " action on it while OnlyRunActionOnPushback is set; held by"
-            + " BattleUppercutWindTest. Refused: the push through the request's gates, the"
-            + " follow-up dash, the start without a current target and the facing's push point"
-            + " with no tower or king.")
+            + " BattleUppercutWindTest. Traced on client 16.635.1, held by no reference yet: the"
+            + " unit's tags through the run are the row's GameTagsToSet alone, with LOCK_TARGET"
+            + " for one step after the push only while LockTargetAfterUppercut is on (16.402.17"
+            + " set NO_ATTACK and NO_MOVE itself at the start, after the push and on each step of"
+            + " the wait); held by BattleUppercutAttractTest. Refused: the push through the"
+            + " request's gates, the follow-up dash, the start without a current target and the"
+            + " facing's push point with no tower or king.")
 public final class MegaKnightUppercut extends RowAction {
 
   /** How far the target is pushed. */
@@ -64,6 +71,12 @@ public final class MegaKnightUppercut extends RowAction {
    */
   @Getter private final boolean onlyRunActionOnPushback;
 
+  /**
+   * True when the unit carries LOCK_TARGET for one step after a push that went through; false when
+   * it keeps its usual target choice.
+   */
+  @Getter private final boolean lockTargetAfterUppercut;
+
   /** The action scheduled on the target after the push, or null for none. */
   @Getter private final BattleAction actionOnTargets;
 
@@ -78,6 +91,8 @@ public final class MegaKnightUppercut extends RowAction {
    *     went through
    * @param onlyRunActionOnPushback true to schedule the action on the target only after a push the
    *     entry took
+   * @param lockTargetAfterUppercut true to give the unit LOCK_TARGET for one step after a push that
+   *     went through
    * @param actionOnTargets the action scheduled on the target after the push, or null
    */
   public MegaKnightUppercut(
@@ -89,6 +104,7 @@ public final class MegaKnightUppercut extends RowAction {
       int dashFollowUpDelayMs,
       boolean resetAvoidanceAtPushback,
       boolean onlyRunActionOnPushback,
+      boolean lockTargetAfterUppercut,
       BattleAction actionOnTargets) {
     super(row);
     this.pushBackStrength = pushBackStrength;
@@ -98,6 +114,7 @@ public final class MegaKnightUppercut extends RowAction {
     this.dashFollowUpDelayMs = dashFollowUpDelayMs;
     this.resetAvoidanceAtPushback = resetAvoidanceAtPushback;
     this.onlyRunActionOnPushback = onlyRunActionOnPushback;
+    this.lockTargetAfterUppercut = lockTargetAfterUppercut;
     this.actionOnTargets = actionOnTargets;
   }
 

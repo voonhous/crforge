@@ -21,41 +21,46 @@ import org.crforge.core.pathfinding.target.RangeTest;
 /**
  * One run of the evolved Mega Knight's uppercut on the unit.
  *
- * <p>As it starts the unit carries NO_ATTACK and NO_MOVE for one step and the run keeps the object
- * the unit's targeting component has as its target; an object without a movement component ends the
- * run at once. Its first update pushes that target: the point it is pushed away from stands just
- * behind it on the line from the nearest tower of its own side - the side's princess towers, then
- * the king facing the unit's side - so the push drives it toward that tower, through the pushback
- * entry past every gate of the request; then the row's action is scheduled on it with the unit as
- * the cause, a push the entry took clears the target's avoidance blend unless the row turns that
- * off, and the unit carries NO_ATTACK, NO_MOVE and LOCK_TARGET for one step and is held for the
+ * <p>The run raises no tags as it starts: while it is listed the unit carries its row's
+ * GameTagsToSet, which the runtime sets on every run, and so stands, holds its attack or can be
+ * pulled as the row says. As it starts the run keeps the object the unit's targeting component has
+ * as its target; an object without a movement component ends the run at once. Its first update
+ * pushes that target: the point it is pushed away from stands just behind it on the line from the
+ * nearest tower of its own side - the side's princess towers, then the king facing the unit's side
+ * - so the push drives it toward that tower, through the pushback entry past every gate of the
+ * request; then the row's action is scheduled on it with the unit as the cause, a push the entry
+ * took clears the target's avoidance blend unless the row turns that off, the unit carries
+ * LOCK_TARGET for one step while the row's LockTargetAfterUppercut is on, and the run waits out the
  * follow-up delay. A target with no movement component switched on, or one already switching lanes
  * (the in-game pathfinding state of a lane switch ability), is not pushed, nothing is scheduled on
  * it, and the run ends; that state is the only one the push point tests, so a target following a
  * removed building is pushed like any other. The run ends too for a target whose tag word holds
  * NO_PUSHBACK, which the uppercut's push entry refuses (no other push asks the entry that): nothing
- * is scheduled on it unless the row's OnlyRunActionOnPushback is off, and the unit is not held.
+ * is scheduled on it unless the row's OnlyRunActionOnPushback is off, and the run does not wait.
  * Each later update ends the run when the unit has no target or attacks another one in range; with
  * another target out of range it marks the uppercut's target in its targeting queue, at a priority
- * the queue's flush never takes; then the delay runs down by 50 ms, the unit held for one more step
- * while any is left, and the run ends when none is. A target that leaves the battle is forgotten,
- * and the next update ends the run.
+ * the queue's flush never takes; then the delay runs down by 50 ms, and the run ends when none is
+ * left. A target that leaves the battle is forgotten, and the next update ends the run.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
     note =
-        "Settled line for line: the start's hold and target, the push point, the push through the"
-            + " entry, the action on the target, the hold for the delay, the ends, the mark and"
-            + " the leave notice; held by the reference battles cg_megaknight_evo_uppercut_giant"
-            + " and evo_megaknight_vs_musketeer. The blend cleared after a push the entry took,"
-            + " on ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. The entry's refusal of"
-            + " a NO_PUSHBACK target, the run ended without the hold and no action on the target"
+        "Settled line for line: the start's target, the push point, the push through the entry,"
+            + " the action on the target, the wait for the delay, the ends, the mark and the leave"
+            + " notice; held by the reference battles cg_megaknight_evo_uppercut_giant and"
+            + " evo_megaknight_vs_musketeer. The blend cleared after a push the entry took, on"
+            + " ResetAvoidanceAtPushback; held by UppercutAvoidanceTest. The entry's refusal of a"
+            + " NO_PUSHBACK target, the run ended without the wait and no action on the target"
             + " while OnlyRunActionOnPushback is set; held by BattleUppercutWindTest. A target"
             + " switching lanes not pushed, nothing scheduled on it and the run ended; held by"
-            + " BattleUppercutWindTest. Refused:"
-            + " the start without a current target, which reads the targeting component's previous"
-            + " reference, a push point with no tower or king found, which turns to the facing,"
-            + " and a target other than a character with a movement component.")
+            + " BattleUppercutWindTest. Traced on client 16.635.1, held by no reference yet: no"
+            + " tags raised at the start or through the wait, the row's own on the unit while the"
+            + " run is listed, and LOCK_TARGET for one step after the push only while"
+            + " LockTargetAfterUppercut is on (16.402.17 raised NO_ATTACK and NO_MOVE at the start,"
+            + " after the push and on each step of the wait); held by BattleUppercutAttractTest."
+            + " Refused: the start without a current target, which reads the targeting component's"
+            + " previous reference, a push point with no tower or king found, which turns to the"
+            + " facing, and a target other than a character with a movement component.")
 final class UppercutRun extends ActionInstance {
 
   /** Milliseconds one update takes off the delay. */
@@ -85,8 +90,7 @@ final class UppercutRun extends ActionInstance {
   private int[] pushPoint;
 
   /**
-   * The start: the hold for one step and the target kept, the run finished for a target without a
-   * movement component.
+   * The start: the target kept, the run finished for a target without a movement component.
    *
    * @param row the uppercut
    * @param unit the unit it runs on
@@ -97,7 +101,10 @@ final class UppercutRun extends ActionInstance {
     super(row);
     this.row = row;
     this.unit = unit;
-    unit.raiseWatched(bits().noAttack() | bits().noMove());
+    // The run raises no tags of its own as it starts: the row's own, which the runtime sets on the
+    // run, hold the unit while it is listed. From here on each pre-hook tells the observers how the
+    // hold part of the unit's word changes.
+    unit.watchTags();
     target = unit.currentTarget();
     if (target == null) {
       throw new UnsupportedOperationException(
@@ -126,7 +133,10 @@ final class UppercutRun extends ActionInstance {
         outcome = "push refused";
         finish();
       } else {
-        unit.raiseWatched(bits().noAttack() | bits().noMove() | bits().lockTarget());
+        // The one tag the run raises itself, for one step, and only as the row asks.
+        if (row.isLockTargetAfterUppercut()) {
+          unit.raiseWatched(bits().lockTarget());
+        }
         delay = row.getDashFollowUpDelayMs();
         if (delay != 0) {
           outcome = "pushed";
@@ -159,7 +169,6 @@ final class UppercutRun extends ActionInstance {
     }
     delay -= STEP_MS;
     if (delay > 0) {
-      unit.raiseWatched(bits().noMove() | bits().noAttack());
       return "waiting";
     }
     // Without the follow-up dash, which the row refuses, the run ends with the delay.

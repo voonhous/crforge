@@ -1710,18 +1710,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * True once an uppercut or a knock has raised tags on the entity: from then on each pre-hook
-   * tells the observers when the hold, layer and contact tags of its word change.
+   * True once an uppercut has started on the entity or a knock has raised tags on it: from then on
+   * each pre-hook tells the observers when the hold, layer and contact tags of its word change.
    */
   private boolean tagsWatched;
 
   /** The watched tags of the word the last pre-hook made. */
   private long watchedWord;
 
-  /** The tags an uppercut and a knock raise and hold: the word's watched part. */
+  /**
+   * The tags an uppercut and a knock raise and hold, or their rows set: the word's watched part.
+   */
   long watchedTagMask() {
     EntityFlags bits = world.getFlagBits();
     return bits.noMove()
+        | bits.noMoveAllowAttract()
         | bits.noAttack()
         | bits.lockTarget()
         | bits.forceIsAir()
@@ -1734,6 +1737,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    */
   void raiseWatched(long tags) {
     getView().setPendingFlags(getView().getPendingFlags() | tags);
+    watchTags();
+  }
+
+  /**
+   * From the next pre-hook on, tells the observers when the watched part of the entity's word
+   * changes, as an uppercut's start asks: its row's tags reach the word without a raise.
+   */
+  void watchTags() {
     tagsWatched = true;
   }
 
