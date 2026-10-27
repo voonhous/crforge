@@ -15,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.Scenarios;
 import org.crforge.desktop.battle.TableCopies;
 
 /**
@@ -33,15 +34,15 @@ final class Replays {
   static final String ARCHER_QUEEN = "/replays/archer_queen_ability.json";
 
   /** The command type of a card play in the configured version's replays. */
-  static final int PLAY = 153;
+  static final int PLAY = Scenarios.PLAY;
 
   /** The command type of an ability command in the configured version's replays. */
-  static final int ABILITY = 189;
+  static final int ABILITY = Scenarios.ABILITY;
 
   /**
    * The fixture as a replay of the configured version's game client writes it, with made-up
-   * players: its command types 153 and 189, and every field its replays write beyond the shape all
-   * versions share.
+   * players: every field its replays write beyond the shape all versions share. Its command types
+   * are set to the configured version's as it is read ({@link #archerQueenWithEveryField}).
    */
   static final String ARCHER_QUEEN_EVERY_FIELD = "/replays/archer_queen_every_field.json";
 
@@ -70,16 +71,25 @@ final class Replays {
     for (JsonNode data : battle.path("hbd")) {
       ((ObjectNode) data).put("kt", 1);
     }
+    withCommandTypes(document);
+    return document;
+  }
+
+  /**
+   * The fixture with every field the configured version's replays write, as a document, with the
+   * configured version's command types.
+   */
+  static ObjectNode archerQueenWithEveryField() {
+    return withCommandTypes(read(ARCHER_QUEEN_EVERY_FIELD));
+  }
+
+  /** Sets each command's type to the configured version's: an ability command's, else a play's. */
+  private static ObjectNode withCommandTypes(ObjectNode document) {
     for (JsonNode command : document.path("cmd")) {
       ((ObjectNode) command)
           .put("ct", command.has("c") && command.path("c").has("cgid") ? ABILITY : PLAY);
     }
     return document;
-  }
-
-  /** The fixture with every field the configured version's replays write, as a document. */
-  static ObjectNode archerQueenWithEveryField() {
-    return read(ARCHER_QUEEN_EVERY_FIELD);
   }
 
   private static ObjectNode read(String resource) {

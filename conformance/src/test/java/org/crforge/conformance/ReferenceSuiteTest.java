@@ -7,6 +7,7 @@
 package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ import org.crforge.conformance.ReferenceSuite.CaseResult;
 import org.crforge.conformance.ReferenceSuite.References;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ReplayFormat;
 import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
@@ -163,6 +165,12 @@ class ReferenceSuiteTest {
   @Test
   void aCorpusOfGeneratedCasesNamesTheirShapeAndItsCasesAreReadAsSuch() throws IOException {
     GameTables tables = GameTables.loadConfigured();
+    // The case's trace is the battle core's run of it as a generated case, which needs the
+    // version's generated cases' fields.
+    assumeTrue(
+        ReplayFormat.generated(tables.version()).isPresent(),
+        "no recorded battle has established the generated cases' fields of data version "
+            + tables.version());
     byte[] scenario =
         MAPPER.writeValueAsBytes(ScenarioItems.fitted(Scenarios.generatedKnight(), tables));
     ReplaySmokeRun.InProcessRun recorded =

@@ -46,6 +46,21 @@ class CommandTypesTest {
   }
 
   @Test
+  void everyDataVersionOfClient16_635_1PlaysWith153AndTapsAbilitiesWith189() {
+    // Client 16.635.1 builds a play for 153 and an ability command for 189, as 16.402.17 does, and
+    // no command for 124 or 178.
+    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+      CommandTypes types = CommandTypes.of(version).orElseThrow();
+
+      assertThat(types.dataVersion()).isEqualTo(version);
+      assertThat(types.play()).isEqualTo(153);
+      assertThat(types.ability()).isEqualTo(189);
+      assertThat(types.describe(124)).isNull();
+      assertThat(types.describe(178)).isNull();
+    }
+  }
+
+  @Test
   void aDataVersionWhoseCommandTypesAreNotEstablishedHasNone() {
     assertThat(CommandTypes.of("9.1.0")).isEmpty();
     assertThat(CommandTypes.of(null)).isEmpty();
