@@ -13,9 +13,23 @@ So at any time the game accepts a range of client versions, from a minimum to th
 
 It follows for the data too. The game only serves a data version to clients that can play it, so every data version served while a range is live runs on that range's rules: the data versions compatible with a client are the ones served to any client of its range, from the range's start until a required update ends it.
 
-## Reference client: 16.402.17
+## Reference client: 16.635.1
 
-The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_402_17`). What it is compatible with:
+The simulator's battle rules follow client 16.635.1 (`GameVersions.CLIENT_16_635_1`), from 2026-10-28. What it is compatible with:
+
+### Client range: 16.635.1 to current
+
+| Client version | Seen as | First seen |
+| --- | --- | --- |
+| 16.635.1 | the reference client, installed on a test phone | 2026-10-27 |
+
+The range's minimum has not been checked against the game server yet.
+
+Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_1_DATA` lists the ones the simulator has game tables for (16.635.3), and CI tests each of them (`compatible` in `crforge-data.lock`). No battle of this range is recorded as a reference battle yet, so CI holds none for it: until they are recorded, the battle core's rules for this client rest on the unit tests alone.
+
+## Former reference client: 16.402.17
+
+The simulator's battle rules followed client 16.402.17 (`GameVersions.CLIENT_16_402_17`) until 2026-10-28. What it was compatible with:
 
 ### Client range: 16.402.12 to 16.402.20 (closed 2026-10-27)
 
@@ -28,9 +42,9 @@ The simulator's battle rules follow client 16.402.17 (`GameVersions.CLIENT_16_40
 
 The range's minimum was checked against the game server on 2026-10-26: it refused client 16.402.11 with an update-required status and accepted 16.402.12. It accepted every patch tried above that too, 16.402.13, .15 and .21 included, which are not known as released clients, so the server checks only the minimum; being accepted does not show that a client version exists.
 
-The range closed with a required update on 2026-10-27: the game server refused client 16.402.21, which it had accepted the day before, with the update-required status. The server checks only a minimum, so every client of the range is refused. Client 16.635.1 was first seen the same day, installed on a test phone (pairs in [Game Versions](game-versions.md)). The simulator's last state on this range is the release [v16.402.17-range-16.402.12-16.402.20](https://github.com/voonhous/crforge/releases/tag/v16.402.17-range-16.402.12-16.402.20); the next reference client's section is added here when the simulator moves to it.
+The range closed with a required update on 2026-10-27: the game server refused client 16.402.21, which it had accepted the day before, with the update-required status. The server checks only a minimum, so every client of the range is refused. Client 16.635.1 was first seen the same day, installed on a test phone (pairs in [Game Versions](game-versions.md)). The simulator's last state on this range is the release [v16.402.17-range-16.402.12-16.402.20](https://github.com/voonhous/crforge/releases/tag/v16.402.17-range-16.402.12-16.402.20); the simulator moved to it on 2026-10-28 (above).
 
-Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_402_17_DATA` lists the ones the simulator has game tables for (16.402.18, 16.402.19, 16.402.21 and 16.402.22), and CI tests each of them (`compatible` in `crforge-data.lock`).
+Every data version served to a client of this range was compatible; the pairs are in [Game Versions](game-versions.md). The simulator had game tables and reference battles for 16.402.18, 16.402.19, 16.402.21 and 16.402.22 (`GameVersions.CLIENT_16_402_17_DATA`, still named by the replay reading). CI no longer tests them: they left `compatible` in `crforge-data.lock` when the simulator moved to client 16.635.1, and their expectation files and coverage badges went with them. The release above plays them.
 
 ## Keeping this page
 

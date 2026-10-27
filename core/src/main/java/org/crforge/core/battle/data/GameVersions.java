@@ -62,6 +62,21 @@ public final class GameVersions {
   public static final Set<String> CLIENT_16_402_17_DATA =
       Set.of(DATA_16_402_18, DATA_16_402_19, DATA_16_402_21, DATA_16_402_22);
 
+  /**
+   * Data version 16.635.3, served to game client 16.635.1 from 2026-10-27 (content sha
+   * dae6c6cc7e9126338da0c606e47e48a9ef80462c; the client ships data 16.635.1 and updates to it).
+   */
+  public static final String DATA_16_635_3 = "16.635.3";
+
+  /** Game client version 16.635.1, as a replay's capture block names it. */
+  public static final String CLIENT_16_635_1 = "16.635.1";
+
+  /**
+   * The data versions of game client 16.635.1's range (docs/compatibility.md), the client whose
+   * rules the battle follows: 16.635.3 from 2026-10-27.
+   */
+  public static final Set<String> CLIENT_16_635_1_DATA = Set.of(DATA_16_635_3);
+
   private GameVersions() {
     // Constants only
   }

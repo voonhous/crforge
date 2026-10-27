@@ -296,6 +296,20 @@ public final class ScenarioWriter {
   }
 
   /**
+   * The game client that runs a data version, as a capture block names it, or null when none of the
+   * clients the simulator knows runs it.
+   */
+  private static String clientOf(String dataVersion) {
+    if (GameVersions.CLIENT_16_635_1_DATA.contains(dataVersion)) {
+      return GameVersions.CLIENT_16_635_1;
+    }
+    if (GameVersions.CLIENT_16_402_17_DATA.contains(dataVersion)) {
+      return GameVersions.CLIENT_16_402_17;
+    }
+    return null;
+  }
+
+  /**
    * Writes a translated scenario as a replay of the tables' data version: every field the version's
    * replays hold, a capture block naming the tables' data when the client of their data version is
    * known, and the last tick, where a viewer stops, when one is given.
@@ -360,10 +374,10 @@ public final class ScenarioWriter {
     }
     document.putArray("evt");
     pins(document, format.rootPins());
-    if (tables.contentSha() != null
-        && GameVersions.CLIENT_16_402_17_DATA.contains(tables.version())) {
+    String client = clientOf(tables.version());
+    if (tables.contentSha() != null && client != null) {
       ObjectNode capture = document.putObject(ReplayCapture.FIELD);
-      capture.put(ReplayCapture.CLIENT_VERSION, GameVersions.CLIENT_16_402_17);
+      capture.put(ReplayCapture.CLIENT_VERSION, client);
       capture.put(ReplayCapture.CONTENT_VERSION, tables.version());
       capture.put(ReplayCapture.CONTENT_SHA, tables.contentSha());
     }
