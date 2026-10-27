@@ -3148,6 +3148,23 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * Gives a unit's side's king back the cost of an undelivered ability use the unit carried as it
+   * left the battle: whole elixir up to the cap, the rest counted as wasted, as the champion slot's
+   * refund adds it.
+   *
+   * @param unit the leaving unit
+   * @param mana the cost, in whole elixir
+   */
+  void undeliveredCostReturned(CharacterEntity unit, int mana) {
+    int side = unit.side();
+    int before = kingElixir.elixir(side);
+    kingElixir.add(side, mana * KingElixir.SCALE);
+    for (WorldObserver observer : observers) {
+      observer.undeliveredCostReturned(tick, unit, mana, before, kingElixir.elixir(side));
+    }
+  }
+
+  /**
    * What a champion slot reads of its side's characters of a champion row, in live-list order, for
    * the observers: before its step.
    */

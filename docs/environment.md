@@ -194,7 +194,7 @@ It also counts every elixir gain the game shows the player, at the tick the batt
 
 `LadderEnv` hears these as the battle's own reports of each payout (`WorldObserver.elixirCollected`, `deathManaPaid`, `deathElixirPaid`, `ElixirCount.Gains`), which name the side and the amount and nothing of either side's elixir. It adds them after the tick's costs and before its regeneration, the battle's order.
 
-The one gain the game does not show is a champion ability's refund when its last copy leaves within the refund window. There is no float text, and the opponent has no ability button or elixir bar on the screen. It is not counted, so the count drifts from the truth by the refund there and nowhere else.
+The one gain the game does not show is a champion ability's refund when its last copy leaves within the refund window. There is no float text, and the opponent has no ability button or elixir bar on the screen. It is not counted, so the count drifts from the truth by that refund. The newer refund of an ability row with RefundUntilDelivered, given as the unit paid for leaves before its ability was delivered, is not counted either; whether the game shows it is not traced.
 
 The king regenerates in its step of the entity tick, so a tick that steps no entities regenerates neither the king nor the count:
 

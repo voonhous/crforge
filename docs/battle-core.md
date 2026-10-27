@@ -974,6 +974,10 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - The trigger delay for a row without one.
   - The window running out while the champion casts.
   - A window held while she waits to cast, which gives the cost back at a death long after.
+- `BattleAbilityDeliveredRefundTest` holds an ability row with RefundUntilDelivered (client 16.635.1) on a hand-written ability row:
+  - No refund window at a use; the cost given back as the unit leaves, long after a one-step window would have shut.
+  - Nothing given back once an ActionAbilityDelivered ran on the unit, even inside a long window.
+  - A death before the trigger delay fires the delivering action giving the cost back once, as the unit leaves.
 - `BattleDashTest` holds a Bandit untouchable while it dashes and for its immunity after, a Mega Knight that can be hurt while it dashes, the Mega Knight's landing hold, and the refusal of a Golden Knight's ability left pending.
 - `BattleChargeTest` holds a charge tracked from 0 for a row with a charge range and not at all without, and the refusal of a row whose completed charge runs an action.
 - `RiderTest` holds a Goblin Giant's riders:
@@ -1516,6 +1520,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - Its refund window goes down 50 while a copy casts (in the casting state or carrying CASTING_ABILITY), held while none does.
 
   With none left inside the window the cost is given back once, however long the window held. A copy whose ability waits and never casts keeps it open until it dies.
+
+  An ability row with RefundUntilDelivered (client 16.635.1; no row of the 16.402 tables has it) opens no window: the slot's window is shut at the use and the cost rides on the unit paid for. An ActionAbilityDelivered on a character takes it off. A unit that leaves the live list with it still on (the cleanup's removal or the removal at once) gives it back to the king of its side, capped as the slot's refund is, before its running actions hear that it leaves. A building paid for such an ability is refused. Traced, held by no reference yet.
 
   The Archer Queen's ability fires TriggerDelay / 50 - 1 visits after her cast starts and applies ArcherQueenRapid to herself for 3500 ms, at her level, she its parent and source. Her attack restarts from its load time after the cast and steps 140 a visit, and she walks at 75 percent. While it lasts every character asker drops her at its next check, though an arrow in flight lands and area damage reaches her.
 

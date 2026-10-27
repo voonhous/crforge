@@ -20,6 +20,7 @@ import java.util.function.IntSupplier;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Stream;
 import org.crforge.core.battle.EntityActions;
+import org.crforge.core.battle.action.AbilityDelivered;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionRow;
 import org.crforge.core.battle.action.AirToGround;
@@ -156,6 +157,7 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " PostGameObjectTick as the pending pass after the post-hooks, held by the Giant"
             + " hero's slap push queued on an evolved Mega Knight behind its hit's actions"
             + " (megaknight-slap-push-uppercut-v1); the other phase names are refused."
+            + " ActionAbilityDelivered, traced on client 16.635.1, held by no reference yet."
             + " Refused: every other class, and every column not modelled.")
 public final class ActionRows {
 
@@ -253,6 +255,8 @@ public final class ActionRows {
           Map.entry("ActionResetPath", Set.of()),
           // The target reset reads no column of its own.
           Map.entry("ActionResetTarget", Set.of()),
+          // The mark that an ability was delivered reads no column of its own.
+          Map.entry("ActionAbilityDelivered", Set.of()),
           // A projectile's own deflection, run in place of its turn-around, reads no column of its
           // own.
           Map.entry("ActionProjectileDeflected", Set.of()),
@@ -1625,6 +1629,7 @@ public final class ActionRows {
             case "ActionRunActionOnResolvedGameObjects" -> resolvedObjects(name, shared, f);
             case "ActionResetPath" -> new ResetPath(shared);
             case "ActionResetTarget" -> new ResetTarget(shared);
+            case "ActionAbilityDelivered" -> new AbilityDelivered(shared);
             case "ActionProjectileDeflected" -> new ProjectileDeflected(shared);
             case "ActionBarbBarrelHeroReRoll" -> barbBarrelReRoll(name, shared, f);
             case "ActionMegaKnightUppercut" -> uppercut(name, shared, f);

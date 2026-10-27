@@ -2395,6 +2395,9 @@ public final class BattleRecords {
             ability.intValue("RefundWindow") > 0
                 ? ability.intValue("RefundWindow")
                 : ability.intValue("TriggerDelay"))
+        // A newer row's RefundUntilDelivered (false when the row leaves it out, as every row of
+        // the older tables does): the cost rides on the unit until the ability is delivered.
+        .refundUntilDelivered(ability.bool("RefundUntilDelivered"))
         .cooldownMs(ability.intValue("Cooldown"))
         .maxCharges(ability.intValue("MaxCharges"))
         .dashRange(ability.intValue("DashRange"))

@@ -193,6 +193,15 @@ public abstract class BattleEntity {
   }
 
   /**
+   * The entity leaves the live list: the cleanup or the immediate removal that takes it calls this
+   * first, before any entity hears of it; an entity that leaves while it still waits to be admitted
+   * gets no such call. By default its own running actions hear that it leaves.
+   */
+  protected void leaving() {
+    actions().leaving();
+  }
+
+  /**
    * Whether the holder should drop the entity at its next cleanup. Asked at the head of a tick and
    * again near its end, so an entity that dies during a tick is still in that tick's snapshot and
    * is gone before the next one is taken.

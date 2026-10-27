@@ -42,7 +42,10 @@ import org.crforge.core.pathfinding.GridEntityState;
  * <p>A paid ability reaches every run of the king, from the last to the first; the slot that
  * follows the unit's row requests the ability of every live copy, opens the refund window for the
  * ability's RefundWindow (its trigger delay for a row without a positive one), starts the full
- * cooldown and spends a charge if it counts them. With no live copy it does nothing more.
+ * cooldown and spends a charge if it counts them. With no live copy it does nothing more. An
+ * ability row with RefundUntilDelivered opens no window: the slot's window is shut and the cost is
+ * put on the unit paid for, which gives it back to its side as it leaves the battle unless an
+ * ActionAbilityDelivered has taken it off ({@link CharacterEntity#carryUndeliveredCost}).
  *
  * <p>An action may write a button state for the step, which wins the next working out outright, and
  * refill the charges; the slot clears that state at the end of each of its own steps. The state is
@@ -72,7 +75,9 @@ import org.crforge.core.pathfinding.GridEntityState;
             + " hero Giant's slap then waiting for a target, held by refund_wait_t870,"
             + " refund_wait_t910, refund_wait_t919 and refund_wait_t920, a slap first by"
             + " refund_slap_t895. Not carried: the limited availability and the reservation,"
-            + " which nothing in a battle here sets.")
+            + " which nothing in a battle here sets. Traced on client 16.635.1 and held by no"
+            + " reference yet: a row with RefundUntilDelivered shuts the window at a use and puts"
+            + " the cost on the unit paid for; the step itself is unchanged.")
 public final class ChampionController extends ActionInstance {
 
   /** The button state before any champion. */
@@ -421,8 +426,15 @@ public final class ChampionController extends ActionInstance {
       copy.requestAbility();
     }
     AbilityData ability = champion.ability();
-    triggerMs = ability.refundWindowMs();
     paidMana = ability.manaCost();
+    if (ability.refundUntilDelivered()) {
+      // A row with RefundUntilDelivered opens no window: the cost rides on the unit paid for, which
+      // gives it back as it leaves unless an ActionAbilityDelivered took it off first.
+      triggerMs = 0;
+      unit.carryUndeliveredCost(paidMana);
+    } else {
+      triggerMs = ability.refundWindowMs();
+    }
     cooldownMs = cooldownFullMs;
     if (charges > 0) {
       charges--;

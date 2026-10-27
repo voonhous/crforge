@@ -71,7 +71,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " with the id of an object that has left by the fold is released there, leaving its"
             + " group chain with no notice to anyone, held by tv_replay_011 of 16.402.18. Not"
             + " settled: whether the removed entity is told of its own removal, and whether"
-            + " anything reorders the live list between ticks.")
+            + " anything reorders the live list between ticks. Traced on client 16.635.1 and"
+            + " held by no reference yet: the leaving entity's own leaving hook, where a character"
+            + " gives back an undelivered ability cost before its running actions hear of it.")
 public class EntityHolder {
 
   private final HolderPasses passes;
@@ -305,8 +307,9 @@ public class EntityHolder {
     List<BattleEntity> removed = new ArrayList<>();
     drainRemovable(live, removed);
     for (BattleEntity gone : removed) {
-      // The leaving entity's own running actions hear of it first, before any notice.
-      gone.actions().leaving();
+      // The leaving entity's own leaving hook runs first, before any notice: its running actions
+      // hear of it there.
+      gone.leaving();
       List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
       listed.addAll(live);
       for (BattleEntity entity : listed) {
@@ -340,7 +343,7 @@ public class EntityHolder {
     if (index < 0 || live.get(index) != entity) {
       return false;
     }
-    entity.actions().leaving();
+    entity.leaving();
     live.remove(index);
     List<BattleEntity> listed = new ArrayList<>(pendingAdditions);
     listed.addAll(live);

@@ -33,6 +33,9 @@ import lombok.Builder;
  * @param manaCost the elixir a player pays to use the ability, in whole elixir
  * @param refundWindowMs how long after a use its controller gives the cost back when no live copy
  *     is left: the row's RefundWindow, or its trigger delay when that is not positive
+ * @param refundUntilDelivered true for a row with RefundUntilDelivered: a use opens no refund
+ *     window; its cost rides on the unit paid for until an ActionAbilityDelivered runs on it, and
+ *     is given back to its side when that unit leaves the battle with the cost still on it
  * @param cooldownMs how long after a use its controller refuses the next
  * @param maxCharges how many uses one play of the champion allows; 0 for no limit
  * @param dashRange for an ability that does nothing else as it fires, the reach, centre to centre,
@@ -80,6 +83,7 @@ public record AbilityData(
     int buffTimeMs,
     int manaCost,
     int refundWindowMs,
+    boolean refundUntilDelivered,
     int cooldownMs,
     int maxCharges,
     int dashRange,
