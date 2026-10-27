@@ -32,6 +32,34 @@ class ReplayFormatTest {
   }
 
   @Test
+  void readsEveryDataVersionOfClient16_635_1sReplaysBy16_402_18sFieldsAndTheExcludedEvolutions() {
+    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+      ReplayFormat format = ReplayFormat.of(version).orElseThrow();
+
+      assertThat(format.dataVersion()).isEqualTo(version);
+      assertThat(format)
+          .usingRecursiveComparison()
+          .ignoringFields("dataVersion")
+          .isEqualTo(ReplayFormat.V16_635_1);
+      assertThat(format.excludedEvolutions()).isTrue();
+      // Beside the excluded evolutions, the fields of client 16.402.17's replays.
+      assertThat(format)
+          .usingRecursiveComparison()
+          .ignoringFields("dataVersion", "excludedEvolutions")
+          .isEqualTo(ReplayFormat.V16_402_18);
+    }
+    assertThat(ReplayFormat.V16_402_18.excludedEvolutions()).isFalse();
+    assertThat(ReplayFormat.V14_593_1.excludedEvolutions()).isFalse();
+  }
+
+  @Test
+  void hasNoGeneratedCaseFieldsForClient16_635_1UntilRecordedBattlesEstablishThem() {
+    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+      assertThat(ReplayFormat.generated(version)).isEmpty();
+    }
+  }
+
+  @Test
   void readsEveryDataVersionOfAClientsGeneratedCasesByTheSameFields() {
     // A generated case is written in 14.593.1's replay shape whatever its version, and the client
     // reads it the same on every data version it runs.

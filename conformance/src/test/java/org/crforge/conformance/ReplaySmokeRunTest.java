@@ -7,6 +7,7 @@
 package org.crforge.conformance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.replay.ContentFields;
+import org.crforge.core.battle.replay.ReplayFormat;
 import org.crforge.core.battle.replay.ScenarioItems;
 import org.crforge.core.battle.replay.ScenarioShape;
 import org.crforge.core.battle.replay.Scenarios;
@@ -707,6 +709,7 @@ class ReplaySmokeRunTest {
   @Test
   void aGeneratedCaseRunsWhenTheRunNamesItsShape() throws IOException {
     GameTables tables = GameTables.loadConfigured();
+    assumeGeneratedCasesEstablished(tables);
     byte[] scenario = MAPPER.writeValueAsBytes(fit(Scenarios.generatedKnight()));
 
     ReplaySmokeRun.InProcessRun generated =
@@ -739,9 +742,13 @@ class ReplaySmokeRunTest {
     Path generated = folder.resolve("generated");
     Path unknown = folder.resolve("unknown");
 
-    int exit = run(fit(Scenarios.generatedKnight()), generated, identity, 30, "generated");
     int refused = run(fit(Scenarios.knight()), unknown, identity, 30, "recorded");
 
+    assertThat(refused).isEqualTo(ReplaySmokeRun.INVALID);
+    assertThat(MAPPER.readTree(unknown.resolve("manifest.json").toFile()).path("error").asText())
+        .contains("not a scenario shape: recorded");
+    assumeGeneratedCasesEstablished(GameTables.loadConfigured());
+    int exit = run(fit(Scenarios.generatedKnight()), generated, identity, 30, "generated");
     // The case generated for the version leaves out what its replays add beyond it, each king's
     // level 1 among them: generated, it runs the same battle as the replay.
     assertThat(exit).isEqualTo(ReplaySmokeRun.COMPLETED);
@@ -752,9 +759,17 @@ class ReplaySmokeRunTest {
     assertThat(manifest.path("adapter").path("scenario_shape").asText()).isEqualTo("generated");
     JsonNode replayManifest = MAPPER.readTree(folder.resolve("replay/manifest.json").toFile());
     assertThat(replayManifest.path("adapter").path("scenario_shape").asText()).isEqualTo("replay");
-    assertThat(refused).isEqualTo(ReplaySmokeRun.INVALID);
-    assertThat(MAPPER.readTree(unknown.resolve("manifest.json").toFile()).path("error").asText())
-        .contains("not a scenario shape: recorded");
+  }
+
+  /**
+   * Skips the part of a test that runs a generated case on a data version whose generated cases no
+   * recorded battle has established, which the mapping refuses ({@link ReplayFormat#generated}).
+   */
+  private static void assumeGeneratedCasesEstablished(GameTables tables) {
+    assumeTrue(
+        ReplayFormat.generated(tables.version()).isPresent(),
+        "no recorded battle has established the generated cases' fields of data version "
+            + tables.version());
   }
 
   @Test

@@ -37,8 +37,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A replay's labels: episodes of the Ladder environment written as replays and labelled back, and
- * the generated Knight case of the core's test fixtures. The decks name rows of the tables; every
- * cost and elixir is read from the observation.
+ * the Knight replay of the core's test fixtures. The decks name rows of the tables; every cost and
+ * elixir is read from the observation.
  */
 class ReplayLabellerTest {
 
@@ -331,14 +331,14 @@ class ReplayLabellerTest {
   }
 
   @Test
-  void theGeneratedKnightOnATileCentreIsLabelledAndReproduced() {
-    ObjectNode knight = Scenarios.generatedKnight();
+  void theKnightOnATileCentreIsLabelledAndReproduced() {
+    ObjectNode knight = Scenarios.knight();
     // A point the screen sends: the centre of a tile of side 0's half, less 1 across where the
     // placement search's symmetrical snap shifts it.
     ObjectNode body = (ObjectNode) knight.path("cmd").path(0).path("c");
     body.put("px", 3_499);
     body.put("py", 13_500);
-    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 1, ScenarioShape.GENERATED);
+    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 1, ScenarioShape.REPLAY);
     ReplayLabeller.Labels labels = labeller.label(cut(knight, 400));
 
     assertThat(labels.refusal()).isNull();
@@ -360,9 +360,9 @@ class ReplayLabellerTest {
 
   @Test
   void aRecordedPointNoTileCentreGivesIsLabelledWithItsTileAndCounted() {
-    // The generated Knight's point lies on the border of two tiles: no player's screen sends it.
-    ObjectNode knight = Scenarios.generatedKnight();
-    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 1, ScenarioShape.GENERATED);
+    // The Knight's point lies on the border of two tiles: no player's screen sends it.
+    ObjectNode knight = Scenarios.knight();
+    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 1, ScenarioShape.REPLAY);
     ReplayLabeller.Labels labels = labeller.label(cut(knight, 400));
 
     assertThat(labels.refusal()).isNull();
@@ -450,9 +450,9 @@ class ReplayLabellerTest {
 
   @Test
   void aReplayStopsAtItsEndTickAndCountsTheCommandsAfterIt() {
-    ObjectNode knight = Scenarios.generatedKnight();
+    ObjectNode knight = Scenarios.knight();
     ((ObjectNode) knight.path("cmd").path(0).path("c")).put("px", 3_499).put("py", 13_500);
-    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 5, ScenarioShape.GENERATED);
+    ReplayLabeller labeller = new ReplayLabeller(tables, vocabulary, 5, ScenarioShape.REPLAY);
     ReplayLabeller.Labels labels = labeller.label(cut(knight, 150));
     assertThat(labels.stopTick()).isEqualTo(150);
     assertThat(labels.rows()).isEqualTo(2 * 30);

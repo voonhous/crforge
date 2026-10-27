@@ -372,7 +372,7 @@ The viewer picks the tables from the block, on `--replay` and on a dropped file:
 - When no version built has that sha, the replay is not played on other data: it is refused, the first reason saying that no version has the sha, and the mapping's reason naming the client version, data version and sha it was recorded on.
 - A replay without a block is read on the version on screen, as before, and its data version is marked **assumed**, not named by the replay, in the startup print and the data details.
 
-The command type numbers and replay fields (`CommandTypes`, `ReplayFormat`) are still keyed by the data version, although they are the client's: a replay of data 16.402.19 recorded on client 16.402.17 is refused until they are keyed by client version.
+The command type numbers and replay fields (`CommandTypes`, `ReplayFormat`) are still keyed by the data version, although they are the client's: each client's numbers and fields are listed for every data version of its range (`GameVersions.CLIENT_16_402_17_DATA`, `GameVersions.CLIENT_16_635_1_DATA`), and a replay of any other data version has every command refused.
 
 #### The replay mapping
 
@@ -384,14 +384,23 @@ The command type numbers are the tables' data version's (`org.crforge.core.battl
 |---|---|---|
 | 14.593.1 | 124 | 178 |
 | 16.402.18 | 153 | 189 |
+| 16.635.3 | 153 | 189 |
 
-In 16.402.18, 124 and 178 are refused. A version whose command types are not established has every command refused rather than read by another version's numbers.
+The numbers are the client's: 16.402.18's hold for every data version of client 16.402.17, and 16.635.3's for every data version of client 16.635.1, which builds a play for 153 and an ability command for 189 as 16.402.17 does. In both, 124 and 178 are refused. A version whose command types are not established has every command refused rather than read by another version's numbers.
 
 The fields a version's replays write beyond 14.593.1's are the version's too (`org.crforge.core.battle.replay.ReplayFormat`). 16.402.18's replays:
 
 - give each side's king level in its player data (`hbd[i].kt`)
 - pin the request lists (`srq`, `srs`) and three header switches (`cardlvlmin`, `rrb`, `seb`)
 - carry the players' profiles, the cards' cosmetics (`pr`, `sc`, `hsc` and the item's cosmetic bits), the tower card's count and flags, the deck header and the replay's events (`evt`, types 1, 3 and 5) with no battle input
+
+Client 16.635.1's replays (data 16.635.3) write 16.402.18's fields and one more: each player data entry lists the evolutions excluded from the battle (`hbd[i].es`), each by its data id. Client 16.635.1 builds a play of a card whose evolved row is listed for its side unevolved, and the battle core builds a play's item without the list. So the list is read like this:
+
+- a replay is refused when a listed row is an evolved row of a card in either side's evolution slot, the only card the battle core may build evolved
+- otherwise the list sets nothing: the client reads it in a draft or pick mode's card deal too, which a Ladder match does not run
+- an id of no row the tables hold, or a list that is not one, is refused
+
+A case generated for a data version of client 16.635.1 is refused: no recorded battle of such a case has established its fields yet.
 
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
 

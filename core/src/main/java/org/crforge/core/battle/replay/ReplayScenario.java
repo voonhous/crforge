@@ -252,6 +252,12 @@ public final class ReplayScenario {
    */
   private final List<Integer> kingLevels = new ArrayList<>();
 
+  /**
+   * The rows of the evolutions excluded from the battle, by name, which the players' data lists in
+   * a format that reads them ({@link ReplayFormat#excludedEvolutions}); else empty.
+   */
+  private final Set<String> excludedEvolutions = new TreeSet<>();
+
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
 
@@ -417,6 +423,7 @@ public final class ReplayScenario {
         names.add(card.name());
         levels.add(level(deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
+        excludedEvolution(card, slots.get(slots.size() - 1), side);
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
       decks.add(names);
@@ -634,6 +641,7 @@ public final class ReplayScenario {
    */
   private List<Integer> playerDataWithKingLevels(JsonNode battle) {
     kingLevels.clear();
+    excludedEvolutions.clear();
     JsonNode entries = required(battle, "hbd");
     if (entries.size() != 2) {
       throw new UnsupportedScenarioException(
@@ -644,7 +652,15 @@ public final class ReplayScenario {
     for (int side = 0; side < 2; side++) {
       JsonNode entry = entries.get(side);
       String field = "battle.hbd[" + side + "]";
-      onlyFields(entry, field, format.playerData().toArray(String[]::new));
+      onlyFields(
+          entry,
+          field,
+          format.excludedEvolutions()
+              ? with(format.playerData(), ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD)
+              : format.playerData().toArray(String[]::new));
+      if (format.excludedEvolutions()) {
+        excludedEvolutions(entry, field);
+      }
       JsonNode level = required(entry, ReplayFormat.KING_LEVEL_FIELD);
       if (!level.isInt() || level.asInt() < 1 || level.asInt() > levelCount) {
         refuse(
@@ -666,7 +682,76 @@ public final class ReplayScenario {
         "battle.hbd[i]." + ReplayFormat.KING_LEVEL_FIELD,
         "consumed: the side's king level, counted from 1, 1 to the Common rarity's LevelCount: the"
             + " level its king row is created at");
+    if (format.excludedEvolutions()) {
+      mapping.put(
+          "battle.hbd[i]." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD,
+          "consumed: the evolutions excluded from the battle, each a data id; a replay is refused"
+              + " when one is an evolved row of a card in an evolution slot of either side, whose"
+              + " plays the game's client builds unevolved and the battle core would build evolved;"
+              + " otherwise no play reads it");
+    }
     return choices;
+  }
+
+  /**
+   * Reads a player data entry's excluded evolutions ({@value
+   * ReplayFormat#EXCLUDED_EVOLUTIONS_FIELD}), when it lists any: each a data id of a row the tables
+   * hold.
+   *
+   * <p>The game's client reads the list in every game mode. Only a play's item reads it in a Ladder
+   * match: a play the player's client would build evolved is built unevolved when its card's
+   * evolved row is listed for the side. The list also narrows the cards a draft or pick mode deals,
+   * which a Ladder match does not run. The battle core builds a play's item without the list, so a
+   * replay is refused where the list could change an item ({@link #excludedEvolution}); elsewhere
+   * the list leaves the battle as it is.
+   */
+  private void excludedEvolutions(JsonNode entry, String field) {
+    JsonNode listed = entry.get(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
+    if (listed == null) {
+      return;
+    }
+    String where = field + "." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD;
+    if (!listed.isArray()) {
+      refuse("excluded evolutions that are not a list of data ids", where + "=" + listed);
+      return;
+    }
+    for (JsonNode id : listed) {
+      Optional<GameRow> row = id.isInt() ? find(id.asInt()) : Optional.empty();
+      if (row.isEmpty()) {
+        refuse("an excluded evolution of no row the tables hold", where + "=" + listed);
+        continue;
+      }
+      excludedEvolutions.add(row.get().name());
+    }
+  }
+
+  /**
+   * Refuses a deck card in the evolution slot whose evolved rows ({@code EvolvedSpells}) include an
+   * excluded evolution of either side: the game's client builds such a card's evolved play
+   * unevolved, and the battle core builds a play's item without the list. A card outside the
+   * evolution slot is never built evolved, and is read as it is.
+   *
+   * @param card the deck card's row
+   * @param slotFlags the deck card's slot flags
+   * @param side the deck's side
+   */
+  private void excludedEvolution(GameRow card, int slotFlags, int side) {
+    if (excludedEvolutions.isEmpty() || (slotFlags & MatchSide.EVOLUTION_SLOT) == 0) {
+      return;
+    }
+    JsonNode listed = card.value("EvolvedSpells");
+    List<String> evolved =
+        listed != null && listed.isArray()
+            ? card.strings("EvolvedSpells")
+            : List.of(card.string("EvolvedSpells"));
+    for (String name : evolved) {
+      if (excludedEvolutions.contains(name)) {
+        refuse(
+            "an evolution excluded from the battle in an evolution slot, whose plays the battle"
+                + " core would build evolved",
+            "battle.deck" + side + ".sp: " + card.name() + " (" + name + ")");
+      }
+    }
   }
 
   /**

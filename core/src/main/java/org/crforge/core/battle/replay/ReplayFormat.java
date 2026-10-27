@@ -50,6 +50,8 @@ import org.crforge.core.battle.data.GameVersions;
  *     {@code kt} among them
  * @param cosmeticCarried whether a play's packed cosmetic field (bits 17..18) is carried; else it
  *     must be 0
+ * @param excludedEvolutions whether a player data entry may hold the evolutions excluded from the
+ *     battle ({@value #EXCLUDED_EVOLUTIONS_FIELD}), read as {@link ReplayScenario} describes
  */
 public record ReplayFormat(
     String dataVersion,
@@ -65,7 +67,8 @@ public record ReplayFormat(
     Map<String, String> selectionPins,
     List<String> selectionCarried,
     List<String> playerData,
-    boolean cosmeticCarried) {
+    boolean cosmeticCarried,
+    boolean excludedEvolutions) {
 
   /**
    * The event types of a version whose events are carried, each what a player's client showed. The
@@ -83,6 +86,13 @@ public record ReplayFormat(
   /** The player data field that gives the side's king level, counted from 1. */
   public static final String KING_LEVEL_FIELD = "kt";
 
+  /**
+   * The player data field that lists the evolutions excluded from the battle, each by its data id
+   * (its table's id times a million plus its row's index): a play of a card whose evolution is
+   * listed is not built evolved.
+   */
+  public static final String EXCLUDED_EVOLUTIONS_FIELD = "es";
+
   /** The fields of version 14.593.1's replays, which every version's replays share. */
   public static final ReplayFormat V14_593_1 =
       new ReplayFormat(
@@ -99,6 +109,7 @@ public record ReplayFormat(
           ordered("t", "0", "c", "1"),
           List.of(),
           null,
+          false,
           false);
 
   /**
@@ -171,13 +182,25 @@ public record ReplayFormat(
               "rrsmr",
               "ts",
               "sa"),
-          true);
+          true,
+          false);
+
+  /**
+   * The fields of client 16.635.1's replays: 16.402.18's, and a player data entry may list the
+   * evolutions excluded from the battle ({@value #EXCLUDED_EVOLUTIONS_FIELD}). Client 16.402.17
+   * reads that field too and builds a play's item without it; client 16.635.1 builds a play of a
+   * card whose evolution is listed unevolved.
+   */
+  public static final ReplayFormat V16_635_1 =
+      V16_402_18.withExcludedEvolutions(GameVersions.DATA_16_635_3);
 
   /**
    * The format of each data version whose replays' fields have been decided. The fields are the
    * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
    * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.402.19
-   * write the same fields.
+   * write the same fields. Client 16.635.1's replays of data version 16.635.3 decided {@link
+   * #V16_635_1} for every data version that client runs ({@link
+   * GameVersions#CLIENT_16_635_1_DATA}).
    */
   private static final Map<String, ReplayFormat> BY_VERSION = byVersion();
 
@@ -204,6 +227,9 @@ public record ReplayFormat(
     byVersion.put(V14_593_1.dataVersion(), V14_593_1);
     for (String version : GameVersions.CLIENT_16_402_17_DATA) {
       byVersion.put(version, V16_402_18.forDataVersion(version));
+    }
+    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+      byVersion.put(version, V16_635_1.forDataVersion(version));
     }
     return Map.copyOf(byVersion);
   }
@@ -268,7 +294,28 @@ public record ReplayFormat(
         selectionPins,
         selectionCarried,
         playerData,
-        cosmeticCarried);
+        cosmeticCarried,
+        excludedEvolutions);
+  }
+
+  /** The same fields as another data version's, with the excluded evolutions read. */
+  private ReplayFormat withExcludedEvolutions(String version) {
+    return new ReplayFormat(
+        version,
+        rootPins,
+        events,
+        battlePins,
+        battleCarried,
+        avatarPins,
+        avatarCarried,
+        accountHighOptional,
+        deckCarried,
+        cardCarried,
+        selectionPins,
+        selectionCarried,
+        playerData,
+        cosmeticCarried,
+        true);
   }
 
   /** Whether the player data entries are read field by field, the king level among them. */

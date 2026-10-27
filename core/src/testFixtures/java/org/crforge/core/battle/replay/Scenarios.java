@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.function.Function;
+import org.crforge.core.battle.GameData;
 
 /** A replay scenario of the shape the adapter reads, built for the tests. */
 public final class Scenarios {
@@ -27,10 +28,20 @@ public final class Scenarios {
   }
 
   /** The command type of a card play in the configured data version's replays. */
-  public static final int PLAY = 153;
+  public static final int PLAY = configuredCommandTypes().play();
 
   /** The command type of an ability command in the configured data version's replays. */
-  public static final int ABILITY = 189;
+  public static final int ABILITY = configuredCommandTypes().ability();
+
+  /** The command types of the configured tables' data version. */
+  private static CommandTypes configuredCommandTypes() {
+    String version = GameData.tables().version();
+    return CommandTypes.of(version)
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "no command types are established for data version " + version));
+  }
 
   /**
    * Two players of one deck at level index 0 with the princess towers, and one play: side 0's
@@ -53,10 +64,10 @@ public final class Scenarios {
   }
 
   /**
-   * The {@link #knight()} battle as a case generated for data version 16.402.18 writes it: the
-   * replay shape every version shares ({@link ScenarioShape#GENERATED}) with the play's command
-   * type 153. It has no request lists, no header switches of that version and no king levels in its
-   * player data, and keeps the shared shape's arena.
+   * The {@link #knight()} battle as a case generated for a data version of client 16.402.17 writes
+   * it: the replay shape every version shares ({@link ScenarioShape#GENERATED}) with the play's
+   * command type, {@link #PLAY}. It has no request lists, no header switches of that version and no
+   * king levels in its player data, and keeps the shared shape's arena.
    */
   public static ObjectNode generatedKnight() {
     ObjectNode scenario = JSON.objectNode();
@@ -113,12 +124,13 @@ public final class Scenarios {
   }
 
   /**
-   * The {@link #knight()} battle as a replay of the game client whose data version is 16.402.18
-   * writes it in full, with made-up players: the arena of that version; each avatar's profile, each
-   * deck's header, each card's cosmetics and the tower card's count and flags; player data holding
-   * each side's king level ({@code kt}: 15 for side 0, 16 for side 1) beside emotes, skins and a
-   * banner; a carried event of each type; the Knight's item with its cosmetic field (bits 17..18)
-   * 2; and side 1's avatar without the high word of its account id, which its commands give as 0.
+   * The {@link #knight()} battle as a replay of the configured data version's game client writes it
+   * in full, with made-up players: the arena of that version; each avatar's profile, each deck's
+   * header, each card's cosmetics and the tower card's count and flags; player data holding each
+   * side's king level ({@code kt}: 15 for side 0, 16 for side 1) beside emotes, skins, a banner and
+   * an empty list of excluded evolutions ({@code es}); a carried event of each type; the Knight's
+   * item with its cosmetic field (bits 17..18) 2; and side 1's avatar without the high word of its
+   * account id, which its commands give as 0.
    */
   public static ObjectNode knightWithEveryField() {
     ObjectNode scenario = knight();
@@ -173,6 +185,7 @@ public final class Scenarios {
       data.put("ptix", -1);
       data.put("rrsmr", 14000004);
       data.put("ts", 1);
+      data.putArray(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
     }
     ((ObjectNode) battle.path("avatar1")).remove("accountID.hi");
     ArrayNode events = scenario.putArray("evt");

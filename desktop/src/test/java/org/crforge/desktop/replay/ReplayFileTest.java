@@ -74,7 +74,7 @@ class ReplayFileTest {
     assertThat(replay.header().endTick()).isEqualTo(400);
     assertThat(replay.header().commands()).isEqualTo(2);
     assertThat(replay.header().commandTypes())
-        .containsExactly(Map.entry(153, 1), Map.entry(189, 1));
+        .containsExactly(Map.entry(Replays.PLAY, 1), Map.entry(Replays.ABILITY, 1));
     assertThat(replay.plan().plays()).hasSize(1);
     assertThat(replay.plan().abilities()).hasSize(1);
     assertThat(replay.recordedResult()).isEqualTo("none in the replay");
@@ -91,7 +91,11 @@ class ReplayFileTest {
     assertThat(lines)
         .contains(
             "  end tick: 400",
-            "  commands: 2 (type 153 x1, a card play; type 189 x1, an ability command)",
+            "  commands: 2 (type "
+                + Replays.PLAY
+                + " x1, a card play; type "
+                + Replays.ABILITY
+                + " x1, an ability command)",
             "  recorded result: none in the replay",
             "  mapping: every field read; 1 plays, 1 ability commands");
   }
@@ -186,9 +190,14 @@ class ReplayFileTest {
     assertThat(replay.dataVersion()).isEqualTo(Replays.tables().version());
     assertThat(replay.header().location()).isEqualTo("PvP_spiritempress");
     assertThat(replay.header().commandTypes())
-        .containsExactly(Map.entry(153, 1), Map.entry(189, 1));
+        .containsExactly(Map.entry(Replays.PLAY, 1), Map.entry(Replays.ABILITY, 1));
     assertThat(replay.describe())
-        .contains("  commands: 2 (type 153 x1, a card play; type 189 x1, an ability command)");
+        .contains(
+            "  commands: 2 (type "
+                + Replays.PLAY
+                + " x1, a card play; type "
+                + Replays.ABILITY
+                + " x1, an ability command)");
     // The mapping reads every field, and the battle core plays the configured tables.
     assertThat(replay.refusals()).isEmpty();
     assertThat(replay.playable()).isTrue();

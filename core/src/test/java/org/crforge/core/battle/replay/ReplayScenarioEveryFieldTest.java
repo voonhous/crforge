@@ -8,12 +8,15 @@ package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,6 +46,63 @@ class ReplayScenarioEveryFieldTest {
     String rarity =
         tables.table("support_cards").row("King_PrincessTowers").columns().get("Rarity").asText();
     return ScenarioItems.relativeLevel(tables, "support_rarities", rarity) + 1;
+  }
+
+  /**
+   * Skips a test of the generated cases' fields on a data version whose generated cases no recorded
+   * battle has established ({@link ReplayFormat#generated}).
+   */
+  private static void assumeGeneratedCasesEstablished() {
+    assumeTrue(
+        ReplayFormat.generated(tables.version()).isPresent(),
+        "no recorded battle has established the generated cases' fields of data version "
+            + tables.version());
+  }
+
+  /** Skips a test of the excluded evolutions on a data version whose replays do not list them. */
+  private static void assumeExcludedEvolutionsRead() {
+    assumeTrue(
+        ReplayFormat.orShared(tables.version()).excludedEvolutions(),
+        "the replays of data version " + tables.version() + " list no excluded evolutions");
+  }
+
+  /**
+   * A card of the fixture's deck with an evolved row of the evolved cards' table, and that row's
+   * data id: the deck index, the row's name and its id.
+   */
+  private static Object[] deckCardWithAnEvolvedRow() {
+    GameTable evolvedCards = tables.table("spells_evolved");
+    ReplayScenario names = new ReplayScenario(tables);
+    for (int index = 0; index < Scenarios.DECK.length; index++) {
+      GameRow card = names.find(Scenarios.DECK[index]).orElseThrow();
+      JsonNode listed = card.value("EvolvedSpells");
+      List<String> evolved =
+          listed != null && listed.isArray()
+              ? card.strings("EvolvedSpells")
+              : List.of(card.string("EvolvedSpells"));
+      for (String name : evolved) {
+        if (evolvedCards.has(name)) {
+          int id =
+              Integer.parseInt(evolvedCards.id()) * ReplayScenario.IDS_PER_TABLE
+                  + evolvedCards.row(name).index();
+          return new Object[] {index, card.name() + " (" + name + ")", id};
+        }
+      }
+    }
+    assumeTrue(false, "no card of the fixture's deck has an evolved row in these tables");
+    return null;
+  }
+
+  /** The scenario with every field, each side's player data listing the excluded evolutions. */
+  private static ObjectNode withExcludedEvolutions(int... ids) {
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    for (JsonNode data : scenario.path("battle").path("hbd")) {
+      ArrayNode listed = ((ObjectNode) data).putArray(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
+      for (int id : ids) {
+        listed.add(id);
+      }
+    }
+    return scenario;
   }
 
   /** The Knight's level at level index 0: its rarity's RelativeLevel plus 1. */
@@ -313,6 +373,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void readsACaseGeneratedForTheVersionByTheFieldsOfItsGeneratedCases() {
+    assumeGeneratedCasesEstablished();
     ReplayScenario mapping = new ReplayScenario(tables, ScenarioShape.GENERATED);
     ObjectNode scenario = fit(Scenarios.generatedKnight());
 
@@ -351,6 +412,7 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesInAGeneratedCaseTheFieldsOnlyTheVersionsReplaysWrite() {
+    assumeGeneratedCasesEstablished();
     ObjectNode scenario = fit(Scenarios.generatedKnight());
     scenario.putArray("srq");
     ObjectNode battle = (ObjectNode) scenario.path("battle");
@@ -368,10 +430,76 @@ class ReplayScenarioEveryFieldTest {
 
   @Test
   void refusesInAGeneratedCaseTheCommandTypesOfAnOlderClient() {
+    assumeGeneratedCasesEstablished();
     ObjectNode scenario = fit(Scenarios.generatedKnight());
     ((ObjectNode) scenario.path("cmd").get(0)).put("ct", 124);
 
     assertThat(new ReplayScenario(tables, ScenarioShape.GENERATED).survey(scenario))
         .containsExactly(new ReplayScenario.Refusal("the command type 124", "cmd[0].ct"));
+  }
+
+  @Test
+  void refusesAGeneratedCaseOfAVersionWhoseGeneratedCasesAreNotEstablished() {
+    assumeTrue(ReplayFormat.generated(tables.version()).isEmpty());
+
+    assertThat(
+            new ReplayScenario(tables, ScenarioShape.GENERATED)
+                .survey(fit(Scenarios.generatedKnight())))
+        .containsExactly(
+            new ReplayScenario.Refusal(
+                "a generated case of data version "
+                    + tables.version()
+                    + ", whose generated cases' fields no recorded battle has established",
+                "the scenario shape generated"));
+  }
+
+  @Test
+  void readsTheExcludedEvolutionsOfCardsOutsideTheEvolutionSlotAsNoInputOfTheBattle() {
+    assumeExcludedEvolutionsRead();
+    Object[] card = deckCardWithAnEvolvedRow();
+    ReplayScenario mapping = new ReplayScenario(tables);
+    ObjectNode scenario = withExcludedEvolutions((int) card[2]);
+
+    // No deck card is in an evolution slot: no play of the battle is built evolved.
+    assertThat(mapping.survey(scenario)).isEmpty();
+    assertThat(mapping.translate(scenario).plays()).hasSize(1);
+    assertThat(mapping.mapping().get("battle.hbd[i].es")).startsWith("consumed: ");
+  }
+
+  @Test
+  void refusesAnExcludedEvolutionOfACardInTheEvolutionSlot() {
+    assumeExcludedEvolutionsRead();
+    Object[] card = deckCardWithAnEvolvedRow();
+    ObjectNode scenario = withExcludedEvolutions((int) card[2]);
+    ObjectNode entry =
+        (ObjectNode) scenario.path("battle").path("deck1").path("sp").get((int) card[0]);
+    entry.put("el", 1);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .contains(
+            new ReplayScenario.Refusal(
+                "an evolution excluded from the battle in an evolution slot, whose plays the"
+                    + " battle core would build evolved",
+                "battle.deck1.sp: " + card[1]));
+  }
+
+  @Test
+  void refusesAnExcludedEvolutionOfNoRowAndOneThatIsNoList() {
+    assumeExcludedEvolutionsRead();
+    GameTable evolvedCards = tables.table("spells_evolved");
+    int none =
+        Integer.parseInt(evolvedCards.id()) * ReplayScenario.IDS_PER_TABLE
+            + evolvedCards.rows().size();
+    ObjectNode scenario = withExcludedEvolutions(none);
+    ((ObjectNode) scenario.path("battle").path("hbd").get(1))
+        .put(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD, 3);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .containsExactly(
+            new ReplayScenario.Refusal(
+                "an excluded evolution of no row the tables hold",
+                "battle.hbd[0].es=[" + none + "]"),
+            new ReplayScenario.Refusal(
+                "excluded evolutions that are not a list of data ids", "battle.hbd[1].es=3"));
   }
 }
