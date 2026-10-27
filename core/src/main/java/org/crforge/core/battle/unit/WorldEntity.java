@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.IntSupplier;
 import lombok.Getter;
+import lombok.Setter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.ActionContext;
@@ -201,6 +202,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** The entity's action holder, made the first time anything schedules on it; null until then. */
   private ActionHolder actionHolder;
+
+  /**
+   * The cast the entity belongs to (see {@link SpawnHost#castId()}): a unit a card play makes takes
+   * the play's, a unit a projectile's impact makes the projectile's; any other entity carries none
+   * here.
+   */
+  @Setter private int castId = UNMODELLED_CAST_ID;
 
   /** The entity's variables, which its actions write and expressions from it read. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -1599,6 +1607,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   private void refreshHitPoints() {
     view.setAlive(HitPoints.alive(hitPoints));
     targetView.setHitPoints(hitPoints == null ? 0 : hitPoints.getHitPoints());
+  }
+
+  @Override
+  public int castId() {
+    return castId;
   }
 
   /** The entity's unique name within the battle, as logs, refusals and the visualizer name it. */

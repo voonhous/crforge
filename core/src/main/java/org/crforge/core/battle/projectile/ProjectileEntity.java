@@ -130,7 +130,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " the custom movement, the far-distance clamp with its cell pull, and a redirect to"
             + " a point. A deflection by the row's own deflection action that finds the"
             + " projectile at the most it takes counts, hands the side and releases it, held by"
-            + " snowball-ev1-roll-deflect-max-v1.")
+            + " snowball-ev1-roll-deflect-max-v1."
+            + " Traced on client 16.635.1 and held by no reference yet: the cast id a spell's"
+            + " cast, a unit's volley, a barrage's drop and an impact's spawn stamp on the"
+            + " projectile, and a deflection hands it the deflector's, read by a cast-specific"
+            + " buff; any other launch carries none here.")
 public class ProjectileEntity extends BattleEntity
     implements ActionOwner, SpawnHost, FollowedObject {
 
@@ -188,6 +192,9 @@ public class ProjectileEntity extends BattleEntity
    * copies from its owner is read by nothing a reference holds.
    */
   @Getter private int deployIndex = -1;
+
+  /** The cast it belongs to; see {@link #castId()}. */
+  private int castId = UNMODELLED_CAST_ID;
 
   /** The projectile's variables, which its actions write and its expressions read. */
   private final Map<Integer, Integer> variables = new HashMap<>();
@@ -349,6 +356,22 @@ public class ProjectileEntity extends BattleEntity
     this.world = world;
     this.data = data;
     this.side = side;
+  }
+
+  /**
+   * The cast the projectile belongs to (see {@link SpawnHost#castId()}): a spell's cast stamps it,
+   * a unit's shot, a barrage's bomb and a projectile an impact spawns take their maker's, and a
+   * deflection hands it the deflector's; any other projectile carries none here.
+   *
+   * @param castId the cast id
+   */
+  public void setCastId(int castId) {
+    this.castId = castId;
+  }
+
+  @Override
+  public int castId() {
+    return castId;
   }
 
   /** The projectile's name in logs, refusals and the visualizer: its kind's prefix and its id. */
@@ -589,6 +612,8 @@ public class ProjectileEntity extends BattleEntity
     launchFromArea(area, null, area.getX(), area.getY(), sz, area.getX(), area.getY());
     areaTarget = area;
     speedOverride = speed;
+    // The drop stamps it with the cast of the area effect it is dropped onto, its maker.
+    castId = area.castId();
   }
 
   /**
@@ -692,6 +717,8 @@ public class ProjectileEntity extends BattleEntity
         parent.y);
     spawnChain = parent.spawnChain - 1;
     deployIndex = parent.deployIndex;
+    // The impact stamps it with the parent's cast as it makes it.
+    castId = parent.castId;
   }
 
   /**
@@ -957,6 +984,8 @@ public class ProjectileEntity extends BattleEntity
     deflections++;
     pingpongTimeMs = 0;
     side = deflector.side();
+    // The deflector's cast as well: the redirect stamps the projectile with it beside its side.
+    castId = deflector.castId();
     GridEntity from = deflector.getView();
     place(deflector, deflector, source, packedLevel, x, y, z, px, py, from.getX(), from.getY());
     if (data.randomDelayMs() >= 1) {
@@ -1195,6 +1224,8 @@ public class ProjectileEntity extends BattleEntity
     int before = deflections;
     deflections++;
     side = deflector.side();
+    // Whether the action hands on the deflector's cast with its side is not known.
+    castId = UNMODELLED_CAST_ID;
     world.projectileSelfDeflected(this, action.name(), deflector);
     if (before >= world.globalNumber("MAX_DEFLECTION_TIMES")) {
       release();

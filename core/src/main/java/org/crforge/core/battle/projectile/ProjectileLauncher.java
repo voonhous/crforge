@@ -159,6 +159,8 @@ public final class ProjectileLauncher {
       int hx = t.getLastReferenceX() + offset[0];
       int hy = t.getLastReferenceY() + offset[1];
       launchOne(projectile, launcher, unit, targetEntity, hx, hy, angleBase, fan + half);
+      // Each projectile of the volley is stamped with its shooter's cast as it is made.
+      projectile.setCastId(launcher.castId());
       if (group != null) {
         projectile.joinGroup(group);
       }

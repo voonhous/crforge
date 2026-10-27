@@ -421,6 +421,16 @@ public class Standard1v1Battle {
   /** The match the battle is played as, or null for a battle without players. */
   @Getter private LadderMatch match;
 
+  /**
+   * The next cast id a placement or a play outside a match takes (see {@link SpawnHost#castId()}).
+   * The game makes every unit through a card play, whose cast id is its king's count of card plays;
+   * a placement, which the game has no counterpart of, and a play outside a match, which counts no
+   * plays, each stand for a cast of their own: they count down from -2, so none is shared with
+   * another or with any play of a match, which counts up from 0, nor with -1, which no cast
+   * carries.
+   */
+  private int nextOwnCastId = -2;
+
   /** What a player's data that lists no choice picks: nothing, with no draw. */
   public static final int NO_PICK = -1;
 
@@ -1598,6 +1608,9 @@ public class Standard1v1Battle {
             LANE_BASED_DEPLOY_SEQUENCE);
     // In a match, the units carry the king's count of card plays before this one.
     int deployIndex = match != null ? match.side(side).getDeployCounter() : -1;
+    // The cast id the play stamps on everything it makes: that same count in a match, else a cast
+    // of the play's own.
+    int castId = match != null ? deployIndex : nextOwnCastId--;
     // A play placed or cast pays for itself and cycles its card before anything is made.
     if (pay != null && result.placed()) {
       pay.run();
@@ -1609,7 +1622,7 @@ public class Standard1v1Battle {
     // The cast comes before the units are made: a troop card's projectile is queued ahead of them.
     if (card.casts() && result.placed()) {
       // The card item's level field; the hand is not modelled, so it is the level played, less 1.
-      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex);
+      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex, castId);
     }
     List<CharacterEntity> units = new ArrayList<>();
     // A card that is a group links each unit it makes after the one made before it.
@@ -1627,7 +1640,10 @@ public class Standard1v1Battle {
           throw new UnsupportedOperationException(
               card.name() + " is a group whose unit tunnels, which no card is, not modelled");
         }
-        units.add(tunnel(target, unit, level, side, result.x(), result.y(), name, deployIndex));
+        CharacterEntity tunnelled =
+            tunnel(target, unit, level, side, result.x(), result.y(), name, deployIndex);
+        tunnelled.setCastId(castId);
+        units.add(tunnelled);
         continue;
       }
       boolean waits = unit.start().state() == InitialDelay.WAITING;
@@ -1643,6 +1659,7 @@ public class Standard1v1Battle {
               unit.lane(),
               waits ? unit.start().waitMs() : -1);
       character.setDeployIndex(deployIndex);
+      character.setCastId(castId);
       // Linked as it is made, before the setter that sets it deploying.
       if (card.group()) {
         character.linkAfter(previous);
@@ -1673,7 +1690,7 @@ public class Standard1v1Battle {
     // A troop card that makes an area effect as well makes it at the placed point after its units,
     // at the card's level, as the cast's construction comes before its area effect.
     if (!card.spell() && card.areaEffect() != null && result.placed()) {
-      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex);
+      world.castSpell(card, level - 1, side, result.x(), result.y(), name, deployIndex, castId);
     }
     // The play is sent to every listener of a card play after its units are made: never to those
     // its own units start, which are listed only in their pending pass.
@@ -1871,6 +1888,8 @@ public class Standard1v1Battle {
           data.name() + " makes its riders as a card play sets it deploying; play it by its card");
     }
     CharacterEntity character = new CharacterEntity(world, data, name, side, x, y, level);
+    // A placement stands for a cast of its own.
+    character.setCastId(nextOwnCastId--);
     battle.queue(
         new BattleCommand() {
           @Override
@@ -1912,8 +1931,18 @@ public class Standard1v1Battle {
           @Override
           public void execute(Battle target) {
             AreaEffectData data = world.getRecords().areaEffect(row);
-            world.createAreaEffect(
-                row, x, y, side, PackedLevel.fromLevel(level, data.rarity()), name, "placed", null);
+            AreaEffectEntity areaEffect =
+                world.createAreaEffect(
+                    row,
+                    x,
+                    y,
+                    side,
+                    PackedLevel.fromLevel(level, data.rarity()),
+                    name,
+                    "placed",
+                    null);
+            // A placement stands for a cast of its own.
+            areaEffect.setCastId(nextOwnCastId--);
           }
         });
   }

@@ -45,6 +45,9 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     removal removes it
  * @param enableStacking true when an instance is refreshed only by the source that applied it
  * @param playerSpecificBuff true when an instance is refreshed only from its own side
+ * @param castIdSpecificBuff true when an instance is refreshed only from the cast that listed it: a
+ *     source carrying the same cast id, the king's count of card plays its play carried; read after
+ *     PlayerSpecificBuff, which decides alone when both are set
  * @param noEffectToCrownTowers true when a crown tower takes nothing of it
  * @param ignoreBuildings true when a building takes nothing of it
  * @param deathSpawn the character its carrier leaves as it dies, or null
@@ -124,6 +127,7 @@ public record BuffData(
     boolean controlledByParent,
     boolean enableStacking,
     boolean playerSpecificBuff,
+    boolean castIdSpecificBuff,
     boolean noEffectToCrownTowers,
     boolean ignoreBuildings,
     String deathSpawn,

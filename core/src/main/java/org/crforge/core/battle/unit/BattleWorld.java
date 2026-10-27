@@ -3918,12 +3918,15 @@ public class BattleWorld implements HolderPasses {
    * @param name the play's name, which a cast area effect names as its source
    * @param play the play, by its king's count of card plays before it, which each projectile cast
    *     carries; -1 outside a match
+   * @param castId the play's cast id (see {@link SpawnHost#castId()}), which the cast stamps on its
+   *     area effect and on each of its projectiles
    */
   public void castSpell(
-      DeployCard card, int cardLevel, int side, int x, int y, String name, int play) {
+      DeployCard card, int cardLevel, int side, int x, int y, String name, int play, int castId) {
     AreaEffectEntity areaEffect = null;
     if (card.areaEffect() != null) {
       areaEffect = createAreaEffect(card.areaEffect(), x, y, side, cardLevel, null, "cast", name);
+      areaEffect.setCastId(castId);
     }
     ProjectileEntity firstProjectile = null;
     if (card.projectile() != null) {
@@ -3938,7 +3941,7 @@ public class BattleWorld implements HolderPasses {
       }
       TowerEntity king = kingTower(side);
       checkState(king != null, () -> "side " + side + " has no king tower to cast from");
-      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y, play);
+      firstProjectile = castProjectiles(card, data, king, cardLevel, side, x, y, play, castId);
     }
     if (card.onExecuteAction() != null) {
       // The cast's last step: the action runs on the king at once, with the first object the cast
@@ -4059,7 +4062,8 @@ public class BattleWorld implements HolderPasses {
       int side,
       int x,
       int y,
-      int play) {
+      int play,
+      int castId) {
     int count = Math.max(card.multipleProjectiles(), 1);
     int waves = Math.max(card.projectileWaves(), 1);
     boolean ring = card.name().equals(ARROWS) && !DEFLECT_ARROWS_AS_WHOLE;
@@ -4133,6 +4137,7 @@ public class BattleWorld implements HolderPasses {
           projectile.cast(
               king, cardLevel, kx + (vec[0] >> 2), vec[1] + ky, height, tx, ty, delay, play);
         }
+        projectile.setCastId(castId);
         holder.add(projectile);
         registrationPass(projectile);
         if (chain != null) {
@@ -4190,6 +4195,8 @@ public class BattleWorld implements HolderPasses {
             records.areaEffect(projectile.getData().spawnAreaEffectObject()).followsTarget()
                 ? projectile.getTarget()
                 : null);
+    // The impact stamps it with the projectile's cast.
+    areaEffect.setCastId(projectile.castId());
     for (WorldObserver observer : observers) {
       observer.projectileAreaEffect(tick, projectile, areaEffect);
     }
@@ -4279,6 +4286,8 @@ public class BattleWorld implements HolderPasses {
       // cleanup's fold, which starts it, scheduling its row's starting action then. It carries the
       // projectile's play, so a champion slot that follows the play follows it.
       spawned.setDeployIndex(projectile.getDeployIndex());
+      // The impact stamps it with the projectile's cast.
+      spawned.setCastId(projectile.castId());
       spawned.startOnAdmission();
       holder.addRegistered(spawned);
       for (WorldObserver observer : observers) {
@@ -8208,6 +8217,8 @@ public class BattleWorld implements HolderPasses {
             source.name(),
             source,
             records.areaEffect(row).followsParent() ? owner : null);
+    // The spawn stamps it with its source's cast, as it takes its source's side and level.
+    areaEffect.setCastId(source.castId());
     // The spawn sets the area effect's clone mark from its source's clone answer after handing it
     // to the holder.
     if (isClone(source)) {
@@ -8738,8 +8749,12 @@ public class BattleWorld implements HolderPasses {
    * @return the area effect
    */
   AreaEffectEntity barrageAreaEffect(CharacterEntity owner, String row, int x, int y) {
-    return createAreaEffect(
-        row, x, y, owner.side(), owner.getPackedLevel(), null, "barrage", owner.name());
+    AreaEffectEntity areaEffect =
+        createAreaEffect(
+            row, x, y, owner.side(), owner.getPackedLevel(), null, "barrage", owner.name());
+    // The barrage stamps it with its character's cast.
+    areaEffect.setCastId(owner.castId());
+    return areaEffect;
   }
 
   /** Tells every observer that a barrage's run started on a character. */

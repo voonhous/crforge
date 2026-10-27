@@ -168,7 +168,13 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " chain at the group's limit, a child released at the fold, a tower or building"
             + " carrier. Held by ability_hero_mega_minion_vs_musketeer: an instance removed by"
             + " its carrier's counted hit, its remove action scheduled, and the projectile of the"
-            + " first listed instance that names one fired in place of the carrier's.")
+            + " first listed instance that names one fired in place of the carrier's. Traced on"
+            + " client 16.635.1 and held by no reference yet (none exists for that client):"
+            + " a cast-specific row (CastIdSpecificBuff) refreshes only the instance listed from"
+            + " the same cast, the cast id each instance keeps from its source as it is listed,"
+            + " after the player-specific test, which decides alone when both are set; held by"
+            + " BattleCastIdSpecificBuffTest. A cast-specific row applied from a source whose"
+            + " cast id is not modelled is refused.")
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -342,6 +348,19 @@ public final class BuffComponent implements BattleComponent {
       return;
     }
     int level = PackedLevel.pack(packedLevel, buff.rarity());
+    // A cast-specific row matches by the source's cast id, which every path that makes a source of
+    // one carries; a source made by a path that carries none here is refused.
+    if (buff.castIdSpecificBuff()
+        && source != null
+        && source.castId() == SpawnHost.UNMODELLED_CAST_ID) {
+      throw new UnsupportedOperationException(
+          buff.name()
+              + " is applied to "
+              + entity.name()
+              + " from "
+              + source.name()
+              + ", whose cast id is not modelled, which the row's CastIdSpecificBuff reads");
+    }
     boolean create = true;
     // A buff added as an individual one matches nothing: every application lists a new instance.
     for (int i = items.size() - 1; i >= 0 && !buff.addAsIndividualBuff(); i--) {
@@ -352,10 +371,16 @@ public final class BuffComponent implements BattleComponent {
         refresh = same && instance.getSource() == source;
       } else if (!same) {
         refresh = false;
-      } else if (!buff.playerSpecificBuff()) {
-        refresh = true;
-      } else {
+      } else if (buff.playerSpecificBuff()) {
+        // The side test decides alone, whether or not the row is cast-specific as well.
         refresh = source != null && instance.getSide() == source.side();
+      } else if (buff.castIdSpecificBuff()) {
+        // Only the instance a source of the same cast listed: the king's count of card plays its
+        // play carried, which every object the play made carries on. Each play of a side counts
+        // on its own king, so the same count from the other side matches too.
+        refresh = source != null && instance.getCastId() == source.castId();
+      } else {
+        refresh = true;
       }
       if (refresh) {
         int before = instance.getRemaining();

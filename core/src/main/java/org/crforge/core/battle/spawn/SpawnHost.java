@@ -18,6 +18,25 @@ import org.crforge.core.battle.unit.UnitData;
  */
 public interface SpawnHost extends SpawnObject {
 
+  /**
+   * The cast id of an object whose cast id is not modelled: what made it does not carry one here.
+   */
+  int UNMODELLED_CAST_ID = Integer.MIN_VALUE;
+
+  /**
+   * The cast the object belongs to: the king's count of card plays before the play that made it,
+   * which the play stamps on every object it makes and every object then hands on to the objects it
+   * makes. A cast-specific buff matches its instances by it. Outside a match, and for a unit placed
+   * without a play, the battle hands out a cast of its own that no other play or placement shares,
+   * below -1.
+   *
+   * @return the cast id, or {@link #UNMODELLED_CAST_ID} for an object made by a path that carries
+   *     none here
+   */
+  default int castId() {
+    return UNMODELLED_CAST_ID;
+  }
+
   /** The object's name, which the children it spawns are named after. */
   String name();
 
