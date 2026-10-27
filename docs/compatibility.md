@@ -36,5 +36,5 @@ Every data version served to a client of this range is compatible; the pairs are
 
 - Add a client version to the reference client's range when it is first seen.
 - When the range's minimum is checked again, replace the date and the versions of the last check.
-- A new data version goes into the pairs table of [Game Versions](game-versions.md); it is compatible when it is served to a client of the range.
+- A new data version goes into its range's pairs table in [Game Versions](game-versions.md); it is compatible when it is served to a client of the range.
 - A required update closes the reference client's range: record it, and start a new reference client section for the new range when the simulator moves to it.
