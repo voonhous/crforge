@@ -334,6 +334,19 @@ public interface WorldObserver {
       int tick, ChampionController slot, int mana, int elixirBefore, int elixirAfter) {}
 
   /**
+   * A unit that carried the cost of an ability use not yet delivered left the battle, and its
+   * side's king was given the cost back.
+   *
+   * @param tick the tick it happened on
+   * @param unit the leaving unit
+   * @param mana the cost given back, in whole elixir
+   * @param elixirBefore the king's elixir before, in ten-thousandths
+   * @param elixirAfter the king's elixir after
+   */
+  default void undeliveredCostReturned(
+      int tick, CharacterEntity unit, int mana, int elixirBefore, int elixirAfter) {}
+
+  /**
    * A champion slot that follows a champion stepped in its king's run pass.
    *
    * @param tick the tick it happened on

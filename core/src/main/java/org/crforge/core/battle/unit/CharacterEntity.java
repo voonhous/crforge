@@ -317,7 +317,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " modelled yet: the registration visit of a unit a card play creates, which meets"
             + " an empty index, the hit-points visit's dedupe expiry, and the columns its data"
             + " does not carry: the stop time after an attack and the ones that restrict what a"
-            + " unit may target beyond buildings only, which it carries.")
+            + " unit may target beyond buildings only, which it carries. Traced on client"
+            + " 16.635.1 and held by no reference yet: the cost of an ability use with"
+            + " RefundUntilDelivered carried until an ActionAbilityDelivered clears it, and given"
+            + " back to the unit's side as it leaves the live list. Refused: a building paid for"
+            + " such an ability.")
 public class CharacterEntity extends WorldEntity {
 
   /** Slot of the targeting component. */
@@ -1025,6 +1029,13 @@ public class CharacterEntity extends WorldEntity {
    * count, spent and cleared as the ability fires.
    */
   @Getter private int souls;
+
+  /**
+   * The cost of a use of an ability row with RefundUntilDelivered, in whole elixir, that rides on
+   * the unit paid for until an ActionAbilityDelivered takes it off; 0 for none. The unit gives it
+   * back to its side as it leaves the battle.
+   */
+  @Getter private int undeliveredCost;
 
   /**
    * The play that made the unit, by its king's count of card plays before it; -1 for a unit no card
@@ -3739,6 +3750,47 @@ public class CharacterEntity extends WorldEntity {
     int squared =
         FixedMath.squaredDistance(getView().getX(), getView().getY(), reference.x(), reference.y());
     return squared <= ability.dashRange() * ability.dashRange();
+  }
+
+  /**
+   * Puts the cost of a use of an ability row with RefundUntilDelivered on the unit paid for, as its
+   * champion slot hears of the paid ability; a later use's cost replaces it. A building paid for is
+   * refused: where the cost would ride on it and whether it gives it back was not traced.
+   *
+   * @param mana the cost, in whole elixir
+   */
+  void carryUndeliveredCost(int mana) {
+    if (getData().building()) {
+      throw new UnsupportedOperationException(
+          name()
+              + " is a building paid for an ability with RefundUntilDelivered, which is not"
+              + " modelled");
+    }
+    undeliveredCost = mana;
+  }
+
+  /**
+   * An ActionAbilityDelivered ran on the unit: the cost of its ability's use no longer rides on it,
+   * so its leaving gives nothing back.
+   */
+  @Override
+  public void abilityDelivered() {
+    undeliveredCost = 0;
+  }
+
+  /**
+   * The unit leaves the live list: a cost of an undelivered use still on it is taken off and given
+   * back to the king of the side it stands on now, whole elixir up to the cap, the rest counted as
+   * wasted, before its running actions hear that it leaves.
+   */
+  @Override
+  protected void leaving() {
+    if (undeliveredCost >= 1) {
+      int cost = undeliveredCost;
+      undeliveredCost = 0;
+      world.undeliveredCostReturned(this, cost);
+    }
+    super.leaving();
   }
 
   /** Whether a requested ability waits on the unit for its gate to open. */

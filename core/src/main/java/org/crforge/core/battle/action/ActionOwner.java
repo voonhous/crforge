@@ -204,6 +204,13 @@ public interface ActionOwner {
   }
 
   /**
+   * An ActionAbilityDelivered ran on the owner: a character takes the cost of its ability's last
+   * use off itself, so its leaving gives nothing back; any other owner is left alone, as the row
+   * asks whether its owner is a character before it writes.
+   */
+  default void abilityDelivered() {}
+
+  /**
    * Drops the owner's target for a target reset row. Only a character or a building owner is
    * modelled: a character's reference is dropped and an owner without a targeting component is left
    * alone.
