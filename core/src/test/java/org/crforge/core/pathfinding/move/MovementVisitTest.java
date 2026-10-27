@@ -9,6 +9,8 @@ package org.crforge.core.pathfinding.move;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import org.crforge.core.battle.GameData;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.grid.CellGrid;
@@ -267,5 +269,68 @@ class MovementVisitTest {
 
     assertThat(component.getPushbackBudget()).isEqualTo(-15);
     assertThat(component.getPushbackInFlight()).isZero();
+  }
+
+  /**
+   * One visit of an attack's own pushback in flight, with a complete charge on a row with a charge
+   * range, under the globals' charge reset or without it.
+   */
+  private void visitChargedRecoil(boolean reset) {
+    component.setPushbackInFlight(1);
+    component.setAttackPushback(1);
+    component.setPushbackBudget(60);
+    component.setTargetX(3250);
+    component.setTargetY(10250);
+    component.setChargeProgress(MovementState.CHARGE_COMPLETE);
+    MovementConfig config = MovementConfig.forGroundUnit().withCharge(300);
+    MovementChain chain =
+        new MovementChain(
+            component,
+            owner,
+            grid,
+            config,
+            MovementGlobals.forStandardArena(WIDTH)
+                .withResetChargeDuringPushbackWhenMovementDisabled(reset),
+            new ReferencePoint(3500, 25500),
+            List.of(),
+            queries);
+    MovementVisit.movementVisit(component, owner, null, config, null, queries, false, chain);
+  }
+
+  @Test
+  void underTheChargeResetANoMoveTagTakesTheChargeOfAUnitPushedBack() {
+    EntityFlags bits = EntityFlags.of(GameData.tables());
+    owner.setFlagBits(bits);
+    for (long tag : new long[] {bits.noMove(), bits.noMoveAllowAttract()}) {
+      owner.setFlags(tag);
+      visitChargedRecoil(true);
+      assertThat(component.getChargeProgress()).isZero();
+      visitChargedRecoil(false);
+      assertThat(component.getChargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
+    }
+  }
+
+  @Test
+  void underTheChargeResetBuffsThatStopTheUnitTakeTheChargeOfAUnitPushedBack() {
+    queries.hasModifierComponent = true;
+    queries.rowSpeed = 60;
+    // A slow that leaves something of the speed keeps the charge.
+    queries.speedPercents = new int[] {-50};
+    visitChargedRecoil(true);
+    assertThat(component.getChargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
+    // A stun scales the speed to 0.
+    queries.speedPercents = new int[] {-100};
+    visitChargedRecoil(true);
+    assertThat(component.getChargeProgress()).isZero();
+    visitChargedRecoil(false);
+    assertThat(component.getChargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
+    // A row without speed, or a unit without the modifier component, is not stopped by buffs.
+    queries.rowSpeed = 0;
+    visitChargedRecoil(true);
+    assertThat(component.getChargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
+    queries.rowSpeed = 60;
+    queries.hasModifierComponent = false;
+    visitChargedRecoil(true);
+    assertThat(component.getChargeProgress()).isEqualTo(MovementState.CHARGE_COMPLETE);
   }
 }

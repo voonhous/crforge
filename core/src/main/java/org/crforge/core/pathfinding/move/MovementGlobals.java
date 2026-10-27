@@ -31,7 +31,8 @@ public record MovementGlobals(
     int samePathEpsilon,
     boolean friendlyOnlyOcclusions,
     boolean spawnPathfindReachedRadiusFromSpeed,
-    boolean pushbackEndDropsRoute) {
+    boolean pushbackEndDropsRoute,
+    boolean resetChargeDuringPushbackWhenMovementDisabled) {
 
   /**
    * The settings of the standard game over a grid of the given width.
@@ -45,6 +46,7 @@ public record MovementGlobals(
         PathfindingGlobals.PATHFINDING_SAMEPATH_EPSILON,
         PathfindingGlobals.PATHFINDING_FRIENDLYONLY_OCCLUSIONS,
         PathfindingGlobals.LOGIC_SPAWN_PATHFIND_REACHED_RADIUS_FROM_SPEED,
+        false,
         false);
   }
 
@@ -61,6 +63,25 @@ public record MovementGlobals(
         samePathEpsilon,
         friendlyOnlyOcclusions,
         spawnPathfindReachedRadiusFromSpeed,
-        drops);
+        drops,
+        resetChargeDuringPushbackWhenMovementDisabled);
+  }
+
+  /**
+   * These settings with a pushback's visit resetting the charge of an entity whose movement is
+   * disabled, or leaving it.
+   *
+   * @param resets true to reset it, as the published global asks
+   * @return the settings with that rule
+   */
+  public MovementGlobals withResetChargeDuringPushbackWhenMovementDisabled(boolean resets) {
+    return new MovementGlobals(
+        width,
+        touchdownRestrictedSideMovement,
+        samePathEpsilon,
+        friendlyOnlyOcclusions,
+        spawnPathfindReachedRadiusFromSpeed,
+        pushbackEndDropsRoute,
+        resets);
   }
 }

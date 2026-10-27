@@ -298,6 +298,140 @@ class BattleChargeTest {
         .noneMatch(r -> r.getAction().name().equals("BattleRam_EV1_PushBack"));
   }
 
+  /** The global that makes a stun reset a charge while a pushback flies; 16.402 tables had none. */
+  private static final String CHARGE_FIX =
+      "FIX_RESET_CHARGE_DURING_PUSHBACK_WHEN_MOVEMENT_DISABLED";
+
+  /**
+   * The configured tables with the global that resets a charge during a pushback while movement is
+   * disabled published, set as the test asks: its row's value changed where the tables publish it,
+   * else a row added for it.
+   */
+  private static GameTables withChargeFix(Path folder, boolean set) throws IOException {
+    return GameData.altered(
+        folder,
+        "globals",
+        rows -> {
+          if (rows.has(CHARGE_FIX)) {
+            ((ObjectNode) rows.get(CHARGE_FIX).get("columns")).put("BooleanValue", set);
+            return;
+          }
+          int index = rows.size();
+          ObjectNode row = rows.putObject(CHARGE_FIX);
+          row.put("index", index);
+          row.put("class", "LogicData");
+          ObjectNode columns = row.putObject("columns");
+          columns.put("Name", CHARGE_FIX);
+          columns.put("BooleanValue", set);
+        });
+  }
+
+  /** The configured tables with no charge fix published, as the 16.402 tables had none. */
+  private static GameTables withoutChargeFix(Path folder) throws IOException {
+    return GameData.altered(folder, "globals", rows -> rows.remove(CHARGE_FIX));
+  }
+
+  /**
+   * Walks an evolved Battle Ram into the red princess tower on the right lane until its first hit
+   * recoils it, then drops an enemy Zap on it the next tick. Answers, for each of the next 20
+   * steps, whether a pushback was in flight after the step, whether it was the attack's own, the
+   * charge progress and whether the Zap's stun was listed on the ram. The stun is listed after the
+   * movement pass of the step it lands in, so the movement pass of the next step is the first to
+   * find it.
+   */
+  private static List<int[]> zapInTheRecoil(GameTables tables) {
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    BattleRecords records = new BattleRecords(tables);
+    CharacterEntity ram = match.deploy(0, records.unit("BattleRam_EV1"), 11, 0, 14500, 17000);
+    match.getBattle().step();
+    WorldEntity tower =
+        match.getWorld().present().stream()
+            .filter(e -> e.side() == 1 && e.name().startsWith("PrincessTower"))
+            .filter(e -> e.getView().getX() > 9000)
+            .findFirst()
+            .orElseThrow();
+    int full = tower.getHitPoints().getHitPoints();
+    boolean hit = false;
+    for (int tick = 0; tick < 200 && !hit; tick++) {
+      match.getBattle().step();
+      hit = tower.getHitPoints().getHitPoints() < full;
+    }
+    assertThat(hit).as("the ram's first hit on the tower").isTrue();
+    MovementState movement = ram.getUnit().movement();
+    assertThat(movement.getPushbackInFlight()).as("its recoil flies").isEqualTo(1);
+    assertThat(movement.getChargeProgress()).isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
+    match.placeAreaEffect(
+        match.getWorld().tick() + 1,
+        "Zap",
+        11,
+        1,
+        ram.getView().getX(),
+        ram.getView().getY(),
+        "zap");
+    List<int[]> steps = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      match.getBattle().step();
+      boolean stunned =
+          ram.getBuffs().items().stream().anyMatch(b -> b.getBuff().speedMultiplier() <= -100);
+      steps.add(
+          new int[] {
+            movement.getPushbackInFlight(),
+            movement.getAttackPushback(),
+            movement.getChargeProgress(),
+            stunned ? 1 : 0
+          });
+    }
+    return steps;
+  }
+
+  @Test
+  @DisplayName(
+      "under the published charge fix, a stun on the evolved Battle Ram while its recoil flies"
+          + " takes its charge at once, before the recoil has flown")
+  void aStunInTheRecoilTakesTheCharge(@TempDir Path folder) throws IOException {
+    List<int[]> steps = zapInTheRecoil(withChargeFix(folder, true));
+    // A step whose movement pass finds the stun listed and after which the recoil still flies:
+    // the charge is back to 0, the ram's row having a charge range.
+    assertThat(stunnedInTheRecoil(steps)).as("steps in the recoil under the stun").isNotEmpty();
+    for (int[] s : stunnedInTheRecoil(steps)) {
+      assertThat(s[2]).as("the charge in the recoil under the stun").isZero();
+    }
+  }
+
+  /**
+   * The steps whose movement pass found the stun listed - listed after the step before - and after
+   * which the ram's own recoil still flies.
+   */
+  private static List<int[]> stunnedInTheRecoil(List<int[]> steps) {
+    List<int[]> out = new ArrayList<>();
+    for (int i = 1; i < steps.size(); i++) {
+      int[] s = steps.get(i);
+      if (steps.get(i - 1)[3] == 1 && s[3] == 1 && s[0] == 1 && s[1] == 1) {
+        out.add(s);
+      }
+    }
+    return out;
+  }
+
+  @Test
+  @DisplayName(
+      "without the charge fix published, or with it clear, a stun on the evolved Battle Ram while"
+          + " its recoil flies leaves its charge until the recoil has flown")
+  void aStunInTheRecoilKeepsTheChargeWithoutTheFix(@TempDir Path without, @TempDir Path clear)
+      throws IOException {
+    for (List<int[]> steps :
+        List.of(
+            zapInTheRecoil(withoutChargeFix(without)),
+            zapInTheRecoil(withChargeFix(clear, false)))) {
+      assertThat(stunnedInTheRecoil(steps)).as("steps in the recoil under the stun").isNotEmpty();
+      for (int[] s : stunnedInTheRecoil(steps)) {
+        assertThat(s[2])
+            .as("the charge in the recoil under the stun")
+            .isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
+      }
+    }
+  }
+
   @Test
   @DisplayName(
       "an evolved Battle Ram's direct hit on a tower recoils it by its AttackPushBack, away from"

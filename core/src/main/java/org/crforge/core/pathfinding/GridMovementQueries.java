@@ -165,6 +165,18 @@ public final class GridMovementQueries implements MovementQueries {
     return modifierComponent;
   }
 
+  /** The row's Speed as the unit's speed columns hold it. */
+  @Override
+  public int rowSpeed() {
+    return unit.speedConfig().speed();
+  }
+
+  /** The speed scaled by the speed percents of the unit's listed buffs. */
+  @Override
+  public int speedThroughModifiers(int base) {
+    return SpeedBudget.speedModifier(speedPercents, base);
+  }
+
   @Override
   public int chargeRangeFromModifiers() {
     return chargeRangeFromModifiers;
