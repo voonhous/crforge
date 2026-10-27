@@ -32,11 +32,12 @@ import org.junit.jupiter.api.io.TempDir;
  * moving state. Had the gate waited for the state visit, after the movement visit, its drop and
  * resume would leave the unit moving at the end of that tick.
  *
- * <p>The scene: the bottom side's evolved Mega Knight uppercuts a Knight away and is held for the
- * uppercut's follow-up delay; a Mini Sparky of the top side, placed as the hold starts, stuns it
- * with its hits. The towers are passive. The scene writes every column its outcome is read from:
- * the units' hit points, movement, range, sight, attack pace and dash columns, the Mini Sparky's
- * deploy, load and stun, and the stun's multipliers.
+ * <p>The scene: the bottom side's evolved Mega Knight uppercuts a Knight away and is held under
+ * NO_MOVE for the uppercut's follow-up delay, the tags the scene's uppercut row sets; a Mini Sparky
+ * of the top side, placed as the hold starts, stuns it with its hits. The towers are passive. The
+ * scene writes every column its outcome is read from: the units' hit points, movement, range,
+ * sight, attack pace and dash columns, the Mini Sparky's deploy, load and stun, the stun's
+ * multipliers and the uppercut's tags.
  */
 class BattleHeldDasherStunTest {
 
@@ -103,6 +104,13 @@ class BattleHeldDasherStunTest {
                 .put("HitSpeedMultiplier", -100)
                 .put("SpeedMultiplier", -100)
                 .put("SpawnSpeedMultiplier", -100));
+    // The uppercut's run sets its row's tags on the Mega Knight while it is listed.
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows ->
+            GameData.fields(rows, "MegaKnight_EV1_uppercut")
+                .put("GameTagsToSet", "NO_ATTACK,NO_MOVE"));
     GameData.writeTowers(folder);
     return GameTables.load(folder);
   }

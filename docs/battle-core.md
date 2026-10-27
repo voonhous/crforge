@@ -1094,11 +1094,12 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - The refusals of a swap and a clone's copy while the buff is listed, its removal, and the buff on a unit that fires.
 - `GridStateSetterTest` holds the setter's charge reset leaving 0 under a buff's charge range.
 - `BattleUppercutWindTest` holds the uppercut, the knock and the wind where the references do not take them:
-  - An uppercut on a tower ending as it starts, the Mega Knight held one step.
+  - An uppercut on a tower ending as it starts, the Mega Knight carrying its row's tags for one step.
   - The hold ending as the Mega Knight takes another target in range.
   - An uppercut with no current target refused.
   - An uppercut on a unit switching lanes pushing nothing and scheduling no knock.
   - The targeting queue's flush taking nothing at priority 0 and refusing a priority above.
+- `BattleUppercutAttractTest` holds the uppercut's tags as client 16.635.1 sets them (no reference yet): the row's GameTagsToSet alone while the run is listed, so a row with NO_MOVE_ALLOW_ATTRACT leaves the Mega Knight to a Tornado's pull and one with NO_MOVE does not, and LOCK_TARGET after the push only while LockTargetAfterUppercut is on.
   - The knock's arc for another duration.
   - A knock postponing an ability, and a cast and an ability's follow-up state going on through a knock on the same steps as without it.
   - A knock resetting a charged Prince's charge on each of its steps.
@@ -2621,11 +2622,11 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - The Valkyrie's next action gives it a buff for 500 ms whose tag keeps its enemies from pushing it. A buff's tags join its carrier's tag word at each pre-hook while it is listed, and a buff that sets any other tag is refused.
   - The Royal Giant's area hits enemy ground units within 3000 and pushes each 1000 from its centre. Its one tag only hides the pushback's presentation, and an area effect with any other tag is refused.
 
-- The evolved Mega Knight's uppercut is a run on the unit. As it starts the unit carries NO_ATTACK and NO_MOVE for one step and the run keeps its targeting component's target. A target without a movement component, a tower, ends it at once.
+- The evolved Mega Knight's uppercut is a run on the unit. While it is listed the unit carries the row's GameTagsToSet, as for any run; the run raises no tags of its own as it starts (client 16.402.17 raised NO_ATTACK and NO_MOVE there; client 16.635.1 leaves them to the row, whose 16.635.3 row sets NO_ATTACK and NO_MOVE_ALLOW_ATTRACT, so a Tornado pulls the Mega Knight through its uppercut). As it starts the run keeps its targeting component's target. A target without a movement component, a tower, ends it at once.
 
   Its first update, the next tick, pushes the target 4000 through the pushback entry, past every gate of the request. The push is away from a point 50 behind it on the line from the nearest tower of its own side - its side's princess towers, then the king facing the Mega Knight - so toward that tower. The update also schedules the uppercut's group on it with the Mega Knight as the cause. A target already switching lanes, the only state the push point tests, is not pushed, nothing is scheduled on it and the run ends.
 
-  The Mega Knight then carries NO_ATTACK, NO_MOVE and LOCK_TARGET for a step and is held, neither moving nor attacking, for its follow-up delay of 1000 ms. The run ends sooner when it has no target or attacks another one in range. While its target is another one out of range, it marks the uppercut's target in its targeting queue at priority 0, which the next pre-hook's flush empties without taking. A target that leaves is forgotten and the next update ends the run.
+  The Mega Knight then carries LOCK_TARGET for a step, while the row's LockTargetAfterUppercut is on (the default), and the run waits out its follow-up delay of 1000 ms, the unit held only by the row's tags (16.402.17 raised NO_ATTACK, NO_MOVE and LOCK_TARGET after the push and NO_ATTACK and NO_MOVE on each step of the wait). The run ends sooner when it has no target or attacks another one in range. While its target is another one out of range, it marks the uppercut's target in its targeting queue at priority 0, which the next pre-hook's flush empties without taking. A target that leaves is forgotten and the next update ends the run.
 
   There is no follow-up dash: a row with one is refused, as is a push through the request's gates and a start with no current target.
 
