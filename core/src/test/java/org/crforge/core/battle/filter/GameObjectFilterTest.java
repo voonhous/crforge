@@ -43,6 +43,7 @@ class GameObjectFilterTest {
     String name = "Knight";
     int state;
     int dashImmuneMs;
+    int dashImmunityLeftMs;
     int invisible;
     boolean ignoresPushback;
     boolean kamikaze;
@@ -137,6 +138,11 @@ class GameObjectFilterTest {
     @Override
     public int dashImmuneMs() {
       return dashImmuneMs;
+    }
+
+    @Override
+    public int dashImmunityLeftMs() {
+      return dashImmunityLeftMs;
     }
 
     @Override
@@ -547,6 +553,28 @@ class GameObjectFilterTest {
                           return s;
                         }))))
         .containsExactly(0, 1, 1);
+
+    // The immunity left after a dash counts while RespectDodgingDamageCooldown is on, its default,
+    // in any state; with it off only the dash itself does.
+    GameObjectFilter blind =
+        own().filterDashImmune(true).respectDodgingDamageCooldown(false).build();
+    List<Integer> left = new ArrayList<>();
+    for (GameObjectFilter f : List.of(dash, blind, own().build())) {
+      for (int state : new int[] {1, 5}) {
+        left.add(
+            matches(
+                f,
+                subject(
+                    s -> {
+                      s.state = state;
+                      s.dashImmuneMs = 150;
+                      s.dashImmunityLeftMs = 50;
+                      return s;
+                    })));
+      }
+    }
+    assertThat(left).containsExactly(0, 0, 1, 1, 1, 1);
+    assertThat(dash.isRespectDodgingDamageCooldown()).isTrue();
 
     GameObjectFilter invisible = own().filterInvisible(true).build();
     List<Integer> got = new ArrayList<>();

@@ -1227,14 +1227,16 @@ public final class BattleRecords {
 
   /**
    * A game object filter as the battle reads it, from the game object filters table. Every column
-   * is its field of the same name; the dead are filtered unless the row says not; the tags it
-   * excludes, written as names separated by commas, are the bits the game tags table gives them;
-   * the text the game shows for it is not read. The kinds of object it leaves out are its Filter
-   * switches, or the names of its Filters list, which the shipped rows write in their place and
-   * which may also name three kinds no switch tests (Self, Kamikaze and IgnoreResurrect); MatchSelf
-   * passes only the object that asks, and its two buff checkers keep or drop an object by the buffs
-   * the asker applied to it. A row that sets any other column, as a filter it builds on, is
-   * refused: read without it, the filter would match what the row does not.
+   * is its field of the same name; the dead are filtered unless the row says not, and the dash
+   * immunity exclusion counts the immunity left after a dash unless the row writes
+   * RespectDodgingDamageCooldown off (the 16.635.1 loader's default is on); the tags it excludes,
+   * written as names separated by commas, are the bits the game tags table gives them; the text the
+   * game shows for it is not read. The kinds of object it leaves out are its Filter switches, or
+   * the names of its Filters list, which the shipped rows write in their place and which may also
+   * name three kinds no switch tests (Self, Kamikaze and IgnoreResurrect); MatchSelf passes only
+   * the object that asks, and its two buff checkers keep or drop an object by the buffs the asker
+   * applied to it. A row that sets any other column, as a filter it builds on, is refused: read
+   * without it, the filter would match what the row does not.
    *
    * @param name the row's name
    */
@@ -1436,6 +1438,10 @@ public final class BattleRecords {
         .filterTags(tagBits(row.string("FilterTags")))
         .filterPrincessTowers(filterSwitch(row, listed, "FilterPrincessTowers"))
         .filterDead(!row.has("FilterDead") || row.bool("FilterDead"))
+        // A row that leaves it out takes the class default of the client the battle follows:
+        // client 16.635.1 loads it on. A row that writes it off turns it off.
+        .respectDodgingDamageCooldown(
+            !row.has("RespectDodgingDamageCooldown") || row.bool("RespectDodgingDamageCooldown"))
         .filterClones(filterSwitch(row, listed, "FilterClones"))
         .matchSelf(row.bool("MatchSelf"))
         .filterSelf(filterListOnly(listed, "Self"))

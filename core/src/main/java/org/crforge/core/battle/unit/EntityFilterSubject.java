@@ -22,8 +22,9 @@ import org.crforge.core.pathfinding.GridEntity;
             + " pushback, whether its row sets Kamikaze or IgnoreResurrect, its buffs' invisible count, and whether it is hidden, which asks the"
             + " entity's own hidden test as the filter's hidden flag does, and whether it is"
             + " underground, which asks the entity's own underground test; the dash immunity"
-            + " time of its row, which the DashImmune exclusion reads with its dashing state; the"
-            + " summoner is the king tower. Supplied: a princess tower is a row with the"
+            + " time of its row, which the DashImmune exclusion reads with its dashing state, and"
+            + " the immunity left after its dash, which it reads under RespectDodgingDamageCooldown"
+            + " (client 16.635.1, traced, no reference yet); the summoner is the king tower. Supplied: a princess tower is a row with the"
             + " summoner-tower column.")
 final class EntityFilterSubject implements FilterSubject {
 
@@ -144,12 +145,24 @@ final class EntityFilterSubject implements FilterSubject {
 
   /**
    * The row's dash immunity time (DashImmuneToDamageTime). The filter's DashImmune exclusion leaves
-   * out a character in the dashing state whose row sets one; the immunity a unit keeps for a while
-   * after its dash does not count there.
+   * out a character in the dashing state whose row sets one, and, while the filter respects the
+   * dodging cooldown, one with immunity left after its dash ({@link #dashImmunityLeftMs()}).
    */
   @Override
   public int dashImmuneMs() {
     return entity.getData().dashImmuneToDamageTimeMs();
+  }
+
+  /**
+   * The immunity left after its dash, the countdown the state visit tops up to the row's dash
+   * immunity time while the unit dashes and lowers by a step's 50 ms after: the same countdown the
+   * untouchable test counts when asked to. A tower never dashes: none.
+   */
+  @Override
+  public int dashImmunityLeftMs() {
+    return entity instanceof CharacterEntity character
+        ? character.getUnit().timers().getDashImmunityRemainingMs()
+        : 0;
   }
 
   @Override

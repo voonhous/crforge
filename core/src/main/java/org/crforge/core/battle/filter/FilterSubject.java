@@ -83,6 +83,12 @@ public interface FilterSubject {
   /** A character's row's dash immunity time, in milliseconds. */
   int dashImmuneMs();
 
+  /**
+   * The immunity a character has left after its dash, in milliseconds: its row's dash immunity
+   * time, held while it dashes and counted down once the dash is over; 0 for none.
+   */
+  int dashImmunityLeftMs();
+
   /** A character's invisibility counter, which its buffs raise. */
   int invisibleCounter();
 
