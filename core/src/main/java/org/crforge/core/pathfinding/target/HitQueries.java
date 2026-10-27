@@ -218,9 +218,20 @@ public interface HitQueries {
 
   /**
    * The hit's last call, made whether or not anything landed but not for a hit the owner's tags
-   * forbid: a Kamikaze owner destroys itself here, after its direct hit or its launch.
+   * forbid, nor for a hit discarded for distance when {@link #skipsEndOfDiscardedHit()}: a Kamikaze
+   * owner destroys itself here, after its direct hit or its launch.
    */
   default void hitEnded() {}
+
+  /**
+   * True when a hit discarded for distance skips its end, {@link #hitEnded()}, so a Kamikaze owner
+   * whose target left its range lives on: the battle's published global
+   * LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT, which game client 16.635.1 reads. False by default, the
+   * rule of client 16.402.17, whose hit always ends.
+   */
+  default boolean skipsEndOfDiscardedHit() {
+    return false;
+  }
 
   /**
    * Whether the owner's actions listen to its hits: a running action that enchants them. Without

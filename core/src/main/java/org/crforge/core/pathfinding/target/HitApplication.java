@@ -44,7 +44,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  *   <li>a hit not cancelled for distance schedules the action the row runs as it attacks on the
  *       owner, with the target as its cause; a hit with no target schedules nothing. It then
  *       schedules the action the row runs on the owner itself, with the owner as its cause, target
- *       or not.
+ *       or not;
+ *   <li>the hit's end, where a Kamikaze owner destroys itself, landed or not; a hit discarded for
+ *       distance skips it when the battle's global asks for it (game client 16.635.1, under
+ *       LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT), which client 16.402.17 never does.
  * </ul>
  *
  * <p>The damage chosen here reaches the target only through the direct hit. A projectile computes
@@ -81,7 +84,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the long-distance cancel is carried and held by no run. The attack counter,"
             + " raised by a hit not cancelled for distance, is held by"
             + " golden-gaps-v1/electro_giant_struck_by_knights and card_ElectroGiant, whose"
-            + " reflect keys on it.")
+            + " reflect keys on it. Traced on game client 16.635.1, no reference holds it yet: the"
+            + " skip of the end of a hit discarded for distance under"
+            + " LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT, which keeps a Kamikaze owner alive; the 16.402"
+            + " data versions do not publish the global, and their hit always ends.")
 public final class HitApplication {
 
   private HitApplication() {
@@ -206,7 +212,11 @@ public final class HitApplication {
     if (!missed && !entryAction && !specialLoad && last && queries.hitListeners()) {
       queries.attackEnded();
     }
-    queries.hitEnded();
+    // Last, the hit's end, where a Kamikaze owner destroys itself: skipped for a hit discarded for
+    // distance when the battle's global asks for it, so that owner lives on.
+    if (!missed || !queries.skipsEndOfDiscardedHit()) {
+      queries.hitEnded();
+    }
     return missed;
   }
 
