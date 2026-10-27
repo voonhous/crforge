@@ -177,7 +177,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " sequence entry where it sets one (WorldEntity), and nothing applied for a time"
             + " of 0. Still refused, reached by no row: a buff on damage beside an area radius,"
             + " whose area branch the 16.635.1 drain no longer has; the rest of that path is not"
-            + " traced.")
+            + " traced. Also traced on 16.635.1, no reference holds it yet: the global"
+            + " LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT read from the tables, clear when they do not"
+            + " publish it.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -841,6 +843,19 @@ public class BattleWorld implements HolderPasses {
   @Getter private ActionRows actions;
 
   /**
+   * The global under which the end of a Kamikaze unit's hit discarded for distance is skipped, so
+   * the unit lives on: published by the data of game client 16.635.1 (set), not by the data
+   * versions of client 16.402.17, whose hit always ends, discarded or not.
+   */
+  static final String SKIP_KAMIKAZE_ON_DISCARDED_HIT = "LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT";
+
+  /**
+   * True when the loaded tables publish {@link #SKIP_KAMIKAZE_ON_DISCARDED_HIT} set: a hit
+   * discarded for distance then skips its end, which a Kamikaze unit destroys itself in.
+   */
+  @Getter private boolean skipKamikazeOnDiscardedHit;
+
+  /**
    * Which bit of an entity's tag word each flag is, as the loaded game tags table numbers the tags;
    * every entity of the battle shares it. No flag has a bit until the tables are loaded.
    */
@@ -870,6 +885,8 @@ public class BattleWorld implements HolderPasses {
     this.movementGlobals =
         movementGlobals.withResetChargeDuringPushbackWhenMovementDisabled(
             records.publishedGlobalBoolean(RESET_CHARGE_DURING_PUSHBACK));
+    this.skipKamikazeOnDiscardedHit =
+        records.publishedGlobalBoolean(SKIP_KAMIKAZE_ON_DISCARDED_HIT);
   }
 
   /**

@@ -158,7 +158,9 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and its time read at the drain from the attack sequence entry the index then"
             + " selects, in an order of two or more, its CustomBuffOnDamage when it names one and"
             + " its CustomBuffOnDamageTime when 0 or more, else the row's; no buff or a time of 0"
-            + " applying nothing; by BattleAttackSequenceBuffOnDamageTest alone.")
+            + " applying nothing; by BattleAttackSequenceBuffOnDamageTest alone. Also traced on"
+            + " 16.635.1, no reference holds it yet: a hit discarded for distance skips its end"
+            + " under the battle's LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT.")
 public abstract class WorldEntity extends BattleEntity implements ActionOwner, SpawnHost {
 
   /** Side of the player at the low end of the arena. */
@@ -733,6 +735,11 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       @Override
       public void hitEnded() {
         WorldEntity.this.hitEnded();
+      }
+
+      @Override
+      public boolean skipsEndOfDiscardedHit() {
+        return world.isSkipKamikazeOnDiscardedHit();
       }
 
       @Override
