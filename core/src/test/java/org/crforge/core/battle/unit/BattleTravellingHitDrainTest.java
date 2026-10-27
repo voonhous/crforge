@@ -10,6 +10,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.crforge.core.battle.Shipped.number;
 import static org.crforge.core.battle.Shipped.unitRow;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -22,6 +25,9 @@ import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * When the travelling hit of a projectile flying to a point lands its damage, seen through a Hunter
@@ -38,6 +44,12 @@ import org.junit.jupiter.api.Test;
  * projectile's hit on its one target adds its damage, as the travelling hits do, while a
  * damage-taking action's hit adds nothing, its amount being worked out only at the drain. The scene
  * is played again with one such hit queued for the ram just before the tick of its death.
+ *
+ * <p>The test of a kill is the queued total whatever the globals hold: client 16.402.17 asked the
+ * global V16_PROJECTILE_DAMAGE_BUG first and, with it clear, held the one pellet's damage against
+ * the hit points instead; client 16.635.1 asks no global there and keeps only the queued total, and
+ * its globals table has no such row. The scene with a queued projectile hit is played again with
+ * that global absent and with it clear.
  */
 class BattleTravellingHitDrainTest {
 
@@ -157,12 +169,45 @@ class BattleTravellingHitDrainTest {
     return hitPoints.getHitPoints() + hitPoints.getShield();
   }
 
+  /** The global client 16.402.17 asked before its test of a kill, which client 16.635.1 dropped. */
+  private static final String DROPPED_GLOBAL = "V16_PROJECTILE_DAMAGE_BUG";
+
   @Test
   @DisplayName(
       "a projectile's hit queued for the ram counts in its queued total: the volley's first"
           + " pellet marks it and every later one passes over it")
   void aQueuedProjectileHitCounts() {
-    GameTables tables = GameData.tables();
+    assertQueuedProjectileHitCounts(GameData.tables());
+  }
+
+  @ParameterizedTest(name = "the global {0}")
+  @ValueSource(strings = {"absent", "clear"})
+  @DisplayName(
+      "the test of a kill reads no global: absent or clear, V16_PROJECTILE_DAMAGE_BUG leaves the"
+          + " queued total deciding, the volley's first pellet marking the ram")
+  void theTestOfAKillReadsNoGlobal(String global, @TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "globals",
+            rows -> {
+              rows.remove(DROPPED_GLOBAL);
+              if (global.equals("clear")) {
+                ObjectNode row = rows.putObject(DROPPED_GLOBAL);
+                row.put("index", rows.size() - 1);
+                row.put("class", "LogicData");
+                row.putObject("columns").put("Name", DROPPED_GLOBAL).put("BooleanValue", false);
+              }
+            });
+    assertQueuedProjectileHitCounts(tables);
+  }
+
+  /**
+   * Plays the scene on the tables with and without a projectile's hit, large enough to kill the ram
+   * alone, queued for it just before the tick of its death: with it, the volley's first pellet
+   * marks the ram and every later one passes over it.
+   */
+  private static void assertQueuedProjectileHitCounts(GameTables tables) {
     Death plain = scene(tables);
     List<ProjectileEntity> shooter = new ArrayList<>();
     Death queued =
