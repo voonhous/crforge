@@ -9,6 +9,7 @@ package org.crforge.core.battle.replay;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,6 +50,11 @@ class ReplayScenarioNewerDataTest {
   /** The 16.402.18 knight replay, as the capture tool saves it from a session on 16.402.19. */
   private static ObjectNode knightOnTheNewerData() {
     ObjectNode scenario = Scenarios.knightWithEveryField();
+    // Client 16.402.17's replays list no excluded evolutions in the players' data: es is client
+    // 16.635.1's field.
+    for (JsonNode data : scenario.path("battle").path("hbd")) {
+      ((ObjectNode) data).remove("es");
+    }
     ObjectNode capture = scenario.putObject(ReplayCapture.FIELD);
     capture.put(ReplayCapture.CLIENT_VERSION, GameVersions.CLIENT_16_402_17);
     capture.put(ReplayCapture.CONTENT_VERSION, GameVersions.DATA_16_402_19);
