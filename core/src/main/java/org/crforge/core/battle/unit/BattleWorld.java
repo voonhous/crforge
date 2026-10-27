@@ -162,7 +162,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " before its units and a unit's push as it enters the deploying state, finding"
             + " nobody in a card play's command pass, held by card_MegaKnight,"
             + " card_MegaKnight_until_stop and grid_log_under_megaknight_jump, and the push's"
-            + " tests on what it finds by a unit that waits its turn, held by no run. Refused: a"
+            + " tests on what it finds by a unit that waits its turn, held by no run; a"
+            + " travelling hit's test of a kill by the damage queued for what it hit, which client"
+            + " 16.635.1 makes without asking a global, traced on that client and held by no"
+            + " reference of it yet. Refused: a"
             + " death whose row sets a column of the slot not modelled, a least radius that"
             + " draws, a child without hit points that has a range, a spawner's turned or drawn"
             + " ring and a spawner child without hit points, a building, pathing or starting an"
@@ -800,26 +803,6 @@ public class BattleWorld implements HolderPasses {
   public int globalNumber(String name) {
     return globalNumbers.computeIfAbsent(name, records::globalNumber);
   }
-
-  /** The published globals' flags the battle has read, each on its first use. */
-  private final Map<String, Boolean> globalFlags = new HashMap<>();
-
-  /**
-   * A published global's flag, read from the records on its first use.
-   *
-   * @param name the global's name
-   */
-  boolean globalFlag(String name) {
-    return globalFlags.computeIfAbsent(name, records::globalBoolean);
-  }
-
-  /**
-   * The global that decides when a travelling hit queued for the drain dooms what it hit for the
-   * rest of its volley: set, by the damage queued for the entity against its hit points and shield;
-   * clear, by the one hit's damage against its hit points, which is refused (see {@link
-   * #queuedHits}); set in 16.402.18.
-   */
-  private static final String PROJECTILE_DAMAGE_BUG = "V16_PROJECTILE_DAMAGE_BUG";
 
   /**
    * The global for how near its owner an enemy deflecting area effect may be for a spell-like
@@ -5179,31 +5162,27 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Whether the damage queued for the drain will kill an entity, as a travelling hit just queued
-   * asks it, with the global V16_PROJECTILE_DAMAGE_BUG set: the hits queued for the entity and not
-   * yet dealt, the one just queued among them, add up to at least its hit points and shield. The
-   * hits counted are those of the queueing damage entry, which adds each one's damage to the
-   * entity's queued total and the drain empties: travelling hits, direct hits, a projectile's hit
-   * on its one target, the shares of a character's or a projectile's area and the hits of a buff's
-   * damage over time. A damage-taking action's hit is queued by an entry of its own, which adds
-   * nothing to the total: its amount is worked out only at the drain, so it never counts here. The
-   * entity's hit points' own visit empties the total in the third component pass (see {@link
-   * #emptyQueuedTotal}), so a hit queued before it in the tick - a targeting visit's direct hit, an
-   * area's share - is not counted by a travelling hit flying in the post-hooks, though it is dealt
-   * at the drain all the same; held by crawled battles where a Hunter's volley met a target another
-   * unit's hit kills on the same step, each pellet that reaches it then stopping at it.
+   * asks it: the hits queued for the entity and not yet dealt, the one just queued among them, add
+   * up to at least its hit points and shield. The hits counted are those of the queueing damage
+   * entry, which adds each one's damage to the entity's queued total and the drain empties:
+   * travelling hits, direct hits, a projectile's hit on its one target, the shares of a character's
+   * or a projectile's area and the hits of a buff's damage over time. A damage-taking action's hit
+   * is queued by an entry of its own, which adds nothing to the total: its amount is worked out
+   * only at the drain, so it never counts here. The entity's hit points' own visit empties the
+   * total in the third component pass (see {@link #emptyQueuedTotal}), so a hit queued before it in
+   * the tick - a targeting visit's direct hit, an area's share - is not counted by a travelling hit
+   * flying in the post-hooks, though it is dealt at the drain all the same; held by crawled battles
+   * where a Hunter's volley met a target another unit's hit kills on the same step, each pellet
+   * that reaches it then stopping at it.
    *
-   * <p>Refused rather than guessed: the global clear, where the one hit's damage alone is held
-   * against the entity's hit points, which no data version holds.
+   * <p>Client 16.635.1 asks no global here and keeps only this test; its globals table has no
+   * V16_PROJECTILE_DAMAGE_BUG. Client 16.402.17 asked that global first and, with it clear, held
+   * the one hit's damage alone against the entity's hit points; every data version of its range set
+   * it. So the global is not read, whatever a table holds.
    *
    * @param entity the entity hit
    */
   private boolean queuedKill(WorldEntity entity) {
-    if (!globalFlag(PROJECTILE_DAMAGE_BUG)) {
-      throw new UnsupportedOperationException(
-          "a travelling hit is queued with "
-              + PROJECTILE_DAMAGE_BUG
-              + " clear, whose test of a kill is not modelled");
-    }
     HitPoints hitPoints = entity.getHitPoints();
     int queued = 0;
     int start = queuedTotalStarts.getOrDefault(entity, 0);
