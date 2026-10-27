@@ -15,6 +15,7 @@ import static org.crforge.core.battle.Shipped.numbers;
 import static org.crforge.core.battle.Shipped.text;
 import static org.crforge.core.battle.Shipped.texts;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -977,7 +978,10 @@ class ActionRowsTest {
     assertThat(columns.pushBackRadius()).isEqualTo(number(row, "PushBackRadius"));
     assertThat(columns.continuousPushBack()).isTrue();
     assertThat(columns.distanceProportionalPush()).isFalse();
-    assertThat(columns.pushBackDamage()).isEqualTo(number(row, "PushBackDamage"));
+    // The push damage is a damage type: a whole number, or written inline with its BaseDamage.
+    JsonNode damage = Shipped.fields(row).get("PushBackDamage");
+    assertThat(columns.pushBackDamage())
+        .isEqualTo(damage.isObject() ? damage.path("BaseDamage").asInt() : damage.asInt());
     assertThat(columns.pushToSide()).isTrue();
     assertThat(columns.pushRadiusDirectionalOffset())
         .isEqualTo(number(row, "PushRadiusDirectionalOffset"));

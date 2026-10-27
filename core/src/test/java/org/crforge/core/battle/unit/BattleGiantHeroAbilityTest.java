@@ -83,11 +83,16 @@ class BattleGiantHeroAbilityTest {
 
     // The slap holds the Giant for its stop's duration, the push comes its delay after the pick,
     // and the Knight lands the knock up's duration after the push.
+    // The stop is the group's timed sub-action, found by its class: the group also lists the
+    // slap's animation and, in later data, the ability's delivery.
     int stop =
         Shipped.number(
             Shipped.actionNames(
                     Shipped.actionName(SELECTOR, "ActionOnSelfWhenTriggeredLeft"), "SubActions")
-                .get(1),
+                .stream()
+                .filter(name -> "ActionWithDuration".equals(Shipped.text(name, "ClassType")))
+                .findFirst()
+                .orElseThrow(),
             "ActionDuration");
     int lastStanding = PICK + Shipped.ticks(stop) + 1;
     int push = PICK + Shipped.ticks(Shipped.number(PUSH, "PushbackDelay"));
