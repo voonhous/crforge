@@ -33,6 +33,7 @@ crforge/
   env/            The reinforcement learning environment: a vector of battles behind flat buffers
   tables/         The table decoder: builds the game tables of a data version from the game's files
   python/         The crforge-env Python package on the env module's jars (not a Gradle module)
+  examples/       A replay the replay viewer opens, examples/replays/ladder.json (not a Gradle module; examples/README.md)
 ```
 
 `conformance` and `env` depend on `core` only. `desktop` depends on `core` and on `env`, whose environment builds a model opponent's observation and takes its actions as in training, and on ONNX Runtime, which runs the model (see [Playing against a model](#playing-against-a-model)). Nothing depends on `desktop` or `conformance`. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
@@ -139,7 +140,7 @@ org.crforge.core/
     state/         EntityStateVisit, StateSetter, HideHandler
     target/        TargetingVisit, DefaultTargetSelection, HitApplication, DirectHit, AttackRange
   fidelity/      Fidelity, FidelityStatus, FidelityLedger (./gradlew :core:fidelityReport)
-  util/          GameUnits, ValidationUtils
+  util/          GameUnits, ValidationUtils, DeepCopy
 ```
 
 `battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base. See the dependency rule in [The Battle Core](battle-core.md#package-layout).
@@ -232,10 +233,10 @@ The tables opened are `<tables root>/<data version>`. The versions built beside 
 At startup the launcher prints the tables folder, the data version, the content sha and the versions built:
 
 ```
-game tables: /home/me/.crforge/tables/16.402.19
-data version: 16.402.19
-content sha: 7e76080b...
-data versions: 16.402.18, 16.402.19, 16.402.21, 16.402.22 (V switches)
+game tables: /home/me/.crforge/tables/16.635.3
+data version: 16.635.3
+content sha: dae6c6cc7e9126338da0c606e47e48a9ef80462c
+data versions: 16.402.18, 16.402.19, 16.402.21, 16.402.22, 16.635.3 (V switches)
 ```
 
 It stops:
@@ -257,7 +258,9 @@ The two decks are in `org.crforge.desktop.battle.BattleDecks`, by the tables' ca
 - Blue (side 0, bottom): LavaHound, MegaMinion (hero slot, played as MegaMinion_hero), SkeletonArmy (evolution slot, played as SkeletonArmy_EV1 once its count is reached), Lightning, Minions, Tombstone (hero slot, played as Tombstone_hero), Arrows, Miner
 - Red (side 1, top): MegaKnight, ElectroGiant, Assassin (Bandit), SkeletonWarriors (Guards), Tombstone, DarkWitch (Night Witch), SkeletonArmy, RamRider
 
-Red marks no slot, so its cards are played in their basic form. The screen gives no ability command, so a hero's ability is never tapped.
+Red marks no slot, so its cards are played in their basic form.
+
+Each king's two champion slots are buttons beside its hand: a click on one, or its key (`Q` and `W` for blue's first and second slot, `9` and `0` for red's), uses the ability of the champion or hero the slot follows, as its player taps the button (`BattleSession.useAbility`). The command is given through the same player's commands as a play. It is refused on the spot with a message when the client's try of its gates refuses it, or while a command given for the slot still waits to run; a command the battle refuses when it runs is reported the same way.
 
 Hands, elixir, the next card, the clock and its elixir rate, the crowns and the result are the match's own. A click gives the selected card's play as a player's client gives it (`PlayerCommands`, in the battle core), so it runs 20 ticks later as a player's play does. A play is sent on the tile the placement search finds from the clicked point now, as the player's screen sends it.
 
@@ -325,7 +328,9 @@ The model's plays and refusals appear in Recent events. `K` shades each tile by 
 | `+` / `-`     | Speed up / slow down (0.25x to 8x)                                            |
 | `1`-`4`       | Select a card from the blue player's hand                                     |
 | `5`-`8`       | Select a card from the red player's hand                                      |
-| Left click    | Select/deploy a card, or inspect a unit in Inspect mode                        |
+| `Q` / `W`     | Use the ability of the blue king's first / second champion slot               |
+| `9` / `0`     | Use the ability of the red king's first / second champion slot                |
+| Left click    | Select/deploy a card, use a champion slot's ability, or inspect a unit in Inspect mode |
 | Right click   | Deselect the current card                                                     |
 
 The number keys only *select* a card; playing always goes through a left click on the arena.
@@ -354,7 +359,7 @@ A compressed file is found by its first bytes, its format's magic number, and se
 A record holds the replay as the server sent it, as a string, with the session and battle it was fetched in (`org.crforge.desktop.replay.ReplayArchive`):
 
 ```json
-{"format": 1, "channel_id": 162000038, "session": {"client_version": "16.402.17", "content_sha": "7e76...", "fetched_at": "2026-10-07T14:03:38Z"}, "battle": {"content_version": "16.402.19", "content_sha": "7e76...", "source": "tv_entry"}, "entry": {...}, "replay": "{\"battle\":{...},\"cmd\":[...],...}"}
+{"format": 1, "channel_id": 162000038, "session": {"client_version": "16.635.1", "content_sha": "dae6...", "fetched_at": "2026-10-28T14:03:38Z"}, "battle": {"content_version": "16.635.3", "content_sha": "dae6...", "source": "tv_entry"}, "entry": {...}, "replay": "{\"battle\":{...},\"cmd\":[...],...}"}
 ```
 
 The viewer lists every record above the arena (its line, the battle's time in UTC, game mode, arena, length in ticks and data version) and opens the first one that can be read. A click on a row, or `[` and `]` for the previous and next, opens that replay in place of the one open. `L` hides or shows the list.
@@ -370,14 +375,14 @@ A record that cannot be read is listed with why and leaves the others readable. 
 
 A battle's data version is unsure when its record names `candidates` instead of a `content_version`: each version it may have run on, with its content sha or null, and `candidates_complete`, false when a version not listed may be it.
 
-Such a replay is listed like any other, with its candidates as its data (`16.402.19/16.402.21`, and `/?` after them when a version not listed may be it). But it is not played, even on a candidate's tables, since it would be read on data it may not have run on. A click on its row leaves the replay open and says why: `its data version is unsure: 16.402.19 or 16.402.21, or a version not listed`.
+Such a replay is listed like any other, with its candidates as its data (for example `16.402.19/16.402.21`, and `/?` after them when a version not listed may be it). But it is not played, even on a candidate's tables, since it would be read on data it may not have run on. A click on its row leaves the replay open and says why: `its data version is unsure: 16.402.19 or 16.402.21, or a version not listed`.
 
 #### The capture block
 
 A replay file may carry a **capture block**, an optional top-level object written by the tool that saved the replay, never by the game:
 
 ```json
-"capture": {"client_version": "16.402.17", "content_version": "16.402.18", "content_sha": "8aa8015226b0062c7e16a793522de91e564ffdaf", "captured_at": "2026-10-06T03:47:38Z"}
+"capture": {"client_version": "16.635.1", "content_version": "16.635.3", "content_sha": "dae6c6cc7e9126338da0c606e47e48a9ef80462c", "captured_at": "2026-10-28T03:47:38Z"}
 ```
 
 It names the game client version and the data the replay was recorded on:
@@ -390,7 +395,7 @@ The game data can change without a client update, so the client version alone do
 
 The replay mapping (`org.crforge.core.battle.replay.ReplayScenario`, which the conformance runs use too) accepts it for every data version with exactly these four keys, each a string. It refuses any other key or shape in it like any field it has no mapping for.
 
-When the block's `content_sha` is not the content sha of the tables the replay is read against, or its `content_version` is not their data version, the replay is refused with one reason naming both: `a replay recorded on client 16.402.17, data version 16.402.18 (content sha 8aa80152...), read against the game tables of data version 16.402.19 (content sha 7e76080b...)`.
+When the block's `content_sha` is not the content sha of the tables the replay is read against, or its `content_version` is not their data version, the replay is refused with one reason naming both, for a replay of data version 16.402.22 read against the tables of 16.635.3: `a replay recorded on client 16.402.17, data version 16.402.22 (content sha 97869d43e0745841430d11d7b4286ac0f8057363), read against the game tables of data version 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c)`.
 
 The viewer picks the tables from the block, on `--replay` and on a dropped file:
 
@@ -449,18 +454,22 @@ At startup the launcher prints:
 - its battle header: the game mode and location, both decks by card name, the end tick, the command count by type
 - either what the mapping read or every reason the replay is refused
 
+For the example replay (`examples/replays/ladder.json`, whose capture block names no capture time) on the tables of 16.635.3:
+
 ```
-replay: /path/to/replay.json
-  recorded on: client 16.402.17, data version 16.402.18 (content sha 8aa80152...), captured 2026-10-06T03:47:38Z
-  data version: 16.402.18 (content sha 8aa80152...), named by the replay
-  game mode: Ladder, location PvP_goblin
-  side 0 deck (red, top): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
-  side 1 deck (blue, bottom): ArcherQueen, Archer, Goblins, Giant, Minions, Musketeer, Fireball, Arrows
-  end tick: 400
-  commands: 2 (type 124 x1, a card play; type 178 x1, an ability command)
+replay: /home/me/crforge/examples/replays/ladder.json
+  recorded on: client 16.635.1, data version 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c)
+  data version: 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c), named by the replay
+  game mode: Ladder, location FirstMatch
+  side 0 deck (red, top): LavaHound, MegaMinion, SkeletonArmy, Lightning, Minions, Tombstone, Arrows, Miner
+  side 1 deck (blue, bottom): MegaKnight, ElectroGiant, Assassin, SkeletonWarriors, Tombstone, DarkWitch, SkeletonArmy, RamRider
+  end tick: 3051
+  commands: 35 (type 153 x32, a card play; type 189 x3, an ability command)
   recorded result: none in the replay
-  mapping: every field read; 1 plays, 1 ability commands
+  mapping: every field read; 32 plays, 3 ability commands
 ```
+
+A capture block with a `captured_at` adds `, captured <time>` to the `recorded on` line.
 
 A replay is refused, never played in part, when:
 
@@ -468,7 +477,7 @@ A replay is refused, never played in part, when:
 - the battle core refuses the tables
 - it refuses to set up the replay's battle
 
-Each reason is listed once with its count (`the command type 153: cmd[0].ct and 36 more (37 in all)`), and the window shows the same list instead of a battle. Tables the battle core refuses do not stop the launcher here, as they do for a Ladder battle: the refusal is one of the replay's reasons.
+Each reason is listed once with its count (`the command type 124: cmd[0].ct and 36 more (37 in all)`), and the window shows the same list instead of a battle. Tables the battle core refuses do not stop the launcher here, as they do for a Ladder battle: the refusal is one of the replay's reasons.
 
 #### Playing a replay
 
@@ -476,7 +485,7 @@ A replay that is played shows both sides' hands, elixir, crowns and the clock as
 
 Each play and ability command that runs is noted in the message column (`red plays ArcherQueen on tick 220 (cmd0)` for side 0 in the flipped view). Each play's item is checked against the item the battle built for it, as a conformance run checks it: a play that ran with another item halts the replay with the reason.
 
-The replay stops at its end tick (`endTick`), or when the battle ends by its own rule. One with no end tick plays until the battle ends. A 16.402.18 replay's end tick lies past the battle's own end (3681 for a battle that ends on tick 3678, 4871 for one that ends on tick 4845), so such a replay ends where the battle does.
+The replay stops at its end tick (`endTick`), or when the battle ends by its own rule. One with no end tick plays until the battle ends. Measured on the replays of 16.402.18, a replay's end tick lies past the battle's own end (3681 for a battle that ends on tick 3678, 4871 for one that ends on tick 4845), so such a replay ends where the battle does.
 
 The status column then shows why it stopped, the battle's result and the replay's own recorded result. Neither the replay files nor the scenario cases record a result, so that line reads "none in the replay".
 
@@ -490,6 +499,8 @@ The status column then shows why it stopped, the battle's result and the replay'
 | `P`, `O`, `D`, `A`, `H`, `G`, `N` | The overlays, as on the debug screen |
 | `F`           | Flip the view: the game's view of side 1 (the default) or of side 0 |
 | `T`           | Hide / show the diagnostics sidebar                     |
+| `L`           | Hide / show a crawl file's record list                  |
+| `[` / `]`     | Open the previous / next record of a crawl file         |
 | Left click    | Inspect a unit                                          |
 
 Cards are not selected or played from the viewer: the plays are the replay's own.
