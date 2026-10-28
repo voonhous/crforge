@@ -2,6 +2,47 @@
 
 The battle core's earlier baselines and each round of optimisations, newest first, kept with their numbers and profiles. The benchmark, its workloads and the profiler commands are described in [Performance](performance.md), which also holds the current baseline.
 
+## The sixth optimisations (2026-10-28)
+
+The first round on Java 21 (#765), on the same 674 battles of 16.635.3 as [the fifth](#the-fifth-optimisations-2026-10-28), every change held to the observations of all 674 battles hashing byte-identical to its base, alone and together.
+
+The start, a full benchmark of main eb8c7da3 on JDK 21.0.9: `replays` 117,122 +- 6,663 steps a second, `allCases` 108,279 +- 4,871, `allCasesFourThreads` 451,725 +- 13,743, about 7.3 KB a step: the same as [823b578b on JDK 17](#baseline-after-the-fifth-optimisations-2026-10-28) within the error. What its profile of the replays showed (9,978 CPU samples inside the steps):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 32% | choosing targets (`TargetingVisit.reselect` 28%); the six towers alone 10% |
+| 21% | preparing routes: the route search 14%, the scan for the cell to walk to 6.5% |
+| 17% | `SpatialIndex.query`: its own walk over the buckets 9.5% |
+| 13% | the world's pre-pass: every entity's candidates registered 6%, each one an identity map lookup per entity listed, every step |
+| 9% | following routes |
+| 4% | the lane of each new unit and of each card's drop point: a scan of all 2,304 cells of the map |
+| 1.2% | the crown towers moved to the end of a candidate list one at a time (`SpatialIndex.moveKingsLast`) |
+
+Each change back to back against main, `replays` only, 3 forks x 5 iterations of 2 s:
+
+| Change | ticks/s | Allocated a step |
+|--------|---------|------------------|
+| main eb8c7da3 | 120,569 +- 5,360 | 7.16 KB |
+| only the arrivals registered as candidates at each pre-pass (#766), first version | 123,741 +- 4,145 | 7.62 KB |
+| each entity tested once in a spatial query (#767) | 122,203 +- 3,045 | 7.22 KB |
+| lanes searched over the map's road cells only (#768) | 123,834 +- 4,043 | 7.24 KB |
+| only the cell states cleared between route searches (dropped) | 120,383 +- 4,562 | 7.20 KB |
+| the arena lists copied only for the world's observers (#769) | 120,182 +- 4,157 | 6.92 KB |
+| the crown towers moved last in one pass (dropped) | 121,845 +- 2,726 | 7.35 KB |
+| all six | 130,770 +- 9,666 | 7.55 KB |
+| main eb8c7da3 again | 119,328 +- 4,677 | 7.19 KB |
+
+- The arrivals only: a registration is dropped only when its entity leaves the battle, so an entity that registered the whole list at the last pre-pass can miss only the entities listed since. The first version walked the lists with enhanced for loops in the new path and allocated 0.45 KB more a step (iterators JDK 21 kept); walked by index, 125,185 +- 5,974 steps a second and 7.30 KB against main's 122,046 and 121,477.
+- Each entity tested once: the candidate query tested an entity it rejected again in every further bucket it reaches; the tests read the entity and the query only, so the second answered as the first. The query's shape tests went from 1.9% to 1.1% of step time.
+- The road cells: 692 of the 2,304 cells; the lane went from 3.8% to 0.3% of step time.
+- The observers' copies: no speed, 3.5% fewer bytes; kept as it costs nothing.
+- Dropped: clearing only the states moved nothing beyond the error, and `moveKingsLast` took 1.4% of step time before and after the one-pass version, its cost being the walk over the list, not the moves.
+- The spread of each run is mostly the battles each 2 s iteration happens to cover: the iterations of one run rise and fall alike in every fork, so runs are compared by their means.
+
+The four kept together against main, alternating: 121,291 then 131,207, 118,045 then 126,127 steps a second; the means 119,668 and 128,667 (+7.5%), 7.2 and 7.0 KB a step.
+
+The round as a whole, full benchmark of eb8c7da3 against d7aaec93 ([the current baseline](performance.md#baseline-2026-10-28)), both on JDK 21.0.9: `replays` 117,122 to 126,720 steps a second (+8.2%), `allCases` 108,279 to 122,274 (+12.9%), `allCasesFourThreads` 451,725 to 503,698 (+11.5%), about 7.3 to 7.0 KB a step.
+
 ## The fifth optimisations (2026-10-28)
 
 The first round on data 16.635.3, after the move to client 16.635.1. With no reference battles of 16.635.3 yet, the workload is 674 real Ladder battles of 16.635.3 from anonymized copies (see [A data version without references](performance.md#a-data-version-without-references)), and every change was held to the observations of all 674 battles hashing byte-identical to its base, alone and together. Measured back to back on JDK 17.0.14, `replays` only, 2 forks x 5 iterations of 10 s unless said; on this workload one iteration of 2 s covers only about 55 battles, and the error is about +-7% from the mix of battles alone, so a single change's speed is read only together with others.
@@ -34,7 +75,44 @@ Moving the build to JDK 21 was measured next (#758): on the same source JDK 21 r
 - The hottest lists walked by index: nine loops over `ArrayList`s that nothing changes while they are walked, so no iterator is made for the compiler to remove.
 - The reused query lists were dropped: 20% fewer bytes, but 1.5% to 3.3% fewer steps a second in four alternating pairs against their base, in two versions (the bucket walk shared with `query`, and `query` untouched with a separate walk). The likely cost, not proven: a reused list soon lives in the old generation, so every reference written into it pays the collector's write barrier and every clear writes the whole array, while a fresh list stays young and dies for free. Garbage collection takes tens of milliseconds over a whole benchmark here, so bytes alone buy no speed.
 
-The round as a whole, full benchmark of 91bccf5f against 823b578b ([the current baseline](performance.md#baseline-2026-10-28)): `replays` 103,994 to 118,097 steps a second (+13.6%), `allCases` 96,451 to 111,249 (+15.3%), `allCasesFourThreads` 405,086 to 449,622 (+11.0%), about 14.2 to 7.0 KB a step.
+The round as a whole, full benchmark of 91bccf5f against 823b578b ([its baseline](#baseline-after-the-fifth-optimisations-2026-10-28)): `replays` 103,994 to 118,097 steps a second (+13.6%), `allCases` 96,451 to 111,249 (+15.3%), `allCasesFourThreads` 405,086 to 449,622 (+11.0%), about 14.2 to 7.0 KB a step.
+
+## Baseline after the fifth optimisations (2026-10-28)
+
+The baseline of the fifth optimisations, on Java 17, that the sixth started from:
+
+- Source `main` 823b578b, after the fifth optimisations (see [The fifth optimisations](#the-fifth-optimisations-2026-10-28)).
+- Data version 16.635.3. It has no reference battles yet, so the workload is 674 real Ladder battles of 16.635.3, played from anonymized copies kept outside the repositories and laid out as a references folder (see [A data version without references](performance.md#a-data-version-without-references)). The battle core refuses none of them, and all are replays, so `allCases` runs the same battles as `replays` in another order.
+- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- JMH defaults as in [The benchmark](performance.md#the-benchmark). Score and error as JMH prints them.
+- Load average 3.5 to 7.3 during the run, the four-thread workload's own threads included.
+
+| Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
+|----------|---------|---------|-----------|----------------------|--------------------|
+| `replays` | 1 | 118,097 +- 6,346 | 32.25 +- 2.16 | 26.3 MB | about 7.0 KB |
+| `allCases` | 1 | 111,249 +- 6,545 | 27.62 +- 2.09 | 30.8 MB | about 7.4 KB |
+| `allCasesFourThreads` | 4 | 449,622 +- 11,361 | 108.72 +- 3.49 | 31.0 MB | about 7.2 KB |
+
+Read as:
+
+- A real battle runs at about 118,000 steps a second on one thread, about 5,900 times the game's own 20 steps a second: a battle of about 4,000 steps (the workload's average) in about 34 ms.
+- Four threads give 4.0 times one thread.
+- These numbers are of other battles than the 2026-10-11 baseline (16.402.19, 25 replays), so the two are not comparable. On this workload the round took the replays from 103,994 to 118,097 steps a second (+13.6%) and the bytes from about 14.2 KB a step to 7.0 KB.
+
+What the profile of the replays shows at this baseline (async-profiler, as in [Profiling](performance.md#profiling), about 10,000 CPU samples inside the steps, load average about 3.3):
+
+| Share of step time | Where |
+|--------------------|-------|
+| 34% | choosing targets (`TargetingVisit.reselect` 29%, `SelectionChain`); the six towers alone 11% |
+| 18% | `SpatialIndex.query` (most of it inside the above, the rest in the push and avoidance passes): its own walk over the buckets 10% |
+| 22% | preparing routes (`RoutePreparation`): the route search 14%, the scan for the cell to walk to (`ReferenceEndpoint`) 7% |
+| 10% | following routes |
+| 10% | the world's pre-pass (`BattleWorld.prePass`): every entity's candidates registered 4%, the spatial index rebuilt 3% |
+| 4% | the commands, nearly all card plays |
+| 2% | the holder's cleanup |
+| 2% | action rows built per target of an area hit (`ActionRows.build`, mostly from `AreaEffectEntity`) |
+
+The champion views (2.4% at the round's start) have left the profile. The bytes allocated: `SpatialIndex.query`'s result lists 17%, `SelectionChain.views` 5%, `CharacterEntity.movementQueries` 5%, `ResumeHelper.resume` 4%, `IndexNeighbourQuery.near` 4%, `BattleWorld.present` 4%, `GridMovementQueries` 4%. Reusing the query result lists was tried and dropped: fewer bytes, fewer steps a second (see [The fifth optimisations](#the-fifth-optimisations-2026-10-28)).
 
 ## Baseline at 91bccf5f (2026-10-28)
 
