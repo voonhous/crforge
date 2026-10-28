@@ -256,9 +256,9 @@ An id in a seat's observation (`id`, `target`, `ability_unit`) is the seat's own
 
 So an id links a row to the rows and fields that name it, and says nothing of the entities the seat was not shown. The battle's own ids are global and in creation order. Until 2026-10-18 the observation wrote them, and a gap between two of them told a seat that entities it was not shown (an enemy unit hidden, tunnelling or waiting its turn to deploy) were made between the two.
 
-The id rule is versioned apart from the layout, as the mask rule is. Rule 2 (`Schema.ID_SEAT_FIRST_SIGHT`, the rule written now) and rule 1 (`Schema.ID_BATTLE`, the battle's ids, written by schema version 3 before the change) write the same fields with the same meaning; only their values differ. So the schema's version stays 3, and the metadata exports the rule as its own `id_version`, outside `schema` and `config` (absent in an export written before the rule, and for a synthetic vector).
+The id rule is versioned apart from the layout, as the mask rule is. Rule 2 (`Schema.ID_SEAT_FIRST_SIGHT`, the rule written now) and rule 1 (`Schema.ID_BATTLE`, the battle's ids, written by schema version 3 before the change) write the same fields with the same meaning; only their values differ. So the rule came in under schema version 3 without a bump, and the metadata exports the rule as its own `id_version`, outside `schema` and `config` (absent in an export written before the rule, and for a synthetic vector).
 
-A saved export of version 3 still passes `check_metadata`, and label folders written before keep their use. An encoder that reads no id (the ids are links, not amounts) reads both alike. One that embeds the ids' values should not mix rows of the two rules.
+While the schema was at version 3, a saved export written before the rule still passed `check_metadata`, and label folders written before kept their use. The schema is at version 4 now, and `check_metadata` refuses a saved export of a schema version other than the vector's, so an export of version 3 no longer passes. An encoder that reads no id (the ids are links, not amounts) reads both alike. One that embeds the ids' values should not mix rows of the two rules.
 
 #### Row order and overflow
 
@@ -284,13 +284,13 @@ Which characters and towers a seat sees, and what of them, is one rule, in one p
   |---|---|
   | A character or building row that does not set `HideHealthbar` (it names a health bar row, or none and is given a default one by its hit points) | always: every health bar row such a row reaches shows on the enemy's screen always; an unhurt unit's hit points are its `max_hp` |
   | A row that sets `HideHealthbar` and whose starting client actions name a health bar (`Healthbar_Medium` and the like: most champion, hero and evolution rows, the Dark Prince, the Guards, the Archer Queen) | from the unit's first damage on, and for its life, healed back to full or not. Damage is its hit points off their maximum, or its shield changing while the row has a shield (a hit, a lost shield and a shield that grows all count). Hidden while the unit runs an action that sets `HideHealthbarWhileRolling` (the Barb Log hero's roll) |
-  | A row that sets `HideHealthbar` and whose starting client actions name no health bar (dummies, ghosts and helper objects: 7 character rows in 16.402.18, 16.402.19, 16.402.21 and 16.402.22) | never |
+  | A row that sets `HideHealthbar` and whose starting client actions name no health bar (dummies, ghosts and helper objects: 7 character rows in 16.402.18, 16.402.19, 16.402.21, 16.402.22 and 16.635.3) | never |
 
   A player sees an enemy Dark Prince, Guards or Archer Queen without a bar until it is first damaged, and with one from then on, also once healed back to full. The damage is watched at every tick, not only at decisions, so a unit hurt and healed between two decisions shows its bar too.
 
   Until 2026-10-18 the rule showed these rows' bar only while the unit was hurt, never for a row naming no health bar, and a building's only while it was hurt or shielded unless it had a life time or an elixir production. Those differed from the screen only for an unhurt unit, whose hit points are its `max_hp`. The observation's layout and schema version 4 are unchanged. `max_hp` stays shown: the row and the level are, and the card's stats give it. Own rows and towers are unchanged.
 
-  The health bar rows themselves are not among the game tables the environment reads. The rule takes their show-to-the-enemy-always column as set, which holds for every health bar row a character or building can reach in the tables of 16.402.18, 16.402.19 and 16.402.21. Nor are the client actions: a starting client action builds a health bar when its name holds `Healthbar`, as every one does in those tables.
+  The health bar rows themselves are not among the game tables the environment reads. The rule takes their show-to-the-enemy-always column as set, which holds for every health bar row a character or building can reach in the tables of 16.402.18, 16.402.19 and 16.402.21. Nor are the client actions: a starting client action builds a health bar when its name holds `Healthbar`, as every one does in those tables. Both were checked on those 16.402 versions only, not on 16.635.3.
 
 #### What the screen shows of an enemy play
 
@@ -730,7 +730,7 @@ A synthetic vector takes `synthetic_entities`, `synthetic_episode_steps`, and `s
 
 At start the package reads `VectorEnv.metadataJson()`. The schema's version, sizes and field names give every offset (`schema.header[name]`, the indices of a header field; `schema.entity[name]`, `schema.info[name]`, `schema.flags[name]`, `schema.refusals[code]`). The few codes the metadata does not list (results, entity kinds, the winner codes, the deck size, the arena's size) are read from the `Schema` class. No offset is typed twice in Python.
 
-The package reads schema version 3; a module that writes another version is refused at start.
+The package reads schema version 4; a module that writes another version is refused at start.
 
 Every field is read by name:
 
@@ -1014,4 +1014,4 @@ Id rule 2 (2026-10-18, entity ids per seat in order of first sight) costs one ar
 
 Schema version 4 (2026-10-18) writes 7,024 integers a seat and follows each play's card, point and diamond tick by tick. Measured the same way, version 3 (with the enemy elixir count of the end of the match) and version 4 alternated three times each on 16.402.21, one thread steps 11,200 to 11,800 decisions a second under version 3 and 11,600 to 12,200 under version 4 (1-minute load average 16 to 19, other work running, spread over the repeats 27 to 59 percent): no cost the spread can show.
 
-Read it as: one thread steps about 20,000 to 24,000 Ladder decisions a second, about 100,000 to 120,000 battle ticks, about the battle core's own rate on the recorded replays ([performance.md](performance.md)). The synthetic engine, which writes observations and masks of the same size with no battle behind them, costs about 3 us a decision, so the encoding, the masks and the tries are a small part of a Ladder decision and the battle is the rest. Four threads give about 3.1 times one. The 256-battle single-thread row's interval is wide (a slow iteration); the others are within about 20 percent.
+Read the table (2026-10-16, schema version 2, data version 16.402.19) as: one thread stepped about 20,000 to 24,000 Ladder decisions a second, about 100,000 to 120,000 battle ticks, about the battle core's own rate on the recorded replays ([performance.md](performance.md)). The later runs above were on a more loaded machine and compare one version or rule with another; their rates are lower and are not a newer measure of the rate. The synthetic engine, which writes observations and masks of the same size with no battle behind them, costs about 3 us a decision, so the encoding, the masks and the tries are a small part of a Ladder decision and the battle is the rest. Four threads give about 3.1 times one. The 256-battle single-thread row's interval is wide (a slow iteration); the others are within about 20 percent.
