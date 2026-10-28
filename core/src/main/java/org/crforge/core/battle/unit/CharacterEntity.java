@@ -3393,14 +3393,53 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The state visit's answers last built, reused while the two answers that can change between
+   * steps are unchanged; null before the first build. See {@link #stateQueries()}.
+   */
+  private StateQueries stateQueries;
+
+  /** The movement component answer {@link #stateQueries} was built with. */
+  private boolean stateQueriesMovement;
+
+  /** The scaled deploy step {@link #stateQueries} was built with. */
+  private int stateQueriesDeployStepMs;
+
+  /**
    * What the state visit asks of the character: its team, whether it can hold a route - only with a
    * movement component - and whether it has hit points.
+   *
+   * <p>The answers are built once and reused, since nearly all of them are fixed for the
+   * character's life: its team (the view's side is set only as the view is made), whether it has
+   * hit points (the hit points are a final field), the ordinary unit's standing answers, and the
+   * hooks, which are bound to the character and read its state when they run. Only two answers can
+   * change between steps: the movement component, which a stage change switches, and the deploy
+   * step, which the speed buffs scale. Both are read here on every call, and the answers are built
+   * again whenever either differs from the one they were built with.
    */
   private StateQueries stateQueries() {
+    boolean movement = getView().isMovementComponent();
+    int deployStepMs = getBuffs().speed(DEPLOY_STEP_MS);
+    if (stateQueries == null
+        || stateQueriesMovement != movement
+        || stateQueriesDeployStepMs != deployStepMs) {
+      stateQueries = buildStateQueries(movement, deployStepMs);
+      stateQueriesMovement = movement;
+      stateQueriesDeployStepMs = deployStepMs;
+    }
+    return stateQueries;
+  }
+
+  /**
+   * The state visit's answers with the two that can change between steps as given.
+   *
+   * @param movement whether the character has a movement component
+   * @param deployStepMs the deploy countdown's step as the speed buffs scale it
+   */
+  private StateQueries buildStateQueries(boolean movement, int deployStepMs) {
     StateQueries queries = StateQueries.forUnitWithRoute(side() & 1);
     return new StateQueries(
         queries.team(),
-        getView().isMovementComponent(),
+        movement,
         queries.gridAllowsRoute(),
         queries.gridRouteFlag(),
         getHitPoints() != null,
@@ -3409,7 +3448,7 @@ public class CharacterEntity extends WorldEntity {
         queries.protectedFromDamage(),
         queries.protectionApplies(),
         queries.goalRow(),
-        getBuffs().speed(DEPLOY_STEP_MS),
+        deployStepMs,
         this::notAttackingSection,
         this::kamikazeDrain,
         this::deployEndVisit,

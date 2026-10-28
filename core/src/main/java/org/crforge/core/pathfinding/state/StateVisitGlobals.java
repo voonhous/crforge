@@ -16,11 +16,15 @@ import org.crforge.core.pathfinding.grid.PathfindingGlobals;
  */
 public record StateVisitGlobals(int attackFinishTimeMs) {
 
+  /** The standard settings, made once: the record is immutable, so every visit can share it. */
+  private static final StateVisitGlobals STANDARD =
+      new StateVisitGlobals(PathfindingGlobals.ATTACK_FINISH_TIME_MS);
+
   /**
    * The standard game's value: {@link PathfindingGlobals#ATTACK_FINISH_TIME_MS}, so a spawned
    * unit's first-tick immunity survives five visits and clears on the sixth.
    */
   public static StateVisitGlobals standard() {
-    return new StateVisitGlobals(PathfindingGlobals.ATTACK_FINISH_TIME_MS);
+    return STANDARD;
   }
 }
