@@ -80,46 +80,48 @@ jfrconv --alloc "$J" conformance/build/profile/alloc.html
 ```
 
 The images on these pages are the same graphs rooted at `Battle.step`, as icicles: the collapsed stacks (`jfrconv --cpu -o collapsed`, `jfrconv --alloc --total -o collapsed`) cut to start at `Battle.step` and turned back into a page with `jfrconv --inverted --title "<title>" --minwidth 0.05`, then a screenshot of the page (1800 by 470).
+
 ## Baseline (2026-10-28)
 
 The baseline to measure the next change against:
 
-- Source `main` 823b578b, after the fifth optimisations (see [the history](performance-history.md#the-fifth-optimisations-2026-10-28)).
+- Source `main` d7aaec93, after the sixth optimisations (see [the history](performance-history.md#the-sixth-optimisations-2026-10-28)).
 - Data version 16.635.3. It has no reference battles yet, so the workload is 674 real Ladder battles of 16.635.3, played from anonymized copies kept outside the repositories and laid out as a references folder (see [A data version without references](#a-data-version-without-references)). The battle core refuses none of them, and all are replays, so `allCases` runs the same battles as `replays` in another order.
-- Java 17.0.14 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
+- Java 21.0.9 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
 - JMH defaults as above. Score and error as JMH prints them.
-- Load average 3.5 to 7.3 during the run, the four-thread workload's own threads included.
+- Load average 4.0 to 9.0 during the run, the four-thread workload's own threads included.
 
 | Workload | Threads | ticks/s | battles/s | Allocated per battle | Allocated per tick |
 |----------|---------|---------|-----------|----------------------|--------------------|
-| `replays` | 1 | 118,097 +- 6,346 | 32.25 +- 2.16 | 26.3 MB | about 7.0 KB |
-| `allCases` | 1 | 111,249 +- 6,545 | 27.62 +- 2.09 | 30.8 MB | about 7.4 KB |
-| `allCasesFourThreads` | 4 | 449,622 +- 11,361 | 108.72 +- 3.49 | 31.0 MB | about 7.2 KB |
+| `replays` | 1 | 126,720 +- 7,107 | 34.63 +- 2.24 | 25.7 MB | about 7.0 KB |
+| `allCases` | 1 | 122,274 +- 5,391 | 30.38 +- 1.63 | 29.4 MB | about 7.3 KB |
+| `allCasesFourThreads` | 4 | 503,698 +- 13,416 | 122.10 +- 5.48 | 29.5 MB | about 7.1 KB |
 
 Read as:
 
-- A real battle runs at about 118,000 steps a second on one thread, about 5,900 times the game's own 20 steps a second: a battle of about 4,000 steps (the workload's average) in about 34 ms.
+- A real battle runs at about 127,000 steps a second on one thread, about 6,300 times the game's own 20 steps a second: a battle of about 4,000 steps (the workload's average) in about 32 ms.
 - Four threads give 4.0 times one thread.
-- These numbers are of other battles than the 2026-10-11 baseline (16.402.19, 25 replays), so the two are not comparable. On this workload the round took the replays from 103,994 to 118,097 steps a second (+13.6%) and the bytes from about 14.2 KB a step to 7.0 KB.
+- Against the previous baseline (823b578b, on Java 17, in [the history](performance-history.md#baseline-after-the-fifth-optimisations-2026-10-28)): `replays` 118,097 to 126,720 steps a second (+7.3%), `allCases` 111,249 to 122,274 (+9.9%), `allCasesFourThreads` 449,622 to 503,698 (+12.0%). The move to Java 21 on its own changed none of them beyond the error; the sixth optimisations did.
 
-What the profile of the replays shows at this baseline (async-profiler, as above, about 10,000 CPU samples inside the steps, load average about 3.3):
+What the profile of the replays shows at this baseline (async-profiler, as above, 9,943 CPU samples inside the steps):
 
 | Share of step time | Where |
 |--------------------|-------|
-| 34% | choosing targets (`TargetingVisit.reselect` 29%, `SelectionChain`); the six towers alone 11% |
-| 18% | `SpatialIndex.query` (most of it inside the above, the rest in the push and avoidance passes): its own walk over the buckets 10% |
-| 22% | preparing routes (`RoutePreparation`): the route search 14%, the scan for the cell to walk to (`ReferenceEndpoint`) 7% |
+| 36% | choosing targets (`TargetingVisit.reselect` 31%); the six towers alone 11% |
+| 18% | `SpatialIndex.query` (most of it inside the above, the rest in the push and avoidance passes): its own walk over the buckets 11% |
+| 25% | preparing routes (`RoutePreparation`): the route search 16%, the scan for the cell to walk to (`ReferenceEndpoint`) 8% |
 | 10% | following routes |
-| 10% | the world's pre-pass (`BattleWorld.prePass`): every entity's candidates registered 4%, the spatial index rebuilt 3% |
-| 4% | the commands, nearly all card plays |
-| 2% | the holder's cleanup |
-| 2% | action rows built per target of an area hit (`ActionRows.build`, mostly from `AreaEffectEntity`) |
+| 8% | the world's pre-pass (`BattleWorld.prePass`): the spatial index rebuilt 3%, the building footprints drawn 2% |
+| 3% | the holder's cleanup |
+| 2% | the commands, nearly all card plays |
+| 2% | action rows built per target of an area hit (`ActionRows.build`) |
+| 2% | the `WaitToActivate` action's expression, evaluated every step |
 
-The champion views (2.4% at the round's start) have left the profile. The bytes allocated: `SpatialIndex.query`'s result lists 17%, `SelectionChain.views` 5%, `CharacterEntity.movementQueries` 5%, `ResumeHelper.resume` 4%, `IndexNeighbourQuery.near` 4%, `BattleWorld.present` 4%, `GridMovementQueries` 4%. Reusing the query result lists was tried and dropped: fewer bytes, fewer steps a second (see the history).
+Every entity's candidates registered (6% at the round's start, now 0.4%) and the lane of each new unit (4%, now 0.3%) have left the profile. The bytes allocated: `SpatialIndex.query`'s result lists 17%, `SelectionChain.views` 6%, `CharacterEntity.movementQueries` 5%, `ResumeHelper.resume` 5%, `GridMovementQueries` 4%, `IndexNeighbourQuery.near` 4%, `CharacterEntity.movementChain` 4%.
 
-![CPU flame graph of Battle.step at 823b578b](assets/performance-823b578b-cpu.png)
+![CPU flame graph of Battle.step at d7aaec93](assets/performance-d7aaec93-cpu.png)
 
-![Allocation flame graph of Battle.step at 823b578b](assets/performance-823b578b-alloc.png)
+![Allocation flame graph of Battle.step at d7aaec93](assets/performance-d7aaec93-alloc.png)
 
 Earlier baselines and each round of optimisations, with the numbers before and after, are in [Performance history](performance-history.md). What a coverage score costs, and how to profile it, is in the conformance module's [README](../conformance/README.md#what-a-score-costs).
 
