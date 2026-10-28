@@ -5857,7 +5857,12 @@ public class CharacterEntity extends WorldEntity {
           false,
           movementChain(queries));
       speedBudget = queries.lastSpeedBudget();
-      for (int[] r : queries.relocations()) {
+      // By index: every moving unit walks this list on every step. It belongs to this visit's own
+      // queries, whose movement is over, and the observers told of each relocation cannot reach
+      // it.
+      List<int[]> relocations = queries.relocations();
+      for (int i = 0, n = relocations.size(); i < n; i++) {
+        int[] r = relocations.get(i);
         world.relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
       }
       boolean full = unit.movement().getChargeProgress() >= MovementState.CHARGE_COMPLETE;

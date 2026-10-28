@@ -13,7 +13,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.crforge.core.fidelity.Fidelity;
@@ -306,7 +305,9 @@ public class EntityHolder {
     }
     List<BattleEntity> removed = new ArrayList<>();
     drainRemovable(live, removed);
-    for (BattleEntity gone : removed) {
+    // By index: the list is this round's own and nothing in the loop can reach it.
+    for (int r = 0, count = removed.size(); r < count; r++) {
+      BattleEntity gone = removed.get(r);
       // The leaving entity's own leaving hook runs first, before any notice: its running actions
       // hear of it there.
       gone.leaving();
@@ -386,13 +387,21 @@ public class EntityHolder {
     }
   }
 
-  /** Moves every removable entity of a list, in list order, to the end of the removed list. */
+  /**
+   * Moves every removable entity of a list, in list order, to the end of the removed list. By index
+   * rather than an iterator, as each cleanup round walks the whole live list: the removal test only
+   * reads the entity, so the list changes only by the walk's own removals, after which the next
+   * entity has moved into the same place.
+   */
   private static void drainRemovable(List<BattleEntity> list, List<BattleEntity> removed) {
-    for (Iterator<BattleEntity> it = list.iterator(); it.hasNext(); ) {
-      BattleEntity entity = it.next();
+    int i = 0;
+    while (i < list.size()) {
+      BattleEntity entity = list.get(i);
       if (entity.isRemovable()) {
-        it.remove();
+        list.remove(i);
         removed.add(entity);
+      } else {
+        i++;
       }
     }
   }
