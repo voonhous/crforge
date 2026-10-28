@@ -249,6 +249,18 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   private boolean towersRegistered;
 
   /**
+   * The world's pre-pass that last listed the entity among the arena entities, or -1 before the
+   * first; the next pre-pass tells the entities that arrived since from it.
+   */
+  int listedPass = -1;
+
+  /**
+   * The world's pre-pass at which the entity last registered every listed arena entity as a
+   * candidate, or -1 before the first.
+   */
+  private int candidatesPass = -1;
+
+  /**
    * @param world the battle's shared arena state
    * @param data the entity's published columns
    * @param view the entity as the grid sees it
@@ -639,11 +651,31 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         }
       }
     }
-    for (WorldEntity entity : present) {
+    // By index: the pre-pass calls this for every entity, and an iterator each time is garbage.
+    for (int i = 0; i < present.size(); i++) {
+      WorldEntity entity = present.get(i);
       if (selection.view(entity.getView()) == null) {
         selection.register(entity.getTargetView());
       }
     }
+  }
+
+  /**
+   * {@link #registerCandidates(List)} at a pre-pass, with the arena entities the pre-pass lists
+   * that the one before it did not. An entity that registered the whole list at the pre-pass before
+   * holds every entity of it that is still in the battle: a registration is dropped only when its
+   * entity leaves the battle, which it never comes back to. Only the arrivals can then be missing,
+   * so it asks only of them, in the list's order, and registers the same entities in the same order
+   * as a walk over the whole list would.
+   *
+   * @param present the arena entities the pre-pass lists
+   * @param arrivals those of them the pre-pass before did not list, in the same order
+   * @param pass the pre-pass's number, one more than the one before
+   */
+  void registerCandidates(List<WorldEntity> present, List<WorldEntity> arrivals, int pass) {
+    boolean holdsLastList = candidatesPass == pass - 1 && towersRegistered;
+    registerCandidates(holdsLastList ? arrivals : present);
+    candidatesPass = pass;
   }
 
   /** Drops an entity that has left the battle from the entity's default targets. */
