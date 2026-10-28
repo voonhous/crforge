@@ -4,8 +4,8 @@ Thanks for your interest in contributing! This guide covers the basics.
 
 ## Dev Setup
 
-- **Java 17** is required
-- Build: `export JAVA_HOME=$(/usr/libexec/java_home -v 17) && ./gradlew build`
+- **Java 21** is required
+- Build: `export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew build`
 - Run tests: `./gradlew test`
 - Run the debug visualizer: `./gradlew :desktop:run`
 - The build, the tests and the visualizer need the game tables, which the build makes on your machine once the Gradle property `crforge.assetSource` says where the game's files come from (`-Pcrforge.assetSource=...` or `~/.gradle/gradle.properties`). Without it the build stops at `:tables:gameTables`. See [Quick Start](README.md#quick-start) and [Building the game tables](docs/game-tables.md#building-the-game-tables).

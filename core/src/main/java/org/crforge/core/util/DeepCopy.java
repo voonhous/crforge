@@ -72,7 +72,7 @@ import sun.misc.Unsafe;
  *
  * <p>A plain object's fields are read and written through {@code sun.misc.Unsafe} at their offsets:
  * the reflective accessors cost several times as much. Its memory access methods are deprecated for
- * removal from JDK 23; the build is on JDK 17.
+ * removal from JDK 23; the build is on JDK 21.
  *
  * <p>TODO: replace this with copy code generated at build time: an annotation processor writing a
  * {@code copyInto(CopyContext)} for each class of battle state, with the lambdas that capture state

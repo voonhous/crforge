@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Build](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml)
-[![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://adoptium.net/)
+[![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://adoptium.net/)
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment steps a vector of battles behind flat buffers a Python trainer reads without a copy ([docs/environment.md](docs/environment.md)).
 
@@ -51,11 +51,11 @@ crforge aims to be that simulator for AI and ML research on Clash Royale: an ope
 
 ## Quick Start
 
-**Requirements:** Java 17
+**Requirements:** Java 21
 
 ```bash
 # Build
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 ./gradlew build
 
 # Run tests
