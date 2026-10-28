@@ -236,8 +236,9 @@ public final class BuffComponent implements BattleComponent {
   /** The tags every listed instance's row sets, together: the carrier's pre-hook adds them. */
   public long tags() {
     long tags = 0;
-    for (BuffInstance instance : items) {
-      tags |= instance.getBuff().gameTagsToSet();
+    // By index: each tag recompute asks this, and the loop only reads the list.
+    for (int i = 0, n = items.size(); i < n; i++) {
+      tags |= items.get(i).getBuff().gameTagsToSet();
     }
     return tags;
   }
@@ -1007,7 +1008,9 @@ public final class BuffComponent implements BattleComponent {
    * sets one, whatever comes after it; 0 for none.
    */
   public int overrideChargeRange() {
-    for (BuffInstance instance : items) {
+    // By index: every movement visit asks this, and the loop only reads the list.
+    for (int i = 0, n = items.size(); i < n; i++) {
+      BuffInstance instance = items.get(i);
       if (instance.getBuff().overrideChargeRange() != 0) {
         return instance.getBuff().overrideChargeRange();
       }
@@ -1057,8 +1060,10 @@ public final class BuffComponent implements BattleComponent {
   private int[] extremes(ToIntFunction<BuffData> column) {
     int boost = PERCENT;
     int slow = 0;
-    for (BuffInstance instance : items) {
-      int value = column.applyAsInt(instance.getBuff());
+    // By index: the speed and hit speed scales ask this several times a step for every unit, and
+    // the loop only reads the list (the column is one of the row's own values).
+    for (int i = 0, n = items.size(); i < n; i++) {
+      int value = column.applyAsInt(items.get(i).getBuff());
       if (value >= 1) {
         boost = Math.max(boost, value);
       } else if (value < 0) {

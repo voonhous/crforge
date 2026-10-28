@@ -1824,7 +1824,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       int total = 0;
       int low = base;
       int high = base;
-      for (int[] push : heightPushes) {
+      // By index: every pre-hook walks this list, and the loop only reads it.
+      for (int i = 0, n = heightPushes.size(); i < n; i++) {
+        int[] push = heightPushes.get(i);
         total += push[0];
         if (push[1] > high) {
           high = push[1];

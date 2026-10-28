@@ -682,9 +682,10 @@ public class ActionHolder implements EntityActions {
 
   @Override
   public void endOfTick() {
-    // There is no floor: a held entry keeps counting down past zero.
-    for (Entry entry : pending) {
-      entry.ticks--;
+    // There is no floor: a held entry keeps counting down past zero. By index: every holder
+    // counts down on every step, and the loop changes only the entries, never the list.
+    for (int i = 0, n = pending.size(); i < n; i++) {
+      pending.get(i).ticks--;
     }
   }
 

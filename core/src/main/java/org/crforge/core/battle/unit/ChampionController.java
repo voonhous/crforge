@@ -274,7 +274,9 @@ public final class ChampionController extends ActionInstance {
     boolean pending = false;
     boolean casting = false;
     boolean disabled = false;
-    for (CharacterEntity unit : champions) {
+    // By index: the king asks this on every step, and the loop only reads the copies.
+    for (int i = 0, n = champions.size(); i < n; i++) {
+      CharacterEntity unit = champions.get(i);
       disabled |= (unit.getView().getFlags() & unit.getView().getFlagBits().abilityDisabled()) != 0;
       pending |= unit.abilityPending();
       casting |=
