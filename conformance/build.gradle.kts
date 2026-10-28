@@ -82,7 +82,10 @@ val referenceTest by tasks.registering(Test::class) {
         "crforge.references.shards",
         "crforge.references.threads",
     ).forEach { name -> setting(name)?.let { systemProperty(name, it) } }
-    inputs.dir(expectationsFolder)
+    // A file tree, not a directory input: a data version whose references are new has no
+    // expectations folder until updateReferenceExpectations writes it, and a missing directory
+    // input fails the task's validation.
+    inputs.files(fileTree(expectationsFolder)).withPropertyName("expectations")
     // The references are outside the build; the task is never up to date.
     outputs.upToDateWhen { false }
 }
