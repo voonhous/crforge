@@ -88,13 +88,19 @@ public final class DefaultTargetSelection {
       boolean xPositionBasedTowerTargeting,
       boolean useLaneId) {
 
+    /**
+     * The standard game's switches, made once: the record is immutable, so every unit can share it.
+     */
+    private static final Rules STANDARD =
+        new Rules(
+            PathfindingGlobals.DISABLE_PATH_LINEID,
+            PathfindingGlobals.LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET,
+            PathfindingGlobals.LOGIC_XPOS_BASED_TOWER_TARGETING,
+            PathfindingGlobals.LOGIC_DEFAULT_TARGET_USE_LANE_ID);
+
     /** The published values of the standard game. */
     public static Rules standard() {
-      return new Rules(
-          PathfindingGlobals.DISABLE_PATH_LINEID,
-          PathfindingGlobals.LOGIC_PRINCESS_TOWERS_ALWAYS_AS_DEFAULT_TARGET,
-          PathfindingGlobals.LOGIC_XPOS_BASED_TOWER_TARGETING,
-          PathfindingGlobals.LOGIC_DEFAULT_TARGET_USE_LANE_ID);
+      return STANDARD;
     }
   }
 

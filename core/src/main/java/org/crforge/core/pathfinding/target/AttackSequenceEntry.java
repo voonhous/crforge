@@ -61,9 +61,15 @@ public record AttackSequenceEntry(
         0);
   }
 
+  /**
+   * The step that overrides nothing, made once: the record is immutable, so every unit's targeting
+   * columns can share it.
+   */
+  private static final AttackSequenceEntry NONE =
+      new AttackSequenceEntry(NO_OVERRIDE, NO_OVERRIDE, NO_OVERRIDE, DEFAULT_HIT_SPEED_MULTIPLIER);
+
   /** A step that overrides nothing and keeps the ordinary pace. */
   public static AttackSequenceEntry none() {
-    return new AttackSequenceEntry(
-        NO_OVERRIDE, NO_OVERRIDE, NO_OVERRIDE, DEFAULT_HIT_SPEED_MULTIPLIER);
+    return NONE;
   }
 }

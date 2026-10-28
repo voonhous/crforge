@@ -16,8 +16,14 @@ package org.crforge.core.pathfinding.move;
  */
 public record SpeedGlobals(int cloneDistanceX, int cloneDistanceY) {
 
+  /**
+   * The standard game's values, made once: the record is immutable, so every speed budget can share
+   * it.
+   */
+  private static final SpeedGlobals STANDARD = new SpeedGlobals(0, 250);
+
   /** The standard game's values: 0 along the width, 250 along the length. */
   public static SpeedGlobals standard() {
-    return new SpeedGlobals(0, 250);
+    return STANDARD;
   }
 }

@@ -41,6 +41,14 @@ public record DefaultSelectionQueries(
     String excludedConfigKey) {
 
   /**
+   * The standard 1v1 mode's answers, made once: the record is immutable (its object list is an
+   * immutable empty list), so every unit can share it.
+   */
+  private static final DefaultSelectionQueries STANDARD_1V1 =
+      new DefaultSelectionQueries(
+          false, null, false, false, false, List.of(), 4, false, -1, "HeistStorage3");
+
+  /**
    * The answers of the standard 1v1 mode.
    *
    * <ul>
@@ -56,8 +64,7 @@ public record DefaultSelectionQueries(
    * at -1.
    */
   public static DefaultSelectionQueries standard1v1() {
-    return new DefaultSelectionQueries(
-        false, null, false, false, false, List.of(), 4, false, -1, "HeistStorage3");
+    return STANDARD_1V1;
   }
 
   /** Half the registered object count: how many candidates one side is expected to contribute. */
