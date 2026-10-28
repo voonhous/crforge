@@ -321,10 +321,12 @@ public class ReplayGameScreen implements Screen {
     mouseY = screenY;
     if (!workspace.onArena(screenX, screenY)) {
       hoverTileX = hoverTileY = hoverCellX = hoverCellY = -1;
+      workspace.clearHover();
       return;
     }
     touchPos.set(screenX, screenY, 0);
     workspace.unproject(touchPos);
+    workspace.hoverAt(touchPos.x, touchPos.y);
     // The battle's tile and cell under the mouse, whichever way up the arena is drawn.
     ViewOrientation orientation = view.getOrientation();
     hoverTileX = orientation.tileColumnAt(touchPos.x);

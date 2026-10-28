@@ -17,6 +17,9 @@ import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.action.ChefCooking;
+import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.Hand;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchCard;
@@ -91,8 +94,9 @@ public final class BattleAdapter {
    */
   public static BattleFrame frame(BattleSession session, IntFunction<String> sideNames) {
     List<EntityView> entities = new ArrayList<>();
+    BattleRecords records = session.getBattle().getWorld().getRecords();
     for (BattleEntity entity : session.getBattle().getBattle().getHolder().entities()) {
-      EntityView view = entity(entity);
+      EntityView view = entity(entity, records);
       if (view != null) {
         entities.add(view);
       }
@@ -135,8 +139,19 @@ public final class BattleAdapter {
    * such as an action owner.
    */
   public static EntityView entity(BattleEntity entity) {
+    return entity(entity, null);
+  }
+
+  /**
+   * One entity as the renderers draw it, with the view columns of its row read from the records'
+   * tables (a character whose row hides its health bar), or null for an object that stands nowhere
+   * on the arena.
+   *
+   * @param records the battle's records, or null to read no view column
+   */
+  public static EntityView entity(BattleEntity entity, BattleRecords records) {
     if (entity instanceof WorldEntity world) {
-      return character(world);
+      return character(world, records);
     }
     if (entity instanceof ProjectileEntity projectile) {
       return projectile(projectile);
@@ -147,7 +162,7 @@ public final class BattleAdapter {
     return null;
   }
 
-  private static EntityView character(WorldEntity entity) {
+  private static EntityView character(WorldEntity entity, BattleRecords records) {
     UnitData data = entity.getData();
     GridEntity view = entity.getView();
     EntityView.Kind kind =
@@ -161,6 +176,7 @@ public final class BattleAdapter {
         state == GridEntityState.DEPLOYING || state == GridEntityState.WAITING_TO_DEPLOY;
     CharacterEntity character = entity instanceof CharacterEntity c ? c : null;
     boolean hidden = character != null && (character.hidden() || character.invisible());
+    EntityView.Bar bar = bar(entity, data, hp, records);
     return new EntityView(
         entity.getId(),
         kind,
@@ -187,8 +203,8 @@ public final class BattleAdapter {
         reference == null ? 0 : reference.y(),
         view.getDirX(),
         view.getDirY(),
-        0,
-        0,
+        bar == EntityView.Bar.TIMER ? timeLeftMs(hp, data) : 0,
+        bar == EntityView.Bar.TIMER ? data.lifeTimeMs() : 0,
         0,
         0,
         0,
@@ -197,7 +213,54 @@ public final class BattleAdapter {
         character == null ? 0 : character.getSpeedBudget(),
         character == null ? null : character.getUnit(),
         meter(entity),
-        statuses(entity));
+        statuses(entity),
+        kind == EntityView.Kind.TOWER ? UnitRole.NONE : UnitRole.of(data),
+        bar);
+  }
+
+  /**
+   * What a character's bar shows: nothing when its row draws no bar at all ({@link
+   * #hidesHealthBar}); a timer when it cannot be targeted now (its live tags) and its row gives it
+   * a lifetime, so its hit points only run down over that lifetime; else its health. Without the
+   * records no view column is read and only the timer is told apart.
+   */
+  private static EntityView.Bar bar(
+      WorldEntity entity, UnitData data, HitPoints hp, BattleRecords records) {
+    if (records != null && hidesHealthBar(records.tables(), data.name())) {
+      return EntityView.Bar.NONE;
+    }
+    GridEntity view = entity.getView();
+    boolean untargetable = (view.getFlags() & view.getFlagBits().untargetable()) != 0;
+    if (untargetable && data.lifeTimeMs() > 0 && hp != null && hp.getMaximum() > 0) {
+      return EntityView.Bar.TIMER;
+    }
+    return EntityView.Bar.HEALTH;
+  }
+
+  /**
+   * A timer unit's time left: its share of hit points left times its lifetime, as its hit points
+   * run down evenly over that lifetime.
+   */
+  private static int timeLeftMs(HitPoints hp, UnitData data) {
+    return (int) ((long) data.lifeTimeMs() * hp.getHitPoints() / hp.getMaximum());
+  }
+
+  /**
+   * Whether a unit is drawn with no health bar at all: its row hides the default bar (its
+   * HideHealthbar column) and starts no client action of its own (its OnStartingClientActions
+   * column) either, view columns the battle does not read. A row that hides the default bar but
+   * starts client actions, as every hero, champion and many evolutions do with their own bar
+   * (Healthbar_Medium and the like), keeps its bar; the ones left are decorations standing on
+   * another unit, such as the Tombstone hero's.
+   */
+  static boolean hidesHealthBar(GameTables tables, String unit) {
+    for (String table : List.of("characters", "buildings")) {
+      if (tables.table(table).has(unit)) {
+        GameRow row = tables.table(table).row(unit);
+        return row.bool("HideHealthbar") && row.strings("OnStartingClientActions").isEmpty();
+      }
+    }
+    return false;
   }
 
   /**
@@ -309,7 +372,9 @@ public final class BattleAdapter {
         0,
         null,
         null,
-        List.of());
+        List.of(),
+        UnitRole.NONE,
+        EntityView.Bar.HEALTH);
   }
 
   private static EntityView areaEffect(AreaEffectEntity area) {
@@ -353,7 +418,9 @@ public final class BattleAdapter {
         0,
         null,
         null,
-        List.of());
+        List.of(),
+        UnitRole.NONE,
+        EntityView.Bar.HEALTH);
   }
 
   private static BattleFrame.SideView side(BattleSession session, LadderMatch match, int side) {

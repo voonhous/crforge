@@ -31,7 +31,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import org.crforge.desktop.battle.BattleFrame;
-import org.crforge.desktop.battle.EntityView;
 
 /** Scene2D controls surrounding a separately projected arena; never steps or mutates a battle. */
 public final class BattleWorkspace implements Disposable {
@@ -549,20 +548,21 @@ public final class BattleWorkspace implements Disposable {
 
   public void inspectAt(float x, float y) {
     if (frame == null) return;
-    selectedId = -1;
-    float best = Float.MAX_VALUE;
-    for (EntityView entity : frame.entities()) {
-      if (!entity.isCharacter()) continue;
-      float dx = view.getOrientation().px(entity.x()) - x;
-      float dy = view.getOrientation().py(entity.y()) - y;
-      float distance = dx * dx + dy * dy;
-      float radius = Math.max(10, RenderConstants.unitsToPixels(entity.radius()));
-      if (distance <= radius * radius && distance < best) {
-        best = distance;
-        selectedId = entity.id();
-      }
-    }
+    selectedId = BattleRenderer.entityAt(frame, view.getOrientation(), x, y);
     renderer.setInspectedEntity(selectedId);
+  }
+
+  /**
+   * The mouse's point on the arena, in arena pixels: the unit under it is drawn with its full label
+   * and numbers, on top.
+   */
+  public void hoverAt(float x, float y) {
+    renderer.setHoverPoint(x, y);
+  }
+
+  /** The mouse left the arena. */
+  public void clearHover() {
+    renderer.clearHoverPoint();
   }
 
   public void reset() {

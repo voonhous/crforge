@@ -168,11 +168,38 @@ The live toolbar explicitly selects **Deploy** or **Inspect**, and `I` toggles b
 **Clean**, **Combat** and **Pathing** presets configure the overlays, and individual controls remain available.
 
 - The tile grid, all unit names, and target lines can also be toggled separately.
-- The default view shows unit names and current/maximum HP values, with small initials on troops.
-- Names and HP values can be toggled independently. Clean hides both, while the inspected unit keeps its name.
+- The default view shows unit names and current/maximum HP values, with a role icon on each troop and building (see Role icons below).
+- Names and HP values can be toggled independently. Clean hides both, while the inspected unit and the unit under the mouse keep their names.
 - Pathing enables the tile grid.
 
 Terrain, bridge details, tower silhouettes, and team accents are presentation only and share the existing tile-map projection.
+
+### Role icons
+
+Each troop and building carries an icon of what it does in a fight, read from its own row (never its name), so spawned units and new cards get one too. The icons are the project's own simple shapes; no game art is used.
+
+- A sword: it hits directly, from less than two tiles away.
+- An arrow: it fires projectiles, or hits directly from two tiles or farther.
+- A bomb: its hit destroys it (Kamikaze).
+- Three small figures: it does not attack and makes units while it lives (a spawner such as the Tombstone or the Goblin Hut).
+- An elixir drop: it does not attack and pays its side elixir (the Elixir Collector).
+- No icon: it does none of these.
+- A burst badge on the lower right: its hits, or its projectiles' impacts, damage an area.
+- A house badge on the lower left: it attacks buildings only.
+
+Towers keep their silhouettes, and bodies too small to hold an icon get none. The two-tile line between melee and ranged is a drawing choice; the battle never reads it.
+
+### Crowds
+
+Troops of one side, one row and one level that stand close together (at most half a tile between their bodies, through a chain of neighbours) are drawn as a crowd: one shared label such as `Skeleton x15 Lv11` above the highest member, and a thin health bar without numbers on each member.
+
+Labels are drawn in order of importance (the inspected and hovered unit, towers, units on their own, crowds, area effects), and a label that would overlap one already drawn is left out; a crowd's label first moves up a line or two to make room. So a Knight inside a Skeleton swarm keeps its name and numbers.
+
+The unit under the mouse, and the inspected unit, leave their crowd and show their full label and HP numbers, drawn on top of everything else with the label on a dark plate. Crowds are presentation only; the battle never reads them.
+
+A unit whose row hides the default health bar (`HideHealthbar`) and starts no client action of its own (`OnStartingClientActions`), such as the decorations standing on the Tombstone hero, is drawn without a bar, HP numbers or a label of its own; hovering or inspecting it shows its name. A row that hides the default bar but starts client actions, as heroes, champions and many evolutions do with their own bar, keeps its bar.
+
+A unit that cannot be targeted (its live `UNTARGETABLE` tag) and has a limited `LifeTime`, such as the unit holding the Tombstone hero's ability, is drawn as a timer: a thin purple bar under its body that empties as its lifetime runs out, with no HP numbers and no label of its own; hovering or inspecting it shows its name and the seconds left. Timers and bar-less decorations are drawn faint, so the unit they stand on shows through.
 
 ### Status effects
 

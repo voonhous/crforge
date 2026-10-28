@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.TowerEntity;
@@ -121,6 +122,94 @@ class BattleAdapterTest {
     assertThat(tombstone.kind()).isEqualTo(EntityView.Kind.BUILDING);
     assertThat(tombstone.side()).isEqualTo(1);
     assertThat(tombstone.hasHitPoints()).isTrue();
+  }
+
+  @Test
+  @DisplayName("a troop and a building carry the role their rows give them; a tower carries none")
+  void roles() {
+    BattleSession session = only("Prince");
+    assertThat(session.play(0, 0, 9500, 8500)).isTrue();
+    EntityView prince = await(session, e -> e.name().equals("Prince"));
+    assertThat(prince.role()).isEqualTo(UnitRole.of(GameData.unit("Prince")));
+
+    BattleSession other = only("Tombstone");
+    assertThat(other.play(1, 0, 9500, 23500)).isTrue();
+    EntityView tombstone = await(other, e -> e.name().equals("Tombstone"));
+    assertThat(tombstone.role()).isEqualTo(UnitRole.of(GameData.unit("Tombstone")));
+
+    for (EntityView tower : BattleAdapter.frame(other).entities()) {
+      if (tower.kind() == EntityView.Kind.TOWER) {
+        assertThat(tower.role()).as(tower.name()).isEqualTo(UnitRole.NONE);
+      }
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose row hides the default bar and starts no client action is drawn without one;"
+          + " a unit that hides it but draws its own, or shows it, keeps a bar")
+  void aHiddenHealthBar() {
+    // The rows are read from the data, not named: the first that hides the default bar with no
+    // client action, and the first that hides it but starts client actions (its own bar).
+    String hidden =
+        GameData.tables().table("characters").rows().stream()
+            .filter(row -> row.bool("HideHealthbar"))
+            .filter(row -> row.strings("OnStartingClientActions").isEmpty())
+            .map(GameRow::name)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no character row draws no bar at all"));
+    String ownBar =
+        GameData.tables().table("characters").rows().stream()
+            .filter(row -> row.bool("HideHealthbar"))
+            .filter(row -> !row.strings("OnStartingClientActions").isEmpty())
+            .map(GameRow::name)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no character row draws a bar of its own"));
+    assertThat(BattleAdapter.hidesHealthBar(GameData.tables(), ownBar)).as(ownBar).isFalse();
+    BattleSession session = only("Prince");
+    var battle = session.getBattle();
+    battle.deploy(
+        session.tick() + 1, battle.getWorld().getRecords().unit(hidden), 11, 0, 9500, 8500);
+    assertThat(session.play(0, 0, 3500, 8500)).isTrue();
+
+    EntityView dummy = await(session, e -> e.name().equals(hidden));
+    assertThat(dummy.healthBarHidden()).as(hidden).isTrue();
+    EntityView prince = await(session, e -> e.name().equals("Prince"));
+    assertThat(prince.healthBarHidden()).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a unit that cannot be targeted and has a lifetime is drawn with a timer of its time left")
+  void aTimer() {
+    // The first character row that sets UNTARGETABLE and a lifetime and still draws a bar, read
+    // from the data, not named.
+    GameRow row =
+        GameData.tables().table("characters").rows().stream()
+            .filter(r -> List.of(r.string("GameTagsToSet").split(",")).contains("UNTARGETABLE"))
+            .filter(r -> r.intValue("LifeTime") > 0)
+            .filter(r -> !BattleAdapter.hidesHealthBar(GameData.tables(), r.name()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no untargetable row with a lifetime"));
+    BattleSession session = only("Knight");
+    var battle = session.getBattle();
+    var data = battle.getWorld().getRecords().unit(row.name());
+    battle.deploy(session.tick() + 1, data, 11, 0, 9500, 8500);
+
+    EntityView timer =
+        await(
+            session,
+            e -> e.name().equals(row.name()) && e.bar() == EntityView.Bar.TIMER,
+            row.name() + " drawn as a timer");
+    assertThat(timer.lifetimeMs()).isEqualTo(data.lifeTimeMs());
+    assertThat(timer.lifeMs()).isPositive().isLessThanOrEqualTo(data.lifeTimeMs());
+    assertThat(timer.healthBarHidden()).isTrue();
+    EntityView tower =
+        BattleAdapter.frame(session).entities().stream()
+            .filter(e -> e.kind() == EntityView.Kind.TOWER)
+            .findFirst()
+            .orElseThrow();
+    assertThat(tower.bar()).isEqualTo(EntityView.Bar.HEALTH);
   }
 
   @Test

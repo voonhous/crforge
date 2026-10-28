@@ -269,10 +269,12 @@ public class DebugGameScreen implements Screen {
   private void updateHover(int screenX, int screenY) {
     if (!workspace.onArena(screenX, screenY)) {
       hoverTileX = hoverTileY = hoverCellX = hoverCellY = -1;
+      workspace.clearHover();
       return;
     }
     touchPos.set(screenX, screenY, 0);
     workspace.unproject(touchPos);
+    workspace.hoverAt(touchPos.x, touchPos.y);
 
     // touchPos.y is world Y (0 is bottom of UI); the arena starts at BOTTOM_UI_HEIGHT. The view
     // maps the pixel back to the battle's tile: in the game's view of side 0 this screen draws,
