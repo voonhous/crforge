@@ -68,23 +68,30 @@ public record ScalingGlobals(
 
   private static final Percentages UNSCALED = new Percentages(0, 0, 0);
 
+  /**
+   * The published values, made once: the record is immutable, so every caller can share it. It is
+   * read on every damage and hit point scaling, where a new record per call costs allocations.
+   */
+  private static final ScalingGlobals STANDARD =
+      ScalingGlobals.builder()
+          .towerScalingStartExpLevel(9)
+          .damageIncreasePercentPerKingLevel(8)
+          .damageIncreasePercentPerKingLevelAtTournamentCap(10)
+          .damageIncreasePercentPerKingLevelAfterTournamentCap(10)
+          .hitpointIncreasePercentPerKingLevel(7)
+          .hitpointIncreasePercentPerKingLevelAtTournamentCap(10)
+          .hitpointIncreasePercentPerKingLevelAfterTournamentCap(10)
+          .damageIncreasePercentPerTowerLevel(8)
+          .damageIncreasePercentPerTowerLevelAtTournamentCap(10)
+          .damageIncreasePercentPerTowerLevelAfterTournamentCap(10)
+          .hitpointIncreasePercentPerTowerLevel(8)
+          .hitpointIncreasePercentPerTowerLevelAtTournamentCap(10)
+          .hitpointIncreasePercentPerTowerLevelAfterTournamentCap(10)
+          .build();
+
   /** The published values. */
   public static ScalingGlobals standard() {
-    return ScalingGlobals.builder()
-        .towerScalingStartExpLevel(9)
-        .damageIncreasePercentPerKingLevel(8)
-        .damageIncreasePercentPerKingLevelAtTournamentCap(10)
-        .damageIncreasePercentPerKingLevelAfterTournamentCap(10)
-        .hitpointIncreasePercentPerKingLevel(7)
-        .hitpointIncreasePercentPerKingLevelAtTournamentCap(10)
-        .hitpointIncreasePercentPerKingLevelAfterTournamentCap(10)
-        .damageIncreasePercentPerTowerLevel(8)
-        .damageIncreasePercentPerTowerLevelAtTournamentCap(10)
-        .damageIncreasePercentPerTowerLevelAfterTournamentCap(10)
-        .hitpointIncreasePercentPerTowerLevel(8)
-        .hitpointIncreasePercentPerTowerLevelAtTournamentCap(10)
-        .hitpointIncreasePercentPerTowerLevelAfterTournamentCap(10)
-        .build();
+    return STANDARD;
   }
 
   /**

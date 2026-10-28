@@ -68,21 +68,28 @@ public record TargetingGlobals(
     boolean cancelHitFromLongDistance,
     int cancelHitFromLongDistanceRange) {
 
+  /**
+   * The switches of the standard 1v1 mode, made once: the record is immutable, so every targeting
+   * state can share it.
+   */
+  private static final TargetingGlobals STANDARD_1V1 =
+      TargetingGlobals.builder()
+          .rangeExtensionToKeepTarget(PathfindingGlobals.LOGIC_RANGE_EXTENSION_TO_KEEP_TARGET)
+          .attackFinishTimeMs(250)
+          .preserveTargetIfHitStarted(true)
+          .currentTargetIgnoresPendingDamage(true)
+          .compareUsingHitStarted(true)
+          .clearSpecialLoadOnReferenceLoss(true)
+          .loadFirstHitResetTimerWhenZapped(true)
+          .loadFirstHitResetTimerAfterAttack(true)
+          .loadFirstHitKeepLoadedAfterDiscard(true)
+          .pendingDamageIgnoreIfDurationLess(600)
+          .cancelHitFromLongDistance(true)
+          .cancelHitFromLongDistanceRange(1500)
+          .build();
+
   /** The switches as published for the standard 1v1 mode. */
   public static TargetingGlobals standard1v1() {
-    return TargetingGlobals.builder()
-        .rangeExtensionToKeepTarget(PathfindingGlobals.LOGIC_RANGE_EXTENSION_TO_KEEP_TARGET)
-        .attackFinishTimeMs(250)
-        .preserveTargetIfHitStarted(true)
-        .currentTargetIgnoresPendingDamage(true)
-        .compareUsingHitStarted(true)
-        .clearSpecialLoadOnReferenceLoss(true)
-        .loadFirstHitResetTimerWhenZapped(true)
-        .loadFirstHitResetTimerAfterAttack(true)
-        .loadFirstHitKeepLoadedAfterDiscard(true)
-        .pendingDamageIgnoreIfDurationLess(600)
-        .cancelHitFromLongDistance(true)
-        .cancelHitFromLongDistanceRange(1500)
-        .build();
+    return STANDARD_1V1;
   }
 }
