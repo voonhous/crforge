@@ -424,7 +424,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: coverage-tally-${{ matrix.version }}-*
           merge-multiple: true
@@ -491,7 +491,7 @@ jobs:
     # on the moved branch instead.
 
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: coverage-score-*
           merge-multiple: true
