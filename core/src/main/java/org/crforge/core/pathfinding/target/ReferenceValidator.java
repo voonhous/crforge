@@ -6,6 +6,7 @@
 
 package org.crforge.core.pathfinding.target;
 
+import java.util.List;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -72,10 +73,12 @@ public final class ReferenceValidator {
       TargetingState t, TargetView target, int mode, ValidatorQueries queries) {
     TargetingConfig cfg = t.getConfig();
     boolean onlyBuildings = cfg.targetOnlyBuildings();
-    if (target != null && t.getHitTargetIds().contains(target.id())) {
-      if (cfg.specialRange() > 0 || cfg.dashCount() > 0) {
-        return false;
-      }
+    // The configuration is asked before the hit list: the list lookup has no effect of its own, and
+    // most attackers have neither a dash nor a special attack, so they skip it.
+    if ((cfg.specialRange() > 0 || cfg.dashCount() > 0)
+        && target != null
+        && containsId(t.getHitTargetIds(), target.id())) {
+      return false;
     }
     // With the bypass, a target with no hit points still validates until it leaves the holder: a
     // target killed earlier in the pass until the cleanup removes it, and a fallen king, which
@@ -88,6 +91,21 @@ public final class ReferenceValidator {
       }
     }
     return sharedValidate(t, target, false, onlyBuildings, false, (mode & 1) != 0, queries);
+  }
+
+  /**
+   * Whether the id list holds the id, compared as int values: the same answer as the list's own
+   * {@code contains}, without boxing the id (the hit list holds no null). This runs for every
+   * candidate a dash or special attacker weighs, and the boxed ids were a large share of what a
+   * step allocates.
+   */
+  private static boolean containsId(List<Integer> ids, int id) {
+    for (int k = 0, n = ids.size(); k < n; k++) {
+      if (ids.get(k) == id) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
