@@ -115,12 +115,12 @@ A set is packed in part files of up to 1,000 battles. A tally holds the counts b
 
 ### Scoring in CI
 
-Coverage is measured after a merge, never on a pull request. On each push to `battle_core` CI scores every version `coverage.lock` lists:
+Coverage is measured after a merge, never on a pull request. On each push to `main` CI scores every version `coverage.lock` lists:
 
 - one job per part file, each downloading only its part
 - then one job per version that sums the tallies (and gives no score when a part is missing)
 
-It then records each score of that commit on the `badges` branch (`history/<commit>/`). It checks the score against the scored commits next to it in `battle_core`'s history: the nearest older one and, when the run finishes after a newer commit's, the nearest newer one. So every pair of neighbouring scored commits is compared whichever run finishes last.
+It then records each score of that commit on the `badges` branch (`history/<commit>/`). It checks the score against the scored commits next to it in `main`'s history: the nearest older one and, when the run finishes after a newer commit's, the nearest newer one. So every pair of neighbouring scored commits is compared whichever run finishes last.
 
 A commit left unscored (a failed run) is named in a notice on the pair across it. Rerunning it closes the gap and checks both of its sides.
 
@@ -129,9 +129,9 @@ A run fails when:
 - a version's share of battles reproduced to the end dropped between two scored commits of the same set (the error names the commit)
 - a listed version got no score
 
-So a regression or a set that cannot be scored shows as a failed run on `battle_core`.
+So a regression or a set that cannot be scored shows as a failed run on `main`.
 
-The scores and shields.io badges at the branch's root (the badges at the top of the README) are always the newest scored commit's, so a late run or a rerun of an older commit never takes them back. Records are kept for `battle_core`'s last 100 commits only. Older scores stay in the branch's history.
+The scores and shields.io badges at the branch's root are always the newest scored commit's, so a late run or a rerun of an older commit never takes them back. Records are kept for `main`'s last 100 commits only. Older scores stay in the branch's history.
 
 A pull request only checks the lock: its revision and each listed version's set must exist. A set is known by its parts' sha256, so a lock move that keeps a version's battles keeps the comparison, and a new set starts a new one.
 

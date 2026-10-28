@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main, battle_core ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, battle_core ]
+    branches: [ main ]
 
 jobs:
   # Reads crforge-data.lock for every other job: the data repository's commit, and the data
@@ -65,7 +65,7 @@ jobs:
 
       # coverage.lock pins the coverage dataset's revision and names the data versions it has a
       # coverage set of; the coverage job scores each of them.
-      # Coverage is scored on a push to battle_core only: a regression, or a set that cannot be
+      # Coverage is scored on a push to main only: a regression, or a set that cannot be
       # scored, fails that run (the badges job), and a pull request's scores would be compared with
       # nothing. The parts are still listed on a pull request (below), which checks the lock: its
       # revision and versions must exist.
@@ -75,7 +75,7 @@ jobs:
           echo "revision=$(sed -n 's/^revision=//p' coverage.lock)" >> "$GITHUB_OUTPUT"
           echo "versions=$(sed -n 's/^versions=//p' coverage.lock | tr ' ' '\n' | grep . | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
           echo "available=${{ env.HAS_COVERAGE_TOKEN == 'true' && vars.COVERAGE_DATASET != '' }}" >> "$GITHUB_OUTPUT"
-          echo "score=${{ github.event_name == 'push' && github.ref == 'refs/heads/battle_core' }}" >> "$GITHUB_OUTPUT"
+          echo "score=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
 
       # Each version's set is scored part by part, one coverage job per part file: its corpus.json
       # (small) names the parts. A set's id is the hash of its parts' sha256 (so a lock move that
@@ -149,9 +149,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          # The action writes its cache on the default branch only; battle_core is where the work
-          # lands, so its pushes write it too, and pull requests read it.
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          # The action writes its cache on the default branch only: main's pushes write it, and
+          # pull requests read it.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build with Gradle
         run: ./gradlew build $CRFORGE_DATA_ARGS
@@ -190,7 +190,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v10.3.2
@@ -251,7 +251,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run Tests
         run: ./gradlew test -Pcrforge.dataVersion=${{ matrix.version }} -Pcrforge.assetSource=file://${{ github.workspace }}/game-tables/cdn/
@@ -304,7 +304,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run the reference battles
         if: steps.references.outputs.present == 'true'
@@ -391,7 +391,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Score the coverage part
         run: >-
@@ -452,7 +452,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: wrapper
-          cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Sum the tallies
         run: ./gradlew :conformance:coverageMerge -Pcrforge.coverage.tallies=${{ github.workspace }}/tallies
@@ -467,22 +467,22 @@ jobs:
           if-no-files-found: error
 
   # Records each version's score of this commit on the badges branch (history/<commit>/), after a
-  # push to battle_core only, and checks it against the scored commits next to it in battle_core's
+  # push to main only, and checks it against the scored commits next to it in main's
   # history: the nearest older one and, when this run finishes after a newer commit's, the nearest
   # newer one. So every pair of neighbouring scored commits is compared, whichever run finishes
   # last, and a rerun of a commit left unscored (a failed run) closes the gap and checks both of its
   # sides. A pair across unscored commits is named in a notice. The run fails when a version's share
   # of battles reproduced to the end dropped between two scored commits of the same set, or when a
   # version coverage.lock lists got no score (a part not scored), so a regression or a set that
-  # cannot be scored shows as a failed run on battle_core. The scores and shields.io badges at the
-  # branch's root (the README's coverage badges) are always those of the newest scored commit, so a
+  # cannot be scored shows as a failed run on main. The scores and shields.io badges at the
+  # branch's root are always those of the newest scored commit, so a
   # late run or a rerun of an older commit never takes them back. The only coverage job that can
   # fail the run.
   badges:
     needs: [ lock, coverage-merge ]
     if: >-
       always() && needs.coverage-merge.result != 'skipped'
-      && github.event_name == 'push' && github.ref == 'refs/heads/battle_core'
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -564,11 +564,11 @@ jobs:
             cp score-*.json ../published/ 2>/dev/null || true
             mkdir -p "history/$GITHUB_SHA"
             cp ../record/* "history/$GITHUB_SHA/" 2>/dev/null || true
-            # battle_core's recent commits, newest first (squash merges: one line of history).
-            gh api "repos/$REPOSITORY/commits?sha=battle_core&per_page=100" --jq '.[].sha' > ../commits
+            # main's recent commits, newest first (squash merges: one line of history).
+            gh api "repos/$REPOSITORY/commits?sha=main&per_page=100" --jq '.[].sha' > ../commits
             : > ../messages
             if ! grep -qxF "$GITHUB_SHA" ../commits; then
-              echo "::notice::$(short "$GITHUB_SHA") is not among the last 100 commits of battle_core; its scores are neither compared nor kept" >> ../messages
+              echo "::notice::$(short "$GITHUB_SHA") is not among the last 100 commits of main; its scores are neither compared nor kept" >> ../messages
             fi
             for version in $(jq -r '.[]' <<< "$VERSIONS"); do
               scored=()
@@ -586,7 +586,7 @@ jobs:
                   # The first scored commit of the history: the score published before it is the older one.
                   check "../published/score-$version.json" "history/$GITHUB_SHA/score-$version.json" "the last published score" "$(short "$GITHUB_SHA")" 0 >> ../messages
                 else
-                  echo "::notice::coverage of $version: no older scored commit among the last 100 of battle_core; not compared" >> ../messages
+                  echo "::notice::coverage of $version: no older scored commit among the last 100 of main; not compared" >> ../messages
                 fi
                 if [ "$i" -gt 0 ]; then compare "$GITHUB_SHA" "${scored[$((i - 1))]}" >> ../messages; fi
               done
