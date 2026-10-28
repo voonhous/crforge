@@ -402,6 +402,12 @@ public class CharacterEntity extends WorldEntity {
   /** Applies every state change the character asks for, with the actions the change carries. */
   private final GridStateSetter setter;
 
+  /**
+   * What the state visit announced on this step, in order: cleared and refilled by each {@link
+   * #postHook()}, so the list is not made anew every step.
+   */
+  private final List<String> stateCalls = new ArrayList<>();
+
   /** The targeting component, which a hiding row's deploy end also visits from the state visit. */
   private final TargetingComponent targetingComponent;
 
@@ -3505,7 +3511,11 @@ public class CharacterEntity extends WorldEntity {
             getBuffs().overrideChargeRange());
   }
 
-  /** A movement chain over the character's current reference, for one visit or one preparation. */
+  /**
+   * A movement chain over the character's current reference, for one visit or one preparation. The
+   * battle reads none of the chain's announcement names, so the chain records none: a visit with
+   * neighbours would otherwise grow a list of dozens of names that is dropped with the chain.
+   */
   private MovementChain movementChain() {
     return movementChain(movementQueries());
   }
@@ -3520,7 +3530,8 @@ public class CharacterEntity extends WorldEntity {
             queries.reference(),
             world.getNeighbourQuery(),
             queries)
-        .withRequests(movementRequests);
+        .withRequests(movementRequests)
+        .withoutMarkers();
   }
 
   /**
@@ -3674,7 +3685,11 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   protected void postHook() {
-    List<String> calls = new ArrayList<>();
+    // The visit's record is read only below, before this hook returns, and the holder runs each
+    // entity's hook once a step and never inside another: one list per character, cleared here,
+    // serves every step.
+    List<String> calls = stateCalls;
+    calls.clear();
     EntityStateVisit.stateVisit(
         getView(),
         unit.timers(),

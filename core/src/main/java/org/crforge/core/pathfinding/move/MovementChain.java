@@ -27,7 +27,8 @@ import org.crforge.core.pathfinding.grid.CellGrid;
  *
  * <p>Everything the chain does not run is recorded by name in {@link #markers()}, in order. Those
  * are the points where the standard game notifies something outside the movement pass; a tick
- * driver may act on them or ignore them, and tests read them to check the order of a visit.
+ * driver may act on them or ignore them, and tests read them to check the order of a visit. A chain
+ * built {@link #withoutMarkers()} records nothing, for a driver that ignores them.
  *
  * <p>One chain covers one entity's visit. It is not thread safe.
  */
@@ -49,7 +50,13 @@ public final class MovementChain {
   private final ReferencePoint reference;
   private final NeighbourQuery neighbours;
   private final MovementQueries queries;
-  private final List<String> markers = new ArrayList<>();
+
+  /**
+   * The announcements recorded rather than run, in order, or null when the chain records none. A
+   * visit with neighbours records dozens of them, so a driver that never reads them turns the
+   * record off rather than grow a list on every visit.
+   */
+  private List<String> markers = new ArrayList<>();
 
   /** Where the pass's state requests and a completed charge go, or null to only record them. */
   private MovementRequests requests;
@@ -125,13 +132,24 @@ public final class MovementChain {
   }
 
   /**
+   * Turns off the record of announcements: {@link #markers()} then stays empty. What the chain runs
+   * and hands to the owner is unchanged, since nothing in the chain reads its own record.
+   *
+   * @return this chain
+   */
+  public MovementChain withoutMarkers() {
+    this.markers = null;
+    return this;
+  }
+
+  /**
    * Records a state request under its name and hands it to the owner, which applies it at once.
    *
    * @param name the name the request is recorded under
    * @param state the state asked for
    */
   public void requestState(String name, int state) {
-    markers.add(name);
+    record(name);
     if (requests != null) {
       requests.requestState(state);
     }
@@ -139,7 +157,7 @@ public final class MovementChain {
 
   /** Records that a dash just ended and has the owner land it. */
   public void dashLanded() {
-    markers.add("on_stop");
+    record("on_stop");
     if (requests != null) {
       requests.dashLanded();
     }
@@ -147,7 +165,7 @@ public final class MovementChain {
 
   /** Records that the charge just completed and tells the owner. */
   public void startCharging() {
-    markers.add("start_charging");
+    record("start_charging");
     if (requests != null) {
       requests.chargeCompleted();
     }
@@ -163,14 +181,24 @@ public final class MovementChain {
     return reference;
   }
 
-  /** The names of the announcements this chain recorded rather than ran, in order. */
+  /**
+   * The names of the announcements this chain recorded rather than ran, in order; empty for a chain
+   * built {@link #withoutMarkers()}.
+   */
   public List<String> markers() {
-    return Collections.unmodifiableList(markers);
+    return markers == null ? List.of() : Collections.unmodifiableList(markers);
   }
 
   /** Records an announcement the chain does not act on itself. */
   public void mark(String name) {
-    markers.add(name);
+    record(name);
+  }
+
+  /** Adds a name to the record, unless the record is off. */
+  private void record(String name) {
+    if (markers != null) {
+      markers.add(name);
+    }
   }
 
   /** Runs route preparation on the shared state. */
@@ -258,6 +286,6 @@ public final class MovementChain {
   /** Recomputes the route direction pair from the route's next waypoint. */
   public void directionInit() {
     DirectionInitializer.directionInit(component, owner, grid.getWidth());
-    markers.add("direction_init");
+    record("direction_init");
   }
 }

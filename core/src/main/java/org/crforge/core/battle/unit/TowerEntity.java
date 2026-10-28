@@ -99,6 +99,12 @@ public class TowerEntity extends WorldEntity {
   /** The countdowns the state visit owns. */
   private final StateTimers timers = new StateTimers();
 
+  /**
+   * What the state visit announced, which the tower never reads: cleared before each visit, so the
+   * list is not made anew every step.
+   */
+  private final List<String> stateCalls = new ArrayList<>();
+
   /** The tower's state-visit columns: no deploy time, and none of the other columns set. */
   private final StateVisitConfig stateConfig = StateVisitConfig.forGroundUnit(0);
 
@@ -534,6 +540,7 @@ public class TowerEntity extends WorldEntity {
     if (getData().king()) {
       world.kingVisit(this);
     }
+    stateCalls.clear();
     EntityStateVisit.stateVisit(
         getView(),
         timers,
@@ -541,7 +548,7 @@ public class TowerEntity extends WorldEntity {
         stateConfig,
         StateVisitGlobals.standard(),
         stateQueries(),
-        new ArrayList<>(),
+        stateCalls,
         setter);
     combatGate(isActive(TARGETING_SLOT), setter::prepareRoute);
     if (holdingFire) {
