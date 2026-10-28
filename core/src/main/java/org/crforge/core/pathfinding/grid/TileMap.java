@@ -66,6 +66,12 @@ public final class TileMap {
   private final int[] bits;
 
   /**
+   * The road cells in the lane search's order, as {@link LaneAssignment#roadCells} lists them: the
+   * map never changes, so they are listed once.
+   */
+  private final int[] roadCells;
+
+  /**
    * Creates a tile map from raw published cell values. The values are copied and masked down to
    * {@link #ROUTING_BITS_MASK}, so the caller keeps ownership of its array and higher bits are
    * discarded here rather than at every read.
@@ -89,6 +95,7 @@ public final class TileMap {
     for (int i = 0; i < rawValues.length; i++) {
       this.bits[i] = rawValues[i] & ROUTING_BITS_MASK;
     }
+    this.roadCells = LaneAssignment.roadCells(width, height, this::bits);
   }
 
   /**
@@ -142,6 +149,14 @@ public final class TileMap {
   }
 
   /** True when the given column and row address a cell of this map. */
+  /**
+   * The road cells in the lane search's order, three entries a cell (column, row, road id); see
+   * {@link LaneAssignment#roadCells}. The caller must not change the array.
+   */
+  int[] roadCells() {
+    return roadCells;
+  }
+
   public boolean contains(int col, int row) {
     return col >= 0 && row >= 0 && col < width && row < height;
   }

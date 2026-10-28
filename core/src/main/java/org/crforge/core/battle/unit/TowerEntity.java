@@ -253,9 +253,7 @@ public class TowerEntity extends WorldEntity {
     GridEntity view = new GridEntity();
     view.setName(name);
     view.setSide(side);
-    view.setLane(
-        LaneAssignment.lane(
-            tileMap.width(), tileMap.height(), tileMap.width(), x, y, -1, 0, tileMap::bits));
+    view.setLane(LaneAssignment.lane(tileMap, x, y, -1, 0));
     view.setCollisionRadius(data.collisionRadius());
     view.setMass(data.mass());
     view.setBuilding(true);

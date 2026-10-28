@@ -170,7 +170,7 @@ public final class CardPlacement {
             px,
             side,
             h);
-    int originLane = LaneAssignment.lane(w, h, w, px, py, -1, 0, tileMap::bits);
+    int originLane = LaneAssignment.lane(tileMap, px, py, -1, 0);
     boolean firstIsBuilding = card.unit().building();
     // The construction reads the card's first row for every index: the formation's radius and
     // angle shift, the deploy time of the delay selection, and whether its units tunnel - each is
@@ -212,8 +212,7 @@ public final class CardPlacement {
       }
       int cx = Math.min(Math.max(ux, CREATION_INSET), w * 500 - CREATION_INSET);
       int cy = Math.min(Math.max(uy, CREATION_INSET), h * 500 - CREATION_INSET);
-      int lane =
-          LaneAssignment.lane(w, h, w, cx, cy, px, card.fullLaneDeploy() ? 1 : 0, tileMap::bits);
+      int lane = LaneAssignment.lane(tileMap, cx, cy, px, card.fullLaneDeploy() ? 1 : 0);
       if (lane <= 0) {
         lane = originLane;
       }
