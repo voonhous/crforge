@@ -193,7 +193,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/battle_core' }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.2
 
       # The env module's jars under env/build/install/env, and with the game data the tables of the
       # lock's version in a cache of the job's own.
