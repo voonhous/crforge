@@ -285,11 +285,14 @@ public final class SpatialIndex {
           int[] slots = buckets[entry];
           for (int i = 0, size = bucketSizes[entry]; i < size; i++) {
             int slot = slots[i];
-            // Only an accepted entity is marked, so a rejected one is tested again in its next
-            // bucket; the tests are position based, so the answer does not change.
+            // The reference marks only an accepted entity and tests a rejected one again in its
+            // next bucket. The tests read the entity's type, team and position and the query
+            // alone, none of which a query changes, so the second test answers as the first: every
+            // entity met is marked here, and tested once.
             if (marked(seen, slot)) {
               continue;
             }
+            mark(seen, slot);
             GridEntity entity = entities[slot];
             if (query.typeMask() >= 1 && ((query.typeMask() >>> entity.getType()) & 1) == 0) {
               continue;
@@ -300,7 +303,6 @@ public final class SpatialIndex {
             if (!accepts(entity, query)) {
               continue;
             }
-            mark(seen, slot);
             result.add(entity);
           }
         }
