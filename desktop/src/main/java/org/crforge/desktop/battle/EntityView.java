@@ -59,6 +59,9 @@ import org.crforge.core.pathfinding.GridUnitState;
  * @param meter the bar an action running on a character shows over it, such as the Royal Chef's
  *     cooking or the Dagger Duchess's charges; null for none
  * @param statuses active buff snapshots and persistent clone identity; empty for non-characters
+ * @param role what a troop or building does in a fight, read from its row, for its role icon;
+ *     {@link UnitRole#NONE} for towers and non-characters
+ * @param bar what a character's bar shows: its health, a timer, or nothing (see {@link Bar})
  */
 public record EntityView(
     int id,
@@ -96,7 +99,9 @@ public record EntityView(
     int speed,
     GridUnitState grid,
     ActionMeter meter,
-    List<UnitStatus> statuses) {
+    List<UnitStatus> statuses,
+    UnitRole role,
+    Bar bar) {
 
   public EntityView {
     statuses = List.copyOf(statuses);
@@ -107,6 +112,28 @@ public record EntityView(
   }
 
   /** What an entity is drawn as. */
+  /** What a character's bar shows. */
+  public enum Bar {
+    /** Its hit points: the usual health bar, with the numbers when they are shown. */
+    HEALTH,
+    /**
+     * Its time left: a unit that cannot be targeted and has a limited lifetime, whose hit points
+     * only run down over that lifetime, such as the unit that holds the Tombstone hero's ability.
+     * {@link #lifeMs} and {@link #lifetimeMs} carry the time left and the whole lifetime.
+     */
+    TIMER,
+    /**
+     * Nothing: its row hides the default bar and starts no client action that draws its own, such
+     * as a decoration standing on another unit.
+     */
+    NONE
+  }
+
+  /** Whether the character's bar is not its health: a timer or nothing. */
+  public boolean healthBarHidden() {
+    return bar != Bar.HEALTH;
+  }
+
   public enum Kind {
     /** A troop: a character that is not a building. */
     TROOP,

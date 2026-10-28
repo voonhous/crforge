@@ -16,6 +16,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.utils.Align;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +40,8 @@ import org.crforge.desktop.model.ModelView;
 /**
  * Draws a battle core session from the frames {@link org.crforge.desktop.battle.BattleAdapter}
  * reads: the arena from the battle's own tile map, every entity kind (troops, buildings, towers,
- * projectiles, area effects) in its side's colour with health and shield bars, the overlays the
- * screen toggles, and the HUD.
+ * projectiles, area effects) in its side's colour with health and shield bars, each troop's and
+ * building's role icon ({@link RoleIconRenderer}), the overlays the screen toggles, and the HUD.
  *
  * <p>It shares the original renderer's resources, colours and layout, and draws the overlays that
  * exist for both engines through the same renderers: the routing cell costs, the routes, the damage
@@ -74,6 +75,18 @@ public class BattleRenderer {
 
   private static final float METER_BAR_GAP = 1f;
 
+  /** A crowd member's health bar: thin, with no numbers, so a swarm's bars do not pile up. */
+  private static final float CROWD_BAR_HEIGHT = 4f;
+
+  private static final float CROWD_BAR_MIN_WIDTH = 10f;
+
+  /** A timer unit's bar: thin, under its body, in its own colour. */
+  private static final float TIMER_BAR_HEIGHT = 5f;
+
+  private static final float TIMER_BAR_GAP = 2f;
+
+  private static final Color COLOR_TIMER = new Color(0.72f, 0.55f, 0.95f, 1f);
+
   private final RenderContext ctx;
   private final float numberedHealthBarHeight;
   private final HudRenderer backgrounds;
@@ -83,6 +96,7 @@ public class BattleRenderer {
   private final AoeDamageRenderer areaHits;
   private final LandingOverlayRenderer landing;
   private final ModelOverlayRenderer modelTiles;
+  private final RoleIconRenderer roleIcons;
 
   /**
    * The model's tile heatmap ({@code K}), off by default: shown when the screen hands a model view
@@ -118,8 +132,19 @@ public class BattleRenderer {
   @Getter private boolean drawStatuses = true;
 
   private int inspectedEntity = -1;
+
+  /** The point under the mouse, in the window's arena pixels, or NaN when it is off the arena. */
+  private float hoverX = Float.NaN;
+
+  private float hoverY = Float.NaN;
+
+  /** The unit under the mouse this frame, or -1: it keeps its full label and numbers, on top. */
+  private int hoveredEntity = -1;
+
+  /** This frame's crowds: troops that share one label and keep thin bars. */
+  private CrowdLayout crowd = CrowdLayout.NONE;
+
   private final Map<String, String> displayNames = new HashMap<>();
-  private final Map<String, String> unitSymbols = new HashMap<>();
 
   public void toggleDrawStatuses() {
     drawStatuses = !drawStatuses;
@@ -139,6 +164,40 @@ public class BattleRenderer {
 
   public void setInspectedEntity(int id) {
     inspectedEntity = id;
+  }
+
+  /** The mouse's point on the arena, in the window's arena pixels, for the hovered unit. */
+  public void setHoverPoint(float x, float y) {
+    hoverX = x;
+    hoverY = y;
+  }
+
+  /** The mouse left the arena: no unit is hovered. */
+  public void clearHoverPoint() {
+    hoverX = Float.NaN;
+    hoverY = Float.NaN;
+  }
+
+  /**
+   * The character drawn at a point, or -1: the nearest one whose body, at least 10 pixels across
+   * its radius, holds the point. The inspect click and the hover pick alike.
+   */
+  static int entityAt(BattleFrame frame, ViewOrientation view, float x, float y) {
+    if (frame == null || Float.isNaN(x) || Float.isNaN(y)) return -1;
+    int picked = -1;
+    float best = Float.MAX_VALUE;
+    for (EntityView entity : frame.entities()) {
+      if (!entity.isCharacter()) continue;
+      float dx = view.px(entity.x()) - x;
+      float dy = view.py(entity.y()) - y;
+      float distance = dx * dx + dy * dy;
+      float radius = Math.max(10, unitsToPixels(entity.radius()));
+      if (distance <= radius * radius && distance < best) {
+        best = distance;
+        picked = entity.id();
+      }
+    }
+    return picked;
   }
 
   /** View presets affect presentation only. Individual toggles remain available. */
@@ -173,6 +232,7 @@ public class BattleRenderer {
     this.areaHits = new AoeDamageRenderer(ctx);
     this.landing = new LandingOverlayRenderer(ctx);
     this.modelTiles = new ModelOverlayRenderer(ctx);
+    this.roleIcons = new RoleIconRenderer(ctx);
   }
 
   public void toggleDrawModelTiles() {
@@ -275,6 +335,8 @@ public class BattleRenderer {
     ctx.setProjection(camera);
     TileMap tileMap = inputs.world().getTileMap();
     view = inputs.view().getOrientation();
+    hoveredEntity = entityAt(frame, view, hoverX, hoverY);
+    crowd = CrowdLayout.of(frame, inspectedEntity, hoveredEntity);
     HudText hud = HudText.of(frame, inputs.view(), statusLines(inputs));
 
     if (legacyHud) backgrounds.renderBackgrounds(camera);
@@ -290,10 +352,11 @@ public class BattleRenderer {
     }
     renderAreaEffects(frame);
     renderBodies(frame);
+    roleIcons.render(frame, view);
     renderHover(inputs);
     renderProjectiles(frame);
-    renderHealthBars(frame);
-    renderUnitSymbols(frame);
+    renderHealthBars(unfocused(frame));
+    renderTimers(unfocused(frame));
     if (drawStatuses) statuses.render(frame, view);
     if (drawTargets) renderTargetLines(frame);
     if (drawPaths) {
@@ -322,8 +385,9 @@ public class BattleRenderer {
       areaHits.render();
     }
     if (drawHpNumbers) {
-      renderHpNumbers(frame);
+      renderHpNumbers(unfocused(frame));
     }
+    renderFocused(frame);
     renderInspection(frame);
     if (legacyHud) renderHud(frame, camera, inputs, hud);
   }
@@ -383,6 +447,9 @@ public class BattleRenderer {
       Color color = bodyColor(entity);
       float alpha = entity.hidden() ? 0.25f : entity.deploying() ? 0.5f : 1f;
       if (drawStatuses && entity.hasStatus(UnitStatus.Kind.CLONE)) alpha *= 0.55f;
+      // A timer or a decoration (no health bar) cannot be hit: drawn faint, so the unit it stands
+      // on shows through.
+      if (entity.healthBarHidden()) alpha *= 0.3f;
       shapes.setColor(0.05f, 0.09f, 0.09f, 0.35f * alpha);
       shapes.ellipse(x - radius - 2, y - radius - 5, radius * 2 + 4, radius * 1.4f);
       shapes.setColor(color.r, color.g, color.b, alpha);
@@ -411,7 +478,8 @@ public class BattleRenderer {
         continue;
       }
       Color color = bodyColor(entity);
-      shapes.setColor(color.r * 0.5f, color.g * 0.5f, color.b * 0.5f, 1f);
+      shapes.setColor(
+          color.r * 0.5f, color.g * 0.5f, color.b * 0.5f, entity.healthBarHidden() ? 0.3f : 1f);
       if (entity.kind() == EntityView.Kind.TROOP) {
         shapes.circle(
             px(entity.x()), py(entity.y()), unitsToPixels(entity.radius()), CIRCLE_SEGMENTS);
@@ -626,11 +694,11 @@ public class BattleRenderer {
    * over those the bar of an action it runs, such as the Royal Chef's cooking or the Dagger
    * Duchess's charges.
    */
-  private void renderHealthBars(BattleFrame frame) {
+  private void renderHealthBars(List<EntityView> entities) {
     ShapeRenderer shapes = ctx.getShapeRenderer();
     shapes.begin(ShapeType.Filled);
-    for (EntityView entity : frame.entities()) {
-      if (!entity.isCharacter() || !entity.hasHitPoints()) {
+    for (EntityView entity : entities) {
+      if (!entity.isCharacter() || !entity.hasHitPoints() || entity.healthBarHidden()) {
         continue;
       }
       float width = barWidth(entity);
@@ -641,13 +709,13 @@ public class BattleRenderer {
           share > HEALTH_THRESHOLD_HIGH
               ? ArenaPalette.HEALTH
               : share > HEALTH_THRESHOLD_LOW ? COLOR_HEALTH_YELLOW : COLOR_HEALTH_RED;
-      bar(shapes, left, barY, width, healthBarHeight(), share, fill);
+      bar(shapes, left, barY, width, healthBarHeight(entity), share, fill);
       if (entity.maxShield() > 0) {
         float shieldShare = (float) entity.shield() / entity.maxShield();
         bar(
             shapes,
             left,
-            barY + healthBarHeight() + SHIELD_BAR_GAP,
+            barY + healthBarHeight(entity) + SHIELD_BAR_GAP,
             width,
             HEALTH_BAR_HEIGHT,
             shieldShare,
@@ -657,6 +725,33 @@ public class BattleRenderer {
       if (meter != null) {
         meterBar(shapes, left, barY + healthAndShieldHeight(entity) + METER_BAR_GAP, width, meter);
       }
+    }
+    shapes.end();
+  }
+
+  /**
+   * A timer unit's time left (see {@link EntityView.Bar#TIMER}): a thin bar in the timer colour
+   * just under its body, clear of the health bar of a unit it stands on, emptying as its lifetime
+   * runs out.
+   */
+  private void renderTimers(List<EntityView> entities) {
+    ShapeRenderer shapes = ctx.getShapeRenderer();
+    shapes.begin(ShapeType.Filled);
+    for (EntityView entity : entities) {
+      if (entity.bar() != EntityView.Bar.TIMER || entity.lifetimeMs() <= 0) {
+        continue;
+      }
+      float width = Math.max(unitsToPixels(entity.radius()) * 2, HEALTH_BAR_MIN_WIDTH);
+      float top = py(entity.y()) - unitsToPixels(entity.radius()) - TIMER_BAR_GAP;
+      float share = Math.min(1f, Math.max(0f, (float) entity.lifeMs() / entity.lifetimeMs()));
+      bar(
+          shapes,
+          px(entity.x()) - width / 2,
+          top - TIMER_BAR_HEIGHT,
+          width,
+          TIMER_BAR_HEIGHT,
+          share,
+          COLOR_TIMER);
     }
     shapes.end();
   }
@@ -698,26 +793,117 @@ public class BattleRenderer {
     shapes.rect(left + b, y + b, (width - b * 2) * share, height - b * 2);
   }
 
-  /** A bar's width: the body's, at least the minimum, widened to fit the HP numbers when shown. */
+  /**
+   * A bar's width: the body's, at least the minimum, widened to fit the HP numbers when shown; a
+   * crowd member's is the body's alone, at least {@link #CROWD_BAR_MIN_WIDTH}.
+   */
   private float barWidth(EntityView entity) {
+    if (inCrowd(entity)) {
+      return Math.max(unitsToPixels(entity.radius()) * 2, CROWD_BAR_MIN_WIDTH);
+    }
     float base = Math.max(unitsToPixels(entity.radius()) * 2, HEALTH_BAR_MIN_WIDTH);
-    if (!drawHpNumbers) {
+    if (!showHpNumbers(entity)) {
       return base;
     }
     ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), hpText(entity));
     return Math.max(base, ctx.getGlyphLayout().width + 2 * (HEALTH_BAR_BORDER + HP_TEXT_PADDING));
   }
 
-  private float healthBarHeight() {
-    return drawHpNumbers ? numberedHealthBarHeight : HEALTH_BAR_HEIGHT;
+  private float healthBarHeight(EntityView entity) {
+    if (inCrowd(entity)) {
+      return CROWD_BAR_HEIGHT;
+    }
+    return showHpNumbers(entity) ? numberedHealthBarHeight : HEALTH_BAR_HEIGHT;
+  }
+
+  /** Whether a unit's health bar carries its numbers: never for a crowd member. */
+  private boolean showHpNumbers(EntityView entity) {
+    return drawHpNumbers && !inCrowd(entity) && !entity.healthBarHidden();
+  }
+
+  /** Whether a unit is drawn in a crowd, sharing its label and keeping a thin bar. */
+  private boolean inCrowd(EntityView entity) {
+    return crowd.groupOf(entity) != null;
+  }
+
+  /** Whether a unit is the inspected or the hovered one, drawn in full and on top. */
+  private boolean focused(EntityView entity) {
+    return entity.id() == inspectedEntity || entity.id() == hoveredEntity;
+  }
+
+  /** The frame's entities but the inspected and the hovered unit, which draw last, on top. */
+  private List<EntityView> unfocused(BattleFrame frame) {
+    List<EntityView> rest = new ArrayList<>(frame.entities().size());
+    for (EntityView entity : frame.entities()) {
+      if (!focused(entity)) rest.add(entity);
+    }
+    return rest;
+  }
+
+  /** The inspected and the hovered unit of the frame, when they are on it. */
+  private List<EntityView> focusedOnly(BattleFrame frame) {
+    List<EntityView> focused = new ArrayList<>(2);
+    for (EntityView entity : frame.entities()) {
+      if (focused(entity) && entity.isCharacter()) focused.add(entity);
+    }
+    return focused;
+  }
+
+  /**
+   * The inspected and the hovered unit's bars, numbers and label, drawn after everything else so
+   * nothing around them covers them: the label on a dark plate.
+   */
+  private void renderFocused(BattleFrame frame) {
+    List<EntityView> focused = focusedOnly(frame);
+    if (focused.isEmpty()) return;
+    renderHealthBars(focused);
+    renderTimers(focused);
+    if (drawHpNumbers) renderHpNumbers(focused);
+    ShapeRenderer shapes = ctx.getShapeRenderer();
+    for (EntityView entity : focused) {
+      String text = characterLabel(entity);
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), text);
+      float width = ctx.getGlyphLayout().width;
+      float height = ctx.getGlyphLayout().height;
+      float left = labelLeft(px(entity.x()) - width / 2, width);
+      float y = labelTop(entity);
+      Gdx.gl.glEnable(GL20.GL_BLEND);
+      shapes.begin(ShapeType.Filled);
+      shapes.setColor(0.04f, 0.07f, 0.08f, 0.8f);
+      shapes.rect(left - 3, y - height - 3, width + 6, height + 6);
+      shapes.end();
+      ctx.getSpriteBatch().begin();
+      ctx.getEntityNameFont().setColor(Color.WHITE);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), text, left, y);
+      ctx.getSpriteBatch().end();
+    }
+  }
+
+  /** A label's left edge, kept inside the arena. */
+  private static float labelLeft(float left, float width) {
+    return Math.max(3, Math.min(WorkspaceViewport.WORLD_WIDTH - width - 3, left));
+  }
+
+  /** The top of a character's own label, above its bars, kept inside the arena. */
+  private float labelTop(EntityView entity) {
+    float y =
+        healthBarY(entity)
+            + barsHeight(entity)
+            + ctx.getEntityNameFont().getCapHeight()
+            + NAME_BAR_GAP;
+    return Math.min(BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - ANNOTATION_EDGE_INSET, y);
   }
 
   private float healthAndShieldHeight(EntityView entity) {
-    return healthBarHeight() + (entity.maxShield() > 0 ? SHIELD_BAR_GAP + HEALTH_BAR_HEIGHT : 0);
+    return healthBarHeight(entity)
+        + (entity.maxShield() > 0 ? SHIELD_BAR_GAP + HEALTH_BAR_HEIGHT : 0);
   }
 
   /** The height of all of a character's bars: health, shield and an action's bar. */
   private float barsHeight(EntityView entity) {
+    if (entity.healthBarHidden()) {
+      return 0;
+    }
     return healthAndShieldHeight(entity)
         + (entity.meter() != null ? METER_BAR_GAP + METER_BAR_HEIGHT : 0);
   }
@@ -744,25 +930,57 @@ public class BattleRenderer {
     return Math.min(bodyTop + HEALTH_BAR_Y_OFFSET, limit);
   }
 
+  /**
+   * Whether a character has a label of its own: a crowd member shares its crowd's instead, and a
+   * unit drawn with no health bar (a decoration standing on another unit) shows one only while it
+   * is inspected or hovered, so it does not write its name over the unit it stands on.
+   */
   private boolean showLabel(EntityView entity) {
-    return drawLabels || entity.id() == inspectedEntity;
+    if (focused(entity)) {
+      return true;
+    }
+    return drawLabels && !inCrowd(entity) && !entity.healthBarHidden();
   }
 
-  /** A character's row name and level, with its deploy or hiding state when it has one. */
+  /**
+   * A character's row name and level, with its deploy or hiding state when it has one, and a timer
+   * unit's seconds left.
+   */
   private String characterLabel(EntityView entity) {
-    String label =
-        displayNames.computeIfAbsent(
-                entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "))
-            + " "
-            + levelText(entity.level());
-    if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
-      return label + " [WAIT]";
-    } else if (entity.deploying()) {
-      return label + " [DEPLOY]";
-    } else if (entity.hidden()) {
-      return label + " [HIDDEN]";
+    String label = displayName(entity) + " " + levelText(entity.level()) + suffix(entity);
+    if (entity.bar() == EntityView.Bar.TIMER) {
+      label += String.format(Locale.ROOT, " %.1fs left", Math.max(entity.lifeMs(), 0) / 1000f);
     }
     return label;
+  }
+
+  /** A row name as the labels show it: its words split apart. */
+  private String displayName(EntityView entity) {
+    return displayNames.computeIfAbsent(
+        entity.name(), name -> name.replaceAll("(?<=[a-z])(?=[A-Z])", " "));
+  }
+
+  /** A character's deploy or hiding state as its label ends, or "" for none. */
+  private static String suffix(EntityView entity) {
+    if (entity.state() == GridEntityState.WAITING_TO_DEPLOY) {
+      return " [WAIT]";
+    } else if (entity.deploying()) {
+      return " [DEPLOY]";
+    } else if (entity.hidden()) {
+      return " [HIDDEN]";
+    }
+    return "";
+  }
+
+  /** A crowd's state as its label ends: its members' when they all share it, else "". */
+  private static String suffix(CrowdLayout.Group group) {
+    String shared = suffix(group.members().get(0));
+    for (EntityView member : group.members()) {
+      if (!suffix(member).equals(shared)) {
+        return "";
+      }
+    }
+    return shared;
   }
 
   /** A level as the labels and the hand cards show it. */
@@ -855,73 +1073,115 @@ public class BattleRenderer {
     shapes.end();
   }
 
-  private void renderUnitSymbols(BattleFrame frame) {
-    var font = ctx.getEntityNameFont();
-    font.getData().setScale(0.7f);
-    ctx.getSpriteBatch().begin();
-    for (EntityView entity : frame.entities()) {
-      if (entity.kind() != EntityView.Kind.TROOP || unitsToPixels(entity.radius()) < 6) continue;
-      String symbol =
-          unitSymbols.computeIfAbsent(
-              entity.name(),
-              name -> {
-                String capitals = name.replaceAll("[^A-Z]", "");
-                return capitals.isEmpty()
-                    ? name.substring(0, 1)
-                    : capitals.substring(0, Math.min(2, capitals.length()));
-              });
-      ctx.getGlyphLayout().setText(font, symbol);
-      font.setColor(0.07f, 0.13f, 0.19f, entity.hidden() ? 0.3f : 1);
-      font.draw(
-          ctx.getSpriteBatch(),
-          symbol,
-          px(entity.x()) - ctx.getGlyphLayout().width / 2,
-          py(entity.y()) + ctx.getGlyphLayout().height / 2);
-    }
-    ctx.getSpriteBatch().end();
-    font.getData().setScale(1);
-    font.setColor(Color.WHITE);
-  }
+  /**
+   * A label waiting to be drawn: its text, where, and how much it matters when labels collide.
+   *
+   * @param text the text
+   * @param x the left edge before it is kept inside the arena
+   * @param y the top, as the font draws it
+   * @param tier lower draws first: 0 the inspected and hovered unit, 1 towers, 2 troops and
+   *     buildings on their own, 3 crowds, 4 area effects
+   * @param weight within a tier, larger draws first: a body's radius, a crowd's total
+   */
+  private record PendingLabel(String text, float x, float y, int tier, float weight) {}
+
+  private static final int CROWD_TIER = 3;
+
+  /** How many lines up a crowd's label may move to clear the labels already drawn. */
+  private static final int CROWD_LABEL_LIFTS = 2;
 
   /**
-   * Each character's row name and level above its bars, and an area effect's name, level and life
-   * left.
+   * The labels: each character's row name and level above its bars, one label for each crowd above
+   * its highest member, and an area effect's name, level and life left. They are drawn in order of
+   * importance, and a label that would overlap one already drawn is left out, so a crowded arena
+   * shows the labels that matter instead of a pile; the inspected and hovered unit's always shows.
+   * A unit on its own goes before a crowd, so a Knight inside a swarm keeps its name, and a crowd's
+   * label moves up a line or two to clear the labels already drawn before it is left out.
    */
   private void renderLabels(BattleFrame frame) {
-    ctx.getSpriteBatch().begin();
+    List<PendingLabel> pending = new ArrayList<>();
+    float capHeight = ctx.getEntityNameFont().getCapHeight();
     for (EntityView entity : frame.entities()) {
-      if (!showLabel(entity)) continue;
-      String label;
-      float y;
-      if (entity.isCharacter()) {
-        label = characterLabel(entity);
-        float barY = healthBarY(entity);
-        y = barY + barsHeight(entity) + ctx.getEntityNameFont().getCapHeight() + NAME_BAR_GAP;
-      } else if (entity.kind() == EntityView.Kind.AREA_EFFECT) {
-        label =
+      if (entity.isCharacter() && showLabel(entity)) {
+        float y = healthBarY(entity) + barsHeight(entity) + capHeight + NAME_BAR_GAP;
+        int tier = focused(entity) ? 0 : entity.kind() == EntityView.Kind.TOWER ? 1 : 2;
+        pending.add(centred(characterLabel(entity), px(entity.x()), y, tier, entity.radius()));
+      } else if (entity.kind() == EntityView.Kind.AREA_EFFECT && drawLabels) {
+        String label =
             entity.name()
                 + " "
                 + levelText(entity.level())
                 + " "
                 + String.format(Locale.ROOT, "%.1fs", Math.max(entity.lifeMs(), 0) / 1000f);
-        y = py(entity.y()) - unitsToPixels(entity.radius()) - 2;
-      } else {
+        float y = py(entity.y()) - unitsToPixels(entity.radius()) - 2;
+        pending.add(centred(label, px(entity.x()), y, 4, entity.radius()));
+      }
+    }
+    if (drawLabels) {
+      for (CrowdLayout.Group group : crowd.groups()) {
+        float sumX = 0;
+        float top = Float.NEGATIVE_INFINITY;
+        int weight = 0;
+        for (EntityView member : group.members()) {
+          sumX += px(member.x());
+          top = Math.max(top, healthBarY(member) + barsHeight(member));
+          weight += member.radius();
+        }
+        EntityView first = group.members().get(0);
+        String label = group.label(displayName(first), levelText(first.level())) + suffix(group);
+        float x = sumX / group.members().size();
+        pending.add(centred(label, x, top + capHeight + NAME_BAR_GAP, CROWD_TIER, weight));
+      }
+    }
+    pending.sort(
+        Comparator.comparingInt(PendingLabel::tier)
+            .thenComparing(Comparator.comparingDouble(PendingLabel::weight).reversed()));
+
+    List<float[]> drawn = new ArrayList<>();
+    ctx.getSpriteBatch().begin();
+    for (PendingLabel label : pending) {
+      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label.text());
+      float width = ctx.getGlyphLayout().width;
+      float height = ctx.getGlyphLayout().height;
+      float left = Math.max(3, Math.min(WorkspaceViewport.WORLD_WIDTH - width - 3, label.x()));
+      float ceiling = BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - ANNOTATION_EDGE_INSET;
+      int lifts = label.tier() == CROWD_TIER ? CROWD_LABEL_LIFTS : 0;
+      float y = Math.min(ceiling, label.y());
+      float[] box = {left - 1, y - height - 1, left + width + 1, y + 1};
+      for (int lift = 1; label.tier() > 0 && overlapsAny(box, drawn) && lift <= lifts; lift++) {
+        y = Math.min(ceiling, label.y() + lift * (height + 3));
+        box = new float[] {left - 1, y - height - 1, left + width + 1, y + 1};
+      }
+      if (label.tier() > 0 && overlapsAny(box, drawn)) {
         continue;
       }
-      ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), label);
-      float left =
-          Math.max(
-              3,
-              Math.min(
-                  WorkspaceViewport.WORLD_WIDTH - ctx.getGlyphLayout().width - 3,
-                  px(entity.x()) - ctx.getGlyphLayout().width / 2));
-      y = Math.min(BOTTOM_UI_HEIGHT + WorkspaceViewport.WORLD_HEIGHT - ANNOTATION_EDGE_INSET, y);
+      drawn.add(box);
+      if (label.tier() == 0) {
+        // The inspected and hovered unit's label: its space is kept here, it is drawn on top.
+        continue;
+      }
       ctx.getEntityNameFont().setColor(0.04f, 0.07f, 0.08f, 1);
-      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, left + 1, y - 1);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label.text(), left + 1, y - 1);
       ctx.getEntityNameFont().setColor(Color.WHITE);
-      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label, left, y);
+      ctx.getEntityNameFont().draw(ctx.getSpriteBatch(), label.text(), left, y);
     }
     ctx.getSpriteBatch().end();
+  }
+
+  /** A label centred on a point along the width. */
+  private PendingLabel centred(String text, float centreX, float y, int tier, float weight) {
+    ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), text);
+    return new PendingLabel(text, centreX - ctx.getGlyphLayout().width / 2, y, tier, weight);
+  }
+
+  /** Whether a box, as left, bottom, right, top, overlaps any of the boxes drawn. */
+  private static boolean overlapsAny(float[] box, List<float[]> drawn) {
+    for (float[] other : drawn) {
+      if (box[0] < other[2] && other[0] < box[2] && box[1] < other[3] && other[1] < box[3]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Every character's hit points, at its position as drawn, for the damage numbers. */
@@ -942,19 +1202,19 @@ public class BattleRenderer {
   }
 
   /** The hit points and maximum centred on each health bar. */
-  private void renderHpNumbers(BattleFrame frame) {
+  private void renderHpNumbers(List<EntityView> entities) {
     var font = ctx.getEntityNameFont();
     font.setColor(Color.BLACK);
     ctx.getSpriteBatch().begin();
-    for (EntityView entity : frame.entities()) {
-      if (!entity.isCharacter() || !entity.hasHitPoints()) {
+    for (EntityView entity : entities) {
+      if (!entity.isCharacter() || !entity.hasHitPoints() || !showHpNumbers(entity)) {
         continue;
       }
       float barY = healthBarY(entity);
       String text = hpText(entity);
       ctx.getGlyphLayout().setText(ctx.getEntityNameFont(), text);
       float left = px(entity.x()) - ctx.getGlyphLayout().width / 2;
-      float top = barY + healthBarHeight() / 2 + ctx.getGlyphLayout().height / 2;
+      float top = barY + healthBarHeight(entity) / 2 + ctx.getGlyphLayout().height / 2;
       font.draw(ctx.getSpriteBatch(), text, left, top);
     }
     ctx.getEntityNameFont().setColor(Color.WHITE);

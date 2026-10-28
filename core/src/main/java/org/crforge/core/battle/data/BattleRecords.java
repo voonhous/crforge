@@ -702,6 +702,14 @@ public final class BattleRecords {
   }
 
   /**
+   * The game tables these records read, for a reader of columns the battle itself never reads, such
+   * as the visualizer's view columns.
+   */
+  public GameTables tables() {
+    return tables;
+  }
+
+  /**
    * A unit or a building as the battle reads it, from the characters table or, for a building, the
    * buildings table.
    *

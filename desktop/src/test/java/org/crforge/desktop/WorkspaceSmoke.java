@@ -21,6 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import java.util.List;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.CharacterEntity;
+import org.crforge.core.battle.unit.CrowdSmokeFixture;
 import org.crforge.core.battle.unit.StatusSmokeFixture;
 import org.crforge.desktop.battle.BattleAdapter;
 import org.crforge.desktop.battle.BattleDecks;
@@ -39,6 +40,8 @@ public class WorkspaceSmoke extends CRForgeGame {
   private int tick;
   private BattleSession statusSession;
   private CharacterEntity statusClone;
+  private BattleSession crowdSession;
+  private CharacterEntity crowdSkeleton;
   private List<UnitStatus> pausedStatuses;
 
   /** The blue hand slot the smoke selects with a click and plays, see {@link #blueOnlySlot}. */
@@ -352,8 +355,31 @@ public class WorkspaceSmoke extends CRForgeGame {
             labels(stage().getRoot()).contains("Frozen -"),
             "selected statuses survive replay flip");
         capture("statuses-replay-standard");
+        crowdSession = versions.ladder();
+        crowdSkeleton = CrowdSmokeFixture.populate(crowdSession);
+        var previous = getScreen();
+        setScreen(new DebugGameScreen(versions, crowdSession));
+        previous.dispose();
+        key(Input.Keys.SPACE);
+        key(Input.Keys.I);
+        Gdx.graphics.setWindowedMode(1120, 1040);
+      }
+      if (frames == 84) {
+        capture("crowd");
+        hoverUnit(
+            ViewOrientation.SIDE_0, crowdSkeleton.getView().getX(), crowdSkeleton.getView().getY());
+      }
+      if (frames == 86) {
+        capture("crowd-hovered");
+        clickUnit(
+            ViewOrientation.SIDE_0, crowdSkeleton.getView().getX(), crowdSkeleton.getView().getY());
+      }
+      if (frames == 88) {
+        require(labels(stage().getRoot()).contains("Skeleton #"), "inspector shows the skeleton");
+        capture("crowd-inspected");
         System.out.println(
-            "UI_SMOKE_OK: workspace, replay, status badges/inspector/pause/step/toggle/expiry/flip");
+            "UI_SMOKE_OK: workspace, replay, status badges/inspector/pause/step/toggle/expiry/flip,"
+                + " crowd");
         Gdx.app.exit();
       }
     } catch (Throwable failure) {
@@ -383,6 +409,24 @@ public class WorkspaceSmoke extends CRForgeGame {
       if (actor instanceof Group child) result += labels(child);
     }
     return result;
+  }
+
+  /**
+   * Moves the mouse over a battle position as the screen draws it, as {@link #clickUnit} clicks.
+   */
+  static void hoverUnit(ViewOrientation view, float x, float y) {
+    Actor arena = stage().getRoot().findActor("battle-arena");
+    Vector2 origin = arena.localToStageCoordinates(new Vector2());
+    var bounds =
+        org.crforge.desktop.render.WorkspaceViewport.fit(
+            (int) origin.x, (int) origin.y, (int) arena.getWidth(), (int) arena.getHeight());
+    int screenX = (int) (bounds.x() + bounds.width() * view.x(x) / view.widthUnits());
+    int screenY =
+        Gdx.graphics.getHeight()
+            - (int) (bounds.y() + bounds.height() * view.y(y) / view.heightUnits());
+    // The debug screen reads the cursor every frame, so the cursor itself is moved too.
+    Gdx.input.setCursorPosition(screenX, screenY);
+    Gdx.input.getInputProcessor().mouseMoved(screenX, screenY);
   }
 
   static void clickArena(float x, float y) {
