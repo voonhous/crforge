@@ -331,9 +331,23 @@ public class TowerEntity extends WorldEntity {
     return (getView().getFlags() & getView().getFlagBits().keepsTargetingOff()) != 0;
   }
 
+  /**
+   * The state visit's answers, built at the first visit and reused; null before it. See {@link
+   * #stateQueries()}.
+   */
+  private StateQueries stateQueries;
+
+  /**
+   * What the state visit asks of the tower. Every answer is fixed for the tower's life: its team
+   * (the view's side is set only as the view is made) and the ordinary unit's standing answers, so
+   * they are built once.
+   */
   private StateQueries stateQueries() {
-    // A tower has no movement component, so it can never be given a route: a resume stands it.
-    return StateQueries.forUnitWithRoute(side() & 1).withMayHoldRoute(false);
+    if (stateQueries == null) {
+      // A tower has no movement component, so it can never be given a route: a resume stands it.
+      stateQueries = StateQueries.forUnitWithRoute(side() & 1).withMayHoldRoute(false);
+    }
+    return stateQueries;
   }
 
   /**
