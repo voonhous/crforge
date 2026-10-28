@@ -320,6 +320,9 @@ public class BattleWorld implements HolderPasses {
   /** Those watching the arena from outside the tick, in the order they were added. */
   private final List<WorldObserver> observers = new ArrayList<>();
 
+  /** Whether an observer reads the champion slots' views ({@link #championViews}). */
+  private boolean championViewsWanted;
+
   /**
    * The runs listening for destroyed objects, in the order they started listening: each hears of
    * every object whose death slot starts until it is let go.
@@ -1085,6 +1088,7 @@ public class BattleWorld implements HolderPasses {
   /** Attaches an observer; it is told about every tick and every hit from the next one on. */
   public void addObserver(WorldObserver observer) {
     observers.add(observer);
+    championViewsWanted |= observer.wantsChampionViews();
   }
 
   /**
@@ -3188,9 +3192,13 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * What a champion slot reads of its side's characters of a champion row, in live-list order, for
-   * the observers: before its step.
+   * the observers: before its step. Only for observers: an empty list, without the walk over every
+   * entity, when none of them {@linkplain WorldObserver#wantsChampionViews() wants them}.
    */
   List<ChampionView> championViews(int side) {
+    if (!championViewsWanted) {
+      return List.of();
+    }
     List<ChampionView> views = new ArrayList<>();
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof CharacterEntity unit

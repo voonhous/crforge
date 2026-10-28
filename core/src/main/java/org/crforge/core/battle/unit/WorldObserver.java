@@ -352,10 +352,20 @@ public interface WorldObserver {
    * @param tick the tick it happened on
    * @param slot the slot after its step
    * @param elixir its king's elixir before any refund, in ten-thousandths
-   * @param views its side's characters of a champion row as the step found them
+   * @param views its side's characters of a champion row as the step found them, or an empty list
+   *     when no observer of the battle {@linkplain #wantsChampionViews() wants them}
    */
   default void championStepped(
       int tick, ChampionController slot, int elixir, List<ChampionView> views) {}
+
+  /**
+   * Whether this observer reads the views {@link #championStepped} hands it. Building them walks
+   * every entity in every champion slot's step, so a battle builds them only when one of its
+   * observers says yes; nothing in the battle reads them.
+   */
+  default boolean wantsChampionViews() {
+    return false;
+  }
 
   /**
    * A unit whose dashes chain started a dash: its count, hit list and first vector already kept.
