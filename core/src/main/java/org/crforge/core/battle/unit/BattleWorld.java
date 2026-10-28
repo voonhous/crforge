@@ -2660,9 +2660,12 @@ public class BattleWorld implements HolderPasses {
     if (locks != null) {
       locks.prePass(this::listedAlive);
     }
-    List<WorldEntity> snapshotOfPresent = present();
-    for (WorldObserver observer : observers) {
-      observer.afterPrePass(tick, snapshotOfPresent);
+    // The observers share one copy of the list; with none, nothing is copied.
+    if (!observers.isEmpty()) {
+      List<WorldEntity> snapshotOfPresent = present();
+      for (WorldObserver observer : observers) {
+        observer.afterPrePass(tick, snapshotOfPresent);
+      }
     }
   }
 
@@ -9991,10 +9994,13 @@ public class BattleWorld implements HolderPasses {
     // version that queues them, the direct hits, the shares of an area and the circle's and the
     // Kamikaze kills. The observers see them landed.
     drainTypedHits();
-    List<WorldEntity> snapshotOfPresent = present();
-    List<ProjectileEntity> snapshotOfProjectiles = projectiles();
-    for (WorldObserver observer : observers) {
-      observer.afterPostHooks(tick, snapshotOfPresent, snapshotOfProjectiles);
+    // The observers share one copy of each list; with none, nothing is copied.
+    if (!observers.isEmpty()) {
+      List<WorldEntity> snapshotOfPresent = present();
+      List<ProjectileEntity> snapshotOfProjectiles = projectiles();
+      for (WorldObserver observer : observers) {
+        observer.afterPostHooks(tick, snapshotOfPresent, snapshotOfProjectiles);
+      }
     }
   }
 
