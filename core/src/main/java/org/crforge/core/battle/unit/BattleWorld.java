@@ -218,6 +218,12 @@ public class BattleWorld implements HolderPasses {
   /** This tick's arena entities in ascending id. */
   private final List<WorldEntity> present = new ArrayList<>();
 
+  /** The entities of {@link #present} the pre-pass before did not list, in the same order. */
+  private final List<WorldEntity> arrivals = new ArrayList<>();
+
+  /** How many pre-passes the world has run; the number of the last one. */
+  private int prePasses;
+
   /** This tick's views in the same order: what the index and the overlay are built from. */
   private final List<GridEntity> views = new ArrayList<>();
 
@@ -2631,8 +2637,19 @@ public class BattleWorld implements HolderPasses {
     for (WorldEntity entity : present) {
       known.put(entity.getView(), entity);
     }
-    for (WorldEntity entity : present) {
-      entity.registerCandidates(present);
+    // The entities the last pre-pass did not list: each other entity registered that one's whole
+    // list then, so these are all it can still be missing.
+    int pass = ++prePasses;
+    arrivals.clear();
+    for (int i = 0; i < present.size(); i++) {
+      WorldEntity entity = present.get(i);
+      if (entity.listedPass != pass - 1) {
+        arrivals.add(entity);
+      }
+      entity.listedPass = pass;
+    }
+    for (int i = 0; i < present.size(); i++) {
+      present.get(i).registerCandidates(present, arrivals, pass);
     }
     index.rebuild(views);
     indexDeflectors(snapshot);
