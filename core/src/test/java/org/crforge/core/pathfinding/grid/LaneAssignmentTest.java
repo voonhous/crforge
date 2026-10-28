@@ -98,4 +98,74 @@ class LaneAssignmentTest {
     assertThat(LaneAssignment.lane(8, 4, 8, 750, 750, -1, 0, (col, row) -> 0)).isZero();
     assertThat(LaneAssignment.lane(0, 4, 8, 750, 750, -1, 0, TWO_ROADS)).isZero();
   }
+
+  /**
+   * The search over every cell of the map, as it ran before the map kept its road cells: the oracle
+   * the search over the road cells alone is held to.
+   */
+  private static int wholeMapLane(TileMap map, int x, int y, int referenceX, int flag) {
+    int col = x / TileMap.CELL_UNITS;
+    int row = y / TileMap.CELL_UNITS;
+    int nearestToPosition = 0;
+    int distanceToPosition = Integer.MAX_VALUE;
+    int nearestToReference = -1;
+    int distanceToReference = Integer.MAX_VALUE;
+    boolean oppositeHalves = false;
+    boolean plain = referenceX == -1 || (flag & 1) != 0;
+    int shiftedCol = (x + 5) / TileMap.CELL_UNITS;
+    int referenceCol = referenceX / TileMap.CELL_UNITS;
+    int half = map.width() / 2;
+    for (int scanCol = 0; scanCol < map.width(); scanCol++) {
+      for (int scanRow = 0; scanRow < map.height(); scanRow++) {
+        int roadId = map.bits(scanCol, scanRow) & TileMap.ROAD_ID_MASK;
+        if (roadId < 1) {
+          continue;
+        }
+        int dy2 = (scanRow - row) * (scanRow - row);
+        int fromPosition = dy2 + (scanCol - col) * (scanCol - col);
+        int fromReference = dy2 + (scanCol - referenceCol) * (scanCol - referenceCol);
+        if (!plain && fromReference < distanceToReference) {
+          nearestToReference = roadId;
+          distanceToReference = fromReference;
+        }
+        boolean closer = fromPosition <= distanceToPosition;
+        if (fromPosition < distanceToPosition) {
+          nearestToPosition = roadId;
+          distanceToPosition = fromPosition;
+        }
+        if (!plain && closer && !oppositeHalves) {
+          if (referenceX > x) {
+            oppositeHalves = referenceCol > half && shiftedCol <= half;
+          } else if (referenceX < x) {
+            oppositeHalves = referenceCol < half && shiftedCol >= half;
+          }
+        }
+      }
+    }
+    if (!plain && oppositeHalves && nearestToPosition == nearestToReference) {
+      return nearestToReference == 1 ? 2 : nearestToReference == 2 ? 1 : nearestToReference;
+    }
+    return nearestToPosition;
+  }
+
+  @Test
+  void theTileMapsRoadCellsAnswerAsAScanOfTheWholeMap() {
+    int checked = 0;
+    for (int x = 0; x < MAP.widthUnits(); x += 350) {
+      for (int y = 0; y < MAP.heightUnits(); y += 700) {
+        for (int referenceX : new int[] {-1, 0, 4000, 8995, 9000, 9005, 14000, 17999}) {
+          for (int flag = 0; flag <= 1; flag++) {
+            assertThat(LaneAssignment.lane(MAP, x, y, referenceX, flag))
+                .as("x %d y %d reference %d flag %d", x, y, referenceX, flag)
+                .isEqualTo(wholeMapLane(MAP, x, y, referenceX, flag))
+                .isEqualTo(
+                    LaneAssignment.lane(
+                        MAP.width(), MAP.height(), MAP.width(), x, y, referenceX, flag, MAP::bits));
+            checked++;
+          }
+        }
+      }
+    }
+    assertThat(checked).isGreaterThan(10_000);
+  }
 }

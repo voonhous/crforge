@@ -4281,7 +4281,7 @@ public class BattleWorld implements HolderPasses {
     int count = data.spawnCharacterCount();
     int w = tileMap.width();
     int h = tileMap.height();
-    int lane = LaneAssignment.lane(w, h, w, x, y, -1, 0, tileMap::bits);
+    int lane = LaneAssignment.lane(tileMap, x, y, -1, 0);
     for (int i = 0; i < count; i++) {
       int[] offset =
           Formation.offset(
@@ -4300,7 +4300,7 @@ public class BattleWorld implements HolderPasses {
       // The creation takes the child's lane from where it is made with the impact point's x as the
       // reference and no flag: a child made across the centre column from the impact, whose nearest
       // road is the impact's own, is swapped to the impact's side.
-      int childLane = LaneAssignment.lane(w, h, w, cx, cy, x, 0, tileMap::bits);
+      int childLane = LaneAssignment.lane(tileMap, cx, cy, x, 0);
       int made = spawnCounts.merge(projectile.name(), 1, Integer::sum) - 1;
       CharacterEntity spawned =
           CharacterEntity.spawned(
@@ -6156,16 +6156,7 @@ public class BattleWorld implements HolderPasses {
         // A ring whose children take a fixed priority asks the lane of the dying object's point
         // before each child, and is turned over by it and by the dying object's team.
         if (data.spawnConstPriority()) {
-          int lane =
-              LaneAssignment.lane(
-                  tileMap.width(),
-                  tileMap.height(),
-                  tileMap.width(),
-                  fromX,
-                  fromY,
-                  -1,
-                  0,
-                  tileMap::bits);
+          int lane = LaneAssignment.lane(tileMap, fromX, fromY, -1, 0);
           for (WorldObserver observer : observers) {
             observer.ringLaneAsked(tick, dying, fromX, fromY, lane);
           }
@@ -7152,16 +7143,7 @@ public class BattleWorld implements HolderPasses {
       if (arguments.radius() != 0 && arguments.constPriority()) {
         // A ring whose children take a fixed priority asks the lane of the point before each
         // child, and is turned over by it and by the source's team.
-        int lane =
-            LaneAssignment.lane(
-                tileMap.width(),
-                tileMap.height(),
-                tileMap.width(),
-                arguments.x(),
-                arguments.y(),
-                -1,
-                0,
-                tileMap::bits);
+        int lane = LaneAssignment.lane(tileMap, arguments.x(), arguments.y(), -1, 0);
         for (WorldObserver observer : observers) {
           observer.ringLaneAsked(tick, source, arguments.x(), arguments.y(), lane);
         }

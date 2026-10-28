@@ -2065,9 +2065,7 @@ public class CharacterEntity extends WorldEntity {
     view.setTargetable(1);
     view.setX(x);
     view.setY(y);
-    view.setLane(
-        LaneAssignment.lane(
-            tileMap.width(), tileMap.height(), tileMap.width(), x, y, -1, 0, tileMap::bits));
+    view.setLane(LaneAssignment.lane(tileMap, x, y, -1, 0));
     view.setState(GridEntityState.DEPLOYING);
     view.setDeployCountdown(data.deployTimeMs());
     view.setDirX(0);
