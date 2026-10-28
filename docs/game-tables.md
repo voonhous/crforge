@@ -4,7 +4,7 @@ The battle core reads the game's own tables, which this repository does not ship
 
 ## The game tables
 
-A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables, `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_tags` - and `actions.json`, all of one data version.
+A folder of game tables holds one JSON file per table of the game's data - `characters`, `buildings`, `projectiles`, `character_buffs`, `area_effect_objects`, the spells tables (`spells_characters`, `spells_buildings`, `spells_other`, `spells_evolved`, `spells_hero_form`), `rarities`, `character_abilities`, `game_object_filters`, `variables`, `damage_types`, `shapes`, `globals`, `locations`, `game_modes`, `battle_timelines`, `card_groups`, `support_cards`, `support_rarities`, `spawn_groups`, `target_resolvers`, `game_tags` - and `actions.json`, all of one data version.
 
 A table file is a header (`table`, `id`, `version`, `content_sha`) and its `rows` by name in creation order, each with its `index`, its `class` and its `columns` under the game's own names. Values are as the game reads them: integer milliseconds, game units (1000 per tile), the published speed column, references as row names. A game tag's `index` is its bit in an object's tag word.
 

@@ -10,7 +10,7 @@
 
 The hit points and the damage chain sit beside them in `org.crforge.core.pathfinding.combat`. The battle core drives them inside its entity tick (see [The battle core](battle-core.md#one-step)).
 
-Troop walks are held by the recorded reference battles, Knight walks among them (`smoke-c1/knight`, `smoke-c1/knight_centre_s0`, `smoke-c1/knight_behind_king_s0`, `golden-gaps-v1/walk_knight_left_inner`, `golden-gaps-v1/walk_knight_right_rear`).
+Troop walks were held by the recorded reference battles of the 16.402.x data versions (client 16.402.17), Knight walks among them (`smoke-c1/knight`, `smoke-c1/knight_centre_s0`, `smoke-c1/knight_behind_king_s0`, `golden-gaps-v1/walk_knight_left_inner`, `golden-gaps-v1/walk_knight_right_rear`). Data version 16.635.3 has no reference battles yet.
 
 ## Movement states
 
@@ -130,11 +130,11 @@ A unit's lane is the road id of the road cell nearest to its own cell, in square
 
 ## Speed convention
 
-The speed column of the unit data is game units per tick (`SpeedConfig`). A Knight's 60 is 60 units per tick, so 1200 units per second, so 1.2 tiles per second; the walks of the reference battles hold it. The buffs' speed percents scale it (`SpeedBudget`).
+The speed column of the unit data is game units per tick (`SpeedConfig`). A Knight's 60 is 60 units per tick, so 1200 units per second, so 1.2 tiles per second; the walks of the 16.402.x reference battles held it. The buffs' speed percents scale it (`SpeedBudget`).
 
 ## Reference walks
 
-The Knight walks named at the top cover a whole deployment on the standard arena with nothing on it but the six crown towers:
+The Knight walks named at the top covered a whole deployment on the standard arena with nothing on it but the six crown towers:
 
 - a Knight in the left lane
 - one deployed at the centre
@@ -226,6 +226,6 @@ What is left are the cases outside the current scope and the pieces below.
 
 ## How to check
 
-- `./gradlew :conformance:referenceTest` plays every recorded reference battle of the lock's data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](../conformance/README.md)).
+- `./gradlew :conformance:referenceTest -Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>` (with the asset source the build reads, `-Pcrforge.assetSource=...`) plays every recorded reference battle of that data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](../conformance/README.md)). It is skipped without a references folder, and data version 16.635.3 has none yet.
 - The unit tests under `core/src/test/java/org/crforge/core/pathfinding` hold each rule on its own: the route search, its heap and the cost field (`grid`), the movement and push passes (`move`), the targeting visit and default selection (`target`), the state visit (`state`), and the hit points and damage chain (`combat`).
 - The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. See the controls table and the overlays section in [architecture.md](architecture.md#overlays).
