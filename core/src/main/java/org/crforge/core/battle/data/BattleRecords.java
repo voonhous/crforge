@@ -2642,16 +2642,18 @@ public final class BattleRecords {
    * a buildings-table row, whose footprint the placement snaps and searches over.
    *
    * <p>A card that names no unit - no summoned character, no second group and no list - but a
-   * projectile or an area effect is a spell, whichever table it is in: the Electro Wizard and the
-   * Ice Wizard are cast, and their unit is made by their area effect's starting action. Deploying
-   * as a spell changes nothing else for a card: it only moves a projectile spell's start and, for a
-   * card with a unit and a projectile or an area effect, the search's snap, which no card sets
-   * together and which is refused.
+   * projectile or an area effect is a spell, whichever table it is in. Deploying as a spell changes
+   * nothing else for a card: it only moves a projectile spell's start and, for a card with a unit
+   * and an area effect, the search's snap. A card with a unit and a projectile that deploys as a
+   * spell is refused.
    *
    * <p>A card with a unit may cast a projectile as well, which the Mega Knight's does: the cast
    * launches it before the units are made, from the placed point less five times the king tower's
    * collision radius along the length, whichever side plays, at three times that radius, onto the
-   * placed point. A card with a unit and an area effect is refused: no card has one.
+   * placed point. A card with a unit and an area effect that deploys as a spell, as the Electro
+   * Wizard and the Ice Wizard do with the wizard in their list, makes the area effect at the placed
+   * point after its units, its search not snapped to its unit. One that does not deploy as a spell,
+   * or casts a projectile as well, is refused: no card has one.
    *
    * <p>A card with no count summons one. The level index a card may carry is not read, as the game
    * never reads it: the summoned units take the level the card is played at. A card may summon a
