@@ -185,6 +185,9 @@ public final class BuffComponent implements BattleComponent {
 
   private static final int PERCENT = 100;
 
+  /** The speed percents of a component with nothing listed. */
+  private static final int[] NO_PERCENTS = new int[0];
+
   private final WorldEntity entity;
   private final BattleWorld world;
 
@@ -716,8 +719,14 @@ public final class BuffComponent implements BattleComponent {
    */
   @Override
   public void visit() {
+    // Nothing listed, nothing to step and nothing to report: most entities carry no buff, and the
+    // two lists below were made for each of them on every step.
+    if (items.isEmpty()) {
+      return;
+    }
     List<BuffInstance> snapshot = new ArrayList<>(items);
-    List<BuffInstance> removed = new ArrayList<>();
+    // Made at the first removal only; null while nothing has been removed.
+    List<BuffInstance> removed = null;
     for (int k = snapshot.size() - 1; k >= 0; k--) {
       BuffInstance instance = snapshot.get(k);
       instance.step(STEP_MS);
@@ -739,11 +748,16 @@ public final class BuffComponent implements BattleComponent {
       }
       if (instance.finished() && items.remove(instance)) {
         onRemoved(instance);
+        if (removed == null) {
+          removed = new ArrayList<>();
+        }
         removed.add(instance);
       }
     }
-    for (BuffInstance instance : removed) {
-      world.buffRemoved(entity, instance);
+    if (removed != null) {
+      for (BuffInstance instance : removed) {
+        world.buffRemoved(entity, instance);
+      }
     }
   }
 
@@ -1001,9 +1015,23 @@ public final class BuffComponent implements BattleComponent {
     return 0;
   }
 
-  /** The speed percents of the listed rows, which the speed budget scales by. */
+  /**
+   * The speed percents of the listed rows, which the speed budget scales by, one per instance in
+   * listing order. A plain loop rather than a stream: the movement and state passes ask this for
+   * every character on every step, and the stream's pipeline objects were a large share of what a
+   * step allocates. With nothing listed the shared empty array is returned; its length of 0 leaves
+   * nothing a caller could change.
+   */
   public int[] speedPercents() {
-    return items.stream().mapToInt(i -> i.getBuff().speedMultiplier()).toArray();
+    int count = items.size();
+    if (count == 0) {
+      return NO_PERCENTS;
+    }
+    int[] percents = new int[count];
+    for (int k = 0; k < count; k++) {
+      percents[k] = items.get(k).getBuff().speedMultiplier();
+    }
+    return percents;
   }
 
   /**
