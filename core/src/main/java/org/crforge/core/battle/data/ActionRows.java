@@ -2170,9 +2170,8 @@ public final class ActionRows {
           CollectFriends.Columns.builder()
               .cooldownMs(integer(f, "Cooldown"))
               .maxFriendlyTroops(integer(f, "MaxFriendlyTroops"))
-              // The shipped row names a filter row the tables do not ship; the loader reads it as
-              // no filter.
-              .targetFilter(records.filterIfHeld(f.get("TargetFilter").asText()))
+              // Read like any other filter: a row the tables do not hold is refused, naming it.
+              .targetFilter(records.filter(f.get("TargetFilter").asText()))
               .distanceToGetTargets(integer(f, "DistanceToGetTargets"))
               .distanceToBuff(integer(f, "DistanceToBuff"))
               .distanceToUnbuff(integer(f, "DistanceToUnbuff"))

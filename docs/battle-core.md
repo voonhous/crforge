@@ -2230,6 +2230,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
 - A friend collector, the Giant Buffer's, asks the battle's target locks for its nearest friends that its filter passes, as the object query answers them from the index. The priority is the squared distance flipped against the largest int.
 
+  Its filter is read as any game object filter is, its list of rows to exclude among its tests, so the friends of an excluded row are passed over (`BattleAbilityTest`). A filter row the tables do not hold is refused as the collector is built, naming the row. The game's loader reads such a name as no filter, whose query lists nothing, but the game's own data may define the row outside the files the tables are made from: the Rune Giant's collector names `friendly_troops_for_rune_giant`, which the 16.635.3 tables do not hold, so a battle with a Rune Giant is refused on them.
+
   The locks are made by its first step. The post-pass after the phase-3 pending pass grants each target to its highest priority, the first of equals keeping it. The pre-pass drops a lock whose target or holder is no longer listed alive, then acts on the queued releases. A collector that unbuffs a friend beyond a distance is refused.
 
   Its projectile's impact schedules the on-hit action on the friend, the projectile as the cause. The enchanting buff it starts walks back from the projectile to the collector for its level and rarity, and listens to its unit's hits:

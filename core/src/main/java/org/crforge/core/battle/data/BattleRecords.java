@@ -1247,11 +1247,20 @@ public final class BattleRecords {
    * applied to it. A row that sets any other column, as a filter it builds on, is refused: read
    * without it, the filter would match what the row does not.
    *
+   * <p>A name the game object filters table does not hold is refused too, naming the row. The
+   * game's own data may define a filter row outside the files the tables are made from; read as no
+   * filter, the action that names it would find nothing where the game finds its objects.
+   *
    * @param name the row's name
+   * @throws UnsupportedOperationException for a row the tables do not hold, or one that sets a
+   *     column not modelled
    */
   public GameObjectFilter filter(String name) {
     GameTable table = tables.table(GAME_OBJECT_FILTERS);
-    checkArgument(table.has(name), () -> "the game tables have no game object filter " + name);
+    if (!table.has(name)) {
+      throw new UnsupportedOperationException(
+          "the game object filter " + name + ", which the game tables do not hold");
+    }
     GameRow row = table.row(name).tracking();
     GameObjectFilter filter = filterOf(row);
     boolean baseResolved = baseResolved(table, row);
@@ -1294,18 +1303,6 @@ public final class BattleRecords {
       }
     }
     return true;
-  }
-
-  /**
-   * A game object filter a reference column names, or null when the game object filters table holds
-   * no row of that name. The game's loader looks such a column up by name and reads a name it does
-   * not find as no filter, and the battle runs on; the action that holds it decides what no filter
-   * does.
-   *
-   * @param name the row's name
-   */
-  public GameObjectFilter filterIfHeld(String name) {
-    return tables.table(GAME_OBJECT_FILTERS).has(name) ? filter(name) : null;
   }
 
   /** The columns of a game object filter's row that only show something: the text it shows. */

@@ -41,18 +41,18 @@ import org.crforge.core.fidelity.FidelityStatus;
  * </ul>
  *
  * <p>Gathering takes the objects of the query that are not the unit, not buffed already and not
- * locked by another collector, nearest first, the first of equals first. A row whose filter names a
- * row the tables do not hold has no filter: the object query of no filter lists nothing, and the
- * gathering ends there, so the run looks on every step and never finds a friend.
+ * locked by another collector, nearest first, the first of equals first. The query asks the row's
+ * filter as any game object filter is asked, its lists of rows to include and to exclude among its
+ * tests; a row whose filter names a row the tables do not hold is refused as it is built.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled line for line: the four states, the search and the buff distances, the requests"
             + " with their priorities, the claims, the releases, the launches and the hooks; held"
-            + " by the reference battle cg_giantbuffer_buffs_friends. A row with no filter (a"
-            + " name the tables do not hold) finds no friend. Refused: a row that unbuffs a"
-            + " friend beyond a distance by ending its buff action, whose end is not modelled.")
+            + " by the reference battle cg_giantbuffer_buffs_friends. Refused: a row whose"
+            + " filter names a row the tables do not hold, and a row that unbuffs a friend beyond"
+            + " a distance by ending its buff action, whose end is not modelled.")
 public final class CollectFriends extends RowAction {
 
   /** The lock channel of the collectors. */
@@ -66,7 +66,7 @@ public final class CollectFriends extends RowAction {
    *
    * @param cooldownMs the wait after firing before it looks again
    * @param maxFriendlyTroops how many friends it keeps buffed at most
-   * @param targetFilter the filter its search asks, or null for none
+   * @param targetFilter the filter its search asks
    * @param distanceToGetTargets the search distance
    * @param distanceToBuff the distance a friend must stand within once the delay is up
    * @param distanceToUnbuff the distance beyond which no friend is gathered; 0 for none
@@ -250,11 +250,6 @@ public final class CollectFriends extends RowAction {
       List<Integer> out = new ArrayList<>();
       int room = columns.maxFriendlyTroops() - buffed.size();
       if (room < 1) {
-        return out;
-      }
-      if (columns.targetFilter() == null) {
-        // The query of no filter answers no list, and the gathering returns before it offers
-        // any remembered friend again.
         return out;
       }
       offer(host.query(radius, columns.targetFilter()), out, room);

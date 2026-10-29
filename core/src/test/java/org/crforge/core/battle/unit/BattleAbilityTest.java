@@ -11,11 +11,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.TargetLocks;
+import org.crforge.core.battle.action.CollectFriends;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.GridEntityState;
@@ -33,12 +37,20 @@ class BattleAbilityTest {
   @Test
   @DisplayName(
       "a request while the unit deploys is left pending and cast on the visit after the deploy")
-  void aRequestWhileDeployingWaits() {
-    Standard1v1Battle match = passiveTowers();
+  void aRequestWhileDeployingWaits(@TempDir Path folder) throws IOException {
+    // The Giant Buffer's collector names a filter of own troops the test writes, so the unit is
+    // built whether or not the tables hold the filter row its own collector names.
+    GameTables tables = GameData.giantBufferWithTestFilter(folder);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     // A Giant Buffer alone: its collector finds no friend, so only this request casts.
     CharacterEntity buffer =
         match.deploy(
-            0, GameData.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+            0,
+            new BattleRecords(tables).unit("GiantBuffer"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            3500,
+            9500);
     List<String> log = new ArrayList<>();
     int[] tick = {0};
     match
@@ -98,21 +110,9 @@ class BattleAbilityTest {
   @DisplayName(
       "a collector's lock is granted after the phase-3 pass and dropped once its friend has died")
   void aLockGoesWithItsFriend(@TempDir Path folder) throws IOException {
-    // The shipped collector names a filter row the tables do not hold, and finds no friend (see
-    // aCollectorWithAMissingFilterFindsNoFriend); here it names the filter row the tables hold for
-    // the Giant Buffer and the Royal Chef. Its first look waits 1000 ms from the unit's start, and
-    // it searches 7000 around it, as the test writes them.
-    GameTables tables =
-        GameData.altered(
-            folder,
-            "actions",
-            rows -> {
-              ObjectNode collector =
-                  (ObjectNode) rows.get("giantbuffer_collect_friend_troops").get("fields");
-              collector.put("TargetFilter", "friendly_troops_for_chef_giant_buffer");
-              collector.put("ActionDelay", 1000);
-              collector.put("DistanceToGetTargets", 7000);
-            });
+    // The collector names a filter of own troops the test writes. Its first look waits 1000 ms
+    // from the unit's start, and it searches 7000 around it, as the test writes them.
+    GameTables tables = collectorTables(folder, 2, filter -> {});
     BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     CharacterEntity knight =
@@ -138,42 +138,105 @@ class BattleAbilityTest {
 
   @Test
   @DisplayName(
-      "a collector whose filter names a row the tables do not hold finds no friend and fires at"
-          + " none")
-  void aCollectorWithAMissingFilterFindsNoFriend() {
-    // The shipped collector's filter, friendly_troops_for_rune_giant, is a row no filter table
-    // holds; the game's loader reads the name as no filter and the battle runs on.
-    GameTables tables = GameData.tables();
-    BattleRecords records = GameData.records();
+      "a collector whose filter names a row the tables do not hold is refused, naming the row")
+  void aCollectorWithAMissingFilterIsRefused(@TempDir Path folder) throws IOException {
+    // A name no filter table holds. The game's loader would read it as no filter, whose query
+    // lists nothing, where the game's own data may define the row outside the tables: refused
+    // rather than read as a collector that never finds a friend.
+    String collector = collectorName();
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "actions",
+            rows -> GameData.fields(rows, collector).put("TargetFilter", "NoSuchFilter"));
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    match.deploy(
+        0,
+        new BattleRecords(tables).unit("GiantBuffer"),
+        Standard1v1Battle.DEFAULT_LEVEL,
+        0,
+        3500,
+        9500);
+
+    // The unit's starting action, the collector, is built as the first step admits it.
+    assertThatThrownBy(() -> match.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("NoSuchFilter");
+  }
+
+  @Test
+  @DisplayName(
+      "a collector's filter leaves out the friends of the rows it excludes: the nearer friend of"
+          + " an excluded row is passed over for the farther one")
+  void aCollectorSkipsAnExcludedFriend(@TempDir Path folder) throws IOException {
+    // One friend at most, the Archer nearer than the Knight: with no exclusion the collector asks
+    // for the Archer; with the Archer's row excluded, for the Knight.
+    assertThat(lockedFriends(folder.resolve("plain"), filter -> {}))
+        .as("no exclusion")
+        .containsExactly("Archer");
+    assertThat(
+            lockedFriends(
+                folder.resolve("excluding"),
+                filter -> filter.putArray("ExcludeCharactersWithData").add("Archer")))
+        .as("the Archer excluded")
+        .containsExactly("Knight");
+  }
+
+  /**
+   * The friends a lone Giant Buffer's collector of at most one friend holds a lock on at its first
+   * look, with an Archer 1500 ahead of it and a Knight 3000 ahead, its filter written by the test.
+   */
+  private static List<String> lockedFriends(Path folder, Consumer<ObjectNode> filter)
+      throws IOException {
+    Files.createDirectories(folder);
+    GameTables tables = collectorTables(folder, 1, filter);
+    BattleRecords records = new BattleRecords(tables);
     Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
     CharacterEntity knight =
         match.deploy(0, records.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
+    CharacterEntity archer =
+        match.deploy(0, records.unit("Archer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 11000);
     CharacterEntity buffer =
         match.deploy(
             0, records.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
-    List<String> abilities = new ArrayList<>();
-    match
-        .getWorld()
-        .addObserver(
-            new WorldObserver() {
-              @Override
-              public void abilityRequested(int t, CharacterEntity unit, boolean now) {
-                abilities.add(t + " requested");
-              }
-            });
-    BattleWorld world = match.getWorld();
-    // With a filter the tables hold the Knight is asked for on the twenty-first step and buffed by
-    // a projectile soon after (see aLockGoesWithItsFriend); here the query lists nothing on every
-    // step.
-    int launched = 0;
-    for (int step = 0; step < 200; step++) {
+    // The collector first looks on the twenty-first step, and the locks grant in its post-pass.
+    for (int step = 0; step < 21; step++) {
       match.getBattle().step();
-      launched += world.projectiles().size();
     }
+    TargetLocks locks = match.getWorld().locks();
+    List<String> locked = new ArrayList<>();
+    for (CharacterEntity friend : List.of(archer, knight)) {
+      if (locks.claim(buffer.getId(), friend.getId(), CollectFriends.CHANNEL)) {
+        locked.add(friend.name());
+      }
+    }
+    return locked;
+  }
 
-    assertThat(world.locks().claim(buffer.getId(), knight.getId(), 1)).isFalse();
-    assertThat(launched).as("projectile visits").isZero();
-    assertThat(abilities).isEmpty();
+  /** The friend collector the Giant Buffer's row starts with. */
+  private static String collectorName() {
+    return GameData.tables().table("characters").row("GiantBuffer").string("OnStartingAction");
+  }
+
+  /**
+   * The configured tables copied into a folder with the Giant Buffer's collector naming {@link
+   * GameData#TEST_FILTER}, written with the given columns, its first look 1000 ms from the unit's
+   * start, its search 7000 around it and the given number of friends at most.
+   */
+  private static GameTables collectorTables(
+      Path folder, int maxFriends, Consumer<ObjectNode> filter) throws IOException {
+    String collector = collectorName();
+    GameData.altered(
+        folder,
+        "actions",
+        rows ->
+            GameData.fields(rows, collector)
+                .put("TargetFilter", GameData.TEST_FILTER)
+                .put("ActionDelay", 1000)
+                .put("DistanceToGetTargets", 7000)
+                .put("MaxFriendlyTroops", maxFriends));
+    GameData.addTestFilter(folder, filter);
+    return GameTables.load(folder);
   }
 
   @Test
