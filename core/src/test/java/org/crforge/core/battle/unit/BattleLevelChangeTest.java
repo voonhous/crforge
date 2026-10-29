@@ -374,4 +374,85 @@ class BattleLevelChangeTest {
         .isEqualTo(maximum * (hitPoints * 100_000 / oldMaximum) / 100_000);
     assertThat(king.getDamage()).isEqualTo(twelve.getDamage());
   }
+
+  /**
+   * The configured tables with the Knight written as in {@link #knightWritten} and a shield of the
+   * given hit points.
+   */
+  private static GameTables knightWithShield(Path folder, int shield) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("Hitpoints", 690)
+                .put("Damage", 79)
+                .put("ShieldHitpoints", shield)
+                .put("Rarity", "Common"));
+  }
+
+  @Test
+  @DisplayName(
+      "a clone's level falls and its hits follow, but its hit points stay 1 of 1 while both team"
+          + " pools take the new level's maximum")
+  void aCloneKeepsOneHitPoint(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(knightWritten(folder), 11, false);
+    CharacterEntity fall = knight(match, 11, "Fall", 3500);
+    CharacterEntity ten = knight(match, 10, "Ten", 9000);
+    match.getBattle().step();
+    fall.markClone(null);
+    assertThat(fall.getHitPoints().getMaximum()).isEqualTo(1);
+
+    fall.actionHolder().start(relative(-1), fall.actionHolder());
+
+    assertThat(fall.level()).isEqualTo(10);
+    assertThat(fall.getDamage()).isEqualTo(ten.getDamage());
+    assertThat(fall.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(fall.getHitPoints().getMaximum()).isEqualTo(1);
+    assertThat(fall.getHitPoints().teamPool(0)).isEqualTo(ten.getHitPoints().getMaximum());
+    assertThat(fall.getHitPoints().teamPool(1)).isEqualTo(ten.getHitPoints().getMaximum());
+  }
+
+  @Test
+  @DisplayName("a clone's level rising is refused: no recording holds it")
+  void aClonesRiseIsRefused(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(knightWritten(folder), 11, false);
+    CharacterEntity rise = knight(match, 11, "Rise", 14500);
+    match.getBattle().step();
+    rise.markClone(null);
+
+    assertThatThrownBy(() -> rise.actionHolder().start(relative(1), rise.actionHolder()))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a clone's level rising");
+    assertThat(rise.level()).isEqualTo(11);
+  }
+
+  @Test
+  @DisplayName(
+      "a clone's shield stays 1 of 1 through a level change when its maximum was up, and 0 of 0"
+          + " when it was 0")
+  void aClonesShieldKeepsItsMark(@TempDir Path folder) throws IOException {
+    Standard1v1Battle match = new Standard1v1Battle(knightWithShield(folder, 150), 11, false);
+    CharacterEntity up = knight(match, 11, "Up", 3500);
+    CharacterEntity none = knight(match, 11, "None", 14500);
+    match.getBattle().step();
+    up.markClone(null);
+    none.markClone(null);
+    none.getHitPoints().setShield(0);
+    none.getHitPoints().setShieldMaximum(0);
+    assertThat(up.getHitPoints().getShield()).isEqualTo(1);
+    assertThat(up.getHitPoints().getShieldMaximum()).isEqualTo(1);
+
+    up.actionHolder().start(relative(-1), up.actionHolder());
+    none.actionHolder().start(relative(-1), none.actionHolder());
+
+    assertThat(up.level()).isEqualTo(10);
+    assertThat(up.getHitPoints().getShield()).isEqualTo(1);
+    assertThat(up.getHitPoints().getShieldMaximum()).isEqualTo(1);
+    assertThat(up.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(none.level()).isEqualTo(10);
+    assertThat(none.getHitPoints().getShield()).isZero();
+    assertThat(none.getHitPoints().getShieldMaximum()).isZero();
+    assertThat(none.getHitPoints().getMaximum()).isEqualTo(1);
+  }
 }

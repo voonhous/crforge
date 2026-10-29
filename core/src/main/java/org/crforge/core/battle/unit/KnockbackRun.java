@@ -64,7 +64,10 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " switching lanes as the run starts, which the standard game finishes at once but"
             + " no recorded battle reaches; a unit following a removed"
             + " building, which the knock's own code does not test but whose pulled state under"
-            + " the knock no reference holds; a clone or a rider.")
+            + " the knock no reference holds; a rider. A clone knocked as any unit, the start,"
+            + " put-down and update asking nothing of it, held by the reference battle"
+            + " graveyard_clone_slap_push (the hero Giant's slap); an uppercut's push reaching a"
+            + " clone is refused, which no recording holds.")
 final class KnockbackRun extends ActionInstance {
 
   /** Milliseconds one update takes off the counter. */

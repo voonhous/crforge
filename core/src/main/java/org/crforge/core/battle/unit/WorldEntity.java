@@ -1643,7 +1643,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     refreshHitPoints();
   }
 
-  private void refreshHitPoints() {
+  void refreshHitPoints() {
     view.setAlive(HitPoints.alive(hitPoints));
     targetView.setHitPoints(hitPoints == null ? 0 : hitPoints.getHitPoints());
   }
@@ -3172,7 +3172,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */
-  private static int effectiveLevel(int packed) {
+  static int effectiveLevel(int packed) {
     return ((packed >> 8) & 0xff) + (byte) packed;
   }
 

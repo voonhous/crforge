@@ -245,6 +245,12 @@ final class UppercutRun extends ActionInstance {
     if (!pushedUnit.isActive(CharacterEntity.MOVEMENT_SLOT)) {
       return false;
     }
+    // A clone pushed by the uppercut, and knocked by its action on the targets, is held by no
+    // recording; the knock is held on a clone only from the hero Giant's slap.
+    if (pushedUnit.isClone()) {
+      throw new UnsupportedOperationException(
+          row.name() + " pushes the clone " + pushedUnit.name() + ", which is not modelled");
+    }
     // The uppercut asks the entry to refuse a target whose tag word holds NO_PUSHBACK, as a
     // counter's parry of the hit leaves it for the next step; no other push asks that. The entry
     // tests it after its pushback-in-flight refusal, and both refuse with nothing changed, so the
