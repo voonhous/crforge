@@ -1675,8 +1675,22 @@ public class BattleWorld implements HolderPasses {
    * waits before it flies.
    */
   private void registrationPass(ProjectileEntity projectile) {
-    // Its launcher's running actions hear of it first: an enchanting buff may hand it a copy.
-    if (projectile.getOwner() != null) {
+    registrationPass(projectile, null);
+  }
+
+  /**
+   * The registration pass of a projectile whose source is another projectile, the one whose impact
+   * spawned it: that projectile's running actions hear of it in place of a launcher's.
+   *
+   * @param projectile the projectile being registered
+   * @param spawner the projectile that spawned it, or null for one its launcher fired
+   */
+  private void registrationPass(ProjectileEntity projectile, ProjectileEntity spawner) {
+    // Its source's running actions hear of it first: an enchanting buff may hand it a copy, and so
+    // may the copy the projectile that spawned it carries.
+    if (spawner != null) {
+      spawner.projectileRegistered(projectile);
+    } else if (projectile.getOwner() != null) {
       projectile.getOwner().projectileRegistered(projectile);
     }
     ProjectileData data = projectile.getData();
@@ -4365,7 +4379,8 @@ public class BattleWorld implements HolderPasses {
    * distance straight beyond its aim, forward for its side - up the length for side 0, down for
    * side 1 - in place of the fan's line. Each is handed to the holder, which admits it at the next
    * cleanup, and one that flies to a point runs its first pass at once, its body widened by the
-   * row's start radius, before the next is made.
+   * row's start radius, before the next is made. The parent is each one's source: an enchanting
+   * copy it carries hands each a copy as it is registered, before that pass.
    *
    * @param parent the projectile that landed
    */
@@ -4394,7 +4409,7 @@ public class BattleWorld implements HolderPasses {
         projectile.launchSpawned(parent, vec[0] + parent.getAimX(), vec[1] + parent.getAimY());
       }
       holder.add(projectile);
-      registrationPass(projectile);
+      registrationPass(projectile, parent);
       step++;
     }
   }

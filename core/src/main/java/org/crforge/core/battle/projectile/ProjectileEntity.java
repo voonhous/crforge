@@ -1632,6 +1632,29 @@ public class ProjectileEntity extends BattleEntity
   }
 
   /**
+   * Tells the projectile's listening runs, from the last listed down, of a projectile its impact
+   * spawned, whose source it is: an enchanting copy it carries, primed on the hit that completes
+   * the count, hands the spawned projectile a copy of its own, listed on that projectile's holder.
+   * Its added damage is then scaled by the spawned row's multiplier, as the copy runs on it.
+   *
+   * @param spawned the projectile being registered
+   */
+  public void projectileRegistered(ProjectileEntity spawned) {
+    if (actionHolder == null) {
+      return;
+    }
+    List<ActionInstance> runs = actionHolder.running();
+    for (int i = runs.size() - 1; i >= 0; i--) {
+      if (runs.get(i) instanceof GiantBufferBuff.Run run) {
+        GiantBufferBuff.Run copy = run.projectileCopy(spawned);
+        if (copy != null) {
+          spawned.actionHolder().list(copy);
+        }
+      }
+    }
+  }
+
+  /**
    * True for a projectile in its volley's group: only the volley of a hit links its projectiles
    * into one, for a launcher whose row sets GroupProjectiles (see {@link
    * ProjectileLauncher#launch}). Any other projectile the same launcher fires, as the evolved
