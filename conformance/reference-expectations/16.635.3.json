@@ -548,6 +548,7 @@
   "killed-no-attacker-v1/wb_evo_poison_a": {"outcome": "diagnostic_match"},
   "killed-no-attacker-v1/wb_evo_poison_b": {"outcome": "diagnostic_match"},
   "killed-no-attacker-v1/wb_evo_poison_c": {"outcome": "diagnostic_match"},
+  "king-shot-deflect-captured-v1/king_shot_deflect_no_target_captured": {"outcome": "diagnostic_match"},
   "knight-hero-taunt-building-v1/cannon_taunt_t360": {"outcome": "diagnostic_match"},
   "knight-hero-taunt-building-v1/cannon_taunt_t365": {"outcome": "diagnostic_match"},
   "knight-hero-taunt-building-v1/cannon_taunt_t370": {"outcome": "diagnostic_match"},

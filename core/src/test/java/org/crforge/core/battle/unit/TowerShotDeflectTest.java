@@ -13,7 +13,9 @@ import static org.crforge.core.battle.Shipped.text;
 import static org.crforge.core.battle.Shipped.unitRow;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleTowers;
@@ -215,5 +217,65 @@ class TowerShotDeflectTest {
     assertThat(fromKing.projectile().side()).isEqualTo(MONK_SIDE);
     assertThat(fromKing.projectile().getTarget()).isSameAs(king);
     assertThat(fromKing.projectile().getDeflections()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName(
+      "a king tower's shot that has lost its target is sent at the king's crown tower nearest the"
+          + " Deflect, here the king tower, as a point with no target")
+  void kingTowerShotWithoutATargetIsSentAtTheNearestCrownTower() {
+    // The Monk walks onto side 1's king tower and wakes it with its hits; standing there, the king
+    // tower is the crown tower of side 1 nearest its Deflect.
+    Scene scene = scene(9000, 25000, false);
+    TowerEntity king = scene.tower("KingTower_1_0");
+    boolean requested = false;
+    Set<ProjectileEntity> kingShots = new HashSet<>();
+    Deflection fromKing = null;
+    while (fromKing == null) {
+      scene.step();
+      assertThat(scene.tick()).as("a king tower shot is deflected").isLessThan(TICKS);
+      for (ProjectileEntity shot : scene.launched()) {
+        if (shot.getRoot() == king && shot.getDeflections() == 0) {
+          kingShots.add(shot);
+          // The king shoots: the Monk casts its Deflect, and every shot of the king loses its
+          // target in flight, as one whose target has left does.
+          if (!requested) {
+            scene.monk().requestAbility();
+            requested = true;
+          }
+          shot.dropTarget();
+        }
+      }
+      for (Deflection deflection : scene.deflections()) {
+        if (kingShots.contains(deflection.projectile())) {
+          fromKing = deflection;
+          break;
+        }
+      }
+    }
+    ProjectileEntity shot = fromKing.projectile();
+    assertThat(fromKing.source()).as("sent at a point, not back at its source").isNull();
+    assertThat(shot.side()).isEqualTo(MONK_SIDE);
+    assertThat(shot.getTarget()).isNull();
+    assertThat(shot.getRoot()).isSameAs(scene.monk());
+    assertThat(shot.getDeflections()).isEqualTo(1);
+    // The nearest of side 1's crown towers to the Deflect: the king tower, whose position the shot
+    // is aimed at.
+    AreaEffectEntity deflect = scene.deflect();
+    TowerEntity nearest = null;
+    long best = Long.MAX_VALUE;
+    for (BattleEntity entity : scene.match().getWorld().getHolder().entities()) {
+      if (entity instanceof TowerEntity tower && tower.side() == 1) {
+        long dx = deflect.getX() - tower.getView().getX();
+        long dy = deflect.getY() - tower.getView().getY();
+        if (dx * dx + dy * dy < best) {
+          best = dx * dx + dy * dy;
+          nearest = tower;
+        }
+      }
+    }
+    assertThat(nearest).isSameAs(king);
+    assertThat(shot.getAimX()).isEqualTo(king.getView().getX());
+    assertThat(shot.getAimY()).isEqualTo(king.getView().getY());
   }
 }

@@ -4961,11 +4961,10 @@ public class BattleWorld implements HolderPasses {
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
-   * effect has left - or has an action on reaching its target, which no recording holds; a homing
-   * shot a king tower fired that has lost its target, which searches for the nearest enemy crown
-   * tower instead; a Goblin Barrel the search would send at a king tower, which no recording holds;
-   * a projectile an area effect launched that was not dropped onto it. A deflection past the most a
-   * projectile takes (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
+   * effect has left - or has an action on reaching its target, which no recording holds; a Goblin
+   * Barrel the search would send at a king tower, which no recording holds; a projectile an area
+   * effect launched that was not dropped onto it. A deflection past the most a projectile takes
+   * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -5021,27 +5020,18 @@ public class BattleWorld implements HolderPasses {
     }
     // A projectile whose root is a king tower and that has no target searches for the nearest
     // enemy crown tower, as a spell-like one does: a cast Goblin Barrel, which the king tower
-    // casts. A king tower's shot that has lost its target, which homes, would search the same way,
-    // which no recording holds: refused. One with its target still set is sent back at the king,
-    // as from any root.
+    // casts, and a king tower's own shot whose target has left in its flight, which homes. One
+    // with its target still set is sent back at the king, as from any root.
     boolean kingSearch =
         !rolling
             && !rootless
             && !spellLike
             && source.getData().king()
             && projectile.getTarget() == null;
-    if (kingSearch && projectile.getData().homing()) {
-      throw new UnsupportedOperationException(
-          deflector.name()
-              + " deflects "
-              + projectile.name()
-              + " from the king tower "
-              + source.name()
-              + " without a target, which is not modelled");
-    }
     // A spell-like projectile without a target is sent at the enemy crown tower nearest the area
-    // effect, and so is one whose root is a king tower without a target, the Goblin Barrel; one
-    // with a target, as a bomb on its area effect, goes back at its root.
+    // effect, and so is one whose root is a king tower without a target, the Goblin Barrel and the
+    // king tower's shot that has lost its target; one with a target, as a bomb on its area effect,
+    // goes back at its root.
     WorldEntity tower = null;
     if ((spellLike
             && !rootless
@@ -5052,8 +5042,10 @@ public class BattleWorld implements HolderPasses {
       // projectile, the Royal Chef's king tower too. A row with its own deflection action is not
       // sent anywhere: the point is never read.
       tower = nearestEnemyCrownTower(deflector, projectile);
-      // The Goblin Barrel sent at a king tower, which no recording holds: refused.
-      if (kingSearch && tower != null && tower.getData().king()) {
+      // The Goblin Barrel sent at a king tower, which no recording holds: refused. A king tower's
+      // shot, which homes, is sent at a king tower found as at a princess tower: the search keeps
+      // only the tower's position.
+      if (kingSearch && !projectile.getData().homing() && tower != null && tower.getData().king()) {
         throw new UnsupportedOperationException(
             deflector.name()
                 + " sends "
