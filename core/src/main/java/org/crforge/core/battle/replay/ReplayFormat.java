@@ -257,6 +257,14 @@ public record ReplayFormat(
    * stands at level 1, as the 14.593.1 fields give it; without a king level, the avatar's exp level
    * does not change it. The fields are the client's, as its replays' are ({@link #BY_VERSION}), so
    * they hold on every data version the client runs.
+   *
+   * <p>Client 16.635.1 reads such a case by the same fields, for every data version it runs ({@link
+   * GameVersions#CLIENT_16_635_1_DATA}). Its recorded battles of generated cases on data version
+   * 16.635.3 play the same with the request lists empty, the switches {@code cardlvlmin} 0, {@code
+   * rrb} and {@code seb} false and a king level of 1 for each side added, all together, and on one
+   * case also the request lists, the switches and the king levels each added alone; a king level of
+   * 2 raises that side's king to that level's hit points, so the absent king level is 1; without a
+   * king level, the avatar's exp level does not change the battle.
    */
   private static final Map<String, ReplayFormat> GENERATED_BY_VERSION = generatedByVersion();
 
@@ -278,6 +286,9 @@ public record ReplayFormat(
     Map<String, ReplayFormat> byVersion = new HashMap<>();
     byVersion.put(V14_593_1.dataVersion(), V14_593_1);
     for (String version : GameVersions.CLIENT_16_402_17_DATA) {
+      byVersion.put(version, V14_593_1.forDataVersion(version));
+    }
+    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
       byVersion.put(version, V14_593_1.forDataVersion(version));
     }
     return Map.copyOf(byVersion);
