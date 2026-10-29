@@ -114,6 +114,56 @@ class FirecrackerDeflectTest {
   }
 
   @Test
+  @DisplayName(
+      "a rocket deflected after its Firecracker has left leaves before its action on the deflector"
+          + " lands, and the action's damage lands unscaled on the Monk")
+  void rocketActionFromARocketThatLeftLandsUnscaled() {
+    Scene scene = new Scene();
+    CharacterEntity monk = scene.monk();
+    CharacterEntity firecracker = scene.shooter("Firecracker", MONK_Y + GAP);
+    scene.castDeflect(monk);
+    ProjectileEntity rocket = scene.firstShotOf(firecracker);
+    // The Firecracker is killed as its rocket flies, so the rocket reaches the Deflect with no one
+    // to be sent back at: its flight ends at the turn and it leaves at the next cleanup, before the
+    // action it runs on the deflector is drained.
+    scene.world.kill(firecracker, null);
+    scene.step();
+    assertThat(scene.world.getHolder().entities())
+        .as("the Firecracker has left")
+        .doesNotContain(firecracker);
+    while (scene.deflections.stream().noneMatch(d -> d.projectile() == rocket)) {
+      scene.step();
+    }
+    assertThat(
+            scene.deflections.stream()
+                .filter(d -> d.projectile() == rocket)
+                .findFirst()
+                .orElseThrow()
+                .source())
+        .as("sent back at no one")
+        .isNull();
+    int base = actionDamage(rocket.getData().actionOnDeflector());
+    int scaled =
+        LevelScaling.scale(
+            ScalingGlobals.standard(),
+            base,
+            rocket.packedLevel(),
+            ScalingMode.CARD_DAMAGE,
+            rocket.getData().rarity());
+    assertThat(scaled).as("the rocket's level would change the amount").isNotEqualTo(base);
+    // With its source gone the drain has no level to scale by and no percentages: the row's
+    // amount, through the Monk's protection as the drain works it out and once more as it lands.
+    int drained = Math.max(monk.getBuffs().damageReduction(base), 0);
+    int expected = Math.max(monk.getBuffs().damageReduction(drained), 1);
+    int before = hitPoints(monk);
+    scene.step();
+    assertThat(scene.world.getHolder().entities()).as("the rocket has left").doesNotContain(rocket);
+    assertThat(before - hitPoints(monk))
+        .as("the action's damage, unscaled, through the Monk's protection")
+        .isEqualTo(expected);
+  }
+
+  @Test
   @DisplayName("a Firecracker's spark that reaches the Deflect rolls back the way it came")
   void sparkRollsBack() {
     Scene scene = new Scene();
