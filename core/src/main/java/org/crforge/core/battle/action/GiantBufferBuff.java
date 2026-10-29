@@ -39,7 +39,9 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * </ul>
  *
  * <p>A projectile the unit registers on the hit that completes the count gets a copy of the run,
- * primed one short, whose hook adds the damage as the projectile lands.
+ * primed one short, whose hook adds the damage as the projectile lands. A deflection leaves the
+ * copy on the projectile, so the deflector's parent and the turned projectile's impact both gain
+ * the added damage.
  *
  * <p>Each step empties the recorded hit ids. Once the object that gave the buff is no longer in the
  * battle's live list, the run counts the row's finish time down and then ends, scheduling its
@@ -73,6 +75,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " would complete the count. An entry's first projectile gets a copy as the others"
             + " do, held by runegiant_enchant_princess_evo; a hit whose entry names its own attack"
             + " action is counted as any other, held by runegiant_enchant_electrowizard_hero."
+            + " A projectile carrying a copy keeps it when it is deflected: the deflector's parent"
+            + " takes the added damage on its hit, and the turned projectile lands with it again"
+            + " at the giver's level, the count untouched; held by the reference battle"
+            + " monk_deflect_enchanted_shot, the Monk at another level than the Rune Giant, and"
+            + " BattleEnchantedDeflectTest. Whether the added damage is taken before"
+            + " or after the deflected share on a crown tower is read in the build (after) and"
+            + " held by no case: the units' share is the whole damage."
             + " Refused: a unit with attached children,"
             + " which would get copies, and the Berserker's attack sequence step.")
 public final class GiantBufferBuff extends RowAction {

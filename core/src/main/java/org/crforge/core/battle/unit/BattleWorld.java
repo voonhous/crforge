@@ -4900,6 +4900,12 @@ public class BattleWorld implements HolderPasses {
    * projectile is sent back at its root owner, for the parent's side, so the drain deals the hit,
    * and the runs hear of it, after the turn-around.
    *
+   * <p>An enchanting copy a projectile carries, the Giant Buffer's on the completing hit's shot,
+   * stays on it through the deflection: the turn touches neither the projectile's runs nor its row.
+   * So the parent's hit gains the copy's added damage, and the turned projectile's impact gains it
+   * again, after the deflected share, at the level and rarity of the buff's giver, by the
+   * multiplier for the projectile's row, the count untouched.
+   *
    * <p>A spell-like projectile (see {@link #spellLike}) goes another way. Once deflected, one whose
    * owner, a character, stands within DOUBLEDEFLECT_SPELL_MIN_DISTANCE of the area effect is not
    * deflected at all: it passes on untouched. One without a target - a cast spell - is sent at a
@@ -4979,10 +4985,9 @@ public class BattleWorld implements HolderPasses {
    * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
    * effect has left - or has an action on reaching its target, which no recording holds; a homing
    * shot a king tower fired that has lost its target, which searches for the nearest enemy crown
-   * tower instead, and one carrying copies that change its damage; a Goblin Barrel the search would
-   * send at a king tower, which no recording holds; a projectile an area effect launched that was
-   * not dropped onto it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns
-   * it around all the same and then ends its flight.
+   * tower instead; a Goblin Barrel the search would send at a king tower, which no recording holds;
+   * a projectile an area effect launched that was not dropped onto it. A deflection past the most a
+   * projectile takes (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -5056,10 +5061,6 @@ public class BattleWorld implements HolderPasses {
               + source.name()
               + " without a target, which is not modelled");
     }
-    if (projectile.carriesListeners()) {
-      throw new UnsupportedOperationException(
-          projectile.name() + " is deflected carrying copies that change its damage, not modelled");
-    }
     // A spell-like projectile without a target is sent at the enemy crown tower nearest the area
     // effect, and so is one whose root is a king tower without a target, the Goblin Barrel; one
     // with a target, as a bomb on its area effect, goes back at its root.
@@ -5102,6 +5103,8 @@ public class BattleWorld implements HolderPasses {
             validatorQueries)) {
       int hitId = nextHitId();
       int damage = projectile.undeflectedDamage();
+      // An enchanting copy the projectile carries adds its damage to this hit too, the parent's
+      // crown-tower test choosing which; the deflection leaves the copy on the projectile.
       if (projectile.hasActionHolder()) {
         damage =
             projectile.listenedDamage(damage, hitId, parent.getTargetView().crownTower(), parent);
