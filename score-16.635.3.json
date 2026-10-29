@@ -4,15 +4,13 @@
   "to_the_end": 99.9,
   "ticks_agreed": 99.9,
   "outcomes": {
-    "diagnostic_match": 19401,
-    "mismatch": 1,
+    "diagnostic_match": 19402,
     "unsupported": 3
   },
   "first_failures": {
     "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2,
-    "mismatch $.entities[].hp": 1,
     "unsupported: giantbuffer_enchanting_buff on IceWizardHero, whose attached children get copies, which is not modelled": 1
   },
   "set": "2ef83639d6a9043b",
-  "commit": "aa7775484bdfddf36d7fbdf169af372c833f6281"
+  "commit": "765f25df907e4262418336a5af23809788f01387"
 }
