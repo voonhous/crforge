@@ -18,6 +18,7 @@ import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.action.GiantBufferBuff;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.expression.ExpressionCompiler;
 import org.crforge.core.battle.expression.ExpressionEvaluator;
@@ -288,16 +289,17 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "an enchanting buff on a musketeer, whose attack sequence replaces its attack, is refused")
-  void anEnchantedMusketeerIsRefused() {
+      "an enchanting buff on a musketeer, whose attack sequence launches a projectile or runs an"
+          + " action in place of the hit, starts and is listed on it")
+  void anEnchantedMusketeerRuns() {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity giver = scene.still(0, "Knight", X, Y - 2000, "G");
     BattleWorld world = scene.match.getWorld();
     BattleAction buff =
         world.getActions().build("giantbuffer_enchanting_buff", world.binding(scene.musketeer));
-    assertThatThrownBy(() -> scene.musketeer.actionHolder().start(buff, giver.actionHolder()))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("attack sequence replaces its attack");
+    scene.musketeer.actionHolder().start(buff, giver.actionHolder());
+    assertThat(scene.musketeer.actionHolder().running())
+        .anyMatch(GiantBufferBuff.Run.class::isInstance);
   }
 
   private static int evaluate(String text, BattleExpressionEnvironment environment) {

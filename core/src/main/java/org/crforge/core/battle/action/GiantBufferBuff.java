@@ -63,10 +63,18 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " Inferno Dragon's ramp, runs with its ordinary hit hooks, the ramp untouched: the"
             + " build's hit picks only whether an entry launches, acts or hits directly, and its"
             + " direct hit is the one a row without a sequence takes; held by"
-            + " BattleEnchantedSequenceTest. Refused: a unit with attached children, which would"
-            + " get copies, a unit whose attack sequence replaces its attack with an entry that"
-            + " launches a projectile or runs an action, which no case holds under an enchanting"
-            + " run, and the Berserker's attack sequence step.")
+            + " BattleEnchantedSequenceTest. A unit whose sequence entries launch its projectiles,"
+            + " as the Little Prince's and the reworked Three Musketeers' shots, gives copies to"
+            + " the completing hit's projectiles as a row's launch does; held by the reference"
+            + " battles runegiant_enchant_little_prince and runegiant_enchant_three_musketeers."
+            + " An entry that runs an action in place of the hit, as the reworked musketeers'"
+            + " bayonet, is neither counted nor enchanted, and the damage its action deals gains"
+            + " nothing: held by runegiant_enchant_musketeer_bayonet, a bayonet on the hit that"
+            + " would complete the count. An entry's first projectile gets a copy as the others"
+            + " do, held by runegiant_enchant_princess_evo; a hit whose entry names its own attack"
+            + " action is counted as any other, held by runegiant_enchant_electrowizard_hero."
+            + " Refused: a unit with attached children,"
+            + " which would get copies, and the Berserker's attack sequence step.")
 public final class GiantBufferBuff extends RowAction {
 
   /**
@@ -138,17 +146,11 @@ public final class GiantBufferBuff extends RowAction {
               + ", whose attached children get copies,"
               + " which is not modelled");
     }
-    if (owner.actionAttackSequence()) {
-      // The hits of a unit whose attack sequence replaces its attack with an entry's projectile,
-      // or an entry's action, are not established under an enchanting run. A sequence of damage
-      // entries alone hits directly, as a row without one, and keeps the row's hit hooks.
-      throw new UnsupportedOperationException(
-          name()
-              + " on "
-              + owner.actionRowName()
-              + ", whose attack sequence replaces its attack with an entry that launches a"
-              + " projectile or runs an action, which is not modelled");
-    }
+    // A unit's attack sequence needs no check: an entry only chooses whether a hit launches, runs
+    // an action or hits directly. A launch registers its projectiles as the row's launch does, so
+    // the completing hit's projectiles get copies and the hit is counted; an entry's action is
+    // run in place of the hit, which is then neither counted nor enchanted, and the damage the
+    // action deals reaches no hook of this run.
     Run run = new Run(this, owner);
     ActionOwner giver = instigator == null ? null : instigator.getOwner();
     if (giver == null) {
