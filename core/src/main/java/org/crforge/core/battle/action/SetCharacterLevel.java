@@ -23,7 +23,8 @@ import org.crforge.core.fidelity.FidelityStatus;
  * the rarity's first level in the low byte. A relative adjustment moves the low byte by that many
  * steps, wrapping within the byte; without one, the low byte is set so the level counted from 1
  * becomes the absolute level, 1 when the row leaves it out. The entity then takes the new level as
- * its level change does. The action does not last and schedules nothing.
+ * its level change does, and a clone is set back to 1 hit point of 1 after it (see {@code
+ * CharacterEntity#changeLevel}). The action does not last and schedules nothing.
  *
  * <p>A row may write the adjustment as an expression, RelativeLevelAdjustmentExpression, evaluated
  * when the action runs. That form acts only on a character (a troop, a building or a tower), and
@@ -40,7 +41,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the value evaluated at the run, the signed low byte moved and held to 0..99."
             + " ExecuteOnParent is read from the build's perform, which picks the holder's owner"
             + " in place of the cause before either form, and is held by the hero Tombstone's"
-            + " monster taking its building's level.")
+            + " monster taking its building's level. A clone set back to 1 hit point of 1, its"
+            + " shield held to at most 1 of 1, after a fall, read from the build's perform and"
+            + " held by the reference battles graveyard_clone_pulse_delevel_a, _b and"
+            + " clone_shield_delevel. Refused: a clone's level rising, which no recording holds.")
 public final class SetCharacterLevel extends RowAction {
 
   /** Bits of the packed level that hold the steps above the rarity's first level. */

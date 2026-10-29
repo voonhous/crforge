@@ -20,8 +20,9 @@ import org.junit.jupiter.api.Test;
 /**
  * A knock and a push away from the cause started on a unit that carries riders, a Goblin Giant
  * played by its card: they run on the carrier as on any unit, and the riders, which never move on
- * their own, keep their places around it, so they go up, along and down with it. A knock or a push
- * started on a rider or a clone is still refused.
+ * their own, keep their places around it, so they go up, along and down with it. A clone is knocked
+ * and pushed as any unit; a knock or a push started on a rider, and an uppercut's push reaching a
+ * clone, are still refused.
  */
 class BattleKnockCarrierTest {
 
@@ -157,6 +158,91 @@ class BattleKnockCarrierTest {
 
     assertThatThrownBy(() -> rider.actionHolder().start(scene.row(KNOCK, rider), null))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("a clone or a rider, not modelled");
+        .hasMessageContaining("a rider, not modelled");
+  }
+
+  /** A battle with the towers passive, a Knight clone of side 1 and a Knight of side 0 by it. */
+  private static final class CloneScene {
+    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final CharacterEntity clone;
+    final CharacterEntity cause;
+
+    CloneScene() {
+      clone = match.deploy(0, GameData.unit("Knight"), LEVEL, 1, 9000, 22000, "clone");
+      cause = match.deploy(0, GameData.unit("Knight"), LEVEL, 0, 7000, 22000, "cause");
+      step(30);
+      clone.markClone(null);
+    }
+
+    void step(int ticks) {
+      for (int i = 0; i < ticks; i++) {
+        match.getBattle().step();
+      }
+    }
+
+    BattleAction row(String name, WorldEntity entity) {
+      return match.getWorld().getActions().build(name, match.getWorld().binding(entity));
+    }
+  }
+
+  @Test
+  @DisplayName("a knock started on a clone lifts it and puts it down as any unit, at 1 hit point")
+  void aKnockOnACloneLiftsIt() {
+    CloneScene scene = new CloneScene();
+    CharacterEntity clone = scene.clone;
+
+    clone.actionHolder().start(scene.row(KNOCK, clone), null);
+    scene.step(2);
+    assertThat(clone.getView().getHeightOffset()).as("lifted by the knock").isPositive();
+    assertThat(clone.getView().isAir()).isTrue();
+    scene.step(KNOCK_UPDATES);
+    assertThat(clone.getView().isAir()).as("landed").isFalse();
+    assertThat(clone.getHitPoints().getHitPoints()).isEqualTo(1);
+    assertThat(clone.getHitPoints().getMaximum()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("a push away from its cause started on a clone pushes it as any unit")
+  void aPushOnACloneMovesIt() {
+    CloneScene scene = new CloneScene();
+    CharacterEntity clone = scene.clone;
+    int startX = clone.getView().getX();
+
+    clone.actionHolder().start(scene.row(PUSH, clone), scene.cause.actionHolder());
+    scene.step(PUSH_STEPS + 6);
+    // The cause stands on the clone's left along the width: the push throws it to the right.
+    assertThat(clone.getView().getX()).as("pushed away from the cause").isGreaterThan(startX);
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mega Knight's uppercut whose push reaches a clone is refused: no recording holds"
+          + " it")
+  void anUppercutOnACloneIsRefused() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    BattleWorld world = match.getWorld();
+    CharacterEntity megaKnight =
+        match.deploy(0, world.getRecords().unit("MegaKnight_EV1"), LEVEL, 0, 3500, 14000, "mk");
+    CharacterEntity clone = match.deploy(0, GameData.unit("Knight"), LEVEL, 1, 3500, 15600, "k");
+    for (int i = 0; i < 22; i++) {
+      match.getBattle().step();
+    }
+    clone.markClone(null);
+    megaKnight.getUnit().targeting().setReference(clone.getTargetView());
+    megaKnight.setVariable(world.variableKey("MegaKnight_EV1_Do_Uppercut_Counter"), 0);
+    megaKnight
+        .actionHolder()
+        .start(
+            world.getActions().build("MegaKnight_EV1_uppercut", world.binding(megaKnight)),
+            clone.actionHolder());
+
+    assertThatThrownBy(
+            () -> {
+              for (int i = 0; i < 40; i++) {
+                match.getBattle().step();
+              }
+            })
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("pushes the clone");
   }
 }

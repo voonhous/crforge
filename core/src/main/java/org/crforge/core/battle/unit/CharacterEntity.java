@@ -1145,6 +1145,45 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * Takes a new level as a level-changing action gives it (see {@link
+   * WorldEntity#changeLevel(int)}), and a clone keeps its mark through it. The level change works
+   * out the maximum, both team pools and the shield's maximum at the new level for a clone as for
+   * any unit, and its hit points keep their share, which on a clone of 1 of 1 is the whole new
+   * maximum. The level-changing action then sets a clone's hit points and maximum back to 1 each (0
+   * for one that is 0), and holds its shield and the shield's maximum to at most 1 each, both 0
+   * when the shield's maximum was 0 before the change; a shield at 0 stays at 0. The team pools and
+   * the damage of the new level are kept. So a clone the evolved Electro Giant's pulse lowers a
+   * level hits as one of that level and still dies to its first hit.
+   *
+   * <p>Refused rather than guessed: a clone's level rising. The action's step after the change does
+   * not ask the direction, but no recording holds a rise: the Royal Chef's pancake passes over a
+   * unit whose maximum is below 2, the hero Mini P.E.K.K.A. levels up by its ability, which no
+   * clone is tapped for, and the evolved Electro Giant's debuff gives the level back only as it is
+   * taken off.
+   *
+   * @param packed the new level, packed
+   */
+  @Override
+  public void changeLevel(int packed) {
+    if (clone && effectiveLevel(packed) > effectiveLevel(actionPackedLevel())) {
+      throw new UnsupportedOperationException(
+          "a clone's level rising, on " + name() + ", is not modelled: no recording holds it");
+    }
+    HitPoints hp = getHitPoints();
+    boolean shieldHeld = hp != null && hp.getShieldMaximum() > 0;
+    super.changeLevel(packed);
+    if (!clone || hp == null) {
+      return;
+    }
+    hp.setHitPoints(hp.getHitPoints() > 0 ? 1 : 0);
+    hp.setMaximum(hp.getMaximum() > 0 ? 1 : 0);
+    int held = shieldHeld ? 1 : 0;
+    hp.setShield(hp.getShield() > 0 ? Math.min(hp.getShield(), held) : 0);
+    hp.setShieldMaximum(hp.getShieldMaximum() > 0 ? Math.min(hp.getShieldMaximum(), held) : 0);
+    refreshHitPoints();
+  }
+
+  /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
    * by anything but an area effect, of a unit still deploying whose clone enters the deploying
@@ -2680,8 +2719,9 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Starts the evolved Mega Knight's uppercut on the character. A clone and a rider are refused; a
-   * carrier is uppercut as any unit, its riders going along with it (see {@link #knockback}).
+   * Starts the evolved Mega Knight's uppercut on the character. A clone and a rider are refused,
+   * which no recording holds; a carrier is uppercut as any unit, its riders going along with it
+   * (see {@link #knockback}).
    */
   @Override
   public ActionInstance uppercut(MegaKnightUppercut action, int phase, ActionOwner instigator) {
@@ -2690,7 +2730,11 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Knocks the character into the air. A clone and a rider are refused.
+   * Knocks the character into the air. A rider is refused.
+   *
+   * <p>A clone is knocked as any unit: neither the knock's start, its put-down of a unit in a jump
+   * or a dash nor its update asks whether the unit is a clone, so a clone goes up, along and down
+   * as the unit it stands for would, at its 1 hit point.
    *
    * <p>A carrier is knocked as any unit: neither the knock's start nor its update asks whether the
    * unit carries riders, and the riders, which never move on their own, are put back on their ring
@@ -2709,7 +2753,7 @@ public class CharacterEntity extends WorldEntity {
    */
   @Override
   public ActionInstance knockback(Knockback action, int phase, ActionOwner instigator) {
-    refuseCloneOrRider(action.name());
+    refuseRider(action.name());
     return new KnockbackRun(action, this, phase, instigator(instigator));
   }
 
@@ -2755,14 +2799,15 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Starts a push of the character away from what caused it. A clone and a rider are refused, as is
-   * a cause that is not an object of the battle; a carrier is pushed as any unit, its riders going
-   * along with it (see {@link #knockback}).
+   * Starts a push of the character away from what caused it. A rider is refused, as is a cause that
+   * is not an object of the battle; a carrier is pushed as any unit, its riders going along with it
+   * (see {@link #knockback}). A clone is pushed as any unit: neither the action, its run nor the
+   * push asks whether the unit is a clone.
    */
   @Override
   public ActionInstance pushbackFromInstigator(
       DoPushbackFromInstigator action, int phase, ActionOwner instigator, int causeX) {
-    refuseCloneOrRider(action.name());
+    refuseRider(action.name());
     WorldEntity cause = instigator(instigator);
     if (cause == null) {
       throw new UnsupportedOperationException(
@@ -2883,13 +2928,25 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * Refuses a knock, an uppercut or a push away from the cause on a clone or a rider, which no
-   * recording holds. A carrier takes them as any unit.
+   * Refuses an uppercut on a clone or a rider, which no recording holds. A carrier takes it as any
+   * unit.
    */
   private void refuseCloneOrRider(String action) {
     if (isClone() || getParent() != null) {
       throw new UnsupportedOperationException(
           action + " runs on " + name() + ", a clone or a rider, not modelled");
+    }
+  }
+
+  /**
+   * Refuses a knock or a push away from the cause on a rider, whose own movement visit puts it back
+   * beside its carrier each step and which no recording holds. A carrier and a clone take them as
+   * any unit.
+   */
+  private void refuseRider(String action) {
+    if (getParent() != null) {
+      throw new UnsupportedOperationException(
+          action + " runs on " + name() + ", a rider, not modelled");
     }
   }
 
