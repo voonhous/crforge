@@ -26,12 +26,12 @@ import java.util.stream.Stream;
  * map of the set, decoded, under its own path ({@code tilemaps/<name>.csv}): the arena maps the
  * locations name, which the battle core's tests hold its bundled arena map to.
  *
- * <p>A folder already built from the same content set by the same decoder is used as it is; a
- * {@value #STAMP} file beside the tables records what it was built from. Run as a program it builds
- * data versions and prints each one's folder: {@code TableBuild <cache> <asset source> <data
- * version>...}, which {@code ./gradlew :tables:gameTables} runs. There is no default source: the
- * game's asset CDN is used only when it is asked for by name ({@value AssetSource#GAME_CDN_NAME}),
- * and a missing source stops the run, naming the setting.
+ * <p>A folder already built from the same content set by the same decoder and client schema is used
+ * as it is; a {@value #STAMP} file beside the tables records what it was built from. Run as a
+ * program it builds data versions and prints each one's folder: {@code TableBuild <cache> <asset
+ * source> <data version>...}, which {@code ./gradlew :tables:gameTables} runs. There is no default
+ * source: the game's asset CDN is used only when it is asked for by name ({@value
+ * AssetSource#GAME_CDN_NAME}), and a missing source stops the run, naming the setting.
  */
 public final class TableBuild {
 
@@ -51,11 +51,11 @@ public final class TableBuild {
   public static Path build(DataVersion version, AssetSource source, AssetCache cache)
       throws IOException {
     Path folder = cache.tables(version.version());
-    Properties wanted = stamp(version);
+    ClientSchema schema = ClientSchema.load(version.clientVersion());
+    Properties wanted = stamp(version, schema);
     if (wanted.equals(readStamp(folder))) {
       return folder;
     }
-    ClientSchema schema = ClientSchema.load(version.clientVersion());
     GameFiles files = GameFiles.fetch(version, source, cache, schema.assetDatabase());
     Map<String, String> documents = decode(files, schema);
     Path parent = folder.getParent();
@@ -95,12 +95,17 @@ public final class TableBuild {
     return out;
   }
 
-  private static Properties stamp(DataVersion version) {
+  /**
+   * What a folder of tables is built from: the data version's files, the decoder, and the client
+   * schema's own text, so a schema that gains a table or a column builds the folder again.
+   */
+  private static Properties stamp(DataVersion version, ClientSchema schema) {
     Properties p = new Properties();
     p.setProperty("data_version", version.version());
     p.setProperty("content_sha", version.contentSha());
     p.setProperty("client_version", version.clientVersion());
     p.setProperty("decoder", Integer.toString(DECODER));
+    p.setProperty("schema", schema.digest());
     return p;
   }
 

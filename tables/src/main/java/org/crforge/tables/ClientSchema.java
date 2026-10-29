@@ -123,6 +123,7 @@ public final class ClientSchema {
       String dataClass,
       String dataMember) {}
 
+  private final String digest;
   private final String clientVersion;
   private final ExtLink extLink;
   private final Map<String, Integer> typeTokens;
@@ -139,7 +140,8 @@ public final class ClientSchema {
   private final Map<String, Map<String, Map<String, String>>> loaderKinds;
   private final AssetDatabase assetDatabase;
 
-  private ClientSchema(JsonNode root) {
+  private ClientSchema(JsonNode root, String digest) {
+    this.digest = digest;
     int format = root.path("format").asInt();
     if (format != FORMAT) {
       throw new IllegalArgumentException(
@@ -208,10 +210,19 @@ public final class ClientSchema {
       if (in == null) {
         throw new IllegalArgumentException("no client schema of client version " + clientVersion);
       }
-      return new ClientSchema(MAPPER.readTree(in));
+      byte[] text = in.readAllBytes();
+      return new ClientSchema(MAPPER.readTree(text), AssetCache.sha256(text));
     } catch (IOException e) {
       throw new UncheckedIOException("cannot read the client schema " + resource, e);
     }
+  }
+
+  /**
+   * The SHA-256 of the schema file, hex: a folder of tables built from another schema of the same
+   * client (one that has since gained a table or a column) is built again.
+   */
+  public String digest() {
+    return digest;
   }
 
   /** The client version this schema is of. */
