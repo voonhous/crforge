@@ -52,7 +52,7 @@ Routes use row-major cell IDs and are stored destination-first. Following consum
 
 An empty route uses the current position as its waypoint, unless the unit has a reference beyond its attack range. Then it heads for the point its attack range away from the reference, as a flying unit with direct paths does. A dash whose route a pushback's end dropped goes on this way. Special movement states can override ordinary waypoint selection.
 
-The standard arena is 36 by 64 cells, 18000 by 32000 game units. Each published cell value contributes only its low seven bits to routing:
+The standard arena is 36 by 64 cells, 18000 by 32000 game units. Its map is bundled with the battle core (`arena/standard_1v1_cells.txt`); a unit test holds it, cell for cell, to the data version's own `tilemaps/tilemap.csv`, which the table build writes beside the tables, so a data version whose arena changed fails the tests. Each published cell value contributes only its low seven bits to routing:
 
 | Bits | Meaning |
 |---|---|

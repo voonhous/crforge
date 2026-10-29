@@ -7,9 +7,14 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.assertj.core.groups.Tuple;
@@ -18,11 +23,14 @@ import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.action.BurstAttack;
 import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.combat.LevelScaling;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The towers a battle is built with: each side's from the spawn group of its tower selection, the
@@ -177,5 +185,78 @@ class Standard1v1BattleTowersTest {
       towers.add((WorldEntity) entity);
     }
     return towers;
+  }
+
+  @Test
+  @DisplayName(
+      "a spawn group that sets MirrorY to its default places the towers as one that leaves it out")
+  void mirrorYAtItsDefaultPlacesTheSameTowers(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "spawn_groups",
+            rows -> GameData.columns(rows, Standard1v1Battle.PRINCESS_TOWERS).put("MirrorY", true));
+    assertThat(towers(new Standard1v1Battle(tables, 3)))
+        .extracting(WorldEntity::side, WorldEntity::x, WorldEntity::y)
+        .isEqualTo(
+            towers(new Standard1v1Battle(GameData.tables(), 3)).stream()
+                .map(tower -> tuple(tower.side(), tower.x(), tower.y()))
+                .toList());
+  }
+
+  @Test
+  @DisplayName(
+      "a spawn group that turns MirrorY off is refused, naming it: the top side's towers are"
+          + " placed mirrored, the column's default, and nothing else is modelled")
+  void mirrorYOffIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "spawn_groups",
+            rows ->
+                GameData.columns(rows, Standard1v1Battle.PRINCESS_TOWERS).put("MirrorY", false));
+    assertThatThrownBy(() -> new Standard1v1Battle(tables, 3))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("MirrorY");
+  }
+
+  @Test
+  @DisplayName("a spawn object that leaves out its row or a cell coordinate is refused, naming it")
+  void aSpawnObjectWithoutAFieldIsRefused(@TempDir Path folder) throws IOException {
+    for (String field : List.of("Data", "x", "y")) {
+      GameTables tables =
+          GameData.altered(
+              Files.createDirectories(folder.resolve(field)),
+              "spawn_groups",
+              rows ->
+                  ((ObjectNode)
+                          GameData.columns(rows, Standard1v1Battle.PRINCESS_TOWERS)
+                              .get("Objects")
+                              .get(1))
+                      .remove(field));
+      assertThatThrownBy(() -> new Standard1v1Battle(tables, 3))
+          .as(field)
+          .isInstanceOf(UnsupportedOperationException.class)
+          .hasMessageContaining(Standard1v1Battle.PRINCESS_TOWERS)
+          .hasMessageContaining(field);
+    }
+  }
+
+  @Test
+  @DisplayName("a spawn object with a field the battle does not read is refused, naming it")
+  void aSpawnObjectWithAnUnreadFieldIsRefused(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "spawn_groups",
+            rows ->
+                ((ObjectNode)
+                        GameData.columns(rows, Standard1v1Battle.PRINCESS_TOWERS)
+                            .get("Objects")
+                            .get(0))
+                    .put("Level", 2));
+    assertThatThrownBy(() -> new Standard1v1Battle(tables, 3))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("Level");
   }
 }

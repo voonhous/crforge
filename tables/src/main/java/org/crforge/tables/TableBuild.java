@@ -22,7 +22,9 @@ import java.util.stream.Stream;
  * Builds the game tables of a data version on this machine: fetches the game's files of its content
  * set from an asset source through the cache, reads them with the schema of the data version's
  * client, and writes one JSON file per table plus {@code actions.json} into the cache's {@code
- * tables/<data version>/} folder, the folder the battle core reads.
+ * tables/<data version>/} folder, the folder the battle core reads. Beside them it writes each tile
+ * map of the set, decoded, under its own path ({@code tilemaps/<name>.csv}): the arena maps the
+ * locations name, which the battle core's tests hold its bundled arena map to.
  *
  * <p>A folder already built from the same content set by the same decoder is used as it is; a
  * {@value #STAMP} file beside the tables records what it was built from. Run as a program it builds
@@ -34,7 +36,7 @@ import java.util.stream.Stream;
 public final class TableBuild {
 
   /** The version of the decoder's output. Raise it when the tables it writes change. */
-  public static final int DECODER = 2;
+  public static final int DECODER = 3;
 
   /** The file in a built folder that records what it was built from. */
   public static final String STAMP = "build.properties";
@@ -54,8 +56,8 @@ public final class TableBuild {
       return folder;
     }
     ClientSchema schema = ClientSchema.load(version.clientVersion());
-    Map<String, String> documents =
-        decode(GameFiles.fetch(version, source, cache, schema.assetDatabase()), schema);
+    GameFiles files = GameFiles.fetch(version, source, cache, schema.assetDatabase());
+    Map<String, String> documents = decode(files, schema);
     Path parent = folder.getParent();
     Files.createDirectories(parent);
     Path staging = Files.createTempDirectory(parent, version.version() + ".");
@@ -63,6 +65,11 @@ public final class TableBuild {
       for (Map.Entry<String, String> d : documents.entrySet()) {
         Files.writeString(
             staging.resolve(d.getKey() + ".json"), d.getValue(), StandardCharsets.UTF_8);
+      }
+      for (Map.Entry<String, String> map : files.tileMaps().entrySet()) {
+        Path file = staging.resolve(map.getKey());
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, map.getValue(), StandardCharsets.UTF_8);
       }
       StringBuilder stampText = new StringBuilder();
       wanted.stringPropertyNames().stream()

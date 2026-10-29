@@ -68,6 +68,7 @@ class TableBuildTest {
     files.put(
         "csv_logic/characters_evo.toml",
         "[Alpha_EV1]\nBase = \"Alpha\"\nHitpoints = [\"%\", 110]\n");
+    files.put("tilemaps/tilemap.csv", "\"Map\",,\n,\"x\",\"x\"\n,\"int\",\"int\"\n,16,\r\n,,1\n");
     files.put("data_manifest.toml", "[Gamma]\n Path='csv_logic/characters/gamma.toml'\n");
     files.put(
         "csv_logic/characters/gamma.toml",
@@ -227,6 +228,15 @@ class TableBuildTest {
     Path rebuilt = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
     assertThat(table(rebuilt, "characters").path("rows").path("Alpha").path("global_id").asLong())
         .isEqualTo(34000001L);
+  }
+
+  @Test
+  @DisplayName("each tile map of the set is written beside the tables, decoded, under its own path")
+  void tileMaps() throws IOException {
+    Path built = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
+    assertThat(built.resolve("tilemaps/tilemap.csv"))
+        .content(StandardCharsets.UTF_8)
+        .isEqualTo("\"Map\",,\n,\"x\",\"x\"\n,\"int\",\"int\"\n,16,\n,,1\n");
   }
 
   @Test

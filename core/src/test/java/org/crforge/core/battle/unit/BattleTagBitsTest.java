@@ -22,7 +22,10 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.BattleRecords;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.pathfinding.EntityFlags;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -51,8 +54,29 @@ class BattleTagBitsTest {
   /** A tick after the one the Mini P.E.K.K.A.'s hits kill the unaltered Giant on. */
   private static final int AFTER_DEATH = 400;
 
-  /** The tag the shifted table drops, ahead of NO_DAMAGE and UNTARGETABLE. */
-  private static final String DROPPED = "HAS_CAPTURE";
+  /**
+   * The tag the shifted table drops, ahead of NO_DAMAGE and UNTARGETABLE: the last one before both
+   * that no flag of the battle names, as a table that lacks a named tag is refused.
+   */
+  private static final String DROPPED = droppedTag();
+
+  /** The last game tag before NO_DAMAGE and UNTARGETABLE that no flag names, from the table. */
+  private static String droppedTag() {
+    GameTable tags = GameData.tables().table("game_tags");
+    int before = Math.min(tags.row("NO_DAMAGE").index(), tags.row("UNTARGETABLE").index());
+    String dropped = null;
+    for (GameRow row : tags.rows()) {
+      if (row.index() < before && !EntityFlags.TAGS.contains(row.name())) {
+        if (dropped == null || row.index() > tags.row(dropped).index()) {
+          dropped = row.name();
+        }
+      }
+    }
+    if (dropped == null) {
+      throw new IllegalStateException("no game tag ahead of NO_DAMAGE that no flag names");
+    }
+    return dropped;
+  }
 
   /** The tag the shifted table appends after its last one. */
   private static final List<String> APPENDED = List.of("TEST_APPENDED_TAG");
@@ -65,7 +89,7 @@ class BattleTagBitsTest {
    *
    * @param folder the folder to copy them into
    * @param giantTags the GameTagsToSet the Giant's row is given
-   * @param shifted whether the tags table drops HAS_CAPTURE and appends a tag
+   * @param shifted whether the tags table drops an unnamed tag and appends a tag
    */
   private static GameTables tables(Path folder, String giantTags, boolean shifted)
       throws IOException {
@@ -96,8 +120,8 @@ class BattleTagBitsTest {
   }
 
   /**
-   * Drops HAS_CAPTURE, moves every later tag down one index and appends the new tag, leaving the
-   * rows listed in index order.
+   * Drops the unnamed tag, moves every later tag down one index and appends the new tag, leaving
+   * the rows listed in index order.
    */
   private static void dropAndAppend(ObjectNode rows) {
     int dropped = rows.get(DROPPED).get("index").asInt();

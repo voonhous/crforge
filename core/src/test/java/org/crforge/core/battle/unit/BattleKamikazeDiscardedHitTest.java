@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -241,11 +242,13 @@ class BattleKamikazeDiscardedHitTest {
 
   @Test
   @DisplayName(
-      "without the skip global, as the 16.402 tables had it, an evolved Wall Breaker hooked by a"
-          + " Fisherman mid-attack is destroyed by the end of its discarded hit, with no death"
-          + " damage")
+      "tables that do not publish the skip global are refused, naming it: the game reads the"
+          + " global's row with no test for a missing one, so a missing row is not a clear flag")
   void withoutTheGlobal(@TempDir Path folder) throws IOException {
-    assertDestroyedByItsDiscardedHit(hookedMidAttack(withoutSkip(folder)));
+    GameTables tables = withoutSkip(folder);
+    assertThatThrownBy(() -> new Standard1v1Battle(tables, LEVEL, false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(SKIP);
   }
 
   @Test

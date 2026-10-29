@@ -178,8 +178,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " of 0. Still refused, reached by no row: a buff on damage beside an area radius,"
             + " whose area branch the 16.635.1 drain no longer has; the rest of that path is not"
             + " traced. Also traced on 16.635.1, no reference holds it yet: the global"
-            + " LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT read from the tables, clear when they do not"
-            + " publish it.")
+            + " LOGIC_SKIP_KAMIKAZE_ON_DISCARDED_HIT read from the tables, which are refused when"
+            + " they do not publish it.")
 public class BattleWorld implements HolderPasses {
 
   @Getter private final TileMap tileMap;
@@ -860,7 +860,8 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * True when the loaded tables publish {@link #SKIP_KAMIKAZE_ON_DISCARDED_HIT} set: a hit
-   * discarded for distance then skips its end, which a Kamikaze unit destroys itself in.
+   * discarded for distance then skips its end, which a Kamikaze unit destroys itself in. Tables
+   * that do not publish it are refused as they are loaded.
    */
   @Getter private boolean skipKamikazeOnDiscardedHit;
 
@@ -884,6 +885,7 @@ public class BattleWorld implements HolderPasses {
    *
    * @param tables the game tables of one data version
    * @throws UnsupportedOperationException for tables of a data version the battle does not model
+   * @throws IllegalArgumentException for tables without a global the battle reads, naming it
    */
   public void load(GameTables tables) {
     requireModelled(tables);
@@ -891,11 +893,12 @@ public class BattleWorld implements HolderPasses {
     this.flagBits = EntityFlags.of(tables);
     this.records = new BattleRecords(tables);
     this.actions = new ActionRows(tables, records);
+    // The game reads both globals' rows with no test for a missing one, so tables without either
+    // are refused, naming it, rather than read as a clear flag.
     this.movementGlobals =
         movementGlobals.withResetChargeDuringPushbackWhenMovementDisabled(
-            records.publishedGlobalBoolean(RESET_CHARGE_DURING_PUSHBACK));
-    this.skipKamikazeOnDiscardedHit =
-        records.publishedGlobalBoolean(SKIP_KAMIKAZE_ON_DISCARDED_HIT);
+            records.globalBoolean(RESET_CHARGE_DURING_PUSHBACK));
+    this.skipKamikazeOnDiscardedHit = records.globalBoolean(SKIP_KAMIKAZE_ON_DISCARDED_HIT);
   }
 
   /**
