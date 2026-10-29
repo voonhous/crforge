@@ -1079,7 +1079,7 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
 - `BattleMirrorTest` holds the Mirror where the recorded Mirror battles do not reach:
   - A Mirror after a Mirror repeats the same Knight one level up for 4 each, and a Mirror before any card is refused with code 23, nothing taken and nothing cycled.
   - A Mirror given while Archers of its side are pending repeats them, not the Knight the king holds then.
-  - A Mirror given in the tick of another play of its side or the tick after is refused, and one two ticks after repeats it.
+  - A Mirror given in the tick of another play of its side is refused, and one given the tick after or later repeats it, a Giant refused at its run included.
   - A Giant refused at its run is repeated by a Mirror given while it is pending and by one given up to 60 ticks after its giving. A Mirror given within two ticks of that is refused, and one after repeats the Knight.
   - A Mirror of the Archer Queen places a copy one level up while she lives, for the item's cost, and her slot follows the copy. So a command naming the first is refused and one naming the copy passes.
   - A Mirror after a hero Mini Pekka repeats the hero row one level up and its champion's slot follows the copy.
@@ -1685,11 +1685,13 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The battle builds the item as the play runs. The player's client builds it as the play is given, from the play of its side given last of those it still lists as promised, else from the king's copy of the last card. A play is listed from the step after it is given until its run places it, or, refused at its run, until 60 ticks after its giving. An ability command's promise names no card.
 
+  So a play given the tick before the Mirror is listed. The client files its promise in a staged list as it is given, and the step that moves the counter on to the Mirror's giving appends it to the list the item reads. The battle's own update runs its steps and then the hand, which builds each card's item again, so the item the Mirror is given with has seen that step. A play given in the Mirror's own tick is still staged.
+
   A listed play the match placed is the last card by the Mirror's run, so a Mirror given while it is pending repeats it. A listed play the match refused is repeated in place of the last card, its card and evolution field.
 
   Refused:
 
-  - a Mirror given in the tick of another play of its side or the tick after
+  - a Mirror given in the tick of another play of its side, which no recording holds
   - one given within two ticks of the drop of a refused play's promise
   - one whose client would repeat a Mirror's play or a refused variant play
   - a Mirror outside a match
