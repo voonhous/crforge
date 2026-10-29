@@ -1,0 +1,24 @@
+{
+  "content_version": "16.635.3",
+  "battles": 7837,
+  "to_the_end": 98.4,
+  "ticks_agreed": 98.8,
+  "outcomes": {
+    "diagnostic_match": 7713,
+    "mismatch": 97,
+    "unsupported": 27
+  },
+  "first_failures": {
+    "mismatch $.entities.length": 94,
+    "unsupported: giantbuffer_enchanting_buff walks back from an object whose maker has left, which is not modelled": 12,
+    "unsupported: giantbuffer_enchanting_buff on LittlePrince, whose attack sequence replaces its attack with an entry that launches a projectile or runs an action, which is not modelled": 10,
+    "mismatch $.entities[].hp": 2,
+    "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2,
+    "mismatch $.entities[].x": 1,
+    "unsupported: GiantHero_Slap_Pushback runs on SkeletonKingGraveyard_3000040_0, a clone or a rider, not modelled": 1,
+    "unsupported: a damage-taking action's hit of an amount scaled by the level of a source no longer in the battle is not modelled": 1,
+    "unsupported: giantbuffer_enchanting_buff on ThreeMusketeer_Rework_Character_2, whose attack sequence replaces its attack with an entry that launches a projectile or runs an action, which is not modelled": 1
+  },
+  "set": "72de65484dacb2e1",
+  "commit": "4c7e62b687934e221093dc4e44627c62795dd384"
+}

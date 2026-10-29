@@ -20,5 +20,5 @@
     "unsupported: giantbuffer_enchanting_buff on ThreeMusketeer_Rework_Character_2, whose attack sequence replaces its attack with an entry that launches a projectile or runs an action, which is not modelled": 1
   },
   "set": "72de65484dacb2e1",
-  "commit": "dd65fc6d1a31215c5da64e96d5f7149418990fc0"
+  "commit": "4c7e62b687934e221093dc4e44627c62795dd384"
 }
