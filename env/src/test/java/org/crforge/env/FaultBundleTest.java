@@ -31,9 +31,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A faulted Ladder episode written as a bundle, and the bundle's replay meeting the same fault. The
- * fault is one the battle core refuses as it steps: a Mirror given the tick after another play of
- * its side, which the player's client may not yet repeat. The decks name rows of the tables; the
- * costs and elixir are read from the observation.
+ * fault is one the battle core refuses as it steps: a Knight whose row sets a StartingBuff, which
+ * no row played by a card asks for, refused as its play runs. The tables are the configured ones
+ * with that row altered, so no lifted refusal of shipped content moves the fault. The decks name
+ * rows of the tables; the costs and elixir are read from the observation.
  */
 class FaultBundleTest {
 
@@ -62,14 +63,23 @@ class FaultBundleTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static GameTables tables;
-  private static int mirrorId;
 
   @TempDir Path folder;
 
   @BeforeAll
   static void loadTables() {
     tables = GameData.tables();
-    mirrorId = VectorEnv.vocabulary(tables).id("Mirror");
+  }
+
+  /** The configured tables with the Knight's row setting a StartingBuff. */
+  private static GameTables knightStartingWithRage(Path folder) throws IOException {
+    return GameData.altered(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("StartingBuff", "Rage")
+                .put("StartingBuffTime", 2000));
   }
 
   private static int header(VectorEnv env, int index, int seat, int field) {
@@ -89,25 +99,21 @@ class FaultBundleTest {
   }
 
   /**
-   * Plays seat 0 of environment 0 to the Mirror's refusal, deciding every tick: a troop first, so
-   * the king has a last card; once it has run, with the Mirror and a troop in the hand and the
-   * elixir for both, the troop, and on the next tick the Mirror, its item repeating the troop still
-   * waiting. Other troops are played to cycle the hand while the Mirror is not in it. Seat 1 and
-   * every other environment wait.
+   * Plays seat 0 of environment 0 to the Knight's refusal, deciding every tick: the Knight once it
+   * is in the hand and open, and until then the cheapest other troop with the elixir near full, to
+   * cycle the hand. The Mirror is never played. Seat 1 and every other environment wait.
    *
    * @return the decisions taken until the fault
    */
-  private static int playToTheMirrorFault(VectorEnv env) {
+  private static int playToTheKnightsFault(VectorEnv env, int knightId, int mirrorId) {
     IntBuffer actions = env.actions().asIntBuffer();
-    int phase = 0;
-    int firstRuns = Integer.MAX_VALUE;
+    boolean knightGiven = false;
     for (int decision = 0; decision < 3000; decision++) {
       for (int i = 0; i < 2 * env.count(); i++) {
         actions.put(i, Schema.WAIT);
       }
-      int tick = header(env, 0, 0, Schema.H_TICK);
       int elixir = header(env, 0, 0, Schema.H_ELIXIR) / MatchSide.SCALE;
-      int mirrorSlot = -1;
+      int knightSlot = -1;
       int troopSlot = -1;
       int troopCost = Integer.MAX_VALUE;
       for (int slot = 0; slot < 4; slot++) {
@@ -116,43 +122,32 @@ class FaultBundleTest {
         }
         int card = header(env, 0, 0, Schema.H_HAND_CARD + slot);
         int cost = header(env, 0, 0, Schema.H_HAND_COST + slot);
-        if (card == mirrorId) {
-          mirrorSlot = slot;
-        } else if (cost < troopCost) {
+        if (card == knightId) {
+          knightSlot = slot;
+        } else if (card != mirrorId && cost < troopCost) {
           troopSlot = slot;
           troopCost = cost;
         }
       }
-      int mirrorCost =
-          mirrorSlot < 0 ? Integer.MAX_VALUE : header(env, 0, 0, Schema.H_HAND_COST + mirrorSlot);
-      if (phase == 0 && troopSlot >= 0) {
+      boolean giving = false;
+      if (!knightGiven && knightSlot >= 0) {
+        actions.put(0, playAction(knightSlot));
+        knightGiven = true;
+        giving = true;
+      } else if (!knightGiven && troopSlot >= 0 && elixir >= 9) {
         actions.put(0, playAction(troopSlot));
-        firstRuns = tick + Standard1v1Battle.PLAY_DELAY_TICKS;
-        phase = 1;
-      } else if (phase == 1 && tick > firstRuns && troopSlot >= 0) {
-        if (mirrorSlot >= 0 && elixir >= 2 * troopCost + mirrorCost) {
-          actions.put(0, playAction(troopSlot));
-          phase = 2;
-        } else if (mirrorSlot < 0 && elixir >= 9) {
-          actions.put(0, playAction(troopSlot));
-        }
-      } else if (phase == 2) {
-        assertThat(mirrorSlot).as("the Mirror open the tick after the troop").isNotNegative();
-        actions.put(0, playAction(mirrorSlot));
-        phase = 3;
       }
       env.step();
-      if (phase == 3) {
+      if (giving) {
         assertThat(header(env, 0, 0, Schema.H_LAST_REFUSAL))
-            .as("the Mirror given")
+            .as("the Knight given")
             .isEqualTo(Schema.REFUSAL_NONE);
-        phase = 4;
       }
       if (info(env, 0, Schema.I_FAULT) != Schema.FAULT_NONE) {
         return decision + 1;
       }
     }
-    throw new AssertionError("no fault in 3000 decisions; phase " + phase);
+    throw new AssertionError("no fault in 3000 decisions; Knight given " + knightGiven);
   }
 
   /** One deck for each of a vector's environments, as {@link VectorEnv#reset} takes them. */
@@ -165,20 +160,23 @@ class FaultBundleTest {
   }
 
   @Test
-  void aFaultedEpisodesBundleReplaysToTheSameFaultAtTheSameTick() throws IOException {
+  void aFaultedEpisodesBundleReplaysToTheSameFaultAtTheSameTick(@TempDir Path altered)
+      throws IOException {
     EnvConfig config =
         EnvConfig.DEFAULT
             .withDecisionTicks(1)
             .withFaultBundles(folder.resolve("bundles").toString())
             .withArena(Scenarios.arena(tables));
+    GameTables tables = knightStartingWithRage(altered);
+    Vocabulary vocabulary = VectorEnv.vocabulary(tables);
     try (VectorEnv env = VectorEnv.ladder(tables, config, 2, 1)) {
       env.setAutoreset(false);
       env.reset(new int[] {31, 32}, each(2, TROOPS_AND_MIRROR), each(2, TROOPS_AND_MIRROR));
-      int decisions = playToTheMirrorFault(env);
+      int decisions = playToTheKnightsFault(env, vocabulary.id("Knight"), vocabulary.id("Mirror"));
 
       EnvFault fault = env.fault(0);
       assertThat(fault.kind()).isEqualTo(EnvFault.Kind.REFUSAL);
-      assertThat(fault.message()).contains("a Mirror given in the tick of another play");
+      assertThat(fault.message()).contains("Knight is played with a StartingBuff");
       // The other battle of the vector goes on.
       assertThat(env.fault(1)).isNull();
       assertThat(env.dones().get(1)).isZero();

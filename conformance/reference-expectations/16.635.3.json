@@ -627,6 +627,8 @@
   "mirror-of-variant-v1/mirror_of_maiden_on_foot": {"outcome": "diagnostic_match"},
   "mirror-pending-v1/mirror_after_refused_play": {"outcome": "diagnostic_match"},
   "mirror-pending-v1/mirror_play_pending": {"outcome": "diagnostic_match"},
+  "mirror-repeat-timing-v1/mirror_given_tick_after_barrel_a": {"outcome": "diagnostic_match"},
+  "mirror-repeat-timing-v1/mirror_given_tick_after_barrel_b": {"outcome": "diagnostic_match"},
   "mirror-stagger-v1/mirror_of_goblins": {"outcome": "diagnostic_match"},
   "mk-hold-stun-v1/no_sparkys": {"outcome": "diagnostic_match"},
   "mk-hold-stun-v1/sparkys_t1150": {"outcome": "diagnostic_match"},

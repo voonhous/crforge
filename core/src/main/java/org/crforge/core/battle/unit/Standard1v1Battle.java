@@ -85,8 +85,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " battle's random source before the decks are dealt, bounded by the number of its"
             + " choices, held by the recorded Knight battle's opening hands. Not established:"
             + " what the choices of a player's data are. Not modelled, and refused: a Mirror"
-            + " outside a match, one given in the tick of another play of its side or the tick"
-            + " after, one given within two ticks of the drop of a refused play's promise, and one"
+            + " outside a match, one given in the tick of another play of its side, one given"
+            + " within two ticks of the drop of a refused play's promise, and one"
             + " whose client would repeat a Mirror's play or a refused variant play; a variant"
             + " card outside a match; a variant play picked with no command item that is run"
             + " before tick 22, or given while another play of its side is pending, whose cost"
@@ -1090,14 +1090,19 @@ public class Standard1v1Battle {
    * #PROMISE_TICKS} ticks after its giving; an ability command's promise names no card and is
    * passed over.
    *
-   * <p>A listed play the match placed at its run is the last card by the Mirror's run, two ticks or
+   * <p>A play given the tick before the Mirror is listed too. The client files a play's promise in
+   * a staged list when it is given, and the step that follows, the one that moves the tick on to
+   * the Mirror's giving, appends it to the list the item reads. The battle's own update runs its
+   * steps and then the hand, which builds each card's item again, so the item the Mirror is given
+   * with has seen that step.
+   *
+   * <p>A listed play the match placed at its run is the last card by the Mirror's run, one tick or
    * more later, so the item is built from the last card as the Mirror runs. A listed play the match
    * refused at its run is not, and the item repeats it: its card and the evolution field it
-   * carried. Refused: a Mirror given in the tick of another play of its side or the tick after, at
-   * a moment of the client's that decides whether it lists that play yet; one given within two
-   * ticks of the tick a refused play's promise is dropped, which is not traced to the tick; one
-   * whose listed play is a Mirror's, or a variant card's the match refused, which no reference
-   * holds.
+   * carried. Refused: a Mirror given in the tick of another play of its side, whose promise is
+   * still staged, which no recording holds; one given within two ticks of the tick a refused play's
+   * promise is dropped, which is not traced to the tick; one whose listed play is a Mirror's, or a
+   * variant card's the match refused, which no reference holds.
    *
    * @return the listed play the match refused at its run, which the item repeats, or null for an
    *     item built from the last card
@@ -1113,13 +1118,14 @@ public class Standard1v1Battle {
         continue;
       }
       int otherGiven = other.given();
-      if (otherGiven >= given - 1) {
+      if (otherGiven >= given) {
         throw new UnsupportedOperationException(
             name
-                + ": a Mirror given in the tick of another play of its side or the tick after,"
-                + " which the player's client may not yet repeat, is not modelled");
+                + ": a Mirror given in the tick of another play of its side, which the player's"
+                + " client does not list until the next step, is not modelled");
       }
-      // Run two ticks or more before the Mirror's run.
+      // Given the tick before the Mirror or earlier, so run one tick or more before the Mirror's
+      // run.
       Play run = playNamed(other.name());
       boolean refused = run.matchCode() != 0 || run.result() == null || !run.result().placed();
       // Pending after the step before the giving, the last the client has seen; or refused and
