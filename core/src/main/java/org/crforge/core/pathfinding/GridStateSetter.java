@@ -112,7 +112,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " other change, held by recorded battles of an evolved Mega Knight held by its"
             + " uppercut and stunned by Mini Sparkys; the follow-up state's countdown"
             + " seeded on its entry, held by ability_monk and random_battle16_s0048; the clone"
-            + " setup's entry and exit, held by card_Clone and spell_clone_into_push. Held by the"
+            + " setup's entry and exit, held by card_Clone and spell_clone_into_push; a pulled"
+            + " unit's exit into the clone setup without the standing test, held by"
+            + " clone-refusals-v1/pull_clone_pulled_troop and"
+            + " clone-refusals-v1/drag_clone_dragged_fisherman. Held by the"
             + " walks of the reference battles, whose route empties at the lock, and the staggered"
             + " placements of the reference battles, golden-gaps-v1/place_barbarians_edge and"
             + " place_skeleton_army_edge among them. Not modelled: switching components, the"
@@ -497,8 +500,14 @@ public final class GridStateSetter implements StateSetter {
    * the unit aimed at, the move time and its copy, the charge and the pushback's bytes reset and a
    * reference out of range dropped; then the standing test on the unit's cell, which moves it off a
    * cell it may not stand on. The route the standard game empties here too is emptied, or prepared
-   * afresh, by the entry of the standing or the moving state, the only two a pulled unit is asked
-   * into.
+   * afresh, by the entry of the state asked for: standing, moving or the clone's setup.
+   *
+   * <p>A unit a Clone reaches while pulled (a troop the hook pulls, or a Fisherman his hook drags
+   * to a building) leaves for the clone's setup the same way but skips the standing test: it stays
+   * where the hook had it, on the river too, and its move apart starts from there. The hook no
+   * longer pulls a troop set up so, and flies on to its aim; a dragged Fisherman's targeting goes
+   * off in the setup's combat gate, so the hook's next step finds its owner lost and ends it where
+   * it stands.
    *
    * <p>The move time starting again from 0 gives a unit that walks and waits by turns (a row with a
    * stop-movement-after time) a whole stretch of walking after the release: it walks on the first
@@ -524,10 +533,9 @@ public final class GridStateSetter implements StateSetter {
         following.dropReferenceOutOfRange();
       }
     }
+    // Set up as a clone, the unit is not tested on its cell: it stays where the hook had it.
     if (newState == GridEntityState.CLONE_SETUP) {
-      // Cloned while pulled, the unit would go straight into the clone's setup.
-      throw new UnsupportedOperationException(
-          owner.getName() + " leaves a pulled state for a clone's setup, not modelled");
+      return;
     }
     following.standOrRelocate();
   }

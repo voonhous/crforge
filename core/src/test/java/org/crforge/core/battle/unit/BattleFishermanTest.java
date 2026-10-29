@@ -25,6 +25,7 @@ import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.CellTests;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.junit.jupiter.api.DisplayName;
@@ -557,15 +558,125 @@ class BattleFishermanTest {
     assertThat(f.getState()).isEqualTo(GridEntityState.MOVING);
   }
 
+  /** The pulled troop's scene of the river: the Fisherman away from the bridges. */
+  private static Scene riverPull() {
+    return new Scene(GameData.tables(), 6500, 13500);
+  }
+
+  /** The Knight the river scene's Fisherman hooks. */
+  private static CharacterEntity riverKnight(Scene scene) {
+    return scene.still(0, 1, "Knight", 6500, 13500 + IN_RING, "K");
+  }
+
   @Test
-  @DisplayName("a troop pulled cannot be cloned")
-  void aPulledTroopAskedElsewhere() {
-    Scene other = new Scene();
-    CharacterEntity pulled = other.still(0, 1, "Knight", X, Y + IN_RING, "K");
-    other.stepToTheHook();
-    assertThatThrownBy(() -> pulled.requestState(GridEntityState.CLONE_SETUP))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("clone's setup");
+  @DisplayName(
+      "a troop cloned while pulled leaves the pull for the clone's setup where the hook has it, on"
+          + " the river, with no move off the water, and moves apart from there; the hook flies on"
+          + " to its aim and is let go there, and the waiting Fisherman goes on")
+  void aPulledTroopCloned() {
+    // The tick on which the pull has the Knight over the water, from the same scene uncloned.
+    Scene dry = riverPull();
+    CharacterEntity dryKnight = riverKnight(dry);
+    dry.stepToTheHook();
+    CellGrid grid = dry.match.getWorld().getGrid();
+    while (dryKnight.getView().getState() == GridEntityState.FOLLOWING_REMOVED
+        && CellTests.cellBlocked(grid, dryKnight.getView().getX(), dryKnight.getView().getY()) == 0
+        && dry.tick < 200) {
+      dry.step(1);
+    }
+    assertThat(dryKnight.getView().getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED);
+    int cloneTick = dry.tick - 1;
+    int x = dryKnight.getView().getX();
+    int y = dryKnight.getView().getY();
+
+    // The Knight's side clones it on that tick, after the hook's step.
+    Scene scene = riverPull();
+    CharacterEntity knight = riverKnight(scene);
+    List<CharacterEntity> clones = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void cloned(
+                  int t,
+                  CharacterEntity original,
+                  CharacterEntity clone,
+                  SpawnHost instigator,
+                  List<Integer> visits) {
+                clones.add(clone);
+              }
+            });
+    scene.step(cloneTick);
+    scene.match.placeAreaEffect(cloneTick, "Clone", LEVEL, 1, x, y, "C");
+    scene.step(1);
+
+    GridEntity view = knight.getView();
+    assertThat(clones).hasSize(1);
+    assertThat(view.getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(view.getX()).isEqualTo(x);
+    assertThat(view.getY()).isEqualTo(y);
+    assertThat(CellTests.cellBlocked(scene.match.getWorld().getGrid(), x, y)).isNotZero();
+    assertThat(scene.relocations).isEmpty();
+    CharacterEntity clone = clones.get(0);
+    assertThat(clone.getView().getX()).isEqualTo(x);
+    assertThat(clone.getView().getY()).isEqualTo(y);
+
+    // The two move apart from the water; the hook, no longer pulling, flies on toward its aim.
+    ProjectileEntity hook = scene.hooks.get(0);
+    assertThat(hook.isReleased()).isFalse();
+    int statesBefore = scene.states.size();
+    int hookX = hook.getX();
+    int hookY = hook.getY();
+    scene.step(1);
+    assertThat(view.getY()).isNotEqualTo(y);
+    assertThat(clone.getView().getY()).isNotEqualTo(y);
+    assertThat(hook.isReleased()).isFalse();
+    assertThat(new int[] {hook.getX(), hook.getY()}).isNotEqualTo(new int[] {hookX, hookY});
+    while (!hook.isReleased() && scene.tick < 300) {
+      scene.step(1);
+    }
+    assertThat(hook.isReleased()).isTrue();
+    // Let go on its arrival with no state asked of anyone, and the Knight moved off no cell; the
+    // Fisherman goes on once the hook has left.
+    assertThat(scene.states).hasSize(statesBefore);
+    assertThat(scene.relocations).isEmpty();
+    scene.step(2);
+    assertThat(scene.fisherman.getView().getState())
+        .isNotEqualTo(GridEntityState.COMPONENTS_DISABLED);
+  }
+
+  @Test
+  @DisplayName(
+      "a Fisherman cloned while a hook on a building drags him leaves the drag for the clone's"
+          + " setup where he stands, his targeting switched off, so the hook's next step finds its"
+          + " owner lost and ends it where it stands at the building")
+  void aDraggedFishermanCloned() {
+    int cannonY = 17500;
+    Scene scene = new Scene(GameData.tables(), 6500, cannonY - IN_RING);
+    scene.still(0, 1, "Cannon", 6500, cannonY, "C");
+    ProjectileEntity hook = scene.stepToTheHook();
+    GridEntity f = scene.fisherman.getView();
+    scene.step(2);
+    assertThat(f.getState()).isEqualTo(GridEntityState.FOLLOWING_REMOVED_BUILDING);
+    int statesBefore = scene.states.size();
+
+    scene.match.placeAreaEffect(scene.tick, "Clone", LEVEL, 0, f.getX(), f.getY(), "Clone");
+    scene.step(1);
+    assertThat(f.getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(scene.fisherman.isActive(CharacterEntity.TARGETING_SLOT)).isFalse();
+    assertThat(hook.isReleased()).isFalse();
+    int hx = hook.getX();
+    int hy = hook.getY();
+
+    scene.step(1);
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(hook.getX()).isEqualTo(hx);
+    assertThat(hook.getY()).isEqualTo(hy);
+    // Nothing more is asked of the Fisherman by the hook, and he is moved off no cell.
+    assertThat(scene.states).hasSize(statesBefore);
+    assertThat(scene.relocations).isEmpty();
   }
 
   @Test

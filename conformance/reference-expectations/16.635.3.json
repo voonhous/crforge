@@ -1,0 +1,10 @@
+{
+ "content_version": "16.635.3",
+ "cases": {
+  "clone-refusals-v1/carrier_clone_deploying": {"outcome": "diagnostic_match"},
+  "clone-refusals-v1/drag_clone_dragged_fisherman": {"outcome": "diagnostic_match"},
+  "clone-refusals-v1/kamikaze_clone_demolisher": {"outcome": "diagnostic_match"},
+  "clone-refusals-v1/mk_clone_deploying": {"outcome": "diagnostic_match"},
+  "clone-refusals-v1/pull_clone_pulled_troop": {"outcome": "diagnostic_match"}
+ }
+}

@@ -25,7 +25,7 @@ The simulator's battle rules follow client 16.635.1 (`GameVersions.CLIENT_16_635
 
 The range's minimum has not been checked against the game server yet.
 
-Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_1_DATA` lists the ones the simulator has game tables for (16.635.3), and CI tests each of them (`compatible` in `crforge-data.lock`). No battle of this range is recorded as a reference battle yet, so CI holds none for it: until they are recorded, the battle core's rules for this client rest on the unit tests alone.
+Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_1_DATA` lists the ones the simulator has game tables for (16.635.3), and CI tests each of them (`compatible` in `crforge-data.lock`). Its first reference battles are five Clone cases of 16.635.3 (`clone-refusals-v1`), which CI holds to `conformance/reference-expectations/16.635.3.json`; every other rule of the battle core for this client rests on the unit tests alone until more are recorded.
 
 ## Former reference client: 16.402.17
 

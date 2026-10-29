@@ -27,6 +27,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.spawn.SpawnHost;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.move.ContactRule;
 import org.junit.jupiter.api.BeforeAll;
@@ -873,16 +874,140 @@ class BattleCloneTest {
   }
 
   @Test
-  @DisplayName("a carrier still deploying as the Clone reaches it is refused")
-  void aDeployingCarrierIsRefused(@TempDir Path folder) throws IOException {
+  @DisplayName(
+      "a carrier still deploying as the Clone reaches it is cloned with its riders: the carrier's"
+          + " clone is set up before its countdown, so it never enters the deploying state and"
+          + " makes no riders of its own, and each rider's clone takes its rider's countdown")
+  void aDeployingCarrierIsClonedWithItsRiders(@TempDir Path folder) throws IOException {
     GameTables tables = carrierTables(folder);
     Scene scene = new Scene(tables);
     scene.match.play(
         CAST_TICK, new BattleRecords(tables).card("GoblinGiant"), LEVEL, 0, X, Y, "GoblinGiant");
+    scene.clone(CAST_TICK + 2);
 
-    assertThatThrownBy(() -> scene.clone(CAST_TICK + 2))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("is cloned with a deploy countdown and carries riders");
+    CharacterEntity giant = scene.match.getPlays().get(0).units().get(0);
+    List<CharacterEntity> riders = List.copyOf(giant.riders());
+    assertThat(riders).hasSize(2);
+    int countdown = giant.getView().getDeployCountdown();
+    assertThat(countdown).isPositive();
+    assertThat(scene.cloneNames())
+        .containsExactly(
+            giant.name() + "_clone0",
+            riders.get(0).name() + "_clone0",
+            riders.get(1).name() + "_clone0");
+    CharacterEntity clone = scene.clones.get(0);
+    assertThat(clone.riders()).containsExactlyElementsOf(scene.clones.subList(1, 3));
+    assertThat(clone.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(clone.getView().getDeployCountdown()).isEqualTo(countdown);
+    for (int i = 0; i < 2; i++) {
+      CharacterEntity rider = riders.get(i);
+      CharacterEntity riderClone = scene.clones.get(1 + i);
+      assertThat(rider.getView().getDeployCountdown()).isPositive();
+      assertThat(riderClone.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+      assertThat(riderClone.getView().getDeployCountdown())
+          .isEqualTo(rider.getView().getDeployCountdown());
+      assertThat(riderClone.getParent()).isSameAs(clone);
+    }
+
+    // Through the countdowns and the move apart: no rider beyond the two riders and their clones.
+    scene.step(40);
+    long riderRows =
+        scene.match.getBattle().getHolder().entities().stream()
+            .filter(e -> e instanceof CharacterEntity c && c.getData() == riders.get(0).getData())
+            .count();
+    assertThat(riderRows).isEqualTo(4);
+  }
+
+  /**
+   * The configured tables with the Clone written, and a Knight written to deploy for 1500 ms and to
+   * push the enemies around it as it enters the deploying state: SpawnPushback 1000 and
+   * SpawnPushbackRadius 1000.
+   */
+  private static GameTables pusherTables(Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder,
+        "characters",
+        rows ->
+            GameData.columns(rows, "Knight")
+                .put("DeployTime", 1500)
+                .put("SpawnPushback", 1000)
+                .put("SpawnPushbackRadius", 1000));
+    return GameTables.load(folder);
+  }
+
+  @Test
+  @DisplayName(
+      "a unit still deploying whose row pushes as it enters the deploying state is cloned with its"
+          + " countdown, and its clone's entry into that state pushes nobody: the clone mark is set"
+          + " before the countdown")
+  void aDeployingPushersClonePushesNobody(@TempDir Path folder) throws IOException {
+    GameTables tables = pusherTables(folder);
+    Scene scene = new Scene(tables);
+    List<String> pushes = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void deployPushed(
+                  int t,
+                  CharacterEntity unit,
+                  int radius,
+                  int distance,
+                  List<WorldEntity> found,
+                  List<WorldEntity> pushed) {
+                pushes.add(t + " " + unit.name());
+              }
+            });
+    CharacterEntity pusher =
+        scene.match.deploy(
+            CAST_TICK, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "pusher");
+    // An enemy beside it, walking, which a push from the clone's point would reach.
+    CharacterEntity enemy =
+        scene.match.deploy(
+            CAST_TICK + 1, new BattleRecords(tables).unit("Giant"), LEVEL, 1, X + 600, Y, "enemy");
+    scene.clone(CAST_TICK + 2);
+
+    CharacterEntity clone = scene.named("pusher_clone0");
+    assertThat(pusher.getView().getDeployCountdown()).isPositive();
+    assertThat(clone.getView().getDeployCountdown())
+        .isEqualTo(pusher.getView().getDeployCountdown());
+    assertThat(clone.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    assertThat(enemy.getView().isAlive()).isTrue();
+    // The clone's entry into the deploying state makes no push, its query not even made.
+    assertThat(pushes).noneMatch(push -> push.endsWith(" pusher_clone0"));
+  }
+
+  @Test
+  @DisplayName(
+      "a unit whose lifetime drain takes 1 hit point or more a visit is cloned with the drain step"
+          + " of its full maximum, so its clone of 1 hit point dies in its registration visit; the"
+          + " clone's move apart starts no move, and the unit moves apart alone")
+  void aCloneItsRegistrationVisitEnds(@TempDir Path folder) throws IOException {
+    withClone(folder, rows -> {});
+    GameData.alterLoaded(
+        folder, "characters", rows -> GameData.columns(rows, "Knight").put("LifeTime", 20000));
+    GameTables tables = GameTables.load(folder);
+    Scene scene = new Scene(tables);
+    CharacterEntity unit =
+        scene.match.deploy(0, new BattleRecords(tables).unit("Knight"), LEVEL, 0, X, Y, "short");
+    scene.step(1);
+    int maximum = unit.getHitPoints().getMaximum();
+    // The drain's step, in hundredths a visit, takes at least 1 hit point a visit.
+    assertThat(unit.getHitPoints().getDecayStep()).isEqualTo(HitPoints.decayStep(maximum, 20000));
+    assertThat(unit.getHitPoints().getDecayStep()).isGreaterThanOrEqualTo(100);
+    scene.clone(CAST_TICK);
+
+    assertThat(scene.cloneNames()).containsExactly("short_clone0");
+    CharacterEntity clone = scene.clones.get(0);
+    assertThat(clone.getHitPoints().getDecayStep()).isEqualTo(HitPoints.decayStep(maximum, 20000));
+    assertThat(HitPoints.alive(clone.getHitPoints())).isFalse();
+    assertThat(scene.moves).singleElement().asString().startsWith("short to ");
+    assertThat(unit.getView().getState()).isEqualTo(GridEntityState.CLONE_SETUP);
+    scene.step(15);
+    assertThat(scene.match.getWorld().present()).contains(unit).doesNotContain(clone);
   }
 
   /** The written action that spawns the written landing area. */

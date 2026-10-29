@@ -897,7 +897,8 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - a Fisherman who leaves or is stunned during the pull ending his hook with no second impact, the troop let go where the pull left it
   - a troop that leaves during the pull letting the hook go at once
   - a troop let go on the river moved off it
-  - the refusals: a troop still followed asked to stand on the river or to be cloned, a hook flying at a dashing troop or arriving at a troop in the air
+  - a troop cloned while the hook pulls it over the river set up as a clone where the hook had it, on the water, with no move off it, the hook flying on to be let go at its arrival and the Fisherman going on; a Fisherman cloned while a hook on a building drags him set up where he stands, his hook ending at its next step where it stands
+  - the refusals: a troop still followed asked to stand on the river, a hook flying at a dashing troop or arriving at a troop in the air
   - a hook arriving at a troop another holds a lock on ending as an ordinary arrival, at its aim, nothing asked into a hook's state
   - the refusals of a hook arriving after such a lock is gone and of a pulled troop another then holds
   - a special that lists its targets and a special range without a special projectile
@@ -916,7 +917,9 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - A clone's death spawns made clones.
   - A Goblin Giant with written riders cloned with them, each rider's clone attached to the Giant's clone on its rider's angle and riding there through the move, with no rider of the clone's own.
   - A Knight written to deploy for 1500 ms cloned as it deploys, both set up with the countdown, held still with NO_MOVE past the move apart's duration and resumed by it once the countdown has ended.
-  - The refusal of a carrier still deploying.
+  - A Goblin Giant with written riders cloned as it deploys: its clone set up before its countdown, making no riders of its own, each rider's clone with its rider's countdown.
+  - A Knight written to deploy and to push as it enters the deploying state cloned as it deploys, its clone's entry pushing nobody.
+  - A Knight written with a lifetime whose drain takes a hit point or more a visit cloned: the clone's drain step from the full maximum, the clone dead in its registration visit, its move apart starting no move, the Knight moving apart alone.
   - The copies of a Knight's written buffs listed on its clone with no start action and no charge reset. A copy of a row that is not cloned is taken off with its remove action, the walk passing over the copy moved down onto its index. A copy running out on the clone runs its remove action, as its unit's does.
   - Written area effects a clone's action spawns marked a clone's and dealing the damage the original's deals, one they spawn in turn marked too and the Knight they spawn a clone of 1 of 1. An area effect that only hits is chained unmarked, and one that runs an action refused. A clone's death area is marked and spawns a clone where the original's spawns a plain Knight.
   - Area effects with a buff over a Knight's and a Minion's clones: a Rage buffing both, a Heal Spirit's area refusing both, a Zap killing both before its buff, a Tornado's pull asking the test before its buff, and an Earthquake buffing the ground clone until it dies and refusing the air one by its air test after the buff test.
@@ -2435,13 +2438,14 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A unit let go on a cell it may not stand on while it still follows the hook (the Fisherman a hook on a building drags onto the river) is moved off it with the hook's owner's y as the reference row.
 
+  A unit a Clone reaches while pulled leaves 12 or 13 for the clone state 8 as it leaves them for any state, but with no standing test: it stays where the hook had it, on the river too, and its move apart starts from there. A troop set up so no longer follows the hook, which flies on toward its aim and, arriving, is let go and impacts, asking no state of anyone; the Fisherman in 14 goes on as the hook leaves. A Fisherman cloned in 13 has his targeting switched off by the setup's combat gate, so the hook's next step finds its owner lost and ends it where it stands, with no flight back and no impact.
+
   A hook arriving at a target someone else holds a lock on, on channel 0 (a capture, the Boss Bandit's or a rerolling Barbarian's lock on itself), does not hook it either. It makes an ordinary arrival, at its aim, with its impact. The lock is asked again on each step and only the arrival's answer counts.
 
   Refused:
 
   - a hook arriving after a lock it met during its flight is gone
   - a pulled target someone else then holds (the hook lets it go at once)
-  - a pulled troop asked into a clone's setup
 
   A row with a MorphCharacter, which the hook's leaving would morph back into, is refused with its row.
 
@@ -2498,6 +2502,10 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A unit still deploying as the Clone reaches it is cloned with its countdown. The countdown setter puts the clone into the deploying state with the unit's countdown, and the clone then leaves it for state 8 with the countdown kept. The unit goes to 8 with its own.
 
+  The clone mark is set before the countdown, and the deploying state's entry asks it before its push: a Mega Knight's clone, made while the Mega Knight deploys, enters the state and pushes nobody. The clone of a unit that carries riders is set up first and its countdown stored after, so it never enters the deploying state and makes no riders of its own. Each rider still deploying is cloned through the creator with its own countdown, its clone entering the deploying state and leaving it for 8, and attached to the carrier's clone.
+
+  The hit points of a clone are built from its row at the Clone's level before the clone setter cuts them to 1 of 1, so a row with a lifetime drains its clone by the step of its full maximum. A clone whose drain takes 1 hit point or more a visit (the Goblin Demolisher's kamikaze form) dies in its registration visit: its death runs as any, its death projectile launched. The creator lists its move apart all the same; the run's start takes the movement component only while it is switched on, so for the dead clone it sets no point and moves nothing. The unit moves apart alone.
+
   In 8 both countdowns run down 50 a visit with no resume at 0. A move apart that reaches its ten visits while its unit's countdown still runs sets NO_MOVE on itself, which the unit carries while the run is listed, holding it still, and asks again each visit. Once the countdown has ended it resumes the unit and finishes.
 
   The burst clock of a unit that walks in bursts steps by half the buff-scaled 100 a visit, so under the Clone buff's speed of -100 it stands still.
@@ -2506,8 +2514,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - a clone made by anything but an area effect
   - a clone of a unit whose rider runs an air-to-ground action
-  - a clone of a unit that carries riders while it or a rider still deploys, whose clone the creator sets up before its countdown
-  - a clone of a unit still deploying whose clone's row spawns an area object or a push as it enters the deploying state, which that entry would spawn again
+  - a clone of a unit still deploying, or a carrier's rider still deploying, whose clone enters the deploying state and whose clone's row spawns an area object as it does (no row of client 16.635.1 sets the column)
   - a clone of a building with hit points, whose lifetime the hit points' visit counts differently for a clone
   - a unit whose hit destroys it and launches a projectile that spawns a character or a projectile, makes an area effect that spawns a character, or runs an action (the evolved Ice Spirit's), whose spawns would be clones and whose action no recording shows for a clone
 
@@ -2792,7 +2799,9 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The evolved Skeleton's SkeletonDuplication_EV1, 500 ms from each hit, makes one evolved Skeleton on the tick of the hit.
 
-  Refused: a carrier that is a tower or a building, a child without hit points, a building, a child that paths to its point or starts an action, and a clone of a carrier of such a buff.
+  A Clone's copy of the instance carries its spawner as the original left it: its timer, the firings of its wave and the firings it has left. A copy that stays fires on the clone as the original's fires on the unit, and its child, as every spawn of a clone, is a clone of 1 hit point. A row that is not cloned is taken off the clone as it is made, before any visit; 16.635.3 marks SkeletonDuplication_EV1 so (16.402.22 does not).
+
+  Refused: a carrier that is a tower or a building, a child without hit points, a building, and a child that paths to its point or starts an action.
 
 - The buff visit walks the listed instances from the last to the first, and each instance's hit of damage over time and its heal come in its own turn. The hit is lowered by the carrier's damage reduction as the list stands then and queued for the damage drain, whose entry lowers it once more by what is listed there.
 
