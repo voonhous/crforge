@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="1135" viewBox="0 0 1220 1135" role="img" aria-label="The packages of org.crforge.core, their main classes and which may import which">
+<title>The packages of org.crforge.core, their main classes and which may import which</title>
+<defs>
+<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<style>.s{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif} .m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; white-space:pre}</style>
+</defs>
+<rect x="0" y="0" width="1220" height="1135" rx="12" fill="#ffffff"/>
+<text x="30" y="34" class="m" font-size="18" font-weight="600" fill="#1f2328">org.crforge.core</text>
+<text x="210" y="34" class="s" font-size="14" fill="#424a53">the core module's packages and their main classes</text>
+<!-- battle: the battle core -->
+<rect x="30" y="60" width="870" height="534" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="46" y="88" class="m" font-size="16" font-weight="600" fill="#0550ae">battle/</text>
+<text x="124" y="88" class="s" font-size="13" fill="#424a53">the battle core</text>
+<text x="46" y="110" class="m" font-size="12" fill="#1f2328">Battle, BattleCommand, EntityHolder, HolderPasses, BattleRandom, TargetLocks</text>
+<rect x="46" y="126" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="153" class="m" font-size="15" font-weight="600" fill="#1f2328">data/</text>
+<text x="58" y="175" class="s" font-size="13.5" fill="#424a53">the game's rows, read once</text>
+<text x="58" y="199" class="m" font-size="13" fill="#1f2328">GameTables, GameRow,</text>
+<text x="58" y="217" class="m" font-size="13" fill="#1f2328">GameVersions, BattleRecords,</text>
+<text x="58" y="235" class="m" font-size="13" fill="#1f2328">ActionRows</text>
+<rect x="46" y="255" width="272" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="282" class="m" font-size="15" font-weight="600" fill="#1f2328">expression/</text>
+<text x="58" y="304" class="s" font-size="13.5" fill="#424a53">the data's expression columns</text>
+<text x="58" y="328" class="m" font-size="13" fill="#1f2328">ExpressionCompiler,</text>
+<text x="58" y="346" class="m" font-size="13" fill="#1f2328">ExpressionEvaluator</text>
+<rect x="46" y="366" width="272" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="393" class="m" font-size="15" font-weight="600" fill="#1f2328">filter/</text>
+<text x="58" y="415" class="s" font-size="13.5" fill="#424a53">the game object filters</text>
+<text x="58" y="439" class="m" font-size="13" fill="#1f2328">GameObjectFilter</text>
+<rect x="46" y="459" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="486" class="m" font-size="15" font-weight="600" fill="#1f2328">replay/</text>
+<text x="58" y="508" class="s" font-size="13.5" fill="#424a53">replays as battles, and back</text>
+<text x="58" y="532" class="m" font-size="13" fill="#1f2328">ReplayScenario, ReplayBattle,</text>
+<text x="58" y="550" class="m" font-size="13" fill="#1f2328">CommandTypes, ReplayFormat,</text>
+<text x="58" y="568" class="m" font-size="13" fill="#1f2328">ScenarioWriter</text>
+<rect x="328" y="126" width="272" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="340" y="153" class="m" font-size="15" font-weight="600" fill="#1f2328">match/</text>
+<text x="340" y="175" class="s" font-size="13.5" fill="#424a53">the mode, elixir and hands</text>
+<text x="340" y="199" class="m" font-size="13" fill="#1f2328">LadderMatch, MatchSide, Hand,</text>
+<text x="340" y="217" class="m" font-size="13" fill="#1f2328">Timeline, DeckShuffle</text>
+<rect x="328" y="237" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="340" y="264" class="m" font-size="15" font-weight="600" fill="#1f2328">deploy/</text>
+<text x="340" y="286" class="s" font-size="13.5" fill="#424a53">where a card play lands</text>
+<text x="340" y="310" class="m" font-size="13" fill="#1f2328">CardPlacement, MapCheck,</text>
+<text x="340" y="328" class="m" font-size="13" fill="#1f2328">PlacementSearch, Formation,</text>
+<text x="340" y="346" class="m" font-size="13" fill="#1f2328">InitialDelay</text>
+<rect x="328" y="366" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="340" y="393" class="m" font-size="15" font-weight="600" fill="#1f2328">projectile/</text>
+<text x="340" y="415" class="s" font-size="13.5" fill="#424a53">projectiles in flight</text>
+<text x="340" y="439" class="m" font-size="13" fill="#1f2328">ProjectileEntity,</text>
+<text x="340" y="457" class="m" font-size="13" fill="#1f2328">ProjectileLauncher,</text>
+<text x="340" y="475" class="m" font-size="13" fill="#1f2328">ProjectileFlight</text>
+<rect x="610" y="126" width="272" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="622" y="153" class="m" font-size="15" font-weight="600" fill="#1f2328">unit/</text>
+<text x="622" y="175" class="s" font-size="13.5" fill="#424a53">the world, its entities,</text>
+<text x="622" y="193" class="s" font-size="13.5" fill="#424a53">buffs and abilities</text>
+<text x="622" y="217" class="m" font-size="13" fill="#1f2328">BattleWorld, CharacterEntity,</text>
+<text x="622" y="235" class="m" font-size="13" fill="#1f2328">TowerEntity, AreaEffectEntity,</text>
+<text x="622" y="253" class="m" font-size="13" fill="#1f2328">Standard1v1Battle</text>
+<rect x="610" y="273" width="272" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="622" y="300" class="m" font-size="15" font-weight="600" fill="#1f2328">spawn/</text>
+<text x="622" y="322" class="s" font-size="13.5" fill="#424a53">character, area effect and</text>
+<text x="622" y="340" class="s" font-size="13.5" fill="#424a53">projectile spawns</text>
+<text x="622" y="364" class="m" font-size="13" fill="#1f2328">SpawnCharacters,</text>
+<text x="622" y="382" class="m" font-size="13" fill="#1f2328">SpawnAreaEffect,</text>
+<text x="622" y="400" class="m" font-size="13" fill="#1f2328">SpawnProjectile</text>
+<rect x="610" y="420" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="622" y="447" class="m" font-size="15" font-weight="600" fill="#1f2328">action/</text>
+<text x="622" y="469" class="s" font-size="13.5" fill="#424a53">the action runtime and the</text>
+<text x="622" y="487" class="s" font-size="13.5" fill="#424a53">classes the action rows name</text>
+<text x="622" y="511" class="m" font-size="13" fill="#1f2328">ActionHolder, DealDamage, Heal,</text>
+<text x="622" y="529" class="m" font-size="13" fill="#1f2328">Kill, SetShield</text>
+<!-- pathfinding: the movement, targeting and state rules the battle core runs -->
+<rect x="30" y="650" width="870" height="405" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="46" y="678" class="m" font-size="16" font-weight="600" fill="#0550ae">pathfinding/</text>
+<text x="172" y="678" class="s" font-size="13" fill="#424a53">the movement, targeting and state rules the battle core runs</text>
+<rect x="46" y="698" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="725" class="m" font-size="15" font-weight="600" fill="#1f2328">grid/</text>
+<text x="58" y="747" class="s" font-size="13.5" fill="#424a53">the routing grid and the route search</text>
+<text x="58" y="771" class="m" font-size="13" fill="#1f2328">TileMap, CellGrid, CellCosts,</text>
+<text x="58" y="789" class="m" font-size="13" fill="#1f2328">RouteSearch, FootprintOverlay,</text>
+<text x="58" y="807" class="m" font-size="13" fill="#1f2328">ReferenceEndpoint, Relocation</text>
+<rect x="46" y="827" width="272" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="854" class="m" font-size="15" font-weight="600" fill="#1f2328">index/</text>
+<text x="58" y="876" class="s" font-size="13.5" fill="#424a53">the spatial index, shape tests</text>
+<text x="58" y="900" class="m" font-size="13" fill="#1f2328">SpatialIndex</text>
+<rect x="46" y="920" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="58" y="947" class="m" font-size="15" font-weight="600" fill="#1f2328">combat/</text>
+<text x="58" y="969" class="s" font-size="13.5" fill="#424a53">hit points and damage</text>
+<text x="58" y="993" class="m" font-size="13" fill="#1f2328">HitPoints, DamageApplication,</text>
+<text x="58" y="1011" class="m" font-size="13" fill="#1f2328">AreaDamage, LevelScaling,</text>
+<text x="58" y="1029" class="m" font-size="13" fill="#1f2328">RarityTable</text>
+<rect x="328" y="698" width="272" height="119" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="340" y="725" class="m" font-size="15" font-weight="600" fill="#1f2328">move/</text>
+<text x="340" y="747" class="s" font-size="13.5" fill="#424a53">movement, push and avoidance</text>
+<text x="340" y="771" class="m" font-size="13" fill="#1f2328">MovementVisit, MovementChain,</text>
+<text x="340" y="789" class="m" font-size="13" fill="#1f2328">PushPass, AvoidanceHandler,</text>
+<text x="340" y="807" class="m" font-size="13" fill="#1f2328">Displacement, SpeedConfig</text>
+<rect x="328" y="827" width="272" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="340" y="854" class="m" font-size="15" font-weight="600" fill="#1f2328">math/</text>
+<text x="340" y="876" class="s" font-size="13.5" fill="#424a53">integer roots and trigonometry</text>
+<text x="340" y="900" class="m" font-size="13" fill="#1f2328">FixedMath, TrigTables</text>
+<rect x="610" y="698" width="272" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="622" y="725" class="m" font-size="15" font-weight="600" fill="#1f2328">target/</text>
+<text x="622" y="747" class="s" font-size="13.5" fill="#424a53">targeting and hits</text>
+<text x="622" y="771" class="m" font-size="13" fill="#1f2328">TargetingVisit,</text>
+<text x="622" y="789" class="m" font-size="13" fill="#1f2328">DefaultTargetSelection,</text>
+<text x="622" y="807" class="m" font-size="13" fill="#1f2328">HitApplication, DirectHit,</text>
+<text x="622" y="825" class="m" font-size="13" fill="#1f2328">AttackRange</text>
+<rect x="610" y="845" width="272" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="622" y="872" class="m" font-size="15" font-weight="600" fill="#1f2328">state/</text>
+<text x="622" y="894" class="s" font-size="13.5" fill="#424a53">the state visit</text>
+<text x="622" y="918" class="m" font-size="13" fill="#1f2328">EntityStateVisit, StateSetter,</text>
+<text x="622" y="936" class="m" font-size="13" fill="#1f2328">HideHandler</text>
+<polyline points="465,596 465,648" fill="none" stroke="#57606a" stroke-width="1.6" marker-start="url(#head)" marker-end="url(#head)"/>
+<text x="477" y="626" class="s" font-size="12" font-style="italic" fill="#57606a">import each other</text>
+<!-- fidelity and util: both may import them -->
+<rect x="950" y="398" width="240" height="358" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="964" y="424" class="s" font-size="13" font-style="italic" fill="#424a53">imported by both</text>
+<rect x="964" y="438" width="212" height="155" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="976" y="464" class="m" font-size="15" font-weight="600" fill="#1f2328">fidelity/</text>
+<text x="976" y="486" class="s" font-size="13.5" fill="#424a53">each class's fidelity</text>
+<text x="976" y="504" class="s" font-size="13.5" fill="#424a53">status, listed by</text>
+<text x="976" y="522" class="s" font-size="13.5" fill="#424a53">:core:fidelityReport</text>
+<text x="976" y="546" class="m" font-size="13" fill="#1f2328">Fidelity,</text>
+<text x="976" y="564" class="m" font-size="13" fill="#1f2328">FidelityStatus,</text>
+<text x="976" y="582" class="m" font-size="13" fill="#1f2328">FidelityLedger</text>
+<rect x="964" y="604" width="212" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="976" y="632" class="m" font-size="15" font-weight="600" fill="#1f2328">util/</text>
+<text x="976" y="654" class="s" font-size="13.5" fill="#424a53">game units, argument</text>
+<text x="976" y="672" class="s" font-size="13.5" fill="#424a53">checks, battle copies</text>
+<text x="976" y="696" class="m" font-size="13" fill="#1f2328">GameUnits,</text>
+<text x="976" y="714" class="m" font-size="13" fill="#1f2328">ValidationUtils,</text>
+<text x="976" y="732" class="m" font-size="13" fill="#1f2328">DeepCopy</text>
+<polyline points="900,458 948,458" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="900,716 948,716" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<text x="30" y="1091" class="s" font-size="13" fill="#424a53">battle and pathfinding may import each other, fidelity and util, and nothing else of this code base; the core module's</text>
+<text x="30" y="1111" class="s" font-size="13" fill="#424a53">main code holds no other package. BattlePackageDependencyTest enforces both.</text>
+</svg>

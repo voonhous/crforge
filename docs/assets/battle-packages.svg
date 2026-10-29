@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="850" viewBox="0 0 1220 850" role="img" aria-label="The packages of org.crforge.core.battle and their classes">
+<title>The packages of org.crforge.core.battle and their classes</title>
+<defs>
+<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<style>.s{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif} .m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; white-space:pre}</style>
+</defs>
+<rect x="0" y="0" width="1220" height="850" rx="12" fill="#ffffff"/>
+<text x="30" y="34" class="m" font-size="18" font-weight="600" fill="#1f2328">org.crforge.core.battle</text>
+<text x="300" y="34" class="s" font-size="14" fill="#424a53">its packages and the classes this page lists</text>
+<rect x="30" y="60" width="278" height="155" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="42" y="87" class="m" font-size="15" font-weight="600" fill="#0550ae">battle/</text>
+<text x="42" y="109" class="s" font-size="13.5" fill="#424a53">the step and the entity tick</text>
+<text x="42" y="133" class="m" font-size="13" fill="#1f2328">Battle, BattleMode,</text>
+<text x="42" y="151" class="m" font-size="13" fill="#1f2328">BattleCommand, EntityHolder,</text>
+<text x="42" y="169" class="m" font-size="13" fill="#1f2328">HolderPasses, TargetLocks,</text>
+<text x="42" y="187" class="m" font-size="13" fill="#1f2328">BattleEntity, BattleComponent,</text>
+<text x="42" y="205" class="m" font-size="13" fill="#1f2328">EntityActions, BattleRandom</text>
+<rect x="30" y="227" width="278" height="155" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="42" y="254" class="m" font-size="15" font-weight="600" fill="#1f2328">projectile/</text>
+<text x="42" y="276" class="s" font-size="13.5" fill="#424a53">projectiles from launch to impact</text>
+<text x="42" y="300" class="m" font-size="13" fill="#1f2328">ProjectileData,</text>
+<text x="42" y="318" class="m" font-size="13" fill="#1f2328">ProjectileEntity,</text>
+<text x="42" y="336" class="m" font-size="13" fill="#1f2328">ProjectileLauncher,</text>
+<text x="42" y="354" class="m" font-size="13" fill="#1f2328">ProjectileFlight,</text>
+<text x="42" y="372" class="m" font-size="13" fill="#1f2328">ProjectileAmounts</text>
+<rect x="324" y="60" width="278" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="336" y="87" class="m" font-size="15" font-weight="600" fill="#1f2328">data/</text>
+<text x="336" y="109" class="s" font-size="13.5" fill="#424a53">the game's rows, read once</text>
+<text x="336" y="133" class="m" font-size="13" fill="#1f2328">GameTables, GameTable, GameRow,</text>
+<text x="336" y="151" class="m" font-size="13" fill="#1f2328">BattleRecords, ActionRows,</text>
+<text x="336" y="169" class="m" font-size="13" fill="#1f2328">ActionBinding, GameVersions,</text>
+<text x="336" y="187" class="m" font-size="13" fill="#1f2328">GameAction, CycleReference</text>
+<rect x="324" y="209" width="278" height="173" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="336" y="236" class="m" font-size="15" font-weight="600" fill="#1f2328">expression/</text>
+<text x="336" y="258" class="s" font-size="13.5" fill="#424a53">the data's expression columns as a</text>
+<text x="336" y="276" class="s" font-size="13.5" fill="#424a53">stack machine</text>
+<text x="336" y="300" class="m" font-size="13" fill="#1f2328">ExpressionCompiler,</text>
+<text x="336" y="318" class="m" font-size="13" fill="#1f2328">ExpressionEvaluator, Expression,</text>
+<text x="336" y="336" class="m" font-size="13" fill="#1f2328">ExpressionEnvironment,</text>
+<text x="336" y="354" class="m" font-size="13" fill="#1f2328">BattleFunctions, Builtins,</text>
+<text x="336" y="372" class="m" font-size="13" fill="#1f2328">ExpressionException</text>
+<rect x="324" y="394" width="278" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="336" y="421" class="m" font-size="15" font-weight="600" fill="#1f2328">filter/</text>
+<text x="336" y="443" class="s" font-size="13.5" fill="#424a53">the game object filters</text>
+<text x="336" y="467" class="m" font-size="13" fill="#1f2328">GameObjectFilter, FilterSubject,</text>
+<text x="336" y="485" class="m" font-size="13" fill="#1f2328">ObjectCensus</text>
+<rect x="618" y="60" width="278" height="191" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="630" y="87" class="m" font-size="15" font-weight="600" fill="#1f2328">replay/</text>
+<text x="630" y="109" class="s" font-size="13.5" fill="#424a53">replays as battles, and battles as</text>
+<text x="630" y="127" class="s" font-size="13.5" fill="#424a53">replays</text>
+<text x="630" y="151" class="m" font-size="13" fill="#1f2328">ReplayScenario, ScenarioPlan,</text>
+<text x="630" y="169" class="m" font-size="13" fill="#1f2328">ReplayBattle, ReplayFormat,</text>
+<text x="630" y="187" class="m" font-size="13" fill="#1f2328">CommandTypes, ScenarioShape,</text>
+<text x="630" y="205" class="m" font-size="13" fill="#1f2328">ScenarioWriter, ReplayCapture,</text>
+<text x="630" y="223" class="m" font-size="13" fill="#1f2328">ContentFields,</text>
+<text x="630" y="241" class="m" font-size="13" fill="#1f2328">UnsupportedScenarioException</text>
+<rect x="618" y="263" width="278" height="191" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="630" y="290" class="m" font-size="15" font-weight="600" fill="#1f2328">match/</text>
+<text x="630" y="312" class="s" font-size="13.5" fill="#424a53">the Ladder mode: clock, elixir,</text>
+<text x="630" y="330" class="s" font-size="13.5" fill="#424a53">hands, plays</text>
+<text x="630" y="354" class="m" font-size="13" fill="#1f2328">LadderMatch, Timeline,</text>
+<text x="630" y="372" class="m" font-size="13" fill="#1f2328">BattleTimeline, MatchSide,</text>
+<text x="630" y="390" class="m" font-size="13" fill="#1f2328">EvolutionItem, Hand,</text>
+<text x="630" y="408" class="m" font-size="13" fill="#1f2328">DeckShuffle, MatchCard,</text>
+<text x="630" y="426" class="m" font-size="13" fill="#1f2328">MirrorItem, SpellVariant,</text>
+<text x="630" y="444" class="m" font-size="13" fill="#1f2328">VariantItem</text>
+<rect x="618" y="466" width="278" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="630" y="493" class="m" font-size="15" font-weight="600" fill="#1f2328">deploy/</text>
+<text x="630" y="515" class="s" font-size="13.5" fill="#424a53">where a card play lands</text>
+<text x="630" y="539" class="m" font-size="13" fill="#1f2328">CardPlacement, MapCheck,</text>
+<text x="630" y="557" class="m" font-size="13" fill="#1f2328">DeployMask, PlacementSearch,</text>
+<text x="630" y="575" class="m" font-size="13" fill="#1f2328">Formation, InitialDelay,</text>
+<text x="630" y="593" class="m" font-size="13" fill="#1f2328">DeployCard, MaskEntity</text>
+<rect x="912" y="60" width="278" height="281" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="924" y="87" class="m" font-size="15" font-weight="600" fill="#1f2328">unit/</text>
+<text x="924" y="109" class="s" font-size="13.5" fill="#424a53">the world, its entities, buffs and</text>
+<text x="924" y="127" class="s" font-size="13.5" fill="#424a53">abilities</text>
+<text x="924" y="151" class="m" font-size="13" fill="#1f2328">BattleWorld, WorldEntity,</text>
+<text x="924" y="169" class="m" font-size="13" fill="#1f2328">CharacterEntity, TowerEntity,</text>
+<text x="924" y="187" class="m" font-size="13" fill="#1f2328">UnitData, AbilityData,</text>
+<text x="924" y="205" class="m" font-size="13" fill="#1f2328">WorldObserver,</text>
+<text x="924" y="223" class="m" font-size="13" fill="#1f2328">Standard1v1Battle,</text>
+<text x="924" y="241" class="m" font-size="13" fill="#1f2328">ActivationEvent,</text>
+<text x="924" y="259" class="m" font-size="13" fill="#1f2328">ActionOwnerEntity,</text>
+<text x="924" y="277" class="m" font-size="13" fill="#1f2328">AreaEffectEntity, BuffComponent,</text>
+<text x="924" y="295" class="m" font-size="13" fill="#1f2328">CombatGate, KingElixir,</text>
+<text x="924" y="313" class="m" font-size="13" fill="#1f2328">ChampionController,</text>
+<text x="924" y="331" class="m" font-size="13" fill="#1f2328">PlayerCommands, AbilityCommand</text>
+<rect x="912" y="353" width="278" height="191" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="924" y="380" class="m" font-size="15" font-weight="600" fill="#1f2328">spawn/</text>
+<text x="924" y="402" class="s" font-size="13.5" fill="#424a53">character, area effect and</text>
+<text x="924" y="420" class="s" font-size="13.5" fill="#424a53">projectile spawns</text>
+<text x="924" y="444" class="m" font-size="13" fill="#1f2328">SpawnRow, SpawnPerform,</text>
+<text x="924" y="462" class="m" font-size="13" fill="#1f2328">SpawnArguments, SpawnObject,</text>
+<text x="924" y="480" class="m" font-size="13" fill="#1f2328">SpawnPlacement, SpawnPassable,</text>
+<text x="924" y="498" class="m" font-size="13" fill="#1f2328">SpawnCharacters,</text>
+<text x="924" y="516" class="m" font-size="13" fill="#1f2328">SpawnAreaEffect,</text>
+<text x="924" y="534" class="m" font-size="13" fill="#1f2328">SpawnProjectile, SpawnHost</text>
+<rect x="30" y="621" width="1160" height="155" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="42" y="648" class="m" font-size="15" font-weight="600" fill="#1f2328">action/</text>
+<text x="42" y="670" class="s" font-size="13.5" fill="#424a53">the action runtime and the action classes the game's action rows name</text>
+<text x="42" y="694" class="m" font-size="13" fill="#1f2328">ActionHolder, BattleAction, ActionRow, ActionInstance, Group, Select, Filter, RunOnInstigator, WaitToActivate, WithDuration, Interval, FlipFlop,</text>
+<text x="42" y="712" class="m" font-size="13" fill="#1f2328">ActionOwner, SetVariable, SetShield, RunActionAtHealth, Taunt, LaserBall, LaserBallHost, ShapeSelector, ShapeSelectorHost, SpawnGuard, GuardHost,</text>
+<text x="42" y="730" class="m" font-size="13" fill="#1f2328">BossBanditAbility, WarpCharacter, DoPushbackFromInstigator, AirToGround, TargetIndicatorAttack, TargetIndicatorHost, Heal, Kill, DamageType,</text>
+<text x="42" y="748" class="m" font-size="13" fill="#1f2328">DealDamage, InertAction, PopBalloons, PlayAnimationIfHasTarget, Berserk, CollectFriends, FriendCollecting, GoblinHutLifeState, GoblinHutLife,</text>
+<text x="42" y="766" class="m" font-size="13" fill="#1f2328">GiantBufferBuff, LumberjackGhostWait</text>
+<text x="30" y="806" class="s" font-size="13" fill="#424a53">unit/, projectile/ and action/ hold more classes than these; the code has them all. The movement, targeting and state rules</text>
+<text x="30" y="826" class="s" font-size="13" fill="#424a53">the entity visits run are in org.crforge.core.pathfinding (Troop Pathfinding).</text>
+</svg>

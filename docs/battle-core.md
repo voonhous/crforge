@@ -20,155 +20,197 @@ Three properties of the established behaviour cut across the whole engine, and t
 
 ## Package layout
 
-```
-org.crforge.core.battle/
-  Battle              the step: clock, entity tick, commands, tick counter
-  BattleMode          when the match is over; what the mode does before the entity tick
-  BattleCommand       a tick-stamped action from outside the entity tick
-  EntityHolder        the entity tick: every hook and pass of every entity, in one fixed order
-  HolderPasses        the once-per-tick work around the entity visits
-  TargetLocks         which object holds which target, per channel, granted after phase 3
-  BattleEntity        a container of four component slots with a pre-hook and a post-hook
-  BattleComponent     one slot: a refresh and a visit
-  EntityActions       the five action passes of one entity
-  BattleRandom        the battle's random source: one shared 32-bit xorshift state
-  expression/
-    ExpressionCompiler the data's expression columns into opcode words, with the fold
-    ExpressionEvaluator the stack machine that runs them over 32-bit integers
-    Expression        one compiled expression: its words and its stack depth
-    ExpressionEnvironment what an expression's symbols name and what each call answers
-    BattleFunctions   the 47 names of the battle's functions, their ids and argument counts
-  unit/
-    BattleWorld       the routing grid, the building overlay and the spatial index, rebuilt per tick;
-                      owns the holder, hands launched projectiles to it, and is where damage lands
-    WorldEntity       an entity that stands on the arena, with its targeting component's state
-    CharacterEntity   targeting in slot 0, movement in slot 1, the state visit as the post-hook
-    TowerEntity       a crown tower: targeting in slot 0, the state visit and the combat gate as
-                      the post-hook
-    UnitData          the published columns of a unit, unconverted, its projectile row among them
-    AbilityData       a unit's ability row: its cast, its trigger, the target it keeps, its action
-    WorldObserver     what watches the arena from outside the tick: hits, areas, launches,
-                      impacts, removals, a king tower's activation
-    Standard1v1Battle the standard arena with its six towers
-    ActivationEvent   one step of a king tower's activation, as observers are told it
-    ActionOwnerEntity an object that only owns actions, standing in for the objects that run
-                      spawn rows in the data
-  match/
-    LadderMatch       a Ladder match as the battle's mode: the setup, the update's advance, the
-                      kings' visits, a play's gates and spend, the crowns
-    Timeline          the battle's clock: sections, the elixir rate and the next-card cooldown
-    BattleTimeline    a battle timeline row, as the game mode names it
-    MatchSide         one player: the elixir in ten-thousandths, the deck and the hand, each
-                      deck card's slot flags and the count per deck index
-    EvolutionItem     the item a play of a deck card carries: its evolution field, the row cast
-                      and its cost
-    Hand              four slots, the queue and the refill cooldown
-    DeckShuffle       the order a deck is dealt in, from one draw of the battle's source
-    MatchCard         what the match reads of a card: its cost and its opening-hand columns
-  action/
-    ActionHolder      one entity's scheduled actions behind the five passes: the pending entries,
-                      the running instances and the tags they set
-    BattleAction      an action: its row's shared columns, what starting it does, and whether it
-                      lasts
-    ActionRow         the columns every action row shares; RowAction answers them from it
-    ActionInstance    one run of an action that lasts, stepped by the run pass
-    Group             schedules every part when it is scheduled, each at its own offset
-    Select            schedules one part when it is scheduled, by its conditions
-    Filter            schedules its true or false branch when it starts
-    RunOnInstigator   schedules its action on the entity that caused it
-    WaitToActivate    lasts until its condition holds, then schedules its activation
-    WithDuration      lasts a fixed time, or one that follows the hit speed
-    Interval          lasts, and fires its action every interval unless paused by a tag
-    FlipFlop          lasts, and turns on and off once its condition disagrees long enough
-    ActionOwner       the entity a holder belongs to, as the leaves that act on it see it
-    SetVariable       writes a variable of its owner, which expressions naming it read
-    SetShield         gives its owner a shield of a share of its maximum hit points
-    RunActionAtHealth lasts, and runs an action as its owner's hit points fall past each threshold
-    Taunt             forces its owner's target onto the parent of the area effect that caused
-                      it, with a buff, for a step; the owner's run is armed at once
-    LaserBall         lasts on an area effect, and at a fixed rate runs on everything its query
-                      finds around it the action their count picks
-    LaserBallHost     what a laser ball asks of the battle around its area effect
-    ShapeSelector     lasts on an area effect or a character, and on ticks set from its start,
-                      or from then on when it waits, runs an action on the object in its circle
-                      with the most hit points and shield, and one on its owner by the pick's side
-    ShapeSelectorHost what a shape selector asks of the battle around its owner
-    SpawnGuard        makes a guard behind its area effect and sends it charging ahead after a
-                      short deploy, pushing and hitting what it passes
-    GuardHost         what a guard's run asks of the battle about its guard and around it
-    BossBanditAbility locks its unit on itself and, a set number of battle ticks after it starts,
-                      runs its warp on it
-    WarpCharacter     moves its unit at once back toward its own side, off water and blocked cells
-    DoPushbackFromInstigator pushes its unit a delay later along the width, away from the side of
-                      the arena its cause stands on (a cause that has left by then, where it
-                      stood as the push was scheduled), and runs its success or failure actions
-    AirToGround       lasts on its owner and holds it on the ground, pulling an air unit down and
-                      letting it climb back
-    TargetIndicatorAttack lasts on a character, marks the nearest enemy in its ring with a signal
-                      and shoots a projectile at the signal's point a delay later
-    TargetIndicatorHost what a target indicator attack asks of the battle around its character
-    Heal              heals its owner by its value, with its over-heal percentage
-    Kill              schedules its kill action on its owner, then kills it with the cause as killer
-    DamageType        the switches a typed hit's pipeline runs, and the actions it runs after a hit
-    DealDamage        queues a typed hit on its owner, with the cause as its source
-    InertAction       a row that changes nothing the simulation reads: an inert class, an effect or
-                      a forced animation; an effect that loops keeps a run
-    PopBalloons       the Skeleton Barrel's pop: a run stepped doing nothing, never finishing;
-                      a singleton's second start drops a container as an area effect
-    PlayAnimationIfHasTarget the Goblin Cage's shake: a run stepped doing nothing, never finishing
-    Berserk           the Berserker's starting action: a run that sets the attack sequence index
-                      to 0 and flips it on every attack that lands
-    CollectFriends    lasts, and claims the nearest friends through the target locks, requests
-                      the ability and fires a projectile at each
-    FriendCollecting  what a collector asks of the battle around its unit
-    GoblinHutLifeState lasts, waits for an enemy within the hut's reach and spawns toward it at an
-                      interval while it holds one
-    GoblinHutLife     what a Goblin Hut's life state asks of the battle around its building
-    GiantBufferBuff   lasts, and adds damage to every so many of its unit's hits, a projectile's
-                      through the copy it carries
-    LumberjackGhostWait lasts on the evolved Rage Barbarian's ghost, swaps a buff applied to it
-                      for the one it considers, and once armed kills the ghost when that is gone
-  data/
-    GameTables        a folder of the game's own tables, one data version, and its action graph
-    GameTable         one table's rows by name, in creation order
-    GameRow           one row: its index, its class and its columns under the game's own names
-    BattleRecords     the battle's units, projectiles and troop cards built from those rows
-    ActionRows        the battle's actions built from the game's action rows, for one entity
-    ActionBinding     what an action row needs from its entity: expressions, variables, tags
-  spawn/
-    SpawnRow          the columns of a character spawn row, at its source or to a location
-    SpawnPerform      the row's perform: its source, its point, the block the spawner is handed,
-                      and the calls made on the children after the spawn
-    SpawnArguments    the block the spawner is handed
-    SpawnObject       a game object as a spawn reads it
-    SpawnPlacement    where the spawner places each child: on the point, or on a ring
-    SpawnPassable     the in-front test: off the arena or over water refuses a point
-    SpawnCharacters   the action: the perform's block handed to the battle's spawner
-    SpawnAreaEffect   an area-effect spawn: the area effect at the owner's point, for the cause's
-                      side and at its level, the cause its parent; a row that follows its parent
-                      follows the owner
-    SpawnProjectile   a projectile spawn: the projectile from the owner's point at the row's
-                      height, aimed by the row's two expressions, at no target
-    SpawnHost         an object a spawn can come from, which reaches the spawner
-  filter/
-    GameObjectFilter  one filter row: whether an object passes it, for a team and a name
-    FilterSubject     an object as a filter asks about it
-  deploy/
-    CardPlacement     one card play worked out: the map check, the search, the column, then each
-                      unit's offset, position, lane and start
-    MapCheck          the raw requested point: on the map, and on a cell that may take the card
-    DeployMask        the tiles a card may be placed on: the towers' boxes and the buildings
-    PlacementSearch   the clamp, the snap and the nearest legal tile in square rings
-    Formation         where the index-th unit of a card stands around the placed point
-    InitialDelay      whether a unit starts deploying or waits its turn
-    DeployCard        the columns of a troop card its placement reads
-  projectile/
-    ProjectileData    the published columns of a projectile row, unconverted
-    ProjectileEntity  a projectile in flight: an entity of its own kind in the same holder
-    ProjectileLauncher the hit application's projectile path: count, spread, start, aim, hand-over
-    ProjectileFlight  one step of the flight, the arrival and the impact
-    ProjectileAmounts the damage and the crown-tower damage at the projectile's level
-```
+![The packages of org.crforge.core.battle with the classes this page lists: the step's own classes, data, expression, filter, replay, match, deploy, unit, spawn, projectile and action](assets/battle-packages.svg)
+
+The tables below say what each of those classes is, package by package. `unit/`, `projectile/` and `action/` hold more classes than they list; the other packages are listed in full.
+
+**`org.crforge.core.battle`**: the step and the entity tick.
+
+| Class | What it is |
+| --- | --- |
+| `Battle` | the step: clock, entity tick, commands, tick counter |
+| `BattleMode` | when the match is over; what the mode does before the entity tick |
+| `BattleCommand` | a tick-stamped action from outside the entity tick |
+| `EntityHolder` | the entity tick: every hook and pass of every entity, in one fixed order |
+| `HolderPasses` | the once-per-tick work around the entity visits |
+| `TargetLocks` | which object holds which target, per channel, granted after phase 3 |
+| `BattleEntity` | a container of four component slots with a pre-hook and a post-hook |
+| `BattleComponent` | one slot: a refresh and a visit |
+| `EntityActions` | the five action passes of one entity |
+| `BattleRandom` | the battle's random source: one shared 32-bit xorshift state |
+
+**`expression/`**: the data's expression columns as a stack machine.
+
+| Class | What it is |
+| --- | --- |
+| `ExpressionCompiler` | the data's expression columns into opcode words, with the fold |
+| `ExpressionEvaluator` | the stack machine that runs them over 32-bit integers |
+| `Expression` | one compiled expression: its words and its stack depth |
+| `ExpressionEnvironment` | what an expression's symbols name and what each call answers |
+| `BattleFunctions` | the 47 names of the battle's functions, their ids and argument counts |
+| `Builtins` | the functions every expression may call whatever its environment: min, max, abs, clamp, select and the two logarithms |
+| `ExpressionException` | a string the expression compiler refuses |
+
+**`unit/`**: the world, its entities, buffs and abilities; its main classes.
+
+| Class | What it is |
+| --- | --- |
+| `BattleWorld` | the routing grid, the building overlay and the spatial index, rebuilt per tick; owns the holder, hands launched projectiles to it, and is where damage lands |
+| `WorldEntity` | an entity that stands on the arena, with its targeting component's state |
+| `CharacterEntity` | targeting in slot 0, movement in slot 1, the state visit as the post-hook |
+| `TowerEntity` | a crown tower: targeting in slot 0, the state visit and the combat gate as the post-hook |
+| `UnitData` | the published columns of a unit, unconverted, its projectile row among them |
+| `AbilityData` | a unit's ability row: its cast, its trigger, the target it keeps, its action |
+| `WorldObserver` | what watches the arena from outside the tick: hits, areas, launches, impacts, removals, a king tower's activation |
+| `Standard1v1Battle` | the standard arena with its six towers |
+| `ActivationEvent` | one step of a king tower's activation, as observers are told it |
+| `ActionOwnerEntity` | an object that only owns actions, standing in for the objects that run spawn rows in the data |
+| `AreaEffectEntity` | an area effect: an object of its own kind that stands at a point for its life and hits the area around it on a schedule |
+| `BuffComponent` | the buffs listed on a character or a tower, in slot 3, and what they make of its speeds |
+| `CombatGate` | the combat gate at the tail of the state visit: whether the targeting component is on for the next tick, and when the reference is dropped |
+| `KingElixir` | the kings' elixir, which the units pay into and the abilities draw on |
+| `ChampionController` | one champion slot of a king: the champion's cooldown, charges and button state |
+| `PlayerCommands` | the commands of a Ladder battle's players, given as a player's client gives them: a card play or a champion's ability, between two steps |
+| `AbilityCommand` | a player's ability command: the tap on a champion's button, run in the command pass of its tick |
+
+**`match/`**: the Ladder mode: clock, elixir, hands, plays.
+
+| Class | What it is |
+| --- | --- |
+| `LadderMatch` | a Ladder match as the battle's mode: the setup, the update's advance, the kings' visits, a play's gates and spend, the crowns |
+| `Timeline` | the battle's clock: sections, the elixir rate and the next-card cooldown |
+| `BattleTimeline` | a battle timeline row, as the game mode names it |
+| `MatchSide` | one player: the elixir in ten-thousandths, the deck and the hand, each deck card's slot flags and the count per deck index |
+| `EvolutionItem` | the item a play of a deck card carries: its evolution field, the row cast and its cost |
+| `Hand` | four slots, the queue and the refill cooldown |
+| `DeckShuffle` | the order a deck is dealt in, from one draw of the battle's source |
+| `MatchCard` | what the match reads of a card: its cost and its opening-hand columns |
+| `MirrorItem` | the card item a Mirror play carries: the card it repeats, the level it is played at and its cost |
+| `SpellVariant` | a card played as one of its options (the Merge Maiden's mounted or on-foot maiden), picked from the king's elixir as the play is given |
+| `VariantItem` | the card item a variant card's play carries: the option picked, its cost and the card's deck index |
+
+**`action/`**: the action runtime and the action classes the game's action rows name; its main classes.
+
+| Class | What it is |
+| --- | --- |
+| `ActionHolder` | one entity's scheduled actions behind the five passes: the pending entries, the running instances and the tags they set |
+| `BattleAction` | an action: its row's shared columns, what starting it does, and whether it lasts |
+| `ActionRow` | the columns every action row shares; RowAction answers them from it |
+| `ActionInstance` | one run of an action that lasts, stepped by the run pass |
+| `Group` | schedules every part when it is scheduled, each at its own offset |
+| `Select` | schedules one part when it is scheduled, by its conditions |
+| `Filter` | schedules its true or false branch when it starts |
+| `RunOnInstigator` | schedules its action on the entity that caused it |
+| `WaitToActivate` | lasts until its condition holds, then schedules its activation |
+| `WithDuration` | lasts a fixed time, or one that follows the hit speed |
+| `Interval` | lasts, and fires its action every interval unless paused by a tag |
+| `FlipFlop` | lasts, and turns on and off once its condition disagrees long enough |
+| `ActionOwner` | the entity a holder belongs to, as the leaves that act on it see it |
+| `SetVariable` | writes a variable of its owner, which expressions naming it read |
+| `SetShield` | gives its owner a shield of a share of its maximum hit points |
+| `RunActionAtHealth` | lasts, and runs an action as its owner's hit points fall past each threshold |
+| `Taunt` | forces its owner's target onto the parent of the area effect that caused it, with a buff, for a step; the owner's run is armed at once |
+| `LaserBall` | lasts on an area effect, and at a fixed rate runs on everything its query finds around it the action their count picks |
+| `LaserBallHost` | what a laser ball asks of the battle around its area effect |
+| `ShapeSelector` | lasts on an area effect or a character, and on ticks set from its start, or from then on when it waits, runs an action on the object in its circle with the most hit points and shield, and one on its owner by the pick's side |
+| `ShapeSelectorHost` | what a shape selector asks of the battle around its owner |
+| `SpawnGuard` | makes a guard behind its area effect and sends it charging ahead after a short deploy, pushing and hitting what it passes |
+| `GuardHost` | what a guard's run asks of the battle about its guard and around it |
+| `BossBanditAbility` | locks its unit on itself and, a set number of battle ticks after it starts, runs its warp on it |
+| `WarpCharacter` | moves its unit at once back toward its own side, off water and blocked cells |
+| `DoPushbackFromInstigator` | pushes its unit a delay later along the width, away from the side of the arena its cause stands on (a cause that has left by then, where it stood as the push was scheduled), and runs its success or failure actions |
+| `AirToGround` | lasts on its owner and holds it on the ground, pulling an air unit down and letting it climb back |
+| `TargetIndicatorAttack` | lasts on a character, marks the nearest enemy in its ring with a signal and shoots a projectile at the signal's point a delay later |
+| `TargetIndicatorHost` | what a target indicator attack asks of the battle around its character |
+| `Heal` | heals its owner by its value, with its over-heal percentage |
+| `Kill` | schedules its kill action on its owner, then kills it with the cause as killer |
+| `DamageType` | the switches a typed hit's pipeline runs, and the actions it runs after a hit |
+| `DealDamage` | queues a typed hit on its owner, with the cause as its source |
+| `InertAction` | a row that changes nothing the simulation reads: an inert class, an effect or a forced animation; an effect that loops keeps a run |
+| `PopBalloons` | the Skeleton Barrel's pop: a run stepped doing nothing, never finishing; a singleton's second start drops a container as an area effect |
+| `PlayAnimationIfHasTarget` | the Goblin Cage's shake: a run stepped doing nothing, never finishing |
+| `Berserk` | the Berserker's starting action: a run that sets the attack sequence index to 0 and flips it on every attack that lands |
+| `CollectFriends` | lasts, and claims the nearest friends through the target locks, requests the ability and fires a projectile at each |
+| `FriendCollecting` | what a collector asks of the battle around its unit |
+| `GoblinHutLifeState` | lasts, waits for an enemy within the hut's reach and spawns toward it at an interval while it holds one |
+| `GoblinHutLife` | what a Goblin Hut's life state asks of the battle around its building |
+| `GiantBufferBuff` | lasts, and adds damage to every so many of its unit's hits, a projectile's through the copy it carries |
+| `LumberjackGhostWait` | lasts on the evolved Rage Barbarian's ghost, swaps a buff applied to it for the one it considers, and once armed kills the ghost when that is gone |
+
+**`data/`**: the game's rows, read once.
+
+| Class | What it is |
+| --- | --- |
+| `GameTables` | a folder of the game's own tables, one data version, and its action graph |
+| `GameTable` | one table's rows by name, in creation order |
+| `GameRow` | one row: its index, its class and its columns under the game's own names |
+| `BattleRecords` | the battle's units, projectiles and troop cards built from those rows |
+| `ActionRows` | the battle's actions built from the game's action rows, for one entity |
+| `ActionBinding` | what an action row needs from its entity: expressions, variables, tags |
+| `GameVersions` | the game versions the simulator knows, named once: the data versions, the client versions and the data versions each client has run |
+| `GameAction` | one action row of the data: its name, its class, its ClassType and its fields as the data writes them |
+| `CycleReference` | a row named again while it is still being built: a reference back into a cycle of rows, which answers as that row once it is built |
+
+**`spawn/`**: character, area effect and projectile spawns.
+
+| Class | What it is |
+| --- | --- |
+| `SpawnRow` | the columns of a character spawn row, at its source or to a location |
+| `SpawnPerform` | the row's perform: its source, its point, the block the spawner is handed, and the calls made on the children after the spawn |
+| `SpawnArguments` | the block the spawner is handed |
+| `SpawnObject` | a game object as a spawn reads it |
+| `SpawnPlacement` | where the spawner places each child: on the point, or on a ring |
+| `SpawnPassable` | the in-front test: off the arena or over water refuses a point |
+| `SpawnCharacters` | the action: the perform's block handed to the battle's spawner |
+| `SpawnAreaEffect` | an area-effect spawn: the area effect at the owner's point, for the cause's side and at its level, the cause its parent; a row that follows its parent follows the owner |
+| `SpawnProjectile` | a projectile spawn: the projectile from the owner's point at the row's height, aimed by the row's two expressions, at no target |
+| `SpawnHost` | an object a spawn can come from, which reaches the spawner |
+
+**`filter/`**: the game object filters.
+
+| Class | What it is |
+| --- | --- |
+| `GameObjectFilter` | one filter row: whether an object passes it, for a team and a name |
+| `FilterSubject` | an object as a filter asks about it |
+| `ObjectCensus` | what a check that counts the battle's objects asks of the object it runs on |
+
+**`deploy/`**: where a card play lands.
+
+| Class | What it is |
+| --- | --- |
+| `CardPlacement` | one card play worked out: the map check, the search, the column, then each unit's offset, position, lane and start |
+| `MapCheck` | the raw requested point: on the map, and on a cell that may take the card |
+| `DeployMask` | the tiles a card may be placed on: the towers' boxes and the buildings |
+| `PlacementSearch` | the clamp, the snap and the nearest legal tile in square rings |
+| `Formation` | where the index-th unit of a card stands around the placed point |
+| `InitialDelay` | whether a unit starts deploying or waits its turn |
+| `DeployCard` | the columns of a troop card its placement reads |
+| `MaskEntity` | a character as the deploy mask sees it |
+
+**`projectile/`**: projectiles from launch to impact; its main classes.
+
+| Class | What it is |
+| --- | --- |
+| `ProjectileData` | the published columns of a projectile row, unconverted |
+| `ProjectileEntity` | a projectile in flight: an entity of its own kind in the same holder |
+| `ProjectileLauncher` | the hit application's projectile path: count, spread, start, aim, hand-over |
+| `ProjectileFlight` | one step of the flight, the arrival and the impact |
+| `ProjectileAmounts` | the damage and the crown-tower damage at the projectile's level |
+
+**`replay/`**: replays as battles, and battles as replays.
+
+| Class | What it is |
+| --- | --- |
+| `ReplayScenario` | translates a replay into the battle's inputs: each of its fields consumed, pinned or carried |
+| `ScenarioPlan` | a replay translated into the battle's own inputs: the seed, towers, decks, levels and commands |
+| `ReplayBattle` | the battle a translated replay gives, and the check of each play's item as it runs; a conformance run and the replay viewer build it the same way |
+| `ReplayFormat` | the replay fields that differ between data versions, and how each is read |
+| `CommandTypes` | which command type is a card play and which an ability command, in one data version's replays |
+| `ScenarioShape` | the kind of scenario a run reads, a replay or a generated case, which decides the fields it is read by |
+| `ScenarioWriter` | writes a battle as a replay of the tables' data version, which reads back to the same battle, step for step |
+| `ReplayCapture` | a replay's capture block: the client version and the data the session that recorded it ran |
+| `ContentFields` | the fields that name a data version and its content sha in the files the replay and reference tools read and write |
+| `UnsupportedScenarioException` | a scenario input the battle core has no mapping for: the run is reported unsupported, naming it |
 
 ### Rows, actions and the strict builder
 

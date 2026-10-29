@@ -25,125 +25,19 @@ This page is the index of the docs, the module and package layout, and the debug
 
 ## Module Structure
 
-```
-crforge/
-  core/           The battle core: headless, no GUI dependencies
-  desktop/        LibGDX debug visualizer and replay viewer, on the battle core; plays a trained model through env
-  conformance/    Checks the battle core against recorded reference battles
-  env/            The reinforcement learning environment: a vector of battles behind flat buffers
-  tables/         The table decoder: builds the game tables of a data version from the game's files
-  python/         The crforge-env Python package on the env module's jars (not a Gradle module)
-  examples/       A replay the replay viewer opens, examples/replays/ladder.json (not a Gradle module; examples/README.md)
-```
+![The modules of crforge: the core module and its packages, the desktop, env, conformance and tables modules, the Python package and the examples, the Gradle dependencies between them, and the game tables and reference battles they read](assets/modules.svg)
 
 `conformance` and `env` depend on `core` only. `desktop` depends on `core` and on `env`, whose environment builds a model opponent's observation and takes its actions as in training, and on ONNX Runtime, which runs the model (see [Playing against a model](#playing-against-a-model)). Nothing depends on `desktop` or `conformance`. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository: they live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
 
-```mermaid
-flowchart TB
-  subgraph EXT["Game data repository (commit pinned by crforge-data.lock)"]
-    TAB["Game tables<br/>VERSION/"]
-    REF["Reference battles<br/>references/VERSION/<br/>scenario + trace per case"]
-  end
-  GAME["The game<br/>records each scenario once per data version"] --> REF
+`python/` and `examples/` are not Gradle modules: `python/` is the crforge-env package, which runs the env module's jars in the JVM ([README](../python/README.md)), and `examples/` holds a replay the replay viewer opens ([README](../examples/README.md)).
 
-  subgraph CORE[":core"]
-    subgraph BC["Battle core (org.crforge.core.battle)"]
-      DATA["data<br/>GameTables, BattleRecords, ActionRows"]
-      UNIT["unit<br/>BattleWorld, CharacterEntity,<br/>buffs, areas, ability runs"]
-      MISC["projectile, spawn, action,<br/>filter, expression"]
-      MATCH["match + deploy<br/>LadderMatch, Hand, Timeline,<br/>CardPlacement"]
-      BATTLE["Battle, EntityHolder<br/>one 50 ms step"]
-      REPLAY["replay<br/>ReplayScenario, ReplayBattle, ReplayFormat"]
-    end
-    PF["org.crforge.core.pathfinding<br/>routing grid, movement, targeting,<br/>hit points and damage"]
-    FID["fidelity<br/>Fidelity, FidelityLedger"]
-    FIX["testFixtures<br/>Shipped, GameData, Scenarios"]
-  end
-
-  subgraph CONF[":conformance"]
-    SUITE["ReferenceSuite<br/>referenceTest, CI shards"]
-    SMOKE["ReplaySmokeRun + SmokeObserver<br/>battle core trace"]
-    CMP["ReferenceComparison<br/>tick by tick, no tolerance"]
-    EXP["reference-expectations/<br/>VERSION.json"]
-  end
-
-  subgraph DESK[":desktop (LibGDX)"]
-    VIS["Battle visualizer<br/>desktop.battle, desktop.render"]
-    RPV["Replay viewer<br/>desktop.replay"]
-    MOD["Model opponent<br/>desktop.model, ONNX Runtime"]
-  end
-
-  subgraph ENVM[":env"]
-    VENV["VectorEnv + LadderEnv<br/>plays through PlayerCommands,<br/>flat buffers for a trainer"]
-  end
-
-  subgraph PYENV["python/ (crforge-env)"]
-    PYV["VectorBattle, ClashGymEnv,<br/>ClashParallelEnv<br/>numpy views of the buffers"]
-  end
-
-  TAB --> DATA
-  DATA --> UNIT
-  DATA --> MATCH
-  UNIT --> BATTLE
-  MISC --> BATTLE
-  MATCH --> BATTLE
-  REPLAY --> MATCH
-  UNIT --> PF
-  FID -. "status notes" .-> BC
-  FID -. "status notes" .-> PF
-
-  REF --> SUITE
-  TAB --> SMOKE
-  SUITE --> SMOKE
-  SMOKE --> REPLAY
-  SMOKE --> CMP
-  REF --> CMP
-  CMP -- "outcome per case" --> SUITE
-  SUITE -- "held to" --> EXP
-
-  TAB --> VIS
-  VIS --> BATTLE
-  RPV --> REPLAY
-  MOD --> VENV
-  TAB --> VENV
-  VENV --> MATCH
-  PYV --> VENV
-
-  FIX -. "unit tests" .-> BC
-
-  classDef data fill:#e3f0ff,stroke:#5b8def
-  class TAB,REF,EXP data
-```
+How `conformance` checks a reference battle is drawn in [How a case is checked](../conformance/README.md#how-a-case-is-checked).
 
 ### Core Package Layout
 
-```
-org.crforge.core/
-  battle/        The battle core: Battle, BattleCommand, EntityHolder, HolderPasses, BattleRandom, TargetLocks
-    action/        The action runtime and the action classes the game's action rows name
-    data/          GameTables, GameRow, GameVersions, BattleRecords, ActionRows: the game's rows read once
-    deploy/        CardPlacement: the map check, the placement search, the formation, the initial delay
-    expression/    ExpressionCompiler, ExpressionEvaluator: the data's expression columns
-    filter/        The game object filters
-    match/         LadderMatch, MatchSide, Hand, Timeline, DeckShuffle: the mode, elixir and hands
-    projectile/    ProjectileEntity, ProjectileLauncher, ProjectileFlight
-    replay/        ReplayScenario, ReplayBattle, CommandTypes, ReplayFormat: replays as battles;
-                   ScenarioWriter: a battle written as a replay
-    spawn/         Character, area effect and projectile spawns
-    unit/          BattleWorld, CharacterEntity, TowerEntity, AreaEffectEntity, buffs, abilities, Standard1v1Battle
-  pathfinding/   The movement, targeting and state rules the battle core runs
-    combat/        HitPoints, DamageApplication, AreaDamage, LevelScaling, RarityTable
-    grid/          TileMap, CellGrid, CellCosts, RouteSearch, FootprintOverlay, ReferenceEndpoint, Relocation
-    index/         SpatialIndex and the shape tests
-    math/          FixedMath, TrigTables
-    move/          MovementVisit, MovementChain, PushPass, AvoidanceHandler, Displacement, SpeedConfig
-    state/         EntityStateVisit, StateSetter, HideHandler
-    target/        TargetingVisit, DefaultTargetSelection, HitApplication, DirectHit, AttackRange
-  fidelity/      Fidelity, FidelityStatus, FidelityLedger (./gradlew :core:fidelityReport)
-  util/          GameUnits, ValidationUtils, DeepCopy
-```
+![The packages of org.crforge.core: battle and its subpackages, pathfinding and its subpackages, fidelity and util, with the main classes of each and the packages each may import](assets/core-packages.svg)
 
-`battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base. See the dependency rule in [The Battle Core](battle-core.md#package-layout).
+`battle` and `pathfinding` may import each other, `fidelity` and `util`, and nothing else from this code base. See [the dependency rule](battle-core.md#the-dependency-rule) in The Battle Core.
 
 The step and the entity tick are described in [One step](battle-core.md#one-step), with a diagram of the battle core's inside. A player's command runs 20 steps after it is given; see [When a player's command runs](battle-core.md#when-a-players-command-runs).
 
