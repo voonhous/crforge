@@ -36,23 +36,26 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * <p>{@link #plan} takes a battle played as a Ladder match (its towers, seed, players' data and
  * words, decks with their slot flags, and every player's command queued on it, {@link
- * Standard1v1Battle#getCommands}) as a translated scenario; {@link #write} writes a translated
- * scenario as the document. Each play carries the packed item its player's client built: for a play
- * that has run, the item the battle built as it ran; for one that has not, the item its side builds
- * now, which the replay's run checks as it runs ({@link ReplayBattle#checkItems}). So a battle
- * written before its last commands run is read back whole and plays the same up to the tick it was
- * written at.
+ * Standard1v1Battle#getCommands}) with each player's arena its caller names as a translated
+ * scenario; {@link #write} writes a translated scenario as the document. Each play carries the
+ * packed item its player's client built: for a play that has run, the item the battle built as it
+ * ran; for one that has not, the item its side builds now, which the replay's run checks as it runs
+ * ({@link ReplayBattle#checkItems}). So a battle written before its last commands run is read back
+ * whole and plays the same up to the tick it was written at.
  *
- * <p>Refused, with the reason: a battle outside a match; a deck card played at two levels, as a
- * replay gives each deck card one level; a Mirror whose item repeats nothing; a variant play whose
- * option the battle has not picked yet; an ability command naming a unit no play made; and any
- * input the version's replays cannot carry (a tower selection no support card places, a level below
- * the rarity's first, players' data other than one choice each, a data version whose command types
- * are not established).
+ * <p>Refused, with the reason: a battle outside a match; a side with no arena named, or one named
+ * that is no row of the arenas table (the battle holds no arena: a replay's avatar names its
+ * player's arena row, so the caller of a fresh battle names it, and a replay's plan keeps its own);
+ * a deck card played at two levels, as a replay gives each deck card one level; a Mirror whose item
+ * repeats nothing; a variant play whose option the battle has not picked yet; an ability command
+ * naming a unit no play made; and any input the version's replays cannot carry (a tower selection
+ * no support card places, a level below the rarity's first, players' data other than one choice
+ * each, a data version whose command types are not established).
  *
  * <p>The writer fills the fields a replay must hold and the battle does not read with the values
- * the reader pins, or with neutral ones where the reader carries them: the time and the arena 0, no
- * events, no emotes listed in each player's data, and each player named by its side.
+ * the reader pins, or with neutral ones where the reader carries them: the time and the battle
+ * header's arena 0, no events, no emotes listed in each player's data, and each player named by its
+ * side. Each avatar's arena is the plan's, a row of the arenas table, by its data id.
  */
 public final class ScenarioWriter {
 
@@ -72,6 +75,9 @@ public final class ScenarioWriter {
   /** The table of the locations. */
   private static final String LOCATIONS = "locations";
 
+  /** The table of the arenas, whose row each player's avatar names. */
+  public static final String ARENAS = "arenas";
+
   private final GameTables tables;
 
   /**
@@ -85,17 +91,22 @@ public final class ScenarioWriter {
   /**
    * A battle played as a Ladder match, as a translated scenario: its seed, towers, players' data,
    * decks and slot flags, each side's account (the side as the high word, its player's word as the
-   * low word), and every player's command queued on it, in the order queued, each named {@code
-   * cmd<index>} by its place.
+   * low word) and arena, and every player's command queued on it, in the order queued, each named
+   * {@code cmd<index>} by its place.
    *
    * @param battle the battle, its match started
    * @param level the level of a deck card no command plays, counted from 1: a replay gives every
    *     deck card a level, and the battle holds only the levels its plays were given at
+   * @param arenas each side's arena, a row name of the arenas table: the battle holds none, and a
+   *     replay's avatar names its player's arena, so its caller names it
    * @return the scenario, as {@link ReplayScenario#translate} would read it
+   * @throws IllegalArgumentException when a side has no arena named, or one that is no row of the
+   *     arenas table
    * @throws UnsupportedOperationException for a battle the version's replays cannot hold, naming
    *     why
    */
-  public ScenarioPlan plan(Standard1v1Battle battle, int level) {
+  public ScenarioPlan plan(Standard1v1Battle battle, int level, List<String> arenas) {
+    List<String> named = arenas(arenas);
     LadderMatch match = battle.getMatch();
     if (match == null) {
       throw new UnsupportedOperationException(
@@ -164,6 +175,7 @@ public final class ScenarioWriter {
         deckLevels,
         slotFlags,
         accounts,
+        named,
         List.copyOf(battle.getPlayerDataChoices()),
         plays,
         abilities);
@@ -362,7 +374,7 @@ public final class ScenarioWriter {
       avatar.put("accountID.lo", plan.accounts().get(side)[1]);
       pins(avatar, format.avatarPins());
       avatar.put("name", "Side " + side);
-      avatar.put("arena", 0);
+      avatar.put("arena", arenaId(plan.arenas(), side));
     }
     battle.put("location", standardLocation());
     battle.set("hbd", playerData(plan, format));
@@ -544,6 +556,59 @@ public final class ScenarioWriter {
     body.put("idLo", plan.accounts().get(ability.side())[1]);
     body.put("cgid", ability.objectId());
     return command;
+  }
+
+  /**
+   * Each side's arena, checked: one name per side, each a row of the arenas table.
+   *
+   * @throws IllegalArgumentException when a side has none, or one the table does not hold
+   * @throws UnsupportedOperationException when the tables hold no arenas table
+   */
+  private List<String> arenas(List<String> arenas) {
+    if (arenas == null || arenas.size() != 2) {
+      throw new IllegalArgumentException(
+          "no arena named for each side"
+              + (arenas == null ? "" : " (" + arenas.size() + " named)")
+              + ": a replay's avatar names its player's arena, a row of the "
+              + ARENAS
+              + " table, which the battle does not hold, so the caller names it");
+    }
+    if (!tables.tableNames().contains(ARENAS)) {
+      throw new UnsupportedOperationException(
+          "the tables of data version "
+              + tables.version()
+              + " hold no "
+              + ARENAS
+              + " table, whose row a replay's avatar names");
+    }
+    for (int side = 0; side < 2; side++) {
+      String name = arenas.get(side);
+      if (name == null) {
+        throw new IllegalArgumentException(
+            "no arena named for side "
+                + side
+                + ": a replay's avatar names its player's arena, a row of the "
+                + ARENAS
+                + " table");
+      }
+      if (!tables.table(ARENAS).has(name)) {
+        throw new IllegalArgumentException(
+            "side "
+                + side
+                + "'s arena "
+                + name
+                + " is no row of the "
+                + ARENAS
+                + " table of data version "
+                + tables.version());
+      }
+    }
+    return List.copyOf(arenas);
+  }
+
+  /** A side's arena's data id, the plan's arena row checked. */
+  private int arenaId(List<String> arenas, int side) {
+    return id(tables.table(ARENAS), arenas(arenas).get(side));
   }
 
   /** The first location whose map is the standard arena's. */

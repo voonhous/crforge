@@ -236,7 +236,9 @@ class ReplayFileTest {
     ScenarioWriter writer = new ScenarioWriter(tables);
     int endTick = battle.getBattle().getTick();
     ObjectNode document =
-        writer.write(writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL), endTick);
+        writer.write(
+            writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL, Scenarios.arenas(tables)),
+            endTick);
     Path file = Replays.write(folder, "battle.json", document);
 
     ReplayFile replay = ReplayFile.read(file, tables);

@@ -24,6 +24,7 @@ import org.crforge.core.battle.deploy.MaskEntity;
 import org.crforge.core.battle.deploy.PlacementSearch;
 import org.crforge.core.battle.replay.ReplayScenario;
 import org.crforge.core.battle.replay.ScenarioPlan;
+import org.crforge.core.battle.replay.Scenarios;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.WorldEntity;
 import org.crforge.core.pathfinding.grid.TileMap;
@@ -279,7 +280,11 @@ class LandingMaskTest {
   void aRecordedTapTheScreenMovedIsLabelledWithTheTileItLandedOn() throws IOException {
     // An episode under the old rule: plays dropped on any tile, many of them moved by the screen's
     // search, written as a replay that records where each landed.
-    EnvConfig old = EnvConfig.DEFAULT.withDecisionTicks(1).withMaskVersion(Schema.MASK_ALL_TILES);
+    EnvConfig old =
+        EnvConfig.DEFAULT
+            .withDecisionTicks(1)
+            .withMaskVersion(Schema.MASK_ALL_TILES)
+            .withArena(Scenarios.arena(tables));
     String replay;
     try (VectorEnv env = VectorEnv.ladder(tables, old, 1, 1)) {
       env.setAutoreset(false);

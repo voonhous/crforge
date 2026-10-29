@@ -28,6 +28,9 @@ dependencies {
 // fidelity ledger scans the classes folder its own class was loaded from, so put it first.
 tasks.test {
     classpath = sourceSets.main.get().output + classpath
+    // Many test classes keep a copy of the tables, altered for the test, for the whole run; past
+    // the default 512 MB the arenas table tipped the run over.
+    maxHeapSize = "1g"
 }
 
 // Prints how much of the simulation is established behaviour and how much is still inferred.

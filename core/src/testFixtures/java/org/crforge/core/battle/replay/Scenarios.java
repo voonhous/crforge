@@ -10,8 +10,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import java.util.function.Function;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 
 /** A replay scenario of the shape the adapter reads, built for the tests. */
 public final class Scenarios {
@@ -32,6 +35,28 @@ public final class Scenarios {
 
   /** The command type of an ability command in the configured data version's replays. */
   public static final int ABILITY = configuredCommandTypes().ability();
+
+  /**
+   * The arena a test's fresh battle names for both players when it is written as a replay: the
+   * first row of the tables' arenas table that is not a training camp, read from the tables.
+   *
+   * @param tables the game tables
+   * @return the arena row's name
+   */
+  public static String arena(GameTables tables) {
+    for (GameRow row : tables.table(ScenarioWriter.ARENAS).rows()) {
+      if (!row.bool("TrainingCamp")) {
+        return row.name();
+      }
+    }
+    throw new IllegalStateException("the arenas table holds no arena but training camps");
+  }
+
+  /** {@link #arena} for each side, as a fresh battle's plan names them. */
+  public static List<String> arenas(GameTables tables) {
+    String arena = arena(tables);
+    return List.of(arena, arena);
+  }
 
   /** The command types of the configured tables' data version. */
   private static CommandTypes configuredCommandTypes() {

@@ -36,7 +36,8 @@ import org.crforge.desktop.battle.BattleSession;
  * spell, the Miner) is aimed at the other side's tower nearest the side's lane; any other card is
  * placed in the side's own lane, {@link #LANE_OFFSET} in front of its princess tower there. Both
  * sides use the same lane, the one at the low end of the arena's width, so their plays meet. A
- * hero's ability is used as soon as it may be. The battle runs until its match is over.
+ * hero's ability is used as soon as it may be. The battle runs until its match is over. Both
+ * players' avatars name the arena {@link #ARENA}.
  *
  * <p>Run it with {@code ./gradlew :desktop:exampleReplay}, which writes the file for the data
  * version the build makes the tables of (the lock's by default). A data version bump rewrites it:
@@ -52,6 +53,13 @@ public final class ExampleReplay {
 
   /** How far in front of a side's princess tower its own cards are placed, in game units. */
   static final int LANE_OFFSET = 3000;
+
+  /**
+   * The arena both players' avatars name, a row of the arenas table: the first trophy arena, where
+   * every player's Ladder begins, and not the training camp. A replay's avatar names its player's
+   * arena, and the battle holds none, so the example names it.
+   */
+  static final String ARENA = "Arena1";
 
   /** The most steps the battle is run for: ten minutes of game time, past any Ladder match. */
   static final int MAX_STEPS = 12_000;
@@ -110,7 +118,9 @@ public final class ExampleReplay {
           "the example battle is not over after " + MAX_STEPS + " steps");
     }
     ScenarioWriter writer = new ScenarioWriter(tables);
-    return writer.write(writer.plan(session.getBattle(), BattleSession.LEVEL), session.tick());
+    return writer.write(
+        writer.plan(session.getBattle(), BattleSession.LEVEL, List.of(ARENA, ARENA)),
+        session.tick());
   }
 
   /**

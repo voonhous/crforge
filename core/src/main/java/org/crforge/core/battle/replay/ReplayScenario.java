@@ -199,12 +199,21 @@ public final class ReplayScenario {
   static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
   /**
-   * How the battle header's and each avatar's {@code arena} are read: the players' trophy arena,
-   * whose row holds trophy, chest, matchmaking and presentation columns only and is not among the
-   * tables the battle reads. The battle's map is the location's.
+   * How the battle header's {@code arena} is read: the players' trophy arena, whose row holds
+   * trophy, chest, matchmaking and presentation columns only and is not among the tables the battle
+   * reads. The battle's map is the location's.
    */
   static final String ARENA_CARRIED =
       "carried: the players' trophy arena, presentation; the map is the location's";
+
+  /**
+   * How each avatar's {@code arena} is read: the player's arena, a row of the arenas table, which
+   * the plan keeps and a written replay gives back as read. The battle does not read it.
+   */
+  static final String AVATAR_ARENA_CARRIED =
+      "carried: the player's arena, a row of the arenas table (its table id times a million plus"
+          + " its index), kept in the plan and written back as read; any other id is unsupported;"
+          + " no battle input";
 
   /** The evolution field of a play's packed item: bits 0..3. */
   private static final int ITEM_FIELD_MASK = 0xf;
@@ -459,6 +468,7 @@ public final class ReplayScenario {
     List<int[]> deckLevels = new ArrayList<>();
     List<int[]> slotFlags = new ArrayList<>();
     List<int[]> accounts = new ArrayList<>();
+    List<String> arenas = new ArrayList<>();
     List<Standard1v1Battle.Towers> towers = new ArrayList<>();
     for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
@@ -478,7 +488,7 @@ public final class ReplayScenario {
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
       towers.add(towers(deck, side));
       onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
-      accounts.add(avatar(required(battle, "avatar" + side), side));
+      accounts.add(avatar(required(battle, "avatar" + side), side, arenas));
     }
     if (format.ladderEvents()) {
       cardLevelMinimum(battle, decks, deckLevels);
@@ -585,7 +595,16 @@ public final class ReplayScenario {
             + " card; the play runs as Standard1v1Battle.playMirror. On any other play it is"
             + " unsupported");
     return new ScenarioPlan(
-        seed, towers, decks, deckLevels, slotFlags, accounts, playerDataChoices, plays, abilities);
+        seed,
+        towers,
+        decks,
+        deckLevels,
+        slotFlags,
+        accounts,
+        arenas,
+        playerDataChoices,
+        plays,
+        abilities);
   }
 
   /**
@@ -1059,15 +1078,16 @@ public final class ReplayScenario {
   /**
    * An avatar.
    *
+   * @param arenas the sides' arenas read so far, to which this avatar's is added
    * @return its account id, high word then low word
    */
-  private int[] avatar(JsonNode avatar, int side) {
+  private int[] avatar(JsonNode avatar, int side, List<String> arenas) {
     String field = "battle.avatar" + side;
     // The king tower is created at the summoner level of the avatar's exp level; only the first
     // exp level, whose king level is KING_LEVEL, has a production input.
     // A format whose king level is in the player data has no exp level pinned.
     format.avatarPins().forEach((name, value) -> pin(avatar, name, value));
-    required(avatar, "arena");
+    arenas.add(arena(required(avatar, "arena").asInt(), field + ".arena"));
     onlyFields(
         avatar,
         field,
@@ -1087,7 +1107,7 @@ public final class ReplayScenario {
                 ? "; a high word left out is 0, as the side's commands give it"
                 : ""));
     mapping.put("battle.avatarN.name", "carried: presentation");
-    mapping.put("battle.avatarN.arena", ARENA_CARRIED);
+    mapping.put("battle.avatarN.arena", AVATAR_ARENA_CARRIED);
     format
         .avatarCarried()
         .forEach((name, what) -> mapping.put("battle.avatarN." + name, "carried: " + what));
@@ -1587,6 +1607,37 @@ public final class ReplayScenario {
         + ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK)
         + ", cost "
         + (packed >>> ITEM_COST_SHIFT);
+  }
+
+  /**
+   * The arena an avatar names: the row of the arenas table its data id names, by name; refused when
+   * it names no row of that table, or the tables hold none.
+   *
+   * @return the row's name, or null when refused in a survey
+   */
+  private String arena(int id, String field) {
+    if (!tables.tableNames().contains(ScenarioWriter.ARENAS)) {
+      refuse(
+          "a player's arena, which the tables of data version "
+              + tables.version()
+              + " cannot name: they hold no "
+              + ScenarioWriter.ARENAS
+              + " table",
+          field + "=" + id);
+      return null;
+    }
+    GameTable arenas = tables.table(ScenarioWriter.ARENAS);
+    if (Integer.toString(id / IDS_PER_TABLE).equals(arenas.id())) {
+      for (GameRow row : arenas.rows()) {
+        if (row.index() == id % IDS_PER_TABLE) {
+          return row.name();
+        }
+      }
+    }
+    refuse(
+        "a player's arena that is no row of the " + ScenarioWriter.ARENAS + " table",
+        field + "=" + id);
+    return null;
   }
 
   /** A card's level counted from 1 across all rarities, from its own level index. */

@@ -11,7 +11,7 @@ from pettingzoo.test import parallel_api_test
 
 from crforge_env import ClashGymEnv, ClashParallelEnv, LadderConfig, VectorBattle, random_opponent
 from crforge_env.bench import draw_actions
-from tests.decks import BLUE, RED
+from tests.decks import BLUE, RED, arena
 
 pytestmark = pytest.mark.ladder
 
@@ -251,7 +251,11 @@ THREE_CHAMPIONS = [
 def test_a_fault_writes_a_bundle_whose_folder_the_fault_info_names(install, tables, tmp_path):
     folder = tmp_path / "bundles"
     with VectorBattle(
-        1, 1, install=install, tables=tables, config=LadderConfig(fault_bundles=folder)
+        1,
+        1,
+        install=install,
+        tables=tables,
+        config=LadderConfig(fault_bundles=folder, arena=arena(tables)),
     ) as v:
         v.reset([3], THREE_CHAMPIONS, RED)
         fault = v.fault(0)
@@ -277,6 +281,24 @@ def test_a_fault_writes_a_bundle_whose_folder_the_fault_info_names(install, tabl
         v.reset([3], THREE_CHAMPIONS, RED)
         assert v.fault(0).bundle is None
         assert v.seat_info(0, 0)["fault_bundle"] == ""
+
+
+def test_a_written_replay_names_the_configured_arena_and_none_is_refused(install, tables):
+    # Each player's avatar names the arena LadderConfig.arena names, by its row's data id: the
+    # arenas table's id times a million plus the row's index, read from the tables.
+    document = json.loads((Path(tables) / "arenas.json").read_text(encoding="utf-8"))
+    name = arena(tables)
+    expected = int(document["id"]) * 1_000_000 + document["rows"][name]["index"]
+    config = LadderConfig(arena=name)
+    with VectorBattle(1, 1, install=install, tables=tables, config=config) as v:
+        v.reset([3], BLUE, RED)
+        battle = json.loads(v.replay_json(0))["battle"]
+        assert [battle[f"avatar{side}"]["arena"] for side in range(2)] == [expected, expected]
+    # With no arena named, writing a fresh episode is refused, naming the setting.
+    with VectorBattle(1, 1, install=install, tables=tables) as v:
+        v.reset([3], BLUE, RED)
+        with pytest.raises(Exception, match=r"EnvConfig\.arena"):
+            v.replay_json(0)
 
 
 def test_the_landing_mask_closes_tiles_and_the_old_rule_is_kept_apart(install, tables, tmp_path):
@@ -362,7 +384,7 @@ def test_the_new_fields_hold_their_bounds_and_the_buffs_their_own_list(install, 
 
 def test_autoreset_battles_start_at_seeds_of_the_range_given(install, tables):
     # A tick limit ends each episode within ten decisions, so the autoreset runs often.
-    config = LadderConfig(decision_ticks=5, max_ticks=50)
+    config = LadderConfig(decision_ticks=5, max_ticks=50, arena=arena(tables))
     low, high = 10_000_000, 2**31 - 1
     with VectorBattle(3, 2, install=install, tables=tables, config=config) as v:
         v.set_autoreset_seeds(low, high)

@@ -89,6 +89,7 @@ public final class FaultBundle {
     configNode.put("level", config.level());
     configNode.put("tower_level", config.towerLevel());
     configNode.put("max_ticks", config.maxTicks());
+    configNode.put("arena", config.arena());
     record.put("env_index", index);
     record.put("seed", env.seed());
     ArrayNode decks = record.putArray("decks");
@@ -134,7 +135,8 @@ public final class FaultBundle {
     } else {
       try {
         ScenarioWriter writer = new ScenarioWriter(tables);
-        ObjectNode replay = writer.write(writer.plan(battle, config.level()), fault.tick() + 1);
+        ObjectNode replay =
+            writer.write(writer.plan(battle, config.level(), env.arenas()), fault.tick() + 1);
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(folder.resolve(REPLAY).toFile(), replay);
       } catch (RuntimeException e) {
         refusal = e.getClass().getSimpleName() + ": " + e.getMessage();

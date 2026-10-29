@@ -99,6 +99,11 @@ class LadderConfig:
     tiles a card lands on without being moved, 1 (``MASK_ALL_TILES``) every tile of an open hand
     slot. Not part of the schema: a model trained under one rule reads the same observations and
     actions under the other"""
+    arena: str | None = None
+    """the arena both players' avatars name when an episode is written as a replay
+    (:meth:`VectorBattle.replay_json`, a fault bundle's replay): a row name of the tables' arenas
+    table, checked as the vector is made. None names none, and writing a fresh episode as a replay
+    is then refused, naming the setting; there is no default"""
 
 
 @dataclass(frozen=True)
@@ -349,6 +354,7 @@ class VectorBattle:
             pick(config.max_ticks, base.maxTicks()),
             None if config.fault_bundles is None else str(Path(config.fault_bundles).resolve()),
             pick(config.mask_version, base.maskVersion()),
+            config.arena,
         )
 
     # -- episodes ------------------------------------------------------------------------------
@@ -773,7 +779,8 @@ class VectorBattle:
         """Battle ``i``'s episode so far as a replay document (JSON text) of the tables' data
         version (``VectorEnv.replayJson``): its seed, decks, levels, towers and every command its
         seats gave, its ``endTick`` the battle's tick now. A Ladder vector only; with autoreset on,
-        a finished episode is replaced by the next one at the next step."""
+        a finished episode is replaced by the next one at the next step. Each player's avatar names
+        ``LadderConfig.arena``; without it this is refused."""
         return str(self._env.replayJson(int(i)))
 
     def write_metadata(self, path: str | Path) -> None:
