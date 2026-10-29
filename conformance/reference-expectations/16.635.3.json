@@ -830,6 +830,8 @@
   "royal-giant-deflect-v1/rg_deflect_untouched_x1800": {"outcome": "diagnostic_match"},
   "runegiant-buff-maker-left-v1/runegiant_buff_maker_left_miner": {"outcome": "diagnostic_match"},
   "runegiant-buff-maker-left-v1/runegiant_buff_maker_left_skeleton": {"outcome": "diagnostic_match"},
+  "runegiant-enchant-attached-v1/runegiant_enchant_icewizard_hero": {"outcome": "diagnostic_match"},
+  "runegiant-enchant-attached-written-v1/runegiant_enchant_icewizard_hero_written": {"outcome": "diagnostic_match"},
   "runegiant-enchant-entries-v1/runegiant_enchant_electrowizard_hero": {"outcome": "diagnostic_match"},
   "runegiant-enchant-entries-v1/runegiant_enchant_musketeer_bayonet": {"outcome": "diagnostic_match"},
   "runegiant-enchant-entries-v1/runegiant_enchant_princess_evo": {"outcome": "diagnostic_match"},

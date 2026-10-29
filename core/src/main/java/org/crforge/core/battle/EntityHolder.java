@@ -110,6 +110,12 @@ public class EntityHolder {
   /** True from the end of the tick's last pending pass, that of phase 3, to the end of the tick. */
   private boolean pendingPassesDone;
 
+  /**
+   * The tick whose run pass steps the snapshot's actions now, or -1 outside the run pass: an entity
+   * whose actions that pass has already stepped has this tick as its holder's last.
+   */
+  private int runPassTick = -1;
+
   public EntityHolder(HolderPasses passes) {
     this.passes = passes;
   }
@@ -193,6 +199,14 @@ public class EntityHolder {
    */
   public boolean hasPendingPassAhead() {
     return ticking && !pendingPassesDone;
+  }
+
+  /**
+   * The tick whose run pass is stepping the snapshot's actions now, or -1 outside the run pass. An
+   * entity's actions that pass has already stepped have this tick as their holder's last tick.
+   */
+  public int runPassTick() {
+    return runPassTick;
   }
 
   /** The registered entities in ascending id. Entities still waiting for a cleanup are absent. */
@@ -435,9 +449,11 @@ public class EntityHolder {
           }
         }
       }
+      runPassTick = tick;
       for (BattleEntity entity : snapshot) {
         entity.actions().runPass(tick);
       }
+      runPassTick = -1;
       pendingPass(snapshot, EntityActions.PHASE_POST_COMPONENT_TICK);
       for (BattleEntity entity : snapshot) {
         entity.postHook();
@@ -452,6 +468,7 @@ public class EntityHolder {
       }
     } finally {
       ticking = false;
+      runPassTick = -1;
     }
   }
 }

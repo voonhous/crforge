@@ -2398,8 +2398,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   @Override
-  public boolean actionSpawnsAttached() {
-    return data.spawnAttach();
+  public int actionRunPassTick() {
+    return world.getHolder().runPassTick();
   }
 
   @Override

@@ -7,6 +7,7 @@
 package org.crforge.core.battle.action;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Builder;
@@ -27,8 +28,11 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * <p>Its start walks back from its cause - the projectile that landed it - to the object that made
  * it, as many links as the row's depth less one, and keeps that object's id, rarity and level. A
  * link whose maker has already left ends the walk there: the object reached is the giver, so a
- * projectile whose launcher left before it landed is its own giver. The run then listens to its
- * unit's hits:
+ * projectile whose launcher left before it landed is its own giver. A unit whose row attaches its
+ * children, as the Goblin Giant's spear goblins, the Ram Rider and the hero Ice Wizard's cube, then
+ * gives each child still in the battle a run of its own, listed on the child and started with the
+ * same cause, so with the same giver; each counts and enchants its child's hits as the unit's run
+ * does the unit's. The run then listens to its unit's hits:
  *
  * <ul>
  *   <li><b>A hit's damage.</b> On the hit that completes the count - the counter one short of the
@@ -45,7 +49,8 @@ import org.crforge.core.pathfinding.math.FixedMath;
  *
  * <p>Each step empties the recorded hit ids. Once the object that gave the buff is no longer in the
  * battle's live list, the run counts the row's finish time down and then ends, scheduling its
- * finished action on the unit.
+ * finished action on the unit. A child's run does the same on its own: the unit's run ending, or
+ * the unit leaving, does not end it.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -86,8 +91,19 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " BattleEnchantedDeflectTest. Whether the added damage is taken before"
             + " or after the deflected share on a crown tower is read in the build (after) and"
             + " held by no case: the units' share is the whole damage."
-            + " Refused: a unit with attached children,"
-            + " which would get copies, the Berserker's attack sequence step, a walk that meets"
+            + " A unit whose row attaches its children gives each child still in the battle's"
+            + " live list, in the order they were made, a run of its own as its run starts, once"
+            + " the giver is found: listed on the child past the singleton walk, then started"
+            + " with the same cause, so it walks to the same giver and hands itself on to the"
+            + " child's own children; no child gets one when the cause has no object. Held by"
+            + " the reference battle giantbuffer_enchant_icewizard_hero only as far as the start"
+            + " runs: the hero Ice Wizard's cube deals no damage, and no shipped child's hit"
+            + " gains any, as the shipped row's multiplier is 0 for the spear goblins' and the"
+            + " Ram Rider's projectiles; the children's own counts and added damage are held by"
+            + " BattleEnchantedRidersTest only."
+            + " Refused: a start in the run pass that hands a run on to a child that pass has"
+            + " stepped, which the game steps at once, the Berserker's attack sequence step, a"
+            + " walk that meets"
             + " an area effect, which the game follows to the area effect's parent, and a walk"
             + " that ends on one, which the game keeps as the giver by its id and rarity; no"
             + " shipped row starts the buff from an area effect or a projectile one launched.")
@@ -153,26 +169,29 @@ public final class GiantBufferBuff extends RowAction {
 
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
-    ActionOwner owner = holder.getOwner();
-    if (owner.actionSpawnsAttached()) {
-      throw new UnsupportedOperationException(
-          name()
-              + " on "
-              + owner.actionRowName()
-              + ", whose attached children get copies,"
-              + " which is not modelled");
-    }
+    Run run = new Run(this, holder.getOwner());
+    begin(run, instigator);
+    return run;
+  }
+
+  /**
+   * The run's own start: the walk back from its cause to its giver, then a run of its own for each
+   * child riding on its unit.
+   *
+   * @param run the run, listed or about to be
+   * @param instigator the holder of the cause, or null for none
+   */
+  private void begin(Run run, ActionHolder instigator) {
     // A unit's attack sequence needs no check: an entry only chooses whether a hit launches, runs
     // an action or hits directly. A launch registers its projectiles as the row's launch does, so
     // the completing hit's projectiles get copies and the hit is counted; an entry's action is
     // run in place of the hit, which is then neither counted nor enchanted, and the damage the
     // action deals reaches no hook of this run.
-    Run run = new Run(this, owner);
     ActionOwner giver = instigator == null ? null : instigator.getOwner();
     if (giver == null) {
-      // A cause with no object ends the run at once.
+      // A cause with no object ends the run at once, before any child is given a run.
       run.finish();
-      return run;
+      return;
     }
     int depth = columns.instigatorDepth();
     // A depth of 0 or below keeps the cause as the giver without its id.
@@ -211,8 +230,42 @@ public final class GiantBufferBuff extends RowAction {
     }
     run.rarity = giver.actionRarity();
     run.packedLevel = giver.actionPackedLevel();
+    handOn(run.owner, instigator);
     run.phase = RUNNING;
-    return run;
+  }
+
+  /**
+   * Gives each child riding on a unit a run of its own, as the game's start does once it has its
+   * giver: a new run of this row, listed on the child's holder with the row's tags and then started
+   * with the same cause, so it walks back to the same giver and hands itself on to the child's own
+   * riders in turn. Each child's run counts the child's hits, enchants them and gives copies to its
+   * projectiles, and ends after its giver leaves, as the unit's own run does. The listing passes by
+   * the singleton walk.
+   *
+   * <p>The game steps a child's new run at once when the child's actions were already stepped in a
+   * run pass that is still in progress; an enchanting buff starts from its cause's hit action,
+   * outside the run pass, so that is refused rather than modelled.
+   *
+   * @param owner the unit the run is on
+   * @param instigator the holder of the run's cause
+   */
+  private void handOn(ActionOwner owner, ActionHolder instigator) {
+    List<ActionHolder> children = owner.actionAttachedChildren();
+    if (children.isEmpty()) {
+      return;
+    }
+    int runPassTick = owner.actionRunPassTick();
+    for (ActionHolder child : children) {
+      if (runPassTick >= 0 && child.getLastTick() == runPassTick) {
+        throw new UnsupportedOperationException(
+            name()
+                + " starts in the run pass and hands a run on to a child the pass has stepped,"
+                + " which the game steps at once; not modelled");
+      }
+      Run copy = new Run(this, child.getOwner());
+      child.list(copy);
+      begin(copy, instigator);
+    }
   }
 
   /** One run on a unit: the giver, the counter and the hits it added damage to. */
