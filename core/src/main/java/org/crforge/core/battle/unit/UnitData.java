@@ -85,8 +85,6 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  *     which a deflection treats as one
  * @param ingamePathfindStopDeploys true for a unit that deploys again as it arrives at such a
  *     point, rather than walking on at once
- * @param spawnAreaObject the area effect the unit makes each time it enters the deploying state
- *     through its setter, or null for none
  * @param spawnPushback the radius of the push the unit makes each time it enters the deploying
  *     state through its setter: the enemies standing within it are pushed away; 0 for none
  * @param spawnPushbackRadius how far that push sends each of them; 0 for none
@@ -125,9 +123,8 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * @param deathSpawnProjectile the projectile the unit launches as it dies, as many as its death
  *     spawn's count, or null for none
  * @param unmodelledDeathColumns the columns of what the unit does as it dies that its row sets and
- *     the battle does not model: a second or third death spawn, a starting buff taken back, a
- *     spawned area object ended, and the parts of the death spawn's placement that are not
- *     established
+ *     the battle does not model: a second or third death spawn, a starting buff taken back, and the
+ *     parts of the death spawn's placement that are not established
  * @param champion true for a champion: the unit's ability row makes it one, as an ability row does
  *     unless it says otherwise
  * @param ability the unit's ability row, or null for a unit without one
@@ -325,7 +322,6 @@ public record UnitData(
     boolean ingamePathfindVisible,
     boolean ingamePathfindStopDeploys,
     boolean groupProjectiles,
-    String spawnAreaObject,
     int spawnPushback,
     int spawnPushbackRadius,
     int tileSizeOverride,

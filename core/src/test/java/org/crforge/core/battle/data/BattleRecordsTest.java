@@ -34,6 +34,7 @@ import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectData;
 import org.crforge.core.battle.unit.AttackSequence;
 import org.crforge.core.battle.unit.BuffData;
+import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.combat.RarityTable;
@@ -776,6 +777,25 @@ class BattleRecordsTest {
                     .put("OnAttackAction", "RoyalHog_EV1_To_Ground"));
     assertThat(new BattleRecords(tables).unit("RoyalHog_EV1").unmodelledColumns())
         .contains("OnAttackAction");
+  }
+
+  @Test
+  @DisplayName(
+      "a unit row that sets SpawnAreaObject, a column the client's character loader does not have,"
+          + " lists it as not modelled, and the unit is refused as it is made")
+  void aSpawnAreaObjectIsAnUnreadColumn(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows -> GameData.columns(rows, "Knight").put("SpawnAreaObject", "Zap"));
+    BattleRecords altered = new BattleRecords(tables);
+    assertThat(altered.unit("Knight").unmodelledColumns()).containsExactly("SpawnAreaObject");
+
+    Standard1v1Battle match = new Standard1v1Battle(tables, 1, false);
+    assertThatThrownBy(() -> match.deploy(0, altered.unit("Knight"), 1, 0, 3500, 6000, "K"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage("Knight sets columns the battle does not model: [SpawnAreaObject]");
   }
 
   @Test
@@ -1781,8 +1801,7 @@ class BattleRecordsTest {
     assertThat(healer.hovering()).isTrue();
     assertThat(healer.areaEffectOnHit())
         .isEqualTo(text(unitRow("BattleHealer"), "AreaEffectOnHit"));
-    // Its spawn heal is its starting action's, not an area object of its row.
-    assertThat(healer.spawnAreaObject()).isNull();
+    // Its spawn heal is its starting action's: no column of its row makes an area object.
     assertThat(healer.onStartingAction())
         .isEqualTo(text(unitRow("BattleHealer"), "OnStartingAction"));
     assertThat(healer.buffWhenNotAttacking()).isNull();

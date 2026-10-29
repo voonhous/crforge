@@ -1993,7 +1993,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A row whose area effect follows the projectile is made on its first flight visit instead, and one that follows its target follows it. Both are refused, with any area effect row the battle refuses.
 
-- A unit whose row sets both SpawnPushback and SpawnPushbackRadius, the Mega Knight, pushes the enemies around it each time it enters the deploying state through its setter, after the row's area object.
+- A unit whose row sets both SpawnPushback and SpawnPushbackRadius, the Mega Knight, pushes the enemies around it each time it enters the deploying state through its setter.
 
   It runs the object query of the spatial index, as wide as SpawnPushback. Each entity found takes a pushback of SpawnPushbackRadius away from the unit when it:
 
@@ -2019,9 +2019,9 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   An area effect that reaches hidden units, the one exception, is refused when it reaches such a unit.
 
-  A unit that morphs as it surfaces, the Goblin Drill's dig, is searched for as the row it morphs into, may cross water, and as it surfaces is replaced by that row. The replacement is made on its point at its level, in its lane, with its share of the hit points and its facing. It is queued with its registration visit in the state it is made in - a building stands, so it takes a target and a LifeTime step there - and then set deploying, whose entry makes the row's area object and updates it at once. The dig leaves at that tick's closing cleanup.
+  A unit that morphs as it surfaces, the Goblin Drill's dig, is searched for as the row it morphs into, may cross water, and as it surfaces is replaced by that row. The replacement is made on its point at its level, in its lane, with its share of the hit points and its facing. It is queued with its registration visit in the state it is made in - a building stands, so it takes a target and a LifeTime step there - and then set deploying through its setter. The dig leaves at that tick's closing cleanup.
 
-  The new object is started at that cleanup's fold like any object the holder admits, so a row with a starting action has it scheduled then. The evolved Goblin Drill's relocation takes the place of its area object:
+  The new object is started at that cleanup's fold like any object the holder admits, so a row with a starting action has it scheduled then: the Goblin Drill's damage area, or the evolved Goblin Drill's relocation:
 
   - It makes its first-appear damage area in the next tick's pending pass.
   - At each hit-point threshold (66 and 33 percent) the building goes underground for its hide time. Its hide group spawns two Goblins a half tile either side of it, which face where the drill faces (a spawn with a deploy time of its own hands the child a character source's facing).
@@ -2030,7 +2030,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Only the rings of the enemy princess towers still listed are looked at: not the king's, and not a destroyed tower's once the cleanup has taken it out. So a building that surfaces there, or on no ring point at all, comes up again where it stood. The arena-quarter rule and character spawns or reappear actions of the relocation are refused.
 
-  A morph into a character, of another rarity, of a unit riding another or carrying buffs, or out of the deploying and waiting states is refused, and so is the death of a building whose area object is still in the battle.
+  A morph into a character, of another rarity, of a unit riding another or carrying buffs, or out of the deploying and waiting states is refused.
 
   A card that names no unit - no summoned character, second group or list - but casts a projectile or an area effect is a spell whichever card table it is in.
 
@@ -2329,7 +2329,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A child without hit points - a bomb - stands where it is made. As its deploy ends its state visit runs its death slot without the death hooks and asks for its removal, and it leaves at the next tick's closing cleanup.
 
-  A death whose row sets a second or third death spawn, a starting buff taken back, a spawned area object ended, or a death spawn's limit, is refused. So are:
+  A death whose row sets a second or third death spawn, a starting buff taken back, or a death spawn's limit, is refused. So are:
 
   - a least radius below the radius, which draws each ring radius from the battle's random source
   - a child without hit points that has a range
@@ -2527,7 +2527,6 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - a clone made by anything but an area effect
   - a clone of a unit whose rider runs an air-to-ground action
-  - a clone of a unit still deploying, or a carrier's rider still deploying, whose clone enters the deploying state and whose clone's row spawns an area object as it does (no row of client 16.635.1 sets the column)
   - a clone of a building with hit points, whose lifetime the hit points' visit counts differently for a clone
   - a unit whose hit destroys it and launches a projectile that spawns a character or a projectile, makes an area effect that spawns a character, or runs an action (the evolved Ice Spirit's), whose spawns would be clones and whose action no recording shows for a clone
 
@@ -2877,8 +2876,6 @@ These are supplied answers, recorded on the classes that carry them and listed h
 - A hovering unit's route may cross water, at the water cost, and a push never moves it off water: the Ghost walks over the river in the moving state, with no jump.
 
 - A unit whose row has an area effect on its hits makes it after each direct hit's damage to its one target, at its own point, for its side and at its level. It is admitted at the tick's closing cleanup, so it first updates on the next tick, and an area hit makes none.
-
-  A troop's area object is made as it enters the deploying state, as a building's is. A card play makes it before the unit is queued, so its update at once buffs the friends around it but not the unit. The play tick's opening cleanup admits it with the unit, so it updates again that tick.
 
   A hit's buff on damage that stacks is refused: its instance would keep the attacker as its parent. No row has one.
 

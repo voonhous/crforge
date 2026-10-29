@@ -237,8 +237,8 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " ends - and its answer to an asker while invisible, held by card_Ghost and"
             + " evo_ghost_vs_musketeer; the same with a row time of 50, the buff back the tick"
             + " its attack ends and the hits it takes before its first hit reduced, held by"
-            + " knight_evolved_third_play; a troop's area object as a card play deploys it and an"
-            + " area effect after each direct hit, held by card_BattleHealer and"
+            + " knight_evolved_third_play; an area effect after each direct hit, held by"
+            + " card_BattleHealer and"
             + " random_battle16_s0025. A buff while not attacking whose row has no range gate,"
             + " taken off in the state visit of the hit that kills the unit and kept by a unit an"
             + " area kills, held by card_SuspiciousBush and random_battle16_s0004. A hiding"
@@ -734,10 +734,9 @@ public class CharacterEntity extends WorldEntity {
       setter.setIngamePathfindExitGate(
           () -> combatGate(isActive(TARGETING_SLOT), setter::prepareRoute));
     }
-    // A row with riders, an area object or a push makes them each time it enters the deploying
-    // state through its setter, a troop's as a building's: a unit that waited its turn enters it
-    // there.
-    if (data.spawnAttach() || data.spawnAreaObject() != null || data.pushesOnDeploy()) {
+    // A row with riders or a push makes them each time it enters the deploying state through its
+    // setter, a troop's as a building's: a unit that waited its turn enters it there.
+    if (data.spawnAttach() || data.pushesOnDeploy()) {
       setter.setDeployingEntry(this::enteredDeploying);
     }
     // A hook's states switch its components, check its reference and its cell, and end with the
@@ -1186,13 +1185,12 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
-   * by anything but an area effect, of a unit still deploying whose clone enters the deploying
-   * state and whose clone's row spawns an area object as it does - for a carrier, of any of its
-   * riders, each cloned with it - or of a carrier's rider running an air-to-ground action. Any
-   * other unit still deploying is cloned with its countdown: a carrier's clone is set up before its
-   * countdown, so it never enters the deploying state, and a clone that enters it makes no push. A
-   * row with a cloned version and the runs are modelled: the clone is made of the cloned version,
-   * the runs stay the unit's, and an air-to-ground run is started again on the clone, copied.
+   * by anything but an area effect, or of a carrier's rider running an air-to-ground action. A unit
+   * still deploying is cloned with its countdown: a carrier's clone is set up before its countdown,
+   * so it never enters the deploying state, and a clone that enters it makes its riders, if its row
+   * has any, and no push; the entry makes no area object for any unit. A row with a cloned version
+   * and the runs are modelled: the clone is made of the cloned version, the runs stay the unit's,
+   * and an air-to-ground run is started again on the clone, copied.
    *
    * <p>The perform does not ask whether the unit is a clone itself: a clone it reaches is cloned
    * again. A Clone's area never reaches one, its filter dropping clones, so a clone the action
@@ -1233,16 +1231,8 @@ public class CharacterEntity extends WorldEntity {
       // A clone of a unit still deploying takes its countdown and enters the deploying state
       // before its setup, but a carrier's clone, which the creator sets up first: it never enters
       // that state, so it makes no riders of its own. The clone mark is set before the countdown,
-      // so a clone's entry makes no push. Not modelled: an entry that spawns an area object, a
-      // column no row of this client range sets, for a clone.
-      boolean entersDeploying =
-          unit.getView().getDeployCountdown() > 0 && !(unit == this && getData().spawnAttach());
-      if (entersDeploying && unit.cloneRow().spawnAreaObject() != null) {
-        throw new UnsupportedOperationException(
-            unit.name()
-                + " is cloned with a deploy countdown and its clone's row spawns an area object as"
-                + " it deploys, not modelled");
-      }
+      // so a clone's entry makes no push, and the entry makes no area object for any unit, so
+      // nothing of the entry is left to test here.
       // The creator tells each run the unit has listed of the clone; every class but the
       // air-to-ground one does nothing with it, so the runs stay the unit's. That one starts its
       // action again on the clone, which copies the unit's run. A rider is never held by one (the
@@ -3410,7 +3400,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Sets a morph's new object deploying through its setter, as the morph sets it to the unit's
-   * state: the entry seeds its deploy time and makes its row's area object.
+   * state: the entry seeds its deploy time, makes its row's riders and its push, and no area
+   * object.
    */
   void startDeployingAfterMorph() {
     setter.setState(getView(), GridEntityState.DEPLOYING);
@@ -3430,10 +3421,11 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * What the setter's entry to the deploying state makes of the character's row, in its order: the
-   * riders of a row that attaches its spawner's children, the row's area object, then its push on
-   * the enemies around it. A card play's construction enters the state before it hands the
-   * character to the holder, and runs this then; a unit that waits its turn enters it in its state
-   * visit once the wait has run out, from whatever state it was in.
+   * riders of a row that attaches its spawner's children, then its push on the enemies around it,
+   * for a unit that is not a clone. The entry makes no area object for any row. A card play's
+   * construction enters the state before it hands the character to the holder, and runs this then;
+   * a unit that waits its turn enters it in its state visit once the wait has run out, from
+   * whatever state it was in.
    *
    * <p>The push asks the unit whether it is a clone first and makes none for a clone: a Mega
    * Knight's clone, made while the Mega Knight still deploys, enters the state with its clone mark
@@ -3444,9 +3436,6 @@ public class CharacterEntity extends WorldEntity {
     UnitData data = getData();
     if (data.spawnAttach()) {
       world.attachRiders(this);
-    }
-    if (data.spawnAreaObject() != null) {
-      world.spawnAreaObject(this);
     }
     if (data.pushesOnDeploy() && !clone) {
       world.spawnPush(this);

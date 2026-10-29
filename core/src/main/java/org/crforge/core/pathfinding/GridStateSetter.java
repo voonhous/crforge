@@ -254,8 +254,8 @@ public final class GridStateSetter implements StateSetter {
   @Setter private IntSupplier chargeRangeFromModifiers;
 
   /**
-   * What entering the deploying state makes besides its countdown - a row's area object, made and
-   * updated at once - or null for nothing.
+   * What entering the deploying state makes besides its countdown - a row's riders and its push -
+   * or null for nothing.
    */
   @Setter private Runnable deployingEntry;
 
