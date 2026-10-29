@@ -6,6 +6,10 @@
   "clone-refusals-v1/kamikaze_clone_demolisher": {"outcome": "diagnostic_match"},
   "clone-refusals-v1/mk_clone_deploying": {"outcome": "diagnostic_match"},
   "clone-refusals-v1/pull_clone_pulled_troop": {"outcome": "diagnostic_match"},
+  "darkprince-charge-ladder-v1/darkprince_charge_ladder": {"outcome": "diagnostic_match"},
+  "darkprince-charge-ladder-v1/darkprince_hero_charge_ladder": {"outcome": "diagnostic_match"},
+  "darkprince-charge-v1/darkprince_charge_past_troops": {"outcome": "diagnostic_match"},
+  "darkprince-charge-v1/darkprince_hero_charge_past_troops": {"outcome": "diagnostic_match"},
   "seasonal-event-v1/seasonal_event_arena1": {"outcome": "diagnostic_match"},
   "seasonal-event-v1/seasonal_event_arena2_card_minimum": {"outcome": "diagnostic_match"}
  }
