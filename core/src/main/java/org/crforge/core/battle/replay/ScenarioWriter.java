@@ -50,7 +50,8 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * repeats nothing; a variant play whose option the battle has not picked yet; an ability command
  * naming a unit no play made; and any input the version's replays cannot carry (a tower selection
  * no support card places, a level below the rarity's first, players' data other than one choice
- * each, a data version whose command types are not established).
+ * each, a card level minimum in a version whose replays do not carry one, a data version whose
+ * command types are not established).
  *
  * <p>The writer fills the fields a replay must hold and the battle does not read with the values
  * the reader pins, or with neutral ones where the reader carries them: the time and the battle
@@ -362,9 +363,17 @@ public final class ScenarioWriter {
     battle.put("tps", 1);
     battle.put("arena", 0);
     if (format.ladderEvents()) {
-      // No card level minimum: every card keeps its own level. Written where the formats that pin
+      // The plan's card level minimum, 0 for none, with the deck cards and towers at their levels
+      // as given: reading it back raises them as the plan does. Written where the formats that pin
       // it write it, first of the pinned fields.
-      battle.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, 0);
+      battle.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, plan.cardLevelMinimum());
+    } else if (plan.cardLevelMinimum() != 0) {
+      throw new UnsupportedOperationException(
+          "a card level minimum of "
+              + plan.cardLevelMinimum()
+              + ", which a replay of data version "
+              + tables.version()
+              + " does not carry");
     }
     pins(battle, format.battlePins());
     if (format.battleCarried().containsKey(ReplayFormat.SEB_FIELD)) {

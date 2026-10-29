@@ -437,7 +437,12 @@ Client 16.635.1's replays also hold Ladder battles played under an event (the se
 - the event is carried, its id must be `te`, and the game mode must be the Ladder row with deck selection `Collection`
 - game mode type 16 is pinned for it, the level cap stays pinned to 0, and the trail and the trail progress are carried
 
-In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned: the game raises each deck card's level to it, and each side's tower selection (`sc`) too, so the princess towers' level (the selection's level index plus the support rarity's `RelativeLevel` plus 1) never stands below it; the king's level (`kt`) is not raised under the Ladder row. The battle core does not model the raise: a replay with a deck card or a tower selection below the minimum is refused, and otherwise every card and every side's towers keep their own levels.
+In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned. As the battle is set up the game raises each deck card's level to it, and each side's tower selection (`sc`) too, never lowering one:
+
+- the princess towers stand at the minimum when their level (the selection's level index plus the support rarity's `RelativeLevel` plus 1) is below it; the king's level (`kt`) is not raised under the Ladder row
+- a play runs at the level its item carries (the packed level field plus 1): the reader takes a deck card's level as given or, below the minimum, the minimum; a play of the Mirror or a variant card the minimum raises is refused, as no recording holds its item
+- the plan keeps the levels as given with the minimum (`ScenarioPlan.raisedDeckLevels`, `raisedTowers`), so a written replay reads back the same
+- a minimum that is not a level, or above the top level of a rarity (its `LevelCount` plus its `RelativeLevel`), is refused
 
 A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way under its event, with `tps` 2 pinned: its row differs from the Ladder row in the card level adjustment (`Friendly`) and in columns the battle reads nothing of (deck selection `EventDeck`, which every battle rule answers as `Collection`, and presentation and matchmaking columns). Under `Friendly` the game sets the levels itself and reads none of the replay's:
 

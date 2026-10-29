@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -467,87 +468,197 @@ class ReplayScenarioEveryFieldTest {
             "a value of te other than an event id, which has no production input");
   }
 
+  /** The highest level a scenario's deck cards and princess towers stand at, as given. */
+  private static int highestLevel(ScenarioPlan plan) {
+    int highest = 0;
+    for (int side = 0; side < 2; side++) {
+      for (int level : plan.deckLevels().get(side)) {
+        highest = Math.max(highest, level);
+      }
+      highest = Math.max(highest, plan.towers().get(side).level());
+    }
+    return highest;
+  }
+
+  /** The scenario with every play's item carrying the given level, its level field less 1. */
+  private static ObjectNode playedAt(ObjectNode scenario, int level) {
+    for (JsonNode command : scenario.path("cmd")) {
+      ObjectNode sel = (ObjectNode) command.path("c").path("sel");
+      sel.put("pd", ScenarioItems.withLevelField(sel.path("pd").asInt(), level - 1));
+    }
+    return scenario;
+  }
+
+  /**
+   * The lowest top level of the rarities of the deck cards and the tower selections: a rarity's
+   * LevelCount plus its RelativeLevel.
+   */
+  private static int topLevel() {
+    int top = Integer.MAX_VALUE;
+    for (String table : List.of("rarities", "support_rarities")) {
+      for (GameRow rarity : tables.table(table).rows()) {
+        top =
+            Math.min(
+                top,
+                ScenarioItems.number(rarity, "LevelCount")
+                    + ScenarioItems.number(rarity, "RelativeLevel"));
+      }
+    }
+    return top;
+  }
+
   @Test
-  void readsACardLevelMinimumNoDeckCardIsBelow() {
+  void readsACardLevelMinimumNoDeckCardOrTowerIsBelowAsNone() {
     assumeLadderEventsRead();
     ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
     ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
     int lowest = Integer.MAX_VALUE;
-    for (int[] levels : plan.deckLevels()) {
-      for (int level : levels) {
+    for (int side = 0; side < 2; side++) {
+      for (int level : plan.deckLevels().get(side)) {
         lowest = Math.min(lowest, level);
       }
+      lowest = Math.min(lowest, plan.towers().get(side).level());
     }
-    ObjectNode battle = (ObjectNode) scenario.path("battle");
-    battle.put("cardlvlmin", lowest);
+    ((ObjectNode) scenario.path("battle")).put("cardlvlmin", lowest);
     ReplayScenario mapping = new ReplayScenario(tables);
 
     assertThat(mapping.survey(scenario)).isEmpty();
-    assertThat(mapping.translate(scenario).deckLevels())
-        .usingRecursiveComparison()
-        .isEqualTo(plan.deckLevels());
+    ScenarioPlan read = mapping.translate(scenario);
+    assertThat(read.cardLevelMinimum()).isEqualTo(lowest);
+    assertThat(read.raisedDeckLevels()).usingRecursiveComparison().isEqualTo(plan.deckLevels());
+    assertThat(read.raisedTowers()).isEqualTo(plan.towers());
+    assertThat(read.plays()).isEqualTo(plan.plays());
     assertThat(mapping.mapping()).containsEntry("cardlvlmin", ReplayScenario.CARD_LEVEL_MIN_READ);
-
-    // One level higher raises a deck card, which the battle core does not model.
-    int above = lowest + 1;
-    battle.put("cardlvlmin", above);
-    assertThat(new ReplayScenario(tables).survey(scenario))
-        .isNotEmpty()
-        .allSatisfy(
-            refusal -> {
-              assertThat(refusal.input()).isEqualTo("cardlvlmin=" + above);
-              assertThat(refusal.feature()).contains("raises to the minimum");
-            });
   }
 
   @Test
-  void refusesACardLevelMinimumAboveATowerSelection() {
+  void raisesTheDeckCardsAndThePrincessTowersButNotTheKingToACardLevelMinimum() {
     assumeLadderEventsRead();
     ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
-    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
-    // A minimum one level above side 0's princess towers, and every deck card raised to at least
-    // it through its own level index, so that the tower selection is all that stands below it.
-    int minimum = plan.towers().get(0).level() + 1;
-    ObjectNode battle = (ObjectNode) scenario.path("battle");
-    for (int side = 0; side < 2; side++) {
-      ArrayNode cards = (ArrayNode) battle.path("deck" + side).path("sp");
-      for (int i = 0; i < cards.size(); i++) {
-        int shortfall = minimum - plan.deckLevels().get(side)[i];
-        if (shortfall > 0) {
-          ObjectNode card = (ObjectNode) cards.get(i);
-          card.put("l", card.path("l").asInt() + shortfall);
-        }
-      }
+    // Each king at the first level, below the minimum.
+    for (JsonNode data : scenario.path("battle").path("hbd")) {
+      ((ObjectNode) data).put(ReplayFormat.KING_LEVEL_FIELD, 1);
     }
-    // The plays' items carry the raised levels, as the players' clients build them.
-    fit(scenario);
-    battle.put("cardlvlmin", minimum);
-    // Side 1's tower selection one level index higher, at the minimum.
-    ObjectNode side1Selection = (ObjectNode) battle.path("deck1").path("sc").get(0);
-    side1Selection.put("l", side1Selection.path("l").asInt() + 1);
-
-    // The game raises side 0's princess towers to the minimum, which the battle core does not
-    // model; the raised deck cards stand at or above it and are not refused.
-    assertThat(new ReplayScenario(tables).survey(scenario))
-        .singleElement()
-        .satisfies(
-            refusal -> {
-              assertThat(refusal.input()).isEqualTo("cardlvlmin=" + minimum);
-              assertThat(refusal.feature())
-                  .contains("tower selection")
-                  .contains("battle.deck0.sc[0].l")
-                  .contains("raises to the minimum");
-            });
-
-    // Side 0's tower selection at the minimum too: the battle plays at the levels as given.
-    ObjectNode side0Selection = (ObjectNode) battle.path("deck0").path("sc").get(0);
-    side0Selection.put("l", side0Selection.path("l").asInt() + 1);
+    ScenarioPlan given = new ReplayScenario(tables).translate(scenario);
+    // A minimum above every deck card and princess tower, the kings standing below it too.
+    int minimum = highestLevel(given) + 1;
+    for (Standard1v1Battle.Towers towers : given.towers()) {
+      assertThat(towers.kingLevel()).isLessThan(minimum);
+    }
+    ((ObjectNode) scenario.path("battle")).put("cardlvlmin", minimum);
+    // The plays' items carry the raised level, as a player's client builds them from its deck.
+    playedAt(scenario, minimum);
     ReplayScenario mapping = new ReplayScenario(tables);
+
     assertThat(mapping.survey(scenario)).isEmpty();
-    assertThat(mapping.translate(scenario).towers())
-        .extracting(Standard1v1Battle.Towers::level)
-        .containsExactly(minimum, minimum);
-    assertThat(mapping.mapping()).containsEntry("cardlvlmin", ReplayScenario.CARD_LEVEL_MIN_READ);
+    ScenarioPlan plan = mapping.translate(scenario);
+    assertThat(plan.cardLevelMinimum()).isEqualTo(minimum);
+    // The levels as given are kept, and the battle's deck and towers stand at the minimum.
+    assertThat(plan.deckLevels()).usingRecursiveComparison().isEqualTo(given.deckLevels());
+    assertThat(plan.towers()).isEqualTo(given.towers());
+    for (int side = 0; side < 2; side++) {
+      assertThat(plan.raisedDeckLevels().get(side)).containsOnly(minimum);
+      Standard1v1Battle.Towers raised = plan.raisedTowers().get(side);
+      assertThat(raised.level()).isEqualTo(minimum);
+      assertThat(raised.kingLevel()).isEqualTo(given.towers().get(side).kingLevel());
+    }
+    assertThat(plan.plays())
+        .isNotEmpty()
+        .allSatisfy(play -> assertThat(play.level()).isEqualTo(minimum));
+    // The battle is built with the raised towers.
+    assertThat(ReplayBattle.build(tables, plan).getTowers()).isEqualTo(plan.raisedTowers());
+
+    // A play whose item carries its card's own level runs at that level.
+    ScenarioPlan own = new ReplayScenario(tables).translate(fit(scenario));
+    for (ScenarioPlan.Play play : own.plays()) {
+      int deckIndex = own.decks().get(play.side()).indexOf(play.card());
+      assertThat(play.level()).isEqualTo(own.deckLevels().get(play.side())[deckIndex]);
+    }
+  }
+
+  @Test
+  void refusesAPlayUnderACardLevelMinimumAtNeitherItsCardsLevelNorTheRaisedOne() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ScenarioPlan given = new ReplayScenario(tables).translate(scenario);
+    ScenarioPlan.Play play = given.plays().get(0);
+    // Two levels above the played card: one level between its own and the raised one.
+    int minimum = play.level() + 2;
+    ((ObjectNode) scenario.path("battle")).put("cardlvlmin", minimum);
+    playedAt(scenario, play.level() + 1);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::feature)
+        .contains("a play whose packed item is not one its deck card can carry");
+  }
+
+  @Test
+  void refusesACardLevelMinimumThatIsNoLevelOrAboveARaritysTopLevel() {
+    assumeLadderEventsRead();
+    int top = topLevel();
+    for (JsonNode minimum :
+        List.<JsonNode>of(
+            JsonNodeFactory.instance.textNode("1"),
+            JsonNodeFactory.instance.numberNode(-1),
+            JsonNodeFactory.instance.numberNode(top + 1))) {
+      ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+      ((ObjectNode) scenario.path("battle")).set("cardlvlmin", minimum);
+
+      assertThat(new ReplayScenario(tables).survey(scenario))
+          .singleElement()
+          .satisfies(
+              refusal -> {
+                assertThat(refusal.input()).isEqualTo("cardlvlmin=" + minimum);
+                assertThat(refusal.feature()).startsWith("a card level minimum");
+              });
+    }
+    // The top level itself is read, every card and tower raised to it.
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ((ObjectNode) scenario.path("battle")).put("cardlvlmin", top);
+    playedAt(scenario, top);
+    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
+  }
+
+  @Test
+  void refusesAMirrorOrAVariantCardsPlayTheCardLevelMinimumRaises() {
+    assumeLadderEventsRead();
+    for (ObjectNode scenario :
+        List.of(fit(Scenarios.knightThenMirror()), fit(Scenarios.mergeMaidenMounted()))) {
+      ScenarioPlan given = new ReplayScenario(tables).translate(scenario);
+      ScenarioPlan.Play special =
+          given.plays().stream()
+              .filter(play -> play.repeats() != null || play.option() != null)
+              .findFirst()
+              .orElseThrow();
+      int deckIndex = given.decks().get(special.side()).indexOf(special.card());
+      int minimum = given.deckLevels().get(special.side())[deckIndex] + 1;
+      ((ObjectNode) scenario.path("battle")).put("cardlvlmin", minimum);
+
+      assertThat(new ReplayScenario(tables).survey(scenario))
+          .extracting(ReplayScenario.Refusal::feature)
+          .anySatisfy(
+              feature ->
+                  assertThat(feature)
+                      .startsWith("a play of " + special.card())
+                      .contains("which the card level minimum raises to " + minimum));
+    }
+  }
+
+  @Test
+  void aPlanWithACardLevelMinimumIsWrittenWithItsLevelsAsGivenAndReadsBackTheSame() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ScenarioPlan given = new ReplayScenario(tables).translate(scenario);
+    int minimum = highestLevel(given) + 1;
+    ((ObjectNode) scenario.path("battle")).put("cardlvlmin", minimum);
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+
+    ObjectNode written = new ScenarioWriter(tables).write(plan);
+
+    assertThat(written.path("battle").path("cardlvlmin").asInt()).isEqualTo(minimum);
+    assertThat(new ReplayScenario(tables).translate(written))
+        .usingRecursiveComparison()
+        .isEqualTo(plan);
   }
 
   /** The challenge game mode, played under an event at the Friendly card level adjustment. */
