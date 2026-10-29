@@ -47,17 +47,28 @@ class ReplayFormatTest {
           .isEqualTo(ReplayFormat.V16_635_1);
       assertThat(format.excludedEvolutions()).isTrue();
       assertThat(format.ladderEvents()).isTrue();
-      // Beside the excluded evolutions and the Ladder battles under an event, the fields of client
-      // 16.402.17's replays.
+      // Beside the excluded evolutions, the Ladder battles under an event and seb, the fields of
+      // client 16.402.17's replays.
       assertThat(format)
           .usingRecursiveComparison()
           .ignoringFields(
-              "dataVersion", "excludedEvolutions", "ladderEvents", "battlePins", "playerData")
+              "dataVersion",
+              "excludedEvolutions",
+              "ladderEvents",
+              "battlePins",
+              "battleCarried",
+              "playerData")
           .isEqualTo(ReplayFormat.V16_402_18);
-      // The card level minimum is read, no longer pinned; the trail progress is carried.
+      // The card level minimum is read and seb carried, neither pinned any more; the trail progress
+      // is carried.
       Map<String, String> pins = new LinkedHashMap<>(ReplayFormat.V16_402_18.battlePins());
       pins.remove(ReplayFormat.CARD_LEVEL_MIN_FIELD);
+      pins.remove(ReplayFormat.SEB_FIELD);
       assertThat(format.battlePins()).isEqualTo(pins);
+      assertThat(format.battleCarried())
+          .containsAllEntriesOf(ReplayFormat.V16_402_18.battleCarried())
+          .containsKey(ReplayFormat.SEB_FIELD)
+          .hasSize(ReplayFormat.V16_402_18.battleCarried().size() + 1);
       assertThat(format.playerData())
           .containsExactlyElementsOf(
               with(ReplayFormat.V16_402_18.playerData(), ReplayFormat.TRAIL_PROGRESS_FIELD));

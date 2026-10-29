@@ -109,6 +109,9 @@ public record ReplayFormat(
   /** The battle header field that holds the card level minimum, 0 for none. */
   public static final String CARD_LEVEL_MIN_FIELD = "cardlvlmin";
 
+  /** A battle header switch of client 16.635.1's replays, true in a challenge's. */
+  public static final String SEB_FIELD = "seb";
+
   /**
    * The player data field that holds the player's progress on the trail the battle counts for: its
    * trophy road, arena and theme, presentation and matchmaking.
@@ -219,9 +222,16 @@ public record ReplayFormat(
    * mode type {@value #EVENT_GAME_MODE_TYPE}, the event's trail and id, and the card level minimum,
    * which is no longer pinned to 0; each player data entry may hold the player's trail progress
    * ({@value #TRAIL_PROGRESS_FIELD}), carried. Traced on client 16.635.1 only.
+   *
+   * <p>The header switch {@value #SEB_FIELD}, true in a challenge's replays, is carried, no longer
+   * pinned to false: the game stores it with the header and reads it only to write the header out
+   * again, never in a battle.
    */
   public static final ReplayFormat V16_635_1 =
-      V16_402_18.withExcludedEvolutions(GameVersions.DATA_16_635_3).withLadderEvents();
+      V16_402_18
+          .withExcludedEvolutions(GameVersions.DATA_16_635_3)
+          .withLadderEvents()
+          .withSebCarried();
 
   /**
    * The format of each data version whose replays' fields have been decided. The fields are the
@@ -375,6 +385,36 @@ public record ReplayFormat(
         cosmeticCarried,
         excludedEvolutions,
         true);
+  }
+
+  /**
+   * The same fields with the header switch {@value #SEB_FIELD} carried rather than pinned to false.
+   */
+  private ReplayFormat withSebCarried() {
+    Map<String, String> pins = new LinkedHashMap<>(battlePins);
+    pins.remove(SEB_FIELD);
+    Map<String, String> carried = new LinkedHashMap<>(battleCarried);
+    carried.put(
+        SEB_FIELD,
+        "a header switch the game stores and writes back with the header, never read in a battle;"
+            + " true in a challenge's replays");
+    return new ReplayFormat(
+        dataVersion,
+        rootPins,
+        events,
+        Collections.unmodifiableMap(pins),
+        Collections.unmodifiableMap(carried),
+        avatarPins,
+        avatarCarried,
+        accountHighOptional,
+        deckCarried,
+        cardCarried,
+        selectionPins,
+        selectionCarried,
+        playerData,
+        cosmeticCarried,
+        excludedEvolutions,
+        ladderEvents);
   }
 
   /** Whether the player data entries are read field by field, the king level among them. */

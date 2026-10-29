@@ -439,6 +439,14 @@ Client 16.635.1's replays also hold Ladder battles played under an event (the se
 
 In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned: the game raises a deck card's level to it, so a replay with a deck card below it is refused, and otherwise every card keeps its own level.
 
+A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way under its event, with `tps` 2 pinned: its row differs from the Ladder row in the card level adjustment (`Friendly`) and in columns the battle reads nothing of (deck selection `EventDeck`, which every battle rule answers as `Collection`, and presentation and matchmaking columns). Under `Friendly` the game sets the levels itself and reads none of the replay's:
+
+- each side's king and towers stand at the `SummonerLevel` of the exp level the global `TOURNAMENT_MAX_EXP_LEVEL` names (the exp levels table)
+- each deck card stands at its rarity's `TournamentLevelIndex`
+- the card level minimum is pinned to 0
+
+The header switch `seb`, true in a challenge's replays, is carried in client 16.635.1's replays: the game never reads it in a battle. See [the battle core](battle-core.md).
+
 A case generated for a data version of client 16.635.1 is refused: no recorded battle of such a case has established its fields yet.
 
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
@@ -569,5 +577,5 @@ Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to t
 
 ## Known Gaps
 
-- **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`); a Path of Legends replay (Ranked1v1_NewArena) is played as one, its header pinned to the values its replays write. 2v2, the other game modes and event maps are not modelled.
+- **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`); a Path of Legends replay (Ranked1v1_NewArena), a Ladder battle under an event and a challenge (Challenge_AllCards_EventDeck_NoSet, under its event) are played as one, each header pinned to the values its replays write. 2v2, the other game modes and event maps are not modelled.
 - **What is not modelled yet is refused, never guessed.** A row, column, action class or replay field the battle core does not model refuses the battle, with the reason. What is covered, what is still partial and the assumptions carried are listed in [The Battle Core](battle-core.md); `./gradlew :core:fidelityReport` reports each class's fidelity status and note.

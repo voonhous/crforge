@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameRow;
@@ -21,6 +23,7 @@ import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Replays with every field the game client writes, read against the configured tables: its command
@@ -360,14 +363,14 @@ class ReplayScenarioEveryFieldTest {
     ObjectNode scenario = fit(Scenarios.knightWithEveryField());
     scenario.putArray("srq").add(1);
     ObjectNode battle = (ObjectNode) scenario.path("battle");
-    battle.put("seb", true);
+    battle.put("rrb", true);
     ((ObjectNode) battle.path("avatar0")).put("npc", true);
 
     List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
 
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
-        .containsExactly("srq=[1]", "seb=true", "npc=true");
+        .containsExactly("srq=[1]", "rrb=true", "npc=true");
   }
 
   /** Skips a test of a Ladder battle under an event on a data version whose replays hold none. */
@@ -495,6 +498,127 @@ class ReplayScenarioEveryFieldTest {
               assertThat(refusal.input()).isEqualTo("cardlvlmin=" + above);
               assertThat(refusal.feature()).contains("raises to the minimum");
             });
+  }
+
+  /** The challenge game mode, played under an event at the Friendly card level adjustment. */
+  private static final String CHALLENGE = "Challenge_AllCards_EventDeck_NoSet";
+
+  /**
+   * The level a Friendly battle's kings and towers stand at: the SummonerLevel of the exp level the
+   * global TOURNAMENT_MAX_EXP_LEVEL names, its row at index the number less 1.
+   */
+  private static int friendlyLevel() {
+    int expLevel = ScenarioItems.global(tables, "TOURNAMENT_MAX_EXP_LEVEL");
+    return tables.table("exp_levels").rows().stream()
+        .filter(row -> row.index() == expLevel - 1)
+        .findFirst()
+        .orElseThrow()
+        .intValue("SummonerLevel");
+  }
+
+  /**
+   * A deck card's level under the Friendly adjustment, from its rarity's tournament level index.
+   */
+  private static int tournamentLevel(GameRow card) {
+    GameRow rarity = tables.table("rarities").row(card.string("Rarity"));
+    return rarity.intValue("TournamentLevelIndex") + rarity.intValue("RelativeLevel") + 1;
+  }
+
+  /**
+   * The knight replay as a challenge, as its replays write it: under an event, the challenge game
+   * mode, tps 2 and seb true, each deck card at its rarity's tournament level index and the plays'
+   * items fitted to it.
+   */
+  private static ObjectNode challenge(ObjectNode scenario) {
+    underAnEvent(scenario);
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("gamemode", 72_000_000 + tables.table("game_modes").row(CHALLENGE).index());
+    battle.put("tps", 2);
+    battle.put("seb", true);
+    for (int side = 0; side < 2; side++) {
+      for (JsonNode entry : battle.path("deck" + side).path("sp")) {
+        GameRow card = ScenarioItems.row(tables, entry.path("d").asInt());
+        GameRow rarity = tables.table("rarities").row(card.string("Rarity"));
+        ((ObjectNode) entry).put("l", rarity.intValue("TournamentLevelIndex"));
+      }
+    }
+    return fit(scenario);
+  }
+
+  @Test
+  void readsAChallengeAtTheFriendlyLevelsWhateverLevelsTheReplayWrites() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = challenge(Scenarios.knightWithEveryField());
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    // Levels the game reads none of under the Friendly adjustment.
+    for (int side = 0; side < 2; side++) {
+      ((ObjectNode) battle.path("hbd").get(side)).put("kt", 1);
+      ((ObjectNode) battle.path("deck" + side).path("sc").get(0)).put("l", 0);
+      for (JsonNode entry : battle.path("deck" + side).path("sp")) {
+        ((ObjectNode) entry).put("l", 0);
+      }
+    }
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    int level = friendlyLevel();
+    for (int side = 0; side < 2; side++) {
+      Standard1v1Battle.Towers towers = plan.towers().get(side);
+      assertThat(towers.kingLevel()).isEqualTo(level);
+      assertThat(towers.level()).isEqualTo(level);
+      List<String> deck = plan.decks().get(side);
+      int[] levels = plan.deckLevels().get(side);
+      for (int i = 0; i < deck.size(); i++) {
+        assertThat(levels[i]).isEqualTo(tournamentLevel(ScenarioItems.card(tables, deck.get(i))));
+      }
+    }
+    assertThat(mapping.mapping())
+        .containsEntry("gmt", "pinned: 16")
+        .containsEntry("tps", "pinned: 2")
+        .containsEntry("cardlvlmin", "pinned: 0")
+        .containsEntry("battle.deckN.sp[i].l", ReplayScenario.DECK_LEVEL_UNDER_FRIENDLY)
+        .containsEntry("battle.deckN.sc[0].l", ReplayScenario.TOWER_LEVEL_UNDER_FRIENDLY)
+        .containsEntry("battle.hbd[i].kt", ReplayScenario.TOWER_LEVEL_UNDER_FRIENDLY)
+        .containsKey("battle.seb");
+  }
+
+  @Test
+  void refusesAChallengeWithoutAnEventOrAtAnotherTpsOrCardLevelMinimum() {
+    assumeLadderEventsRead();
+    ObjectNode noEvent = challenge(Scenarios.knightWithEveryField());
+    ObjectNode battle = (ObjectNode) noEvent.path("battle");
+    battle.remove("event");
+    battle.put("gmt", 1);
+    battle.put("te", -1);
+    battle.put("trail", 170_000_000);
+    assertThat(new ReplayScenario(tables).survey(noEvent))
+        .extracting(ReplayScenario.Refusal::feature)
+        .anySatisfy(feature -> assertThat(feature).contains(CHALLENGE + " without an event"));
+
+    ObjectNode scenario = challenge(Scenarios.knightWithEveryField());
+    ((ObjectNode) scenario.path("battle")).put("tps", 1).put("cardlvlmin", 1);
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("tps=1", "cardlvlmin=1");
+  }
+
+  @Test
+  void refusesAChallengeWhoseRowDiffersFromTheLadderRowInABattleColumn(@TempDir Path folder)
+      throws IOException {
+    assumeLadderEventsRead();
+    GameTables altered =
+        GameData.altered(
+            folder,
+            "game_modes",
+            rows -> ((ObjectNode) rows.path(CHALLENGE).path("columns")).put("TripleElixir", true));
+    ObjectNode scenario = challenge(Scenarios.knightWithEveryField());
+
+    assertThat(new ReplayScenario(altered).survey(scenario))
+        .extracting(ReplayScenario.Refusal::feature)
+        .containsExactly(
+            "the game mode " + CHALLENGE + ", whose TripleElixir differs from the Ladder row's");
   }
 
   @Test
