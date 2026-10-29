@@ -6568,10 +6568,11 @@ public class BattleWorld implements HolderPasses {
    * back as at any hit, an area effect never - and the death the hit causes, at once. A source that
    * has left the battle is no source, as the game clears every reference to an object as it leaves:
    * a projectile's hit is dealt as one without a source, unscaled, with no percentages, lowered by
-   * the target's protection unless NoProtection, and with no attacker; a hit of no amount from a
-   * character or an area effect that has left deals 0, and the level scaling of one with an amount
-   * is refused. A source whose row sets a buff on damage, which the drain applies after a hit it
-   * lets through, is refused.
+   * the target's protection unless NoProtection, and with no attacker; so is an area effect's that
+   * has left while every hit is held, as from the tiebreaker's clearing on, where it lands nothing;
+   * a hit of no amount from a character or an area effect that has left deals 0, and the level
+   * scaling of one with an amount is otherwise refused. A source whose row sets a buff on damage,
+   * which the drain applies after a hit it lets through, is refused.
    *
    * <p>The level scaling is the card damage scaling of the source's own row and level: a
    * character's, a building's or a tower's, an area effect's, or a projectile's.
@@ -6597,13 +6598,16 @@ public class BattleWorld implements HolderPasses {
       amount = damage.amount(target.getTargetView().isCrownTowerTarget()) + due.added();
       // A source that has left is none of the three here: the game's reference to it is cleared as
       // it leaves, so its hit takes no level scaling and no percentages, as a hit without a source.
-      // A recorded battle holds that for a projectile source; for a character or an area effect
-      // source no recording holds the step it leaves at against the game's, so a scaled hit with
-      // an amount from one that has left stays refused (an amount of 0 scales to 0 at any level).
+      // A recorded battle holds that for a projectile source. An area effect leaves before its hit
+      // is drained only as the tiebreaker's clearing removes it, and from then on every hit is
+      // held, so such a hit lands nothing whatever its amount: recorded battles hold that. For a
+      // character source, and for an area effect source while hits are not held, no recording
+      // holds the step it leaves at against the game's, so a scaled hit with an amount from one
+      // that has left stays refused (an amount of 0 scales to 0 at any level).
       if (damage.levelScaled()
           && amount != 0
           && ((source == null && due.source() != null)
-              || (areaSource == null && due.areaSource() != null))) {
+              || (areaSource == null && due.areaSource() != null && !hitsHeld))) {
         throw new UnsupportedOperationException(
             "a damage-taking action's hit of an amount scaled by the level of a character or area"
                 + " effect source no longer in the battle is not modelled");

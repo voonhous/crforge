@@ -7,10 +7,12 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.crforge.core.battle.Shipped.actionName;
 import static org.crforge.core.battle.Shipped.column;
 import static org.crforge.core.battle.Shipped.fields;
 import static org.crforge.core.battle.Shipped.number;
+import static org.crforge.core.battle.Shipped.numbers;
 import static org.crforge.core.battle.Shipped.row;
 import static org.crforge.core.battle.Shipped.text;
 import static org.crforge.core.battle.Shipped.unitRow;
@@ -207,6 +209,175 @@ class ActionDamageScalingTest {
     assertThat(onKnight).as("the pulse's hit on the knight").isNotEmpty();
     assertThat(onKnight).allSatisfy(h -> assertThat(h.amount()).isZero());
     assertThat(knight.getHitPoints().getHitPoints()).isEqualTo(knight.getHitPoints().getMaximum());
+  }
+
+  /** A Ladder deck for the tiebreaker cases; no card of it is played. */
+  private static final List<String> DECK =
+      List.of(
+          "Knight",
+          "Archer",
+          "Giant",
+          "MiniPekka",
+          "Musketeer",
+          "Valkyrie",
+          "Barbarians",
+          "Minions");
+
+  /** Where the Tesla stands and the Earthquake lands, on side 1's half. */
+  private static final int QUAKE_X = 9000;
+
+  private static final int QUAKE_Y = 22000;
+
+  /**
+   * The tick the Ladder timeline's time is up on with the crowns equal: the end of its sections,
+   * each SectionLength seconds of 20 ticks. The tiebreaker's first step is the one after.
+   */
+  private static int timeUpTick() {
+    GameRow timeline = row("battle_timelines", text(row("game_modes", "Ladder"), "BattleTimeline"));
+    return numbers(timeline, "SectionLength").stream().mapToInt(s -> s * 20).sum();
+  }
+
+  /** The hidden damage area Earthquake's starting action spawns. */
+  private static GameRow hiddenDamageArea() {
+    return row(
+        "area_effect_objects",
+        text(text(row("area_effect_objects", "Earthquake"), "OnStartingAction"), "SpawnData"));
+  }
+
+  /** One Earthquake hidden damage hit on the Tesla, with what stood around it as it was dealt. */
+  private record QuakeHit(
+      int step, int amount, boolean landed, boolean areaListed, int hitPointsBefore) {}
+
+  /**
+   * A Ladder match whose time runs out with the crowns equal: side 1's Tesla stands on its half
+   * long before, side 0's Earthquake lands on it on a given step, and the battle runs into the
+   * tiebreaker. Every hidden damage hit on the Tesla is collected.
+   */
+  private static List<QuakeHit> quakeIntoTiebreaker(int castStep, int steps) {
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    battle.startLadderMatch(DECK, DECK, 0, 0);
+    int timeUp = timeUpTick();
+    CharacterEntity tesla =
+        battle.deploy(timeUp - 100, records.unit("Tesla"), LEVEL, 1, QUAKE_X, QUAKE_Y, "tesla");
+    String hiddenArea = hiddenDamageArea().name();
+    List<QuakeHit> hits = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void typedHitDealt(
+                  int tick,
+                  WorldEntity source,
+                  WorldEntity target,
+                  int amount,
+                  int damageId,
+                  DamageResult result) {
+                if (target != tesla) {
+                  return;
+                }
+                boolean listed =
+                    battle.getWorld().getHolder().entities().stream()
+                        .anyMatch(
+                            e ->
+                                e instanceof AreaEffectEntity a
+                                    && a.getData().name().equals(hiddenArea));
+                hits.add(
+                    new QuakeHit(
+                        battle.getBattle().getTick(),
+                        amount,
+                        result.landed(),
+                        listed,
+                        tesla.getHitPoints().getHitPoints() + result.applied()));
+              }
+            });
+    battle.placeAreaEffect(castStep, "Earthquake", LEVEL, 0, QUAKE_X, QUAKE_Y, "quake");
+    while (battle.getBattle().getTick() < steps) {
+      battle.getBattle().step();
+    }
+    return hits;
+  }
+
+  @Test
+  @DisplayName(
+      "Earthquake's hidden damage hit queued on the last step before the tiebreaker, whose area the"
+          + " tiebreaker's clearing removes, is dealt with no source and lands nothing")
+  void hiddenDamageHitWhoseAreaTheClearingRemovedLandsNothing() {
+    int timeUp = timeUpTick();
+    // The hidden damage area hits from the post-hook, so its hit is queued after the step's drain
+    // and dealt on the next step. Cast so that its last hit is queued on the last step before the
+    // tiebreaker: the tiebreaker's first step clears the area (the Earthquake's own area, shorter
+    // lived, has left already) before its update drains the hit.
+    GameRow area = hiddenDamageArea();
+    int speed = number(area, "HitSpeed");
+    int lastHit = number(area, "HitSpeedOffset");
+    while (lastHit + speed < number(area, "LifeDuration")) {
+      lastHit += speed;
+    }
+    List<QuakeHit> found = null;
+    // The cast step is searched rather than worked out: a placed spell's area starts a step or two
+    // after the step it is placed on.
+    for (int cast = timeUp - lastHit / 50 - 10; cast < timeUp - lastHit / 50 + 10; cast++) {
+      List<QuakeHit> hits = quakeIntoTiebreaker(cast, timeUp + 3);
+      if (hits.stream().anyMatch(h -> h.step() == timeUp + 1)) {
+        found = hits;
+        break;
+      }
+    }
+    assertThat(found)
+        .as("a cast whose last hit is dealt on the tiebreaker's first step")
+        .isNotNull();
+    QuakeHit hit = found.stream().filter(h -> h.step() == timeUp + 1).findFirst().orElseThrow();
+    assertThat(hit.areaListed())
+        .as("the hidden damage area has left as the hit is dealt")
+        .isFalse();
+    // With its source gone the hit has no level to scale by: the row's amount, the Tesla carrying
+    // no protection. The tiebreaker holds every hit, so it lands nothing whatever its amount.
+    assertThat(hit.amount()).isEqualTo(baseDamage(text(area, "OnHitAction")));
+    assertThat(hit.landed()).isFalse();
+    assertThat(hit.hitPointsBefore()).as("the Tesla's hit points before the hit").isPositive();
+  }
+
+  @Test
+  @DisplayName(
+      "an area effect's scaled damage-taking hit drained after the area has left stays refused"
+          + " while hits are not held")
+  void scaledHitOfALeftAreaOutsideTheHoldIsRefused() {
+    GameTables tables = GameData.tables();
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+    CharacterEntity tesla =
+        battle.deploy(0, records.unit("Tesla"), LEVEL, 1, QUAKE_X, QUAKE_Y, "tesla");
+    battle.placeAreaEffect(5, "Earthquake", LEVEL, 0, QUAKE_X, QUAKE_Y, "quake");
+    AreaEffectEntity quake = null;
+    while (quake == null) {
+      battle.getBattle().step();
+      quake =
+          battle.getWorld().getHolder().entities().stream()
+              .filter(e -> e instanceof AreaEffectEntity)
+              .map(e -> (AreaEffectEntity) e)
+              .findFirst()
+              .orElse(null);
+    }
+    // No Ladder battle reaches this outside the tiebreaker: an area leaves only at a cleanup after
+    // its life, a step after its last hit is drained. It is made here by hand.
+    TakeDamage.Damage damage =
+        new TakeDamage.Damage(
+            baseDamage(text(hiddenDamageArea(), "OnHitAction")),
+            -1,
+            false,
+            false,
+            false,
+            true,
+            true);
+    battle.getWorld().queueActionDamage(quake, tesla, damage, 0);
+    battle.getWorld().clearingRemoval(quake);
+    assertThat(battle.getWorld().isHitsHeld()).isFalse();
+    assertThatThrownBy(() -> battle.getBattle().step())
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("no longer in the battle");
   }
 
   /** The step an evolved Electro Giant kept in place first has its pulse area in the battle. */
