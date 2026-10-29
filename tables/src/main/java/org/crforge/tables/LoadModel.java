@@ -17,7 +17,9 @@ import java.util.Set;
  * Every row of a data set as the client's loaders stack it, before any rule is applied: a row is a
  * stack of layers, one per source that touches it, in the order the client loads them - the table's
  * CSV row, its registered TOML section, then every manifest section with its name, in manifest
- * order. Nothing is merged, inherited, patched or resolved here (that is {@link TableResolver}).
+ * order, then every section of the chaos-config step's data assets with its name, in the config's
+ * list order. Nothing is merged, inherited, patched or resolved here (that is {@link
+ * TableResolver}).
  *
  * <p>A CSV layer holds every column of its file, each as the column's cells down the row's lines
  * (null where a line is shorter); a TOML layer holds the keys its section sets, as the client's
@@ -35,7 +37,7 @@ final class LoadModel {
     /** The load order of the layer among all layers (a later repeat of a file sits between). */
     final double seq;
 
-    /** csv, registered toml, patch, manifest, ext or embedded. */
+    /** csv, registered toml, patch, manifest, chaos, ext or embedded. */
     final String source;
 
     final String file;
@@ -86,10 +88,14 @@ final class LoadModel {
     this.manifest = ClientToml.read(files.text(GameFiles.MANIFEST));
   }
 
-  /** Builds the model: the registered files in registration order, then the manifest's files. */
+  /**
+   * Builds the model: the registered files in registration order, then the manifest's files, then
+   * the chaos-config step's data assets.
+   */
   LoadModel build() {
     registered();
     manifestFiles();
+    chaosAssets();
     return this;
   }
 
@@ -200,6 +206,50 @@ final class LoadModel {
           typed(file, token, (Map<String, Object>) e.getValue(), "manifest");
         }
         // any other token: the client faults on the section, which makes no row
+      }
+    }
+  }
+
+  /**
+   * The chaos-config step: each data asset's data member is loaded as a manifest file is, its
+   * sections keyed by type token, after every manifest file and before the pending EXT rows are
+   * linked at the end of the load. An asset without that member, or whose member is not an object,
+   * adds nothing.
+   */
+  @SuppressWarnings("unchecked")
+  private void chaosAssets() {
+    ClientSchema.AssetDatabase database = schema.assetDatabase();
+    for (AssetDatabase.DataAsset asset : files.chaosAssets()) {
+      Map<String, Object> doc;
+      try {
+        doc = ClientJson.read(asset.text());
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(asset.path() + ": " + e.getMessage(), e);
+      }
+      if (!(doc.get(database.dataMember()) instanceof Map<?, ?> data)) {
+        continue;
+      }
+      for (Map.Entry<String, Object> e : ((Map<String, Object>) data).entrySet()) {
+        String token = e.getKey();
+        if (!tokens.containsKey(token) && !token.equals(EXT)) {
+          continue; // as a manifest file's section of any other token: no row
+        }
+        if (!(e.getValue() instanceof Map<?, ?> sections)) {
+          throw new IllegalArgumentException(
+              asset.path() + ": the " + token + " sections are not an object");
+        }
+        for (Map.Entry<?, ?> section : sections.entrySet()) {
+          if (!(section.getValue() instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException(
+                asset.path()
+                    + ": the section "
+                    + token
+                    + "."
+                    + section.getKey()
+                    + " is not an object");
+          }
+        }
+        typed(asset.path(), token, (Map<String, Object>) sections, "chaos");
       }
     }
   }

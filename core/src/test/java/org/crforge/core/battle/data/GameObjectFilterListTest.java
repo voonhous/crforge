@@ -87,10 +87,22 @@ class GameObjectFilterListTest {
     BattleRecords records = new BattleRecords(lists);
     int listed = 0;
     for (GameRow row : GameData.tables().table("game_object_filters").rows()) {
+      GameObjectFilter switches;
+      try {
+        switches = GameData.records().filter(row.name());
+      } catch (UnsupportedOperationException refused) {
+        // a row the battle refuses for a column it does not model is refused written as a list
+        // too, for the same reason
+        assertThatThrownBy(() -> records.filter(row.name()))
+            .as(row.name())
+            .isInstanceOf(UnsupportedOperationException.class)
+            .hasMessage(refused.getMessage());
+        continue;
+      }
       assertThat(records.filter(row.name()))
           .as(row.name())
           .usingRecursiveComparison()
-          .isEqualTo(GameData.records().filter(row.name()));
+          .isEqualTo(switches);
       if (lists.table("game_object_filters").row(row.name()).has("Filters")) {
         listed++;
       }

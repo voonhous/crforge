@@ -34,7 +34,7 @@ import java.util.stream.Stream;
 public final class TableBuild {
 
   /** The version of the decoder's output. Raise it when the tables it writes change. */
-  public static final int DECODER = 1;
+  public static final int DECODER = 2;
 
   /** The file in a built folder that records what it was built from. */
   public static final String STAMP = "build.properties";
@@ -53,8 +53,9 @@ public final class TableBuild {
     if (wanted.equals(readStamp(folder))) {
       return folder;
     }
+    ClientSchema schema = ClientSchema.load(version.clientVersion());
     Map<String, String> documents =
-        decode(GameFiles.fetch(version, source, cache), ClientSchema.load(version.clientVersion()));
+        decode(GameFiles.fetch(version, source, cache, schema.assetDatabase()), schema);
     Path parent = folder.getParent();
     Files.createDirectories(parent);
     Path staging = Files.createTempDirectory(parent, version.version() + ".");

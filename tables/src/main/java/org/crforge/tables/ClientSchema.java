@@ -101,6 +101,28 @@ public final class ClientSchema {
       List<Integer> tables,
       Map<String, String> refs) {}
 
+  /**
+   * The game's asset database and the chaos-config step of the client's data load: after the
+   * manifest files, and before the pass over the pending EXT rows, the client reads a config asset
+   * from the asset database and loads each data asset it lists, in list order, the way it loads a
+   * manifest file: the data asset's {@code dataMember} object holds sections keyed by type token.
+   *
+   * @param file the asset database's path in a content set, e.g. {@code assets.scdb}
+   * @param config the config asset's path in the database
+   * @param configClass the asset type of the config asset
+   * @param configList the config asset's list of data assets, each written {@code "<path> |
+   *     <uuid>"}
+   * @param dataClass the asset type of a listed data asset
+   * @param dataMember the member of a data asset that holds its sections
+   */
+  public record AssetDatabase(
+      String file,
+      String config,
+      String configClass,
+      String configList,
+      String dataClass,
+      String dataMember) {}
+
   private final String clientVersion;
   private final ExtLink extLink;
   private final Map<String, Integer> typeTokens;
@@ -115,6 +137,7 @@ public final class ClientSchema {
   private final Map<String, Set<String>> tableClasses;
   private final Map<String, DataClass> classes;
   private final Map<String, Map<String, Map<String, String>>> loaderKinds;
+  private final AssetDatabase assetDatabase;
 
   private ClientSchema(JsonNode root) {
     int format = root.path("format").asInt();
@@ -159,6 +182,17 @@ public final class ClientSchema {
         map(
             root.path("loader_kinds"),
             perTable -> map(perTable, kinds -> map(kinds, JsonNode::asText)));
+    JsonNode database = root.path("asset_database");
+    assetDatabase =
+        database.isMissingNode()
+            ? null
+            : new AssetDatabase(
+                database.path("file").asText(),
+                database.path("chaos_config").asText(),
+                database.path("config_class").asText(),
+                database.path("config_list").asText(),
+                database.path("data_class").asText(),
+                database.path("data_member").asText());
   }
 
   /**
@@ -266,6 +300,14 @@ public final class ClientSchema {
    */
   public Map<String, Map<String, Map<String, String>>> loaderKinds() {
     return loaderKinds;
+  }
+
+  /**
+   * The asset database and the chaos-config step, or null when this schema names none: the tables
+   * of such a client version are read from the content set's data files alone.
+   */
+  public AssetDatabase assetDatabase() {
+    return assetDatabase;
   }
 
   private static <V> Map<String, V> map(JsonNode node, Function<JsonNode, V> value) {
