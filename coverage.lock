@@ -1,9 +1,10 @@
-# The coverage sets CI scores: a large sample of the game's own recorded battles of each listed
-# data version, played on the battle core and compared tick by tick (conformance/README.md,
-# Coverage). They live in the coverage dataset (the COVERAGE_DATASET variable, read with the
-# COVERAGE_TOKEN secret) under coverage/<version>/, and CI reads them at this revision only, so a
-# set reaches CI when this file moves.
+# The coverage sets CI scores: each a large sample of the game's own recorded battles of one data
+# version, played on the battle core and compared tick by tick (conformance/README.md, Coverage).
+# They live in the coverage dataset (the COVERAGE_DATASET variable, read with the COVERAGE_TOKEN
+# secret) under coverage/<set>/, and CI reads them at this revision only, so a set reaches CI when
+# this file moves.
 # - revision: the dataset commit CI downloads the sets from.
-# - versions: the data versions with a coverage set at that revision, separated by spaces.
-revision=8fa59c7b0b5571a11a03f72e95006ac0587548e8
-versions=16.635.3
+# - sets: the sets at that revision, separated by spaces. A set is named for its data version, or
+#   for its data version and a kind of battle after a hyphen (16.635.3-challenge).
+revision=dc122531fc9369f2291a08365745ff30fa742110
+sets=16.635.3 16.635.3-challenge
