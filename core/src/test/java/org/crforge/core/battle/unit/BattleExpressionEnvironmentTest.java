@@ -293,6 +293,25 @@ class BattleExpressionEnvironmentTest {
   }
 
   @Test
+  @DisplayName(
+      "hit_timer answers the context's attack time as it stands, the field attack_count divides,"
+          + " with its targeting component on or off")
+  void hitTimerIsTheAttackTime() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables());
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 10000);
+    int hitTimer = BattleFunctions.id("hit_timer");
+    BattleExpressionEnvironment environment =
+        new BattleExpressionEnvironment(knight, match.getWorld());
+    assertThat(environment.call(hitTimer, new int[0])).as("no attack yet").isZero();
+
+    knight.getTargeting().setAttackTimerMs(700);
+    assertThat(environment.call(hitTimer, new int[0])).isEqualTo(700);
+    knight.setActive(CharacterEntity.TARGETING_SLOT, false);
+    assertThat(environment.call(hitTimer, new int[0])).as("targeting off").isEqualTo(700);
+  }
+
+  @Test
   @DisplayName("get_radius answers the context's row's collision radius")
   void getRadiusIsTheCollisionRadius() {
     Standard1v1Battle match = new Standard1v1Battle(written);
