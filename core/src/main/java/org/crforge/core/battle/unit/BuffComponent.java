@@ -135,7 +135,10 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " buff on a parent handed to each rider, made and refreshed, as an instance of the"
             + " rider's own that its own visit steps; by RiderTest: a row named for riders handed"
             + " in its place, a Clone row kept from them, a rider's own refusal and the parent's"
-            + " removal leaving the riders' instances. A buff applied to a rider other than"
+            + " removal leaving the riders' instances. A clone's copy of an instance that spawns"
+            + " carrying the spawner as its original left it, its child a clone, and a copy of a"
+            + " row that is not cloned taken off before any visit, by BattleSkeletonsEvoTest and"
+            + " no run. A buff applied to a rider other than"
             + " through its parent is refused. Refused by the row: projectiles, chains, morphs,"
             + " an action other than a start, remove or stacked action that names its row, tags"
             + " other than the one that keeps enemies from pushing the carrier, switching team,"
@@ -488,6 +491,11 @@ public final class BuffComponent implements BattleComponent {
    * does as it lists or refreshes an instance. The actions of a copy run later as any instance's
    * do: its remove action as it runs out or is removed, its stacked action as it is refreshed.
    *
+   * <p>A copy of an instance whose row spawns carries the spawner as the original left it: its
+   * timer, the firings of its wave and the firings it has left. A copy that stays fires on the
+   * clone as the original's would on the unit, and its child is a clone of 1 hit point, as every
+   * spawn of a clone (the evolved Skeletons' duplication, when its row is cloned).
+   *
    * <p>Then the copies of a row that is not cloned are taken off: walking the list from the first,
    * at each index whose row is not cloned, every instance of that row with the same parent is
    * removed, from the last to the first, as any removal is, its remove action scheduled on the
@@ -514,17 +522,8 @@ public final class BuffComponent implements BattleComponent {
       items.remove(held);
       onRemoved(held);
     }
-    for (BuffInstance instance : original.items) {
-      if (instance.getBuff().spawnObject() != null) {
-        throw new UnsupportedOperationException(
-            original.entity.name()
-                + " is cloned carrying "
-                + instance.getBuff().name()
-                + ", whose spawner's copy is not modelled");
-      }
-    }
-    // Listed with the counters the original's component holds for them; no action is scheduled
-    // and no charge is reset.
+    // Listed with the counters the original's component holds for them, a spawner's timer and
+    // firings among them; no action is scheduled and no charge is reset.
     for (BuffInstance instance : original.items) {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);

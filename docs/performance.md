@@ -86,7 +86,7 @@ The images on these pages are the same graphs rooted at `Battle.step`, as icicle
 The baseline to measure the next change against:
 
 - Source `main` d7aaec93, after the sixth optimisations (see [the history](performance-history.md#the-sixth-optimisations-2026-10-28)).
-- Data version 16.635.3. It has no reference battles yet, so the workload is 674 real Ladder battles of 16.635.3, played from anonymized copies kept outside the repositories and laid out as a references folder (see [A data version without references](#a-data-version-without-references)). The battle core refuses none of them, and all are replays, so `allCases` runs the same battles as `replays` in another order.
+- Data version 16.635.3. It had no reference battles when the baseline was taken, so the workload is 674 real Ladder battles of 16.635.3, played from anonymized copies kept outside the repositories and laid out as a references folder (see [A data version without references](#a-data-version-without-references)). The battle core refuses none of them, and all are replays, so `allCases` runs the same battles as `replays` in another order.
 - Java 21.0.9 (Temurin), Apple M4 Pro (10 performance and 4 efficiency cores), 48 GB.
 - JMH defaults as above. Score and error as JMH prints them.
 - Load average 4.0 to 9.0 during the run, the four-thread workload's own threads included.

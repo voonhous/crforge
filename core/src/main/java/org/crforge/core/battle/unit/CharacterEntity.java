@@ -250,8 +250,16 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and as it rises, scheduled on itself and run in its phase-3 pending pass, held by"
             + " evo_tesla_vs_giant and evo_tesla_ring_giant_musketeer; their cause, itself, which"
             + " the evolved Tesla's ring does not read, by no run. Refused for a clone: a"
-            + " building, a unit whose hit destroys it, a champion, and one still deploying or"
-            + " running an air-to-ground action. A clone of a row with a cloned version, of that"
+            + " building, a unit whose hit destroys it, a champion, a rider running an"
+            + " air-to-ground action, and one still deploying whose clone's row spawns an area"
+            + " object. A clone of a unit still deploying: a carrier's clone set up before its"
+            + " countdown, making no riders, its riders' clones with theirs, held by"
+            + " clone-refusals-v1/carrier_clone_deploying; a Mega Knight's clone entering the"
+            + " deploying state without its push, held by clone-refusals-v1/mk_clone_deploying."
+            + " A clone its lifetime drain kills in its registration visit, its move apart"
+            + " listed but starting no move and its original moving apart alone, held by"
+            + " clone-refusals-v1/kamikaze_clone_demolisher. A clone of a row with a cloned"
+            + " version, of that"
             + " row at its rarity, its runs left to the unit and the unit's buffs written over its"
             + " own, is held by four recorded battles not yet in the reference set: the evolved"
             + " Ghost, the evolved Wizard with its shield up and broken, and the evolved Barbarians;"
@@ -1139,10 +1147,11 @@ public class CharacterEntity extends WorldEntity {
   /**
    * The perform's tests of a Clone's action: a unit a Clone passes by, a dead unit and a rider are
    * refused, and the refusal told. A clone the battle does not model is refused outright: one made
-   * by anything but an area effect, of a carrier still deploying or one of its riders, of a unit
-   * still deploying whose clone's row spawns an area object or a push as it enters the deploying
-   * state - for a carrier, of any of its riders too, each cloned with it - or of a carrier's rider
-   * running an air-to-ground action. Any other unit still deploying is cloned with its countdown. A
+   * by anything but an area effect, of a unit still deploying whose clone enters the deploying
+   * state and whose clone's row spawns an area object as it does - for a carrier, of any of its
+   * riders, each cloned with it - or of a carrier's rider running an air-to-ground action. Any
+   * other unit still deploying is cloned with its countdown: a carrier's clone is set up before its
+   * countdown, so it never enters the deploying state, and a clone that enters it makes no push. A
    * row with a cloned version and the runs are modelled: the clone is made of the cloned version,
    * the runs stay the unit's, and an air-to-ground run is started again on the clone, copied.
    *
@@ -1183,21 +1192,17 @@ public class CharacterEntity extends WorldEntity {
     }
     for (CharacterEntity unit : cloned) {
       // A clone of a unit still deploying takes its countdown and enters the deploying state
-      // before its setup. Not modelled: a carrier or its riders still deploying, whose clone the
-      // creator sets up first; and a row whose entry into the deploying state spawns an area object
-      // or a push, which the clone's entry would spawn again.
-      if (unit.getView().getDeployCountdown() > 0) {
-        UnitData row = unit.cloneRow();
-        String refused = null;
-        if (getData().spawnAttach()) {
-          refused = unit == this ? "and carries riders" : "as a carrier's rider";
-        } else if (row.spawnAreaObject() != null || row.pushesOnDeploy()) {
-          refused = "and its clone's row spawns an area object or a push as it deploys";
-        }
-        if (refused != null) {
-          throw new UnsupportedOperationException(
-              unit.name() + " is cloned with a deploy countdown " + refused + ", not modelled");
-        }
+      // before its setup, but a carrier's clone, which the creator sets up first: it never enters
+      // that state, so it makes no riders of its own. The clone mark is set before the countdown,
+      // so a clone's entry makes no push. Not modelled: an entry that spawns an area object, a
+      // column no row of this client range sets, for a clone.
+      boolean entersDeploying =
+          unit.getView().getDeployCountdown() > 0 && !(unit == this && getData().spawnAttach());
+      if (entersDeploying && unit.cloneRow().spawnAreaObject() != null) {
+        throw new UnsupportedOperationException(
+            unit.name()
+                + " is cloned with a deploy countdown and its clone's row spawns an area object as"
+                + " it deploys, not modelled");
       }
       // The creator tells each run the unit has listed of the clone; every class but the
       // air-to-ground one does nothing with it, so the runs stay the unit's. That one starts its
@@ -1279,8 +1284,10 @@ public class CharacterEntity extends WorldEntity {
    * run pass, from the next tick on; at the clone duration it resumes the character, still set up
    * as a clone, and finishes.
    *
-   * <p>Refused rather than guessed: a character without its movement component on, which keeps no
-   * route.
+   * <p>The run is listed whatever the character's state, a dead clone's too; its start then takes
+   * the movement component only while it is switched on, and for a character without one on (a
+   * clone its registration visit has killed) it sets no point and no route: nothing moves, and the
+   * run steps on as any.
    *
    * @param fromX the original's position, along the width
    * @param fromY the original's position, along the length
@@ -1289,8 +1296,7 @@ public class CharacterEntity extends WorldEntity {
   void startCloneMove(int fromX, int fromY, Clone action) {
     actionHolder().list(new CloneMove(action));
     if (!getView().isMovementComponent() || !getView().isMovementActive()) {
-      throw new UnsupportedOperationException(
-          name() + " moves apart from its clone without its movement component, not modelled");
+      return;
     }
     int direction = CLONE_MOVE_PARENT && !clone ? -1 : 1;
     // The side whose team answers 1, the bottom one, moves the other way.
@@ -3371,6 +3377,11 @@ public class CharacterEntity extends WorldEntity {
    * the enemies around it. A card play's construction enters the state before it hands the
    * character to the holder, and runs this then; a unit that waits its turn enters it in its state
    * visit once the wait has run out, from whatever state it was in.
+   *
+   * <p>The push asks the unit whether it is a clone first and makes none for a clone: a Mega
+   * Knight's clone, made while the Mega Knight still deploys, enters the state with its clone mark
+   * already set and pushes nobody. A spawn of a clone is marked only after its entry, so its entry
+   * pushes as any unit's.
    */
   void enteredDeploying() {
     UnitData data = getData();
@@ -3380,7 +3391,7 @@ public class CharacterEntity extends WorldEntity {
     if (data.spawnAreaObject() != null) {
       world.spawnAreaObject(this);
     }
-    if (data.pushesOnDeploy()) {
+    if (data.pushesOnDeploy() && !clone) {
       world.spawnPush(this);
     }
   }

@@ -111,7 +111,8 @@ public final class BuffInstance {
   /**
    * A copy of the instance under a new key, as a clone takes its original's buffs: the time it has
    * left and its whole time, the visits it has counted, its level, source, side, cast id and
-   * parent.
+   * parent, and for a row that spawns, its spawner as it stands: the timer, the firings of the wave
+   * and the firings left.
    *
    * @param key the copy's name in logs
    */
@@ -121,6 +122,13 @@ public final class BuffInstance {
     copy.hitCounter = hitCounter;
     copy.sourceLauncherId = sourceLauncherId;
     copy.castId = castId;
+    // The copy is the original's list read back: the spawner's three counters go with it only for a
+    // row with a spawn, and a row without one keeps what the constructor set.
+    if (buff.spawnObject() != null) {
+      copy.spawnWaveMade = spawnWaveMade;
+      copy.spawnTimer = spawnTimer;
+      copy.spawnsLeft = spawnsLeft;
+    }
     return copy;
   }
 

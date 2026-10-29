@@ -10,7 +10,7 @@
 
 The hit points and the damage chain sit beside them in `org.crforge.core.pathfinding.combat`. The battle core drives them inside its entity tick (see [The battle core](battle-core.md#one-step)).
 
-Troop walks were held by the recorded reference battles of the 16.402.x data versions (client 16.402.17), Knight walks among them (`smoke-c1/knight`, `smoke-c1/knight_centre_s0`, `smoke-c1/knight_behind_king_s0`, `golden-gaps-v1/walk_knight_left_inner`, `golden-gaps-v1/walk_knight_right_rear`). Data version 16.635.3 has no reference battles yet.
+Troop walks were held by the recorded reference battles of the 16.402.x data versions (client 16.402.17), Knight walks among them (`smoke-c1/knight`, `smoke-c1/knight_centre_s0`, `smoke-c1/knight_behind_king_s0`, `golden-gaps-v1/walk_knight_left_inner`, `golden-gaps-v1/walk_knight_right_rear`). Data version 16.635.3 has five reference battles, all Clone cases, and no Knight walk among them yet.
 
 ## Movement states
 
@@ -226,6 +226,6 @@ What is left are the cases outside the current scope and the pieces below.
 
 ## How to check
 
-- `./gradlew :conformance:referenceTest -Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>` (with the asset source the build reads, `-Pcrforge.assetSource=...`) plays every recorded reference battle of that data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](../conformance/README.md)). It is skipped without a references folder, and data version 16.635.3 has none yet.
+- `./gradlew :conformance:referenceTest -Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>` (with the asset source the build reads, `-Pcrforge.assetSource=...`) plays every recorded reference battle of that data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](../conformance/README.md)). It is skipped without a references folder.
 - The unit tests under `core/src/test/java/org/crforge/core/pathfinding` hold each rule on its own: the route search, its heap and the cost field (`grid`), the movement and push passes (`move`), the targeting visit and default selection (`target`), the state visit (`state`), and the hit points and damage chain (`combat`).
 - The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. See the controls table and the overlays section in [architecture.md](architecture.md#overlays).

@@ -10,9 +10,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameTables;
@@ -49,41 +51,86 @@ class BattleSkeletonsEvoTest {
   /** The configured tables with the scene's hit count written. */
   private static GameTables tables;
 
+  /** The spawner's timer as an instance is listed, in the scenes that clone it before it fires. */
+  private static final int LATE_START_MS = 300;
+
+  /**
+   * The duplication's time in the scenes that clone it before it fires: past the Clone buff, under
+   * which neither the Skeleton's spawner nor its copy steps, by more than the late start.
+   */
+  private static final int LATE_BUFF_TIME_MS = 2000;
+
   @BeforeAll
   static void writeTheScene() throws IOException {
+    tables = sceneTables(folder.resolve("scene"), 500, duplication -> {});
+  }
+
+  /**
+   * The scene's tables with the duplication's row written as cloned or not (NotCloned), listed for
+   * {@link #LATE_BUFF_TIME_MS} and its spawner firing {@link #LATE_START_MS} after it is listed.
+   * Loaded by the test that reads them, so that the class holds no more than one set of tables.
+   */
+  private static GameTables lateTables(Path folder, boolean notCloned) throws IOException {
+    return sceneTables(
+        folder,
+        LATE_BUFF_TIME_MS,
+        duplication ->
+            duplication.put("NotCloned", notCloned).put("SpawnStartTime", LATE_START_MS));
+  }
+
+  /**
+   * The configured tables with the scene's hit count, the duplication's time and its spawner
+   * written, then the duplication's row edited further.
+   */
+  private static GameTables sceneTables(
+      Path folder, int buffTimeMs, Consumer<ObjectNode> duplication) throws IOException {
+    Files.createDirectories(folder);
     GameData.altered(
         folder,
         "characters",
         rows -> {
           ObjectNode skeleton = GameData.columns(rows, SKELETON);
           skeleton.putArray("BuffAfterHitsCount").add(1);
-          skeleton.putArray("BuffAfterHitsTime").add(500);
+          skeleton.putArray("BuffAfterHitsTime").add(buffTimeMs);
         });
     GameData.alterLoaded(
         folder,
         "character_buffs",
         rows ->
-            GameData.columns(rows, "SkeletonDuplication_EV1")
-                .put("SpawnInterval", 50)
-                .put("SpawnLimit", 1)
-                .put("SpawnNumber", 1)
-                .put("SpawnerAliveRequired", true));
-    tables = GameTables.load(folder);
+            duplication.accept(
+                GameData.columns(rows, DUPLICATION)
+                    .put("SpawnInterval", 50)
+                    .put("SpawnLimit", 1)
+                    .put("SpawnNumber", 1)
+                    .put("SpawnerAliveRequired", true)));
+    return GameTables.load(folder);
   }
 
   /** A battle with the towers passive, and every spawn and every hit on the target. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(tables, LEVEL, false);
+    final Standard1v1Battle match;
     final List<String> spawns = new ArrayList<>();
     final List<Integer> spawnTicks = new ArrayList<>();
     final List<Integer> hitTicks = new ArrayList<>();
     final List<CharacterEntity> children = new ArrayList<>();
+    final List<SpawnHost> sources = new ArrayList<>();
+
+    /** Each copy of the duplication a clone took, with what its original's instance held then. */
+    final List<String> copies = new ArrayList<>();
+
+    final List<CharacterEntity> clones = new ArrayList<>();
     WorldEntity target;
+    int tick;
 
     /** Runs as a child is made, inside the buff visit that makes it. */
     Runnable onSpawn = () -> {};
 
     Scene() {
+      this(tables);
+    }
+
+    Scene(GameTables tables) {
+      match = new Standard1v1Battle(tables, LEVEL, false);
       match
           .getWorld()
           .addObserver(
@@ -95,7 +142,31 @@ class BattleSkeletonsEvoTest {
                       "%s %s (%d, %d)".formatted(source.name(), child.getData().name(), x, y));
                   spawnTicks.add(tick);
                   children.add(child);
+                  sources.add(source);
                   onSpawn.run();
+                }
+
+                @Override
+                public void cloned(
+                    int tick,
+                    CharacterEntity original,
+                    CharacterEntity clone,
+                    SpawnHost instigator,
+                    List<Integer> visits) {
+                  clones.add(clone);
+                }
+
+                @Override
+                public void buffCopied(
+                    int tick, WorldEntity original, WorldEntity clone, BuffInstance copy) {
+                  if (!copy.getBuff().name().equals(DUPLICATION)) {
+                    return;
+                  }
+                  for (BuffInstance held : ((CharacterEntity) original).getBuffs().items()) {
+                    if (held.getBuff().name().equals(DUPLICATION)) {
+                      copies.add(spawner(held) + " / " + spawner(copy));
+                    }
+                  }
                 }
 
                 @Override
@@ -119,8 +190,89 @@ class BattleSkeletonsEvoTest {
     void step(int ticks) {
       for (int i = 0; i < ticks; i++) {
         match.getBattle().step();
+        tick++;
       }
     }
+  }
+
+  /** The duplication buff the evolved Skeleton's hits list. */
+  private static final String DUPLICATION = "SkeletonDuplication_EV1";
+
+  /** An instance's spawner: its timer, the firings of its wave and the firings it has left. */
+  private static String spawner(BuffInstance instance) {
+    return instance.getSpawnTimer()
+        + " "
+        + instance.getSpawnWaveMade()
+        + " "
+        + instance.getSpawnsLeft();
+  }
+
+  /**
+   * An evolved Skeleton hitting a Giant, cloned by side 0's Clone on the tick after its first hit,
+   * when the duplication its hit listed has not fired yet; stepped until two children are made, or
+   * for 40 ticks. The Clone buff both carry holds both spawners still until it runs out.
+   */
+  private static Scene clonedBeforeTheFiring(GameTables tables) {
+    Scene scene = new Scene(tables);
+    scene.still(0, SKELETON, 9000, 12000, "skeleton");
+    scene.target = scene.still(1, "Giant", 9600, 13200, "giant");
+    for (int i = 0; i < 60 && scene.hitTicks.isEmpty(); i++) {
+      scene.step(1);
+    }
+    assertThat(scene.hitTicks).hasSize(1);
+    assertThat(scene.children).isEmpty();
+    scene.match.placeAreaEffect(scene.tick, "Clone", LEVEL, 0, 9000, 12000, "C");
+    scene.step(1);
+    assertThat(scene.clones).isNotEmpty();
+    for (int i = 0; i < 40 && scene.children.size() < 2; i++) {
+      scene.step(1);
+    }
+    return scene;
+  }
+
+  @Test
+  @DisplayName(
+      "a Clone's copy of the duplication carries the spawner as its original left it - the timer,"
+          + " the wave's firings and the firings left - so the clone fires on the original's tick,"
+          + " and the child of a clone is a clone of 1 hit point")
+  void aClonesCopyCarriesTheSpawner(@TempDir Path cloned) throws IOException {
+    Scene scene = clonedBeforeTheFiring(lateTables(cloned, false));
+
+    // The copy took the original's spawner as it stood, part way down its timer.
+    assertThat(scene.copies).hasSize(1);
+    String[] pair = scene.copies.get(0).split(" / ");
+    assertThat(pair[1]).isEqualTo(pair[0]);
+    assertThat(pair[0]).doesNotStartWith(LATE_START_MS + " ");
+    // One child from the Skeleton and one from its clone, on the same tick.
+    assertThat(scene.children).hasSize(2);
+    assertThat(scene.spawnTicks.get(1)).isEqualTo(scene.spawnTicks.get(0));
+    CharacterEntity clone = scene.clones.get(0);
+    for (int i = 0; i < 2; i++) {
+      CharacterEntity child = scene.children.get(i);
+      boolean ofTheClone = scene.sources.get(i) == clone;
+      assertThat(child.isClone()).as(child.name()).isEqualTo(ofTheClone);
+      if (ofTheClone) {
+        assertThat(child.getHitPoints().getHitPoints()).isEqualTo(1);
+        assertThat(child.getHitPoints().getMaximum()).isEqualTo(1);
+      }
+    }
+    assertThat(scene.sources).contains(clone);
+  }
+
+  @Test
+  @DisplayName(
+      "with the duplication's row not cloned, the clone's copy is taken off as the clone is made,"
+          + " before any visit: only the Skeleton makes children")
+  void aNotClonedDuplicationIsTakenOffTheClone(@TempDir Path notCloned) throws IOException {
+    Scene scene = clonedBeforeTheFiring(lateTables(notCloned, true));
+
+    assertThat(scene.copies).hasSize(1);
+    CharacterEntity clone = scene.clones.get(0);
+    assertThat(clone.getBuffs().carries(DUPLICATION)).isFalse();
+    // The Skeleton's own children alone, the first from the instance the clone was made over.
+    assertThat(scene.children).isNotEmpty();
+    assertThat(scene.sources).doesNotContain(clone);
+    assertThat(scene.children).noneMatch(CharacterEntity::isClone);
   }
 
   @Test
