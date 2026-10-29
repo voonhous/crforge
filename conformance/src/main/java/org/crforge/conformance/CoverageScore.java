@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.crforge.conformance.ReferenceSuite.Case;
 import org.crforge.conformance.ReferenceSuite.CaseResult;
@@ -62,9 +61,6 @@ public final class CoverageScore {
 
   /** The system property naming the coverage set's folder. */
   public static final String PROPERTY = "crforge.coverage";
-
-  /** The field of a tally and a score naming its set ({@link #setName}). */
-  static final String SET_NAME = "set_name";
 
   /** How many first failures the score lists. */
   static final int FIRST_FAILURES = 15;
@@ -119,45 +115,13 @@ public final class CoverageScore {
   }
 
   /**
-   * A coverage set's name: its data version, or its data version and a kind of battle after a
-   * hyphen ({@code 16.635.3-challenge}), for a second set of the same version.
-   *
-   * @throws IllegalArgumentException for any other name
-   */
-  static String setName(String set, String version) {
-    if (!set.equals(version) && !set.matches(Pattern.quote(version) + "-[a-z]+")) {
-      throw new IllegalArgumentException(
-          "a coverage set of data version "
-              + version
-              + " is named "
-              + version
-              + " or "
-              + version
-              + "-<kind>, not "
-              + set);
-    }
-    return set;
-  }
-
-  /**
-   * A tally of battles of the set named for its data version.
+   * A tally of battles: the counts a score is made of. Tallies of parts of one data version's set
+   * sum up ({@link #merge}) to the tally of the whole set, so a set can be scored in parts.
    *
    * @param version the data version
    * @param battles every battle's outcome
    */
   static ObjectNode tally(String version, List<Battle> battles) {
-    return tally(version, version, battles);
-  }
-
-  /**
-   * A tally of battles: the counts a score is made of. Tallies of parts of one set sum up ({@link
-   * #merge}) to the tally of the whole set, so a set can be scored in parts.
-   *
-   * @param set the set's name ({@link #setName})
-   * @param version the data version
-   * @param battles every battle's outcome
-   */
-  static ObjectNode tally(String set, String version, List<Battle> battles) {
     Map<String, Long> outcomes = new TreeMap<>();
     Map<String, Long> failures = new TreeMap<>();
     long agreed = 0;
@@ -173,7 +137,6 @@ public final class CoverageScore {
       battle.firstFailure().ifPresent(failure -> failures.merge(failure, 1L, Long::sum));
     }
     ObjectNode tally = JSON.objectNode();
-    tally.put(SET_NAME, setName(set, version));
     tally.put("content_version", version);
     // Counts are longs, as merge() sums them, so a tally and a sum of tallies compare equal.
     tally.put("battles", (long) battles.size());
@@ -186,15 +149,14 @@ public final class CoverageScore {
   }
 
   /**
-   * The sum of tallies of one set.
+   * The sum of tallies of one data version.
    *
-   * @throws IllegalArgumentException when there are none, or they are of more than one set
+   * @throws IllegalArgumentException when there are none, or they are of more than one version
    */
   static ObjectNode merge(List<? extends JsonNode> tallies) {
     if (tallies.isEmpty()) {
       throw new IllegalArgumentException("no tally to merge");
     }
-    String set = setOf(tallies.get(0));
     String version = tallies.get(0).path("content_version").asText();
     long battles = 0;
     long matched = 0;
@@ -203,8 +165,9 @@ public final class CoverageScore {
     Map<String, Long> outcomes = new TreeMap<>();
     Map<String, Long> failures = new TreeMap<>();
     for (JsonNode tally : tallies) {
-      if (!set.equals(setOf(tally))) {
-        throw new IllegalArgumentException("tallies of " + set + " and " + setOf(tally));
+      if (!version.equals(tally.path("content_version").asText())) {
+        throw new IllegalArgumentException(
+            "tallies of " + version + " and " + tally.path("content_version").asText());
       }
       battles += tally.path("battles").asLong();
       matched += tally.path("matched").asLong();
@@ -220,7 +183,6 @@ public final class CoverageScore {
           .forEachRemaining(e -> failures.merge(e.getKey(), e.getValue().asLong(), Long::sum));
     }
     ObjectNode sum = JSON.objectNode();
-    sum.put(SET_NAME, set);
     sum.put("content_version", version);
     sum.put("battles", battles);
     sum.put("matched", matched);
@@ -236,7 +198,6 @@ public final class CoverageScore {
    */
   static ObjectNode score(JsonNode tally) {
     ObjectNode score = JSON.objectNode();
-    score.put(SET_NAME, setOf(tally));
     score.put("content_version", tally.path("content_version").asText());
     score.put("battles", tally.path("battles").asLong());
     score.put(
@@ -276,26 +237,14 @@ public final class CoverageScore {
   }
 
   /**
-   * The name of the set a tally or score is of: its {@value #SET_NAME}, or for one written before
-   * sets were named, its data version.
-   */
-  static String setOf(JsonNode tallyOrScore) {
-    JsonNode name = tallyOrScore.get(SET_NAME);
-    return name == null ? tallyOrScore.path("content_version").asText() : name.asText();
-  }
-
-  /**
-   * The score as a shields.io endpoint badge: the data version, the set's kind of battle if it
-   * names one, and the share of battles played to the end, coloured by that share.
+   * The score as a shields.io endpoint badge: the data version and the share of battles played to
+   * the end, coloured by that share.
    */
   static ObjectNode badge(ObjectNode score) {
     BigDecimal share = score.path("to_the_end").decimalValue();
-    String version = score.path("content_version").asText();
-    String set = setOf(score);
-    String kind = set.equals(version) ? "" : set.substring(version.length() + 1) + " ";
     ObjectNode badge = JSON.objectNode();
     badge.put("schemaVersion", 1);
-    badge.put("label", version + " " + kind + "battles reproduced");
+    badge.put("label", score.path("content_version").asText() + " battles reproduced");
     badge.put("message", share.toPlainString() + "%");
     badge.put("color", color(share.doubleValue()));
     return badge;
@@ -363,16 +312,15 @@ public final class CoverageScore {
    * Scores the configured coverage set, a part of it, or the tallies of its parts, into a folder.
    *
    * <ul>
-   *   <li>{@code --out-dir DIR}: every battle of the set; writes {@code score-<set>.json} and
-   *       {@code badge-<set>.json};
+   *   <li>{@code --out-dir DIR}: every battle of the set; writes {@code score-<version>.json} and
+   *       {@code badge-<version>.json};
    *   <li>{@code --out-dir DIR --part K}: the battles of part K; writes its tally, {@code
-   *       tally-<set>-<K>.json};
+   *       tally-<version>-<K>.json};
    *   <li>{@code --out-dir DIR --merge TALLIES}: no battle, the sum of the {@code tally-*.json} in
    *       TALLIES; writes the score and the badge.
    * </ul>
    *
-   * <p>{@code --set NAME} names the set ({@link #setName}), by default its data version. {@code
-   * --threads N} sets how many battles run at once.
+   * <p>{@code --threads N} sets how many battles run at once.
    */
   public static void main(String[] args) throws IOException {
     Map<String, String> options = new LinkedHashMap<>();
@@ -414,10 +362,10 @@ public final class CoverageScore {
     for (int i = 0; i < results.size(); i++) {
       battles.add(new Battle(results.get(i), executedTicks(cases.get(i).reference())));
     }
-    String set = options.getOrDefault("set", references.version());
-    ObjectNode tally = tally(set, references.version(), battles);
+    ObjectNode tally = tally(references.version(), battles);
     if (options.containsKey("part")) {
-      Path file = out.resolve("tally-" + set + "-" + options.get("part") + ".json");
+      Path file =
+          out.resolve("tally-" + references.version() + "-" + options.get("part") + ".json");
       MAPPER.writeValue(file.toFile(), tally);
       System.out.println(MAPPER.writeValueAsString(score(tally)));
       return;
@@ -427,9 +375,9 @@ public final class CoverageScore {
 
   /** Writes a score and its badge into a folder, and prints the score. */
   private static void write(Path out, ObjectNode score) throws IOException {
-    String set = setOf(score);
-    MAPPER.writeValue(out.resolve("score-" + set + ".json").toFile(), score);
-    MAPPER.writeValue(out.resolve("badge-" + set + ".json").toFile(), badge(score));
+    String version = score.path("content_version").asText();
+    MAPPER.writeValue(out.resolve("score-" + version + ".json").toFile(), score);
+    MAPPER.writeValue(out.resolve("badge-" + version + ".json").toFile(), badge(score));
     System.out.println(MAPPER.writeValueAsString(score));
   }
 

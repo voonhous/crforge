@@ -90,9 +90,7 @@ The tables are the ones the build makes from the asset source (the Gradle proper
 
 The reference battles are chosen cases, each held to its expected outcome. Coverage asks a wider question: of the game's real battles of a data version, how many does the battle core reproduce?
 
-A coverage set is a large sample of them, up to 10,000 battles of one data version, each with the game's own trace, in the layout of a references folder (a corpus listing under `corpora/` and its `battles/`). The sets are not in this repository or the game data repository. They live in the coverage dataset, and `coverage.lock` pins its revision and lists the sets.
-
-A set is named for its data version (`16.635.3`). A second set of the same version, of one kind of battle the first leaves out, is named for its version and that kind after a hyphen (`16.635.3-challenge`); each set has its own score and badge.
+A coverage set is a large sample of them, up to about 20,000 battles of one data version, each with the game's own trace, every kind of battle the battle core plays (Ladder, Path of Legends and challenges) in the one set, in the layout of a references folder (a corpus listing under `corpora/` and its `battles/`). The sets are not in this repository or the game data repository. They live in the coverage dataset, and `coverage.lock` pins its revision and lists the data versions that have a set.
 
 `CoverageScore` runs every battle of a set as `ReferenceSuite` runs a case and writes only totals, never a battle:
 
@@ -107,10 +105,9 @@ A set is named for its data version (`16.635.3`). A second set of the same versi
   -Pcrforge.dataVersion=<version> \
   -Pcrforge.coverage=<set folder>
 # -> conformance/build/coverage/score-<version>.json and badge-<version>.json
-# A second set of the version: -Pcrforge.coverage.set=<version>-<kind> names the files after it
 
 # The same, part by part: each part file's battles give a tally, and the tallies sum up to the score
-./gradlew :conformance:coverageScore ... -Pcrforge.coverage.part=<K>   # -> tally-<set>-<K>.json
+./gradlew :conformance:coverageScore ... -Pcrforge.coverage.part=<K>   # -> tally-<version>-<K>.json
 ./gradlew :conformance:coverageMerge -Pcrforge.coverage.tallies=<folder of the tallies>
 ```
 
@@ -118,10 +115,10 @@ A set is packed in part files of up to 1,000 battles. A tally holds the counts b
 
 ### Scoring in CI
 
-Coverage is measured after a merge, never on a pull request. On each push to `main` CI scores every set `coverage.lock` lists:
+Coverage is measured after a merge, never on a pull request. On each push to `main` CI scores every version `coverage.lock` lists:
 
 - one job per part file, each downloading only its part
-- then one job per set that sums the tallies (and gives no score when a part is missing)
+- then one job per version that sums the tallies (and gives no score when a part is missing)
 
 It then records each score of that commit on the `badges` branch (`history/<commit>/`). It checks the score against the scored commits next to it in `main`'s history: the nearest older one and, when the run finishes after a newer commit's, the nearest newer one. So every pair of neighbouring scored commits is compared whichever run finishes last.
 
