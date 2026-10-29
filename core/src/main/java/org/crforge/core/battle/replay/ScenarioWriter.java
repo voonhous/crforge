@@ -52,7 +52,7 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * <p>The writer fills the fields a replay must hold and the battle does not read with the values
  * the reader pins, or with neutral ones where the reader carries them: the time and the arena 0, no
- * events, and each player named by its side.
+ * events, no emotes listed in each player's data, and each player named by its side.
  */
 public final class ScenarioWriter {
 
@@ -456,8 +456,9 @@ public final class ScenarioWriter {
 
   /**
    * The players' data: in a format that gives each side's king level there, one entry per side
-   * holding it; otherwise one entry with no emotes listed per player's data, whose kings stand at
-   * the first level.
+   * holding it beside an emote list that lists none, as the game's replays give every entry its
+   * emote list (an entry without one is not an entry the game writes); otherwise one entry with no
+   * emotes listed per player's data, whose kings stand at the first level.
    */
   private ArrayNode playerData(ScenarioPlan plan, ReplayFormat format) {
     for (int choices : plan.playerDataChoices()) {
@@ -479,7 +480,12 @@ public final class ScenarioWriter {
                 + " holds one per side");
       }
       for (int side = 0; side < 2; side++) {
-        entries.addObject().put(ReplayFormat.KING_LEVEL_FIELD, plan.towers().get(side).kingLevel());
+        // The entry with no emotes listed, its king level written beside its emotes.
+        ObjectNode entry = (ObjectNode) json(ReplayScenario.NO_EMOTES);
+        entries
+            .addObject()
+            .put(ReplayFormat.KING_LEVEL_FIELD, plan.towers().get(side).kingLevel())
+            .setAll(entry);
       }
       return entries;
     }
