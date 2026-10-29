@@ -1684,19 +1684,6 @@ public class ProjectileEntity extends BattleEntity
     return actionHolder != null && !actionHolder.running().isEmpty();
   }
 
-  /** Whether the projectile carries an enchanting copy that changes its damage. */
-  public boolean carriesListeners() {
-    if (actionHolder == null) {
-      return false;
-    }
-    for (ActionInstance run : actionHolder.running()) {
-      if (run instanceof GiantBufferBuff.Run) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   @Override
   public EntityActions actions() {
     return actionHolder == null ? EntityActions.NONE : actionHolder;
