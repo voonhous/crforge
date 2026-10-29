@@ -163,6 +163,40 @@ class CoverageScoreTest {
   }
 
   @Test
+  void badgeOfASecondSetOfAVersionNamesItsKindOfBattle() {
+    ObjectNode score =
+        CoverageScore.score(
+            CoverageScore.tally("16.635.3-challenge", "16.635.3", List.of(match(10))));
+
+    assertThat(score.path("set_name").asText()).isEqualTo("16.635.3-challenge");
+    assertThat(CoverageScore.badge(score).path("label").asText())
+        .isEqualTo("16.635.3 challenge battles reproduced");
+  }
+
+  @Test
+  void aSetIsNamedForItsVersionOrItsVersionAndAKind() {
+    assertThat(CoverageScore.setName("16.635.3", "16.635.3")).isEqualTo("16.635.3");
+    assertThat(CoverageScore.setName("16.635.3-challenge", "16.635.3"))
+        .isEqualTo("16.635.3-challenge");
+    assertThatThrownBy(() -> CoverageScore.setName("16.635.4", "16.635.3"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> CoverageScore.setName("16.635.3-", "16.635.3"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> CoverageScore.setName("16.635.3x-a", "16.635.3"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void aScoreWrittenBeforeSetsWereNamedIsOfItsVersionsSet() {
+    ObjectNode score = CoverageScore.score("16.402.19", List.of(match(10)));
+    score.remove("set_name");
+
+    assertThat(CoverageScore.setOf(score)).isEqualTo("16.402.19");
+    assertThat(CoverageScore.badge(score).path("label").asText())
+        .isEqualTo("16.402.19 battles reproduced");
+  }
+
+  @Test
   void talliesOfPartsMergeToTheScoreOfTheWholeSet() {
     List<Battle> first =
         List.of(match(1000), mismatch(2000, 500, "$.entities[3].hp"), unsupported(700, "f"));
@@ -181,11 +215,17 @@ class CoverageScoreTest {
   }
 
   @Test
-  void mergeRefusesTalliesOfTwoVersionsAndNoTally() {
+  void mergeRefusesTalliesOfTwoSetsAndNoTally() {
     List<ObjectNode> mixed =
         List.of(CoverageScore.tally("a", List.of(match(1))), CoverageScore.tally("b", List.of()));
+    List<ObjectNode> twoSetsOfOneVersion =
+        List.of(
+            CoverageScore.tally("v", List.of(match(1))),
+            CoverageScore.tally("v-challenge", "v", List.of(match(1))));
 
     assertThatThrownBy(() -> CoverageScore.merge(mixed))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> CoverageScore.merge(twoSetsOfOneVersion))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> CoverageScore.merge(List.of()))
         .isInstanceOf(IllegalArgumentException.class);
