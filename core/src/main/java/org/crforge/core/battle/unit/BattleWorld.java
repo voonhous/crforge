@@ -2012,27 +2012,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * The area object a unit makes as it enters the deploying state through its setter: at its point,
-   * for its side and at its level, handed to the holder, and updated at once, so it hits on the
-   * tick it is made.
-   *
-   * @param unit the unit
-   */
-  void spawnAreaObject(CharacterEntity unit) {
-    AreaEffectEntity area =
-        createAreaEffect(
-            unit.getData().spawnAreaObject(),
-            unit.getView().getX(),
-            unit.getView().getY(),
-            unit.side(),
-            unit.getPackedLevel(),
-            null,
-            "spawn_area_object",
-            unit.name());
-    area.updateAtOnce();
-  }
-
-  /**
    * The push a unit makes on the enemies around it as it enters the deploying state through its
    * setter. Its query is the object query of the spatial index around the unit, as wide as its
    * SpawnPushback; each found entity of another side - its side as it is, not its team - that is
@@ -2111,16 +2090,16 @@ public class BattleWorld implements HolderPasses {
    * Morphs a unit that has surfaced into its row's morph, as the arrival of a tunnel does: the new
    * object is made on the unit's point with its level, lane and share of its hit points, a building
    * facing as the unit did; it is queued with its registration visit in the state it is made in,
-   * then set to the unit's deploying state, whose entry makes its area object. The damage on its
-   * way to the unit passes to the new object. The unit leaves at the closing cleanup.
+   * then set to the unit's deploying state through its setter. The damage on its way to the unit
+   * passes to the new object. The unit leaves at the closing cleanup.
    *
    * <p>A morph hands the new object to the removal notice of every entity that referenced the old
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
    * established, so a morph of a unit such an attacker references is refused.
    *
    * <p>Like any object the holder admits, the new object is started at the closing cleanup's fold:
-   * its row's starting action - the evolved Goblin Drill's relocation, which takes the place of its
-   * area object - is scheduled then, and runs in its first pending pass of the next tick.
+   * its row's starting action - the Goblin Drill's damage area, or the evolved Goblin Drill's
+   * relocation - is scheduled then, and runs in its first pending pass of the next tick.
    *
    * @param old the unit that surfaced
    */
@@ -3341,9 +3320,8 @@ public class BattleWorld implements HolderPasses {
    * - see {@link #deathDamage} - and then its death spawn stands on the ring around it or on its
    * point - see {@link #deathSpawn}. A death whose row sets a column of the slot the battle does
    * not model is refused: a second or third death spawn, a death projectile or area effect, a
-   * starting buff taken back, a spawned area object ended, and the parts of the death spawn's
-   * placement not established. The elixir a death gives is left out, as the battle models no
-   * elixir.
+   * starting buff taken back, and the parts of the death spawn's placement not established. The
+   * elixir a death gives is left out, as the battle models no elixir.
    *
    * <p>Between the two, the killer's hook: an arena entity whose hit killed, and whose row has a
    * killed-done action, schedules it on itself - see {@link #killedDone}.
@@ -5603,8 +5581,7 @@ public class BattleWorld implements HolderPasses {
    * what its buffs leave; what the object switches off; its death damage; its death spawn; its
    * death projectiles. The switches come after the buffs: a child a buff leaves is visited as it is
    * made, and finds the dying object still moving. A death whose row sets a column of the slot the
-   * battle does not model is refused, and so is the death of one whose area object is still in the
-   * battle, which would end it.
+   * battle does not model is refused.
    */
   private void deathSlot(WorldEntity dying, UnitData data) {
     if (!data.unmodelledDeathColumns().isEmpty()) {
@@ -5624,16 +5601,6 @@ public class BattleWorld implements HolderPasses {
       }
     }
     deathMana(dying, data);
-    if (data.spawnAreaObject() != null) {
-      for (BattleEntity entity : holder.entities()) {
-        if (entity instanceof AreaEffectEntity area
-            && area.getData().name().equals(data.spawnAreaObject())
-            && (area.side() & 1) == (dying.side() & 1)) {
-          throw new UnsupportedOperationException(
-              dying.name() + " died with its area object in the battle, whose end is not modelled");
-        }
-      }
-    }
     if (data.deathAreaEffect() != null) {
       // It is created as every game object is, its point kept the creation's inset inside each
       // edge of the arena: a unit pushed onto the edge leaves its area effect the inset inside it.

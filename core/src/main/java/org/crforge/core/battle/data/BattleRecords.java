@@ -497,7 +497,6 @@ public final class BattleRecords {
           "TargetedEffectVisualPushback",
           // No reader found.
           "VisualActions",
-          "SpawnAreaObjectLevelIndex",
           // Read by client code only.
           "DashFilter",
           // Resolved when the tables are derived: the row already carries what it inherits.
@@ -830,8 +829,6 @@ public final class BattleRecords {
                 row.string("SpawnPathfindMorph").isEmpty()
                     ? null
                     : row.string("SpawnPathfindMorph"))
-            .spawnAreaObject(
-                row.string("SpawnAreaObject").isEmpty() ? null : row.string("SpawnAreaObject"))
             .spawnPushback(row.intValue("SpawnPushback"))
             .spawnPushbackRadius(row.intValue("SpawnPushbackRadius"))
             .tileSizeOverride(row.intValue("TileSizeOverride"))
