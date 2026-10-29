@@ -231,6 +231,24 @@ class TableBuildTest {
   }
 
   @Test
+  @DisplayName("a folder built from another client schema is built again")
+  void anotherSchema() throws IOException {
+    Path built = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
+    // the stamp of a build that read no schema digest, as the cache held before the schema
+    // gained a table; the left-over file stands for the tables that build wrote
+    Path stamp = built.resolve(TableBuild.STAMP);
+    Files.writeString(
+        stamp, Files.readString(stamp).replaceAll("(?m)^schema=.*\n", ""), StandardCharsets.UTF_8);
+    Files.writeString(built.resolve("left_over.json"), "{}\n", StandardCharsets.UTF_8);
+
+    Path rebuilt = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
+    assertThat(rebuilt.resolve("left_over.json")).doesNotExist();
+    assertThat(rebuilt.resolve(TableBuild.STAMP))
+        .content(StandardCharsets.UTF_8)
+        .contains("schema=" + ClientSchema.load(VERSION.clientVersion()).digest());
+  }
+
+  @Test
   @DisplayName("each tile map of the set is written beside the tables, decoded, under its own path")
   void tileMaps() throws IOException {
     Path built = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
