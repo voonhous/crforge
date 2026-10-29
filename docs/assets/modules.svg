@@ -22,11 +22,13 @@
 <text x="672" y="109" class="s" font-size="13.5" fill="#424a53">one JSON file per table, one data</text>
 <text x="672" y="127" class="s" font-size="13.5" fill="#424a53">version, cached on your machine</text>
 <text x="672" y="151" class="m" font-size="13" fill="#1f2328">~/.crforge/tables/VERSION</text>
-<rect x="980" y="60" width="210" height="101" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<rect x="980" y="60" width="210" height="137" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="992" y="87" class="m" font-size="15" font-weight="600" fill="#424a53">Game data repository</text>
 <text x="992" y="109" class="s" font-size="13.5" fill="#424a53">at crforge-data.lock's commit:</text>
-<text x="992" y="127" class="s" font-size="13.5" fill="#424a53">the reference battles</text>
-<text x="992" y="151" class="m" font-size="13" fill="#1f2328">references/VERSION/</text>
+<text x="992" y="127" class="s" font-size="13.5" fill="#424a53">the reference battles, each a</text>
+<text x="992" y="145" class="s" font-size="13.5" fill="#424a53">scenario and the game's own</text>
+<text x="992" y="163" class="s" font-size="13.5" fill="#424a53">trace of it</text>
+<text x="992" y="187" class="m" font-size="13" fill="#1f2328">references/VERSION/</text>
 <polyline points="250,100 288,100" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
 <polyline points="620,100 658,100" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
 <text x="639" y="90" class="s" font-size="12" font-style="italic" text-anchor="middle" fill="#57606a">builds</text>
@@ -67,36 +69,40 @@
 <text x="42" y="705" class="m" font-size="13" fill="#1f2328">replay/  the replay viewer</text>
 <text x="42" y="723" class="m" font-size="13" fill="#1f2328">model/   a model opponent</text>
 <text x="42" y="741" class="m" font-size="13" fill="#1f2328">render/, screen/</text>
-<rect x="350" y="596" width="260" height="137" rx="8" fill="#fff1e5" stroke="#fb8f44" stroke-width="1.5"/>
+<rect x="350" y="596" width="260" height="155" rx="8" fill="#fff1e5" stroke="#fb8f44" stroke-width="1.5"/>
 <text x="362" y="623" class="m" font-size="15" font-weight="600" fill="#953800">:env</text>
 <text x="362" y="645" class="s" font-size="13.5" fill="#424a53">The reinforcement learning</text>
 <text x="362" y="663" class="s" font-size="13.5" fill="#424a53">environment: a vector of battles</text>
-<text x="362" y="681" class="s" font-size="13.5" fill="#424a53">behind flat buffers</text>
-<text x="362" y="705" class="m" font-size="13" fill="#1f2328">VectorEnv, LadderEnv,</text>
-<text x="362" y="723" class="m" font-size="13" fill="#1f2328">ReplayLabeller</text>
-<rect x="670" y="596" width="260" height="137" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
+<text x="362" y="681" class="s" font-size="13.5" fill="#424a53">behind flat buffers, played</text>
+<text x="362" y="699" class="s" font-size="13.5" fill="#424a53">through PlayerCommands</text>
+<text x="362" y="723" class="m" font-size="13" fill="#1f2328">VectorEnv, LadderEnv,</text>
+<text x="362" y="741" class="m" font-size="13" fill="#1f2328">ReplayLabeller</text>
+<rect x="670" y="596" width="260" height="155" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
 <text x="682" y="623" class="m" font-size="15" font-weight="600" fill="#424a53">python/ (crforge-env)</text>
 <text x="682" y="645" class="s" font-size="13.5" fill="#424a53">The Python package on the env</text>
-<text x="682" y="663" class="s" font-size="13.5" fill="#424a53">module's jars (not a Gradle module)</text>
-<text x="682" y="687" class="m" font-size="13" fill="#1f2328">VectorBattle, ClashGymEnv,</text>
-<text x="682" y="705" class="m" font-size="13" fill="#1f2328">ClashParallelEnv,</text>
-<text x="682" y="723" class="m" font-size="13" fill="#1f2328">label_replays</text>
-<rect x="980" y="596" width="210" height="173" rx="8" fill="#dafbe1" stroke="#4ac26b" stroke-width="1.5"/>
+<text x="682" y="663" class="s" font-size="13.5" fill="#424a53">module's jars (not a Gradle module):</text>
+<text x="682" y="681" class="s" font-size="13.5" fill="#424a53">numpy views of the buffers</text>
+<text x="682" y="705" class="m" font-size="13" fill="#1f2328">VectorBattle, ClashGymEnv,</text>
+<text x="682" y="723" class="m" font-size="13" fill="#1f2328">ClashParallelEnv,</text>
+<text x="682" y="741" class="m" font-size="13" fill="#1f2328">label_replays</text>
+<rect x="980" y="596" width="210" height="209" rx="8" fill="#dafbe1" stroke="#4ac26b" stroke-width="1.5"/>
 <text x="992" y="623" class="m" font-size="15" font-weight="600" fill="#116329">:conformance</text>
 <text x="992" y="645" class="s" font-size="13.5" fill="#424a53">Holds the battle core to</text>
 <text x="992" y="663" class="s" font-size="13.5" fill="#424a53">recorded battles, tick by</text>
 <text x="992" y="681" class="s" font-size="13.5" fill="#424a53">tick, with no tolerance</text>
 <text x="992" y="705" class="m" font-size="13" fill="#1f2328">ReferenceSuite,</text>
 <text x="992" y="723" class="m" font-size="13" fill="#1f2328">ReplaySmokeRun,</text>
-<text x="992" y="741" class="m" font-size="13" fill="#1f2328">ReferenceComparison,</text>
-<text x="992" y="759" class="m" font-size="13" fill="#1f2328">CoverageScore</text>
+<text x="992" y="741" class="m" font-size="13" fill="#1f2328">SmokeObserver,</text>
+<text x="992" y="759" class="m" font-size="13" fill="#1f2328">ReferenceComparison,</text>
+<text x="992" y="777" class="m" font-size="13" fill="#1f2328">CoverageScore,</text>
+<text x="992" y="795" class="m" font-size="13" fill="#1f2328">reference-expectations/</text>
 <polyline points="160,596 160,518" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <polyline points="480,596 480,518" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <polyline points="290,656 348,656" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <polyline points="670,656 612,656" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <text x="641" y="646" class="s" font-size="12" font-style="italic" text-anchor="middle" fill="#57606a">runs</text>
 <polyline points="1010,596 1010,486 942,486" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
-<polyline points="1110,161 1110,594" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<polyline points="1110,197 1110,594" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
 <text x="1102" y="370" class="s" font-size="12" font-style="italic" text-anchor="end" fill="#57606a">reference battles</text>
 <rect x="30" y="801" width="260" height="101" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="42" y="828" class="m" font-size="15" font-weight="600" fill="#424a53">examples/</text>
