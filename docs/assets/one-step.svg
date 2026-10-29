@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="1376" viewBox="0 0 1220 1376" role="img" aria-label="The battle core's inside: the tables read once, what drives a battle, one step and its entity tick, and what reads it">
+<title>The battle core's inside: the tables read once, what drives a battle, one step and its entity tick, and what reads it</title>
+<defs>
+<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<style>.s{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif} .m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; white-space:pre}</style>
+</defs>
+<rect x="0" y="0" width="1220" height="1376" rx="12" fill="#ffffff"/>
+<text x="30" y="34" class="s" font-size="18" font-weight="600" fill="#1f2328">One step of the battle core</text>
+<rect x="30" y="60" width="270" height="59" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="87" class="m" font-size="15" font-weight="600" fill="#424a53">Game tables</text>
+<text x="42" y="109" class="s" font-size="13.5" fill="#424a53">one data version</text>
+<!-- data + expression: read once at load -->
+<rect x="340" y="60" width="850" height="142" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
+<text x="354" y="84" class="s" font-size="14" font-weight="600" fill="#424a53">data + expression: read once at load</text>
+<rect x="354" y="100" width="156" height="86" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="364" y="122" class="m" font-size="12" fill="#1f2328">GameTables, GameRow</text>
+<text x="364" y="142" class="s" font-size="12.5" fill="#424a53">the game's own rows</text>
+<text x="364" y="158" class="s" font-size="12.5" fill="#424a53">by name</text>
+<rect x="520" y="100" width="156" height="86" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="530" y="122" class="m" font-size="12" fill="#1f2328">BattleRecords</text>
+<text x="530" y="142" class="s" font-size="12.5" fill="#424a53">units, projectiles,</text>
+<text x="530" y="158" class="s" font-size="12.5" fill="#424a53">troop cards</text>
+<rect x="687" y="100" width="156" height="86" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="697" y="122" class="m" font-size="12" fill="#1f2328">ActionRows,</text>
+<text x="697" y="140" class="m" font-size="12" fill="#1f2328">ActionBinding</text>
+<text x="697" y="160" class="s" font-size="12.5" fill="#424a53">the action tree per</text>
+<text x="697" y="174" class="s" font-size="12.5" fill="#424a53">entity</text>
+<rect x="853" y="100" width="156" height="86" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="863" y="122" class="m" font-size="12" fill="#1f2328">ExpressionCompiler,</text>
+<text x="863" y="140" class="m" font-size="12" fill="#1f2328">ExpressionEvaluator</text>
+<text x="863" y="160" class="s" font-size="12.5" fill="#424a53">expression columns as</text>
+<text x="863" y="174" class="s" font-size="12.5" fill="#424a53">a stack machine</text>
+<rect x="1020" y="100" width="156" height="86" rx="6" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="1030" y="122" class="m" font-size="12" fill="#1f2328">GameVersions</text>
+<text x="1030" y="142" class="s" font-size="12.5" fill="#424a53">the data versions</text>
+<text x="1030" y="158" class="s" font-size="12.5" fill="#424a53">accepted</text>
+<polyline points="300,94 338,94" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<!-- who drives a battle -->
+<rect x="30" y="262" width="270" height="292" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
+<text x="44" y="286" class="s" font-size="14" font-weight="600" fill="#424a53">Who drives a battle</text>
+<text x="44" y="304" class="s" font-size="12.5" fill="#424a53">each play a BattleCommand</text>
+<rect x="42" y="314" width="246" height="118" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="340" class="m" font-size="14" font-weight="600" fill="#1f2328">replay</text>
+<text x="54" y="362" class="s" font-size="13.5" fill="#424a53">a recorded battle as</text>
+<text x="54" y="380" class="s" font-size="13.5" fill="#424a53">tick-stamped plays</text>
+<text x="54" y="404" class="m" font-size="13" fill="#1f2328">ReplayScenario,</text>
+<text x="54" y="422" class="m" font-size="13" fill="#1f2328">ScenarioPlan, ReplayBattle</text>
+<rect x="42" y="442" width="246" height="100" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="468" class="m" font-size="14" font-weight="600" fill="#1f2328">the visualizer or an agent</text>
+<text x="54" y="490" class="s" font-size="13.5" fill="#424a53">a click on the arena, or an</text>
+<text x="54" y="508" class="s" font-size="13.5" fill="#424a53">agent's decision</text>
+<text x="54" y="532" class="m" font-size="13" fill="#1f2328">PlayerCommands</text>
+<rect x="30" y="594" width="270" height="412" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
+<text x="44" y="618" class="s" font-size="14" font-weight="600" fill="#424a53">match + deploy</text>
+<text x="44" y="636" class="s" font-size="12.5" fill="#424a53">the mode, which runs each play</text>
+<rect x="42" y="646" width="246" height="93" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="671" class="m" font-size="13" font-weight="600" fill="#1f2328">LadderMatch</text>
+<text x="54" y="693" class="s" font-size="13.5" fill="#424a53">the BattleMode: setup, a play's</text>
+<text x="54" y="711" class="s" font-size="13.5" fill="#424a53">gates and elixir spend, kings,</text>
+<text x="54" y="729" class="s" font-size="13.5" fill="#424a53">crowns, match over</text>
+<rect x="42" y="749" width="246" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="774" class="m" font-size="13" font-weight="600" fill="#1f2328">Timeline</text>
+<text x="54" y="796" class="s" font-size="13.5" fill="#424a53">sections, elixir rate,</text>
+<text x="54" y="814" class="s" font-size="13.5" fill="#424a53">next-card cooldown</text>
+<rect x="42" y="834" width="246" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="859" class="m" font-size="13" font-weight="600" fill="#1f2328">MatchSide, Hand, DeckShuffle</text>
+<text x="54" y="881" class="s" font-size="13.5" fill="#424a53">elixir, deck, four slots</text>
+<text x="54" y="899" class="s" font-size="13.5" fill="#424a53">and the queue</text>
+<rect x="42" y="919" width="246" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="54" y="944" class="m" font-size="13" font-weight="600" fill="#1f2328">CardPlacement</text>
+<text x="54" y="966" class="s" font-size="13.5" fill="#424a53">map check, placement search,</text>
+<text x="54" y="984" class="s" font-size="13.5" fill="#424a53">formation, initial delay</text>
+<!-- Battle.step(): 50 ms -->
+<rect x="340" y="262" width="250" height="420" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
+<text x="354" y="286" class="s" font-size="14" font-weight="600" fill="#7d4e00">Battle.step()</text>
+<text x="354" y="304" class="s" font-size="12.5" fill="#424a53">one step: 50 ms of game time</text>
+<rect x="352" y="314" width="226" height="50" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="332" r="10" fill="#d4a017"/>
+<text x="370" y="336" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">1</text>
+<text x="390" y="337" class="s" font-size="13" fill="#1f2328">match over? then nothing</text>
+<text x="390" y="355" class="s" font-size="13" fill="#1f2328">happens</text>
+<rect x="352" y="386" width="226" height="32" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="404" r="10" fill="#d4a017"/>
+<text x="370" y="408" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">2</text>
+<text x="390" y="409" class="s" font-size="13" fill="#1f2328">clock +50 ms</text>
+<rect x="352" y="440" width="226" height="86" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="458" r="10" fill="#d4a017"/>
+<text x="370" y="462" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">3</text>
+<text x="390" y="463" class="s" font-size="13" fill="#1f2328">run every command whose</text>
+<text x="390" y="481" class="s" font-size="13" fill="#1f2328">tick has come</text>
+<text x="390" y="499" class="s" font-size="13" fill="#1f2328">(BattleCommand), in the</text>
+<text x="390" y="517" class="s" font-size="13" fill="#1f2328">order queued</text>
+<rect x="352" y="548" width="226" height="68" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="566" r="10" fill="#d4a017"/>
+<text x="370" y="570" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">4</text>
+<text x="390" y="571" class="s" font-size="13" fill="#1f2328">mode update: LadderMatch</text>
+<text x="390" y="589" class="s" font-size="13" fill="#1f2328">lets the entity tick</text>
+<text x="390" y="607" class="s" font-size="13" fill="#1f2328">run, or only cleans up</text>
+<rect x="352" y="638" width="226" height="32" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="656" r="10" fill="#d4a017"/>
+<text x="370" y="660" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">5</text>
+<text x="390" y="661" class="s" font-size="13" fill="#1f2328">tick counter +1</text>
+<polyline points="465,364 465,384" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="465,418 465,438" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="465,526 465,546" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="465,616 465,636" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<!-- EntityHolder.tick(): the entity tick -->
+<rect x="630" y="262" width="270" height="772" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
+<text x="644" y="286" class="s" font-size="14" font-weight="600" fill="#7d4e00">EntityHolder.tick()</text>
+<text x="644" y="304" class="s" font-size="12.5" fill="#424a53">the entity tick, in ascending id</text>
+<rect x="642" y="314" width="246" height="50" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="332" r="10" fill="#d4a017"/>
+<text x="660" y="336" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">1</text>
+<text x="680" y="337" class="s" font-size="13" fill="#1f2328">cleanup, fold in new</text>
+<text x="680" y="355" class="s" font-size="13" fill="#1f2328">entities, snapshot</text>
+<rect x="642" y="378" width="246" height="103" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="396" r="10" fill="#d4a017"/>
+<text x="660" y="400" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">2</text>
+<text x="680" y="401" class="s" font-size="13" fill="#1f2328">pre-pass (BattleWorld as</text>
+<text x="680" y="419" class="s" font-size="13" fill="#1f2328">HolderPasses): spatial</text>
+<text x="680" y="437" class="s" font-size="13" fill="#1f2328">index, building overlay,</text>
+<text x="680" y="455" class="s" font-size="13" fill="#1f2328">TargetLocks releases</text>
+<text x="680" y="472" class="m" font-size="12" fill="#0550ae">-&gt; BattleWorld</text>
+<rect x="642" y="495" width="246" height="67" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="513" r="10" fill="#d4a017"/>
+<text x="660" y="517" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">3</text>
+<text x="680" y="518" class="s" font-size="13" fill="#1f2328">pre-hooks, then actions</text>
+<text x="680" y="536" class="s" font-size="13" fill="#1f2328">phase 1</text>
+<text x="680" y="553" class="m" font-size="12" fill="#0550ae">-&gt; actions</text>
+<rect x="642" y="576" width="246" height="67" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="594" r="10" fill="#d4a017"/>
+<text x="660" y="598" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">4</text>
+<text x="680" y="599" class="s" font-size="13" fill="#1f2328">slot 0 targeting pass, slot</text>
+<text x="680" y="617" class="s" font-size="13" fill="#1f2328">1 movement pass</text>
+<text x="680" y="634" class="m" font-size="12" fill="#0550ae">-&gt; target/, move/</text>
+<rect x="642" y="657" width="246" height="67" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="675" r="10" fill="#d4a017"/>
+<text x="660" y="679" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">5</text>
+<text x="680" y="680" class="s" font-size="13" fill="#1f2328">running actions, then</text>
+<text x="680" y="698" class="s" font-size="13" fill="#1f2328">actions phase 2</text>
+<text x="680" y="715" class="m" font-size="12" fill="#0550ae">-&gt; actions</text>
+<rect x="642" y="738" width="246" height="85" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="756" r="10" fill="#d4a017"/>
+<text x="660" y="760" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">6</text>
+<text x="680" y="761" class="s" font-size="13" fill="#1f2328">post-hooks: projectile</text>
+<text x="680" y="779" class="s" font-size="13" fill="#1f2328">flight, character state</text>
+<text x="680" y="797" class="s" font-size="13" fill="#1f2328">visit</text>
+<text x="680" y="814" class="m" font-size="12" fill="#0550ae">-&gt; state/</text>
+<rect x="642" y="837" width="246" height="85" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="855" r="10" fill="#d4a017"/>
+<text x="660" y="859" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">7</text>
+<text x="680" y="860" class="s" font-size="13" fill="#1f2328">after-post-hooks: queued</text>
+<text x="680" y="878" class="s" font-size="13" fill="#1f2328">typed hits land; then</text>
+<text x="680" y="896" class="s" font-size="13" fill="#1f2328">actions phase 3</text>
+<text x="680" y="913" class="m" font-size="12" fill="#0550ae">-&gt; actions</text>
+<rect x="642" y="936" width="246" height="86" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="660" cy="954" r="10" fill="#d4a017"/>
+<text x="660" y="958" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">8</text>
+<text x="680" y="959" class="s" font-size="13" fill="#1f2328">post-pass: TargetLocks</text>
+<text x="680" y="977" class="s" font-size="13" fill="#1f2328">granted, overlay rotated,</text>
+<text x="680" y="995" class="s" font-size="13" fill="#1f2328">index cleared; cleanup;</text>
+<text x="680" y="1013" class="s" font-size="13" fill="#1f2328">action countdown</text>
+<polyline points="765,364 765,376" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,481 765,493" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,562 765,574" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,643 765,655" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,724 765,736" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,823 765,835" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="765,922 765,934" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<!-- unit: BattleWorld, and the pathfinding rules -->
+<rect x="940" y="262" width="250" height="551" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="954" y="286" class="s" font-size="14" font-weight="600" fill="#0550ae">unit: the world</text>
+<rect x="952" y="302" width="226" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="327" class="m" font-size="13" font-weight="600" fill="#1f2328">BattleWorld</text>
+<text x="964" y="349" class="s" font-size="13.5" fill="#424a53">routing grid, overlay, spatial</text>
+<text x="964" y="367" class="s" font-size="13.5" fill="#424a53">index; where damage lands</text>
+<rect x="952" y="387" width="226" height="135" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="412" class="m" font-size="13" font-weight="600" fill="#1f2328">entities</text>
+<text x="964" y="434" class="s" font-size="13.5" fill="#424a53">id bands per kind</text>
+<text x="964" y="458" class="m" font-size="13" fill="#1f2328">AreaEffectEntity,</text>
+<text x="964" y="476" class="m" font-size="13" fill="#1f2328">ProjectileEntity,</text>
+<text x="964" y="494" class="m" font-size="13" fill="#1f2328">CharacterEntity,</text>
+<text x="964" y="512" class="m" font-size="13" fill="#1f2328">TowerEntity</text>
+<rect x="952" y="532" width="226" height="135" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="557" class="m" font-size="13" font-weight="600" fill="#1f2328">actions + spawns</text>
+<text x="964" y="579" class="s" font-size="13.5" fill="#424a53">an ActionHolder per entity;</text>
+<text x="964" y="597" class="s" font-size="13.5" fill="#424a53">character, area, projectile</text>
+<text x="964" y="615" class="s" font-size="13.5" fill="#424a53">spawns</text>
+<text x="964" y="639" class="m" font-size="13" fill="#1f2328">Group, Select, Filter,</text>
+<text x="964" y="657" class="m" font-size="13" fill="#1f2328">Interval, DealDamage, ...</text>
+<rect x="952" y="677" width="226" height="57" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="702" class="m" font-size="13" font-weight="600" fill="#1f2328">buffs, abilities</text>
+<text x="964" y="724" class="s" font-size="13.5" fill="#424a53">and champion control</text>
+<rect x="952" y="744" width="226" height="57" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="769" class="m" font-size="13" font-weight="600" fill="#1f2328">BattleRandom</text>
+<text x="964" y="791" class="s" font-size="13.5" fill="#424a53">one shared xorshift state</text>
+<rect x="940" y="843" width="250" height="376" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="954" y="867" class="s" font-size="14" font-weight="600" fill="#0550ae">pathfinding</text>
+<text x="954" y="885" class="s" font-size="12.5" fill="#424a53">the rules the visits run</text>
+<rect x="952" y="895" width="226" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="920" class="m" font-size="13" font-weight="600" fill="#1f2328">target/</text>
+<text x="964" y="942" class="s" font-size="13.5" fill="#424a53">TargetingVisit, HitApplication,</text>
+<text x="964" y="960" class="s" font-size="13.5" fill="#424a53">DirectHit</text>
+<rect x="952" y="980" width="226" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="1005" class="m" font-size="13" font-weight="600" fill="#1f2328">move/ + grid/</text>
+<text x="964" y="1027" class="s" font-size="13.5" fill="#424a53">MovementVisit, routing,</text>
+<text x="964" y="1045" class="s" font-size="13.5" fill="#424a53">the push pass</text>
+<rect x="952" y="1065" width="226" height="57" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="1090" class="m" font-size="13" font-weight="600" fill="#1f2328">state/</text>
+<text x="964" y="1112" class="s" font-size="13.5" fill="#424a53">EntityStateVisit</text>
+<rect x="952" y="1132" width="226" height="75" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="964" y="1157" class="m" font-size="13" font-weight="600" fill="#1f2328">combat/</text>
+<text x="964" y="1179" class="s" font-size="13.5" fill="#424a53">HitPoints, DamageApplication,</text>
+<text x="964" y="1197" class="s" font-size="13.5" fill="#424a53">LevelScaling, RarityTable</text>
+<polyline points="300,332 318,332 318,483 350,483" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="352,520 326,520 326,624 302,624" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="578,582 610,582 610,339 640,339" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="300,956 340,956 340,956 610,956 610,328 640,328" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<text x="348" y="948" class="s" font-size="12" font-style="italic" fill="#57606a">units handed to the holder</text>
+<polyline points="900,412 938,412" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="900,903 938,903" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="1065,202 1065,260" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="1057" y="236" class="s" font-size="12" font-style="italic" text-anchor="end" fill="#57606a">units, projectiles, action trees</text>
+<!-- what reads the battle -->
+<rect x="30" y="1269" width="373" height="77" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="1296" class="m" font-size="15" font-weight="600" fill="#424a53">WorldObserver</text>
+<text x="42" y="1318" class="s" font-size="13.5" fill="#424a53">the world's events: hits, areas, launches,</text>
+<text x="42" y="1336" class="s" font-size="13.5" fill="#424a53">impacts, removals, ...</text>
+<rect x="423" y="1269" width="373" height="77" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="435" y="1296" class="m" font-size="15" font-weight="600" fill="#424a53">desktop view</text>
+<text x="435" y="1318" class="s" font-size="13.5" fill="#424a53">BattleAdapter reads the entities between</text>
+<text x="435" y="1336" class="s" font-size="13.5" fill="#424a53">steps; AreaHitLog listens to the events</text>
+<rect x="817" y="1269" width="373" height="77" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="829" y="1296" class="m" font-size="15" font-weight="600" fill="#424a53">SmokeObserver (conformance)</text>
+<text x="829" y="1318" class="s" font-size="13.5" fill="#424a53">one observation after each step, compared</text>
+<text x="829" y="1336" class="s" font-size="13.5" fill="#424a53">with the game's own trace</text>
+<polyline points="403,1303 421,1303" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<text x="30" y="1255" class="s" font-size="13" font-weight="600" fill="#424a53">What reads the battle, from outside the step</text>
+</svg>
