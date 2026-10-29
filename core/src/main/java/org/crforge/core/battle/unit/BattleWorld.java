@@ -8028,6 +8028,17 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The paths that make an area effect with no parent, as the game's own do: a spell's cast (and a
+   * placement, which stands for one), a barrage's bomb, and the area effect another chains, whose
+   * parent in the game is what the chaining one follows, none under the refusals of {@link
+   * #createAreaEffect(String, int, int, int, int, String, String, String, SpawnHost, SpawnHost)}.
+   * Every other path the battle core makes one on without a parent is one where the game hands it a
+   * parent.
+   */
+  private static final Set<String> PARENTLESS_PATHS =
+      Set.of("cast", "placed", "barrage", "chained");
+
+  /**
    * Creates an area effect at a point and hands it to the holder, which gives it its id at once and
    * admits it at the next cleanup. It is named after its row and its id unless given a name.
    *
@@ -8055,7 +8066,11 @@ public class BattleWorld implements HolderPasses {
    * refused on an area effect no action made, and a row that follows its parent on one neither an
    * action nor an ability made: no other path that makes one is held. Refused too: a following row
    * that chains another area effect, which would follow what it follows, or whose buff attracts,
-   * whose pull a moving area effect gates by an angle.
+   * whose pull a moving area effect gates by an angle. And a row that ends with its parent's life
+   * made with no parent on a path other than the {@link #PARENTLESS_PATHS}: a unit's death, a
+   * direct hit, a projectile's impact, the evolved Dart Goblin's poison drop, where the game's area
+   * effect has a parent to end with (the poison drop's is not settled) and the battle core's has
+   * none.
    *
    * @param parent the object it keeps as its parent, or null for none
    * @param follow the object it follows, or null for none
@@ -8110,6 +8125,20 @@ public class BattleWorld implements HolderPasses {
           "the area effect "
               + row
               + " follows its parent and was not made by an action, which is not modelled");
+    }
+    // A row linked to its instigator's life ends as its parent leaves. The game gives the area
+    // effect a parent on every path that makes one but a cast, a barrage's bomb and the area
+    // another chains (whose parent is what the chaining one follows, which the refusals here keep
+    // to none); a unit's death, a direct hit and a projectile's impact make theirs here with no
+    // parent, so a linked row made there would never end with what made it. The poison drop's
+    // parent in the game is not settled, so a linked row there is refused too.
+    if (data.linkToInstigatorLife() && parent == null && !PARENTLESS_PATHS.contains(how)) {
+      throw new UnsupportedOperationException(
+          "the area effect "
+              + row
+              + " ends with its parent's life (LinkToInstigatorLife) and was made by the "
+              + how
+              + " path, which gives it no parent here, which is not modelled");
     }
     if (data.followsTarget() && !how.equals("projectile")) {
       throw new UnsupportedOperationException(
