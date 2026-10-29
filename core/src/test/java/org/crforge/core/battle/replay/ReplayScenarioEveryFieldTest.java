@@ -500,6 +500,56 @@ class ReplayScenarioEveryFieldTest {
             });
   }
 
+  @Test
+  void refusesACardLevelMinimumAboveATowerSelection() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    // A minimum one level above side 0's princess towers, and every deck card raised to at least
+    // it through its own level index, so that the tower selection is all that stands below it.
+    int minimum = plan.towers().get(0).level() + 1;
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    for (int side = 0; side < 2; side++) {
+      ArrayNode cards = (ArrayNode) battle.path("deck" + side).path("sp");
+      for (int i = 0; i < cards.size(); i++) {
+        int shortfall = minimum - plan.deckLevels().get(side)[i];
+        if (shortfall > 0) {
+          ObjectNode card = (ObjectNode) cards.get(i);
+          card.put("l", card.path("l").asInt() + shortfall);
+        }
+      }
+    }
+    // The plays' items carry the raised levels, as the players' clients build them.
+    fit(scenario);
+    battle.put("cardlvlmin", minimum);
+    // Side 1's tower selection one level index higher, at the minimum.
+    ObjectNode side1Selection = (ObjectNode) battle.path("deck1").path("sc").get(0);
+    side1Selection.put("l", side1Selection.path("l").asInt() + 1);
+
+    // The game raises side 0's princess towers to the minimum, which the battle core does not
+    // model; the raised deck cards stand at or above it and are not refused.
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .singleElement()
+        .satisfies(
+            refusal -> {
+              assertThat(refusal.input()).isEqualTo("cardlvlmin=" + minimum);
+              assertThat(refusal.feature())
+                  .contains("tower selection")
+                  .contains("battle.deck0.sc[0].l")
+                  .contains("raises to the minimum");
+            });
+
+    // Side 0's tower selection at the minimum too: the battle plays at the levels as given.
+    ObjectNode side0Selection = (ObjectNode) battle.path("deck0").path("sc").get(0);
+    side0Selection.put("l", side0Selection.path("l").asInt() + 1);
+    ReplayScenario mapping = new ReplayScenario(tables);
+    assertThat(mapping.survey(scenario)).isEmpty();
+    assertThat(mapping.translate(scenario).towers())
+        .extracting(Standard1v1Battle.Towers::level)
+        .containsExactly(minimum, minimum);
+    assertThat(mapping.mapping()).containsEntry("cardlvlmin", ReplayScenario.CARD_LEVEL_MIN_READ);
+  }
+
   /** The challenge game mode, played under an event at the Friendly card level adjustment. */
   private static final String CHALLENGE = "Challenge_AllCards_EventDeck_NoSet";
 
