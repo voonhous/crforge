@@ -15,6 +15,9 @@ dependencies {
     implementation(libs.jackson.dataformat.toml)
     // The game's files are LZMA streams
     implementation(libs.xz)
+    // The game's asset database is a zstd-compressed SQLite database
+    implementation(libs.aircompressor)
+    implementation(libs.sqlite.jdbc)
 }
 
 tasks.test {

@@ -28,8 +28,10 @@ import java.util.HexFormat;
  * </ul>
  *
  * <p>A file is checked against the SHA-1 its fingerprint lists before it is kept, and again when it
- * is read back; one that does not match is fetched again. The build names the root (the Gradle
- * property {@code crforge.cache}, by default {@code .crforge} in the user's home).
+ * is read back; one that does not match is fetched again. The asset database, whose fingerprint
+ * value is not its SHA-1, is checked with its own hash instead ({@link AssetDatabase}). The build
+ * names the root (the Gradle property {@code crforge.cache}, by default {@code .crforge} in the
+ * user's home).
  */
 public final class AssetCache {
 
@@ -74,28 +76,56 @@ public final class AssetCache {
     return fingerprint;
   }
 
-  /** One file of a content set as served, from the cache or else from the source. */
+  /** A check of a file as served: it throws when the file is not the one its set lists. */
+  @FunctionalInterface
+  interface Check {
+    void verify(byte[] served) throws IOException;
+  }
+
+  /**
+   * One file of a content set as served, from the cache or else from the source, checked against
+   * the SHA-1 its fingerprint lists.
+   */
   byte[] file(AssetSource source, String contentSha, Fingerprint.Entry entry) throws IOException {
+    return file(
+        source,
+        contentSha,
+        entry,
+        served -> {
+          String got = sha1(served);
+          if (!got.equals(entry.sha1())) {
+            throw new IOException(
+                "it has SHA-1 "
+                    + got
+                    + "; the fingerprint of "
+                    + contentSha
+                    + " lists "
+                    + entry.sha1());
+          }
+        });
+  }
+
+  /**
+   * One file of a content set as served, from the cache or else from the source, checked by a check
+   * of its own; kept under the SHA-1 its fingerprint lists all the same.
+   */
+  byte[] file(AssetSource source, String contentSha, Fingerprint.Entry entry, Check check)
+      throws IOException {
     Path path = root.resolve("assets").resolve(entry.sha1());
     if (Files.isRegularFile(path)) {
       byte[] cached = Files.readAllBytes(path);
-      if (sha1(cached).equals(entry.sha1())) {
+      try {
+        check.verify(cached);
         return cached;
+      } catch (IOException e) {
+        // not the file: fetched again
       }
     }
     byte[] served = source.file(contentSha, entry.path());
-    String got = sha1(served);
-    if (!got.equals(entry.sha1())) {
-      throw new IOException(
-          entry.path()
-              + " from "
-              + source
-              + " has SHA-1 "
-              + got
-              + "; the fingerprint of "
-              + contentSha
-              + " lists "
-              + entry.sha1());
+    try {
+      check.verify(served);
+    } catch (IOException e) {
+      throw new IOException(entry.path() + " from " + source + ": " + e.getMessage(), e);
     }
     write(path, served);
     return served;

@@ -96,12 +96,20 @@ class UnitRoleTest {
     assertThat(buildingsOnly).isTrue();
   }
 
-  /** Every row of the characters and buildings tables, as the battle reads it. */
+  /**
+   * Every row of the characters and buildings tables, as the battle reads it. A row the battle
+   * refuses (a column or form it does not model) is in no battle, so it never gets an icon, and is
+   * left out.
+   */
   private static List<UnitData> units() {
     List<UnitData> units = new ArrayList<>();
     for (String table : List.of("characters", "buildings")) {
       for (GameRow row : GameData.tables().table(table).rows()) {
-        units.add(GameData.unit(row.name()));
+        try {
+          units.add(GameData.unit(row.name()));
+        } catch (UnsupportedOperationException refused) {
+          // refused by name: not a unit the screen can show
+        }
       }
     }
     return units;

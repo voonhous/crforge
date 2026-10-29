@@ -1815,7 +1815,9 @@ class ActionRowsTest {
                         ? "spawn type"
                         : message.contains(" the game tables do not hold")
                             ? "missing row"
-                            : "other";
+                            : message.contains(" whose shape ")
+                                ? "shape"
+                                : message.contains(" inline, as ") ? "inline row" : "other";
         refusals.merge(reason, 1, Integer::sum);
         if (reason.equals("other")) {
           failures.add(name + ": " + message);
@@ -1829,9 +1831,11 @@ class ActionRowsTest {
         .isEqualTo(GameData.tables().actionNames().size());
     // The rest are refused for their class, a column the battle does not model, a spawn type
     // other than characters, buffs and area effects, a spawned buff or area effect the battle
-    // does not model, or a row they name that the tables do not hold; how many of each is the
+    // does not model, a row they name that the tables do not hold, a target resolver whose shape
+    // the battle does not model, or a hook written as an inline row; how many of each is the
     // data's, which a new version moves.
-    assertThat(refusals.keySet()).isSubsetOf("class", "column", "spawn type", "missing row");
+    assertThat(refusals.keySet())
+        .isSubsetOf("class", "column", "spawn type", "missing row", "shape", "inline row");
     assertThat(built).as("rows built").isPositive();
   }
 }

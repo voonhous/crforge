@@ -5,6 +5,7 @@ lombok = "1.18.46"
 slf4j = "2.0.18"
 xz = "1.12"
 aircompressor = "2.0.3"
+sqlite-jdbc = "3.53.4.0"
 
 # A trained model's policy in the debug visualizer (desktop)
 onnxruntime = "1.31.0"
@@ -25,6 +26,7 @@ jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", ver
 jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
 xz = { module = "org.tukaani:xz", version.ref = "xz" }
 aircompressor = { module = "io.airlift:aircompressor", version.ref = "aircompressor" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }

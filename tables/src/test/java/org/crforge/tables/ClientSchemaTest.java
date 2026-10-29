@@ -56,6 +56,17 @@ class ClientSchemaTest {
   }
 
   @Test
+  @DisplayName("a schema names the asset database's step, or none")
+  void assetDatabase() {
+    assertThat(ClientSchema.load("test-1").assetDatabase()).isNull();
+    ClientSchema.AssetDatabase database = ClientSchema.load("test-2").assetDatabase();
+    assertThat(database.file()).isEqualTo("assets.scdb");
+    assertThat(database.config()).isEqualTo("logic/config");
+    assertThat(database.configList()).isEqualTo("Files");
+    assertThat(database.dataMember()).isEqualTo("data");
+  }
+
+  @Test
   @DisplayName("every class a schema names is one it defines")
   void classesDefined() {
     for (String version : CLIENT_VERSIONS) {

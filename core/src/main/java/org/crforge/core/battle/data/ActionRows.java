@@ -1710,7 +1710,10 @@ public final class ActionRows {
               for (String column : List.of("MaxTriggerCount", "MaxRange", "MatchName")) {
                 if (sets(f, column)) {
                   throw new UnsupportedOperationException(
-                      name + " listens for destroyed objects with " + column + ", not modelled");
+                      name
+                          + " sets "
+                          + column
+                          + ", a column of a destroyed-object listener not modelled");
                 }
               }
               String troopFilter = text(f, "TroopFilter", "");

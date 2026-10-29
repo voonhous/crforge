@@ -1182,6 +1182,14 @@
    ]
   }
  ],
+ "asset_database": {
+  "file": "assets.scdb",
+  "chaos_config": "logic/chaos_arena/chaos_config",
+  "config_class": "LogicChaosConfigAsset",
+  "config_list": "DataFiles",
+  "data_class": "LogicChaosDataAsset",
+  "data_member": "data"
+ },
  "patch_targets": {
   "144": 34,
   "145": 35,
