@@ -3216,6 +3216,12 @@ public class CharacterEntity extends WorldEntity {
    * to the nearest cell off the water, at height 0. Then the moving state is asked for, or, for a
    * row with a landing time, the landing hold starts.
    *
+   * <p>The landing is one of the character's attacks for its listening actions (an enchanting
+   * buff's count): the dash damage first passes their damage hooks under the landing's hit id, as a
+   * damage that is not a crown tower's, before the landing chooses between its area and its single
+   * target, and once the landing's hit is done they are told the attack ended, whether or not
+   * anything was hit, before the next state is asked for.
+   *
    * <p>The single-target hit goes to the same damage entry as a direct hit, which queues it for the
    * holder's damage drain (see {@link BattleWorld#dealDirectHit}): its damage lands after every
    * post-hook, so a unit the landing kills keeps its movement visit of that tick, and a unit
@@ -3234,6 +3240,9 @@ public class CharacterEntity extends WorldEntity {
             ScalingMode.CARD_DAMAGE,
             data.rarity());
     int hitId = world.nextHitId();
+    // The listening actions' damage hooks take the dash damage before the landing chooses its
+    // path, so the area and the single target both deal the damage they hand back.
+    damage = listenedDamage(damage, hitId);
     WorldEntity hit = null;
     boolean area = data.dashRadius() >= 1;
     if (area) {
@@ -3276,6 +3285,8 @@ public class CharacterEntity extends WorldEntity {
         view.setZ(0);
       }
     }
+    // The landing's end is an attack's end for the listening actions, hit or not, area or not.
+    actionHolder().attackEnded();
     if (data.dashLandingTimeMs() < 1) {
       movementRequests.requestState(GridEntityState.MOVING);
     } else if (view.getBlockCountdownMs() == 0) {
