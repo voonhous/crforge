@@ -3317,6 +3317,26 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
+   * The holders of the riders an action hands its run on to, as the Giant Buffer's enchanting buff
+   * does: none unless the unit's row attaches its children. The game walks the battle's live list,
+   * in ascending id, for every character whose parent is this unit; that is each rider still in the
+   * live list, in the order they were made.
+   */
+  @Override
+  public List<ActionHolder> actionAttachedChildren() {
+    if (!getData().spawnAttach() || riders.isEmpty()) {
+      return List.of();
+    }
+    List<ActionHolder> holders = new ArrayList<>(riders.size());
+    for (CharacterEntity rider : riders) {
+      if (world.liveObject(rider.getId()) == rider) {
+        holders.add(rider.actionHolder());
+      }
+    }
+    return holders;
+  }
+
+  /**
    * The last part of the removal notice: a rider whose parent left is let go. It forgets the
    * parent, runs its death slot - not the death handler - and is removed in the same cleanup.
    */

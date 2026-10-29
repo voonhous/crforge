@@ -197,8 +197,8 @@ public class ActionHolder implements EntityActions {
    */
   private ActionContext current;
 
-  /** The tick of the last run pass. */
-  @Getter private int lastTick;
+  /** The tick of the last run pass, or -1 before the first: the battle's first tick is 0. */
+  @Getter private int lastTick = -1;
 
   /** The entity the holder belongs to, which the leaves that act on their owner act on. */
   @Getter private final ActionOwner owner;

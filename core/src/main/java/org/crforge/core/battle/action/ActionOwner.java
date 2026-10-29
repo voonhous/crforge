@@ -6,6 +6,7 @@
 
 package org.crforge.core.battle.action;
 
+import java.util.List;
 import java.util.function.IntSupplier;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.battle.filter.ObjectCensus;
@@ -587,9 +588,21 @@ public interface ActionOwner {
     throw new UnsupportedOperationException("this owner has no data row");
   }
 
-  /** True for an owner whose row makes children that ride on it. */
-  default boolean actionSpawnsAttached() {
-    return false;
+  /**
+   * The holders of the children riding on the owner, as an action that hands its run on to them
+   * finds them: none unless the owner's row attaches its children, and then each character that
+   * rides on it and is still in the battle's live list, in the order they were made.
+   */
+  default List<ActionHolder> actionAttachedChildren() {
+    return List.of();
+  }
+
+  /**
+   * The tick whose run pass is stepping the actions of the owner's battle now, or -1 outside that
+   * pass: a holder whose last tick it is has been stepped in the pass already.
+   */
+  default int actionRunPassTick() {
+    return -1;
   }
 
   /**
