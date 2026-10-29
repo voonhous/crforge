@@ -361,14 +361,140 @@ class ReplayScenarioEveryFieldTest {
     scenario.putArray("srq").add(1);
     ObjectNode battle = (ObjectNode) scenario.path("battle");
     battle.put("seb", true);
-    battle.put("cardlvlmin", 1);
     ((ObjectNode) battle.path("avatar0")).put("npc", true);
 
     List<ReplayScenario.Refusal> refusals = new ReplayScenario(tables).survey(scenario);
 
     assertThat(refusals)
         .extracting(ReplayScenario.Refusal::input)
-        .containsExactly("srq=[1]", "cardlvlmin=1", "seb=true", "npc=true");
+        .containsExactly("srq=[1]", "seb=true", "npc=true");
+  }
+
+  /** Skips a test of a Ladder battle under an event on a data version whose replays hold none. */
+  private static void assumeLadderEventsRead() {
+    assumeTrue(
+        ReplayFormat.orShared(tables.version()).ladderEvents(),
+        "the replays of data version "
+            + tables.version()
+            + " hold no Ladder battle under an event");
+  }
+
+  /** The event id of {@link #underAnEvent}. */
+  private static final int EVENT_ID = 4321;
+
+  /**
+   * The knight replay as a Ladder battle played under an event, as such replays write it: game mode
+   * type 16, the event's trail and id ({@code te}), the event block with empty settings, and each
+   * player's progress on the event's trail.
+   */
+  private static ObjectNode underAnEvent(ObjectNode scenario) {
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("gmt", 16);
+    battle.put("trail", 170_000_007);
+    battle.put("te", EVENT_ID);
+    ObjectNode event = battle.putObject("event");
+    event.put("id", EVENT_ID);
+    event.put("version_id", 1);
+    event.put("name", "an event");
+    event.put("category", 39);
+    event.put("json", "{}");
+    event.put("enabled", true);
+    for (JsonNode data : battle.path("hbd")) {
+      ObjectNode progress = ((ObjectNode) data).putObject(ReplayFormat.TRAIL_PROGRESS_FIELD);
+      progress.put("prt", "TrophyRoad");
+      progress.put("arena", 168_000_001);
+      progress.put("pbl", 10);
+    }
+    return scenario;
+  }
+
+  @Test
+  void readsALadderBattleUnderAnEventAsTheLadderBattle() {
+    assumeLadderEventsRead();
+    ScenarioPlan ladder =
+        new ReplayScenario(tables).translate(fit(Scenarios.knightWithEveryField()));
+    ReplayScenario mapping = new ReplayScenario(tables);
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    // The same towers, decks, levels and plays as the Ladder replay.
+    assertThat(plan.towers()).isEqualTo(ladder.towers());
+    assertThat(plan.decks()).isEqualTo(ladder.decks());
+    for (int side = 0; side < 2; side++) {
+      assertThat(plan.deckLevels().get(side)).containsExactly(ladder.deckLevels().get(side));
+    }
+    assertThat(plan.plays()).isEqualTo(ladder.plays());
+    assertThat(mapping.mapping())
+        .containsEntry("gmt", "pinned: 16")
+        .containsEntry("te", "pinned: " + EVENT_ID)
+        .containsEntry("trail", ReplayScenario.TRAIL_UNDER_EVENT)
+        .containsEntry("battle.event", ReplayScenario.EVENT_CARRIED);
+  }
+
+  @Test
+  void refusesAnEventUnderAnotherGameModeTypeOrEventIdOrMode() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("gmt", 1);
+    battle.put("te", EVENT_ID + 1);
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::input)
+        .containsExactly("gmt=1", "te=" + (EVENT_ID + 1));
+
+    ObjectNode ranked = fit(underAnEvent(pathOfLegends(Scenarios.knightWithEveryField())));
+    assertThat(new ReplayScenario(tables).survey(ranked))
+        .extracting(ReplayScenario.Refusal::feature)
+        .anySatisfy(feature -> assertThat(feature).contains(RANKED + " under an event"));
+  }
+
+  @Test
+  void refusesAnEventWithNoId() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ((ObjectNode) scenario.path("battle").path("event")).remove("id");
+
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .extracting(ReplayScenario.Refusal::feature)
+        .containsExactly(
+            "an event with no id",
+            "a value of te other than an event id, which has no production input");
+  }
+
+  @Test
+  void readsACardLevelMinimumNoDeckCardIsBelow() {
+    assumeLadderEventsRead();
+    ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    int lowest = Integer.MAX_VALUE;
+    for (int[] levels : plan.deckLevels()) {
+      for (int level : levels) {
+        lowest = Math.min(lowest, level);
+      }
+    }
+    ObjectNode battle = (ObjectNode) scenario.path("battle");
+    battle.put("cardlvlmin", lowest);
+    ReplayScenario mapping = new ReplayScenario(tables);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    assertThat(mapping.translate(scenario).deckLevels())
+        .usingRecursiveComparison()
+        .isEqualTo(plan.deckLevels());
+    assertThat(mapping.mapping()).containsEntry("cardlvlmin", ReplayScenario.CARD_LEVEL_MIN_READ);
+
+    // One level higher raises a deck card, which the battle core does not model.
+    int above = lowest + 1;
+    battle.put("cardlvlmin", above);
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .isNotEmpty()
+        .allSatisfy(
+            refusal -> {
+              assertThat(refusal.input()).isEqualTo("cardlvlmin=" + above);
+              assertThat(refusal.feature()).contains("raises to the minimum");
+            });
   }
 
   @Test

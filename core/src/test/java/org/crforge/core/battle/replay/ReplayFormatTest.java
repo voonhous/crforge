@@ -8,6 +8,10 @@ package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.crforge.core.battle.data.GameVersions;
 import org.junit.jupiter.api.Test;
 
@@ -42,14 +46,33 @@ class ReplayFormatTest {
           .ignoringFields("dataVersion")
           .isEqualTo(ReplayFormat.V16_635_1);
       assertThat(format.excludedEvolutions()).isTrue();
-      // Beside the excluded evolutions, the fields of client 16.402.17's replays.
+      assertThat(format.ladderEvents()).isTrue();
+      // Beside the excluded evolutions and the Ladder battles under an event, the fields of client
+      // 16.402.17's replays.
       assertThat(format)
           .usingRecursiveComparison()
-          .ignoringFields("dataVersion", "excludedEvolutions")
+          .ignoringFields(
+              "dataVersion", "excludedEvolutions", "ladderEvents", "battlePins", "playerData")
           .isEqualTo(ReplayFormat.V16_402_18);
+      // The card level minimum is read, no longer pinned; the trail progress is carried.
+      Map<String, String> pins = new LinkedHashMap<>(ReplayFormat.V16_402_18.battlePins());
+      pins.remove(ReplayFormat.CARD_LEVEL_MIN_FIELD);
+      assertThat(format.battlePins()).isEqualTo(pins);
+      assertThat(format.playerData())
+          .containsExactlyElementsOf(
+              with(ReplayFormat.V16_402_18.playerData(), ReplayFormat.TRAIL_PROGRESS_FIELD));
     }
     assertThat(ReplayFormat.V16_402_18.excludedEvolutions()).isFalse();
     assertThat(ReplayFormat.V14_593_1.excludedEvolutions()).isFalse();
+    assertThat(ReplayFormat.V16_402_18.ladderEvents()).isFalse();
+    assertThat(ReplayFormat.V14_593_1.ladderEvents()).isFalse();
+  }
+
+  /** A list with one more element. */
+  private static List<String> with(List<String> list, String more) {
+    List<String> all = new ArrayList<>(list);
+    all.add(more);
+    return all;
   }
 
   @Test

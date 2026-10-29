@@ -349,6 +349,11 @@ public final class ScenarioWriter {
     battle.put("te", -1);
     battle.put("tps", 1);
     battle.put("arena", 0);
+    if (format.ladderEvents()) {
+      // No card level minimum: every card keeps its own level. Written where the formats that pin
+      // it write it, first of the pinned fields.
+      battle.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, 0);
+    }
     pins(battle, format.battlePins());
     for (int side = 0; side < 2; side++) {
       battle.set("deck" + side, deck(plan, side, format));

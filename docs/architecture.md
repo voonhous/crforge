@@ -432,13 +432,20 @@ Client 16.635.1's replays (data 16.635.3) write 16.402.18's fields and one more:
 - otherwise the list sets nothing: the client reads it in a draft or pick mode's card deal too, which a Ladder match does not run
 - an id of no row the tables hold, or a list that is not one, is refused
 
+Client 16.635.1's replays also hold Ladder battles played under an event (the seasonal trophy road): the header gives game mode type 16, the event's trail and id (`te`) and the event itself (`event`), and each player data entry the player's trail progress (`hbd[i].trl`). With the Ladder row's card level adjustment and a level cap of 0, every rule the game reads the game mode type by gives type 16 what it gives type 1, and the game reads an event only to deal a draft's cards, which a mode whose decks are the players' own (deck selection `Collection`) does not run. So such a battle is read as the Ladder battle:
+
+- the event is carried, its id must be `te`, and the game mode must be the Ladder row with deck selection `Collection`
+- game mode type 16 is pinned for it, the level cap stays pinned to 0, and the trail and the trail progress are carried
+
+In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned: the game raises a deck card's level to it, so a replay with a deck card below it is refused, and otherwise every card keeps its own level.
+
 A case generated for a data version of client 16.635.1 is refused: no recorded battle of such a case has established its fields yet.
 
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
 
 16.402.18's replays also carry the Path of Legends fields (`rkd`, `hbd[i].sa`, the avatar's `rnk_sc`). A Path of Legends replay (game mode Ranked1v1_NewArena) is played as a Ladder match with its own header values pinned (game mode type 13, level cap 16, trail -1); see [the battle core](battle-core.md).
 
-Every version's replays carry the arena (the battle header's and each avatar's `arena`) whatever its value. It names the players' trophy arena, which sets no battle input, so a replay from any trophy arena's TV channel is read. The map is the location's, which must be the standard one.
+Every version's replays carry the arena (the battle header's and each avatar's `arena`) whatever its value. It names the players' trophy arena, which sets no battle input, so a replay from any trophy arena's TV channel is read; an event battle's arena is a row of the second arena table (`arenas_alt`), read the same way. The map is the location's, which must be the standard one.
 
 The battle core also writes a battle as a replay (`org.crforge.core.battle.replay.ScenarioWriter`), the mapping's inverse. It takes a battle played as a Ladder match: its seed, towers, players' data, decks and every player's command queued on it (`Standard1v1Battle.getCommands`), each play with the item its client built. These are written in the fields of the tables' data version's replays, with a capture block naming the tables.
 
