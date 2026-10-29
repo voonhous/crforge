@@ -1,6 +1,8 @@
 {
  "content_version": "16.635.3",
  "cases": {
+  "card-level-minimum-v1/card_level_minimum_play_own_level": {"outcome": "diagnostic_match"},
+  "card-level-minimum-v1/card_level_minimum_raise": {"outcome": "diagnostic_match"},
   "challenge-event-v1/challenge_cannon_towers": {"outcome": "diagnostic_match"},
   "challenge-event-v1/challenge_grand": {"outcome": "diagnostic_match"},
   "challenge-event-v1/challenge_twenty_win": {"outcome": "diagnostic_match"},

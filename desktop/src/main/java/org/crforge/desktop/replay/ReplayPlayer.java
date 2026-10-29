@@ -95,7 +95,9 @@ public final class ReplayPlayer {
     ScenarioPlan plan = replay.plan();
     Map<String, String> cards = new HashMap<>();
     plan.plays().forEach(play -> cards.put(name(play.index()), play.card()));
-    session = BattleSession.of(ReplayBattle.build(tables, plan), cards, plan.deckLevels());
+    // The hands show each card at the level the battle's deck holds it, raised by the card level
+    // minimum.
+    session = BattleSession.of(ReplayBattle.build(tables, plan), cards, plan.raisedDeckLevels());
   }
 
   public void togglePause() {

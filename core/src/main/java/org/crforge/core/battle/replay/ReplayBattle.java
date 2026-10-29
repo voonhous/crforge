@@ -24,7 +24,8 @@ public final class ReplayBattle {
   }
 
   /**
-   * Builds the battle a translated scenario gives, before its first step: the towers, the seed,
+   * Builds the battle a translated scenario gives, before its first step: the towers (their
+   * princess rows raised by the card level minimum, {@link ScenarioPlan#raisedTowers}), the seed,
    * each player's data, the Ladder match between the two decks, and every command queued in the
    * scenario's order, each play and ability command named {@code cmd<index>} after its index in the
    * scenario, with the tick it was given on and the tick it runs on as the scenario states them.
@@ -34,7 +35,8 @@ public final class ReplayBattle {
    * @return the battle, not yet stepped
    */
   public static Standard1v1Battle build(GameTables tables, ScenarioPlan plan) {
-    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.towers(), true);
+    // The towers stand at their levels raised by the card level minimum, the king at its own.
+    Standard1v1Battle battle = new Standard1v1Battle(tables, plan.raisedTowers(), true);
     battle.getWorld().seed(plan.seed());
     // Each player's data is handed over before the decks are dealt, in the scenario's order.
     for (int choices : plan.playerDataChoices()) {

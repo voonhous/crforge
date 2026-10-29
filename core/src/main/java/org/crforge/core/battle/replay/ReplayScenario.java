@@ -96,6 +96,9 @@ public final class ReplayScenario {
   /** The table of the support cards' rarities, which set a tower selection's levels. */
   static final String SUPPORT_RARITIES = "support_rarities";
 
+  /** The table of the deck cards' rarities, which set a deck card's levels. */
+  static final String RARITIES = "rarities";
+
   /**
    * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
    * towers, the Dagger Duchess's towers and the Royal Chef's towers, each placed from the card's
@@ -266,13 +269,16 @@ public final class ReplayScenario {
 
   /**
    * How the card level minimum is read: the game raises each deck card's level and each side's
-   * tower selection's level (the princess towers', not the king's) to it, so a battle whose deck
-   * cards and tower selections all stand at or above it plays as without it.
+   * tower selection's level (the princess towers', not the king's) to it as the battle is set up,
+   * and runs each play at the level its item carries.
    */
   static final String CARD_LEVEL_MIN_READ =
-      "consumed: the card level minimum, 0 for none; a deck card or a tower selection below it,"
-          + " which the game raises to it, is unsupported, so every card and every side's towers"
-          + " keep their own levels; the king is not raised";
+      "consumed: the card level minimum, 0 for none, at most the top level of every rarity of"
+          + " rarities and support_rarities; each deck card and each side's tower selection below"
+          + " it is raised to it (ScenarioPlan.raisedDeckLevels, raisedTowers: the princess towers"
+          + " at the minimum), never lowered, and the king (its player data's level) is not"
+          + " raised; a play runs at its item's level, its deck card's as given or as raised; a"
+          + " Mirror's or a variant card's play of a raised card is unsupported";
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
@@ -576,12 +582,23 @@ public final class ReplayScenario {
       onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
       accounts.add(avatar(required(battle, "avatar" + side), side, arenas));
     }
+    int minimum = 0;
     if (friendlyLevel > 0) {
       // Under the Friendly adjustment the game sets every card's level, so only no minimum is
       // established.
       pin(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD, "0");
     } else if (format.ladderEvents()) {
-      cardLevelMinimum(battle, decks, deckLevels, towers);
+      minimum = cardLevelMinimum(battle);
+    }
+    // The levels the battle's deck holds: each deck card's raised by the minimum. A play is checked
+    // against them and the levels as given.
+    List<int[]> raisedLevels = new ArrayList<>();
+    for (int[] levels : deckLevels) {
+      int[] raised = levels.clone();
+      for (int i = 0; i < raised.length; i++) {
+        raised[i] = minimum >= 1 ? Math.max(raised[i], minimum) : raised[i];
+      }
+      raisedLevels.add(raised);
     }
     mapping.put(
         "battle.deckN.sp[i].d",
@@ -591,7 +608,10 @@ public final class ReplayScenario {
         friendlyLevel > 0
             ? DECK_LEVEL_UNDER_FRIENDLY
             : "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
-                + " level index 0, as the game reads it");
+                + " level index 0, as the game reads it"
+                + (format.ladderEvents()
+                    ? "; below the card level minimum the battle's deck holds it at the minimum"
+                    : ""));
     mapping.put(
         "battle.deckN.sp[i].el",
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
@@ -611,7 +631,8 @@ public final class ReplayScenario {
     int index = 0;
     for (JsonNode command : required(scenario, "cmd")) {
       try {
-        command(command, index, decks, deckLevels, slotFlags, accounts, plays, abilities);
+        command(
+            command, index, decks, deckLevels, raisedLevels, slotFlags, accounts, plays, abilities);
       } catch (UnsupportedScenarioException e) {
         // A survey lists a command it cannot read and goes on to the next one.
         if (refusals == null) {
@@ -661,7 +682,12 @@ public final class ReplayScenario {
     mapping.put(
         "cmd[i].c.sel.pd",
         "checked: the packed item's level field (bits 10..16) against the deck card's level index"
-            + " plus its rarity's RelativeLevel, its deck index field (bits 22..27) against the"
+            + " plus its rarity's RelativeLevel"
+            + (format.ladderEvents()
+                ? " or, for a card below the card level minimum, against the minimum less 1, the"
+                    + " play running at the level field plus 1"
+                : "")
+            + ", its deck index field (bits 22..27) against the"
             + " card's deck index plus 1, its slot flags field (bits 19..21) against the deck"
             + (format.cosmeticCarried()
                 ? " card's, and its option field (bits 4..6) 0, its cosmetic field (bits 17..18)"
@@ -696,7 +722,8 @@ public final class ReplayScenario {
         arenas,
         playerDataChoices,
         plays,
-        abilities);
+        abilities,
+        minimum);
   }
 
   /**
@@ -732,12 +759,18 @@ public final class ReplayScenario {
     refusals.add(new Refusal(feature, input));
   }
 
-  /** One command, read by its type: a play or an ability command, any other type refused. */
+  /**
+   * One command, read by its type: a play or an ability command, any other type refused.
+   *
+   * @param deckLevels each side's card levels by deck index as the scenario gives them
+   * @param raisedLevels each side's card levels by deck index raised by the card level minimum
+   */
   private void command(
       JsonNode command,
       int index,
       List<List<String>> decks,
       List<int[]> deckLevels,
+      List<int[]> raisedLevels,
       List<int[]> slotFlags,
       List<int[]> accounts,
       List<ScenarioPlan.Play> plays,
@@ -754,7 +787,7 @@ public final class ReplayScenario {
           field + ".ct");
     }
     if (type == commandTypes.play()) {
-      plays.add(play(command, index, decks, deckLevels, slotFlags, accounts));
+      plays.add(play(command, index, decks, deckLevels, raisedLevels, slotFlags, accounts));
     } else if (type == commandTypes.ability()) {
       abilities.add(ability(command, index, accounts));
     } else {
@@ -1108,63 +1141,47 @@ public final class ReplayScenario {
   }
 
   /**
-   * The card level minimum ({@value ReplayFormat#CARD_LEVEL_MIN_FIELD}): the game raises a deck
-   * card's level index to the minimum less its rarity's RelativeLevel and 1, that is its level to
-   * the minimum, and a side's tower selection's level index the same way against the support
-   * rarity's RelativeLevel, that is its princess towers' level to the minimum. The king's level is
-   * not raised under the Ladder row. A battle whose deck cards and tower selections all stand at or
-   * above it plays as without it; one with a card or a tower selection below it is unsupported.
+   * The card level minimum ({@value ReplayFormat#CARD_LEVEL_MIN_FIELD}), 0 for none. As the battle
+   * is set up the game raises each deck card's level index to the minimum less its rarity's
+   * RelativeLevel and 1, that is its level to the minimum, and each side's tower selection's level
+   * index the same way against the support rarity's RelativeLevel, that is its princess towers'
+   * level to the minimum; it never lowers one, and under the Ladder row it does not raise the king.
+   * The plan keeps the levels as given with the minimum ({@link ScenarioPlan#raisedDeckLevels},
+   * {@link ScenarioPlan#raisedTowers}); each play runs at the level its item carries ({@link
+   * #play}).
    *
-   * @param towers the sides' towers as the replay gives them, their princess level the tower
-   *     selection's level index plus the support rarity's RelativeLevel plus 1
+   * <p>A minimum that is not a level, or one above the top level of a rarity of the deck cards or
+   * the tower selections (its LevelCount plus its RelativeLevel), which would raise a level index
+   * past that rarity's levels, is unsupported.
+   *
+   * @return the minimum, counted from 1 across all rarities; 0 for none or when refused
    */
-  private void cardLevelMinimum(
-      JsonNode battle,
-      List<List<String>> decks,
-      List<int[]> deckLevels,
-      List<Standard1v1Battle.Towers> towers) {
+  private int cardLevelMinimum(JsonNode battle) {
     JsonNode minimum = required(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD);
     String input = ReplayFormat.CARD_LEVEL_MIN_FIELD + "=" + minimum;
+    mapping.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, CARD_LEVEL_MIN_READ);
     if (!minimum.isInt() || minimum.asInt() < 0) {
       refuse("a card level minimum that is not a level", input);
-    } else {
-      for (int side = 0; side < decks.size(); side++) {
-        for (int i = 0; i < decks.get(side).size(); i++) {
-          int level = deckLevels.get(side)[i];
-          if (level < minimum.asInt()) {
-            refuse(
-                "a card level minimum of "
-                    + minimum.asInt()
-                    + " above the level "
-                    + level
-                    + " of side "
-                    + side
-                    + "'s "
-                    + decks.get(side).get(i)
-                    + ", which the game raises to the minimum and the battle core does not",
-                input);
-          }
-        }
-      }
-      for (int side = 0; side < towers.size(); side++) {
-        int level = towers.get(side).level();
-        if (level < minimum.asInt()) {
+      return 0;
+    }
+    for (String table : List.of(RARITIES, SUPPORT_RARITIES)) {
+      for (GameRow rarity : tables.table(table).rows()) {
+        int top = rarity.intValue("LevelCount") + rarity.intValue("RelativeLevel");
+        if (minimum.asInt() > top) {
           refuse(
-              "a card level minimum of "
-                  + minimum.asInt()
-                  + " above the level "
-                  + level
-                  + " of side "
-                  + side
-                  + "'s tower selection (battle.deck"
-                  + side
-                  + ".sc[0].l), whose princess towers the game raises to the minimum and the"
-                  + " battle core does not",
+              "a card level minimum above level "
+                  + top
+                  + ", the top level of the rarity "
+                  + rarity.name()
+                  + " of "
+                  + table
+                  + ", which would raise a level index past its levels",
               input);
+          return 0;
         }
       }
     }
-    mapping.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, CARD_LEVEL_MIN_READ);
+    return minimum.asInt();
   }
 
   /** The location: only one on the standard map is built. */
@@ -1246,8 +1263,9 @@ public final class ReplayScenario {
     mapping.put(
         "battle.deckN.sc[0].l",
         "consumed: the towers' level index, 0 to the support rarity's LevelCount less 1; the"
-            + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1;"
-            + " the king row does not use it");
+            + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1"
+            + (format.ladderEvents() ? ", or at the card level minimum when below it" : "")
+            + "; the king row does not use it");
     // The king row stands at the avatar's level, or where the format gives one, at the side's own
     // king level from its player data.
     int kingLevel = kingLevels.isEmpty() ? KING_LEVEL : kingLevels.get(side);
@@ -1305,11 +1323,19 @@ public final class ReplayScenario {
     return new int[] {high.asInt(), required(avatar, "accountID.lo").asInt()};
   }
 
+  /**
+   * A card play. A plain play runs at the level its item carries (the level field plus 1), which
+   * must be its deck card's level as the scenario gives it or, for a card below the card level
+   * minimum, as the minimum raises it: the game runs a play at its item's level, whichever of the
+   * two it carries. A Mirror's or a variant card's play of a card the minimum raises is
+   * unsupported.
+   */
   private ScenarioPlan.Play play(
       JsonNode command,
       int index,
       List<List<String>> decks,
       List<int[]> deckLevels,
+      List<int[]> raisedLevels,
       List<int[]> slotFlags,
       List<int[]> accounts) {
     String field = "cmd[" + index + "]";
@@ -1327,8 +1353,21 @@ public final class ReplayScenario {
           field + " plays " + card.name() + ", which is not in side " + side + "'s deck");
     }
     int level = deckLevels.get(side)[deckIndex];
+    int raised = raisedLevels.get(side)[deckIndex];
     int slots = slotFlags.get(side)[deckIndex];
     int packed = required(item, "pd").asInt();
+    if (raised != level
+        && (card.bool(MIRROR_COLUMN) || !card.string(CUSTOM_CLASS_COLUMN).isEmpty())) {
+      throw new UnsupportedScenarioException(
+          "a play of "
+              + card.name()
+              + " at level "
+              + level
+              + ", which the card level minimum raises to "
+              + raised
+              + ": a Mirror's or a variant card's item level under the raise is in no reference",
+          field + ".c.sel.pd=" + packed);
+    }
     if (card.bool(MIRROR_COLUMN)) {
       return mirrorPlay(body, item, index, side, card, deckIndex, level, slots, packed);
     }
@@ -1360,7 +1399,9 @@ public final class ReplayScenario {
         evolutionSlot
             ? (packedField == formField || packedField == EvolutionItem.EVOLVED) && packedCount >= 1
             : packedField == formField && packedCount == 0;
-    if (packedLevel != level - 1
+    // The play runs at its item's level: the deck card's as given or as the minimum raises it.
+    int playLevel = packedLevel + 1;
+    if ((playLevel != level && playLevel != raised)
         || packedIndex != deckIndex + 1
         || packedFlags != slots
         || packedOption != 0
@@ -1381,7 +1422,8 @@ public final class ReplayScenario {
               + ", slot flags "
               + slots
               + " and level "
-              + level);
+              + level
+              + (raised != level ? " (raised to " + raised + " by the card level minimum)" : ""));
     }
     return new ScenarioPlan.Play(
         index,
@@ -1389,7 +1431,7 @@ public final class ReplayScenario {
         required(body, "t2").asInt(),
         side,
         card.name(),
-        level,
+        playLevel,
         required(body, "px").asInt(),
         required(body, "py").asInt(),
         packed,
