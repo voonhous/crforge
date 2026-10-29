@@ -114,8 +114,7 @@ tasks.register<JavaExec>("coverageScore") {
     description =
         "Plays every battle of a data version's coverage set (-Pcrforge.coverage) and writes the " +
             "share the battle core reproduces, with its badge, to build/coverage/ (a measurement, " +
-            "never a gate); with -Pcrforge.coverage.part=K only part K's battles, into their tally; " +
-            "-Pcrforge.coverage.set=NAME names a second set of the version (16.635.3-challenge)."
+            "never a gate); with -Pcrforge.coverage.part=K only part K's battles, into their tally."
     group = "verification"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("org.crforge.conformance.CoverageScore")
@@ -127,8 +126,6 @@ tasks.register<JavaExec>("coverageScore") {
     setting("crforge.coverage")?.let { systemProperty("crforge.coverage", it) }
     args("--out-dir", layout.buildDirectory.dir("coverage").get().asFile.absolutePath)
     setting("crforge.coverage.part")?.let { args("--part", it) }
-    // the set's name when the version has more than one set (16.635.3-challenge); else the version
-    setting("crforge.coverage.set")?.let { args("--set", it) }
     outputs.upToDateWhen { false }
 }
 
