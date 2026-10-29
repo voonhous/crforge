@@ -83,7 +83,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " or after the deflected share on a crown tower is read in the build (after) and"
             + " held by no case: the units' share is the whole damage."
             + " Refused: a unit with attached children,"
-            + " which would get copies, and the Berserker's attack sequence step.")
+            + " which would get copies, the Berserker's attack sequence step, a walk that meets"
+            + " an area effect, which the game follows to the area effect's parent, and a walk"
+            + " that ends on one, which the game keeps as the giver by its id and rarity; no"
+            + " shipped row starts the buff from an area effect or a projectile one launched.")
 public final class GiantBufferBuff extends RowAction {
 
   /**
@@ -168,8 +171,17 @@ public final class GiantBufferBuff extends RowAction {
       return run;
     }
     int depth = columns.instigatorDepth();
-    if (depth >= 1) {
+    // A depth of 0 or below keeps the cause as the giver without its id.
+    boolean keepsSource = depth >= 1;
+    if (keepsSource) {
       while (depth >= 2) {
+        if (giver.actionAreaEffect()) {
+          // The game's next link from an area effect is its parent, the object it was made from,
+          // while that object is in the battle; the battle core keeps that parent only for an area
+          // effect an action's spawn made, so the walk is refused rather than stopped here.
+          throw new UnsupportedOperationException(
+              name() + " walks back from an area effect to its parent, which is not modelled");
+        }
         if (!giver.actionCreated()) {
           break;
         }
@@ -182,6 +194,15 @@ public final class GiantBufferBuff extends RowAction {
         giver = maker;
         depth--;
       }
+    }
+    if (giver.actionAreaEffect()) {
+      // The game keeps an area effect the walk ends on as the giver - the cause itself, or a
+      // projectile's launcher - by its id, rarity and level; an area effect's id and rarity are
+      // not modelled.
+      throw new UnsupportedOperationException(
+          name() + " takes an area effect as its giver, whose id and rarity are not modelled");
+    }
+    if (keepsSource) {
       run.source = giver.actionId();
     }
     run.rarity = giver.actionRarity();
