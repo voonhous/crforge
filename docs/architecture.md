@@ -452,7 +452,7 @@ A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way 
 
 The header switch `seb`, true in a challenge's replays, is carried in client 16.635.1's replays: the game never reads it in a battle. See [the battle core](battle-core.md).
 
-A case generated for a data version of client 16.635.1 is refused: no recorded battle of such a case has established its fields yet.
+A case generated for a data version of client 16.635.1 is read as one of client 16.402.17 is: by 14.593.1's fields, with the version's command types. The fields 16.402.18's replays add change nothing such a case plays: its recorded battles on 16.635.3 play the same with the request lists empty, the switches `cardlvlmin` 0, `rrb` and `seb` false and a king level of 1 for each side added.
 
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
 

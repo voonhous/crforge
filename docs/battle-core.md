@@ -2,11 +2,11 @@
 
 The battle core (`org.crforge.core.battle`) is crforge's engine. It only takes in behaviour that is established, and every class in it says which parts are settled and which are not. Run `./gradlew :core:fidelityReport` to see how far that has come.
 
-It reads the game's own tables of one data version and is held tick by tick to battles recorded in the game (see [Game Tables and Reference Battles](game-tables.md)). The debug visualizer runs on it (see [Debug Visualizer](architecture.md#debug-visualizer)). A reinforcement learning environment will be built on it separately.
+It reads the game's own tables of one data version and is held tick by tick to battles recorded in the game (see [Game Tables and Reference Battles](game-tables.md)). The debug visualizer runs on it (see [Debug Visualizer](architecture.md#debug-visualizer)), and so does the reinforcement learning environment (see [The Environment](environment.md)).
 
 The battle rules follow game client 16.635.1 (`GameVersions.CLIENT_16_635_1`) since 2026-10-28, and the battle refuses tables of a data version that client does not run (`BattleWorld.requireModelled`; see [Compatibility](compatibility.md)). Before that they followed client 16.402.17, and a comparison with 16.402.17 on this page dates from that move.
 
-No reference battle of the 16.635.x data versions is recorded yet. The reference battles, listings and coverage sets this page cites (`golden-gaps-v1`, `tv-replays-v3`, the `*-v1` listings, the `card_*` cases and the others) are recordings of the 16.402.x data versions, played on client 16.402.17. Where this page says a reference battle holds a behaviour, it was held on those recordings; they left CI with their client, and the rules of client 16.635.1 rest on the unit tests until its battles are recorded.
+The reference battles, listings and coverage sets this page cites (`golden-gaps-v1`, `tv-replays-v3`, the `*-v1` listings, the `card_*` cases and the others) were first recorded on the 16.402.x data versions, played on client 16.402.17. Each reference listing has since been recorded again under its own name on 16.635.3, the game's own recordings of the same scenarios on the 16.635.3 tables, and CI holds those to `conformance/reference-expectations/16.635.3.json`; the coverage set CI scores is one of 16.635.3's own battles. A rule this page marks as client 16.635.1's own and held by no reference yet rests on the unit tests until a recording reaches it.
 
 crforge began with an engine written from observation and a reference port, which the fidelity ledger listed almost entirely as a guess. The battle core was grown beside it a milestone at a time and replaced it; that engine and its card data are gone.
 
