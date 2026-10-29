@@ -13,5 +13,5 @@
     "unsupported: giantbuffer_enchanting_buff on IceWizardHero, whose attached children get copies, which is not modelled": 1
   },
   "set": "14641530ce8e6dc8",
-  "commit": "58c7e84390546fad7ee44d48c4a40928e6e96bf3"
+  "commit": "d78a6317dde89d2389f8bb16d2b53854fa6e5fdb"
 }
