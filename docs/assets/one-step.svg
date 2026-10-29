@@ -71,7 +71,7 @@
 <text x="54" y="966" class="s" font-size="13.5" fill="#424a53">map check, placement search,</text>
 <text x="54" y="984" class="s" font-size="13.5" fill="#424a53">formation, initial delay</text>
 <!-- Battle.step(): 50 ms -->
-<rect x="340" y="262" width="250" height="402" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
+<rect x="340" y="262" width="250" height="420" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
 <text x="354" y="286" class="s" font-size="14" font-weight="600" fill="#7d4e00">Battle.step()</text>
 <text x="354" y="304" class="s" font-size="12.5" fill="#424a53">one step: 50 ms of game time</text>
 <rect x="352" y="314" width="226" height="50" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
@@ -83,26 +83,27 @@
 <circle cx="370" cy="404" r="10" fill="#d4a017"/>
 <text x="370" y="408" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">2</text>
 <text x="390" y="409" class="s" font-size="13" fill="#1f2328">clock +50 ms</text>
-<rect x="352" y="440" width="226" height="68" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<rect x="352" y="440" width="226" height="86" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
 <circle cx="370" cy="458" r="10" fill="#d4a017"/>
 <text x="370" y="462" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">3</text>
-<text x="390" y="463" class="s" font-size="13" fill="#1f2328">due commands</text>
-<text x="390" y="481" class="s" font-size="13" fill="#1f2328">(BattleCommand), in</text>
-<text x="390" y="499" class="s" font-size="13" fill="#1f2328">queue order</text>
-<rect x="352" y="530" width="226" height="68" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
-<circle cx="370" cy="548" r="10" fill="#d4a017"/>
-<text x="370" y="552" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">4</text>
-<text x="390" y="553" class="s" font-size="13" fill="#1f2328">mode update: LadderMatch</text>
-<text x="390" y="571" class="s" font-size="13" fill="#1f2328">lets the entity tick</text>
-<text x="390" y="589" class="s" font-size="13" fill="#1f2328">run, or only cleans up</text>
-<rect x="352" y="620" width="226" height="32" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
-<circle cx="370" cy="638" r="10" fill="#d4a017"/>
-<text x="370" y="642" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">5</text>
-<text x="390" y="643" class="s" font-size="13" fill="#1f2328">tick counter +1</text>
+<text x="390" y="463" class="s" font-size="13" fill="#1f2328">run every command whose</text>
+<text x="390" y="481" class="s" font-size="13" fill="#1f2328">tick has come</text>
+<text x="390" y="499" class="s" font-size="13" fill="#1f2328">(BattleCommand), in the</text>
+<text x="390" y="517" class="s" font-size="13" fill="#1f2328">order queued</text>
+<rect x="352" y="548" width="226" height="68" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="566" r="10" fill="#d4a017"/>
+<text x="370" y="570" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">4</text>
+<text x="390" y="571" class="s" font-size="13" fill="#1f2328">mode update: LadderMatch</text>
+<text x="390" y="589" class="s" font-size="13" fill="#1f2328">lets the entity tick</text>
+<text x="390" y="607" class="s" font-size="13" fill="#1f2328">run, or only cleans up</text>
+<rect x="352" y="638" width="226" height="32" rx="6" fill="#fff8e5" stroke="#d4a017" stroke-width="1.2"/>
+<circle cx="370" cy="656" r="10" fill="#d4a017"/>
+<text x="370" y="660" class="s" font-size="12" font-weight="600" text-anchor="middle" fill="#ffffff">5</text>
+<text x="390" y="661" class="s" font-size="13" fill="#1f2328">tick counter +1</text>
 <polyline points="465,364 465,384" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <polyline points="465,418 465,438" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
-<polyline points="465,508 465,528" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
-<polyline points="465,598 465,618" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="465,526 465,546" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="465,616 465,636" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <!-- EntityHolder.tick(): the entity tick -->
 <rect x="630" y="262" width="270" height="772" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
 <text x="644" y="286" class="s" font-size="14" font-weight="600" fill="#7d4e00">EntityHolder.tick()</text>
@@ -211,9 +212,9 @@
 <text x="964" y="1157" class="m" font-size="13" font-weight="600" fill="#1f2328">combat/</text>
 <text x="964" y="1179" class="s" font-size="13.5" fill="#424a53">HitPoints, DamageApplication,</text>
 <text x="964" y="1197" class="s" font-size="13.5" fill="#424a53">LevelScaling, RarityTable</text>
-<polyline points="300,332 318,332 318,474 350,474" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
-<polyline points="352,502 326,502 326,624 302,624" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
-<polyline points="578,564 610,564 610,339 640,339" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="300,332 318,332 318,483 350,483" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="352,520 326,520 326,624 302,624" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="578,582 610,582 610,339 640,339" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <polyline points="300,956 340,956 340,956 610,956 610,328 640,328" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
 <text x="348" y="948" class="s" font-size="12" font-style="italic" fill="#57606a">units handed to the holder</text>
 <polyline points="900,412 938,412" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
