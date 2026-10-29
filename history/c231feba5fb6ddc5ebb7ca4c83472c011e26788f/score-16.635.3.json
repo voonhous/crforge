@@ -1,0 +1,15 @@
+{
+  "content_version": "16.635.3",
+  "battles": 19405,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 19403,
+    "unsupported": 2
+  },
+  "first_failures": {
+    "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2
+  },
+  "set": "2ef83639d6a9043b",
+  "commit": "c231feba5fb6ddc5ebb7ca4c83472c011e26788f"
+}
