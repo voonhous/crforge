@@ -268,6 +268,28 @@ class ScenarioWriterTest {
   }
 
   @Test
+  void eachPlayersDataListsNoEmotesBesideItsKingLevelAsTheGamesReplaysWriteIt() throws Exception {
+    // The game's replays give every player's data an emote list, here one that lists none; an
+    // entry with its king level alone is not an entry the game writes.
+    Standard1v1Battle battle = ladder(5, 9);
+    play(battle, new PlayerCommands(battle), 40, 9, new SplittableRandom(5));
+
+    ScenarioWriter writer = new ScenarioWriter(tables);
+    JsonNode entries = throughText(writer.write(writer.plan(battle, 9))).path("battle").path("hbd");
+
+    assertThat(entries).hasSize(2);
+    for (JsonNode entry : entries) {
+      assertThat(entry.path("em").toString()).isEqualTo("{\"oe\":[],\"de\":[]}");
+      if (ReplayFormat.orShared(tables.version()).kingLevelFromPlayerData()) {
+        assertThat(entry.path(ReplayFormat.KING_LEVEL_FIELD).asInt()).isEqualTo(9);
+        assertThat(entry.size()).as("the king level and the emotes alone").isEqualTo(2);
+      } else {
+        assertThat(entry.size()).as("the emotes alone").isEqualTo(1);
+      }
+    }
+  }
+
+  @Test
   void aBattleWithEvolutionSlotsIsWrittenWithItsSlotFlagsAndEachPlaysCount() throws Exception {
     int ticks = 2400;
     int[] slots0 = new int[8];
