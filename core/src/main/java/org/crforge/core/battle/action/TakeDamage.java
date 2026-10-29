@@ -28,9 +28,10 @@ import org.crforge.core.fidelity.FidelityStatus;
  * projectile whose deflection ran it on the deflector's parent, as the Firecracker's rocket's
  * action on its deflector is; a hit without a source is not scaled. A source that has left the
  * battle by the drain is no source, as the game clears its references to an object as it leaves: a
- * projectile's hit is dealt unscaled, with no percentages, through the target's protection; a hit
- * of no amount from a character or an area effect that has left deals 0, and the level scaling of
- * one with an amount is refused.
+ * projectile's hit is dealt unscaled, with no percentages, through the target's protection; so is
+ * an area effect's that has left while every hit is held, as from the tiebreaker's clearing on,
+ * where it lands nothing; a hit of no amount from a character or an area effect that has left deals
+ * 0, and the level scaling of one with an amount is otherwise refused.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -39,12 +40,15 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the source, the queue, the amount at the drain, the level scaling by a character's"
             + " or an area effect's own row and level, a hit of no amount from a source no longer"
             + " in the battle, a hit from a projectile no longer in the battle dealt as one without"
-            + " a source (held by rocket_deflect_source_left), the level scaling by a projectile's own row and level when its deflection"
-            + " runs the action, and the flags read. Supplied: no attacker's buff changes the"
-            + " amount."
-            + " Refused: a scaled damage from another kind of source, one with an amount from a"
-            + " character or an area effect no longer in the battle, and the flags and columns no"
-            + " row of the data needs.")
+            + " a source (held by rocket_deflect_source_left), a hit from an area effect the"
+            + " tiebreaker's clearing removed, dealt as one without a source while every hit is"
+            + " held, so it lands nothing (held by earthquake_hidden_source_left_tiebreak and"
+            + " earthquake_hidden_source_left_tiebreak_skipped), the level scaling by a"
+            + " projectile's own row and level when its deflection runs the action, and the flags"
+            + " read. Supplied: no attacker's buff changes the amount. Refused: a scaled damage"
+            + " from another kind of source, one with an amount from a character no longer in the"
+            + " battle or from an area effect no longer in the battle while hits are not held, and"
+            + " the flags and columns no row of the data needs.")
 public final class TakeDamage extends RowAction {
 
   /** A tower amount a damage that gives none carries. */
