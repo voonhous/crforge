@@ -437,7 +437,7 @@ Client 16.635.1's replays also hold Ladder battles played under an event (the se
 - the event is carried, its id must be `te`, and the game mode must be the Ladder row with deck selection `Collection`
 - game mode type 16 is pinned for it, the level cap stays pinned to 0, and the trail and the trail progress are carried
 
-In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned: the game raises a deck card's level to it, so a replay with a deck card below it is refused, and otherwise every card keeps its own level.
+In these replays the card level minimum (`cardlvlmin`) is read, no longer pinned: the game raises each deck card's level to it, and each side's tower selection (`sc`) too, so the princess towers' level (the selection's level index plus the support rarity's `RelativeLevel` plus 1) never stands below it; the king's level (`kt`) is not raised under the Ladder row. The battle core does not model the raise: a replay with a deck card or a tower selection below the minimum is refused, and otherwise every card and every side's towers keep their own levels.
 
 A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way under its event, with `tps` 2 pinned: its row differs from the Ladder row in the card level adjustment (`Friendly`) and in columns the battle reads nothing of (deck selection `EventDeck`, which every battle rule answers as `Collection`, and presentation and matchmaking columns). Under `Friendly` the game sets the levels itself and reads none of the replay's:
 

@@ -265,12 +265,14 @@ public final class ReplayScenario {
           + " reads it";
 
   /**
-   * How the card level minimum is read: the game raises each deck card's level to it, so a battle
-   * whose deck cards all stand at or above it plays as without it.
+   * How the card level minimum is read: the game raises each deck card's level and each side's
+   * tower selection's level (the princess towers', not the king's) to it, so a battle whose deck
+   * cards and tower selections all stand at or above it plays as without it.
    */
   static final String CARD_LEVEL_MIN_READ =
-      "consumed: the card level minimum, 0 for none; a deck card below it, which the game raises"
-          + " to it, is unsupported, so every card keeps its own level";
+      "consumed: the card level minimum, 0 for none; a deck card or a tower selection below it,"
+          + " which the game raises to it, is unsupported, so every card and every side's towers"
+          + " keep their own levels; the king is not raised";
 
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
@@ -579,7 +581,7 @@ public final class ReplayScenario {
       // established.
       pin(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD, "0");
     } else if (format.ladderEvents()) {
-      cardLevelMinimum(battle, decks, deckLevels);
+      cardLevelMinimum(battle, decks, deckLevels, towers);
     }
     mapping.put(
         "battle.deckN.sp[i].d",
@@ -1108,10 +1110,19 @@ public final class ReplayScenario {
   /**
    * The card level minimum ({@value ReplayFormat#CARD_LEVEL_MIN_FIELD}): the game raises a deck
    * card's level index to the minimum less its rarity's RelativeLevel and 1, that is its level to
-   * the minimum. A battle whose deck cards all stand at or above it plays as without it; one with a
-   * card below it is unsupported.
+   * the minimum, and a side's tower selection's level index the same way against the support
+   * rarity's RelativeLevel, that is its princess towers' level to the minimum. The king's level is
+   * not raised under the Ladder row. A battle whose deck cards and tower selections all stand at or
+   * above it plays as without it; one with a card or a tower selection below it is unsupported.
+   *
+   * @param towers the sides' towers as the replay gives them, their princess level the tower
+   *     selection's level index plus the support rarity's RelativeLevel plus 1
    */
-  private void cardLevelMinimum(JsonNode battle, List<List<String>> decks, List<int[]> deckLevels) {
+  private void cardLevelMinimum(
+      JsonNode battle,
+      List<List<String>> decks,
+      List<int[]> deckLevels,
+      List<Standard1v1Battle.Towers> towers) {
     JsonNode minimum = required(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD);
     String input = ReplayFormat.CARD_LEVEL_MIN_FIELD + "=" + minimum;
     if (!minimum.isInt() || minimum.asInt() < 0) {
@@ -1133,6 +1144,23 @@ public final class ReplayScenario {
                     + ", which the game raises to the minimum and the battle core does not",
                 input);
           }
+        }
+      }
+      for (int side = 0; side < towers.size(); side++) {
+        int level = towers.get(side).level();
+        if (level < minimum.asInt()) {
+          refuse(
+              "a card level minimum of "
+                  + minimum.asInt()
+                  + " above the level "
+                  + level
+                  + " of side "
+                  + side
+                  + "'s tower selection (battle.deck"
+                  + side
+                  + ".sc[0].l), whose princess towers the game raises to the minimum and the"
+                  + " battle core does not",
+              input);
         }
       }
     }
