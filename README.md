@@ -7,8 +7,8 @@
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment steps a vector of battles behind flat buffers a Python trainer reads without a copy ([docs/environment.md](docs/environment.md)).
 
-- **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports. CI replays all of them on each change and fails if any outcome moves; the outcome of each is listed in `conformance/reference-expectations/<version>.json` ([conformance](conformance/README.md)). The battles of the current reference client, 16.635.1, are not recorded yet ([compatibility](docs/compatibility.md))
-- **Fast**: about 104,000 steps a second on one thread on real Ladder replays, about 5,000 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
+- **Tick-exact**: held tick for tick, with no tolerance, to battles recorded in the game on every data version it supports (16.635.3, on client 16.635.1; [compatibility](docs/compatibility.md)). On 2026-10-29 all 1,088 of its reference battles and all 19,405 real battles of its coverage set match to the end. CI replays the reference battles on each change and fails if any outcome moves; the outcome of each is listed in `conformance/reference-expectations/<version>.json`, and the coverage set is scored after each merge ([conformance](conformance/README.md))
+- **Fast**: about 127,000 steps a second on one thread on real Ladder battles, about 6,300 times the game's own 20 steps a second, headless ([docs/performance.md](docs/performance.md))
 
 <p align="center">
   <img src="docs/assets/debug-visualizer.gif" alt="The replay viewer playing a Ladder replay beside the game's own replay of the same battle" width="800">
@@ -40,7 +40,7 @@ https://github.com/user-attachments/assets/83b3e12e-3aa6-45c2-ab4b-3997bd8bfcd6
 
 ## Goal
 
-crforge aims to be that simulator for AI and ML research on Clash Royale: an open, deterministic and accurate 1v1 battle engine, with evolutions, heroes and champions in scope. Accuracy is measured, not assumed: every recorded reference battle is either matched tick for tick, or its first divergence or refusal is recorded. On top of the battle core, the plan is a reinforcement learning environment and tooling to learn from recorded replays.
+crforge aims to be that simulator for AI and ML research on Clash Royale: an open, deterministic and accurate 1v1 battle engine, with evolutions, heroes and champions in scope. Accuracy is measured, not assumed: every recorded reference battle is either matched tick for tick, or its first divergence or refusal is recorded. On top of the battle core sits a reinforcement learning environment, which also labels recorded replays for learning from them ([docs/environment.md](docs/environment.md)).
 
 ## Features
 
