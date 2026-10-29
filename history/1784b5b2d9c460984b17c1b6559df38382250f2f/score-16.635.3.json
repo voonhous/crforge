@@ -1,0 +1,18 @@
+{
+  "content_version": "16.635.3",
+  "battles": 7837,
+  "to_the_end": 98.4,
+  "ticks_agreed": 99.0,
+  "outcomes": {
+    "diagnostic_match": 7718,
+    "mismatch": 116,
+    "unsupported": 3
+  },
+  "first_failures": {
+    "mismatch $.entities.length": 116,
+    "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2,
+    "unsupported: proj_# is deflected carrying copies that change its damage, not modelled": 1
+  },
+  "set": "72de65484dacb2e1",
+  "commit": "1784b5b2d9c460984b17c1b6559df38382250f2f"
+}
