@@ -127,6 +127,56 @@ public final class GameData {
         });
   }
 
+  /** The game object filter the tests' hand-written rows name; no configured table holds it. */
+  public static final String TEST_FILTER = "TestFilter";
+
+  /**
+   * Declares {@link #TEST_FILTER} in the game object filters table of a folder the configured
+   * tables were already copied into, after every configured filter: a filter of a side's own
+   * troops, which leaves out buildings, the hidden, objects without hit points, summoners and
+   * princess towers, with whatever more the edit writes into its columns. Load the folder again to
+   * read it.
+   *
+   * @param folder the folder
+   * @param edit what is written into the row's columns beyond those
+   */
+  public static void addTestFilter(Path folder, Consumer<ObjectNode> edit) throws IOException {
+    alterLoaded(
+        folder,
+        "game_object_filters",
+        rows -> {
+          int index = rows.size();
+          ObjectNode row = rows.putObject(TEST_FILTER);
+          row.put("index", index);
+          row.put("class", "LogicGameObjectFilterData");
+          ObjectNode columns = row.putObject("columns");
+          columns.put("MatchTeamOwn", true).put("MatchTypeCharacters", true);
+          columns
+              .putArray("Filters")
+              .add("Buildings")
+              .add("Hidden")
+              .add("NoHitpointComponent")
+              .add("Summoner")
+              .add("PrincessTowers");
+          edit.accept(columns);
+        });
+  }
+
+  /**
+   * The configured tables copied into a folder with the Giant Buffer's friend collector, the action
+   * its row starts with, naming {@link #TEST_FILTER} as its target filter, for a test that needs
+   * the unit whether or not the configured tables hold the filter row its collector names.
+   *
+   * @param folder the folder to copy them into
+   * @return the altered tables
+   */
+  public static GameTables giantBufferWithTestFilter(Path folder) throws IOException {
+    String collector = tables().table("characters").row("GiantBuffer").string("OnStartingAction");
+    altered(folder, "actions", rows -> fields(rows, collector).put("TargetFilter", TEST_FILTER));
+    addTestFilter(folder, columns -> {});
+    return GameTables.load(folder);
+  }
+
   /** The columns of a row in the rows of a table, to alter. */
   public static ObjectNode columns(ObjectNode rows, String row) {
     return (ObjectNode) rows.get(row).get("columns");

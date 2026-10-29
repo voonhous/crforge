@@ -9,6 +9,8 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -20,12 +22,15 @@ import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.InertAction;
 import org.crforge.core.battle.action.MegaKnightUppercut;
 import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.pathfinding.EntityFlags;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.target.TargetView;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The evolved Mega Knight's uppercut, the knock it gives, and the evolved Baby Dragon's wind where
@@ -60,12 +65,29 @@ class BattleUppercutWindTest {
   private static final GameRow WIND_AREA =
       Shipped.row("area_effect_objects", Shipped.text(WIND, "Aeo"));
 
+  /**
+   * The configured tables with the Giant Buffer's collector naming a filter of own troops the test
+   * writes, so the unit is built whether or not the tables hold the filter row its own collector
+   * names.
+   */
+  private static GameTables bufferTables;
+
+  @BeforeAll
+  static void writeTheBufferTables(@TempDir Path folder) throws IOException {
+    bufferTables = GameData.giantBufferWithTestFilter(folder);
+  }
+
   /** A battle with the towers passive, and what the uppercut, the knock and the wind did. */
   private static final class Scene {
-    final Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, false);
+    final Standard1v1Battle match;
     final List<String> log = new ArrayList<>();
 
     Scene() {
+      this(GameData.tables());
+    }
+
+    Scene(GameTables tables) {
+      match = new Standard1v1Battle(tables, LEVEL, false);
       match
           .getWorld()
           .addObserver(
@@ -145,7 +167,7 @@ class BattleUppercutWindTest {
 
     /** A unit placed on tick 0 under a name of its own. */
     CharacterEntity unit(int side, String row, int x, int y, String name) {
-      return match.deploy(0, GameData.unit(row), LEVEL, side, x, y, name);
+      return match.deploy(0, world().getRecords().unit(row), LEVEL, side, x, y, name);
     }
 
     /** Steps the battle the given number of ticks. */
@@ -423,7 +445,7 @@ class BattleUppercutWindTest {
       "a knock postpones the ability of the unit it throws: a request in the air is left pending"
           + " and cast on the visit after the knock's run has left")
   void aKnockPostponesTheAbility() {
-    Scene scene = new Scene();
+    Scene scene = new Scene(bufferTables);
     // A Giant Buffer alone: its collector finds no friend, so only this request casts.
     CharacterEntity buffer = scene.unit(0, "GiantBuffer", 3500, 9500, "gb");
     scene.step(40);
@@ -459,8 +481,8 @@ class BattleUppercutWindTest {
           + " cast fires and ends on the same steps as without the knock")
   void aKnockLeavesACastGoing() {
     // A Giant Buffer alone: its collector finds no friend, so only this request casts.
-    List<String> plain = castStates("GiantBuffer", false, 0);
-    List<String> knocked = castStates("GiantBuffer", true, 0);
+    List<String> plain = castStates(bufferTables, "GiantBuffer", false, 0);
+    List<String> knocked = castStates(bufferTables, "GiantBuffer", true, 0);
 
     assertThat(plain).as("the cast without a knock").contains("10 ground", "0 ground");
     assertThat(knocked).as("lifted while casting").contains("10 air");
@@ -473,8 +495,8 @@ class BattleUppercutWindTest {
           + " the same step as without the knock")
   void aKnockLeavesAFollowUpGoing() {
     // The Monk's deflect: a cast, then the follow-up state for the ability's state duration.
-    List<String> plain = castStates("Monk", false, -1);
-    List<String> knocked = castStates("Monk", true, -1);
+    List<String> plain = castStates(GameData.tables(), "Monk", false, -1);
+    List<String> knocked = castStates(GameData.tables(), "Monk", true, -1);
 
     assertThat(plain).as("the follow-up without a knock").contains("16 ground");
     assertThat(knocked).as("lifted in the follow-up").contains("16 air");
@@ -486,8 +508,9 @@ class BattleUppercutWindTest {
    * it has left both the cast and the follow-up, with the knock started on it, when asked, the
    * given steps after the request, or on the first step of the follow-up for a negative delay.
    */
-  private static List<String> castStates(String rowName, boolean knock, int knockAfter) {
-    Scene scene = new Scene();
+  private static List<String> castStates(
+      GameTables tables, String rowName, boolean knock, int knockAfter) {
+    Scene scene = new Scene(tables);
     CharacterEntity unit = scene.unit(0, rowName, 3500, 9500, "u");
     scene.step(40);
     unit.requestAbility();
