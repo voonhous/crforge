@@ -111,8 +111,9 @@ public final class ReplayScenario {
           "the Goblin Queen's towers, a selection the game data marks not in use");
 
   /**
-   * The only avatar exp level the adapter accepts. The exp level table is not one of the game
-   * tables, so another exp level has no production input.
+   * The only avatar exp level the adapter accepts. The exp level table is one of the game tables
+   * only from client 16.635.1 on, whose replays give each king's level in the player data, so
+   * another exp level has no production input.
    */
   private static final int EXP_LEVEL = 1;
 
@@ -158,6 +159,54 @@ public final class ReplayScenario {
   private static final Set<String> OUTSIDE_THE_MATCH =
       Set.of("Name", "CardLevelAdjustment", "FixedArena", "ValidLadderMode");
 
+  /** The game mode column of the card level adjustment. */
+  private static final String CARD_LEVEL_ADJUSTMENT = "CardLevelAdjustment";
+
+  /**
+   * The card level adjustment of a friendly battle and a challenge. Under it the game sets the
+   * levels itself and reads none of the replay's: each side's king and towers stand at {@link
+   * #friendlyLevel}, and each deck card at its rarity's {@value #TOURNAMENT_LEVEL_INDEX}.
+   */
+  static final String FRIENDLY = "Friendly";
+
+  /**
+   * The global naming the exp level whose summoner level a {@link #FRIENDLY} battle's towers take.
+   */
+  static final String TOURNAMENT_MAX_EXP_LEVEL = "TOURNAMENT_MAX_EXP_LEVEL";
+
+  /** The table of the exp levels, one row per level from the first, in order. */
+  static final String EXP_LEVELS = "exp_levels";
+
+  /** The rarity column of the level index a deck card stands at under {@link #FRIENDLY}. */
+  static final String TOURNAMENT_LEVEL_INDEX = "TournamentLevelIndex";
+
+  /** The deck selection of a mode whose players bring a deck built for the event. */
+  static final String EVENT_DECK = "EventDeck";
+
+  /**
+   * How a deck card's level is read under {@link #FRIENDLY}: the game puts every deck card at its
+   * rarity's level index for tournaments, whatever level the replay writes.
+   */
+  static final String DECK_LEVEL_UNDER_FRIENDLY =
+      "carried: under the "
+          + FRIENDLY
+          + " card level adjustment the game puts every deck card at its rarity's "
+          + TOURNAMENT_LEVEL_INDEX
+          + ", plus its RelativeLevel, plus 1, and reads none of the replay's levels";
+
+  /**
+   * How a side's king level and tower level index are read under {@link #FRIENDLY}: the game sets
+   * the king and the towers to the summoner level of the exp level {@value
+   * #TOURNAMENT_MAX_EXP_LEVEL} names.
+   */
+  static final String TOWER_LEVEL_UNDER_FRIENDLY =
+      "carried: under the "
+          + FRIENDLY
+          + " card level adjustment the game puts the king and the towers at the SummonerLevel of"
+          + " the exp level the global "
+          + TOURNAMENT_MAX_EXP_LEVEL
+          + " names, and reads none of the replay's levels";
+
   /** The game mode column that names how the players' decks are chosen. */
   static final String DECK_SELECTION = "DeckSelection";
 
@@ -168,6 +217,32 @@ public final class ReplayScenario {
   static final String COLLECTION = "Collection";
 
   /**
+   * A game mode whose battles the Ladder match plays only under an event: the battle header's
+   * {@code tps} it is established on, and the columns its row may set differently from the Ladder
+   * row beyond {@link #OUTSIDE_THE_MATCH}.
+   */
+  private record EventMode(String tps, Set<String> outsideTheMatch) {}
+
+  /**
+   * The game modes other than Ladder whose battles the Ladder match plays under an event, by row
+   * name.
+   *
+   * <p>Challenge_AllCards_EventDeck_NoSet, a challenge: its battles are written under an event with
+   * game mode type {@value ReplayFormat#EVENT_GAME_MODE_TYPE}, level cap 0 and tps 2. Its row
+   * differs from the Ladder row in the card level adjustment, {@value #FRIENDLY}, and in columns
+   * the battle reads nothing of: the deck selection, {@value #EVENT_DECK}, which every battle rule
+   * that reads the deck selection answers as it answers {@value #COLLECTION} (they tell apart only
+   * a draft, a pick and predefined decks); the icon, the text id and whether trophies are shown,
+   * which are presentation; and whether it is a challenge mode, which is matchmaking. The game
+   * reads tps only to ask whether it is 0, so 2 plays as Ladder's 1.
+   */
+  private static final Map<String, EventMode> PLAYED_UNDER_AN_EVENT =
+      Map.of(
+          "Challenge_AllCards_EventDeck_NoSet",
+          new EventMode(
+              "2", Set.of(DECK_SELECTION, "Icon", "TID", "ShowTrophies", "ValidChallengeMode")));
+
+  /**
    * How a Ladder battle's event block is read: the game reads an event's category and settings only
    * to choose the cards of a draft, which a mode whose decks are the players' own does not run.
    */
@@ -175,6 +250,8 @@ public final class ReplayScenario {
       "carried: the event the Ladder battle is played under, its id equal to te; the game reads an"
           + " event only for a draft's cards, which a mode of the "
           + COLLECTION
+          + " or "
+          + EVENT_DECK
           + " deck selection does not run";
 
   /**
@@ -297,6 +374,12 @@ public final class ReplayScenario {
    * else empty.
    */
   private final List<Integer> kingLevels = new ArrayList<>();
+
+  /**
+   * The level the scenario's kings and towers stand at under the {@value #FRIENDLY} card level
+   * adjustment ({@link #friendlyLevel()}), or 0 under any other.
+   */
+  private int friendlyLevel;
 
   /**
    * The rows of the evolutions excluded from the battle, by name, which the players' data lists in
@@ -478,7 +561,8 @@ public final class ReplayScenario {
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
-        levels.add(level(deckLevelIndex(entry), card));
+        levels.add(
+            level(friendlyLevel > 0 ? tournamentLevelIndex(card) : deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
         excludedEvolution(card, slots.get(slots.size() - 1), side);
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
@@ -490,7 +574,11 @@ public final class ReplayScenario {
       onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
       accounts.add(avatar(required(battle, "avatar" + side), side, arenas));
     }
-    if (format.ladderEvents()) {
+    if (friendlyLevel > 0) {
+      // Under the Friendly adjustment the game sets every card's level, so only no minimum is
+      // established.
+      pin(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD, "0");
+    } else if (format.ladderEvents()) {
       cardLevelMinimum(battle, decks, deckLevels);
     }
     mapping.put(
@@ -498,8 +586,10 @@ public final class ReplayScenario {
         "consumed: the card row, table id times a million plus row index; the deck's order kept");
     mapping.put(
         "battle.deckN.sp[i].l",
-        "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
-            + " level index 0, as the game reads it");
+        friendlyLevel > 0
+            ? DECK_LEVEL_UNDER_FRIENDLY
+            : "consumed: the card's level index, plus its rarity's RelativeLevel, plus 1; absent is"
+                + " level index 0, as the game reads it");
     mapping.put(
         "battle.deckN.sp[i].el",
         "consumed: the deck card's slot flags, bit 0 the deck's evolution slot and bit 1 its hero"
@@ -857,13 +947,16 @@ public final class ReplayScenario {
   }
 
   /**
-   * The game mode: a Ladder match, played under the Ladder row or under a mode of {@link
-   * #PLAYED_AS_LADDER}, whose row the tables must hold equal to the Ladder row in every column but
-   * those of {@link #OUTSIDE_THE_MATCH}.
+   * The game mode: a Ladder match, played under the Ladder row, under a mode of {@link
+   * #PLAYED_AS_LADDER}, or under an event, a mode of {@link #PLAYED_UNDER_AN_EVENT}, whose row the
+   * tables must hold equal to the Ladder row in every column but those of {@link
+   * #OUTSIDE_THE_MATCH} and the mode's own. A mode under the {@value #FRIENDLY} card level
+   * adjustment sets {@link #friendlyLevel}.
    *
    * @return the header fields pinned for the mode, by field
    */
   private Map<String, String> gameMode(JsonNode battle) {
+    friendlyLevel = 0;
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
     mapping.put(
         "battle.gamemode",
@@ -871,20 +964,55 @@ public final class ReplayScenario {
             + LadderMatch.GAME_MODE
             + " or a mode played as it: "
             + String.join(", ", PLAYED_AS_LADDER.keySet())
-            + ", each pinning gmt, lvlcap and trail to its own values");
+            + ", each pinning gmt, lvlcap and trail to its own values, or under an event "
+            + String.join(", ", PLAYED_UNDER_AN_EVENT.keySet())
+            + ", each pinning tps to its own value");
     if (mode.name().equals(LadderMatch.GAME_MODE)) {
       return LADDER_HEADER;
     }
     Map<String, String> header = PLAYED_AS_LADDER.get(mode.name());
-    if (header == null) {
+    if (header != null) {
+      sameAsLadder(mode, OUTSIDE_THE_MATCH, battle);
+      return header;
+    }
+    EventMode eventMode = PLAYED_UNDER_AN_EVENT.get(mode.name());
+    if (eventMode == null) {
       refuse("the game mode " + mode.name(), "battle.gamemode=" + battle.get("gamemode"));
       // A survey reads on with the Ladder header.
       return LADDER_HEADER;
     }
+    if (!format.ladderEvents() || !battle.has(ReplayFormat.EVENT_FIELD)) {
+      refuse(
+          "the game mode " + mode.name() + " without an event, whose header is not established",
+          "battle.gamemode=" + battle.get("gamemode"));
+    }
+    Set<String> outside = new TreeSet<>(OUTSIDE_THE_MATCH);
+    outside.addAll(eventMode.outsideTheMatch());
+    sameAsLadder(mode, outside, battle);
+    String adjustment = mode.string(CARD_LEVEL_ADJUSTMENT);
+    if (!FRIENDLY.equals(adjustment)) {
+      refuse(
+          "the game mode "
+              + mode.name()
+              + " under the card level adjustment "
+              + adjustment
+              + ", whose levels under an event are not established",
+          "battle.gamemode=" + battle.get("gamemode"));
+    } else {
+      friendlyLevel = friendlyLevel();
+    }
+    return LADDER_HEADER;
+  }
+
+  /**
+   * Refuses a game mode whose row differs from the Ladder row in a column not among {@code
+   * outside}, naming each such column.
+   */
+  private void sameAsLadder(GameRow mode, Set<String> outside, JsonNode battle) {
     GameRow ladder = tables.table(GAME_MODES).row(LadderMatch.GAME_MODE);
     Set<String> columns = new TreeSet<>(ladder.columns().keySet());
     columns.addAll(mode.columns().keySet());
-    columns.removeAll(OUTSIDE_THE_MATCH);
+    columns.removeAll(outside);
     for (String column : columns) {
       if (!Objects.equals(ladder.value(column), mode.value(column))) {
         refuse(
@@ -898,7 +1026,23 @@ public final class ReplayScenario {
             "battle.gamemode=" + battle.get("gamemode"));
       }
     }
-    return header;
+  }
+
+  /**
+   * The level a {@value #FRIENDLY} battle's kings and towers stand at: the SummonerLevel of the exp
+   * level the global {@value #TOURNAMENT_MAX_EXP_LEVEL} names, the game's exp level of that number,
+   * its row at index the number less 1.
+   */
+  private int friendlyLevel() {
+    int expLevel = records.globalNumber(TOURNAMENT_MAX_EXP_LEVEL);
+    for (GameRow row : tables.table(EXP_LEVELS).rows()) {
+      if (row.index() == expLevel - 1) {
+        return row.intValue("SummonerLevel");
+      }
+    }
+    throw new UnsupportedScenarioException(
+        "the exp level " + expLevel + " the global " + TOURNAMENT_MAX_EXP_LEVEL + " names",
+        "tables." + EXP_LEVELS);
   }
 
   /**
@@ -923,19 +1067,24 @@ public final class ReplayScenario {
    * what it gives type 1: the towers' levels (the type sets them by the level cap, and a cap of 0
    * leaves them), and the mode's switches, with one player a side and the header's tps at 1. The
    * event itself is read only for a draft's cards; a mode whose players bring their own decks
-   * ({@value #COLLECTION}) runs no draft. Any other mode under an event is unsupported.
+   * ({@value #COLLECTION}) or a deck built for the event ({@value #EVENT_DECK}) runs no draft.
+   *
+   * <p>A mode of {@link #PLAYED_UNDER_AN_EVENT} is read the same way, with its own tps; under its
+   * {@value #FRIENDLY} card level adjustment the game type sets no tower level either, the cap
+   * being 0. Any other mode under an event is unsupported.
    *
    * @return the header fields pinned for the battle, by field
    */
   private Map<String, String> eventHeader(JsonNode battle, JsonNode event) {
     GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
-    if (!mode.name().equals(LadderMatch.GAME_MODE)) {
+    EventMode eventMode = PLAYED_UNDER_AN_EVENT.get(mode.name());
+    if (!mode.name().equals(LadderMatch.GAME_MODE) && eventMode == null) {
       refuse(
           "the game mode " + mode.name() + " under an event, whose header there is not established",
           "battle.gamemode=" + battle.get("gamemode"));
     }
     String deckSelection = mode.string(DECK_SELECTION);
-    if (!COLLECTION.equals(deckSelection)) {
+    if (!COLLECTION.equals(deckSelection) && !EVENT_DECK.equals(deckSelection)) {
       refuse(
           "an event on a game mode whose deck selection is "
               + deckSelection
@@ -950,6 +1099,9 @@ public final class ReplayScenario {
     Map<String, String> header = new LinkedHashMap<>(LADDER_HEADER);
     header.put("gmt", ReplayFormat.EVENT_GAME_MODE_TYPE);
     header.put("te", id == null ? "an event id" : id.toString());
+    if (eventMode != null) {
+      header.put("tps", eventMode.tps());
+    }
     return header;
   }
 
@@ -1071,6 +1223,13 @@ public final class ReplayScenario {
     // The king row stands at the avatar's level, or where the format gives one, at the side's own
     // king level from its player data.
     int kingLevel = kingLevels.isEmpty() ? KING_LEVEL : kingLevels.get(side);
+    if (friendlyLevel > 0) {
+      // Under the Friendly adjustment the game puts the king and the towers at one level of its
+      // own, whatever the replay's.
+      mapping.put("battle.deckN.sc[0].l", TOWER_LEVEL_UNDER_FRIENDLY);
+      mapping.put("battle.hbd[i]." + ReplayFormat.KING_LEVEL_FIELD, TOWER_LEVEL_UNDER_FRIENDLY);
+      return new Standard1v1Battle.Towers(card.string("SpawnGroup"), friendlyLevel, friendlyLevel);
+    }
     return new Standard1v1Battle.Towers(
         card.string("SpawnGroup"), kingLevel, levelIndex + rarity.intValue("RelativeLevel") + 1);
   }
@@ -1638,6 +1797,11 @@ public final class ReplayScenario {
         "a player's arena that is no row of the " + ScenarioWriter.ARENAS + " table",
         field + "=" + id);
     return null;
+  }
+
+  /** A card's level index under the {@value #FRIENDLY} adjustment: its rarity's tournament one. */
+  private int tournamentLevelIndex(GameRow card) {
+    return tables.table("rarities").row(card.string("Rarity")).intValue(TOURNAMENT_LEVEL_INDEX);
   }
 
   /** A card's level counted from 1 across all rarities, from its own level index. */

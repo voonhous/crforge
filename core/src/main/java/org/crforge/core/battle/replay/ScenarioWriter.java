@@ -367,6 +367,11 @@ public final class ScenarioWriter {
       battle.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, 0);
     }
     pins(battle, format.battlePins());
+    if (format.battleCarried().containsKey(ReplayFormat.SEB_FIELD)) {
+      // A Ladder battle's value, written where the formats that pin it write it, last of the pinned
+      // fields.
+      battle.put(ReplayFormat.SEB_FIELD, false);
+    }
     for (int side = 0; side < 2; side++) {
       battle.set("deck" + side, deck(plan, side, format));
       ObjectNode avatar = battle.putObject("avatar" + side);

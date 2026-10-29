@@ -1792,6 +1792,16 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   So a level cap other than 0 for Ladder and 16 for Path of Legends, and any other game mode type or trail, stays unsupported.
 
+- A challenge, game mode Challenge_AllCards_EventDeck_NoSet, is played as a Ladder match under its event (client 16.635.1). Its game mode row differs from the Ladder row in the card level adjustment (Friendly) and in columns the battle reads nothing of, which the replay mapping checks the tables still say:
+
+  - the deck selection, EventDeck: every battle rule that reads the deck selection tells apart only a draft, a pick and predefined decks, so it answers EventDeck as it answers Collection, and the event the battle is played under is read only by a draft
+  - the icon, the text id and whether trophies are shown, presentation
+  - whether it is a challenge mode, matchmaking
+
+  Its replays write game mode type 16, level cap 0, tps 2 and the event's trail and id, and `seb` true. The game reads tps only to ask whether it is 0, and `seb` only to write the header out again.
+
+  Under the Friendly card level adjustment the game sets every level itself, whatever levels the replay writes. Each side's king and towers, princesses or a tower card alike, stand at the SummonerLevel of the exp level the global TOURNAMENT_MAX_EXP_LEVEL names, and each deck card at its rarity's TournamentLevelIndex (plus its RelativeLevel, plus 1). In the recordings, changing the replay's king levels, tower selection levels or deck card levels leaves the battle unchanged, and the same battle under the Ladder row puts the kings back at their own levels. A card level minimum other than 0 stays unsupported, as does a challenge without an event or under another card level adjustment.
+
 - A unit takes its row's TargetOnlyTroops into the validator, which passes over a building, and its IgnoreTargetsWithBuff and DeprioritizeTargetsWithBuff into the validator and the selector's priority.
 
   The one buff a row names there - the Ram Rider's BolaSnare - is one the rider ranks lower rather than passes over. Its priority asks each candidate's buff list for an instance of that row, and prefers a troop without one. Every hit such a row lands drops its reference, so the rider ranks the candidates again on its next targeting visit and turns from the Knight it just snared to one that is not.
