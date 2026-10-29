@@ -4,19 +4,17 @@
   "to_the_end": 98.4,
   "ticks_agreed": 98.9,
   "outcomes": {
-    "diagnostic_match": 7716,
-    "mismatch": 95,
-    "unsupported": 26
+    "diagnostic_match": 7718,
+    "mismatch": 94,
+    "unsupported": 25
   },
   "first_failures": {
     "mismatch $.entities.length": 94,
     "unsupported: giantbuffer_enchanting_buff walks back from an object whose maker has left, which is not modelled": 12,
     "unsupported: giantbuffer_enchanting_buff on LittlePrince, whose attack sequence replaces its attack with an entry that launches a projectile or runs an action, which is not modelled": 10,
     "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2,
-    "mismatch $.entities[].x": 1,
-    "unsupported: a damage-taking action's hit of an amount scaled by the level of a source no longer in the battle is not modelled": 1,
     "unsupported: giantbuffer_enchanting_buff on ThreeMusketeer_Rework_Character_2, whose attack sequence replaces its attack with an entry that launches a projectile or runs an action, which is not modelled": 1
   },
   "set": "72de65484dacb2e1",
-  "commit": "eeb2c4d733eb4cb6205a691cb8bd9a220b8a1bcd"
+  "commit": "0db0f49c637aaa9920a8f634bebb7b073113e2c5"
 }
