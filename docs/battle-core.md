@@ -2242,7 +2242,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The locks are made by its first step. The post-pass after the phase-3 pending pass grants each target to its highest priority, the first of equals keeping it. The pre-pass drops a lock whose target or holder is no longer listed alive, then acts on the queued releases. A collector that unbuffs a friend beyond a distance is refused.
 
-  Its projectile's impact schedules the on-hit action on the friend, the projectile as the cause. The enchanting buff it starts walks back from the projectile to the collector for its level and rarity, and listens to its unit's hits:
+  Its projectile's impact schedules the on-hit action on the friend, the projectile as the cause. The enchanting buff it starts walks back from the projectile to the collector for its level and rarity; when the collector has left before the projectile lands, the walk stops at the projectile, which is then the giver, so the buff ends its finish time after the projectile leaves. It listens to its unit's hits:
 
   - the damage of the hit that completes its count
   - the end of each landed single-target attack, which counts it and at the count runs its action
