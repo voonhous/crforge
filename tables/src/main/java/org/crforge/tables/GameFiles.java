@@ -24,8 +24,10 @@ import org.tukaani.xz.LZMAInputStream;
 /**
  * The data files of one content set, decoded to text: every file its fingerprint lists under {@code
  * csv_logic/} and {@code csv_client/}, and {@code data_manifest.toml}, the files the client's table
- * loaders read; and, when the client's schema names the asset database, the data assets its
- * chaos-config step loads from it ({@link AssetDatabase}).
+ * loaders read; the tile maps under {@code tilemaps/}, which the locations table names by path
+ * ({@code TileDataFileName}) and the table build writes beside the tables; and, when the client's
+ * schema names the asset database, the data assets its chaos-config step loads from it ({@link
+ * AssetDatabase}).
  *
  * <p>A file as served is 5 bytes of LZMA properties, the 4-byte little-endian size of the decoded
  * text, then an LZMA1 stream without an end marker. The decoded text must have exactly the declared
@@ -44,15 +46,18 @@ record GameFiles(
     Map<String, String> texts,
     List<AssetDatabase.DataAsset> chaosAssets) {
 
+  /** The folder of the tile maps, which the locations name by path. */
+  static final String TILE_MAPS = "tilemaps/";
+
   /** The folders whose files are read, at every depth. */
-  static final String[] FOLDERS = {"csv_logic/", "csv_client/"};
+  static final String[] FOLDERS = {"csv_logic/", "csv_client/", TILE_MAPS};
 
   /** The manifest of the per-unit files. */
   static final String MANIFEST = "data_manifest.toml";
 
   private static final int HEADER = 9;
 
-  /** Whether the table loaders read a file of this path. */
+  /** Whether the table loaders, or the table build for a tile map, read a file of this path. */
   static boolean read(String path) {
     for (String folder : FOLDERS) {
       if (path.startsWith(folder)) {
@@ -116,6 +121,18 @@ record GameFiles(
   /** A decoded text of the set, or null when the set has no file of that path. */
   String text(String path) {
     return texts.get(path);
+  }
+
+  /** The decoded text of every tile map of the set, by path, sorted by path. */
+  Map<String, String> tileMaps() {
+    Map<String, String> out = new TreeMap<>();
+    texts.forEach(
+        (path, text) -> {
+          if (path.startsWith(TILE_MAPS)) {
+            out.put(path, text);
+          }
+        });
+    return out;
   }
 
   /**

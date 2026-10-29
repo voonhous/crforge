@@ -26,6 +26,7 @@ import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.BattleMode;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.deploy.CardPlacement;
 import org.crforge.core.battle.deploy.DeployCard;
@@ -117,6 +118,25 @@ public class Standard1v1Battle {
   private static final String SPAWN_GROUP_OBJECTS = "Objects";
 
   /**
+   * The column of a spawn group that mirrors its objects for the top side, true when the row leaves
+   * it out (the game's default). The top side's towers are placed mirrored along the arena's
+   * length; a row that turns it off is refused, as no row does.
+   */
+  private static final String SPAWN_GROUP_MIRROR_Y = "MirrorY";
+
+  /** The fields of a spawn group's object, each read: its row's name and its routing cell. */
+  private static final List<String> SPAWN_OBJECT_FIELDS = List.of("Data", "x", "y");
+
+  /**
+   * One object of a spawn group, as the battle places it.
+   *
+   * @param data the row's name, a character or building
+   * @param x the column of its routing cell
+   * @param y the row of its routing cell, on the bottom side
+   */
+  private record SpawnObject(String data, int x, int y) {}
+
+  /**
    * One side's towers: the spawn group they are placed from, with the level of its king row and the
    * level of its other rows, the princess slots.
    *
@@ -193,14 +213,13 @@ public class Standard1v1Battle {
     this.battle = new Battle(world.getHolder(), BattleMode.ENDLESS);
     for (int side : new int[] {WorldEntity.SIDE_BOTTOM, WorldEntity.SIDE_TOP}) {
       Towers towers = sides.get(side);
-      JsonNode objects =
-          tables.table(SPAWN_GROUPS).row(towers.spawnGroup()).value(SPAWN_GROUP_OBJECTS);
+      List<SpawnObject> objects = spawnObjects(tables.table(SPAWN_GROUPS).row(towers.spawnGroup()));
       for (int i = 0; i < objects.size(); i++) {
-        JsonNode object = objects.get(i);
+        SpawnObject object = objects.get(i);
         // Each tower is the game's own row: the king tower and the princess slots' row.
-        UnitData data = world.getRecords().unit(object.path("Data").asText());
-        int x = object.path("x").asInt() * TileMap.CELL_UNITS;
-        int row = object.path("y").asInt();
+        UnitData data = world.getRecords().unit(object.data());
+        int x = object.x() * TileMap.CELL_UNITS;
+        int row = object.y();
         // The top side is the bottom side mirrored along the arena's length.
         int y = (side == WorldEntity.SIDE_TOP ? tileMap.height() - row : row) * TileMap.CELL_UNITS;
         int level = data.king() ? towers.kingLevel() : towers.level();
@@ -214,6 +233,63 @@ public class Standard1v1Battle {
     }
     // The setup places the towers straight into the live list, so they stand from the first tick.
     battle.getHolder().cleanup();
+  }
+
+  /**
+   * A spawn group's objects, in order. A group that turns MirrorY off is refused, and so is an
+   * object that leaves out its row or a coordinate of its cell, or sets a field besides them: read
+   * as an empty row or a cell at 0, it would place a tower the game does not.
+   *
+   * @param group the spawn group's row
+   * @throws UnsupportedOperationException for a group or an object the battle does not read
+   */
+  private static List<SpawnObject> spawnObjects(GameRow group) {
+    if (group.has(SPAWN_GROUP_MIRROR_Y) && !group.bool(SPAWN_GROUP_MIRROR_Y)) {
+      throw new UnsupportedOperationException(
+          "the spawn group "
+              + group.name()
+              + " turns "
+              + SPAWN_GROUP_MIRROR_Y
+              + " off, which is not modelled: the top side's objects are placed mirrored");
+    }
+    JsonNode objects = group.value(SPAWN_GROUP_OBJECTS);
+    if (objects == null || !objects.isArray() || objects.isEmpty()) {
+      throw new UnsupportedOperationException(
+          "the spawn group " + group.name() + " lists no " + SPAWN_GROUP_OBJECTS);
+    }
+    List<SpawnObject> out = new ArrayList<>();
+    for (JsonNode element : objects) {
+      JsonNode object = group.tableElement(SPAWN_GROUP_OBJECTS, element);
+      for (String field : SPAWN_OBJECT_FIELDS) {
+        if (!object.hasNonNull(field)) {
+          throw new UnsupportedOperationException(
+              "the spawn group "
+                  + group.name()
+                  + " lists an object without "
+                  + field
+                  + ", which the battle reads");
+        }
+      }
+      object
+          .fieldNames()
+          .forEachRemaining(
+              field -> {
+                if (!SPAWN_OBJECT_FIELDS.contains(field)) {
+                  throw new UnsupportedOperationException(
+                      "the spawn group "
+                          + group.name()
+                          + " lists an object that sets "
+                          + field
+                          + ", which is not modelled");
+                }
+              });
+      out.add(
+          new SpawnObject(
+              group.textField(SPAWN_GROUP_OBJECTS, object, "Data"),
+              group.intField(SPAWN_GROUP_OBJECTS, object, "x", 0),
+              group.intField(SPAWN_GROUP_OBJECTS, object, "y", 0)));
+    }
+    return out;
   }
 
   /** Whether the symmetrical snap of a placement applies: on in the standard game. */

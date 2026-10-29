@@ -330,4 +330,33 @@ class BattleAbilityTest {
         .hasMessage(
             "Monk casts Deflect, which sets columns the battle does not model: [MorphTarget]");
   }
+
+  @Test
+  @DisplayName(
+      "a request for an ability whose row sets a column the battle neither reads nor classifies is"
+          + " refused, naming the column")
+  void anAbilityWithAnUnreadColumnIsRefused(@TempDir Path folder) throws IOException {
+    // The Monk's ability given a column of the game's ability loader that no shipped ability
+    // sets and the battle does not read.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "character_abilities",
+            rows -> GameData.columns(rows, "Deflect").put("DashTargetFurthest", true));
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    CharacterEntity monk =
+        match.deploy(
+            0,
+            new BattleRecords(tables).unit("Monk"),
+            Standard1v1Battle.DEFAULT_LEVEL,
+            0,
+            3500,
+            9500);
+
+    assertThatThrownBy(monk::requestAbility)
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessage(
+            "Monk casts Deflect, which sets columns the battle does not model:"
+                + " [DashTargetFurthest]");
+  }
 }

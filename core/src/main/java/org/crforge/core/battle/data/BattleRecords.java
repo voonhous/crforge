@@ -685,6 +685,50 @@ public final class BattleRecords {
   /** The columns of an area effect's row whose role is not yet established: none now. */
   private static final Set<String> PENDING_AREA_EFFECT_COLUMNS = Set.of();
 
+  /**
+   * The columns of an ability's row that only show something: its button, icons, texts, stats and
+   * effects, classified by what they name.
+   */
+  private static final Set<String> PRESENTATION_ABILITY_COLUMNS =
+      Set.of(
+          // The texts, icons and stats the card's info and the ability button show.
+          "TID",
+          "TID_INFO",
+          "IconExportName",
+          "IconSWF",
+          "PopoverIconExportName",
+          "PopoverIconFileName",
+          "OutOfChargesTID",
+          "Stats",
+          "StatsTags",
+          // How the ability button shows its charges.
+          "HideChargesTextField",
+          "KeepIconEvenWhenOutOfCharges",
+          // Read only by the client's ability button: with the button's own flag set, it draws the
+          // casting state instead of the state it worked out. No battle logic reads it.
+          "CanBePreCasted",
+          // The effects shown as the ability is cast, and where the effect is drawn.
+          "DeployedClip",
+          "DeployedEffect",
+          "DeployedEffectAbsolutePositionToParent",
+          // The effect shown as a soul is gained, and the health bar the souls are shown in.
+          "ResurrectGainChargeEffect",
+          "ResurrectHealthBar",
+          // The look of a soul on that bar: the name the resurrect bar's client action gives as its
+          // charge filter, which names no row of the game's tables. The deaths that give a soul
+          // are chosen by the game object filter of the action that listens for them, read with
+          // that action.
+          "ResurrectChargeFilter");
+
+  /**
+   * The columns of an ability's row the record shows no battle logic reads: its name, and a death
+   * action, which the game's ability loader has no column for, so it stores nothing.
+   */
+  private static final Set<String> INERT_ABILITY_COLUMNS = Set.of("Name", "OnDeathAction");
+
+  /** The columns of an ability's row whose role is not yet established: none now. */
+  private static final Set<String> PENDING_ABILITY_COLUMNS = Set.of();
+
   private final GameTables tables;
 
   /**
@@ -2406,52 +2450,66 @@ public final class BattleRecords {
     checkArgument(
         abilities.has(name),
         () -> row.name() + " names the ability " + name + ", which the game tables lack");
-    GameRow ability = abilities.row(name);
-    return AbilityData.builder()
-        .name(name)
-        .castTimeMs(ability.intValue("CastTime"))
-        .triggerDelayMs(ability.intValue("TriggerDelay"))
-        .keepCurrentTarget(ability.bool("KeepCurrentTarget"))
-        .champion(!ability.has("IsChampion") || ability.bool("IsChampion"))
-        .onActivationAction(inlineActionName(ability, "OnActivationAction"))
-        .buff(set(ability, "Buff") ? ability.string("Buff") : null)
-        .buffTimeMs(ability.intValue("BuffTime"))
-        .manaCost(ability.intValue("ManaCost"))
-        // A row whose RefundWindow is not positive takes its trigger delay instead, as the game's
-        // ability loader sets it once the row is read.
-        .refundWindowMs(
-            ability.intValue("RefundWindow") > 0
-                ? ability.intValue("RefundWindow")
-                : ability.intValue("TriggerDelay"))
-        // A newer row's RefundUntilDelivered (false when the row leaves it out, as every row of
-        // the older tables does): the cost rides on the unit until the ability is delivered.
-        .refundUntilDelivered(ability.bool("RefundUntilDelivered"))
-        .cooldownMs(ability.intValue("Cooldown"))
-        .maxCharges(ability.intValue("MaxCharges"))
-        .dashRange(ability.intValue("DashRange"))
-        .pendingBuff(set(ability, "PendingBuff") ? ability.string("PendingBuff") : null)
-        .switchLanes(ability.bool("SwitchLanes"))
-        .activationSpawnCharacter(
-            set(ability, "ActivationSpawnCharacter")
-                ? ability.string("ActivationSpawnCharacter")
-                : null)
-        .areaEffectObject(
-            set(ability, "AreaEffectObject") ? ability.string("AreaEffectObject") : null)
-        .abilityStateDurationMs(ability.intValue("AbilityStateDuration"))
-        .gameTagsWhileAbilityActive(tagBits(ability.string("GameTagsWhileAbilityActive")))
-        .resurrectBaseCount(ability.intValue("ResurrectBaseCount"))
-        .resurrectEnemies(ability.bool("ResurrectEnemies"))
-        .resurrectOwnTroops(ability.bool("ResurrectOwnTroops"))
-        .spawnLimit(ability.intValue("SpawnLimit"))
-        // A row with ResurrectChargesExpression sizes the area effect by it, its souls drained by
-        // actions into a variable, and counts no death on the unit; one without counts the deaths.
-        .soulsFromDeaths(!ability.has("ResurrectChargesExpression"))
-        .resurrectChargesExpression(
-            set(ability, "ResurrectChargesExpression")
-                ? ability.string("ResurrectChargesExpression")
-                : null)
-        .spawnCountResetAction(inlineActionName(ability, "SpawnCountResetAction"))
-        .unmodelledColumns(unmodelledAbilityColumns(ability))
+    GameRow ability = abilities.row(name).tracking();
+    AbilityData data =
+        AbilityData.builder()
+            .name(name)
+            .castTimeMs(ability.intValue("CastTime"))
+            .triggerDelayMs(ability.intValue("TriggerDelay"))
+            .keepCurrentTarget(ability.bool("KeepCurrentTarget"))
+            .champion(!ability.has("IsChampion") || ability.bool("IsChampion"))
+            .onActivationAction(inlineActionName(ability, "OnActivationAction"))
+            .buff(set(ability, "Buff") ? ability.string("Buff") : null)
+            .buffTimeMs(ability.intValue("BuffTime"))
+            .manaCost(ability.intValue("ManaCost"))
+            // A row whose RefundWindow is not positive takes its trigger delay instead, as the
+            // game's
+            // ability loader sets it once the row is read.
+            .refundWindowMs(
+                ability.intValue("RefundWindow") > 0
+                    ? ability.intValue("RefundWindow")
+                    : ability.intValue("TriggerDelay"))
+            // A newer row's RefundUntilDelivered (false when the row leaves it out, as every row of
+            // the older tables does): the cost rides on the unit until the ability is delivered.
+            .refundUntilDelivered(ability.bool("RefundUntilDelivered"))
+            .cooldownMs(ability.intValue("Cooldown"))
+            .maxCharges(ability.intValue("MaxCharges"))
+            .dashRange(ability.intValue("DashRange"))
+            .pendingBuff(set(ability, "PendingBuff") ? ability.string("PendingBuff") : null)
+            .switchLanes(ability.bool("SwitchLanes"))
+            .activationSpawnCharacter(
+                set(ability, "ActivationSpawnCharacter")
+                    ? ability.string("ActivationSpawnCharacter")
+                    : null)
+            .areaEffectObject(
+                set(ability, "AreaEffectObject") ? ability.string("AreaEffectObject") : null)
+            .abilityStateDurationMs(ability.intValue("AbilityStateDuration"))
+            .gameTagsWhileAbilityActive(tagBits(ability.string("GameTagsWhileAbilityActive")))
+            .resurrectBaseCount(ability.intValue("ResurrectBaseCount"))
+            .resurrectEnemies(ability.bool("ResurrectEnemies"))
+            .resurrectOwnTroops(ability.bool("ResurrectOwnTroops"))
+            .spawnLimit(ability.intValue("SpawnLimit"))
+            // A row with ResurrectChargesExpression sizes the area effect by it, its souls drained
+            // by
+            // actions into a variable, and counts no death on the unit; one without counts the
+            // deaths.
+            .soulsFromDeaths(!ability.has("ResurrectChargesExpression"))
+            .resurrectChargesExpression(
+                set(ability, "ResurrectChargesExpression")
+                    ? ability.string("ResurrectChargesExpression")
+                    : null)
+            .spawnCountResetAction(inlineActionName(ability, "SpawnCountResetAction"))
+            .unmodelledColumns(unmodelledAbilityColumns(ability))
+            .build();
+    // Any other column the row sets is refused too, as a unit's, a buff's and a filter's are.
+    return data.toBuilder()
+        .unmodelledColumns(
+            withUnread(
+                data.unmodelledColumns(),
+                ability,
+                PRESENTATION_ABILITY_COLUMNS,
+                INERT_ABILITY_COLUMNS,
+                PENDING_ABILITY_COLUMNS))
         .build();
   }
 
@@ -3273,17 +3331,6 @@ public final class BattleRecords {
     GameTable globals = tables.table(GLOBALS);
     checkArgument(globals.has(name), () -> "the game tables have no global " + name);
     return globals.row(name).bool("BooleanValue");
-  }
-
-  /**
-   * A published global's flag, clear when the tables do not publish the global: for a global that
-   * only a later game client reads, which the data versions of an earlier client have no row for.
-   *
-   * @param name the global's name
-   */
-  public boolean publishedGlobalBoolean(String name) {
-    GameTable globals = tables.table(GLOBALS);
-    return globals.has(name) && globals.row(name).bool("BooleanValue");
   }
 
   /**

@@ -7,6 +7,7 @@
 package org.crforge.core.pathfinding;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
 import org.junit.jupiter.api.DisplayName;
@@ -73,27 +75,50 @@ class EntityFlagsTest {
     assertThat(bits.warp()).isEqualTo(tagBit("WARP"));
     assertThat(bits.noClone()).isEqualTo(tagBit("NO_CLONE"));
     assertThat(bits.noMoveAllowAttract()).isEqualTo(tagBit("NO_MOVE_ALLOW_ATTRACT"));
-    // A tag the tables leave out has no bit: 16.402.18 holds no NO_REFLECTED_ATTACK row.
-    assertThat(bits.noReflectedAttack()).isEqualTo(tagBit("NO_REFLECTED_ATTACK"));
     assertThat(bits.keepsTargetingOff()).isEqualTo(tagBit("INACTIVE") | tagBit("ACTIVATING"));
   }
 
   @Test
   @DisplayName(
-      "a table that drops a tag moves every later flag down one bit, the dropped one has none")
+      "a table that drops a tag no flag names moves every later flag down one bit and keeps the"
+          + " earlier ones")
   void aDroppedTagMovesTheLaterBits() throws IOException {
+    // The first tag of the table that no flag names, with a named tag before and after it.
+    GameTable tags = GameData.tables().table("game_tags");
+    String dropped = null;
+    for (GameRow row : tags.rows()) {
+      if (!EntityFlags.TAGS.contains(row.name())
+          && row.index() > tags.row("DASHING").index()
+          && row.index() < tags.row("UNTARGETABLE").index()) {
+        dropped = row.name();
+        break;
+      }
+    }
+    assertThat(dropped).as("an unnamed tag between two named ones").isNotNull();
     EntityFlags configured = EntityFlags.of(GameData.tables());
-    EntityFlags shifted = EntityFlags.of(withoutTag(folder, "HAS_CAPTURE"));
-    assertThat(shifted.hasCapture()).isZero();
-    assertThat(shifted.noSpecialAttack())
-        .as("before the dropped row")
-        .isEqualTo(configured.noSpecialAttack());
-    assertThat(shifted.noMove()).isEqualTo(configured.noMove());
-    assertThat(shifted.forceIsGround()).isEqualTo(configured.forceIsGround() >>> 1);
-    assertThat(shifted.noDamage()).isEqualTo(bitWithout("NO_DAMAGE", "HAS_CAPTURE"));
-    assertThat(shifted.untargetable()).isEqualTo(bitWithout("UNTARGETABLE", "HAS_CAPTURE"));
-    assertThat(shifted.noMoveAllowAttract())
-        .isEqualTo(bitWithout("NO_MOVE_ALLOW_ATTRACT", "HAS_CAPTURE"));
+    EntityFlags shifted = EntityFlags.of(withoutTag(folder, dropped));
+    assertThat(shifted.dashing()).as("before the dropped row").isEqualTo(configured.dashing());
+    assertThat(shifted.untargetable()).isEqualTo(bitWithout("UNTARGETABLE", dropped));
+    GameTable shiftedTags = withoutTag(folder.resolve("again"), dropped).table("game_tags");
+    for (String tag : EntityFlags.TAGS) {
+      assertThat(EntityFlags.bit(shiftedTags, tag)).as(tag).isEqualTo(bitWithout(tag, dropped));
+    }
+  }
+
+  @Test
+  @DisplayName("a table that drops a tag a flag names is refused, naming the tag")
+  void aDroppedNamedTagIsRefused() throws IOException {
+    GameTables tables = withoutTag(folder, "HAS_CAPTURE");
+    assertThatThrownBy(() -> EntityFlags.of(tables))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("HAS_CAPTURE");
+  }
+
+  @Test
+  @DisplayName("every tag a flag names is a row of the configured game tags table")
+  void everyNamedTagIsListed() {
+    GameTable tags = GameData.tables().table("game_tags");
+    assertThat(EntityFlags.TAGS).allMatch(tags::has);
   }
 
   @Test
@@ -123,6 +148,7 @@ class EntityFlagsTest {
 
   /** The configured tables copied into a folder, one game tag dropped and the later ones moved. */
   private static GameTables withoutTag(Path folder, String tag) throws IOException {
+    Files.createDirectories(folder);
     Path source = GameTables.configuredDirectory().orElseThrow();
     try (Stream<Path> files = Files.list(source)) {
       for (Path file : files.toList()) {

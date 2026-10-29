@@ -6,6 +6,9 @@
 
 package org.crforge.core.pathfinding;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
+import java.util.List;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.fidelity.Fidelity;
@@ -19,8 +22,9 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Every flag here is a game tag, and a game tag's bit is its row's index in the game tags table:
  * the same bit an action, a buff, a filter or a character row sets when it names the tag. So the
  * bits are read from the loaded table by name, never fixed. A table that drops a tag ahead of
- * others moves every later tag down one bit, and the code that tests a tag follows. A tag the table
- * does not list has no bit (0): no row can set it and no test of it passes.
+ * others moves every later tag down one bit, and the code that tests a tag follows. A table that
+ * does not list a tag named here is refused, naming it: read as no bit, every test of it would fail
+ * silently where the game tests a tag it holds.
  *
  * <p>The word is 64 bits wide, so every bit is a {@code long}. Each bit is defined exactly once, in
  * this class: the passes that read a bit share the definition rather than repeating it, so a bit
@@ -39,6 +43,54 @@ public final class EntityFlags {
    * engine's grid adapter, which never sets a flag word, and for fixtures that set none.
    */
   public static final EntityFlags NONE = new EntityFlags(null);
+
+  /**
+   * Every game tag a flag here names, in the order the flags are defined: the tags the battle reads
+   * by name, each of which the loaded table must list.
+   */
+  public static final List<String> TAGS =
+      List.of(
+          "DASHING",
+          "CHARGING",
+          "ATTACKING",
+          "NO_MOVE",
+          "NO_DASH",
+          "NO_ATTACK",
+          "LOCK_TARGET",
+          "NO_SPAWNTIMER",
+          "NO_CHECKCOLLISIONS",
+          "NO_CHECKAVOIDANCE",
+          "NO_BUFFS",
+          "NO_PUSHED_BY_ENEMY",
+          "INACTIVE",
+          "ACTIVATING",
+          "HAS_SHIELD",
+          "HIDDEN",
+          "ABILITY_DISABLED",
+          "BUILDING_DEATH_SPAWN_FIND_LOCATION",
+          "ABILITY_POSTPONED",
+          "NO_SUMMON",
+          "NO_SPECIAL_ATTACK",
+          "HAS_CAPTURE",
+          "COMBAT_DISABLED",
+          "FORCE_IS_GROUND",
+          "NO_PUSHBACK",
+          "NO_DAMAGE",
+          "NO_GIANTBUFFER_CHEF_ENCHANTMENT",
+          "FORCE_IS_AIR",
+          "CAPTURED",
+          "DISABLE_PHYSICAL_INTERACTIONS_WITH_OBJECTS",
+          "CASTING_ABILITY",
+          "ABILITY_CASTED",
+          "UNTARGETABLE",
+          "NO_PUSHED_BY_ALLY",
+          "AVOIDANCE_AS_OBSTACLE",
+          "ABILITY_COOLDOWN_PAUSED",
+          "WARP",
+          "NO_CLONE",
+          "NO_MOVE_ALLOW_ATTRACT",
+          "IGNORE_RANGE_EXTENSION_TO_KEEP_TARGET",
+          "UNKILLABLE");
 
   private final long dashing;
   private final long charging;
@@ -63,7 +115,6 @@ public final class EntityFlags {
   private final long noSpecialAttack;
   private final long hasCapture;
   private final long combatDisabled;
-  private final long noReflectedAttack;
   private final long forceIsGround;
   private final long noPushback;
   private final long noDamage;
@@ -116,7 +167,6 @@ public final class EntityFlags {
     noSpecialAttack = bit(tags, "NO_SPECIAL_ATTACK");
     hasCapture = bit(tags, "HAS_CAPTURE");
     combatDisabled = bit(tags, "COMBAT_DISABLED");
-    noReflectedAttack = bit(tags, "NO_REFLECTED_ATTACK");
     forceIsGround = bit(tags, "FORCE_IS_GROUND");
     noPushback = bit(tags, "NO_PUSHBACK");
     noDamage = bit(tags, "NO_DAMAGE");
@@ -138,13 +188,17 @@ public final class EntityFlags {
   }
 
   /**
-   * A tag's bit: its row's index in the game tags table, or 0 for a tag the table does not list
-   * (and for every tag of {@link #NONE}).
+   * A tag's bit: its row's index in the game tags table; 0 for every tag of {@link #NONE}.
+   *
+   * @throws IllegalArgumentException for a tag the table does not list
    */
-  private static long bit(GameTable tags, String name) {
-    if (tags == null || !tags.has(name)) {
+  static long bit(GameTable tags, String name) {
+    if (tags == null) {
       return 0;
     }
+    checkArgument(
+        tags.has(name),
+        () -> "the game tables have no game tag " + name + ", which the battle reads");
     return 1L << tags.row(name).index();
   }
 
@@ -284,11 +338,6 @@ public final class EntityFlags {
     return combatDisabled;
   }
 
-  /** A reflecting unit does not reflect the entity's attack. */
-  public long noReflectedAttack() {
-    return noReflectedAttack;
-  }
-
   /**
    * The entity is a ground unit to every reader of its layer, an air one's height pulled to 0, as
    * an air-to-ground run holds it; with FORCE_IS_AIR too, its live height decides.
@@ -386,7 +435,7 @@ public final class EntityFlags {
 
   /**
    * The entity keeps its reference only within its plain range, without the extension a unit is
-   * otherwise allowed before it gives one up (0 in a table without the tag).
+   * otherwise allowed before it gives one up.
    */
   public long ignoreRangeExtensionToKeepTarget() {
     return ignoreRangeExtensionToKeepTarget;
@@ -394,7 +443,7 @@ public final class EntityFlags {
 
   /**
    * A hit that does not pierce immunity leaves the entity at 1 hit point at least, and a projectile
-   * attacker keeps it as a target whatever damage is on its way (0 in a table without the tag).
+   * attacker keeps it as a target whatever damage is on its way.
    */
   public long unkillable() {
     return unkillable;

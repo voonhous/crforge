@@ -7,6 +7,7 @@
 package org.crforge.core.battle.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
@@ -415,21 +416,27 @@ class BattleChargeTest {
 
   @Test
   @DisplayName(
-      "without the charge fix published, or with it clear, a stun on the evolved Battle Ram while"
-          + " its recoil flies leaves its charge until the recoil has flown")
-  void aStunInTheRecoilKeepsTheChargeWithoutTheFix(@TempDir Path without, @TempDir Path clear)
-      throws IOException {
-    for (List<int[]> steps :
-        List.of(
-            zapInTheRecoil(withoutChargeFix(without)),
-            zapInTheRecoil(withChargeFix(clear, false)))) {
-      assertThat(stunnedInTheRecoil(steps)).as("steps in the recoil under the stun").isNotEmpty();
-      for (int[] s : stunnedInTheRecoil(steps)) {
-        assertThat(s[2])
-            .as("the charge in the recoil under the stun")
-            .isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
-      }
+      "with the charge fix published clear, a stun on the evolved Battle Ram while its recoil"
+          + " flies leaves its charge until the recoil has flown")
+  void aStunInTheRecoilKeepsTheChargeWithoutTheFix(@TempDir Path clear) throws IOException {
+    List<int[]> steps = zapInTheRecoil(withChargeFix(clear, false));
+    assertThat(stunnedInTheRecoil(steps)).as("steps in the recoil under the stun").isNotEmpty();
+    for (int[] s : stunnedInTheRecoil(steps)) {
+      assertThat(s[2])
+          .as("the charge in the recoil under the stun")
+          .isGreaterThanOrEqualTo(MovementState.CHARGE_COMPLETE);
     }
+  }
+
+  @Test
+  @DisplayName(
+      "tables that do not publish the charge fix are refused, naming it: the game reads the"
+          + " global's row with no test for a missing one, so a missing row is not a clear flag")
+  void tablesWithoutTheChargeFixAreRefused(@TempDir Path folder) throws IOException {
+    GameTables tables = withoutChargeFix(folder);
+    assertThatThrownBy(() -> new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(CHARGE_FIX);
   }
 
   @Test
