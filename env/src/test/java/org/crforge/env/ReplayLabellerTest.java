@@ -93,7 +93,8 @@ class ReplayLabellerTest {
       int decisions,
       boolean twoInARow,
       String prefer) {
-    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT.withDecisionTicks(1), 1, 1)) {
+    EnvConfig config = EnvConfig.DEFAULT.withDecisionTicks(1).withArena(Scenarios.arena(tables));
+    try (VectorEnv env = VectorEnv.ladder(tables, config, 1, 1)) {
       env.setAutoreset(false);
       env.reset(new int[] {seed}, deck0, deck1);
       SplittableRandom random = new SplittableRandom(seed);

@@ -21,6 +21,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * @param slotFlags each side's slot flags by deck index: bit 0 the deck's evolution slot, bit 1 its
  *     hero slot
  * @param accounts each side's account id, high word then low word
+ * @param arenas each side's arena, by row name of the arenas table: the arena its player's avatar
+ *     names in a replay. The battle does not read it; a replay carries it, and a written replay
+ *     gives each avatar the row's data id
  * @param playerDataChoices how many choices each player's data lists, in the scenario's order
  * @param plays the card plays, in the scenario's order
  * @param abilities the ability commands, in the scenario's order; with the plays they run in the
@@ -33,6 +36,7 @@ public record ScenarioPlan(
     List<int[]> deckLevels,
     List<int[]> slotFlags,
     List<int[]> accounts,
+    List<String> arenas,
     List<Integer> playerDataChoices,
     List<Play> plays,
     List<Ability> abilities) {

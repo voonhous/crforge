@@ -10,7 +10,7 @@ import pytest
 
 from crforge_env import FLAGS, LadderConfig, VectorBattle, label_replays
 from crforge_env.labels import flag_names
-from tests.decks import BLUE, RED
+from tests.decks import BLUE, RED, arena
 
 
 def _episode(install, tables, decisions, seed=5):
@@ -19,7 +19,11 @@ def _episode(install, tables, decisions, seed=5):
     rng = np.random.default_rng(seed)
     observations, masks, actions = [], [], []
     with VectorBattle(
-        1, 1, install=install, tables=tables, config=LadderConfig(decision_ticks=1)
+        1,
+        1,
+        install=install,
+        tables=tables,
+        config=LadderConfig(decision_ticks=1, arena=arena(tables)),
     ) as v:
         v.set_autoreset(False)
         v.reset([seed], BLUE, RED)

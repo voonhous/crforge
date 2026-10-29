@@ -58,7 +58,7 @@
       "accountID.lo" : 0,
       "npc" : false,
       "name" : "Side 0",
-      "arena" : 0
+      "arena" : 54000001
     },
     "deck1" : {
       "sp" : [ {
@@ -97,7 +97,7 @@
       "accountID.lo" : 0,
       "npc" : false,
       "name" : "Side 1",
-      "arena" : 0
+      "arena" : 54000001
     },
     "location" : 15000000,
     "hbd" : [ {

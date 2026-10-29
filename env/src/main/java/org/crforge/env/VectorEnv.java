@@ -1100,8 +1100,12 @@ public final class VectorEnv implements AutoCloseable {
    * it is the episode's battle; a replay's labeller ({@link ReplayLabeller}) reads it as any
    * replay.
    *
+   * <p>Each player's avatar names the episode's arena: an episode started on a replay keeps the
+   * replay's own, a fresh one names {@link EnvConfig#arena}.
+   *
    * @param index the environment, a Ladder one
    * @throws IllegalStateException for an environment that plays no battle
+   * @throws IllegalArgumentException for a fresh episode when the configuration names no arena
    */
   public String replayJson(int index) {
     if (!(envs[index] instanceof LadderEnv ladder) || ladder.battle() == null) {
@@ -1111,7 +1115,9 @@ public final class VectorEnv implements AutoCloseable {
     Standard1v1Battle battle = ladder.battle();
     try {
       return JSON.writeValueAsString(
-          writer.write(writer.plan(battle, ladder.config().level()), battle.getBattle().getTick()));
+          writer.write(
+              writer.plan(battle, ladder.config().level(), ladder.arenas()),
+              battle.getBattle().getTick()));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

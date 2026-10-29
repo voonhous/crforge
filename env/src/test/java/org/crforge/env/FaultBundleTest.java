@@ -22,6 +22,7 @@ import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.replay.ReplayBattle;
 import org.crforge.core.battle.replay.ReplayScenario;
 import org.crforge.core.battle.replay.ScenarioPlan;
+import org.crforge.core.battle.replay.Scenarios;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.env.EnvFault.CoreFailure;
 import org.junit.jupiter.api.BeforeAll;
@@ -168,7 +169,8 @@ class FaultBundleTest {
     EnvConfig config =
         EnvConfig.DEFAULT
             .withDecisionTicks(1)
-            .withFaultBundles(folder.resolve("bundles").toString());
+            .withFaultBundles(folder.resolve("bundles").toString())
+            .withArena(Scenarios.arena(tables));
     try (VectorEnv env = VectorEnv.ladder(tables, config, 2, 1)) {
       env.setAutoreset(false);
       env.reset(new int[] {31, 32}, each(2, TROOPS_AND_MIRROR), each(2, TROOPS_AND_MIRROR));
@@ -195,6 +197,7 @@ class FaultBundleTest {
       assertThat(record.path("content_sha").asText()).isEqualTo(tables.contentSha());
       assertThat(record.path("schema_version").asInt()).isEqualTo(Schema.VERSION);
       assertThat(record.path("config").path("decision_ticks").asInt()).isEqualTo(1);
+      assertThat(record.path("config").path("arena").asText()).isEqualTo(Scenarios.arena(tables));
       assertThat(record.path("seed").asInt()).isEqualTo(31);
       assertThat(record.path("env_index").asInt()).isZero();
       assertThat(record.path("tick").asInt()).isEqualTo(fault.tick());
@@ -208,6 +211,7 @@ class FaultBundleTest {
       assertThat(replay.path("endTick").asInt()).isEqualTo(fault.tick() + 1);
       assertThat(new ReplayScenario(tables).survey(replay)).isEmpty();
       ScenarioPlan plan = new ReplayScenario(tables).translate(replay);
+      assertThat(plan.arenas()).containsOnly(Scenarios.arena(tables));
       Standard1v1Battle battle = ReplayBattle.build(tables, plan);
       EnvFault replayed = null;
       int checked = 0;
@@ -228,7 +232,8 @@ class FaultBundleTest {
 
   @Test
   void aFaultAtTheBattlesSetupIsBundledWithAReplayThatMeetsItAsItIsBuilt() throws IOException {
-    EnvConfig config = EnvConfig.DEFAULT.withFaultBundles(folder.toString());
+    EnvConfig config =
+        EnvConfig.DEFAULT.withFaultBundles(folder.toString()).withArena(Scenarios.arena(tables));
     try (VectorEnv env = VectorEnv.ladder(tables, config, 1, 1)) {
       env.reset(
           new int[] {5},
@@ -264,6 +269,24 @@ class FaultBundleTest {
       try (Stream<Path> bundles = Files.list(folder)) {
         assertThat(bundles).hasSize(1);
       }
+    }
+  }
+
+  @Test
+  void aBundleOfAConfigurationNamingNoArenaRecordsWhyItHasNoReplay(@TempDir Path own)
+      throws IOException {
+    // A replay's avatar names its player's arena, and the battle holds none: with no arena named,
+    // the bundle is written without its replay, naming the setting.
+    EnvConfig config = EnvConfig.DEFAULT.withFaultBundles(own.toString());
+    try (VectorEnv env = VectorEnv.ladder(tables, config, 1, 1)) {
+      env.reset(
+          new int[] {5},
+          THREE_CHAMPIONS.toArray(String[]::new),
+          TROOPS_AND_MIRROR.toArray(String[]::new));
+
+      JsonNode record = read(Path.of(env.fault(0).bundle()).resolve(FaultBundle.FAULT));
+      assertThat(record.path("replay").isNull()).isTrue();
+      assertThat(record.path("replay_refusal").asText()).contains("EnvConfig.arena");
     }
   }
 

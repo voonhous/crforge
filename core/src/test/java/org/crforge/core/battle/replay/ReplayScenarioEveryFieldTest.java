@@ -351,7 +351,7 @@ class ReplayScenarioEveryFieldTest {
     mapping.translate(scenario);
     assertThat(mapping.mapping())
         .containsEntry("battle.arena", ReplayScenario.ARENA_CARRIED)
-        .containsEntry("battle.avatarN.arena", ReplayScenario.ARENA_CARRIED)
+        .containsEntry("battle.avatarN.arena", ReplayScenario.AVATAR_ARENA_CARRIED)
         .doesNotContainKey("arena");
   }
 

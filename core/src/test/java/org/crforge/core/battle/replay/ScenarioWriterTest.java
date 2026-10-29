@@ -214,7 +214,8 @@ class ScenarioWriterTest {
     int midTick = battle.getBattle().getTick();
     int midPlays = battle.getPlays().size();
     int midCommands = battle.getCommands().size();
-    JsonNode mid = throughText(writer.write(writer.plan(battle, level), midTick));
+    JsonNode mid =
+        throughText(writer.write(writer.plan(battle, level, Scenarios.arenas(tables)), midTick));
     List<String> midStates = List.copyOf(played);
     played.addAll(play(battle, commands, 1400 - midTick, level, random));
     // The battle gave plays of every kind its decks hold.
@@ -225,7 +226,8 @@ class ScenarioWriterTest {
             Standard1v1Battle.CommandKind.MIRROR,
             Standard1v1Battle.CommandKind.VARIANT);
 
-    JsonNode whole = throughText(writer.write(writer.plan(battle, level), 1400));
+    JsonNode whole =
+        throughText(writer.write(writer.plan(battle, level, Scenarios.arenas(tables)), 1400));
 
     assertThat(ReplayCapture.of(whole))
         .hasValueSatisfying(
@@ -250,7 +252,7 @@ class ScenarioWriterTest {
         play(battle, new PlayerCommands(battle), ticks, 9, new SplittableRandom(3));
 
     ScenarioWriter writer = new ScenarioWriter(tables);
-    JsonNode document = throughText(writer.write(writer.plan(battle, 9)));
+    JsonNode document = throughText(writer.write(writer.plan(battle, 9, Scenarios.arenas(tables))));
     ScenarioPlan read = new ReplayScenario(tables).translate(document);
 
     assertThat(read.towers())
@@ -275,7 +277,10 @@ class ScenarioWriterTest {
     play(battle, new PlayerCommands(battle), 40, 9, new SplittableRandom(5));
 
     ScenarioWriter writer = new ScenarioWriter(tables);
-    JsonNode entries = throughText(writer.write(writer.plan(battle, 9))).path("battle").path("hbd");
+    JsonNode entries =
+        throughText(writer.write(writer.plan(battle, 9, Scenarios.arenas(tables))))
+            .path("battle")
+            .path("hbd");
 
     assertThat(entries).hasSize(2);
     for (JsonNode entry : entries) {
@@ -308,7 +313,10 @@ class ScenarioWriterTest {
 
     ScenarioWriter writer = new ScenarioWriter(tables);
     JsonNode document =
-        throughText(writer.write(writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL), ticks));
+        throughText(
+            writer.write(
+                writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL, Scenarios.arenas(tables)),
+                ticks));
 
     assertThat(document.path("battle").path("deck0").path("sp").get(0).path("el").asInt())
         .isEqualTo(MatchSide.EVOLUTION_SLOT);
@@ -327,7 +335,7 @@ class ScenarioWriterTest {
   void aBattleOutsideAMatchIsRefusedNamingWhy() {
     Standard1v1Battle battle = new Standard1v1Battle(tables);
 
-    assertThatThrownBy(() -> new ScenarioWriter(tables).plan(battle, 11))
+    assertThatThrownBy(() -> new ScenarioWriter(tables).plan(battle, 11, Scenarios.arenas(tables)))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a battle outside a match");
   }
@@ -339,7 +347,7 @@ class ScenarioWriterTest {
     battle.play(200, GameData.card(knight), 11, 0, 9000, 6000, "cmd0");
     battle.play(400, GameData.card(knight), 10, 0, 9000, 6000, "cmd1");
 
-    assertThatThrownBy(() -> new ScenarioWriter(tables).plan(battle, 11))
+    assertThatThrownBy(() -> new ScenarioWriter(tables).plan(battle, 11, Scenarios.arenas(tables)))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining(knight)
         .hasMessageContaining("levels 11 and 10");

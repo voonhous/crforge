@@ -42,6 +42,7 @@ import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.replay.ReplayBattle;
 import org.crforge.core.battle.replay.ScenarioPlan;
+import org.crforge.core.battle.replay.ScenarioWriter;
 import org.crforge.core.battle.unit.AbilityCommand;
 import org.crforge.core.battle.unit.AbilityData;
 import org.crforge.core.battle.unit.AreaEffectEntity;
@@ -334,6 +335,12 @@ public final class LadderEnv extends BufferedEnv {
   private int[][] slots = new int[2][0];
 
   /**
+   * The arenas of an episode started on a replay, side 0's then side 1's, as the replay names them;
+   * null for an episode started fresh, whose arenas are {@link EnvConfig#arena}'s.
+   */
+  private List<String> replayArenas;
+
+  /**
    * Each side's card levels by deck index, for an episode reset on a replay's setup; null for every
    * card at {@link EnvConfig#level}.
    */
@@ -477,8 +484,22 @@ public final class LadderEnv extends BufferedEnv {
    * @param tables the game tables, shared read-only by every environment of the process
    * @param vocabulary the vocabulary of those tables
    * @param config how the battles are played
+   * @throws IllegalArgumentException when the configuration names an arena that is no row of the
+   *     tables' arenas table
    */
   public LadderEnv(GameTables tables, Vocabulary vocabulary, EnvConfig config) {
+    String arena = config.arena();
+    if (arena != null
+        && !(tables.tableNames().contains(ScenarioWriter.ARENAS)
+            && tables.table(ScenarioWriter.ARENAS).has(arena))) {
+      throw new IllegalArgumentException(
+          "EnvConfig.arena "
+              + arena
+              + " is no row of the "
+              + ScenarioWriter.ARENAS
+              + " table of data version "
+              + tables.version());
+    }
     this.tables = tables;
     this.vocabulary = vocabulary;
     this.config = config;
@@ -541,6 +562,7 @@ public final class LadderEnv extends BufferedEnv {
   @Override
   public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
     begin(seed, deck0, deck1, slots0, slots1, null);
+    replayArenas = null;
     try {
       standard = new Standard1v1Battle(tables, config.towerLevel());
       standard.getWorld().seed(seed);
@@ -573,6 +595,7 @@ public final class LadderEnv extends BufferedEnv {
         plan.slotFlags().get(0),
         plan.slotFlags().get(1),
         new int[][] {plan.deckLevels().get(0).clone(), plan.deckLevels().get(1).clone()});
+    replayArenas = plan.arenas();
     ScenarioPlan setup =
         new ScenarioPlan(
             plan.seed(),
@@ -581,6 +604,7 @@ public final class LadderEnv extends BufferedEnv {
             plan.deckLevels(),
             plan.slotFlags(),
             plan.accounts(),
+            plan.arenas(),
             plan.playerDataChoices(),
             List.of(),
             List.of());
@@ -977,6 +1001,7 @@ public final class LadderEnv extends BufferedEnv {
         FloatBuffer.allocate(2),
         IntBuffer.allocate(Schema.INFO_INTS));
     fork.reset(seed, decks.get(0), decks.get(1), slots[0], slots[1]);
+    fork.replayArenas = replayArenas;
     for (int d = 0; d < decisions; d++) {
       int action0 = actionLog[2 * d];
       int action1 = actionLog[2 * d + 1];
@@ -1299,6 +1324,26 @@ public final class LadderEnv extends BufferedEnv {
   /** The episode's decks, side 0's then side 1's, by card row name. */
   List<List<String>> decks() {
     return decks;
+  }
+
+  /**
+   * The episode's arenas, side 0's then side 1's, by row name of the arenas table, as a replay of
+   * the episode names them: an episode started on a replay keeps the replay's own, a fresh one
+   * names {@link EnvConfig#arena} for both players.
+   *
+   * @throws IllegalArgumentException for a fresh episode when the configuration names no arena
+   */
+  List<String> arenas() {
+    if (replayArenas != null) {
+      return replayArenas;
+    }
+    if (config.arena() == null) {
+      throw new IllegalArgumentException(
+          "no arena named for a fresh episode: EnvConfig.arena names the row of the "
+              + ScenarioWriter.ARENAS
+              + " table both players' avatars name in a written replay");
+    }
+    return List.of(config.arena(), config.arena());
   }
 
   /** The episode's slot flags by deck index, side 0's then side 1's. */
