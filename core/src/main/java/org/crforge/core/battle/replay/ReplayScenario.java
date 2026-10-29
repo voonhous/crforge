@@ -158,6 +158,43 @@ public final class ReplayScenario {
   private static final Set<String> OUTSIDE_THE_MATCH =
       Set.of("Name", "CardLevelAdjustment", "FixedArena", "ValidLadderMode");
 
+  /** The game mode column that names how the players' decks are chosen. */
+  static final String DECK_SELECTION = "DeckSelection";
+
+  /**
+   * The deck selection of a mode whose players bring their own decks: the only one whose battle
+   * reads nothing of the event it is played under.
+   */
+  static final String COLLECTION = "Collection";
+
+  /**
+   * How a Ladder battle's event block is read: the game reads an event's category and settings only
+   * to choose the cards of a draft, which a mode whose decks are the players' own does not run.
+   */
+  static final String EVENT_CARRIED =
+      "carried: the event the Ladder battle is played under, its id equal to te; the game reads an"
+          + " event only for a draft's cards, which a mode of the "
+          + COLLECTION
+          + " deck selection does not run";
+
+  /**
+   * How a Ladder battle's trail is read under an event: the trail row of the players' event road,
+   * which no battle rule of game mode type 1 or {@value ReplayFormat#EVENT_GAME_MODE_TYPE} reads.
+   */
+  static final String TRAIL_UNDER_EVENT =
+      "carried: under an event, the trail the battle counts for, presentation and progress; no"
+          + " battle rule of game mode type 1 or "
+          + ReplayFormat.EVENT_GAME_MODE_TYPE
+          + " reads it";
+
+  /**
+   * How the card level minimum is read: the game raises each deck card's level to it, so a battle
+   * whose deck cards all stand at or above it plays as without it.
+   */
+  static final String CARD_LEVEL_MIN_READ =
+      "consumed: the card level minimum, 0 for none; a deck card below it, which the game raises"
+          + " to it, is unsupported, so every card keeps its own level";
+
   /** The map file of the standard arena, which {@link Standard1v1Battle} is built on. */
   static final String STANDARD_TILE_MAP = "tilemaps/tilemap.csv";
 
@@ -370,7 +407,7 @@ public final class ReplayScenario {
         with(
             format.battlePins().keySet(),
             with(
-                format.battleCarried().keySet(),
+                battleFieldsBeyondThePins(),
                 "gmt",
                 "plt",
                 "t1s",
@@ -391,6 +428,10 @@ public final class ReplayScenario {
                 "hbd")));
     Map<String, String> modeHeader = gameMode(battle);
     location(battle);
+    JsonNode event = format.ladderEvents() ? battle.get(ReplayFormat.EVENT_FIELD) : null;
+    if (event != null) {
+      modeHeader = eventHeader(battle, event);
+    }
     for (String field : List.of("gmt", "plt", "tps")) {
       pin(battle, field, modeHeader.getOrDefault(field, "1"));
     }
@@ -398,8 +439,14 @@ public final class ReplayScenario {
       pin(battle, field, modeHeader.getOrDefault(field, "0"));
     }
     pin(battle, "hm", "false");
-    pin(battle, "trail", modeHeader.get("trail"));
-    pin(battle, "te", "-1");
+    if (event == null) {
+      pin(battle, "trail", modeHeader.get("trail"));
+      pin(battle, "te", "-1");
+    } else {
+      required(battle, "trail");
+      mapping.put("trail", TRAIL_UNDER_EVENT);
+      pin(battle, "te", modeHeader.get("te"));
+    }
     required(battle, "arena");
     mapping.put("battle.arena", ARENA_CARRIED);
     format.battlePins().forEach((field, value) -> pin(battle, field, value));
@@ -432,6 +479,9 @@ public final class ReplayScenario {
       towers.add(towers(deck, side));
       onlyFields(deck, "battle.deck" + side, with(format.deckCarried(), "sp", "sc"));
       accounts.add(avatar(required(battle, "avatar" + side), side));
+    }
+    if (format.ladderEvents()) {
+      cardLevelMinimum(battle, decks, deckLevels);
     }
     mapping.put(
         "battle.deckN.sp[i].d",
@@ -830,6 +880,92 @@ public final class ReplayScenario {
       }
     }
     return header;
+  }
+
+  /**
+   * The format's carried battle header fields, and the fields a format that reads Ladder battles
+   * under an event adds: the event block and the card level minimum.
+   */
+  private List<String> battleFieldsBeyondThePins() {
+    List<String> fields = new ArrayList<>(format.battleCarried().keySet());
+    if (format.ladderEvents()) {
+      fields.add(ReplayFormat.EVENT_FIELD);
+      fields.add(ReplayFormat.CARD_LEVEL_MIN_FIELD);
+    }
+    return fields;
+  }
+
+  /**
+   * The header of a Ladder battle played under an event: the Ladder header with game mode type
+   * {@value ReplayFormat#EVENT_GAME_MODE_TYPE} and the event's id as {@code te}.
+   *
+   * <p>With the Ladder row's card level adjustment and a level cap of 0, every rule the battle
+   * reads the game mode type by gives game mode type {@value ReplayFormat#EVENT_GAME_MODE_TYPE}
+   * what it gives type 1: the towers' levels (the type sets them by the level cap, and a cap of 0
+   * leaves them), and the mode's switches, with one player a side and the header's tps at 1. The
+   * event itself is read only for a draft's cards; a mode whose players bring their own decks
+   * ({@value #COLLECTION}) runs no draft. Any other mode under an event is unsupported.
+   *
+   * @return the header fields pinned for the battle, by field
+   */
+  private Map<String, String> eventHeader(JsonNode battle, JsonNode event) {
+    GameRow mode = row(required(battle, "gamemode").asInt(), "battle.gamemode");
+    if (!mode.name().equals(LadderMatch.GAME_MODE)) {
+      refuse(
+          "the game mode " + mode.name() + " under an event, whose header there is not established",
+          "battle.gamemode=" + battle.get("gamemode"));
+    }
+    String deckSelection = mode.string(DECK_SELECTION);
+    if (!COLLECTION.equals(deckSelection)) {
+      refuse(
+          "an event on a game mode whose deck selection is "
+              + deckSelection
+              + ", whose draft reads the event",
+          "battle.gamemode=" + battle.get("gamemode"));
+    }
+    JsonNode id = event.get("id");
+    if (!event.isObject() || id == null || !id.isInt()) {
+      refuse("an event with no id", "battle." + ReplayFormat.EVENT_FIELD + "=" + event);
+    }
+    mapping.put("battle." + ReplayFormat.EVENT_FIELD, EVENT_CARRIED);
+    Map<String, String> header = new LinkedHashMap<>(LADDER_HEADER);
+    header.put("gmt", ReplayFormat.EVENT_GAME_MODE_TYPE);
+    header.put("te", id == null ? "an event id" : id.toString());
+    return header;
+  }
+
+  /**
+   * The card level minimum ({@value ReplayFormat#CARD_LEVEL_MIN_FIELD}): the game raises a deck
+   * card's level index to the minimum less its rarity's RelativeLevel and 1, that is its level to
+   * the minimum. A battle whose deck cards all stand at or above it plays as without it; one with a
+   * card below it is unsupported.
+   */
+  private void cardLevelMinimum(JsonNode battle, List<List<String>> decks, List<int[]> deckLevels) {
+    JsonNode minimum = required(battle, ReplayFormat.CARD_LEVEL_MIN_FIELD);
+    String input = ReplayFormat.CARD_LEVEL_MIN_FIELD + "=" + minimum;
+    if (!minimum.isInt() || minimum.asInt() < 0) {
+      refuse("a card level minimum that is not a level", input);
+    } else {
+      for (int side = 0; side < decks.size(); side++) {
+        for (int i = 0; i < decks.get(side).size(); i++) {
+          int level = deckLevels.get(side)[i];
+          if (level < minimum.asInt()) {
+            refuse(
+                "a card level minimum of "
+                    + minimum.asInt()
+                    + " above the level "
+                    + level
+                    + " of side "
+                    + side
+                    + "'s "
+                    + decks.get(side).get(i)
+                    + ", which the game raises to the minimum and the battle core does not",
+                input);
+          }
+        }
+      }
+    }
+    mapping.put(ReplayFormat.CARD_LEVEL_MIN_FIELD, CARD_LEVEL_MIN_READ);
   }
 
   /** The location: only one on the standard map is built. */

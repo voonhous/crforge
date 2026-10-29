@@ -6,6 +6,7 @@
 
 package org.crforge.core.battle.replay;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -52,6 +53,11 @@ import org.crforge.core.battle.data.GameVersions;
  *     must be 0
  * @param excludedEvolutions whether a player data entry may hold the evolutions excluded from the
  *     battle ({@value #EXCLUDED_EVOLUTIONS_FIELD}), read as {@link ReplayScenario} describes
+ * @param ladderEvents whether a Ladder battle under an event is read: the battle header's event
+ *     block ({@value #EVENT_FIELD}) with game mode type {@value #EVENT_GAME_MODE_TYPE}, the event's
+ *     trail and id ({@code te}), and the card level minimum ({@value #CARD_LEVEL_MIN_FIELD}) of any
+ *     battle, read as {@link ReplayScenario} describes; else the event block has no mapping and the
+ *     card level minimum, where the version writes it, is pinned
  */
 public record ReplayFormat(
     String dataVersion,
@@ -68,7 +74,8 @@ public record ReplayFormat(
     List<String> selectionCarried,
     List<String> playerData,
     boolean cosmeticCarried,
-    boolean excludedEvolutions) {
+    boolean excludedEvolutions,
+    boolean ladderEvents) {
 
   /**
    * The event types of a version whose events are carried, each what a player's client showed. The
@@ -93,6 +100,21 @@ public record ReplayFormat(
    */
   public static final String EXCLUDED_EVOLUTIONS_FIELD = "es";
 
+  /** The battle header field that holds the event a battle is played under. */
+  public static final String EVENT_FIELD = "event";
+
+  /** The game mode type ({@code gmt}) of a Ladder battle played under an event. */
+  public static final String EVENT_GAME_MODE_TYPE = "16";
+
+  /** The battle header field that holds the card level minimum, 0 for none. */
+  public static final String CARD_LEVEL_MIN_FIELD = "cardlvlmin";
+
+  /**
+   * The player data field that holds the player's progress on the trail the battle counts for: its
+   * trophy road, arena and theme, presentation and matchmaking.
+   */
+  public static final String TRAIL_PROGRESS_FIELD = "trl";
+
   /** The fields of version 14.593.1's replays, which every version's replays share. */
   public static final ReplayFormat V14_593_1 =
       new ReplayFormat(
@@ -109,6 +131,7 @@ public record ReplayFormat(
           ordered("t", "0", "c", "1"),
           List.of(),
           null,
+          false,
           false,
           false);
 
@@ -183,6 +206,7 @@ public record ReplayFormat(
               "ts",
               "sa"),
           true,
+          false,
           false);
 
   /**
@@ -190,9 +214,14 @@ public record ReplayFormat(
    * evolutions excluded from the battle ({@value #EXCLUDED_EVOLUTIONS_FIELD}). Client 16.402.17
    * reads that field too and builds a play's item without it; client 16.635.1 builds a play of a
    * card whose evolution is listed unevolved.
+   *
+   * <p>A Ladder battle under an event is read too ({@link #ladderEvents}): its event block, game
+   * mode type {@value #EVENT_GAME_MODE_TYPE}, the event's trail and id, and the card level minimum,
+   * which is no longer pinned to 0; each player data entry may hold the player's trail progress
+   * ({@value #TRAIL_PROGRESS_FIELD}), carried. Traced on client 16.635.1 only.
    */
   public static final ReplayFormat V16_635_1 =
-      V16_402_18.withExcludedEvolutions(GameVersions.DATA_16_635_3);
+      V16_402_18.withExcludedEvolutions(GameVersions.DATA_16_635_3).withLadderEvents();
 
   /**
    * The format of each data version whose replays' fields have been decided. The fields are the
@@ -295,7 +324,8 @@ public record ReplayFormat(
         selectionCarried,
         playerData,
         cosmeticCarried,
-        excludedEvolutions);
+        excludedEvolutions,
+        ladderEvents);
   }
 
   /** The same fields as another data version's, with the excluded evolutions read. */
@@ -315,6 +345,35 @@ public record ReplayFormat(
         selectionCarried,
         playerData,
         cosmeticCarried,
+        true,
+        ladderEvents);
+  }
+
+  /**
+   * The same fields with a Ladder battle under an event read: the card level minimum leaves the
+   * pinned header fields, and a player data entry may hold the trail progress.
+   */
+  private ReplayFormat withLadderEvents() {
+    Map<String, String> pins = new LinkedHashMap<>(battlePins);
+    pins.remove(CARD_LEVEL_MIN_FIELD);
+    List<String> data = new ArrayList<>(playerData);
+    data.add(TRAIL_PROGRESS_FIELD);
+    return new ReplayFormat(
+        dataVersion,
+        rootPins,
+        events,
+        Collections.unmodifiableMap(pins),
+        battleCarried,
+        avatarPins,
+        avatarCarried,
+        accountHighOptional,
+        deckCarried,
+        cardCarried,
+        selectionPins,
+        selectionCarried,
+        List.copyOf(data),
+        cosmeticCarried,
+        excludedEvolutions,
         true);
   }
 
