@@ -584,7 +584,9 @@ public interface ActionOwner {
   }
 
   /**
-   * True for an owner whose attack sequence replaces its row's attack: two or more in its order.
+   * True for an owner whose attack sequence replaces its row's attack - two or more in its order -
+   * with an entry that launches a projectile or runs an action. A sequence of damage entries alone
+   * hits through the same direct hit as a row without one.
    */
   default boolean actionAttackSequence() {
     return false;
