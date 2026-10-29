@@ -573,6 +573,15 @@ public interface ActionOwner {
     return false;
   }
 
+  /**
+   * True for an area effect. An action walking back from its cause to the object that made it asks:
+   * the game follows an area effect to its parent and keeps one it ends on as the giver, by its id
+   * and rarity, neither of which is modelled for an area effect.
+   */
+  default boolean actionAreaEffect() {
+    return false;
+  }
+
   /** The name of the owner's data row. */
   default String actionRowName() {
     throw new UnsupportedOperationException("this owner has no data row");

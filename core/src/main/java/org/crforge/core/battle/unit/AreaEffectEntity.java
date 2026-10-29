@@ -1890,6 +1890,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   @Override
+  public boolean actionAreaEffect() {
+    return true;
+  }
+
+  @Override
   public ActionOwner areaEffectParent() {
     return parent instanceof ActionOwner owner ? owner : null;
   }
