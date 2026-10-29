@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="932" viewBox="0 0 1220 932" role="img" aria-label="crforge modules: the battle core, the modules on it, and the game data they read">
+<title>crforge modules: the battle core, the modules on it, and the game data they read</title>
+<defs>
+<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<style>.s{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif} .m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; white-space:pre}</style>
+</defs>
+<rect x="0" y="0" width="1220" height="932" rx="12" fill="#ffffff"/>
+<text x="30" y="34" class="s" font-size="18" font-weight="600" fill="#1f2328">crforge modules</text>
+<!-- row 1: the game's files, the table decoder, the tables cache, the game data repository -->
+<rect x="30" y="60" width="220" height="77" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="87" class="m" font-size="15" font-weight="600" fill="#424a53">The game's files</text>
+<text x="42" y="109" class="s" font-size="13.5" fill="#424a53">the asset CDN, or a local</text>
+<text x="42" y="127" class="s" font-size="13.5" fill="#424a53">copy (crforge.assetSource)</text>
+<rect x="290" y="60" width="330" height="119" rx="8" fill="#fff8c5" stroke="#d4a72c" stroke-width="1.5"/>
+<text x="302" y="87" class="m" font-size="15" font-weight="600" fill="#7d4e00">:tables</text>
+<text x="302" y="109" class="s" font-size="13.5" fill="#424a53">The table decoder: builds a data version's</text>
+<text x="302" y="127" class="s" font-size="13.5" fill="#424a53">game tables from the game's files</text>
+<text x="302" y="151" class="m" font-size="13" fill="#1f2328">TableBuild, ClientSchema,</text>
+<text x="302" y="169" class="m" font-size="13" fill="#1f2328">data-versions.json</text>
+<rect x="660" y="60" width="280" height="101" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="672" y="87" class="m" font-size="15" font-weight="600" fill="#424a53">Game tables</text>
+<text x="672" y="109" class="s" font-size="13.5" fill="#424a53">one JSON file per table, one data</text>
+<text x="672" y="127" class="s" font-size="13.5" fill="#424a53">version, cached on your machine</text>
+<text x="672" y="151" class="m" font-size="13" fill="#1f2328">~/.crforge/tables/VERSION</text>
+<rect x="980" y="60" width="210" height="137" rx="8" fill="#ffffff" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="992" y="87" class="m" font-size="15" font-weight="600" fill="#424a53">Game data repository</text>
+<text x="992" y="109" class="s" font-size="13.5" fill="#424a53">at crforge-data.lock's commit:</text>
+<text x="992" y="127" class="s" font-size="13.5" fill="#424a53">the reference battles, each a</text>
+<text x="992" y="145" class="s" font-size="13.5" fill="#424a53">scenario and the game's own</text>
+<text x="992" y="163" class="s" font-size="13.5" fill="#424a53">trace of it</text>
+<text x="992" y="187" class="m" font-size="13" fill="#1f2328">references/VERSION/</text>
+<polyline points="250,100 288,100" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<polyline points="620,100 658,100" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="639" y="90" class="s" font-size="12" font-style="italic" text-anchor="middle" fill="#57606a">builds</text>
+<!-- row 2: the core module and its packages -->
+<rect x="30" y="230" width="910" height="286" rx="8" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.5"/>
+<text x="46" y="258" class="m" font-size="16" font-weight="600" fill="#0550ae">:core</text>
+<text x="46" y="280" class="s" font-size="13" fill="#424a53">The battle core: headless, no GUI dependencies</text>
+<rect x="50" y="296" width="480" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="62" y="323" class="m" font-size="15" font-weight="600" fill="#1f2328">battle</text>
+<text x="62" y="345" class="s" font-size="13.5" fill="#424a53">The battle core: one 50 ms step on the game's own tables</text>
+<text x="62" y="369" class="m" font-size="13" fill="#1f2328">action, data, deploy, expression, filter, match,</text>
+<text x="62" y="387" class="m" font-size="13" fill="#1f2328">projectile, replay, spawn, unit</text>
+<rect x="550" y="296" width="370" height="101" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="562" y="323" class="m" font-size="15" font-weight="600" fill="#1f2328">pathfinding</text>
+<text x="562" y="345" class="s" font-size="13.5" fill="#424a53">The movement, targeting and state rules it runs</text>
+<text x="562" y="369" class="m" font-size="13" fill="#1f2328">combat, grid, index, math, move, state,</text>
+<text x="562" y="387" class="m" font-size="13" fill="#1f2328">target</text>
+<rect x="50" y="413" width="230" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="62" y="440" class="m" font-size="15" font-weight="600" fill="#1f2328">fidelity</text>
+<text x="62" y="462" class="s" font-size="13.5" fill="#424a53">the fidelity ledger:</text>
+<text x="62" y="486" class="m" font-size="13" fill="#1f2328">:core:fidelityReport</text>
+<rect x="300" y="413" width="230" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<text x="312" y="440" class="m" font-size="15" font-weight="600" fill="#1f2328">util</text>
+<text x="312" y="462" class="s" font-size="13.5" fill="#424a53">units, checks and copies</text>
+<text x="312" y="486" class="m" font-size="13" fill="#1f2328">GameUnits, DeepCopy</text>
+<rect x="550" y="413" width="370" height="83" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="562" y="440" class="m" font-size="15" font-weight="600" fill="#1f2328">testFixtures</text>
+<text x="562" y="462" class="s" font-size="13.5" fill="#424a53">test helpers the other modules' tests share</text>
+<text x="562" y="486" class="m" font-size="13" fill="#1f2328">Shipped, GameData, Scenarios</text>
+<polyline points="800,161 800,228" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="810" y="210" class="s" font-size="12" font-style="italic" fill="#57606a">read by GameTables</text>
+<!-- row 3: desktop, env, python, conformance -->
+<rect x="30" y="596" width="260" height="155" rx="8" fill="#fbefff" stroke="#c297ff" stroke-width="1.5"/>
+<text x="42" y="623" class="m" font-size="15" font-weight="600" fill="#6639ba">:desktop</text>
+<text x="42" y="645" class="s" font-size="13.5" fill="#424a53">LibGDX debug visualizer and</text>
+<text x="42" y="663" class="s" font-size="13.5" fill="#424a53">replay viewer</text>
+<text x="42" y="687" class="m" font-size="13" fill="#1f2328">battle/  the debug screen</text>
+<text x="42" y="705" class="m" font-size="13" fill="#1f2328">replay/  the replay viewer</text>
+<text x="42" y="723" class="m" font-size="13" fill="#1f2328">model/   a model opponent</text>
+<text x="42" y="741" class="m" font-size="13" fill="#1f2328">render/, screen/</text>
+<rect x="350" y="596" width="260" height="155" rx="8" fill="#fff1e5" stroke="#fb8f44" stroke-width="1.5"/>
+<text x="362" y="623" class="m" font-size="15" font-weight="600" fill="#953800">:env</text>
+<text x="362" y="645" class="s" font-size="13.5" fill="#424a53">The reinforcement learning</text>
+<text x="362" y="663" class="s" font-size="13.5" fill="#424a53">environment: a vector of battles</text>
+<text x="362" y="681" class="s" font-size="13.5" fill="#424a53">behind flat buffers, played</text>
+<text x="362" y="699" class="s" font-size="13.5" fill="#424a53">through PlayerCommands</text>
+<text x="362" y="723" class="m" font-size="13" fill="#1f2328">VectorEnv, LadderEnv,</text>
+<text x="362" y="741" class="m" font-size="13" fill="#1f2328">ReplayLabeller</text>
+<rect x="670" y="596" width="260" height="155" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5"/>
+<text x="682" y="623" class="m" font-size="15" font-weight="600" fill="#424a53">python/ (crforge-env)</text>
+<text x="682" y="645" class="s" font-size="13.5" fill="#424a53">The Python package on the env</text>
+<text x="682" y="663" class="s" font-size="13.5" fill="#424a53">module's jars (not a Gradle module):</text>
+<text x="682" y="681" class="s" font-size="13.5" fill="#424a53">numpy views of the buffers</text>
+<text x="682" y="705" class="m" font-size="13" fill="#1f2328">VectorBattle, ClashGymEnv,</text>
+<text x="682" y="723" class="m" font-size="13" fill="#1f2328">ClashParallelEnv,</text>
+<text x="682" y="741" class="m" font-size="13" fill="#1f2328">label_replays</text>
+<rect x="980" y="596" width="210" height="209" rx="8" fill="#dafbe1" stroke="#4ac26b" stroke-width="1.5"/>
+<text x="992" y="623" class="m" font-size="15" font-weight="600" fill="#116329">:conformance</text>
+<text x="992" y="645" class="s" font-size="13.5" fill="#424a53">Holds the battle core to</text>
+<text x="992" y="663" class="s" font-size="13.5" fill="#424a53">recorded battles, tick by</text>
+<text x="992" y="681" class="s" font-size="13.5" fill="#424a53">tick, with no tolerance</text>
+<text x="992" y="705" class="m" font-size="13" fill="#1f2328">ReferenceSuite,</text>
+<text x="992" y="723" class="m" font-size="13" fill="#1f2328">ReplaySmokeRun,</text>
+<text x="992" y="741" class="m" font-size="13" fill="#1f2328">SmokeObserver,</text>
+<text x="992" y="759" class="m" font-size="13" fill="#1f2328">ReferenceComparison,</text>
+<text x="992" y="777" class="m" font-size="13" fill="#1f2328">CoverageScore,</text>
+<text x="992" y="795" class="m" font-size="13" fill="#1f2328">reference-expectations/</text>
+<polyline points="160,596 160,518" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="480,596 480,518" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="290,656 348,656" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="670,656 612,656" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<text x="641" y="646" class="s" font-size="12" font-style="italic" text-anchor="middle" fill="#57606a">runs</text>
+<polyline points="1010,596 1010,486 942,486" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<polyline points="1110,197 1110,594" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="1102" y="370" class="s" font-size="12" font-style="italic" text-anchor="end" fill="#57606a">reference battles</text>
+<rect x="30" y="801" width="260" height="101" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="42" y="828" class="m" font-size="15" font-weight="600" fill="#424a53">examples/</text>
+<text x="42" y="850" class="s" font-size="13.5" fill="#424a53">a replay the viewer opens</text>
+<text x="42" y="868" class="s" font-size="13.5" fill="#424a53">(not a Gradle module)</text>
+<text x="42" y="892" class="m" font-size="13" fill="#1f2328">replays/ladder.json</text>
+<polyline points="160,801 160,753" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="170" y="783" class="s" font-size="12" font-style="italic" fill="#57606a">opened by the replay viewer</text>
+<polyline points="350,831 390,831" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
+<text x="400" y="835" class="s" font-size="12" fill="#424a53">depends on (Gradle project dependency)</text>
+<polyline points="350,853 390,853" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
+<text x="400" y="857" class="s" font-size="12" fill="#424a53">data it reads or builds</text>
+<text x="350" y="883" class="s" font-size="12" fill="#424a53">:tables, :desktop and :conformance are depended on by nothing.</text>
+</svg>
