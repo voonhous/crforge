@@ -9,6 +9,7 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -180,6 +181,72 @@ class BattleAbilityTest {
                 filter -> filter.putArray("ExcludeCharactersWithData").add("Archer")))
         .as("the Archer excluded")
         .containsExactly("Knight");
+  }
+
+  @Test
+  @DisplayName(
+      "hit_timer, asked by the collector's buff action on its walking unit, answers its attack"
+          + " timer, 0: a hold on hit_timer != 0, as the Rune Giant's row writes it, lets the unit"
+          + " walk on through its buff")
+  void hitTimerOnAWalkingCollector(@TempDir Path folder) throws IOException {
+    // The collector's action as its delay ends: the variable set to hit_timer + 1000, then a hold
+    // of 600 ms that runs only while hit_timer is not 0 and stops once it is above 0.
+    String onBuff = "TestOnBuff";
+    String record = "TestRecordHitTimer";
+    String hold = "TestHoldOnBuff";
+    collectorTables(folder, 1, filter -> {});
+    GameData.alterLoaded(
+        folder,
+        "actions",
+        rows -> {
+          GameData.fields(rows, collectorName()).putObject("OnBuffAction").put("action", onBuff);
+          ArrayNode subActions = action(rows, onBuff, "ActionGroup").putArray("SubActions");
+          subActions.addObject().put("action", record);
+          subActions.addObject().put("action", hold);
+          action(rows, record, "ActionSetVariable")
+              .put("Variable", GameData.TEST_VARIABLE)
+              .put("Value", "hit_timer + 1000");
+          action(rows, hold, "ActionWithDuration")
+              .put("ActionDuration", 600)
+              .put("ExecuteIfTrue", "hit_timer != 0")
+              .put("ForceStopIfTrue", "hit_timer > 0")
+              .put("GameTagsToSet", "NO_MOVE");
+        });
+    GameData.addTestVariable(folder);
+    GameTables tables = GameTables.load(folder);
+    BattleRecords records = new BattleRecords(tables);
+    Standard1v1Battle match = new Standard1v1Battle(tables, Standard1v1Battle.DEFAULT_LEVEL, false);
+    match.deploy(0, records.unit("Knight"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 12500);
+    CharacterEntity buffer =
+        match.deploy(
+            0, records.unit("GiantBuffer"), Standard1v1Battle.DEFAULT_LEVEL, 0, 3500, 9500);
+    int key = match.getWorld().variableKey(GameData.TEST_VARIABLE);
+    int buffStep = -1;
+    List<Integer> still = new ArrayList<>();
+    for (int step = 0; step < 60; step++) {
+      int y = buffer.getView().getY();
+      match.getBattle().step();
+      if (buffStep < 0 && buffer.variable(key) != 0) {
+        buffStep = step;
+      }
+      if (buffStep >= 0 && step < buffStep + 12 && buffer.getView().getY() == y) {
+        still.add(step);
+      }
+    }
+
+    assertThat(buffStep).as("the buff's step").isPositive();
+    assertThat(buffer.variable(key)).as("hit_timer + 1000").isEqualTo(1000);
+    assertThat(still).as("steps it stood in the 600 ms after its buff").isEmpty();
+  }
+
+  /** An action row of a class written by the test, its fields to fill. */
+  private static ObjectNode action(ObjectNode rows, String name, String type) {
+    ObjectNode row = rows.putObject(name);
+    row.put("class", "Logic" + type + "Data");
+    row.put("ClassType", type);
+    ObjectNode fields = row.putObject("fields");
+    fields.put("ClassType", type);
+    return fields;
   }
 
   /**

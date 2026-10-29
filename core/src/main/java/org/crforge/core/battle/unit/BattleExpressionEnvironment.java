@@ -54,7 +54,11 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " attack_count as"
             + " the context's attack time over its row's hit speed toward zero, 0 for a hit speed"
             + " below 1, whether its targeting runs or not, held by ability_little_prince and"
-            + " card_LittlePrince; is_clone as a character's clone byte, held by"
+            + " card_LittlePrince; hit_timer as the same attack time, the field attack_count"
+            + " divides, read from the build's function (an object without a targeting component"
+            + " answers 0 there; every object the battle evaluates on carries one), held by"
+            + " BattleAbilityTest, a walking Giant Buffer's buff action reading 0;"
+            + " is_clone as a character's clone byte, held by"
             + " cg_ghost_evo_cloned; is_kamikazing as a character's byte its Kamikaze"
             + " hit's end sets, held by evo_skeletonballoon_vs_musketeer, where it stays 0;"
             + " is_moving as a character's movement component on and"
@@ -98,7 +102,7 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " target_is_ground reference that is not a character, refused; target_max_hp on a"
             + " tower or on a reference that has left the battle, refused;"
             + " has_crown_tower_in_range on an object that is not a"
-            + " character or of the neutral side, refused; the other 20 functions, which fail"
+            + " character or of the neutral side, refused; the other 19 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -119,6 +123,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   private static final int TARGET_IN_RANGE = BattleFunctions.id("target_in_range");
   private static final int TARGET_IS_GROUND = BattleFunctions.id("target_is_ground");
   private static final int ATTACK_COUNT = BattleFunctions.id("attack_count");
+  private static final int HIT_TIMER = BattleFunctions.id("hit_timer");
   private static final int IS_CLONE = BattleFunctions.id("is_clone");
   private static final int IS_MOVING = BattleFunctions.id("is_moving");
   private static final int IS_KAMIKAZING = BattleFunctions.id("is_kamikazing");
@@ -358,6 +363,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     }
     if (id == ATTACK_COUNT) {
       return attackCount();
+    }
+    if (id == HIT_TIMER) {
+      // The context's attack time as it stands, the field attack_count divides by the row's hit
+      // speed: 0 while the unit walks.
+      return context.getTargeting().getAttackTimerMs();
     }
     if (id == RAND) {
       // One draw from the battle's source, taken as the expression is evaluated.
