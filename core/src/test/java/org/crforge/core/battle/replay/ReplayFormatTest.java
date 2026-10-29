@@ -87,9 +87,17 @@ class ReplayFormatTest {
   }
 
   @Test
-  void hasNoGeneratedCaseFieldsForClient16_635_1UntilRecordedBattlesEstablishThem() {
+  void readsEveryDataVersionOfClient16_635_1sGeneratedCasesByThe14_593_1Fields() {
+    // Client 16.635.1 reads a generated case as client 16.402.17 does: the fields its replays add
+    // beyond 14.593.1's (the request lists, the header switches, each king level 1) change nothing.
     for (String version : GameVersions.CLIENT_16_635_1_DATA) {
-      assertThat(ReplayFormat.generated(version)).isEmpty();
+      ReplayFormat format = ReplayFormat.generated(version).orElseThrow();
+
+      assertThat(format.dataVersion()).isEqualTo(version);
+      assertThat(format)
+          .usingRecursiveComparison()
+          .ignoringFields("dataVersion")
+          .isEqualTo(ReplayFormat.V14_593_1);
     }
   }
 
