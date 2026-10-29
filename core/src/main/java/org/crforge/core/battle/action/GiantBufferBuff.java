@@ -25,8 +25,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * that gave the buff.
  *
  * <p>Its start walks back from its cause - the projectile that landed it - to the object that made
- * it, as many links as the row's depth less one, and keeps that object's id, rarity and level. The
- * run then listens to its unit's hits:
+ * it, as many links as the row's depth less one, and keeps that object's id, rarity and level. A
+ * link whose maker has already left ends the walk there: the object reached is the giver, so a
+ * projectile whose launcher left before it landed is its own giver. The run then listens to its
+ * unit's hits:
  *
  * <ul>
  *   <li><b>A hit's damage.</b> On the hit that completes the count - the counter one short of the
@@ -50,6 +52,12 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " completing hit, the count and its action, the end after the giver leaves and the"
             + " finished action; held by the reference battle cg_giantbuffer_buffs_friends, a"
             + " Knight's hits for the hook and the count and an Archer's for a projectile's copy."
+            + " A walk that reaches an object whose maker has left stops there, that object the"
+            + " giver: held by the reference battles runegiant_buff_maker_left_miner and"
+            + " runegiant_buff_maker_left_skeleton, a buff projectile landing after its Rune"
+            + " Giant died, whose enchant ends; the end after the finish time rather than at"
+            + " once by BattleEnchantGiverLeftTest only, and the added damage at the"
+            + " projectile's level by no case."
             + " Not modelled: the enemy-target visual it hands a landed hit to, which is"
             + " presentation. A unit whose attack sequence is damage entries alone, as the"
             + " Inferno Dragon's ramp, runs with its ordinary hit hooks, the ramp untouched: the"
@@ -156,8 +164,9 @@ public final class GiantBufferBuff extends RowAction {
         }
         ActionOwner maker = giver.actionCreator();
         if (maker == null) {
-          throw new UnsupportedOperationException(
-              name() + " walks back from an object whose maker has left, which is not modelled");
+          // A maker that has left is forgotten by its object's removal notice: the walk stops at
+          // the object, which stays the giver, its id, rarity and level kept as a giver's.
+          break;
         }
         giver = maker;
         depth--;
