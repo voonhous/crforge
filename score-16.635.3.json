@@ -1,16 +1,19 @@
 {
-  "set_name": "16.635.3",
   "content_version": "16.635.3",
-  "battles": 7837,
+  "battles": 19405,
   "to_the_end": 99.9,
   "ticks_agreed": 99.9,
   "outcomes": {
-    "diagnostic_match": 7835,
-    "unsupported": 2
+    "diagnostic_match": 19400,
+    "mismatch": 1,
+    "unsupported": 4
   },
   "first_failures": {
-    "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2
+    "unsupported: cmd#: a Mirror given in the tick of another play of its side or the tick after, which the player's client may not yet repeat, is not modelled": 2,
+    "mismatch $.entities[].hp": 1,
+    "unsupported: Deflect_# deflects proj_# from the king tower KingTower_0_0 without a target, which is not modelled": 1,
+    "unsupported: giantbuffer_enchanting_buff on IceWizardHero, whose attached children get copies, which is not modelled": 1
   },
-  "set": "f361a489290714d3",
-  "commit": "d78a6317dde89d2389f8bb16d2b53854fa6e5fdb"
+  "set": "2ef83639d6a9043b",
+  "commit": "e7bf6a72a6d4e4603a450e7bac8cc6d97ab09b77"
 }
