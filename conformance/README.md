@@ -131,7 +131,7 @@ A run fails when:
 
 So a regression or a set that cannot be scored shows as a failed run on `main`.
 
-The scores and shields.io badges at the branch's root are always the newest scored commit's, so a late run or a rerun of an older commit never takes them back. Records are kept for `main`'s last 100 commits only. Older scores stay in the branch's history.
+The scores and shields.io badges at the branch's root are always the newest scored commit's, so a late run or a rerun of an older commit never takes them back. Records are kept for `main`'s last 100 commits only. Older scores stay in the branch's history. The coverage badge in the repository's README links to its version's score at the branch's root (`score-<version>.json`), whose fields are those listed above.
 
 A pull request only checks the lock: its revision and each listed version's set must exist. A set is known by its parts' sha256, so a lock move that keeps a version's battles keeps the comparison, and a new set starts a new one.
 
