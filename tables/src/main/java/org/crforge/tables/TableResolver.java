@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.crforge.tables.ClientSchema.DataClass;
 import org.crforge.tables.LoadModel.Layer;
 import org.crforge.tables.LoadModel.ModelRow;
 
@@ -102,6 +103,12 @@ final class TableResolver {
   private final Set<String> actionColumns = new HashSet<>();
   private final Map<String, String> byClassType = new HashMap<>();
 
+  /**
+   * The tables whose class is keyed by ClassType: the only ones where a ClassType picks a row's
+   * class.
+   */
+  private final Set<String> classTypeTables = new HashSet<>();
+
   /** The rows by table key and name, in creation order. */
   final Map<List<String>, Row> rows = new LinkedHashMap<>();
 
@@ -143,6 +150,17 @@ final class TableResolver {
             (name, c) -> {
               if (c.classType() != null) {
                 byClassType.put(c.classType(), name);
+              }
+            });
+    schema
+        .tableClasses()
+        .forEach(
+            (table, classes) -> {
+              for (String name : classes) {
+                DataClass c = schema.classes().get(name);
+                if (c != null && "ClassType".equals(c.key())) {
+                  classTypeTables.add(table);
+                }
               }
             });
     model.csvColumns.forEach(
@@ -230,13 +248,21 @@ final class TableResolver {
     return out;
   }
 
-  /** The class of a row: the ClassType a TOML layer names, else its table's one class. */
+  /**
+   * The class of a row: in a table whose class is keyed by ClassType, the ClassType a TOML layer
+   * names; else, and when it names none, its table's one class. In any other table the client
+   * builds every row with the table's class, so a section's ClassType there is only a key it does
+   * not read (the card groups table's DarkPrince section names a push action's ClassType and is a
+   * card group all the same).
+   */
   String rowClass(Row row) {
     List<Layer> stack = row.stack();
-    for (int i = stack.size() - 1; i >= 0; i--) {
-      Object ct = stack.get(i).values.get("ClassType");
-      if (ct instanceof String s && byClassType.containsKey(s)) {
-        return byClassType.get(s);
+    if (classTypeTables.contains(row.table)) {
+      for (int i = stack.size() - 1; i >= 0; i--) {
+        Object ct = stack.get(i).values.get("ClassType");
+        if (ct instanceof String s && byClassType.containsKey(s)) {
+          return byClassType.get(s);
+        }
       }
     }
     Set<String> classes =

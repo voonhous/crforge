@@ -214,6 +214,29 @@ class TableBuildTest {
   }
 
   @Test
+  @DisplayName(
+      "a ClassType chooses a row's class only in a table whose class is keyed by it; elsewhere the"
+          + " row is its table's class, the section's keys kept as its columns")
+  void classTypeOnlyInKeyedTables() throws IOException {
+    Map<String, String> files = files();
+    files.put(
+        "csv_logic/character_buffs.toml",
+        files.get("csv_logic/character_buffs.toml")
+            + "\n[Haste]\nClassType = \"ActionSpawn\"\nCount = 3\n");
+    Path other = temp.resolve("cdn-classtype");
+    serve(other, files);
+    Path built = TableBuild.build(VERSION, AssetSource.folder(other), cache);
+
+    JsonNode haste = table(built, "character_buffs").path("rows").path("Haste");
+    assertThat(haste.path("class").asText()).isEqualTo("LogicCharacterBuffData");
+    assertThat(haste.path("columns").path("ClassType").asText()).isEqualTo("ActionSpawn");
+    assertThat(haste.path("columns").path("Count").asInt()).isEqualTo(3);
+    // the actions table is keyed by ClassType: its rows are still the class the ClassType names
+    assertThat(table(built, "actions").path("actions").path("DeathSpawn").path("class").asText())
+        .isEqualTo("LogicActionSpawnData");
+  }
+
+  @Test
   @DisplayName("a built folder is used again, and a cached file is not fetched again")
   void cache() throws IOException {
     Path built = TableBuild.build(VERSION, AssetSource.folder(cdn), cache);
