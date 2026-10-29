@@ -6578,10 +6578,12 @@ public class BattleWorld implements HolderPasses {
    * is a Reflected hit, the hidden test lifted under DamagesHidden; then the reflect of a
    * reflecting target, the action's cause its attacker - a character, building or tower is struck
    * back as at any hit, an area effect never - and the death the hit causes, at once. A source that
-   * has left the battle is no source; a hit from one with an amount of 0 deals 0, which level
-   * scaling keeps at any level, and the level scaling of one with an amount is refused. A source
-   * whose row sets a buff on damage, which the drain applies after a hit it lets through, is
-   * refused.
+   * has left the battle is no source, as the game clears every reference to an object as it leaves:
+   * a projectile's hit is dealt as one without a source, unscaled, with no percentages, lowered by
+   * the target's protection unless NoProtection, and with no attacker; a hit of no amount from a
+   * character or an area effect that has left deals 0, and the level scaling of one with an amount
+   * is refused. A source whose row sets a buff on damage, which the drain applies after a hit it
+   * lets through, is refused.
    *
    * <p>The level scaling is the card damage scaling of the source's own row and level: a
    * character's, a building's or a tower's, an area effect's, or a projectile's.
@@ -6605,17 +6607,18 @@ public class BattleWorld implements HolderPasses {
     int amount = 0;
     if ((target.getView().getFlags() & target.getView().getFlagBits().noDamage()) == 0) {
       amount = damage.amount(target.getTargetView().isCrownTowerTarget()) + due.added();
-      // A source that has left gives no level to scale by; an amount of 0 scales to 0 at any
-      // level, so only a hit with an amount needs that level.
+      // A source that has left is none of the three here: the game's reference to it is cleared as
+      // it leaves, so its hit takes no level scaling and no percentages, as a hit without a source.
+      // A recorded battle holds that for a projectile source; for a character or an area effect
+      // source no recording holds the step it leaves at against the game's, so a scaled hit with
+      // an amount from one that has left stays refused (an amount of 0 scales to 0 at any level).
       if (damage.levelScaled()
           && amount != 0
-          && source == null
-          && areaSource == null
-          && projectileSource == null
-          && (due.source() != null || due.areaSource() != null || due.projectileSource() != null)) {
+          && ((source == null && due.source() != null)
+              || (areaSource == null && due.areaSource() != null))) {
         throw new UnsupportedOperationException(
-            "a damage-taking action's hit of an amount scaled by the level of a source no longer"
-                + " in the battle is not modelled");
+            "a damage-taking action's hit of an amount scaled by the level of a character or area"
+                + " effect source no longer in the battle is not modelled");
       }
       if (damage.levelScaled() && source != null) {
         amount =

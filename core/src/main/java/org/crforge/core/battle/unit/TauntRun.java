@@ -55,7 +55,11 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " battles of the Goblin Demolisher taunted onto itself as an uppercut lifts it play"
             + " on with it, though they do not tell it from the ground rule. The step that lets"
             + " an underground owner go is settled line for line and held by recorded battles of"
-            + " a taunted Mighty Miner switching lanes; a unit routing across visible is refused.")
+            + " a taunted Mighty Miner switching lanes; a unit routing across visible is refused."
+            + " A building's step that reaches a captured object gives it up and does not force it"
+            + " again: settled line for line, held by tower_taunt_snowball_captured (a crown"
+            + " tower) and cannon_taunt_captured_knight (a Cannon), a hero Knight the evolved"
+            + " Snowball's roll carries.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -165,10 +169,11 @@ final class TauntRun extends ActionInstance {
    * is cleared and, unless the owner is attacking, its reference is given up, keeping its wind-up;
    * then the run finishes. While the duration lasts: a forced object no longer alive lets the owner
    * go; a captured one stops being its reference; and a building owner that reaches the object has
-   * its reference forced again when the row allows building retargeting and its falloff reloaded
-   * when the row tests the reach by distance, while one that does not reach it loses falloff, let
-   * go once that is spent, and gives up the reference under building retargeting. A unit's step is
-   * {@link #stepUnit}. A reference on the forced object locks the selector again.
+   * its reference forced again when the row allows building retargeting and the object is not
+   * captured, and its falloff reloaded when the row tests the reach by distance, while one that
+   * does not reach it loses falloff, let go once that is spent, and gives up the reference under
+   * building retargeting. A unit's step is {@link #stepUnit}. A reference on the forced object
+   * locks the selector again.
    */
   @Override
   protected void update(ActionHolder holder) {
@@ -223,7 +228,9 @@ final class TauntRun extends ActionInstance {
       calls.add("set_target null 0 0 0");
     }
     if (reach()) {
-      if (taunt.isAllowBuildingRetargeting()) {
+      // A captured object is not forced again: the step above gave it up, and it stays given up
+      // while the capture holds it.
+      if (taunt.isAllowBuildingRetargeting() && !captured()) {
         owner.tauntReference(forced, true);
         calls.add("set_target " + forced.name() + " 0 0 1");
         owner.raiseLockTarget();

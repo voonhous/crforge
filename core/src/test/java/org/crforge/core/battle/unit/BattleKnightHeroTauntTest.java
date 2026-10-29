@@ -164,4 +164,45 @@ class BattleKnightHeroTauntTest {
     assertThat(princess.getBuffs().carries(BUFF)).isFalse();
     assertThat(king.getBuffs().carries(BUFF)).isFalse();
   }
+
+  @Test
+  @DisplayName(
+      "a crown tower taunted onto a Knight that is then captured gives its reference up and is"
+          + " not forced onto the Knight again while the Knight stays captured")
+  void aCapturedKnightIsNotForcedAgain() {
+    Scene scene = new Scene();
+    TowerEntity princess = BattleTowers.towerNamed(scene.match.getBattle(), "PrincessTower_1_1");
+    TowerEntity king = BattleTowers.towerNamed(scene.match.getBattle(), "KingTower_1_0");
+    king.holdFire();
+    scene.step(40);
+    scene.taunt();
+    scene.step(2);
+    assertThat(reference(princess)).isEqualTo("knight");
+
+    // A capture raises its tags on the Knight every step it holds it, CAPTURED among them.
+    long captured = scene.knight.getView().getFlagBits().captured();
+    scene.taunts.clear();
+    scene.knight.raiseCaptureTags(captured);
+    scene.step(1);
+    assertThat(scene.knight.getView().getFlags() & captured).isNotZero();
+    int left = DURATION - 100;
+    String dropped = "[remaining 0, set_target null 0 0 0]";
+    assertThat(scene.taunts)
+        .as("the first step of the capture gives the Knight up and does not force it again")
+        .containsExactlyInAnyOrder(
+            "PrincessTower_1_1 " + left + " " + dropped, "KingTower_1_0 " + left + " " + dropped);
+    assertThat(reference(king)).isNull();
+
+    // While the Knight stays captured no step forces it again: the passive king, holding no
+    // reference, does nothing, and the princess tower, which takes the Knight again by its own
+    // selection (it is not hidden here), gives it up again.
+    scene.taunts.clear();
+    scene.knight.raiseCaptureTags(captured);
+    scene.step(1);
+    assertThat(scene.taunts)
+        .containsExactlyInAnyOrder(
+            "PrincessTower_1_1 " + (left - 50) + " " + dropped,
+            "KingTower_1_0 " + (left - 50) + " []");
+    assertThat(reference(king)).isNull();
+  }
 }
