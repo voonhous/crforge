@@ -51,9 +51,14 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " finished action; held by the reference battle cg_giantbuffer_buffs_friends, a"
             + " Knight's hits for the hook and the count and an Archer's for a projectile's copy."
             + " Not modelled: the enemy-target visual it hands a landed hit to, which is"
-            + " presentation. Refused: a unit with attached children, which would get copies, a"
-            + " unit whose attack sequence replaces its attack, and the Berserker's attack"
-            + " sequence step.")
+            + " presentation. A unit whose attack sequence is damage entries alone, as the"
+            + " Inferno Dragon's ramp, runs with its ordinary hit hooks, the ramp untouched: the"
+            + " build's hit picks only whether an entry launches, acts or hits directly, and its"
+            + " direct hit is the one a row without a sequence takes; held by"
+            + " BattleEnchantedSequenceTest. Refused: a unit with attached children, which would"
+            + " get copies, a unit whose attack sequence replaces its attack with an entry that"
+            + " launches a projectile or runs an action, which no case holds under an enchanting"
+            + " run, and the Berserker's attack sequence step.")
 public final class GiantBufferBuff extends RowAction {
 
   /**
@@ -126,13 +131,15 @@ public final class GiantBufferBuff extends RowAction {
               + " which is not modelled");
     }
     if (owner.actionAttackSequence()) {
-      // The hits of a unit whose attack sequence replaces its attack - an entry's projectile, or
-      // an entry's action in place of a hit - are not established under an enchanting run.
+      // The hits of a unit whose attack sequence replaces its attack with an entry's projectile,
+      // or an entry's action, are not established under an enchanting run. A sequence of damage
+      // entries alone hits directly, as a row without one, and keeps the row's hit hooks.
       throw new UnsupportedOperationException(
           name()
               + " on "
               + owner.actionRowName()
-              + ", whose attack sequence replaces its attack, which is not modelled");
+              + ", whose attack sequence replaces its attack with an entry that launches a"
+              + " projectile or runs an action, which is not modelled");
     }
     Run run = new Run(this, owner);
     ActionOwner giver = instigator == null ? null : instigator.getOwner();

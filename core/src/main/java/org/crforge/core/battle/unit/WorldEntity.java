@@ -2404,7 +2404,21 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public boolean actionAttackSequence() {
-    return data.attackSequence().replacesAttack();
+    AttackSequence sequence = data.attackSequence();
+    if (!sequence.replacesAttack()) {
+      return false;
+    }
+    // An entry chooses only whether a hit launches, runs an action or hits directly; one of damage
+    // alone hits directly, as a row without a sequence does.
+    for (AttackSequence.Entry entry : sequence.entries()) {
+      if (entry.projectile() != null
+          || entry.customFirstProjectile() != null
+          || entry.doAttackAction() != null
+          || entry.customOnAttackAction() != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

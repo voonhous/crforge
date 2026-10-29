@@ -850,7 +850,7 @@ Nothing moves a unit off the river otherwise. A formation played into the pocket
   - a Knight within the bayonet's reach taking only typed hits of the bayonet's damage, a Minion as close only shots
   - a buff on damage, patched onto the row, applied on the bayonet's tick before its typed hit lands
   - target_is_ground answering 0 with the targeting off and reading a character target's force tags before its row (a Minion held under FORCE_IS_GROUND taking the bayonet, a Knight under FORCE_IS_AIR shots, both tags its live height)
-  - the refusals: a force tag on a target that is not a character, an entry's action in a sequence of one or beside a projectile, and an enchanting buff on a unit whose attack sequence replaces its attack
+  - the refusals: a force tag on a target that is not a character, an entry's action in a sequence of one or beside a projectile, and an enchanting buff on a unit whose attack sequence replaces its attack with an entry that launches or acts
 - `CardPlacementTest` holds a listed character's offset on both sides and halves, and the top side's list on the left half.
 - `BattleMusketeerSnipeTest` holds the evolved Musketeer's snipe on the shipped rows:
   - its entry's own range
@@ -2241,7 +2241,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - the damage of the hit that completes its count
   - the end of each landed single-target attack, which counts it and at the count runs its action
 
-  A projectile the unit registers on that hit carries a copy of the buff to its impact. The enemy-target visual the buff hands a landed hit to only shows it and is not modelled. A unit with attached children, which would get copies, and the Berserker's sequence step are refused.
+  A projectile the unit registers on that hit carries a copy of the buff to its impact. The enemy-target visual the buff hands a landed hit to only shows it and is not modelled. A unit whose attack sequence is damage entries alone, as the Inferno Dragon's ramp, takes the buff on its direct hits: every third landed hit gains the added damage, the ramp's stages unchanged. A unit with attached children, which would get copies, a sequence with an entry that launches a projectile or runs an action, and the Berserker's sequence step are refused.
 
   A singleton row found running re-triggers by its name, whichever entity's tree built it.
 
@@ -2624,7 +2624,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - An entry that sets a column the loader neither reads nor counts as presentation. Beside its projectile, damage, action and a continuous-damage attacker's window, it reads its timing, range and pushback overrides, its first projectile, its number of targets and whether it remembers them, the action its hit runs in place of the row's attack action, its start delay, and its buff on damage and that buff's time.
   - An entry's action beside a projectile, in a sequence of one, in a continuous-damage attacker or on a charging row.
   - An entry with neither a projectile nor an action on a unit that fires.
-  - An enchanting buff on a unit whose sequence replaces its attack.
+  - An enchanting buff on a unit whose sequence replaces its attack with an entry that launches a projectile or runs an action. A sequence of damage entries alone, as the Inferno Dragon's ramp, hits through the same direct hit as a row without one, so the buff runs on it with the unit's ordinary hit hooks and leaves the ramp alone (`BattleEnchantedSequenceTest`).
   - A morph of a unit a continuous-damage attacker references, whose replacement is not established.
 
   The Mighty Miner's lane switch, its ability, is refused when it is requested. A card play never requests it.
