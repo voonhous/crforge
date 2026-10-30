@@ -143,7 +143,7 @@ final class RollingRun extends ActionInstance {
       projectile.moveTo(x + sx, y + sy, projectile.getZ());
       rolledX += sx;
       rolledY += sy;
-      projectile.world().events().rolled(projectile, false);
+      projectile.world().getEvents().rolled(projectile, false);
       projectile.world().rollDeflectionPass(projectile);
       return;
     }
@@ -151,7 +151,7 @@ final class RollingRun extends ActionInstance {
     hitPass();
     // Released with no impact: it leaves at this tick's cleanup.
     projectile.release();
-    projectile.world().events().rolled(projectile, true);
+    projectile.world().getEvents().rolled(projectile, true);
     finish();
   }
 

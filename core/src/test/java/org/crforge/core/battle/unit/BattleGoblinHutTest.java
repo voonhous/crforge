@@ -243,7 +243,7 @@ class BattleGoblinHutTest {
     CharacterEntity knight = scene.still(1, "Knight", 3500, 13000, "K");
     CharacterEntity other = scene.still(1, "Knight", 3500, 20000, "K2");
     scene.stepThrough(40);
-    scene.match.getWorld().hits().kill(knight, null);
+    scene.match.getWorld().getHits().kill(knight, null);
     // The kill lands at the next step's damage drain, and the target leaves at that step's
     // cleanup; the run's step after it marks it lost.
     scene.stepThrough(42);

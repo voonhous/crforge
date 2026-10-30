@@ -89,7 +89,7 @@ class BattleDeathActionSlotTest {
               public void afterPrePass(int tick, List<WorldEntity> present) {
                 if (tick > 0 && !dealt[0]) {
                   dealt[0] = true;
-                  match.getWorld().hits().kill(dying, killer);
+                  match.getWorld().getHits().kill(dying, killer);
                 }
               }
             });

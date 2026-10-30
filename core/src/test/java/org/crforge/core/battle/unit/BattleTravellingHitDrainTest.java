@@ -221,7 +221,7 @@ class BattleTravellingHitDrainTest {
               ProjectileEntity projectile = recording.pellets.get(0);
               shooter.add(projectile);
               world
-                  .hits()
+                  .getHits()
                   .dealProjectileHit(
                       projectile, recording.ram, whole(recording.ram), world.nextHitId(), 0, 0);
             });
@@ -249,7 +249,7 @@ class BattleTravellingHitDrainTest {
                 // A damage-taking action's hit on the ram with no source, large enough to kill it
                 // alone.
                 world
-                    .hits()
+                    .getHits()
                     .queueActionDamage(
                         null,
                         recording.ram,

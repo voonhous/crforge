@@ -140,7 +140,7 @@ class BattleEndHitAcceptedTest {
     match.getBattle().step();
     int hitPoints = tower.getHitPoints().getHitPoints();
     match.getWorld().setMatchEnded(true);
-    match.getWorld().hits().dealDirectHit(wizard, tower.getTargetView(), 100, 0, -1);
+    match.getWorld().getHits().dealDirectHit(wizard, tower.getTargetView(), 100, 0, -1);
 
     assertThatThrownBy(() -> match.getBattle().step())
         .isInstanceOf(UnsupportedOperationException.class)

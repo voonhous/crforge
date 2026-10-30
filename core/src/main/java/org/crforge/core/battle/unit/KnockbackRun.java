@@ -145,7 +145,7 @@ final class KnockbackRun extends ActionInstance {
     counter = row.getDurationMs();
     unit.startLayering();
     unit.raiseWatched(unit.world().forceIsAir() | unit.getView().getFlagBits().disablePhysical());
-    unit.world().events().knockbackStarted(unit, row.name(), phase, instigator, counter);
+    unit.world().getEvents().knockbackStarted(unit, row.name(), phase, instigator, counter);
   }
 
   @Override
@@ -171,7 +171,7 @@ final class KnockbackRun extends ActionInstance {
         unit.getUnit().movement().stopPushback();
       }
       finish();
-      unit.world().events().knockbackStepped(unit, before, counter, height, tags, true);
+      unit.world().getEvents().knockbackStepped(unit, before, counter, height, tags, true);
       return;
     }
     if (unit.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
@@ -194,7 +194,7 @@ final class KnockbackRun extends ActionInstance {
       finish();
     }
     counter -= STEP_MS;
-    unit.world().events().knockbackStepped(unit, before, counter, height, tags, isFinished());
+    unit.world().getEvents().knockbackStepped(unit, before, counter, height, tags, isFinished());
   }
 
   /**

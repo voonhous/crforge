@@ -9,6 +9,8 @@ package org.crforge.core.battle.unit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.BattleAction;
@@ -30,16 +32,13 @@ import org.crforge.core.pathfinding.target.TargetView;
  * tick in progress, to each observer in the order it attached. The events carry nothing of the
  * battle's own state; an observer that is not attached costs the tick nothing.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class WorldEvents {
 
   private final BattleWorld world;
 
   /** The observers, in the order they attached. */
   private final List<WorldObserver> observers = new ArrayList<>();
-
-  WorldEvents(BattleWorld world) {
-    this.world = world;
-  }
 
   /** Attaches an observer; it is told about every event from the next one on. */
   void add(WorldObserver observer) {

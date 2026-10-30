@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
@@ -62,13 +64,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " card_RageBarbarian. Refused: a least radius that draws, a child without hit"
             + " points that has a range, a spawner's turned or drawn ring and a spawner child"
             + " without hit points, a building, pathing or starting an action.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class CharacterSpawns {
 
   private final BattleWorld world;
-
-  CharacterSpawns(BattleWorld world) {
-    this.world = world;
-  }
 
   /** How many children each source has spawned so far, by the source's name. */
   private final Map<String, Integer> spawnCounts = new HashMap<>();
@@ -113,7 +112,7 @@ public final class CharacterSpawns {
     world.getHolder().addRegistered(made);
     made.startDeployingAfterMorph();
     old.morphedAway();
-    world.events().morphed(old, made);
+    world.getEvents().morphed(old, made);
   }
 
   /**
@@ -195,7 +194,7 @@ public final class CharacterSpawns {
       }
       cloneSpawn(spawner, spawned);
       world.getHolder().addRegistered(spawned);
-      world.events().characterSpawned(spawner, spawned, x, y);
+      world.getEvents().characterSpawned(spawner, spawned, x, y);
       // The spawner's last act on each child: its running actions hear of it.
       spawner.actions().childSpawned(spawned.getId());
     }
@@ -288,7 +287,7 @@ public final class CharacterSpawns {
     cloneSpawn(spawner, spawned);
     // With SpawnerAliveRequired the spawner's id is filed beside the child, which the fold reads.
     world.getHolder().addRegistered(spawned, buff.spawnerAliveRequired() ? spawner.getId() : 0);
-    world.events().characterSpawned(spawner, spawned, x, y);
+    world.getEvents().characterSpawned(spawner, spawned, x, y);
   }
 
   /**
@@ -363,9 +362,9 @@ public final class CharacterSpawns {
         rider.getView().setDirY(parent.getView().getDirY());
       }
       world.getHolder().addRegistered(rider);
-      world.events().characterSpawned(parent, rider, x, y);
+      world.getEvents().characterSpawned(parent, rider, x, y);
       rider.attachTo(parent, angle);
-      world.events().riderAttached(parent, rider, i, angle);
+      world.getEvents().riderAttached(parent, rider, i, angle);
     }
   }
 
@@ -469,7 +468,7 @@ public final class CharacterSpawns {
       spawned.setCastId(projectile.castId());
       spawned.startOnAdmission();
       world.getHolder().addRegistered(spawned);
-      world.events().characterSpawned(projectile, spawned, cx, cy);
+      world.getEvents().characterSpawned(projectile, spawned, cx, cy);
       // The relocation reads where the child stands after its registration visit, so the step
       // that visit took is kept, and runs only for a child on the ground (its height and height
       // offset).
@@ -571,10 +570,10 @@ public final class CharacterSpawns {
         // The spawner queues the child for the holder; the fold that takes it in starts it.
         spawned.startOnAdmission();
         world.getHolder().addRegistered(spawned);
-        world.events().characterSpawned(dying, spawned, x, y);
+        world.getEvents().characterSpawned(dying, spawned, x, y);
         made.add(spawned);
       }
-      world.events().buffDeathSpawn(dying, instance, made);
+      world.getEvents().buffDeathSpawn(dying, instance, made);
     }
   }
 
@@ -700,7 +699,7 @@ public final class CharacterSpawns {
         // before each child, and is turned over by it and by the dying object's team.
         if (data.spawnConstPriority()) {
           int lane = LaneAssignment.lane(world.getTileMap(), fromX, fromY, -1, 0);
-          world.events().ringLaneAsked(dying, fromX, fromY, lane);
+          world.getEvents().ringLaneAsked(dying, fromX, fromY, lane);
           at = SpawnPlacement.mirrored(at, fromX, fromY, lane, dying.side() & 1);
         }
       } else {
@@ -769,7 +768,7 @@ public final class CharacterSpawns {
       if (BattleWorld.DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         spawned.startSpawnImmunity();
       }
-      world.events().characterSpawned(dying, spawned, madeX, madeY);
+      world.getEvents().characterSpawned(dying, spawned, madeX, madeY);
     }
   }
 
@@ -859,10 +858,10 @@ public final class CharacterSpawns {
             PackedLevel.level(PackedLevel.pack(areaEffect.getPackedLevel(), row.rarity())));
     guard.actionHolder().list(action.guardRun(guard.guardHost(), x, y));
     world.getHolder().addRegistered(guard);
-    world.events().guardRegistered(guard);
+    world.getEvents().guardRegistered(guard);
     guard.faceToward(x, y);
     guard.deployAfterRegistration();
-    world.events().guardStarted(areaEffect, action.name(), phase, guard, x, behind, gx, gy);
+    world.getEvents().guardStarted(areaEffect, action.name(), phase, guard, x, behind, gx, gy);
   }
 
   /** The blocked cell value a warp's landing avoids: not placeable, and no lane. */
@@ -929,7 +928,7 @@ public final class CharacterSpawns {
       unit.resetTargetAfterWarp();
     }
     world
-        .events()
+        .getEvents()
         .warped(
             unit,
             action.name(),
@@ -1109,7 +1108,7 @@ public final class CharacterSpawns {
         // A ring whose children take a fixed priority asks the lane of the point before each
         // child, and is turned over by it and by the source's team.
         int lane = LaneAssignment.lane(world.getTileMap(), arguments.x(), arguments.y(), -1, 0);
-        world.events().ringLaneAsked(source, arguments.x(), arguments.y(), lane);
+        world.getEvents().ringLaneAsked(source, arguments.x(), arguments.y(), lane);
         at = SpawnPlacement.mirrored(at, arguments.x(), arguments.y(), lane, source.side() & 1);
       }
       int x = inset(at[0], world.getTileMap().width());
@@ -1159,7 +1158,7 @@ public final class CharacterSpawns {
       if (arguments.deathSpawn() && BattleWorld.DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         child.startSpawnImmunity();
       }
-      world.events().characterSpawned(source, child, x, y);
+      world.getEvents().characterSpawned(source, child, x, y);
       if (arguments.action() != null) {
         child
             .actionHolder()
@@ -1239,7 +1238,7 @@ public final class CharacterSpawns {
     if (BattleWorld.DEATH_SPAWN_IMMUNE_FIRST_TICK) {
       child.startSpawnImmunity();
     }
-    world.events().characterSpawned(source, child, cx, cy);
+    world.getEvents().characterSpawned(source, child, cx, cy);
   }
 
   /**
@@ -1296,7 +1295,7 @@ public final class CharacterSpawns {
     if (BattleWorld.DEATH_SPAWN_IMMUNE_FIRST_TICK) {
       child.startSpawnImmunity();
     }
-    world.events().characterSpawned(unit, child, x, y);
+    world.getEvents().characterSpawned(unit, child, x, y);
   }
 
   /**
@@ -1323,7 +1322,7 @@ public final class CharacterSpawns {
         order[j] = kept;
       }
     }
-    world.events().spawnOrdered(areaEffect, order.clone(), before, world.getRandom().getState());
+    world.getEvents().spawnOrdered(areaEffect, order.clone(), before, world.getRandom().getState());
     return order;
   }
 
@@ -1390,8 +1389,8 @@ public final class CharacterSpawns {
     }
     world.getHolder().addRegistered(child);
     child.markClone(null);
-    world.events().characterSpawned(areaEffect, child, x, y);
-    world.events().areaSpawned(areaEffect, child, retries, world.getRandom().getState());
+    world.getEvents().characterSpawned(areaEffect, child, x, y);
+    world.getEvents().areaSpawned(areaEffect, child, retries, world.getRandom().getState());
   }
 
   /**
@@ -1587,11 +1586,11 @@ public final class CharacterSpawns {
             PackedLevel.level(PackedLevel.pack(area.packedLevel(), data.rarity())));
     child.startDeploying();
     world.getHolder().add(child);
-    world.events().ghostSummonMade(area, child);
+    world.getEvents().ghostSummonMade(area, child);
     child.takeSummonReference(reference);
     child.faceToward(x, y);
     child.summonReveal();
-    world.events().ghostSummonSpawned(area, child);
+    world.getEvents().ghostSummonSpawned(area, child);
   }
 
   /**
@@ -1656,7 +1655,7 @@ public final class CharacterSpawns {
     // it, scheduling its row's starting action.
     clone.startOnAdmission();
     world.getHolder().addRegistered(clone);
-    world.events().cloned(original, clone, instigator, visits);
+    world.getEvents().cloned(original, clone, instigator, visits);
     clone.getBuffs().copyFrom(original.getBuffs());
     // The creator tells each run the unit lists of the clone, in their order; only an air-to-ground
     // run acts on it: it schedules its row on the clone with the unit as the cause, whose start
@@ -1679,7 +1678,7 @@ public final class CharacterSpawns {
         CharacterEntity rider = riders.get(i);
         CharacterEntity riderClone = makeClone(rider, instigator, action);
         riderClone.attachTo(clone, rider.getAttachAngle());
-        world.events().riderAttached(clone, riderClone, i, rider.getAttachAngle());
+        world.getEvents().riderAttached(clone, riderClone, i, rider.getAttachAngle());
       }
     }
     return clone;

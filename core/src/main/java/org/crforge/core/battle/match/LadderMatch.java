@@ -604,7 +604,7 @@ public final class LadderMatch implements BattleMode {
                 + character.name()
                 + ", which it only counts, is not modelled");
       }
-      world.hits().clearingKill(character);
+      world.getHits().clearingKill(character);
       count++;
     }
     return count;
@@ -618,9 +618,9 @@ public final class LadderMatch implements BattleMode {
     int step = drainStep(lowestTower());
     for (int side = 0; side < 2; side++) {
       for (TowerEntity tower : princessTowers(side)) {
-        world.hits().drain(tower, step);
+        world.getHits().drain(tower, step);
       }
-      world.hits().drain(king(side), step);
+      world.getHits().drain(king(side), step);
     }
   }
 
@@ -757,7 +757,7 @@ public final class LadderMatch implements BattleMode {
           && w.getHitPoints() != null
           && HitPoints.alive(w.getHitPoints())
           && inside(w.getView().getX(), w.getView().getY(), x, y, radius)) {
-        world.hits().circleKill(w, radius);
+        world.getHits().circleKill(w, radius);
       }
     }
   }

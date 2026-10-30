@@ -119,7 +119,7 @@ class BattleRiderIgnoreListTest {
     assertThat(body.getHitIds())
         .as("the body lists the riders with their carrier")
         .contains(giant.getId(), riders.get(0).getId(), riders.get(1).getId());
-    match.getWorld().hits().kill(giant, null);
+    match.getWorld().getHits().kill(giant, null);
     match.getBattle().step();
     assertThat(spawns).as("each rider left its Spear Goblin").hasSize(RIDERS);
     assertThat(body.getHitIds())

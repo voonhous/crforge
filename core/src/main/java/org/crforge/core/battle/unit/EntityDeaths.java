@@ -12,6 +12,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
@@ -54,13 +56,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " a column of the slot not modelled, and a death hook with no attacker or no pending"
             + " pass ahead of it. Left out: the elixir a death gives. Not modelled: the copy of the"
             + " attacker the game makes as a death hook's cause.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class EntityDeaths {
 
   private final BattleWorld world;
-
-  EntityDeaths(BattleWorld world) {
-    this.world = world;
-  }
 
   /** The most victims a death's damage takes. */
   private static final int DEATH_DAMAGE_LIMIT = 1000;
@@ -150,7 +149,7 @@ public final class EntityDeaths {
    * @param attacker what killed it
    */
   private void killedDone(WorldEntity dying, BattleEntity attacker) {
-    world.hits().referenceDrop(attacker, dying, true);
+    world.getHits().referenceDrop(attacker, dying, true);
     // A projectile's kill reaches its shooter: its launcher, when that is a character. With none
     // the projectile itself hears the kill, which runs no row.
     BattleEntity hook =
@@ -169,7 +168,7 @@ public final class EntityDeaths {
               + " wait; such a kill is not established");
     }
     boolean inPendingPass = world.getHolder().isInPendingPass();
-    world.events().killedDoneScheduled(killer, dying, action, inPendingPass);
+    world.getEvents().killedDoneScheduled(killer, dying, action, inPendingPass);
     killer
         .actionHolder()
         .schedule(
@@ -190,7 +189,7 @@ public final class EntityDeaths {
       return;
     }
     world.getKingElixir().add(killingSide, amount);
-    world.events().deathElixirPaid(dying, killingSide, amount);
+    world.getEvents().deathElixirPaid(dying, killingSide, amount);
   }
 
   /**
@@ -256,7 +255,7 @@ public final class EntityDeaths {
     }
     List<String> hooks = List.of(data.onKilledAction());
     boolean inPendingPass = world.getHolder().isInPendingPass();
-    world.events().deathHooksScheduled(dying, attacker, side, hooks, inPendingPass);
+    world.getEvents().deathHooksScheduled(dying, attacker, side, hooks, inPendingPass);
     if (killed == null) {
       killed = world.getActions().build(data.onKilledAction(), world.binding(dying));
     }
@@ -292,7 +291,7 @@ public final class EntityDeaths {
   private void slotDeathAction(WorldEntity dying, UnitData data) {
     List<String> hooks = List.of(data.onDeathAction());
     boolean inPendingPass = world.getHolder().isInPendingPass();
-    world.events().deathHooksScheduled(dying, dying, dying.side(), hooks, inPendingPass);
+    world.getEvents().deathHooksScheduled(dying, dying, dying.side(), hooks, inPendingPass);
     dying
         .actionHolder()
         .schedule(
@@ -310,7 +309,7 @@ public final class EntityDeaths {
    * @param dying the object
    */
   void deathAtRemoval(WorldEntity dying) {
-    world.events().diedAtRemoval(dying);
+    world.getEvents().diedAtRemoval(dying);
     deathSlot(dying, dying.getData());
   }
 
@@ -325,7 +324,7 @@ public final class EntityDeaths {
    */
   void decayDeath(WorldEntity dying, int hitPointsBefore) {
     UnitData data = dying.getData();
-    world.events().decayDied(dying, hitPointsBefore);
+    world.getEvents().decayDied(dying, hitPointsBefore);
     // The death slot schedules the death action, on itself with itself as the cause.
     deathSlot(dying, data);
   }
@@ -344,7 +343,7 @@ public final class EntityDeaths {
       throw new UnsupportedOperationException(
           parent.name() + " lets its riders go under an inherited ignore list, which is not held");
     }
-    world.events().parentLeft(rider, parent);
+    world.getEvents().parentLeft(rider, parent);
     deathSlot(rider, rider.getData());
   }
 
@@ -393,10 +392,10 @@ public final class EntityDeaths {
         deathArea.markClone();
       }
     }
-    world.spawns().buffDeathSpawns(dying);
+    world.getSpawns().buffDeathSpawns(dying);
     dying.deathSwitches();
     deathDamage(dying, data);
-    world.spawns().deathSpawn(dying, data);
+    world.getSpawns().deathSpawn(dying, data);
     deathProjectiles(dying, data);
     deathNotice(dying);
     if (data.onDeathAction() != null) {
@@ -419,7 +418,7 @@ public final class EntityDeaths {
     }
     int amount = data.manaOnDeath() * KingElixir.SCALE;
     world.getKingElixir().add(side, amount);
-    world.events().deathManaPaid(dying, side, amount);
+    world.getEvents().deathManaPaid(dying, side, amount);
   }
 
   /**
@@ -432,7 +431,7 @@ public final class EntityDeaths {
     if (destroyedListeners.isEmpty()) {
       return;
     }
-    world.events().destroyedNoticed(dying, destroyedListeners.size());
+    world.getEvents().destroyedNoticed(dying, destroyedListeners.size());
     for (RunActionOnTroopDestroyed.Listener listener : new ArrayList<>(destroyedListeners)) {
       listener.destroyed(dying.filterSubject(), dying.getId(), dying.side(), dying.actionHolder());
     }
@@ -448,7 +447,7 @@ public final class EntityDeaths {
   void listenForDestroyed(
       WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
     destroyedListeners.add(listener);
-    world.events().destroyedListening(owner, action, true);
+    world.getEvents().destroyedListening(owner, action, true);
   }
 
   /**
@@ -461,7 +460,7 @@ public final class EntityDeaths {
   void unlistenForDestroyed(
       WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
     destroyedListeners.remove(listener);
-    world.events().destroyedListening(owner, action, false);
+    world.getEvents().destroyedListening(owner, action, false);
   }
 
   /**
@@ -549,7 +548,7 @@ public final class EntityDeaths {
         projectile.markClone();
       }
       world.launch(projectile);
-      world.events().deathProjectileLaunched(dying, projectile);
+      world.getEvents().deathProjectileLaunched(dying, projectile);
       angle += step;
     }
   }
@@ -660,7 +659,7 @@ public final class EntityDeaths {
               @Override
               public DamageResult damage(TargetView victim, int dealt, int id) {
                 return world
-                    .hits()
+                    .getHits()
                     .dealAreaDamage(owner, world.entityOf(victim.getEntity()), dealt, id);
               }
 
@@ -670,6 +669,6 @@ public final class EntityDeaths {
                     && character.pushedByArea(fromX, fromY, distance);
               }
             });
-    world.events().areaDamaged(owner, area, outcome);
+    world.getEvents().areaDamaged(owner, area, outcome);
   }
 }

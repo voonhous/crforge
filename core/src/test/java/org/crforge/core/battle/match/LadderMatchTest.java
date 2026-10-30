@@ -80,7 +80,7 @@ class LadderMatchTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.getBattle().step();
-    battle.getWorld().hits().kill(battle.getWorld().kingTower(1), null);
+    battle.getWorld().getHits().kill(battle.getWorld().kingTower(1), null);
     // The kill lands at the next step's damage drain; the head of the step after sees it and ends
     // the match.
     battle.getBattle().step();
@@ -158,7 +158,7 @@ class LadderMatchTest {
                 }
               }
             });
-    battle.getWorld().hits().kill(princess, null);
+    battle.getWorld().getHits().kill(princess, null);
     // The kill lands at the step's damage drain and the tower leaves at its closing cleanup.
     battle.getBattle().step();
 
@@ -174,8 +174,8 @@ class LadderMatchTest {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
     LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
     battle.getBattle().step();
-    battle.getWorld().hits().kill(battle.getWorld().kingTower(0), null);
-    battle.getWorld().hits().kill(battle.getWorld().kingTower(1), null);
+    battle.getWorld().getHits().kill(battle.getWorld().kingTower(0), null);
+    battle.getWorld().getHits().kill(battle.getWorld().kingTower(1), null);
 
     int steps = 0;
     while (!match.isEnded()) {

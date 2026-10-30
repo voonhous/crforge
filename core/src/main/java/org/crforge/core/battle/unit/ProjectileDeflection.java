@@ -9,6 +9,8 @@ package org.crforge.core.battle.unit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.projectile.ProjectileChain;
 import org.crforge.core.battle.projectile.ProjectileData;
@@ -62,13 +64,10 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " root owner that is spell-like or has an action on reaching its target, a Goblin"
             + " Barrel sent at a king tower, and a projectile an area effect launched that was not"
             + " dropped onto it.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class ProjectileDeflection {
 
   private final BattleWorld world;
-
-  ProjectileDeflection(BattleWorld world) {
-    this.world = world;
-  }
 
   /**
    * A deflecting area effect in the spatial index. The game's index holds every listed object whose
@@ -702,7 +701,7 @@ public final class ProjectileDeflection {
         // Queued with the projectile as the hit's source: the drain follows the damage with the
         // projectile's after-damage target buff, as it does an impact's, though the projectile
         // flies on to its new target.
-        world.hits().queueDeflectedHit(projectile, parent, damage, hitId);
+        world.getHits().queueDeflectedHit(projectile, parent, damage, hitId);
       }
       if (group != null) {
         group.doom(parent.getId());
@@ -756,7 +755,7 @@ public final class ProjectileDeflection {
     if (rootless) {
       projectile.finishRootless();
     }
-    world.events().projectileDeflected(deflector, projectile, parent, sentAt);
+    world.getEvents().projectileDeflected(deflector, projectile, parent, sentAt);
     return true;
   }
 

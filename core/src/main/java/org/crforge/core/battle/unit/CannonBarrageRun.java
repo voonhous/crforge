@@ -43,7 +43,7 @@ final class CannonBarrageRun extends ActionInstance {
     super(row);
     this.row = row;
     this.unit = unit;
-    unit.world().events().barrageStarted(unit, row.name(), phase);
+    unit.world().getEvents().barrageStarted(unit, row.name(), phase);
   }
 
   @Override
@@ -64,6 +64,6 @@ final class CannonBarrageRun extends ActionInstance {
       made.add(unit.world().barrageAreaEffect(unit, row.getAreaEffects().get(i), x, y));
     }
     finish();
-    unit.world().events().barrageStepped(unit, row.name(), made);
+    unit.world().getEvents().barrageStepped(unit, row.name(), made);
   }
 }

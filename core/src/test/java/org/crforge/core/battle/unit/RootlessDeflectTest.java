@@ -124,7 +124,7 @@ class RootlessDeflectTest {
       shot = launched.stream().filter(p -> p.getRoot() == musketeer).findFirst().orElse(null);
     }
     assertThat(shot.getTarget()).as("the shot is aimed at the Monk").isSameAs(monk);
-    world.hits().kill(musketeer, null);
+    world.getHits().kill(musketeer, null);
     match.getBattle().step();
     assertThat(world.getHolder().entities()).as("the Musketeer has left").doesNotContain(musketeer);
     assertThat(shot.getRoot()).as("the shot has no root owner").isNull();

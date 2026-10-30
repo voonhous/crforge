@@ -206,7 +206,7 @@ class RiderTest {
             });
     // Killed between two steps, the Giant dies at the next step's damage drain and leaves at the
     // opening cleanup of the step after.
-    match.getWorld().hits().kill(giant, null);
+    match.getWorld().getHits().kill(giant, null);
     match.getBattle().step();
     presentAfter.clear();
     match.getBattle().step();
@@ -505,7 +505,7 @@ class RiderTest {
 
     // Killed between two steps, the Knight dies at the next step's damage drain, before the bola
     // landing in that step reaches it: the bola lands on a Knight already at 0 hit points.
-    match.getWorld().hits().kill(knight, null);
+    match.getWorld().getHits().kill(knight, null);
     match.getBattle().step();
     assertThat(hitPointsAtImpact).containsExactly(0);
     assertThat(drops).as("no drop for a hit on a target already dead").isEmpty();

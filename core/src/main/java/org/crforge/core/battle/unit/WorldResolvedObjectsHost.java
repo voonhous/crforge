@@ -8,6 +8,8 @@ package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
@@ -25,22 +27,16 @@ import org.crforge.core.battle.filter.GameObjectFilter;
  * on the owner. The owner answers for itself: its point, the heading a cone turns with, and the
  * binding and the holder a row scheduled on it takes.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 abstract class WorldResolvedObjectsHost implements RunOnResolvedObjects.Host {
 
   private final BattleWorld world;
-  private final BattleAction action;
-  private final BattleEntity asker;
 
-  /**
-   * @param world the battle
-   * @param action the action that resolves the objects, for a refusal
-   * @param asker the owner, which a filter's own-object test reads
-   */
-  WorldResolvedObjectsHost(BattleWorld world, BattleAction action, BattleEntity asker) {
-    this.world = world;
-    this.action = action;
-    this.asker = asker;
-  }
+  /** The action that resolves the objects, for a refusal. */
+  private final BattleAction action;
+
+  /** The owner, which a filter's own-object test reads. */
+  private final BattleEntity asker;
 
   /** The owner's team a filter tests: its side's lowest bit. */
   abstract int team();

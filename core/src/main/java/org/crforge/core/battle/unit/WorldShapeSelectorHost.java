@@ -8,6 +8,8 @@ package org.crforge.core.battle.unit;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.BattleAction;
@@ -24,13 +26,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
  * run hands it. The owner answers for itself: the circle around its point, its own point, and the
  * action scheduled on itself.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 abstract class WorldShapeSelectorHost implements ShapeSelectorHost {
 
   private final BattleWorld world;
-
-  WorldShapeSelectorHost(BattleWorld world) {
-    this.world = world;
-  }
 
   /**
    * The objects the circle of the radius around the owner's point lets through, buildings tested by

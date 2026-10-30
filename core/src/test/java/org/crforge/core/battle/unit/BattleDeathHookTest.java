@@ -169,7 +169,7 @@ class BattleDeathHookTest {
           + " both run in the pending pass after it")
   void killedByAnother() {
     Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
-    s.stepWith(world -> world.hits().kill(s.tombstone, s.knight));
+    s.stepWith(world -> world.getHits().kill(s.tombstone, s.knight));
 
     assertThat(s.scheduled)
         .containsExactly(
@@ -182,7 +182,7 @@ class BattleDeathHookTest {
   @DisplayName("a unit that kills itself schedules its death action alone")
   void killedByItself() {
     Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
-    s.stepWith(world -> world.hits().kill(s.tombstone, s.tombstone));
+    s.stepWith(world -> world.getHits().kill(s.tombstone, s.tombstone));
 
     assertThat(s.scheduled)
         .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
@@ -218,7 +218,7 @@ class BattleDeathHookTest {
           + " action, as the death has no killing side")
   void noAttackerSchedulesNoKilledAction() {
     Setup s = new Setup(tombstoneKilledToo(), 3500, 25000);
-    s.stepWith(world -> world.hits().dealDamage(s.tombstone.getTargetView(), 1000, 0, 1));
+    s.stepWith(world -> world.getHits().dealDamage(s.tombstone.getTargetView(), 1000, 0, 1));
 
     assertThat(s.scheduled)
         .containsExactly("Tombstone by Tombstone side 0 [%s] pending false".formatted(DEATH));
@@ -360,7 +360,7 @@ class BattleDeathHookTest {
     s.tombstone
         .getBuffs()
         .apply(s.match.getWorld().getRecords().buff("Poison"), 5000, POISON_LEVEL, s.knight, 1);
-    s.stepWith(world -> world.hits().dealDamage(s.knight.getTargetView(), 100_000, 0, 1));
+    s.stepWith(world -> world.getHits().dealDamage(s.knight.getTargetView(), 100_000, 0, 1));
     s.battle.step();
     assertThat(s.battle.getHolder().entities()).doesNotContain(s.knight);
 
@@ -392,7 +392,7 @@ class BattleDeathHookTest {
             14500,
             17600 + distance);
     int before = s.knight.getHitPoints().getHitPoints();
-    s.stepWith(world -> world.hits().kill(s.tombstone, s.knight));
+    s.stepWith(world -> world.getHits().kill(s.tombstone, s.knight));
     // The kill lands at the step's damage drain; the death's share, queued as the drain deals the
     // kill, joins the end of the queue the drain is still reading and lands in the same drain.
     assertThat(s.knight.getHitPoints().getHitPoints())
@@ -432,7 +432,7 @@ class BattleDeathHookTest {
                 made.add(new int[] {x, y});
               }
             });
-    s.stepWith(world -> world.hits().kill(s.tombstone, s.knight));
+    s.stepWith(world -> world.getHits().kill(s.tombstone, s.knight));
 
     assertThat(made).containsExactly(new int[] {14500, 18200}, new int[] {14500, 17000});
   }

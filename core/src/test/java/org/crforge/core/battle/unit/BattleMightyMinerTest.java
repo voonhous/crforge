@@ -176,7 +176,7 @@ class BattleMightyMinerTest {
     scene
         .match
         .getWorld()
-        .hits()
+        .getHits()
         .kill(BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER), null);
     scene.switchLanes();
     while (scene.miner.getView().getState() != GridEntityState.MOVING) {

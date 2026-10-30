@@ -397,7 +397,7 @@ public final class BuffComponent implements BattleComponent {
         if (instance.getRemaining() != before
             || instance.getTotal() != totalBefore
             || instance.getPackedLevel() != levelBefore) {
-          world.events().buffRefreshed(entity, instance, before, source);
+          world.getEvents().buffRefreshed(entity, instance, before, source);
         }
         // Every refresh then schedules the row's stacked action, whether it changed the instance
         // or not, as a listing schedules the start action.
@@ -441,7 +441,7 @@ public final class BuffComponent implements BattleComponent {
         character.buffChargeReset(instance);
       }
       hook(instance, instance.getBuff().onStartAction(), true);
-      world.events().buffApplied(entity, instance);
+      world.getEvents().buffApplied(entity, instance);
     }
     handOver(buff, time, packedLevel, source, side, parent);
   }
@@ -476,7 +476,7 @@ public final class BuffComponent implements BattleComponent {
         }
       }
       world
-          .events()
+          .getEvents()
           .buffHandedOver(carrier, rider, handed, time, packedLevel, source, instances, held);
     }
   }
@@ -530,7 +530,7 @@ public final class BuffComponent implements BattleComponent {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);
       onListed(copy);
-      world.events().buffCopied(original.entity, entity, copy);
+      world.getEvents().buffCopied(original.entity, entity, copy);
     }
     // The copies of a row that is not cloned come off as removals do, their remove actions run on
     // the clone; the index goes on after each removal.
@@ -554,7 +554,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getBuff().name().equals(buff) && instance.getParent() == null) {
         items.remove(i);
         onRemoved(instance);
-        world.events().buffRemoved(entity, instance);
+        world.getEvents().buffRemoved(entity, instance);
       }
     }
   }
@@ -572,7 +572,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getBuff().name().equals(buff) && instance.getParent() == parent) {
         items.remove(i);
         onRemoved(instance);
-        world.events().buffRemoved(entity, instance);
+        world.getEvents().buffRemoved(entity, instance);
       }
     }
   }
@@ -603,7 +603,7 @@ public final class BuffComponent implements BattleComponent {
                 + " target or gives a charge range, which is not modelled");
       }
       items.remove(i);
-      world.events().buffRemoved(entity, instance);
+      world.getEvents().buffRemoved(entity, instance);
     }
   }
 
@@ -710,7 +710,7 @@ public final class BuffComponent implements BattleComponent {
     BattleAction row =
         hookRows.computeIfAbsent(
             action, name -> world.getActions().build(name, world.binding(entity)));
-    world.events().buffHookScheduled(entity, instance, action, start);
+    world.getEvents().buffHookScheduled(entity, instance, action, start);
     entity.actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, entity.actionHolder());
   }
 
@@ -737,7 +737,7 @@ public final class BuffComponent implements BattleComponent {
       // The spawner comes after the source's clock and before the damage over time; its child is
       // made at once, inside the visit.
       if (instance.stepSpawner(spawnRate())) {
-        world.spawns().buffSpawn(entity, instance);
+        world.getSpawns().buffSpawn(entity, instance);
         instance.spawnerFired();
       }
       // The hit due comes in the instance's own turn, before the instances listed ahead of it are
@@ -758,7 +758,7 @@ public final class BuffComponent implements BattleComponent {
     }
     if (removed != null) {
       for (BuffInstance instance : removed) {
-        world.events().buffRemoved(entity, instance);
+        world.getEvents().buffRemoved(entity, instance);
       }
     }
   }
@@ -778,7 +778,7 @@ public final class BuffComponent implements BattleComponent {
         lifeConditions.computeIfAbsent(
             condition, text -> ExpressionCompiler.compile(text, environment));
     int answer = ExpressionEvaluator.evaluate(expression, environment);
-    world.events().lifeConditionAsked(entity, instance, answer);
+    world.getEvents().lifeConditionAsked(entity, instance, answer);
     if (answer == 0) {
       instance.expire();
     }
@@ -832,14 +832,14 @@ public final class BuffComponent implements BattleComponent {
     if (damage >= 1) {
       damage = damageReduction(damage);
       if (entity.getHitPoints() != null) {
-        world.hits().dealBuffDamage(entity, instance, damage);
+        world.getHits().dealBuffDamage(entity, instance, damage);
       }
     }
     if (entity instanceof CharacterEntity character && character.isKamikazeHitEnded()) {
       heal = 0;
     }
     if (heal >= 1 && entity.getHitPoints() != null) {
-      world.hits().dealBuffHeal(entity, instance, heal);
+      world.getHits().dealBuffHeal(entity, instance, heal);
     }
   }
 
@@ -893,7 +893,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getParent() == removed) {
         items.remove(i);
         onRemoved(instance);
-        world.events().buffRemoved(entity, instance);
+        world.getEvents().buffRemoved(entity, instance);
       } else if (instance.getSource() == removed) {
         instance.forgetSource();
       }

@@ -137,7 +137,7 @@ class BattleContinuousDamageTest {
     CharacterEntity dig = match.getPlays().get(0).units().get(0);
     inferno.getTargeting().setReference(dig.getTargetView());
 
-    assertThatThrownBy(() -> match.getWorld().spawns().morph(dig))
+    assertThatThrownBy(() -> match.getWorld().getSpawns().morph(dig))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("continuous-damage attacker");
   }

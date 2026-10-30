@@ -205,7 +205,7 @@ public class TowerEntity extends WorldEntity {
     boolean towerDestroyed =
         environment.call(BattleFunctions.id("tower_destroyed"), new int[0]) != 0;
     world
-        .events()
+        .getEvents()
         .activation(
             this, new ActivationEvent(ActivationEvent.Kind.CONDITION, 0, damaged, towerDestroyed));
   }
@@ -221,13 +221,13 @@ public class TowerEntity extends WorldEntity {
     public void started(BattleAction action, int phase) {
       if (action instanceof WithDuration) {
         world
-            .events()
+            .getEvents()
             .activation(
                 TowerEntity.this,
                 ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_STARTED, phase));
       } else if (action instanceof Filter) {
         world
-            .events()
+            .getEvents()
             .activation(TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.EFFECT, phase));
       }
     }
@@ -238,7 +238,7 @@ public class TowerEntity extends WorldEntity {
         conditionHeld();
       } else if (instance.getAction() instanceof WithDuration) {
         world
-            .events()
+            .getEvents()
             .activation(
                 TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_FINISHED, 0));
       }
@@ -248,7 +248,7 @@ public class TowerEntity extends WorldEntity {
     public void removed(ActionInstance instance) {
       if (instance.getAction() instanceof WithDuration) {
         world
-            .events()
+            .getEvents()
             .activation(
                 TowerEntity.this, ActivationEvent.of(ActivationEvent.Kind.ACTIVATING_REMOVED, 0));
       }
@@ -416,7 +416,7 @@ public class TowerEntity extends WorldEntity {
               + name()
               + " onto an object not in the battle, which is not modelled");
     }
-    world.events().tauntPerformed(this, action.name(), phase, instigator, onto);
+    world.getEvents().tauntPerformed(this, action.name(), phase, instigator, onto);
     TauntRun run = new TauntRun(action, this, onto);
     run.start();
     return run;
@@ -516,7 +516,7 @@ public class TowerEntity extends WorldEntity {
       ChampionController slot = championSlot(first ? 1 : 2);
       slot.assign(champion);
       slot.setDeckIndex(index);
-      world.events().championDeckPass(slot);
+      world.getEvents().championDeckPass(slot);
       if (!first) {
         break;
       }
@@ -536,7 +536,7 @@ public class TowerEntity extends WorldEntity {
     for (int slot = 1; slot <= 2; slot++) {
       ChampionController controller = championSlot(slot);
       if (controller != null && controller.cardPlayed(side, champion, index)) {
-        world.events().championFollowed(controller, play);
+        world.getEvents().championFollowed(controller, play);
       }
     }
   }
@@ -748,7 +748,7 @@ public class TowerEntity extends WorldEntity {
 
     @Override
     public void visit() {
-      world.hits().emptyQueuedTotal(TowerEntity.this);
+      world.getHits().emptyQueuedTotal(TowerEntity.this);
     }
   }
 

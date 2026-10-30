@@ -80,7 +80,7 @@ class BattleIceSpiritEvoTest {
     }
     int x = area.getX();
     int y = area.getY();
-    match.getWorld().hits().kill(b0, null);
+    match.getWorld().getHits().kill(b0, null);
     match.getBattle().step();
     tick[0]++;
     assertThat(area.getFollow()).as("let go").isNull();
