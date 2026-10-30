@@ -21,14 +21,12 @@ import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AliveTimer;
 import org.crforge.core.battle.action.BattleAction;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
-import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.DamageType;
 import org.crforge.core.battle.action.GhostEvo;
 import org.crforge.core.battle.action.GoblinsteinAbility;
 import org.crforge.core.battle.action.LaserBall;
 import org.crforge.core.battle.action.LaserBallHost;
 import org.crforge.core.battle.action.RunOnResolvedObjects;
-import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnGuard;
@@ -1630,42 +1628,27 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
-   * What an action that runs another on what its resolver finds asks of the battle about the area
-   * effect: the objects the filter lets through, asked by the area effect itself for its team and
-   * row, its point, and a row built for and scheduled on what it found or on itself.
+   * What an action that runs another on what its resolver finds asks of the area effect: its team
+   * and row for the filter, its point, no heading, and the binding and the holder of a row
+   * scheduled on itself. The rest the world answers (see {@link WorldResolvedObjectsHost}).
    */
   @Override
   public RunOnResolvedObjects.Host resolvedObjectsHost(BattleAction action) {
-    return new RunOnResolvedObjects.Host() {
+    return new WorldResolvedObjectsHost(world, action, this) {
       @Override
-      public List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter) {
-        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
-        for (WorldEntity entity :
-            world.resolverCandidates(
-                filter, side() & 1, data.name(), action.name(), AreaEffectEntity.this)) {
-          out.add(new MarkCandidate(entity, action.name()));
-        }
-        return out;
+      int team() {
+        return side() & 1;
       }
 
       @Override
-      public List<SetIndicatorOnTarget.Candidate> candidates(
-          GameObjectFilter filter, ConeShape cone) {
-        // An area effect has no heading: a Cone that turns with it points along its offset.
-        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
-        for (WorldEntity entity :
-            world.resolverConeCandidates(
-                AreaEffectEntity.this.x(),
-                AreaEffectEntity.this.y(),
-                0,
-                cone,
-                filter,
-                side() & 1,
-                data.name(),
-                AreaEffectEntity.this)) {
-          out.add(new MarkCandidate(entity, action.name()));
-        }
-        return out;
+      String rowName() {
+        return data.name();
+      }
+
+      // An area effect has no heading: a Cone that turns with it points along its offset.
+      @Override
+      int heading() {
+        return 0;
       }
 
       @Override
@@ -1679,81 +1662,32 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
 
       @Override
-      public void schedule(
-          SetIndicatorOnTarget.Candidate target,
-          String row,
-          ActionHolder cause,
-          ActionContext context) {
-        WorldEntity entity = ((MarkCandidate) target).entity();
-        BattleAction built = world.getActions().build(row, world.binding(entity));
-        entity.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      ActionBinding ownerBinding() {
+        return binding();
       }
 
       @Override
-      public void scheduleOnOwner(String row, ActionHolder cause, ActionContext context) {
-        BattleAction built = world.getActions().build(row, binding());
-        actionHolder.schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      ActionHolder ownerHolder() {
+        return actionHolder;
       }
     };
   }
 
-  /** An area effect has no hit points, so it counts as alive. */
   /**
-   * What a shape selector's run on the area effect asks of the battle: the battle tick, the circle
-   * around its point that tests buildings by their squares, an object's hit points and shield or
-   * its squared distance from the area effect, its point and where an object stands, which a circle
-   * that checks its origin measures, the holder of a pick, and the actions it schedules, each built
-   * for the object it runs on with the cause and the context the run hands it: on what it picked,
-   * and on the area effect itself.
+   * What a shape selector's run on the area effect asks of it: the circle around its point that
+   * tests buildings by their squares, its point, which a circle that checks its origin measures
+   * from, the action it schedules on itself with the cause and the context the run hands it, and
+   * the observers told of the run's start and steps. The rest of the run's asks the world answers
+   * (see {@link WorldShapeSelectorHost}).
    */
   @Override
   public ShapeSelectorHost shapeSelectorHost() {
-    return new ShapeSelectorHost() {
+    return new WorldShapeSelectorHost(world) {
       @Override
-      public int tick() {
-        return world.tick();
+      List<WorldEntity> around(int radius, GameObjectFilter filter) {
+        return world.shapeQuery(AreaEffectEntity.this, radius, filter);
       }
 
-      @Override
-      public List<Integer> collect(int radius, GameObjectFilter filter) {
-        List<Integer> ids = new ArrayList<>();
-        for (WorldEntity entity : world.shapeQuery(AreaEffectEntity.this, radius, filter)) {
-          ids.add(entity.getId());
-        }
-        return ids;
-      }
-
-      @Override
-      public int score(int id, int mode) {
-        WorldEntity object = (WorldEntity) world.liveObject(id);
-        if (mode == ShapeSelector.CLOSEST) {
-          // The guarded squared distance from the owner's point, its bits flipped.
-          return FixedMath.INT_MAX
-              ^ FixedMath.squaredDistance(
-                  AreaEffectEntity.this.x(), AreaEffectEntity.this.y(), object.x(), object.y());
-        }
-        HitPoints hitPoints = object.getHitPoints();
-        if (hitPoints == null) {
-          return 0;
-        }
-        return mode == ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS
-            ? hitPoints.getHitPoints() + hitPoints.getShield()
-            : hitPoints.getHitPoints();
-      }
-
-      @Override
-      public ActionHolder holder(int id) {
-        return ((WorldEntity) world.liveObject(id)).actionHolder();
-      }
-
-      @Override
-      public void schedule(int targetId, String action, ActionHolder cause, ActionContext context) {
-        WorldEntity target = (WorldEntity) world.liveObject(targetId);
-        BattleAction built = world.getActions().build(action, world.binding(target));
-        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
-      }
-
-      // The point a circle that checks its origin measures from, and where an object stands.
       @Override
       public int ownerX() {
         return AreaEffectEntity.this.x();
@@ -1762,16 +1696,6 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       @Override
       public int ownerY() {
         return AreaEffectEntity.this.y();
-      }
-
-      @Override
-      public int x(int id) {
-        return ((WorldEntity) world.liveObject(id)).x();
-      }
-
-      @Override
-      public int y(int id) {
-        return ((WorldEntity) world.liveObject(id)).y();
       }
 
       @Override
