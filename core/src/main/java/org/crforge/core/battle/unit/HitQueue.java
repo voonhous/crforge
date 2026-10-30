@@ -517,7 +517,7 @@ public final class HitQueue {
    * #queuedHits}), where it is dealt as {@link #dealDamage(TargetView, int, int, int)} deals it at
    * once. The record keeps the side, which the drain hands the death handler with no attacker: a
    * target the hit kills dies for that side, so its killed action and the elixir its death gives
-   * the opponent go as for a kill of that side (see {@link BattleWorld#entityDied}). A hit dealt
+   * the opponent go as for a kill of that side (see {@link EntityDeaths#entityDied}). A hit dealt
    * after the tick's drain waits for the next tick's.
    *
    * @param target the view the hit resolved against
@@ -1986,11 +1986,11 @@ public final class HitQueue {
    * death it causes. The game hands the hit-points chain the buff's source as the instance held it
    * when the hit was queued, as it hands a direct hit its attacker: the source is what killed the
    * carrier, for the side the buff was applied for, so its killer's hook and the carrier's killed
-   * action see the source (see {@link BattleWorld#entityDied}); a hit that lands and does not kill
+   * action see the source (see {@link EntityDeaths#entityDied}); a hit that lands and does not kill
    * reaches the source's reference drop as any other hit does (see {@link #referenceDrop}). A buff
    * with no source - one applied with none, or one whose source has left the battle, which it then
    * forgets as the game clears it - kills with nothing as what killed it, for its side, so the
-   * killed action's cause is that side alone (see {@link BattleWorld#entityDied}).
+   * killed action's cause is that side alone (see {@link EntityDeaths#entityDied}).
    *
    * @param due the queued hit
    */
