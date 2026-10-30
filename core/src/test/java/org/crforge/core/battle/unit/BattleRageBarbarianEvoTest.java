@@ -36,7 +36,7 @@ class BattleRageBarbarianEvoTest {
     for (int i = 0; i < 40; i++) {
       battle.step();
     }
-    match.getWorld().hits().kill(lumberjack, null);
+    match.getWorld().getHits().kill(lumberjack, null);
 
     CharacterEntity ghost = null;
     boolean dummySeen = false;

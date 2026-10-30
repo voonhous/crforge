@@ -608,7 +608,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param killingSide the side of the killing hit, or -1 for none
    */
   void die(BattleEntity attacker, int killingSide) {
-    world.deaths().entityDied(this, attacker, killingSide);
+    world.getDeaths().entityDied(this, attacker, killingSide);
   }
 
   /** The side of what killed an entity: an arena entity's, a projectile's or an area effect's. */
@@ -707,7 +707,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (removed != null && removed == held) {
       held = null;
       targeting.setVisitSuspended(false);
-      world.events().holdLeft(this, (ProjectileEntity) removed);
+      world.getEvents().holdLeft(this, (ProjectileEntity) removed);
     }
     // The buff component hears of it after the targeting component.
     buffs.entityRemoved(removed);
@@ -816,7 +816,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
         // Queued for the damage drain.
-        world.hits().dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
+        world.getHits().dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
       }
 
       @Override
@@ -1117,12 +1117,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
               @Override
               public DamageResult damage(TargetView victim, int dealt, int id) {
                 return world
-                    .hits()
+                    .getHits()
                     .dealAreaDamage(
                         WorldEntity.this, world.entityOf(victim.getEntity()), dealt, id);
               }
             });
-    world.events().areaDamaged(this, area, outcome);
+    world.getEvents().areaDamaged(this, area, outcome);
   }
 
   /**
@@ -1334,12 +1334,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             this::resumeAfterDrop,
             keepsTargetWhileCasting());
     if (before != null && targeting.getReference() == null) {
-      world.events().combatGateDropped(this, before, hitSpeed);
+      world.getEvents().combatGateDropped(this, before, hitSpeed);
     }
     // Only a switch a stun causes, or the first after one, is told.
     boolean stunned = alive && hitSpeed == 0;
     if (on != isActive(GATED_SLOT) && (stunned || gateStunned)) {
-      world.events().combatComponentSwitched(this, on, hitSpeed);
+      world.getEvents().combatComponentSwitched(this, on, hitSpeed);
     }
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
@@ -1579,7 +1579,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (shieldBefore < 1 || damage < 1 || hitPoints.getShield() == shieldBefore) {
       return;
     }
-    world.events().shieldHit(this, damage, shieldBefore, hitPoints.getShield());
+    world.getEvents().shieldHit(this, damage, shieldBefore, hitPoints.getShield());
     if (hitPoints.getShield() == 0) {
       world.shieldBroken(this, cause);
     }
@@ -1735,7 +1735,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       long word = view.getFlags() & watchedTagMask();
       if (word != watchedWord) {
         watchedWord = word;
-        world.events().tagWordChanged(this, word);
+        world.getEvents().tagWordChanged(this, word);
       }
     }
     foldLayer();
@@ -1745,7 +1745,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       if (word != captureWord || hidden != captureHidden) {
         captureWord = word;
         captureHidden = hidden;
-        world.events().captureTagsFolded(this, hidden, word);
+        world.getEvents().captureTagsFolded(this, hidden, word);
       }
     }
   }
@@ -2062,7 +2062,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
           startLayering();
           AirToGroundRun copy = new AirToGroundRun(action, this, (AirToGroundRun) listed);
           world
-              .events()
+              .getEvents()
               .airToGroundStarted(
                   this, action.name(), phase, copy.phase(), copy.counter(), copy.height());
           return copy;
@@ -2079,7 +2079,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
     world
-        .events()
+        .getEvents()
         .airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
     if (run.startsOnTheGround()
         && action.getOnGround() != null
@@ -2113,7 +2113,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     startLayering();
     GroundToAirRun run = new GroundToAirRun(action, unit);
-    world.events().groundToAirStarted(this, action.name(), phase, run.phase(), run.counter());
+    world.getEvents().groundToAirStarted(this, action.name(), phase, run.phase(), run.counter());
     return run;
   }
 
@@ -2127,14 +2127,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   public void filteredByTeam(
       String action, ActionOwner instigator, boolean sameTeam, String chosen) {
     world
-        .events()
+        .getEvents()
         .filteredByTeam(
             this, action, instigator instanceof SpawnHost host ? host : null, sameTeam, chosen);
   }
 
   @Override
   public void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {
-    world.events().instigatorGone(this, action.name(), scheduled.name());
+    world.getEvents().instigatorGone(this, action.name(), scheduled.name());
   }
 
   @Override
@@ -2143,12 +2143,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return new RunActionOnTroopDestroyed.Host() {
       @Override
       public void listen(RunActionOnTroopDestroyed.Listener listener) {
-        world.deaths().listenForDestroyed(self, action.name(), listener);
+        world.getDeaths().listenForDestroyed(self, action.name(), listener);
       }
 
       @Override
       public void unlisten(RunActionOnTroopDestroyed.Listener listener) {
-        world.deaths().unlistenForDestroyed(self, action.name(), listener);
+        world.getDeaths().unlistenForDestroyed(self, action.name(), listener);
       }
 
       @Override
@@ -2250,7 +2250,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
-    return world.spawns().spawnCharacters(this, arguments);
+    return world.getSpawns().spawnCharacters(this, arguments);
   }
 
   @Override
@@ -2260,7 +2260,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public SpawnPerform.PlacementSearch buildingPlacement(UnitData child) {
-    return world.spawns().buildingPlacement(this, child);
+    return world.getSpawns().buildingPlacement(this, child);
   }
 
   @Override
@@ -2603,7 +2603,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** Tells the observers what a taunt's arming or step did. */
   void tauntStepped(WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
-    world.events().tauntStepped(this, forced, durationMs, falloffMs, calls);
+    world.getEvents().tauntStepped(this, forced, durationMs, falloffMs, calls);
   }
 
   /**
@@ -2874,7 +2874,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         hitCounter = 0;
       }
     }
-    world.events().hitCounted(this, target, old, hitCounter, buff, time);
+    world.getEvents().hitCounted(this, target, old, hitCounter, buff, time);
     if (buff != null) {
       buffs.apply(world.buffData(buff), time, getPackedLevel(), this, side());
     }
@@ -3147,7 +3147,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void berserked(Berserk.Event event, int before, int index) {
-    world.events().berserked(this, event, before, index);
+    world.getEvents().berserked(this, event, before, index);
   }
 
   @Override
@@ -3157,7 +3157,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void instigatorChecked(String action, ActionOwner instigator, String scheduled) {
-    world.events().instigatorChecked(this, action, instigator, scheduled);
+    world.getEvents().instigatorChecked(this, action, instigator, scheduled);
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */
@@ -3212,7 +3212,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void killBy(ActionOwner killer) {
-    world.hits().kill(this, killer instanceof WorldEntity entity ? entity : null);
+    world.getHits().kill(this, killer instanceof WorldEntity entity ? entity : null);
   }
 
   @Override
@@ -3226,13 +3226,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       refuseReflect("a typed hit");
     }
     world
-        .hits()
+        .getHits()
         .queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
   }
 
   @Override
   public void queueActionDamage(ActionOwner source, TakeDamage.Damage damage, int added) {
-    world.hits().queueActionDamage(source, this, damage, added);
+    world.getHits().queueActionDamage(source, this, damage, added);
   }
 
   /**

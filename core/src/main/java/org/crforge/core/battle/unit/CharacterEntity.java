@@ -522,12 +522,16 @@ public class CharacterEntity extends WorldEntity {
         public void requestState(int state) {
           int from = getView().getState();
           setter.setState(getView(), state);
-          world.events().movementStateRequested(CharacterEntity.this, from, getView().getState());
+          world
+              .getEvents()
+              .movementStateRequested(CharacterEntity.this, from, getView().getState());
         }
 
         @Override
         public void chargeCompleted() {
-          world.events().chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
+          world
+              .getEvents()
+              .chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
           runChargeAction();
         }
 
@@ -583,7 +587,7 @@ public class CharacterEntity extends WorldEntity {
               world.getGrid().getWidth(),
               world.getGrid().getHeight(),
               setter);
-          world.events().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+          world.getEvents().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
         }
       };
 
@@ -638,7 +642,7 @@ public class CharacterEntity extends WorldEntity {
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
     }
     refuseAttack(data);
-    world.spawns().characterMade();
+    world.getSpawns().characterMade();
     // The level setter copies the spawner's start time into its timer, and its limit into the
     // count of firings it has left.
     this.spawnTimer = data.spawnStartTimeMs();
@@ -648,7 +652,7 @@ public class CharacterEntity extends WorldEntity {
     // A building of the characters table asks the battle, each time its contact is asked, whether
     // another building stands beside it.
     view.setBesideBuildingQuery(
-        () -> getData().characterBuilding() && world.spawns().besideAnotherBuilding(this));
+        () -> getData().characterBuilding() && world.getSpawns().besideAnotherBuilding(this));
     TargetingState targeting = getTargeting();
     targeting.setMovementComponentActive(data.hasMovementComponent());
     this.unit =
@@ -1216,7 +1220,7 @@ public class CharacterEntity extends WorldEntity {
               + " modelled");
     }
     if (reason != null) {
-      world.events().cloneRefused(this, reason, cause);
+      world.getEvents().cloneRefused(this, reason, cause);
       return false;
     }
     // A carrier's riders are cloned with it, each as a clone of its own, so each is held to the
@@ -1252,7 +1256,7 @@ public class CharacterEntity extends WorldEntity {
 
   @Override
   public void makeClone(ActionOwner instigator, Clone action) {
-    world.spawns().makeClone(this, (AreaEffectEntity) instigator, action);
+    world.getSpawns().makeClone(this, (AreaEffectEntity) instigator, action);
   }
 
   /** The row a clone of the character is made of: its own, or the one its row names. */
@@ -1341,7 +1345,7 @@ public class CharacterEntity extends WorldEntity {
     movement.setExplicitX(x);
     movement.setExplicitY(y);
     SingleNodeRoute.set(movement, getView(), unit.movementConfig(), x, y, 1, width, height);
-    world.events().cloneMoveStarted(this, x, y);
+    world.getEvents().cloneMoveStarted(this, x, y);
   }
 
   /** A coordinate kept between 0 and the arena's last unit. */
@@ -1383,7 +1387,7 @@ public class CharacterEntity extends WorldEntity {
         resume();
       }
       finish();
-      world.events().cloneMoveEnded(CharacterEntity.this, resumed);
+      world.getEvents().cloneMoveEnded(CharacterEntity.this, resumed);
     }
   }
 
@@ -1609,7 +1613,7 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " taunts " + name() + " onto " + refused + " is not modelled");
     }
     WorldEntity onto = (WorldEntity) forced;
-    world.events().tauntPerformed(this, action.name(), phase, instigator, onto);
+    world.getEvents().tauntPerformed(this, action.name(), phase, instigator, onto);
     TauntRun run = new TauntRun(action, this, onto);
     run.start();
     // The carrier's riders are taunted onto the same object, each by its own run, after the
@@ -1918,7 +1922,7 @@ public class CharacterEntity extends WorldEntity {
       chainNext.chainPrevious = linked;
     }
     chainNext = linked;
-    world.events().groupLinked(this, linked);
+    world.getEvents().groupLinked(this, linked);
   }
 
   /**
@@ -1959,7 +1963,7 @@ public class CharacterEntity extends WorldEntity {
     if (previous != null) {
       previous.chainNext = this;
     }
-    world.events().chainLinked(this, previous);
+    world.getEvents().chainLinked(this, previous);
   }
 
   /**
@@ -2013,7 +2017,7 @@ public class CharacterEntity extends WorldEntity {
       chainNext.chainPrevious = child;
     }
     chainNext = child;
-    world.events().chainLinked(child, this);
+    world.getEvents().chainLinked(child, this);
   }
 
   /**
@@ -2025,7 +2029,7 @@ public class CharacterEntity extends WorldEntity {
   protected void releasedAtFold() {
     super.releasedAtFold();
     if (leaveChain()) {
-      world.events().chainUnlinked(this);
+      world.getEvents().chainUnlinked(this);
     }
   }
 
@@ -2139,7 +2143,7 @@ public class CharacterEntity extends WorldEntity {
     if (removed instanceof ProjectileEntity projectile
         && unit.timers().getFollowTarget() == projectile) {
       unit.timers().setFollowTarget(null);
-      world.events().followLeft(this, projectile);
+      world.getEvents().followLeft(this, projectile);
       if (getView().getState() != GridEntityState.CLONE_SETUP) {
         ResumeHelper.resume(
             getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
@@ -2154,7 +2158,7 @@ public class CharacterEntity extends WorldEntity {
     long dy = reference.y() - getView().getY();
     UnitData data = getData();
     world
-        .events()
+        .getEvents()
         .specialArmed(
             this,
             world.entityOf(reference.getEntity()),
@@ -2247,7 +2251,7 @@ public class CharacterEntity extends WorldEntity {
           Relocation.relocate(
               grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), reference, grid::water);
       world
-          .events()
+          .getEvents()
           .relocated(
               CharacterEntity.this,
               view.getX(),
@@ -2397,7 +2401,7 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(
             this, ran == 1 && movement.getPushbackInFlight() == 1, aimX, aimY, movement);
   }
@@ -2441,7 +2445,7 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
     return true;
   }
@@ -2476,7 +2480,7 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
@@ -2510,7 +2514,7 @@ public class CharacterEntity extends WorldEntity {
             keepLonger,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
@@ -2541,7 +2545,7 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
@@ -2561,7 +2565,7 @@ public class CharacterEntity extends WorldEntity {
         PushbackRequest.request(
             movement, getView(), pushbackQueries, x, y, distance, true, false, false, false, false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
@@ -2594,7 +2598,7 @@ public class CharacterEntity extends WorldEntity {
             false,
             false);
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
@@ -2639,7 +2643,7 @@ public class CharacterEntity extends WorldEntity {
     }
     PushbackRequest.set(
         movement, getView(), pushbackQueries, x, y, distance, attack, subtract, keepLonger);
-    world.events().pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
+    world.getEvents().pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
     return 1;
   }
 
@@ -2675,7 +2679,7 @@ public class CharacterEntity extends WorldEntity {
    * @param priority its priority
    */
   void markTarget(WorldEntity target, int priority) {
-    world.events().uppercutMarked(this, target, priority);
+    world.getEvents().uppercutMarked(this, target, priority);
     for (int[] entry : targetQueue) {
       if (entry[0] == target.getId()) {
         entry[1] = Math.max(entry[1], priority);
@@ -2722,7 +2726,7 @@ public class CharacterEntity extends WorldEntity {
       tauntReference(onto, true);
       unit.targeting().setSkipSelectionNextVisit(true);
     }
-    world.events().targetQueueFlushed(this);
+    world.getEvents().targetQueueFlushed(this);
   }
 
   /**
@@ -2848,7 +2852,7 @@ public class CharacterEntity extends WorldEntity {
             columns.resetIfStronger(),
             columns.invisible());
     world
-        .events()
+        .getEvents()
         .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
     return ran;
   }
@@ -3057,12 +3061,12 @@ public class CharacterEntity extends WorldEntity {
             world.getGrid().getWidth(),
             world.getGrid().getHeight(),
             setter);
-        world.events().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+        world.getEvents().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
       }
 
       @Override
       public void stepped(boolean charging, long tags, boolean done, List<String> calls) {
-        world.events().guardStepped(CharacterEntity.this, charging, tags, done, calls);
+        world.getEvents().guardStepped(CharacterEntity.this, charging, tags, done, calls);
       }
     };
   }
@@ -3265,7 +3269,7 @@ public class CharacterEntity extends WorldEntity {
     WorldEntity hit = null;
     boolean area = data.dashRadius() >= 1;
     if (area) {
-      world.deaths().dashLandingArea(this, damage, hitId);
+      world.getDeaths().dashLandingArea(this, damage, hitId);
     } else {
       TargetingState t = unit.targeting();
       TargetView reference = isActive(TARGETING_SLOT) ? t.getReference() : null;
@@ -3286,7 +3290,7 @@ public class CharacterEntity extends WorldEntity {
                   + " no run holds");
         }
         hit = world.entityOf(reference.getEntity());
-        world.hits().dealDirectHit(this, reference, damage, view.getDirX(), view.getDirY());
+        world.getHits().dealDirectHit(this, reference, damage, view.getDirX(), view.getDirY());
         t.clearAttack();
         t.setLoadTimerMs(data.loadTimeMs());
       }
@@ -3311,7 +3315,7 @@ public class CharacterEntity extends WorldEntity {
     } else if (view.getBlockCountdownMs() == 0) {
       view.setBlockCountdownMs(LANDING_HOLD_START_MS);
     }
-    world.events().dashLanded(this, hit, hit != null || area ? damage : 0, area);
+    world.getEvents().dashLanded(this, hit, hit != null || area ? damage : 0, area);
   }
 
   /**
@@ -3368,7 +3372,7 @@ public class CharacterEntity extends WorldEntity {
     parent = null;
     getView().setAttached(false);
     unit.timers().setAttached(false);
-    world.deaths().parentLeft(this, left);
+    world.getDeaths().parentLeft(this, left);
     released = true;
   }
 
@@ -3485,7 +3489,7 @@ public class CharacterEntity extends WorldEntity {
   void enteredDeploying() {
     UnitData data = getData();
     if (data.spawnAttach()) {
-      world.spawns().attachRiders(this);
+      world.getSpawns().attachRiders(this);
     }
     if (data.pushesOnDeploy() && !clone) {
       world.spawnPush(this);
@@ -3586,7 +3590,7 @@ public class CharacterEntity extends WorldEntity {
     if (isActive(TARGETING_SLOT)) {
       targetingComponent.visit();
     }
-    world.events().deployEndVisited(this);
+    world.getEvents().deployEndVisited(this);
   }
 
   /**
@@ -3609,7 +3613,7 @@ public class CharacterEntity extends WorldEntity {
             getData().building(),
             effects);
     unit.timers().setHideCounterMs(after);
-    world.events().hideVisited(this, state, before, after, step, effects);
+    world.getEvents().hideVisited(this, state, before, after, step, effects);
     // A building schedules its row's action beside each effect, on itself with itself as the
     // cause. The state visit runs outside every pending pass, so a row with no delay waits for the
     // building's phase-3 pending pass of the tick.
@@ -3624,7 +3628,7 @@ public class CharacterEntity extends WorldEntity {
         continue;
       }
       BattleAction row = world.getActions().build(action, world.binding(this));
-      world.events().hidingHookScheduled(this, column, row.name());
+      world.getEvents().hidingHookScheduled(this, column, row.name());
       actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, actionHolder());
     }
   }
@@ -3736,7 +3740,7 @@ public class CharacterEntity extends WorldEntity {
     }
     kamikazeHitEnded = true;
     if (getData().kamikazeTimeMs() != 0) {
-      world.events().kamikazeHitEnded(this, false);
+      world.getEvents().kamikazeHitEnded(this, false);
       return;
     }
     // A curse it carries (the Witch Mother's, the Goblin Curse's) is deleted first, so its kill
@@ -3746,8 +3750,8 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");
     }
-    world.events().kamikazeHitEnded(this, true);
-    world.hits().kamikazeKill(this);
+    world.getEvents().kamikazeHitEnded(this, true);
+    world.getHits().kamikazeKill(this);
   }
 
   /**
@@ -3768,7 +3772,7 @@ public class CharacterEntity extends WorldEntity {
     int visits = getData().kamikazeTimeMs() / StateQueries.TICK_MS;
     int share = FixedMath.divOrZero(getHitPoints().getMaximum(), visits);
     // At least one, as an unsigned comparison takes it.
-    world.hits().kamikazeDrain(this, Integer.compareUnsigned(share, 1) > 0 ? share : 1);
+    world.getHits().kamikazeDrain(this, Integer.compareUnsigned(share, 1) > 0 ? share : 1);
   }
 
   /** The progress of the character's charge, while its movement component is on. */
@@ -3805,7 +3809,7 @@ public class CharacterEntity extends WorldEntity {
     }
     int before = unit.movement().getChargeProgress();
     resetCharge();
-    world.events().buffChargeReset(this, instance, before, unit.movement().getChargeProgress());
+    world.getEvents().buffChargeReset(this, instance, before, unit.movement().getChargeProgress());
   }
 
   /**
@@ -3846,14 +3850,14 @@ public class CharacterEntity extends WorldEntity {
     // The visit's removal of an object without hit points - the resume at the end of a bomb's
     // deploy - calls its death slot, without the death handler.
     if (calls.contains("remove")) {
-      world.deaths().deathAtRemoval(this);
+      world.getDeaths().deathAtRemoval(this);
     }
     if (calls.contains("elixir")) {
       collectElixir();
     }
     // A unit that surfaced morphs into its row's morph, which is made, queued and deploying.
     if (calls.contains("spawn_pathfind_morph")) {
-      world.spawns().morph(this);
+      world.getSpawns().morph(this);
     }
     if (calls.contains("spawner")) {
       spawner();
@@ -3997,7 +4001,7 @@ public class CharacterEntity extends WorldEntity {
               + " and stays visible as it routes across, which is not modelled");
     }
     boolean now = abilityGate();
-    world.events().abilityRequested(this, now);
+    world.getEvents().abilityRequested(this, now);
     if (now) {
       setter.setState(getView(), GridEntityState.CASTING);
       // Only the data reads it: the hero Mini Pekka's level timer stops on it.
@@ -4038,14 +4042,14 @@ public class CharacterEntity extends WorldEntity {
    */
   private void abilityFired() {
     AbilityData ability = getData().ability();
-    world.events().abilityFired(this);
+    world.getEvents().abilityFired(this);
     if (ability.onActivationAction() != null) {
       BattleAction action =
           world.getActions().build(ability.onActivationAction(), world.binding(this));
       actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     if (ability.buff() != null) {
-      world.events().abilityBuffed(this, ability.buff(), ability.buffTimeMs(), getPackedLevel());
+      world.getEvents().abilityBuffed(this, ability.buff(), ability.buffTimeMs(), getPackedLevel());
       getBuffs()
           .apply(
               world.buffData(ability.buff()),
@@ -4059,7 +4063,7 @@ public class CharacterEntity extends WorldEntity {
       switchLanes();
     }
     if (ability.activationSpawnCharacter() != null) {
-      world.spawns().activationSpawn(this, ability.activationSpawnCharacter());
+      world.getSpawns().activationSpawn(this, ability.activationSpawnCharacter());
     }
     if (ability.areaEffectObject() != null) {
       AreaEffectEntity areaEffect = world.abilityAreaEffect(this, ability.areaEffectObject());
@@ -4087,7 +4091,7 @@ public class CharacterEntity extends WorldEntity {
     AreaEffectData row = areaEffect.getData();
     int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
     areaEffect.overrideLifetime(lifetime);
-    world.events().soulsSpent(this, areaEffect, souls, count, lifetime);
+    world.getEvents().soulsSpent(this, areaEffect, souls, count, lifetime);
     souls = 0;
   }
 
@@ -4106,7 +4110,7 @@ public class CharacterEntity extends WorldEntity {
     AreaEffectData row = areaEffect.getData();
     int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
     areaEffect.overrideLifetime(lifetime);
-    world.events().soulsSpent(this, areaEffect, charges, count, lifetime);
+    world.getEvents().soulsSpent(this, areaEffect, charges, count, lifetime);
     if (ability.spawnCountResetAction() != null) {
       BattleAction reset =
           world.getActions().build(ability.spawnCountResetAction(), world.binding(this));
@@ -4147,7 +4151,7 @@ public class CharacterEntity extends WorldEntity {
       return;
     }
     souls++;
-    world.events().soulCounted(this, dying, souls);
+    world.getEvents().soulCounted(this, dying, souls);
   }
 
   /**
@@ -4157,7 +4161,7 @@ public class CharacterEntity extends WorldEntity {
    */
   private void enterFollowUp() {
     setter.setState(getView(), GridEntityState.ABILITY_FOLLOW_UP);
-    world.events().abilityStateEntered(this, unit.timers().getAbilityCountdown());
+    world.getEvents().abilityStateEntered(this, unit.timers().getAbilityCountdown());
   }
 
   /**
@@ -4185,7 +4189,7 @@ public class CharacterEntity extends WorldEntity {
     unit.movement().setExplicitY(toY);
     TargetView reference = unit.targeting().getReference();
     setter.setState(view, GridEntityState.INGAME_PATHFIND);
-    world.events().lanesSwitched(this, x, y, toX, toY, reference);
+    world.getEvents().lanesSwitched(this, x, y, toX, toY, reference);
   }
 
   /**
@@ -4272,8 +4276,8 @@ public class CharacterEntity extends WorldEntity {
         world.getGrid().getWidth(),
         world.getGrid().getHeight(),
         setter);
-    world.events().dashStarted(this, reference, fromX, fromY, x, y);
-    world.events().chainDashStarted(this, fromX, fromY, x, y, radius);
+    world.getEvents().dashStarted(this, reference, fromX, fromY, x, y);
+    world.getEvents().chainDashStarted(this, fromX, fromY, x, y, radius);
   }
 
   /**
@@ -4314,7 +4318,7 @@ public class CharacterEntity extends WorldEntity {
     int count = t.getDashChainCount();
     TargetView reference = t.getReference();
     if (count < 1 || count >= data.dashCount()) {
-      world.events().chainDashEnded(this, count, reference);
+      world.getEvents().chainDashEnded(this, count, reference);
       return false;
     }
     GridEntity view = getView();
@@ -4355,10 +4359,10 @@ public class CharacterEntity extends WorldEntity {
     }
     if (best == null
         || reference != null && reference.crownTower() && LOGIC_CHAIN_DASH_STOP_AT_TOWER) {
-      world.events().chainDashEnded(this, count, reference);
+      world.getEvents().chainDashEnded(this, count, reference);
       return false;
     }
-    world.events().chainDashed(this, best, count, x, y);
+    world.getEvents().chainDashed(this, best, count, x, y);
     ReferenceSetter.setReference(
         t, best.getTargetView(), false, false, false, selection, selection.getOutcome());
     chainedDashStart(best.getView().getX(), best.getView().getY(), 0);
@@ -4680,12 +4684,12 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void spawn(String row, int x, int y) {
-        world.spawns().spawnOne(CharacterEntity.this, row, x, y);
+        world.getSpawns().spawnOne(CharacterEntity.this, row, x, y);
       }
 
       @Override
       public void log(GoblinHutLifeState.Event event) {
-        world.events().goblinHutLogged(CharacterEntity.this, event);
+        world.getEvents().goblinHutLogged(CharacterEntity.this, event);
       }
 
       private WorldEntity object(int id) {
@@ -4770,7 +4774,7 @@ public class CharacterEntity extends WorldEntity {
     return new GhostEvo.Host() {
       @Override
       public void started(int phase) {
-        world.events().ghostEvoStarted(ghost, action.name(), phase);
+        world.getEvents().ghostEvoStarted(ghost, action.name(), phase);
       }
 
       @Override
@@ -4811,7 +4815,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void summoned(BattleEntity reference, int x, int y, int countdownMs) {
-        world.events().ghostSummoned(ghost, (WorldEntity) reference, x, y, countdownMs);
+        world.getEvents().ghostSummoned(ghost, (WorldEntity) reference, x, y, countdownMs);
       }
     };
   }
@@ -4936,14 +4940,14 @@ public class CharacterEntity extends WorldEntity {
       public void started(
           BossBanditAbility row, int phase, int warpTick, int lockTick, List<Boolean> requests) {
         world
-            .events()
+            .getEvents()
             .bossBanditAbilityStarted(
                 CharacterEntity.this, row, phase, warpTick, lockTick, requests);
       }
 
       @Override
       public void stepped(boolean locked, int releaseMs, List<String> calls) {
-        world.events().bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
+        world.getEvents().bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
       }
     };
   }
@@ -5072,7 +5076,7 @@ public class CharacterEntity extends WorldEntity {
 
   @Override
   public void warp(WarpCharacter action, int phase) {
-    world.spawns().warp(this, action, phase);
+    world.getSpawns().warp(this, action, phase);
   }
 
   /**
@@ -5140,7 +5144,7 @@ public class CharacterEntity extends WorldEntity {
   /** Starts a capture on the character, as the evolved Goblin Cage holds what it catches. */
   @Override
   public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
-    world.events().captureStarted(this, action.name(), phase);
+    world.getEvents().captureStarted(this, action.name(), phase);
     return new CaptureRun(action, captureHost());
   }
 
@@ -5243,7 +5247,7 @@ public class CharacterEntity extends WorldEntity {
                 packedLevel(),
                 ScalingMode.CARD_DAMAGE,
                 getData().rarity());
-        world.hits().captureHit(owner, unit, damage);
+        world.getHits().captureHit(owner, unit, damage);
       }
     };
   }
@@ -5424,7 +5428,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void log(TargetIndicatorAttack.Event event) {
-        world.events().targetIndicatorLogged(CharacterEntity.this, event);
+        world.getEvents().targetIndicatorLogged(CharacterEntity.this, event);
       }
 
       private WorldEntity object(int id) {
@@ -5696,7 +5700,7 @@ public class CharacterEntity extends WorldEntity {
     }
     collectorTimerMs -= period;
     kings.add(side(), amount * KingElixir.SCALE);
-    world.events().elixirCollected(this, amount);
+    world.getEvents().elixirCollected(this, amount);
   }
 
   /**
@@ -5713,7 +5717,7 @@ public class CharacterEntity extends WorldEntity {
     int limit = data.spawnLimit();
     if (limit >= 1 && spawnsLeft <= 0 && data.destroyAtLimit() && !destroyedAtLimit) {
       destroyedAtLimit = true;
-      world.events().destroyedAtLimit(this);
+      world.getEvents().destroyedAtLimit(this);
     }
     boolean due = spawnsLeft > 0 ? interval + pause >= 1 : limit <= 0 && interval + pause > 0;
     if (data.spawnCharacter() == null || !due) {
@@ -5730,7 +5734,7 @@ public class CharacterEntity extends WorldEntity {
     int count = interval != 0 ? 1 : number;
     int radius = interval != 0 ? 0 : data.spawnRadius();
     String row = spawnRow(data);
-    world.spawns().liveSpawn(this, row, count, radius);
+    world.getSpawns().liveSpawn(this, row, count, radius);
     if (limit >= 1) {
       spawnsLeft--;
     }
@@ -5747,7 +5751,7 @@ public class CharacterEntity extends WorldEntity {
       next = pause;
     }
     spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
-    world.events().spawnerFired(this, row, count, radius, spawnTimer, spawnWaveMade);
+    world.getEvents().spawnerFired(this, row, count, radius, spawnTimer, spawnWaveMade);
   }
 
   /** The row the spawner's current wave makes, by its turn. */
@@ -5817,7 +5821,7 @@ public class CharacterEntity extends WorldEntity {
     public void visit() {
       // The queued total is emptied first: the hits queued so far this tick no longer count
       // against the hit points when a travelling hit asks whether the queued damage kills.
-      world.hits().emptyQueuedTotal(CharacterEntity.this);
+      world.getHits().emptyQueuedTotal(CharacterEntity.this);
       // A shield that is up is tagged in every state and at any hit points, from the next step.
       if (getHitPoints().getShield() >= 1) {
         getView()
@@ -5832,7 +5836,7 @@ public class CharacterEntity extends WorldEntity {
       }
       int before = getHitPoints().getHitPoints();
       if (decay()) {
-        world.deaths().decayDeath(CharacterEntity.this, before);
+        world.getDeaths().decayDeath(CharacterEntity.this, before);
       }
     }
   }
@@ -5898,11 +5902,11 @@ public class CharacterEntity extends WorldEntity {
       List<int[]> relocations = queries.relocations();
       for (int i = 0, n = relocations.size(); i < n; i++) {
         int[] r = relocations.get(i);
-        world.events().relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
+        world.getEvents().relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
       }
       boolean full = unit.movement().getChargeProgress() >= MovementState.CHARGE_COMPLETE;
       if (charged && !full) {
-        world.events().chargeLost(CharacterEntity.this);
+        world.getEvents().chargeLost(CharacterEntity.this);
       }
       charged = full;
     }

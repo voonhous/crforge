@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.pathfinding.combat.RarityTable;
 
 /**
@@ -20,6 +22,7 @@ import org.crforge.core.pathfinding.combat.RarityTable;
  * another reader builds, and the row-reading helpers - a set column, a named action, an inline row,
  * a rarity, a tag mask, an integer list.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 abstract class RowReader {
 
   static final String PROJECTILES = "projectiles";
@@ -31,11 +34,6 @@ abstract class RowReader {
 
   /** The battle's records, for a record another reader builds. */
   final BattleRecords records;
-
-  RowReader(GameTables tables, BattleRecords records) {
-    this.tables = tables;
-    this.records = records;
-  }
 
   /** True when a row sets a column: a value that is not empty, false, 0 or an empty list. */
   static boolean set(GameRow row, String column) {

@@ -262,7 +262,7 @@ final class ProjectileFlight {
         world.cellPass(p, p.getX(), p.getY(), 0);
       } else if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) == 0
           || p.getDeflections() != 0) {
-        world.deflection().deflectPass(p, p.getX(), p.getY(), p.getZ());
+        world.getDeflection().deflectPass(p, p.getX(), p.getY(), p.getZ());
       }
     }
   }
@@ -445,7 +445,7 @@ final class ProjectileFlight {
    * at a target that kept out of the hook, its arrival is the ordinary one.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world, boolean hookable) {
-    if (world.deflection().arrivalPass(p)) {
+    if (world.getDeflection().arrivalPass(p)) {
       return;
     }
     if (p.getData().checkCollisions()) {
@@ -534,7 +534,7 @@ final class ProjectileFlight {
     }
     // The impact's character spawn: its children in formation around the impact point.
     if (data.spawnCharacterCount() >= 1) {
-      world.spawns().impactSpawn(p, px, py);
+      world.getSpawns().impactSpawn(p, px, py);
     }
     // The area effect it spawns, made at the impact point once the hit is over.
     if (data.spawnAreaEffectObject() != null) {
@@ -631,7 +631,7 @@ final class ProjectileFlight {
           public DamageResult damage(TargetView victim, int dealt, int id) {
             // The area hands the damage on without a direction, queued for the damage drain.
             return world
-                .hits()
+                .getHits()
                 .dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
           }
 
@@ -658,6 +658,6 @@ final class ProjectileFlight {
     int directionX = p.getAimX() - p.getStartX();
     int directionY = p.getAimY() - p.getStartY();
     // Queued for the damage drain.
-    world.hits().dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
+    world.getHits().dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
   }
 }

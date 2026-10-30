@@ -59,7 +59,7 @@ class BattleBuildingPlacementTest {
     int[] placed =
         battle
             .getWorld()
-            .spawns()
+            .getSpawns()
             .buildingPlacement(battle.getWorld().kingTower(0), banner)
             .place(x, y);
     assertThat(placed).containsExactly(x, (low - PlacementSearch.footprint(banner)) * CELL);
@@ -81,7 +81,7 @@ class BattleBuildingPlacementTest {
     int[] placed =
         battle
             .getWorld()
-            .spawns()
+            .getSpawns()
             .buildingPlacement(battle.getWorld().kingTower(1), banner)
             .place(x, y);
     assertThat(placed).containsExactly(x, (low + PlacementSearch.footprint(banner)) * CELL);
@@ -115,7 +115,7 @@ class BattleBuildingPlacementTest {
     }
     assertThat(open).isPositive();
     // No row passes, so the king's own point comes back.
-    assertThat(battle.getWorld().spawns().buildingPlacement(king, row).place(kx, ky))
+    assertThat(battle.getWorld().getSpawns().buildingPlacement(king, row).place(kx, ky))
         .containsExactly(kx, ky);
   }
 
@@ -135,7 +135,7 @@ class BattleBuildingPlacementTest {
     assertThat(
             battle
                 .getWorld()
-                .spawns()
+                .getSpawns()
                 .buildingPlacement(battle.getWorld().kingTower(1), banner)
                 .place(x, y))
         .containsExactly(x, y);

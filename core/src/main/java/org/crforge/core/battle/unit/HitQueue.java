@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionOwner;
@@ -51,13 +53,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " Still refused, reached by no row: a buff on damage beside an area radius, whose"
             + " area branch the 16.635.1 drain no longer has; the rest of that path is not"
             + " traced.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class HitQueue {
 
   private final BattleWorld world;
-
-  HitQueue(BattleWorld world) {
-    this.world = world;
-  }
 
   /**
    * One typed hit waiting for the drain.
@@ -608,7 +607,7 @@ public final class HitQueue {
         entity.takeDamage(
             damage, 0, directionX, directionY, passesHidden, attacker, attacker, null, noCounter);
     reflect(entity, attacker, before, result, directionX, directionY);
-    world.events().damageDealt(entity, damage, result);
+    world.getEvents().damageDealt(entity, damage, result);
     if (result.died()) {
       // A hit with no attacker kills for the side it was dealt for, if any.
       entity.die(attacker, attacker != null ? attacker.side() : side);
@@ -694,7 +693,7 @@ public final class HitQueue {
         || struck.untouchable(true)
         || (struck.side() & 1) == (target.side() & 1)
         || !withinReflect(target, struck, row.reflectedAttackRadius())) {
-      world.events().reflected(none);
+      world.getEvents().reflected(none);
       return;
     }
     if (struck.getData().reflectedAttackBuff() != null) {
@@ -717,7 +716,7 @@ public final class HitQueue {
     // all count as its parent's current attack.
     if (struck.getHitPoints() == null || !target.reflectOnce(struck)) {
       world
-          .events()
+          .getEvents()
           .reflected(
               new Reflection(
                   target,
@@ -760,9 +759,9 @@ public final class HitQueue {
     int before = struck.getHitPoints().getHitPoints();
     DamageResult hit =
         struck.takeReflectedDamage(target, due.damage(), due.directionX(), due.directionY());
-    world.events().reflectedHit(target, struck, due.damage(), hit);
+    world.getEvents().reflectedHit(target, struck, due.damage(), hit);
     world
-        .events()
+        .getEvents()
         .reflected(
             new Reflection(
                 target,
@@ -811,7 +810,7 @@ public final class HitQueue {
   private void killNow(WorldEntity target, WorldEntity killer, int amount) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
     DamageResult result = target.takeKill(amount, null, killer);
-    world.events().damageDealt(target, before, result);
+    world.getEvents().damageDealt(target, before, result);
     if (result.died()) {
       target.die(killer);
     }
@@ -833,7 +832,7 @@ public final class HitQueue {
   private void kamikazeKillNow(WorldEntity unit, int amount) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKill(amount, unit, unit);
-    world.events().kamikazeKilled(unit, before, result);
+    world.getEvents().kamikazeKilled(unit, before, result);
     if (result.died()) {
       unit.die(unit);
     }
@@ -861,7 +860,7 @@ public final class HitQueue {
   private void kamikazeDrainNow(WorldEntity unit, int damage) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKamikazeDrain(damage);
-    world.events().kamikazeDrained(unit, damage, before, result);
+    world.getEvents().kamikazeDrained(unit, damage, before, result);
     if (result.died()) {
       unit.die(unit);
     }
@@ -883,7 +882,7 @@ public final class HitQueue {
   /** The circle's kill, dealt at the damage drain. */
   private void circleKillNow(WorldEntity target, int radius, int amount) {
     DamageResult result = target.takeKill(amount, null, null);
-    world.events().circleKilled(target, radius);
+    world.getEvents().circleKilled(target, radius);
     if (result.died()) {
       target.die(null);
     }
@@ -912,7 +911,7 @@ public final class HitQueue {
    */
   private void clearingKillNow(CharacterEntity target, int amount) {
     DamageResult result = target.takeKill(amount, null, null);
-    world.events().clearingKilled(target);
+    world.getEvents().clearingKilled(target);
     if (result.died()) {
       target.die(null);
     }
@@ -926,7 +925,7 @@ public final class HitQueue {
    */
   public void drain(WorldEntity target, int damage) {
     DamageResult result = target.takeDrain(damage);
-    world.events().drained(target, damage, target.getHitPoints().getHitPoints(), result.died());
+    world.getEvents().drained(target, damage, target.getHitPoints().getHitPoints(), result.died());
     if (result.died()) {
       target.die(null);
     }
@@ -962,7 +961,7 @@ public final class HitQueue {
     int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, 0, 0, false, attacker, attacker);
     reflect(victim, attacker, before, result, 0, 0);
-    world.events().areaHit(attacker, victim, damage, hitId, result);
+    world.getEvents().areaHit(attacker, victim, damage, hitId, result);
     if (result.died()) {
       victim.die(attacker);
     } else if (result.landed()) {
@@ -1053,7 +1052,7 @@ public final class HitQueue {
             projectile,
             projectile.hasActionHolder() ? () -> projectile.hitHeard(hitId, target) : null);
     reflect(target, projectile, before, result, directionX, directionY);
-    world.events().projectileImpacted(projectile, target, damage, result);
+    world.getEvents().projectileImpacted(projectile, target, damage, result);
     if (result.died()) {
       target.die(projectile);
     } else if (result.landed()) {
@@ -1089,7 +1088,7 @@ public final class HitQueue {
     int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true, null, owner);
     reflect(victim, owner, before, result, directionX, directionY);
-    world.events().tetherHit(owner, victim, damage, directionX, directionY, result);
+    world.getEvents().tetherHit(owner, victim, damage, directionX, directionY, result);
     if (result.died()) {
       victim.die(owner);
     }
@@ -1132,7 +1131,7 @@ public final class HitQueue {
     }
     boolean active = unit.isActive(CharacterEntity.TARGETING_SLOT);
     TargetView dropped = active ? unit.dropReferenceOnHit() : null;
-    world.events().referenceDroppedOnHit(unit, hit, via, kills, active, dropped);
+    world.getEvents().referenceDroppedOnHit(unit, hit, via, kills, active, dropped);
   }
 
   /**
@@ -1581,7 +1580,7 @@ public final class HitQueue {
                 false,
                 hit.source() == null ? null : hit.source().actionHolder());
       }
-      world.events().typedHitDealt(source, target, amount, damageId, result);
+      world.getEvents().typedHitDealt(source, target, amount, damageId, result);
     }
     queuedHits.clear();
     queuedTotalStarts.clear();
@@ -1704,7 +1703,7 @@ public final class HitQueue {
       throw new UnsupportedOperationException(
           source.name() + " deals a damage-taking action's hit with a BuffOnDamage, not modelled");
     }
-    world.events().typedHitDealt(source, target, amount, 0, result);
+    world.getEvents().typedHitDealt(source, target, amount, 0, result);
   }
 
   /**
@@ -1744,7 +1743,7 @@ public final class HitQueue {
           .actionHolder()
           .schedule(type.actionOnTarget(), ActionHolder.OWN_DELAY, false, source.actionHolder());
     }
-    world.events().typedHitDealt(null, target, amount, damageId, result);
+    world.getEvents().typedHitDealt(null, target, amount, damageId, result);
   }
 
   /**
@@ -1782,7 +1781,7 @@ public final class HitQueue {
     if (result.died()) {
       target.die(source);
     }
-    world.events().typedHitDealt(null, target, amount, 0, result);
+    world.getEvents().typedHitDealt(null, target, amount, 0, result);
   }
 
   /**
@@ -1953,7 +1952,7 @@ public final class HitQueue {
     }
     BuffData buff = world.buffData(data.targetBuff());
     int time = data.buffTime(projectile.getPackedLevel());
-    world.events().projectileBuff(projectile, buff, time, List.of(victim));
+    world.getEvents().projectileBuff(projectile, buff, time, List.of(victim));
     victim.getBuffs().apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
   }
 
@@ -2009,7 +2008,7 @@ public final class HitQueue {
     }
     DamageResult result = target.takeDamageOverTime(due.damage(), source);
     reflect(target, (BattleEntity) source, before, result, 0, 0);
-    world.events().buffDamaged(target, due.buff(), due.damage(), before, result);
+    world.getEvents().buffDamaged(target, due.buff(), due.damage(), before, result);
     // Every object a buff's source can be is a battle entity; with no source, nothing.
     BattleEntity attacker = (BattleEntity) source;
     if (result.died()) {
@@ -2027,7 +2026,7 @@ public final class HitQueue {
   void dealBuffHeal(WorldEntity target, BuffInstance buff, int heal) {
     int before = target.getHitPoints().getHitPoints();
     target.takeHeal(heal, buff.getBuff().allowedOverHealPercent());
-    world.events().buffHealed(target, buff, heal, before);
+    world.getEvents().buffHealed(target, buff, heal, before);
   }
 
   /**
@@ -2044,7 +2043,7 @@ public final class HitQueue {
     DamageResult result =
         victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden(), null, areaEffect);
     reflect(victim, areaEffect, before, result, 0, 0);
-    world.events().areaEffectHit(areaEffect, victim, damage, result);
+    world.getEvents().areaEffectHit(areaEffect, victim, damage, result);
     if (result.died()) {
       victim.die(areaEffect);
     }

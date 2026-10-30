@@ -276,7 +276,7 @@ class EnemyElixirCountTest {
       if (!killed && !uses.isEmpty()) {
         assertThat(uses.get(0).outcome().code()).isEqualTo(AbilityCommand.OK);
         // She dies as she casts, inside the window: her king gets the cost back.
-        battle(env).getWorld().hits().kill(queen, null);
+        battle(env).getWorld().getHits().kill(queen, null);
         killed = true;
       }
       if (gains.refunds.isEmpty()) {
@@ -460,7 +460,7 @@ class EnemyElixirCountTest {
               (e, decision) -> {
                 if (decision == 120) {
                   // Half a minute of plays in, side 1's king falls: the match ends at once.
-                  battle(e).getWorld().hits().kill(battle(e).getWorld().kingTower(1), null);
+                  battle(e).getWorld().getHits().kill(battle(e).getWorld().kingTower(1), null);
                 }
                 return new int[] {
                   randomAction(e, 0, random, ALWAYS), randomAction(e, 1, random, ALWAYS)
@@ -483,7 +483,7 @@ class EnemyElixirCountTest {
               (e, decision) -> {
                 if (decision == 0) {
                   // A crown for side 0, so the time limit ends the match before overtime.
-                  battle(e).getWorld().hits().kill(princessTower(e, 1), null);
+                  battle(e).getWorld().getHits().kill(princessTower(e, 1), null);
                 }
                 return spendWithin(e, random, limit - SPEND_WINDOW_MS, limit);
               });
@@ -505,7 +505,7 @@ class EnemyElixirCountTest {
               (e, decision) -> {
                 if (!crowned[0] && timeMs(e) >= overtimeFrom + SPEND_WINDOW_MS) {
                   // Overtime's first crown, for side 1, ends the match.
-                  battle(e).getWorld().hits().kill(princessTower(e, 0), null);
+                  battle(e).getWorld().getHits().kill(princessTower(e, 0), null);
                   crowned[0] = true;
                 }
                 return spendWithin(
@@ -539,7 +539,7 @@ class EnemyElixirCountTest {
     try (VectorEnv env = withCardInHand(tables, BASIC, QUEEN_DECK, null, 1, QUEEN)) {
       int refund = refundQueen(env, vocabulary);
       // Side 0's king falls: the match ends, and the count never takes up the side's own elixir.
-      battle(env).getWorld().hits().kill(battle(env).getWorld().kingTower(0), null);
+      battle(env).getWorld().getHits().kill(battle(env).getWorld().kingTower(0), null);
       while (env.dones().get(0) == 0) {
         act(env, Schema.WAIT, Schema.WAIT);
       }

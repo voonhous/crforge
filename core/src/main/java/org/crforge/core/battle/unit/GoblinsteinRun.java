@@ -122,21 +122,21 @@ final class GoblinsteinRun extends ActionInstance {
         CharacterEntity head = follow instanceof CharacterEntity unit ? unit.chainHead() : null;
         connected = head == follow ? head.chainNext() : head;
         state = WAITING;
-        world.events().goblinsteinConnected(owner, connected);
+        world.getEvents().goblinsteinConnected(owner, connected);
       }
       case WAITING -> {
         if (casting(follow)) {
           hitTimerMs = -1;
           actionTimerMs = -1;
           state = CASTING;
-          world.events().goblinsteinStepped(owner, "cast_seen");
+          world.getEvents().goblinsteinStepped(owner, "cast_seen");
         }
       }
       case CASTING -> {
         if (!casting(follow)) {
           remainingMs = ability.getColumns().tetherDurationMs();
           state = TETHERING;
-          world.events().goblinsteinStepped(owner, "tether_start " + remainingMs);
+          world.getEvents().goblinsteinStepped(owner, "tether_start " + remainingMs);
         }
       }
       default -> {
@@ -146,7 +146,7 @@ final class GoblinsteinRun extends ActionInstance {
           remainingMs -= STEP_MS;
           if (before <= STEP_MS) {
             state = WAITING;
-            world.events().goblinsteinStepped(owner, "tether_end");
+            world.getEvents().goblinsteinStepped(owner, "tether_end");
           }
         }
       }
@@ -213,7 +213,7 @@ final class GoblinsteinRun extends ActionInstance {
     List<WorldEntity> found =
         world.segmentQuery(
             owner, ax, ay, bx, by, columns.tetherWidth(), columns.tetherDamageTargets());
-    world.events().tetherDamagePass(owner, ax, ay, bx, by, found);
+    world.getEvents().tetherDamagePass(owner, ax, ay, bx, by, found);
     if (found == null) {
       return;
     }
@@ -227,7 +227,7 @@ final class GoblinsteinRun extends ActionInstance {
         int oy = target.getView().getY();
         int[] nearest = SegmentTests.nearestPoint(ax, ay, bx, by, ox, oy);
         // The direction's second part takes the object's x as well, as the game's does.
-        world.hits().tetherHit(owner, target, amount, nearest[0] - ox, nearest[1] - ox);
+        world.getHits().tetherHit(owner, target, amount, nearest[0] - ox, nearest[1] - ox);
       }
       String row = columns.tetherHitAction();
       if (row == null) {
@@ -266,7 +266,7 @@ final class GoblinsteinRun extends ActionInstance {
     AreaEffectEntity deathArea = world.goblinsteinDeathArea(owner, row, x, y);
     connected = deathArea;
     deathAreaMade = true;
-    world.events().goblinsteinDeathAreaMade(owner, unit, deathArea, x, y);
+    world.getEvents().goblinsteinDeathAreaMade(owner, unit, deathArea, x, y);
   }
 
   @Override
@@ -275,7 +275,7 @@ final class GoblinsteinRun extends ActionInstance {
       // The countdown goes to 0, not to the end's -1.
       deathArea.zeroCountdown();
       connected = null;
-      world.events().goblinsteinDeathAreaEnded(owner, deathArea);
+      world.getEvents().goblinsteinDeathAreaEnded(owner, deathArea);
     }
   }
 }

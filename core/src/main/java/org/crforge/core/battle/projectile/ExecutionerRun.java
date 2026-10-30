@@ -77,7 +77,7 @@ final class ExecutionerRun extends ActionInstance {
   int damage(int damage, int hitId, WorldEntity target) {
     lastHitId = hitId;
     if (target == null) {
-      axe.world().events().axeDamage(axe, null, hitId, damage, damage, null, false);
+      axe.world().getEvents().axeDamage(axe, null, hitId, damage, damage, null, false);
       return damage;
     }
     int edge = edgeDistance(target);
@@ -89,7 +89,7 @@ final class ExecutionerRun extends ActionInstance {
             packedLevel,
             ScalingMode.CARD_DAMAGE,
             rarity);
-    axe.world().events().axeDamage(axe, target, hitId, damage, amount, edge, strong);
+    axe.world().getEvents().axeDamage(axe, target, hitId, damage, amount, edge, strong);
     return amount;
   }
 
@@ -110,7 +110,7 @@ final class ExecutionerRun extends ActionInstance {
       return;
     }
     if (row.getStrongHitAction() != null) {
-      axe.world().events().axeHitAction(axe, target, row.getStrongHitAction().name(), hitId);
+      axe.world().getEvents().axeHitAction(axe, target, row.getStrongHitAction().name(), hitId);
       target.actionHolder().schedule(row.getStrongHitAction(), 0, false, target.actionHolder());
     }
     int half = axe.getData().pingpongVisualTimeMs();

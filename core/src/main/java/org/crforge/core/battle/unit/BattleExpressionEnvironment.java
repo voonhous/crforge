@@ -547,7 +547,7 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     int attackTime = context.getTargeting().getAttackTimerMs();
     int hitSpeed = context.getData().hitSpeedMs();
     int count = hitSpeed < 1 ? 0 : attackTime / hitSpeed;
-    world.events().attackCountRead(context, attackTime, count);
+    world.getEvents().attackCountRead(context, attackTime, count);
     return count;
   }
 

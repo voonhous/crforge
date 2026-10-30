@@ -174,18 +174,18 @@ public class BattleWorld implements HolderPasses {
   private final Map<GridEntity, WorldEntity> known = new IdentityHashMap<>();
 
   /** The battle's damage: the hits queued for the drain and the drain that deals them. */
-  private final HitQueue hits = new HitQueue(this);
+  @Getter private final HitQueue hits = new HitQueue(this);
 
   /** The characters the battle makes after its card plays, and the death spawns. */
-  private final CharacterSpawns spawns = new CharacterSpawns(this);
+  @Getter private final CharacterSpawns spawns = new CharacterSpawns(this);
 
   /** What an arena entity's death brings: the death handler and the death slot. */
-  private final EntityDeaths deaths = new EntityDeaths(this);
+  @Getter private final EntityDeaths deaths = new EntityDeaths(this);
 
   /**
    * The projectile deflection: the deflecting area effects of the tick and the passes over them.
    */
-  private final ProjectileDeflection deflection = new ProjectileDeflection(this);
+  @Getter private final ProjectileDeflection deflection = new ProjectileDeflection(this);
 
   /** The battle's hit counter: every hit takes the next id from it. */
   private int hitCounter;
@@ -241,7 +241,7 @@ public class BattleWorld implements HolderPasses {
   static final boolean DEATH_SPAWN_IMMUNE_FIRST_TICK = true;
 
   /** Those watching the arena from outside the tick, in the order they were added. */
-  private final WorldEvents events = new WorldEvents(this);
+  @Getter private final WorldEvents events = new WorldEvents(this);
 
   /** Whether an observer reads the champion slots' views ({@link #championViews}). */
   private boolean championViewsWanted;
@@ -3684,31 +3684,6 @@ public class BattleWorld implements HolderPasses {
   /** The battle tick of the entity tick in progress. */
   public int tick() {
     return tick;
-  }
-
-  /** What the world tells its observers. */
-  public WorldEvents events() {
-    return events;
-  }
-
-  /** The deflection of projectiles by the area effects that deflect them. */
-  public ProjectileDeflection deflection() {
-    return deflection;
-  }
-
-  /** The battle's damage: the hits queued for the drain and the drain that deals them. */
-  public HitQueue hits() {
-    return hits;
-  }
-
-  /** The characters the battle makes after its card plays, and the death spawns. */
-  public CharacterSpawns spawns() {
-    return spawns;
-  }
-
-  /** What an arena entity's death brings: the death handler and the death slot. */
-  public EntityDeaths deaths() {
-    return deaths;
   }
 
   /** The bit of FORCE_IS_GROUND in an entity's tag word, as the data numbers the game tags. */

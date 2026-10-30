@@ -90,7 +90,7 @@ class ChefCookingTowerLostTest {
     for (int tick = 1; tick <= 2900; tick++) {
       if (tick == 1200) {
         // After the second pancake: the right tower dies, and leaves at that step's cleanup.
-        battle.getWorld().hits().kill(right, null);
+        battle.getWorld().getHits().kill(right, null);
       }
       step(battle, tick);
       recordPancakes(battle, seen, thrown);
@@ -119,8 +119,8 @@ class ChefCookingTowerLostTest {
     TowerEntity right = chefTowers(battle).get(1);
     for (int tick = 1; tick <= 2000; tick++) {
       if (tick == 700) {
-        battle.getWorld().hits().kill(right, null);
-        battle.getWorld().hits().kill(left, null);
+        battle.getWorld().getHits().kill(right, null);
+        battle.getWorld().getHits().kill(left, null);
       }
       step(battle, tick);
       recordPancakes(battle, seen, thrown);

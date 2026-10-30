@@ -128,7 +128,7 @@ public final class CaptureRun extends ActionInstance {
     if (cooldownMs >= 1) {
       cooldownMs -= STEP_MS;
     }
-    world.events().captureStepped(host.owner(), captured, complete, timesMs);
+    world.getEvents().captureStepped(host.owner(), captured, complete, timesMs);
   }
 
   /**
@@ -169,7 +169,7 @@ public final class CaptureRun extends ActionInstance {
             (columns.capturePriority() << 16)
                 - FixedMath.guardedDistance(x - at.getX(), y - at.getY());
         boolean answer = locks.request(host.id(), pick.getId(), CHANNEL, priority, 0);
-        world.events().captureRequested(host.owner(), pick, priority, answer);
+        world.getEvents().captureRequested(host.owner(), pick, priority, answer);
         claimed.add(pick.getId());
       }
     }
@@ -278,7 +278,7 @@ public final class CaptureRun extends ActionInstance {
    * the next pending pass.
    */
   private void scheduleOnOwner(WorldEntity cause, String action) {
-    host.world().events().captureScheduled(host.owner(), cause, action);
+    host.world().getEvents().captureScheduled(host.owner(), cause, action);
     host.scheduleOnOwner(cause, action);
   }
 
@@ -288,7 +288,7 @@ public final class CaptureRun extends ActionInstance {
    */
   private void scheduleOnUnit(WorldEntity unit, String action) {
     BattleWorld world = host.world();
-    world.events().captureScheduled(unit, host.owner(), action);
+    world.getEvents().captureScheduled(unit, host.owner(), action);
     ActionBinding binding = world.binding(unit);
     unit.actionHolder()
         .schedule(

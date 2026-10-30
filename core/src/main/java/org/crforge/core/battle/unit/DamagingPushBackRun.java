@@ -122,7 +122,7 @@ final class DamagingPushBackRun extends ActionInstance {
       hit.add(id);
       int amount = unit.listenedDamage(damage, hitId);
       world
-          .hits()
+          .getHits()
           .dealCarriedPushDamage(
               unit,
               object,

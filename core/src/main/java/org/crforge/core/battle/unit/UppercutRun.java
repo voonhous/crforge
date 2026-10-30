@@ -117,7 +117,7 @@ final class UppercutRun extends ActionInstance {
       finish();
     }
     unit.world()
-        .events()
+        .getEvents()
         .uppercutStarted(unit, row.name(), phase, instigator, target, isFinished());
   }
 
@@ -151,7 +151,7 @@ final class UppercutRun extends ActionInstance {
       outcome = hold();
     }
     if (before != delay || pushPoint != null || isFinished()) {
-      unit.world().events().uppercutStepped(unit, delay, isFinished(), outcome, pushPoint);
+      unit.world().getEvents().uppercutStepped(unit, delay, isFinished(), outcome, pushPoint);
     }
   }
 
@@ -290,7 +290,7 @@ final class UppercutRun extends ActionInstance {
   @Override
   protected void objectLeft(int leftId) {
     if (target != null && target.getId() == leftId) {
-      unit.world().events().uppercutTargetLeft(unit, target);
+      unit.world().getEvents().uppercutTargetLeft(unit, target);
       target = null;
     }
   }

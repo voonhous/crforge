@@ -329,7 +329,7 @@ class BattleSkeletonsEvoTest {
 
     // A member dies and leaves the chain; the instance has no firing left, so nothing is made
     // until the next hit lists a new one.
-    scene.match.getWorld().hits().kill(last, null);
+    scene.match.getWorld().getHits().kill(last, null);
     for (int i = 0; i < 60 && scene.hitTicks.size() < 2; i++) {
       scene.step(1);
     }
@@ -386,7 +386,7 @@ class BattleSkeletonsEvoTest {
     // tick's damage drain and leaves in the closing cleanup, ahead of the fold.
     scene.onSpawn =
         () -> {
-          scene.match.getWorld().hits().kill(carrier, null);
+          scene.match.getWorld().getHits().kill(carrier, null);
           scene.onSpawn = () -> {};
         };
 
