@@ -523,12 +523,12 @@ public class CharacterEntity extends WorldEntity {
         public void requestState(int state) {
           int from = getView().getState();
           setter.setState(getView(), state);
-          world.movementStateRequested(CharacterEntity.this, from, getView().getState());
+          world.events().movementStateRequested(CharacterEntity.this, from, getView().getState());
         }
 
         @Override
         public void chargeCompleted() {
-          world.chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
+          world.events().chargeCompleted(CharacterEntity.this, unit.movement().getChargeProgress());
           runChargeAction();
         }
 
@@ -584,7 +584,7 @@ public class CharacterEntity extends WorldEntity {
               world.getGrid().getWidth(),
               world.getGrid().getHeight(),
               setter);
-          world.dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+          world.events().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
         }
       };
 
@@ -1217,7 +1217,7 @@ public class CharacterEntity extends WorldEntity {
               + " modelled");
     }
     if (reason != null) {
-      world.cloneRefused(this, reason, cause);
+      world.events().cloneRefused(this, reason, cause);
       return false;
     }
     // A carrier's riders are cloned with it, each as a clone of its own, so each is held to the
@@ -1342,7 +1342,7 @@ public class CharacterEntity extends WorldEntity {
     movement.setExplicitX(x);
     movement.setExplicitY(y);
     SingleNodeRoute.set(movement, getView(), unit.movementConfig(), x, y, 1, width, height);
-    world.cloneMoveStarted(this, x, y);
+    world.events().cloneMoveStarted(this, x, y);
   }
 
   /** A coordinate kept between 0 and the arena's last unit. */
@@ -1384,7 +1384,7 @@ public class CharacterEntity extends WorldEntity {
         resume();
       }
       finish();
-      world.cloneMoveEnded(CharacterEntity.this, resumed);
+      world.events().cloneMoveEnded(CharacterEntity.this, resumed);
     }
   }
 
@@ -1610,7 +1610,7 @@ public class CharacterEntity extends WorldEntity {
           action.name() + " taunts " + name() + " onto " + refused + " is not modelled");
     }
     WorldEntity onto = (WorldEntity) forced;
-    world.tauntPerformed(this, action.name(), phase, instigator, onto);
+    world.events().tauntPerformed(this, action.name(), phase, instigator, onto);
     TauntRun run = new TauntRun(action, this, onto);
     run.start();
     // The carrier's riders are taunted onto the same object, each by its own run, after the
@@ -1919,7 +1919,7 @@ public class CharacterEntity extends WorldEntity {
       chainNext.chainPrevious = linked;
     }
     chainNext = linked;
-    world.groupLinked(this, linked);
+    world.events().groupLinked(this, linked);
   }
 
   /**
@@ -1960,7 +1960,7 @@ public class CharacterEntity extends WorldEntity {
     if (previous != null) {
       previous.chainNext = this;
     }
-    world.chainLinked(this, previous);
+    world.events().chainLinked(this, previous);
   }
 
   /**
@@ -2014,7 +2014,7 @@ public class CharacterEntity extends WorldEntity {
       chainNext.chainPrevious = child;
     }
     chainNext = child;
-    world.chainLinked(child, this);
+    world.events().chainLinked(child, this);
   }
 
   /**
@@ -2026,7 +2026,7 @@ public class CharacterEntity extends WorldEntity {
   protected void releasedAtFold() {
     super.releasedAtFold();
     if (leaveChain()) {
-      world.chainUnlinked(this);
+      world.events().chainUnlinked(this);
     }
   }
 
@@ -2140,7 +2140,7 @@ public class CharacterEntity extends WorldEntity {
     if (removed instanceof ProjectileEntity projectile
         && unit.timers().getFollowTarget() == projectile) {
       unit.timers().setFollowTarget(null);
-      world.followLeft(this, projectile);
+      world.events().followLeft(this, projectile);
       if (getView().getState() != GridEntityState.CLONE_SETUP) {
         ResumeHelper.resume(
             getView(), unit.stateConfig(), stateQueries(), new ArrayList<>(), setter);
@@ -2154,14 +2154,16 @@ public class CharacterEntity extends WorldEntity {
     long dx = reference.x() - getView().getX();
     long dy = reference.y() - getView().getY();
     UnitData data = getData();
-    world.specialArmed(
-        this,
-        world.entityOf(reference.getEntity()),
-        dx * dx + dy * dy,
-        reference.radius() + data.specialMinRange(),
-        reference.radius() + data.specialRange(),
-        data.specialLoadTimeMs(),
-        unit.targeting().getSpecialLoadTimerMs());
+    world
+        .events()
+        .specialArmed(
+            this,
+            world.entityOf(reference.getEntity()),
+            dx * dx + dy * dy,
+            reference.radius() + data.specialMinRange(),
+            reference.radius() + data.specialRange(),
+            data.specialLoadTimeMs(),
+            unit.targeting().getSpecialLoadTimerMs());
   }
 
   /**
@@ -2245,12 +2247,14 @@ public class CharacterEntity extends WorldEntity {
       int packed =
           Relocation.relocate(
               grid.getWidth(), grid.getHeight(), view.getX(), view.getY(), reference, grid::water);
-      world.relocated(
-          CharacterEntity.this,
-          view.getX(),
-          view.getY(),
-          Relocation.unpackX(packed),
-          Relocation.unpackY(packed));
+      world
+          .events()
+          .relocated(
+              CharacterEntity.this,
+              view.getX(),
+              view.getY(),
+              Relocation.unpackX(packed),
+              Relocation.unpackY(packed));
       view.setX(Relocation.unpackX(packed));
       view.setY(Relocation.unpackY(packed));
     }
@@ -2393,8 +2397,10 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false);
-    world.pushbackRequested(
-        this, ran == 1 && movement.getPushbackInFlight() == 1, aimX, aimY, movement);
+    world
+        .events()
+        .pushbackRequested(
+            this, ran == 1 && movement.getPushbackInFlight() == 1, aimX, aimY, movement);
   }
 
   /**
@@ -2435,7 +2441,9 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
     return true;
   }
 
@@ -2468,7 +2476,9 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
   /**
@@ -2500,7 +2510,9 @@ public class CharacterEntity extends WorldEntity {
             subtract,
             keepLonger,
             false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
   /**
@@ -2529,7 +2541,9 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
   /**
@@ -2547,7 +2561,9 @@ public class CharacterEntity extends WorldEntity {
     int ran =
         PushbackRequest.request(
             movement, getView(), pushbackQueries, x, y, distance, true, false, false, false, false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
   /**
@@ -2578,7 +2594,9 @@ public class CharacterEntity extends WorldEntity {
             false,
             false,
             false);
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
   }
 
   /**
@@ -2622,7 +2640,7 @@ public class CharacterEntity extends WorldEntity {
     }
     PushbackRequest.set(
         movement, getView(), pushbackQueries, x, y, distance, attack, subtract, keepLonger);
-    world.pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
+    world.events().pushbackRequested(this, movement.getPushbackInFlight() == 1, x, y, movement);
     return 1;
   }
 
@@ -2658,7 +2676,7 @@ public class CharacterEntity extends WorldEntity {
    * @param priority its priority
    */
   void markTarget(WorldEntity target, int priority) {
-    world.uppercutMarked(this, target, priority);
+    world.events().uppercutMarked(this, target, priority);
     for (int[] entry : targetQueue) {
       if (entry[0] == target.getId()) {
         entry[1] = Math.max(entry[1], priority);
@@ -2705,7 +2723,7 @@ public class CharacterEntity extends WorldEntity {
       tauntReference(onto, true);
       unit.targeting().setSkipSelectionNextVisit(true);
     }
-    world.targetQueueFlushed(this);
+    world.events().targetQueueFlushed(this);
   }
 
   /**
@@ -2830,7 +2848,9 @@ public class CharacterEntity extends WorldEntity {
             columns.proportional(),
             columns.resetIfStronger(),
             columns.invisible());
-    world.pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
+    world
+        .events()
+        .pushbackRequested(this, ran == 1 && movement.getPushbackInFlight() == 1, x, y, movement);
     return ran;
   }
 
@@ -3038,12 +3058,12 @@ public class CharacterEntity extends WorldEntity {
             world.getGrid().getWidth(),
             world.getGrid().getHeight(),
             setter);
-        world.dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
+        world.events().dashStarted(CharacterEntity.this, reference, fromX, fromY, x, y);
       }
 
       @Override
       public void stepped(boolean charging, long tags, boolean done, List<String> calls) {
-        world.guardStepped(CharacterEntity.this, charging, tags, done, calls);
+        world.events().guardStepped(CharacterEntity.this, charging, tags, done, calls);
       }
     };
   }
@@ -3292,7 +3312,7 @@ public class CharacterEntity extends WorldEntity {
     } else if (view.getBlockCountdownMs() == 0) {
       view.setBlockCountdownMs(LANDING_HOLD_START_MS);
     }
-    world.dashLanded(this, hit, hit != null || area ? damage : 0, area);
+    world.events().dashLanded(this, hit, hit != null || area ? damage : 0, area);
   }
 
   /**
@@ -3567,7 +3587,7 @@ public class CharacterEntity extends WorldEntity {
     if (isActive(TARGETING_SLOT)) {
       targetingComponent.visit();
     }
-    world.deployEndVisited(this);
+    world.events().deployEndVisited(this);
   }
 
   /**
@@ -3590,7 +3610,7 @@ public class CharacterEntity extends WorldEntity {
             getData().building(),
             effects);
     unit.timers().setHideCounterMs(after);
-    world.hideVisited(this, state, before, after, step, effects);
+    world.events().hideVisited(this, state, before, after, step, effects);
     // A building schedules its row's action beside each effect, on itself with itself as the
     // cause. The state visit runs outside every pending pass, so a row with no delay waits for the
     // building's phase-3 pending pass of the tick.
@@ -3605,7 +3625,7 @@ public class CharacterEntity extends WorldEntity {
         continue;
       }
       BattleAction row = world.getActions().build(action, world.binding(this));
-      world.hidingHookScheduled(this, column, row.name());
+      world.events().hidingHookScheduled(this, column, row.name());
       actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, actionHolder());
     }
   }
@@ -3717,7 +3737,7 @@ public class CharacterEntity extends WorldEntity {
     }
     kamikazeHitEnded = true;
     if (getData().kamikazeTimeMs() != 0) {
-      world.kamikazeHitEnded(this, false);
+      world.events().kamikazeHitEnded(this, false);
       return;
     }
     // A curse it carries (the Witch Mother's, the Goblin Curse's) is deleted first, so its kill
@@ -3727,7 +3747,7 @@ public class CharacterEntity extends WorldEntity {
       throw new UnsupportedOperationException(
           name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");
     }
-    world.kamikazeHitEnded(this, true);
+    world.events().kamikazeHitEnded(this, true);
     world.kamikazeKill(this);
   }
 
@@ -3786,7 +3806,7 @@ public class CharacterEntity extends WorldEntity {
     }
     int before = unit.movement().getChargeProgress();
     resetCharge();
-    world.buffChargeReset(this, instance, before, unit.movement().getChargeProgress());
+    world.events().buffChargeReset(this, instance, before, unit.movement().getChargeProgress());
   }
 
   /**
@@ -3978,7 +3998,7 @@ public class CharacterEntity extends WorldEntity {
               + " and stays visible as it routes across, which is not modelled");
     }
     boolean now = abilityGate();
-    world.abilityRequested(this, now);
+    world.events().abilityRequested(this, now);
     if (now) {
       setter.setState(getView(), GridEntityState.CASTING);
       // Only the data reads it: the hero Mini Pekka's level timer stops on it.
@@ -4019,14 +4039,14 @@ public class CharacterEntity extends WorldEntity {
    */
   private void abilityFired() {
     AbilityData ability = getData().ability();
-    world.abilityFired(this);
+    world.events().abilityFired(this);
     if (ability.onActivationAction() != null) {
       BattleAction action =
           world.getActions().build(ability.onActivationAction(), world.binding(this));
       actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     if (ability.buff() != null) {
-      world.abilityBuffed(this, ability.buff(), ability.buffTimeMs(), getPackedLevel());
+      world.events().abilityBuffed(this, ability.buff(), ability.buffTimeMs(), getPackedLevel());
       getBuffs()
           .apply(
               world.buffData(ability.buff()),
@@ -4068,7 +4088,7 @@ public class CharacterEntity extends WorldEntity {
     AreaEffectData row = areaEffect.getData();
     int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
     areaEffect.overrideLifetime(lifetime);
-    world.soulsSpent(this, areaEffect, souls, count, lifetime);
+    world.events().soulsSpent(this, areaEffect, souls, count, lifetime);
     souls = 0;
   }
 
@@ -4087,7 +4107,7 @@ public class CharacterEntity extends WorldEntity {
     AreaEffectData row = areaEffect.getData();
     int lifetime = row.spawnIntervalMs() * (count - 1) + row.spawnInitialDelayMs();
     areaEffect.overrideLifetime(lifetime);
-    world.soulsSpent(this, areaEffect, charges, count, lifetime);
+    world.events().soulsSpent(this, areaEffect, charges, count, lifetime);
     if (ability.spawnCountResetAction() != null) {
       BattleAction reset =
           world.getActions().build(ability.spawnCountResetAction(), world.binding(this));
@@ -4128,7 +4148,7 @@ public class CharacterEntity extends WorldEntity {
       return;
     }
     souls++;
-    world.soulCounted(this, dying, souls);
+    world.events().soulCounted(this, dying, souls);
   }
 
   /**
@@ -4138,7 +4158,7 @@ public class CharacterEntity extends WorldEntity {
    */
   private void enterFollowUp() {
     setter.setState(getView(), GridEntityState.ABILITY_FOLLOW_UP);
-    world.abilityStateEntered(this, unit.timers().getAbilityCountdown());
+    world.events().abilityStateEntered(this, unit.timers().getAbilityCountdown());
   }
 
   /**
@@ -4166,7 +4186,7 @@ public class CharacterEntity extends WorldEntity {
     unit.movement().setExplicitY(toY);
     TargetView reference = unit.targeting().getReference();
     setter.setState(view, GridEntityState.INGAME_PATHFIND);
-    world.lanesSwitched(this, x, y, toX, toY, reference);
+    world.events().lanesSwitched(this, x, y, toX, toY, reference);
   }
 
   /**
@@ -4253,8 +4273,8 @@ public class CharacterEntity extends WorldEntity {
         world.getGrid().getWidth(),
         world.getGrid().getHeight(),
         setter);
-    world.dashStarted(this, reference, fromX, fromY, x, y);
-    world.chainDashStarted(this, fromX, fromY, x, y, radius);
+    world.events().dashStarted(this, reference, fromX, fromY, x, y);
+    world.events().chainDashStarted(this, fromX, fromY, x, y, radius);
   }
 
   /**
@@ -4295,7 +4315,7 @@ public class CharacterEntity extends WorldEntity {
     int count = t.getDashChainCount();
     TargetView reference = t.getReference();
     if (count < 1 || count >= data.dashCount()) {
-      world.chainDashEnded(this, count, reference);
+      world.events().chainDashEnded(this, count, reference);
       return false;
     }
     GridEntity view = getView();
@@ -4336,10 +4356,10 @@ public class CharacterEntity extends WorldEntity {
     }
     if (best == null
         || reference != null && reference.crownTower() && LOGIC_CHAIN_DASH_STOP_AT_TOWER) {
-      world.chainDashEnded(this, count, reference);
+      world.events().chainDashEnded(this, count, reference);
       return false;
     }
-    world.chainDashed(this, best, count, x, y);
+    world.events().chainDashed(this, best, count, x, y);
     ReferenceSetter.setReference(
         t, best.getTargetView(), false, false, false, selection, selection.getOutcome());
     chainedDashStart(best.getView().getX(), best.getView().getY(), 0);
@@ -4666,7 +4686,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void log(GoblinHutLifeState.Event event) {
-        world.goblinHutLogged(CharacterEntity.this, event);
+        world.events().goblinHutLogged(CharacterEntity.this, event);
       }
 
       private WorldEntity object(int id) {
@@ -4751,7 +4771,7 @@ public class CharacterEntity extends WorldEntity {
     return new GhostEvo.Host() {
       @Override
       public void started(int phase) {
-        world.ghostEvoStarted(ghost, action.name(), phase);
+        world.events().ghostEvoStarted(ghost, action.name(), phase);
       }
 
       @Override
@@ -4792,7 +4812,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void summoned(BattleEntity reference, int x, int y, int countdownMs) {
-        world.ghostSummoned(ghost, (WorldEntity) reference, x, y, countdownMs);
+        world.events().ghostSummoned(ghost, (WorldEntity) reference, x, y, countdownMs);
       }
     };
   }
@@ -4916,13 +4936,15 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public void started(
           BossBanditAbility row, int phase, int warpTick, int lockTick, List<Boolean> requests) {
-        world.bossBanditAbilityStarted(
-            CharacterEntity.this, row, phase, warpTick, lockTick, requests);
+        world
+            .events()
+            .bossBanditAbilityStarted(
+                CharacterEntity.this, row, phase, warpTick, lockTick, requests);
       }
 
       @Override
       public void stepped(boolean locked, int releaseMs, List<String> calls) {
-        world.bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
+        world.events().bossBanditAbilityStepped(CharacterEntity.this, locked, releaseMs, calls);
       }
     };
   }
@@ -5141,7 +5163,7 @@ public class CharacterEntity extends WorldEntity {
   /** Starts a capture on the character, as the evolved Goblin Cage holds what it catches. */
   @Override
   public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
-    world.captureStarted(this, action.name(), phase);
+    world.events().captureStarted(this, action.name(), phase);
     return new CaptureRun(action, captureHost());
   }
 
@@ -5475,7 +5497,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void log(TargetIndicatorAttack.Event event) {
-        world.targetIndicatorLogged(CharacterEntity.this, event);
+        world.events().targetIndicatorLogged(CharacterEntity.this, event);
       }
 
       private WorldEntity object(int id) {
@@ -5747,7 +5769,7 @@ public class CharacterEntity extends WorldEntity {
     }
     collectorTimerMs -= period;
     kings.add(side(), amount * KingElixir.SCALE);
-    world.elixirCollected(this, amount);
+    world.events().elixirCollected(this, amount);
   }
 
   /**
@@ -5764,7 +5786,7 @@ public class CharacterEntity extends WorldEntity {
     int limit = data.spawnLimit();
     if (limit >= 1 && spawnsLeft <= 0 && data.destroyAtLimit() && !destroyedAtLimit) {
       destroyedAtLimit = true;
-      world.destroyedAtLimit(this);
+      world.events().destroyedAtLimit(this);
     }
     boolean due = spawnsLeft > 0 ? interval + pause >= 1 : limit <= 0 && interval + pause > 0;
     if (data.spawnCharacter() == null || !due) {
@@ -5798,7 +5820,7 @@ public class CharacterEntity extends WorldEntity {
       next = pause;
     }
     spawnTimer = spawnTimer + next > 1 ? spawnTimer + next : 1;
-    world.spawnerFired(this, row, count, radius, spawnTimer, spawnWaveMade);
+    world.events().spawnerFired(this, row, count, radius, spawnTimer, spawnWaveMade);
   }
 
   /** The row the spawner's current wave makes, by its turn. */
@@ -5949,11 +5971,11 @@ public class CharacterEntity extends WorldEntity {
       List<int[]> relocations = queries.relocations();
       for (int i = 0, n = relocations.size(); i < n; i++) {
         int[] r = relocations.get(i);
-        world.relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
+        world.events().relocated(CharacterEntity.this, r[0], r[1], r[2], r[3]);
       }
       boolean full = unit.movement().getChargeProgress() >= MovementState.CHARGE_COMPLETE;
       if (charged && !full) {
-        world.chargeLost(CharacterEntity.this);
+        world.events().chargeLost(CharacterEntity.this);
       }
       charged = full;
     }

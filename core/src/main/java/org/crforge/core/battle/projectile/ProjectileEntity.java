@@ -1126,7 +1126,7 @@ public class ProjectileEntity extends BattleEntity
     if (data.onStartingAction() != null) {
       BattleAction starting =
           world.getActions().build(data.onStartingAction(), new ProjectileBinding(world, this));
-      world.projectileStarting(this, starting.name());
+      world.events().projectileStarting(this, starting.name());
       actionHolder().schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder());
     }
     registerPending();
@@ -1197,7 +1197,7 @@ public class ProjectileEntity extends BattleEntity
       throw new UnsupportedOperationException(
           name() + " swaps " + data.name() + " for " + rowName + ", whose columns differ");
     }
-    world.projectileSwapped(this, data.name(), rowName);
+    world.events().projectileSwapped(this, data.name(), rowName);
     data = next;
   }
 
@@ -1226,7 +1226,7 @@ public class ProjectileEntity extends BattleEntity
     side = deflector.side();
     // Whether the action hands on the deflector's cast with its side is not known.
     castId = UNMODELLED_CAST_ID;
-    world.projectileSelfDeflected(this, action.name(), deflector);
+    world.events().projectileSelfDeflected(this, action.name(), deflector);
     if (before >= world.globalNumber("MAX_DEFLECTION_TIMES")) {
       release();
     }
@@ -1235,7 +1235,7 @@ public class ProjectileEntity extends BattleEntity
   /** Starts the evolved Executioner's axe controller on the projectile. */
   @Override
   public ActionInstance executionerController(ExecutionerEvoProjectile action, int phase) {
-    world.executionerStarted(this, action.name(), phase);
+    world.events().executionerStarted(this, action.name(), phase);
     return new ExecutionerRun(action, this);
   }
 
@@ -1243,14 +1243,14 @@ public class ProjectileEntity extends BattleEntity
   @Override
   public ActionInstance rollingProjectile(RollingProjectile action, int phase) {
     RollingRun run = new RollingRun(action, this);
-    world.rollStarted(this, action.name(), phase, run.destinationX(), run.destinationY());
+    world.events().rollStarted(this, action.name(), phase, run.destinationX(), run.destinationY());
     return run;
   }
 
   /** Starts a capture on the projectile. */
   @Override
   public ActionInstance captureCharacter(CaptureCharacter action, int phase) {
-    world.captureStarted(this, action.name(), phase);
+    world.events().captureStarted(this, action.name(), phase);
     return new CaptureRun(action, captureHost());
   }
 

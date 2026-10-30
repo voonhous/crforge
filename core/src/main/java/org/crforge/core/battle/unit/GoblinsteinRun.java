@@ -122,21 +122,21 @@ final class GoblinsteinRun extends ActionInstance {
         CharacterEntity head = follow instanceof CharacterEntity unit ? unit.chainHead() : null;
         connected = head == follow ? head.chainNext() : head;
         state = WAITING;
-        world.goblinsteinConnected(owner, connected);
+        world.events().goblinsteinConnected(owner, connected);
       }
       case WAITING -> {
         if (casting(follow)) {
           hitTimerMs = -1;
           actionTimerMs = -1;
           state = CASTING;
-          world.goblinsteinStepped(owner, "cast_seen");
+          world.events().goblinsteinStepped(owner, "cast_seen");
         }
       }
       case CASTING -> {
         if (!casting(follow)) {
           remainingMs = ability.getColumns().tetherDurationMs();
           state = TETHERING;
-          world.goblinsteinStepped(owner, "tether_start " + remainingMs);
+          world.events().goblinsteinStepped(owner, "tether_start " + remainingMs);
         }
       }
       default -> {
@@ -146,7 +146,7 @@ final class GoblinsteinRun extends ActionInstance {
           remainingMs -= STEP_MS;
           if (before <= STEP_MS) {
             state = WAITING;
-            world.goblinsteinStepped(owner, "tether_end");
+            world.events().goblinsteinStepped(owner, "tether_end");
           }
         }
       }
@@ -213,7 +213,7 @@ final class GoblinsteinRun extends ActionInstance {
     List<WorldEntity> found =
         world.segmentQuery(
             owner, ax, ay, bx, by, columns.tetherWidth(), columns.tetherDamageTargets());
-    world.tetherDamagePass(owner, ax, ay, bx, by, found);
+    world.events().tetherDamagePass(owner, ax, ay, bx, by, found);
     if (found == null) {
       return;
     }
@@ -266,7 +266,7 @@ final class GoblinsteinRun extends ActionInstance {
     AreaEffectEntity deathArea = world.goblinsteinDeathArea(owner, row, x, y);
     connected = deathArea;
     deathAreaMade = true;
-    world.goblinsteinDeathAreaMade(owner, unit, deathArea, x, y);
+    world.events().goblinsteinDeathAreaMade(owner, unit, deathArea, x, y);
   }
 
   @Override
@@ -275,7 +275,7 @@ final class GoblinsteinRun extends ActionInstance {
       // The countdown goes to 0, not to the end's -1.
       deathArea.zeroCountdown();
       connected = null;
-      world.goblinsteinDeathAreaEnded(owner, deathArea);
+      world.events().goblinsteinDeathAreaEnded(owner, deathArea);
     }
   }
 }

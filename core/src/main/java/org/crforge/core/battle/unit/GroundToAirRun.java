@@ -154,7 +154,9 @@ final class GroundToAirRun extends ActionInstance {
       case DESCENDING -> descend(holder, pushes);
       default -> throw new IllegalStateException("phase " + phase);
     }
-    unit.world().groundToAirStepped(unit, phaseBefore, phase, counterBefore, counter, pushes);
+    unit.world()
+        .events()
+        .groundToAirStepped(unit, phaseBefore, phase, counterBefore, counter, pushes);
   }
 
   /**

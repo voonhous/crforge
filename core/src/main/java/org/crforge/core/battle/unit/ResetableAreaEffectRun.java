@@ -67,14 +67,14 @@ final class ResetableAreaEffectRun extends ActionInstance {
     areaEffect.followWithOffsets(row.getOffsetX(), row.getOffsetY());
     areaEffectId = areaEffect.getId();
     areaEffectName = areaEffect.name();
-    unit.world().resetableStarted(unit, phase, instigator, areaEffect, x, y);
+    unit.world().events().resetableStarted(unit, phase, instigator, areaEffect, x, y);
   }
 
   @Override
   protected void update(ActionHolder holder) {
     if (areaEffectId == NONE) {
       finish();
-      unit.world().resetableEnded(unit, areaEffectName);
+      unit.world().events().resetableEnded(unit, areaEffectName);
     }
   }
 
@@ -86,7 +86,7 @@ final class ResetableAreaEffectRun extends ActionInstance {
       areaEffect.restartLife();
       countdown = areaEffect.getCountdown();
     }
-    unit.world().resetableRetriggered(unit, holder.passPhase(), areaEffectName, countdown);
+    unit.world().events().resetableRetriggered(unit, holder.passPhase(), areaEffectName, countdown);
   }
 
   /** The area effect leaving is forgotten. */
@@ -94,7 +94,7 @@ final class ResetableAreaEffectRun extends ActionInstance {
   protected void objectLeft(int leftId) {
     if (areaEffectId != NONE && leftId == areaEffectId) {
       areaEffectId = NONE;
-      unit.world().resetableLeft(unit, areaEffectName);
+      unit.world().events().resetableLeft(unit, areaEffectName);
     }
   }
 
@@ -107,7 +107,9 @@ final class ResetableAreaEffectRun extends ActionInstance {
     }
     int before = areaEffect.getCountdown();
     areaEffect.cutLife(Math.min(keep, before));
-    unit.world().resetableReleased(unit, areaEffectName, before, areaEffect.getCountdown());
+    unit.world()
+        .events()
+        .resetableReleased(unit, areaEffectName, before, areaEffect.getCountdown());
   }
 
   /**

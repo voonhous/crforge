@@ -338,10 +338,10 @@ public final class ChampionController extends ActionInstance {
       // Otherwise it holds: no copy casts.
     }
     if (before > 0 && cooldownMs == 0) {
-      world.championCooldownOut(this);
+      world.events().championCooldownOut(this);
     }
     if (champion != null) {
-      world.championStepped(this, elixir, views);
+      world.events().championStepped(this, elixir, views);
     }
     // A state an action wrote lasts the one step.
     override = 0;
@@ -441,7 +441,7 @@ public final class ChampionController extends ActionInstance {
     if (charges > 0) {
       charges--;
     }
-    world.championActivated(this, requested);
+    world.events().championActivated(this, requested);
   }
 
   /**

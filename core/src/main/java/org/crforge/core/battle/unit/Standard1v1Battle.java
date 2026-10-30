@@ -1764,7 +1764,7 @@ public class Standard1v1Battle {
       // row's starting action is queued with its own delay, so one without runs in its phase-1
       // pending pass of the play tick, before its first component visit. Starting it here queues
       // the same entry for the same pass.
-      world.characterPlayed(character);
+      world.events().characterPlayed(character);
       character.start();
       units.add(character);
     }
@@ -1924,7 +1924,7 @@ public class Standard1v1Battle {
     }
     character.tunnelFrom(king.getView().getX(), king.getView().getY(), pointX, pointY);
     target.getHolder().addRegistered(character);
-    world.characterPlayed(character);
+    world.events().characterPlayed(character);
     character.start();
     return character;
   }

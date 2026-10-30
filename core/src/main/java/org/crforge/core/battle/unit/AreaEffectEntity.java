@@ -391,7 +391,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         && unit.isClone()) {
       int query = world.getRecords().buff(data.buff()).healPerSecond();
       boolean refused = query >= 1;
-      world.cloneBuffGateAsked(this, data.buff(), unit, asking, query, refused);
+      world.events().cloneBuffGateAsked(this, data.buff(), unit, asking, query, refused);
       if (refused) {
         return false;
       }
@@ -496,7 +496,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
    */
   @Override
   protected void onRegistered() {
-    world.areaEffectAdmitted(this);
+    world.events().areaEffectAdmitted(this);
     if (data.onStartingAction() != null) {
       BattleAction starting = world.getActions().build(data.onStartingAction(), binding());
       actionHolder.schedule(starting, ActionHolder.OWN_DELAY, false, actionHolder);
@@ -573,7 +573,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     for (int i = 0; i < hits && damage >= 1 && !data.filterHits(); i++) {
       dealt.add(damage);
     }
-    world.areaEffectUpdated(this, before, countdown, hits, radius, dealt);
+    world.events().areaEffectUpdated(this, before, countdown, hits, radius, dealt);
     if (data.spawnCharacter() != null) {
       spawn(start, end, radius);
     }
@@ -589,7 +589,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       filterHits(start, speed, radius);
       if (countdown < 0 && data.onLifeTimeEndAction() != null) {
         BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
-        world.lifeTimeEndScheduled(this, ending.name());
+        world.events().lifeTimeEndScheduled(this, ending.name());
         actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
       }
       return;
@@ -604,7 +604,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     boolean lifeEnded = countdown < 0;
     if (lifeEnded && data.onLifeTimeEndAction() != null) {
       BattleAction ending = world.getActions().build(data.onLifeTimeEndAction(), binding());
-      world.lifeTimeEndScheduled(this, ending.name());
+      world.events().lifeTimeEndScheduled(this, ending.name());
       actionHolder.schedule(ending, ActionHolder.OWN_DELAY, false, actionHolder);
     }
   }
@@ -717,15 +717,17 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           Comparator.comparing((WorldEntity target) -> target.getHitPoints() == null)
               .thenComparing(Comparator.comparingInt(AreaEffectEntity::size).reversed()));
     }
-    world.shapeListed(this, listed);
+    world.events().shapeListed(this, listed);
     // The area the hit listed in, told to the observers before the list is dealt, as the area
     // damage of a row with hit switches tells its circle; nothing in the battle reads it.
     if (data.shaped() && data.shapeRadius() >= 1) {
-      world.areaEffectFilterHit(this, x, y, data.shapeRadius(), 0, 0);
+      world.events().areaEffectFilterHit(this, x, y, data.shapeRadius(), 0, 0);
     } else if (data.shaped()) {
-      world.areaEffectFilterHit(this, x, y, 0, half(data.shapeWidth()), half(data.shapeHeight()));
+      world
+          .events()
+          .areaEffectFilterHit(this, x, y, 0, half(data.shapeWidth()), half(data.shapeHeight()));
     } else {
-      world.areaEffectFilterHit(this, x, y, radius, 0, 0);
+      world.events().areaEffectFilterHit(this, x, y, radius, 0, 0);
     }
     BuffData buff = data.buff() == null ? null : world.buffData(data.buff());
     ProjectileData projectile =
@@ -775,7 +777,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       // The hit action, built for the object and scheduled on it, the area effect the cause.
       if (data.onHitAction() != null) {
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
-        world.onHitActionScheduled(this, target, action);
+        world.events().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
       }
       if (buff != null) {
@@ -805,7 +807,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       first = false;
     }
     if (buff != null && buff.attracts()) {
-      world.areaPulled(this, pulls);
+      world.events().areaPulled(this, pulls);
     }
     // Without a projectile for each object, one onto its own point, on every hit, whatever the
     // list holds (an end on the first hit included).
@@ -902,7 +904,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
             half(data.shapeWidth()),
             half(data.shapeHeight()),
             world.getRecords().filter(data.filter()));
-    world.shapeListed(this, listed);
+    world.events().shapeListed(this, listed);
     if (data.onHitAction() == null) {
       return;
     }
@@ -942,7 +944,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   private void circleShapeHits(int hits, int damage) {
     List<WorldEntity> listed =
         world.shapeQuery(this, data.shapeRadius(), world.getRecords().filter(data.filter()));
-    world.shapeListed(this, listed);
+    world.events().shapeListed(this, listed);
     DamageType type =
         damage >= 1 ? world.getActions().damageType(data.damageType(), binding()) : null;
     int tower = ((Math.max(data.crownTowerDamagePercent(), -100) + 100) * damage + 99) / 100;
@@ -1024,7 +1026,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   @Override
   public void aliveTimerFired(String action) {
-    world.aliveTimerFired(this, action);
+    world.events().aliveTimerFired(this, action);
   }
 
   /**
@@ -1140,7 +1142,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           continue;
         }
         BattleAction action = world.getActions().build(data.onHitAction(), world.binding(target));
-        world.onHitActionScheduled(this, target, action);
+        world.events().onHitActionScheduled(this, target, action);
         target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
         if (data.oneHitPerTarget()) {
           reached.add(target.getId());
@@ -1223,7 +1225,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       choice = choose(radius);
       target = choice.chosen();
       if (target == null) {
-        world.areaEffectLaunched(this, hit, bound, choice, null);
+        world.events().areaEffectLaunched(this, hit, bound, choice, null);
         return false;
       }
       struck.add(target.getId());
@@ -1235,7 +1237,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     ProjectileEntity projectile = new ProjectileEntity(world, row, side);
     projectile.launchFromArea(this, target, sx, sy, data.projectileStartHeight(), sx, sy);
     world.launch(projectile);
-    world.areaEffectLaunched(this, hit, bound, choice, projectile);
+    world.events().areaEffectLaunched(this, hit, bound, choice, projectile);
     return true;
   }
 
@@ -1342,7 +1344,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       }
       pulls.add(pull(unit, x - unit.getView().getX(), y - unit.getView().getY(), buff));
     }
-    world.areaPulled(this, pulls);
+    world.events().areaPulled(this, pulls);
   }
 
   /**
@@ -1502,7 +1504,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
                     && character.pushedByArea(fromX, fromY, distance);
               }
             });
-    world.areaEffectDamaged(this, area, outcome);
+    world.events().areaEffectDamaged(this, area, outcome);
   }
 
   /**
@@ -1780,12 +1782,12 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
       @Override
       public void selectorStarted(ShapeSelector action, int phase, List<Integer> due) {
-        world.selectorStarted(AreaEffectEntity.this, action.name(), phase, due);
+        world.events().selectorStarted(AreaEffectEntity.this, action.name(), phase, due);
       }
 
       @Override
       public void selectorStepped(ShapeSelector action, ShapeSelector.Step step) {
-        world.selectorStepped(AreaEffectEntity.this, action.name(), step);
+        world.events().selectorStepped(AreaEffectEntity.this, action.name(), step);
       }
     };
   }
@@ -1800,7 +1802,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       throw new UnsupportedOperationException(
           action.name() + " on " + name + ", which follows nothing, is not modelled");
     }
-    world.goblinsteinStarted(this, action.name(), phase);
+    world.events().goblinsteinStarted(this, action.name(), phase);
     return new GoblinsteinRun(world, action, this);
   }
 
@@ -1830,7 +1832,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
       @Override
       public void laserStarted(LaserBall action, int phase, int timerMs) {
-        world.laserStarted(AreaEffectEntity.this, action.name(), phase, timerMs);
+        world.events().laserStarted(AreaEffectEntity.this, action.name(), phase, timerMs);
       }
 
       @Override
@@ -1846,14 +1848,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         for (int id : targets) {
           objects.add((WorldEntity) world.liveObject(id));
         }
-        world.laserFired(
-            AreaEffectEntity.this,
-            count,
-            index,
-            objects,
-            scheduled == null ? null : scheduled.name(),
-            timerBefore,
-            timerAfter);
+        world
+            .events()
+            .laserFired(
+                AreaEffectEntity.this,
+                count,
+                index,
+                objects,
+                scheduled == null ? null : scheduled.name(),
+                timerBefore,
+                timerAfter);
       }
     };
   }
@@ -1872,7 +1876,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
       @Override
       public void firstStepped(SpawnGuard guardAction) {
-        world.guardFirstStepped(AreaEffectEntity.this, guardAction);
+        world.events().guardFirstStepped(AreaEffectEntity.this, guardAction);
       }
     };
   }
