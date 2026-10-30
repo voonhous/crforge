@@ -55,7 +55,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 
 | Class | What it is |
 | --- | --- |
-| `BattleWorld` | the routing grid, the building overlay and the spatial index, rebuilt per tick; owns the holder, hands launched projectiles to it, and is where damage lands |
+| `BattleWorld` | the routing grid, the building overlay and the spatial index, rebuilt per tick; owns the holder, hands launched projectiles to it, creates the area effects and runs the card plays; fronts the hits, the spawns, the deaths, the deflection and the events below |
 | `WorldEntity` | an entity that stands on the arena, with its targeting component's state |
 | `CharacterEntity` | targeting in slot 0, movement in slot 1, the state visit as the post-hook |
 | `TowerEntity` | a crown tower: targeting in slot 0, the state visit and the combat gate as the post-hook |
@@ -65,6 +65,8 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `WorldEvents` | what the world tells its observers: every event, at the tick in progress, to each observer in the order it attached |
 | `ProjectileDeflection` | the deflection of projectiles by the area effects that deflect them: the tick's deflectors as the index lists them, the pass over a flying projectile's position and its aim, and the turn-around itself |
 | `HitQueue` | the battle's damage: every hit queued for the drain, the drain that deals them after the post-hooks in the order queued, each with its reflect, buff on damage and kill, and whether the damage queued for an entity will kill it |
+| `CharacterSpawns` | the characters the battle makes after its card plays: a spawner's live spawn, a buff's spawn, riders, an impact's spawn, a spawn action's characters, a guard, an area effect's spawner, summons, a clone, a warp's landing and the death spawn on a dying object's ring |
+| `EntityDeaths` | what an arena entity's death brings: the death handler (the death and killed actions, the killing side paid), the death slot inside the killing hit (the death damage and its push, the death projectiles and spawns, the king paid, the destroyed-object listeners told), and the deaths outside a hit |
 | `Standard1v1Battle` | the standard arena with its six towers |
 | `ActivationEvent` | one step of a king tower's activation, as observers are told it |
 | `ActionOwnerEntity` | an object that only owns actions, standing in for the objects that run spawn rows in the data |

@@ -608,7 +608,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param killingSide the side of the killing hit, or -1 for none
    */
   void die(BattleEntity attacker, int killingSide) {
-    world.entityDied(this, attacker, killingSide);
+    world.deaths().entityDied(this, attacker, killingSide);
   }
 
   /** The side of what killed an entity: an arena entity's, a projectile's or an area effect's. */
@@ -2143,12 +2143,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return new RunActionOnTroopDestroyed.Host() {
       @Override
       public void listen(RunActionOnTroopDestroyed.Listener listener) {
-        world.listenForDestroyed(self, action.name(), listener);
+        world.deaths().listenForDestroyed(self, action.name(), listener);
       }
 
       @Override
       public void unlisten(RunActionOnTroopDestroyed.Listener listener) {
-        world.unlistenForDestroyed(self, action.name(), listener);
+        world.deaths().unlistenForDestroyed(self, action.name(), listener);
       }
 
       @Override

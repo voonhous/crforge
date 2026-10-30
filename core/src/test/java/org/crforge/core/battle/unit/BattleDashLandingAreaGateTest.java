@@ -93,7 +93,7 @@ class BattleDashLandingAreaGateTest {
           match.getBattle().getTick() == walkingTick
               || (state == GridEntityState.DASHING && landings.size() == 1);
       if (due) {
-        match.getWorld().dashLandingArea(knight, 1, 0);
+        match.getWorld().deaths().dashLandingArea(knight, 1, 0);
       }
       if (landings.size() == 2) {
         break;

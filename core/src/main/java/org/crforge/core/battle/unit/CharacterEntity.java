@@ -3265,7 +3265,7 @@ public class CharacterEntity extends WorldEntity {
     WorldEntity hit = null;
     boolean area = data.dashRadius() >= 1;
     if (area) {
-      world.dashLandingArea(this, damage, hitId);
+      world.deaths().dashLandingArea(this, damage, hitId);
     } else {
       TargetingState t = unit.targeting();
       TargetView reference = isActive(TARGETING_SLOT) ? t.getReference() : null;
@@ -3368,7 +3368,7 @@ public class CharacterEntity extends WorldEntity {
     parent = null;
     getView().setAttached(false);
     unit.timers().setAttached(false);
-    world.parentLeft(this, left);
+    world.deaths().parentLeft(this, left);
     released = true;
   }
 
@@ -3846,7 +3846,7 @@ public class CharacterEntity extends WorldEntity {
     // The visit's removal of an object without hit points - the resume at the end of a bomb's
     // deploy - calls its death slot, without the death handler.
     if (calls.contains("remove")) {
-      world.deathAtRemoval(this);
+      world.deaths().deathAtRemoval(this);
     }
     if (calls.contains("elixir")) {
       collectElixir();
@@ -5832,7 +5832,7 @@ public class CharacterEntity extends WorldEntity {
       }
       int before = getHitPoints().getHitPoints();
       if (decay()) {
-        world.decayDeath(CharacterEntity.this, before);
+        world.deaths().decayDeath(CharacterEntity.this, before);
       }
     }
   }
