@@ -400,7 +400,7 @@ public final class ProjectileDeflection {
    * <p>Nor is it on the Goblin Barrel's first deflection, the evolved one's and its decoy's too:
    * the king tower that casts it is its root and it has no target, so it is sent at the enemy crown
    * tower nearest the area effect (see {@link #deflect}), and its impact there makes its children
-   * for the deflector's side (see {@link BattleWorld#impactSpawn}).
+   * for the deflector's side (see {@link CharacterSpawns#impactSpawn}).
    *
    * <p>A deflection behaviour that only ignores the height is no bar, as the Royal Giant's shot
    * has: it changes the deflection pass's measure (see {@link #deflectPass}) and nothing the

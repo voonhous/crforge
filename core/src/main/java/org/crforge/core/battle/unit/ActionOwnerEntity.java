@@ -134,7 +134,7 @@ public final class ActionOwnerEntity extends BattleEntity implements ActionOwner
 
   @Override
   public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
-    return world.spawnCharacters(this, arguments);
+    return world.spawns().spawnCharacters(this, arguments);
   }
 
   @Override
