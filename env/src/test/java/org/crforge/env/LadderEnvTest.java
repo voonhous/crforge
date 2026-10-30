@@ -585,6 +585,85 @@ class LadderEnvTest {
     }
   }
 
+  /**
+   * A played card leaves its slot only at the play's run, 20 ticks after its giving, and the next
+   * card of the queue takes the slot then, or once the hand's refill cooldown has run out: a second
+   * play run while the cooldown of the first one's refill still runs leaves its slot empty that
+   * long. No slot offers a card before it joins the hand, so an agent plays the next card no
+   * earlier than a player can.
+   */
+  @Test
+  void aPlayedSlotOffersNoCardUntilTheNextOneJoinsTheHand() {
+    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT.withDecisionTicks(1), BASIC, OTHER)) {
+      IntBuffer actions = env.actions().asIntBuffer();
+      actions.put(0, Schema.WAIT);
+      actions.put(1, Schema.WAIT);
+      // Full elixir pays any two cards of the deck: wait for it and for two open slots.
+      int first = -1;
+      int second = -1;
+      while (first < 0 || second < 0) {
+        env.step();
+        first = -1;
+        second = -1;
+        if (header(env, 0, 0, Schema.H_ELIXIR) == 100000) {
+          for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+            if (slotOpen(env, 0, 0, k)) {
+              if (first < 0) {
+                first = k;
+              } else if (second < 0) {
+                second = k;
+              }
+            }
+          }
+        }
+      }
+      // The two plays are given a tick apart, so they run a tick apart.
+      actions.put(0, nearOpen(env, 0, 0, first, Schema.COLS / 2, 8));
+      env.step();
+      actions.put(0, nearOpen(env, 0, 0, second, Schema.COLS / 2, 8));
+      env.step();
+      actions.put(0, Schema.WAIT);
+
+      int[] shown = new int[Schema.HAND_SLOTS];
+      int nextShown = header(env, 0, 0, Schema.H_NEXT_CARD);
+      for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+        shown[k] = header(env, 0, 0, Schema.H_HAND_CARD + k);
+      }
+      int emptyTicks = 0;
+      int refillMsWhenEmptied = -1;
+      boolean[] replaced = new boolean[Schema.HAND_SLOTS];
+      for (int tick = 0; tick < 200 && !(replaced[first] && replaced[second]); tick++) {
+        env.step();
+        for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+          int card = header(env, 0, 0, Schema.H_HAND_CARD + k);
+          boolean pending = header(env, 0, 0, Schema.H_HAND_PENDING + k) == 1;
+          if (pending || card == -1) {
+            // A waiting play's slot and an empty slot offer nothing.
+            assertThat(slotOpen(env, 0, 0, k)).as("slot %d, tick %d", k, tick).isFalse();
+          }
+          if (card == -1) {
+            // Empty only while the refill cooldown runs.
+            assertThat(header(env, 0, 0, Schema.H_HAND_REFILL_MS)).isPositive();
+            if (emptyTicks == 0) {
+              refillMsWhenEmptied = header(env, 0, 0, Schema.H_HAND_REFILL_MS);
+            }
+            emptyTicks++;
+          } else if (card != shown[k]) {
+            // The card that takes a slot is the one the observation named as next.
+            assertThat(card).as("slot %d's new card", k).isEqualTo(nextShown);
+            replaced[k] = true;
+          }
+          shown[k] = card;
+        }
+        nextShown = header(env, 0, 0, Schema.H_NEXT_CARD);
+      }
+      assertThat(replaced[first] && replaced[second]).as("both slots refilled").isTrue();
+      // The second slot stood empty for the rest of the first refill's cooldown, a tick a 50 ms.
+      assertThat(emptyTicks).isPositive().isEqualTo(refillMsWhenEmptied / 50);
+      assertThat(env.fault(0)).isNull();
+    }
+  }
+
   @Test
   void anEpisodeRunsToTheMatchsEndWithAZeroSumRewardAndItsWinner() {
     try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, BASIC, OTHER)) {
