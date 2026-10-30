@@ -336,7 +336,7 @@ class BalloonHeroAbilityTest {
     stepTo(battle, EARLY_CAST);
     // The kill lands at the damage drain of the step after the tap's, before the selector's first
     // step is due: the hero leaves with its selector listed and unfinished.
-    battle.getWorld().kill(hero, null);
+    battle.getWorld().hits().kill(hero, null);
     stepTo(battle, EARLY_CAST + 80);
     assertThat(battle.getAbilityUses()).hasSize(1);
     assertThat(HitPoints.alive(hero.getHitPoints())).isFalse();

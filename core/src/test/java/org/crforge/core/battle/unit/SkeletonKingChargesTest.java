@@ -178,14 +178,14 @@ class SkeletonKingChargesTest {
   void onlyArrivedSoulsCount() {
     Scene scene = new Scene();
     CharacterEntity early = scene.knight("early");
-    scene.battle.getWorld().kill(early, null);
+    scene.battle.getWorld().hits().kill(early, null);
     // Long enough for the soul's flight.
     scene.run(scene.battle.getBattle().getTick() + 40);
     assertThat(scene.charges()).isEqualTo(1);
     CharacterEntity late = scene.knight("late");
     int tap = scene.tap();
     scene.run(tap + 3);
-    scene.battle.getWorld().kill(late, null);
+    scene.battle.getWorld().hits().kill(late, null);
     scene.run(tap + graveyardSteps(BASE_COUNT + 2));
 
     assertThat(scene.spawned).hasSize(BASE_COUNT + 1);

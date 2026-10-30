@@ -296,7 +296,7 @@ class BattleBlowdartEvoTest {
     }
     assertThat(launches).hasSize(2);
     // The second dart is in flight: its thrower leaves before it lands.
-    match.getWorld().kill(goblin, null);
+    match.getWorld().hits().kill(goblin, null);
     for (int i = 0; i < 40; i++) {
       match.getBattle().step();
     }

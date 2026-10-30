@@ -203,7 +203,7 @@ class BattleBlowdartPoisonDrainTest {
       match.getBattle().step();
     }
     assertThat(poisoned(tower)).as("a poison damage run goes on the tower").isTrue();
-    match.getWorld().kill(goblin, null);
+    match.getWorld().hits().kill(goblin, null);
     match.deploy(match.getBattle().getTick() + 1, records.unit("Witch"), LEVEL, 0, 3500, 5000);
     for (int i = 0; i < DARTS_LANDED; i++) {
       match.getBattle().step();
@@ -243,7 +243,7 @@ class BattleBlowdartPoisonDrainTest {
       battle.getBattle().step();
     }
     assertThat(poisoned(unit)).as("a poison damage run goes on the unit").isTrue();
-    battle.getWorld().kill(goblin, null);
+    battle.getWorld().hits().kill(goblin, null);
     for (int i = 0; i < DARTS_LANDED; i++) {
       battle.getBattle().step();
     }

@@ -181,7 +181,7 @@ class BattleGiantHeroAbilityTest {
     Slap slap = slap();
     // Killed on the step after the pick: gone from the holder before the push is due.
     stepTo(slap.battle(), CAST + PICK + 1);
-    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
     int pushedFrom = slap.knight().getView().getX();
     stepTo(slap.battle(), CAST + push - 1);
     assertThat(named(slap.battle(), "GiantHero")).isEmpty();
@@ -207,7 +207,7 @@ class BattleGiantHeroAbilityTest {
     assertThat(pickedFrom).isLessThan(centre);
     slap.giant().warpTo(2 * centre - pickedFrom, slap.giant().getView().getY());
     assertThat(slap.giant().getView().getX()).isGreaterThan(centre);
-    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
     stepTo(slap.battle(), CAST + push - 1);
     assertThat(named(slap.battle(), "GiantHero")).isEmpty();
     int pushedFrom = slap.knight().getView().getX();
@@ -227,7 +227,7 @@ class BattleGiantHeroAbilityTest {
     int land = push + (Shipped.number(KNOCKBACK, "Duration") + 49) / 50;
     Slap slap = slap();
     stepTo(slap.battle(), CAST + push + 2);
-    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
     stepTo(slap.battle(), CAST + push + 6);
     assertThat(named(slap.battle(), "GiantHero")).isEmpty();
     assertLanding(slap, land);
@@ -242,7 +242,7 @@ class BattleGiantHeroAbilityTest {
     Slap slap = slap();
     // Killed on the step after the pick: let go from its holder before the push is due.
     stepTo(slap.battle(), CAST + PICK + 1);
-    slap.battle().getWorld().kill(slap.knight(), null);
+    slap.battle().getWorld().hits().kill(slap.knight(), null);
     slap.battle().play(CAST + PICK + 2, GameData.card("Knight"), LEVEL, 1, 3500, 22000, "k2");
     stepTo(slap.battle(), CAST + push);
     assertThat(named(slap.battle(), "Knight")).hasSize(1);
@@ -277,10 +277,10 @@ class BattleGiantHeroAbilityTest {
     Slap slap = slap();
     // The Giant leaves on the step after the pick, the Knight on the next: both before the push.
     stepTo(slap.battle(), CAST + PICK + 1);
-    slap.battle().getWorld().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
     stepTo(slap.battle(), CAST + PICK + 2);
     assertThat(named(slap.battle(), "GiantHero")).isEmpty();
-    slap.battle().getWorld().kill(slap.knight(), null);
+    slap.battle().getWorld().hits().kill(slap.knight(), null);
     assertLetGoQuietly(slap, PICK + 3, land);
   }
 
@@ -294,8 +294,8 @@ class BattleGiantHeroAbilityTest {
     Slap slap = slap();
     // Both killed between two steps: the next step's cleanup takes them in one removal.
     stepTo(slap.battle(), CAST + PICK + 1);
-    slap.battle().getWorld().kill(slap.giant(), null);
-    slap.battle().getWorld().kill(slap.knight(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.knight(), null);
     assertLetGoQuietly(slap, PICK + 2, land);
   }
 
@@ -315,8 +315,8 @@ class BattleGiantHeroAbilityTest {
     assertThat(slap.knight().actionHolder().running())
         .anyMatch(PushbackFromInstigatorRun.class::isInstance);
     // Both killed between two steps: the next step's cleanup takes them in one removal.
-    slap.battle().getWorld().kill(slap.giant(), null);
-    slap.battle().getWorld().kill(slap.knight(), null);
+    slap.battle().getWorld().hits().kill(slap.giant(), null);
+    slap.battle().getWorld().hits().kill(slap.knight(), null);
     assertLetGoQuietly(slap, PICK + 2, land);
   }
 

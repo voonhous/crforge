@@ -104,12 +104,12 @@ class BattleExpressionEnvironmentTest {
     assertThat(ExpressionEvaluator.evaluate(condition, environment)).isZero();
 
     // The other side's king losing hit points leaves this king asleep.
-    match.getWorld().dealDamage(otherKing.getTargetView(), 1, 0, 1);
+    match.getWorld().hits().dealDamage(otherKing.getTargetView(), 1, 0, 1);
     assertThat(ExpressionEvaluator.evaluate(condition, environment)).isZero();
 
     // Its own side's princess tower destroyed: the side keeps only one.
     TowerEntity princess = BattleTowers.towerNamed(battle, "PrincessTower_1_1");
-    match.getWorld().dealDamage(princess.getTargetView(), 100000, 0, 1);
+    match.getWorld().hits().dealDamage(princess.getTargetView(), 100000, 0, 1);
     assertThat(ExpressionEvaluator.evaluate(condition, environment))
         .as("a destroyed tower counts until the cleanup that removes it")
         .isZero();
@@ -128,7 +128,7 @@ class BattleExpressionEnvironmentTest {
     int damaged = BattleFunctions.id("king_tower_damaged");
 
     assertThat(environment.call(damaged, new int[0])).isZero();
-    match.getWorld().dealDamage(king.getTargetView(), 1, 0, 1);
+    match.getWorld().hits().dealDamage(king.getTargetView(), 1, 0, 1);
     assertThat(environment.call(damaged, new int[0])).isEqualTo(1);
   }
 
@@ -465,7 +465,7 @@ class BattleExpressionEnvironmentTest {
     assertThat(evaluate("has_crown_tower_in_range(3499)", byTheKingSees)).isZero();
 
     // A destroyed princess tower counts until the cleanup that removes it.
-    match.getWorld().dealDamage(princess.getTargetView(), 100000, 0, 1);
+    match.getWorld().hits().dealDamage(princess.getTargetView(), 100000, 0, 1);
     assertThat(evaluate("has_crown_tower_in_range(2500)", knightSees))
         .as("destroyed, not yet removed")
         .isEqualTo(1);

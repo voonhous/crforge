@@ -121,13 +121,15 @@ final class DamagingPushBackRun extends ActionInstance {
       }
       hit.add(id);
       int amount = unit.listenedDamage(damage, hitId);
-      world.dealCarriedPushDamage(
-          unit,
-          object,
-          amount,
-          object.getView().getX() - view.getX(),
-          object.getView().getY() - view.getY(),
-          columns.noCounter());
+      world
+          .hits()
+          .dealCarriedPushDamage(
+              unit,
+              object,
+              amount,
+              object.getView().getX() - view.getX(),
+              object.getView().getY() - view.getY(),
+              columns.noCounter());
       if (!noticed) {
         unit.actionHolder().attackEnded();
         noticed = true;

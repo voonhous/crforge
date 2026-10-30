@@ -143,7 +143,7 @@ class BattleChampionRefundTest {
 
     /** Kills her, which lands at the damage drain of the next step, and runs a few steps more. */
     void kill(CharacterEntity queen) {
-      battle.getWorld().kill(queen, null);
+      battle.getWorld().hits().kill(queen, null);
       step(4);
       assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();
     }
@@ -242,7 +242,7 @@ class BattleChampionRefundTest {
     CharacterEntity queen = oneStep.playQueen(0);
     oneStep.afterDeployWithElixir();
     // Her death lands at the damage drain of the step the use comes in, after the slot's step.
-    oneStep.battle.getWorld().kill(queen, null);
+    oneStep.battle.getWorld().hits().kill(queen, null);
     oneStep.useAbility();
     oneStep.step(4);
     assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();
@@ -254,7 +254,7 @@ class BattleChampionRefundTest {
             ability -> ability.put("RefundWindow", 100).put("TriggerDelay", 0).put("CastTime", 0));
     queen = twoSteps.playQueen(0);
     twoSteps.afterDeployWithElixir();
-    twoSteps.battle.getWorld().kill(queen, null);
+    twoSteps.battle.getWorld().hits().kill(queen, null);
     twoSteps.useAbility();
     twoSteps.step(4);
     assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();

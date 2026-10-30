@@ -364,7 +364,7 @@ class BattleCloneTest {
         || knight.getTargeting().getAttackTimerMs() < 1) {
       scene.step(1);
     }
-    scene.match.getWorld().kill(enemy, null);
+    scene.match.getWorld().hits().kill(enemy, null);
     scene.step(2);
     assertThat(knight.getView().getState()).isEqualTo(GridEntityState.ATTACKING);
     assertThat(knight.getTargeting().getTargetLostTimerMs()).isGreaterThanOrEqualTo(1);
@@ -443,7 +443,7 @@ class BattleCloneTest {
     scene.step(CAST_TICK + 60);
     scene.clone(scene.tick);
     CharacterEntity clone = scene.named("golem_clone0");
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     scene.step(1);
 
     for (String child : List.of("golem_clone0_0", "golem_clone0_1")) {
@@ -477,7 +477,7 @@ class BattleCloneTest {
     CharacterEntity clone = scene.named("knight_clone0");
     // Past the move apart, the clone resumed.
     scene.step(15);
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     // Taken into the holder at the step's end, before any visit of its own.
     scene.step(1);
 
@@ -567,7 +567,7 @@ class BattleCloneTest {
     assertThat(clone.isClone()).isTrue();
     assertThat(clone.getHitPoints().getMaximum()).isEqualTo(1);
     scene.step(15);
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     scene.step(1);
 
     CharacterEntity barrel = scene.named("balloon_clone0_0");
@@ -671,7 +671,7 @@ class BattleCloneTest {
     CharacterEntity clone = scene.named("knight_clone0");
     assertThat(clone.isClone()).isTrue();
     scene.step(15);
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     scene.step(2);
     assertThat(scene.deathProjectiles).containsExactly("knight_clone0 " + projectile);
 
@@ -692,7 +692,7 @@ class BattleCloneTest {
     hopping.clone(CAST_TICK);
     CharacterEntity hoppingClone = hopping.named("knight_clone0");
     hopping.step(15);
-    hopping.match.getWorld().kill(hoppingClone, null);
+    hopping.match.getWorld().hits().kill(hoppingClone, null);
     assertThatThrownBy(() -> hopping.step(2))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("is a clone, whose projectiles carry it to what they spawn");
@@ -726,7 +726,7 @@ class BattleCloneTest {
     scene.step(15);
 
     // The clone dies: its projectile lands and makes a clone Skeleton.
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     for (int i = 0; i < 100 && scene.impactSpawns.isEmpty(); i++) {
       scene.step(1);
     }
@@ -738,7 +738,7 @@ class BattleCloneTest {
     assertThat(cloneChild.getHitPoints().getMaximum()).isEqualTo(1);
 
     // The original dies the same way: its Skeleton is no clone and keeps its hit points.
-    scene.match.getWorld().kill(knight, null);
+    scene.match.getWorld().hits().kill(knight, null);
     for (int i = 0; i < 100 && scene.impactSpawns.size() < 2; i++) {
       scene.step(1);
     }
@@ -788,7 +788,7 @@ class BattleCloneTest {
     scene.clone(CAST_TICK);
     CharacterEntity clone = scene.named("balloon_clone0");
     scene.step(15);
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     assertThatThrownBy(() -> scene.step(20))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("a building with hit points");
@@ -1207,7 +1207,7 @@ class BattleCloneTest {
     CharacterEntity clone = scene.named("knight_clone0");
     BattleWorld world = scene.match.getWorld();
 
-    world.kill(clone, null);
+    world.hits().kill(clone, null);
     scene.step(2);
     AreaEffectEntity cloneDeath = areasOf(scene, BREEDER_AREA).get(0);
     assertThat(cloneDeath.isClone()).isTrue();
@@ -1216,7 +1216,7 @@ class BattleCloneTest {
     assertThat(bred.isClone()).isTrue();
     assertThat(bred.getHitPoints().getHitPoints()).isEqualTo(1);
 
-    world.kill(knight, null);
+    world.hits().kill(knight, null);
     scene.step(2);
     AreaEffectEntity knightDeath = areasOf(scene, BREEDER_AREA).get(1);
     assertThat(knightDeath.isClone()).isFalse();

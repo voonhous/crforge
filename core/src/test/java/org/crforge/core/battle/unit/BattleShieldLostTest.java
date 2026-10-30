@@ -94,11 +94,11 @@ class BattleShieldLostTest {
     scene.deployed();
     int shield = wizard.getHitPoints().getShield();
 
-    scene.world().dealDamage(knight, wizard.getTargetView(), shield - 1, 0, 1);
+    scene.world().hits().dealDamage(knight, wizard.getTargetView(), shield - 1, 0, 1);
     assertThat(scene.scheduled).isEmpty();
 
     int hitPoints = wizard.getHitPoints().getHitPoints();
-    scene.world().dealDamage(knight, wizard.getTargetView(), 500, 0, 1);
+    scene.world().hits().dealDamage(knight, wizard.getTargetView(), 500, 0, 1);
 
     assertThat(wizard.getHitPoints().getShield()).isZero();
     assertThat(wizard.getHitPoints().getHitPoints())
@@ -119,7 +119,7 @@ class BattleShieldLostTest {
     CharacterEntity knight = scene.still(1, "Knight", 3500, 24000, "k");
     scene.deployed();
 
-    scene.world().dealDamage(knight, prince.getTargetView(), 1000, 0, 1);
+    scene.world().hits().dealDamage(knight, prince.getTargetView(), 1000, 0, 1);
 
     assertThat(prince.getHitPoints().getShield()).isZero();
     assertThat(scene.scheduled).isEmpty();
@@ -137,8 +137,8 @@ class BattleShieldLostTest {
     CharacterEntity knight = scene.still(1, "Knight", 3500, 24000, "k");
     scene.deployed();
 
-    scene.world().kill(wizard, knight);
-    scene.world().circleKill(recruit, 1000);
+    scene.world().hits().kill(wizard, knight);
+    scene.world().hits().circleKill(recruit, 1000);
     // Both land at the next step's damage drain.
     scene.match.getBattle().step();
 
@@ -175,7 +175,7 @@ class BattleShieldLostTest {
             new RowAction(ActionRow.named("hit")) {
               @Override
               public ActionInstance start(ActionHolder holder) {
-                scene.world().dealDamage(knight, wizard.getTargetView(), 1000, 0, 1);
+                scene.world().hits().dealDamage(knight, wizard.getTargetView(), 1000, 0, 1);
                 return null;
               }
             },

@@ -65,7 +65,7 @@ class BattleMegaMinionMarkDiedTest {
     CharacterEntity knight = marked(battle, records, hero, "Knight");
     assertThat(slot.getCooldownMs()).isZero();
     int charges = slot.getCharges();
-    battle.getWorld().kill(knight, null);
+    battle.getWorld().hits().kill(knight, null);
     // The Knight leaves the battle in the next step: its leave notice drops the mark's target,
     // and the died action waits in the hero's queue for a pending pass.
     int limit = battle.getBattle().getTick() + 5;
@@ -106,7 +106,7 @@ class BattleMegaMinionMarkDiedTest {
     CharacterEntity archer = marked(battle, records, hero, "Archer");
     assertThat(named(battle, "Archer"))
         .hasSize(Shipped.number(Shipped.row("spells_characters", "Archer"), "SummonNumber"));
-    battle.getWorld().kill(archer, null);
+    battle.getWorld().hits().kill(archer, null);
     int limit = battle.getBattle().getTick() + 5;
     while (slot.getCooldownMs() == 0) {
       assertThat(battle.getBattle().getTick()).isLessThan(limit);

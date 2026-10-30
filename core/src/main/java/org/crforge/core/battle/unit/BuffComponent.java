@@ -832,14 +832,14 @@ public final class BuffComponent implements BattleComponent {
     if (damage >= 1) {
       damage = damageReduction(damage);
       if (entity.getHitPoints() != null) {
-        world.dealBuffDamage(entity, instance, damage);
+        world.hits().dealBuffDamage(entity, instance, damage);
       }
     }
     if (entity instanceof CharacterEntity character && character.isKamikazeHitEnded()) {
       heal = 0;
     }
     if (heal >= 1 && entity.getHitPoints() != null) {
-      world.dealBuffHeal(entity, instance, heal);
+      world.hits().dealBuffHeal(entity, instance, heal);
     }
   }
 

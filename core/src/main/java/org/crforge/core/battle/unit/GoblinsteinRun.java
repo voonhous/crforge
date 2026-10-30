@@ -227,7 +227,7 @@ final class GoblinsteinRun extends ActionInstance {
         int oy = target.getView().getY();
         int[] nearest = SegmentTests.nearestPoint(ax, ay, bx, by, ox, oy);
         // The direction's second part takes the object's x as well, as the game's does.
-        world.tetherHit(owner, target, amount, nearest[0] - ox, nearest[1] - ox);
+        world.hits().tetherHit(owner, target, amount, nearest[0] - ox, nearest[1] - ox);
       }
       String row = columns.tetherHitAction();
       if (row == null) {

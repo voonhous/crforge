@@ -259,7 +259,7 @@ class BattleElectroGiantTest {
     // The typed hit is queued, and refused as the next step's damage drain deals it.
     assertThatThrownBy(
             () -> {
-              world.queueTypedHit(knight, scene.giant, type, 100);
+              world.hits().queueTypedHit(knight, scene.giant, type, 100);
               scene.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
@@ -413,8 +413,8 @@ class BattleElectroGiantTest {
     BattleWorld world = scene.match.getWorld();
     // Both hits wait for the next drain, in this order: the witch's is struck back, the Knight's
     // fells the Giant.
-    world.dealDirectHit(witch, scene.giant.getTargetView(), 1, 0, 0);
-    world.dealDirectHit(knight, scene.giant.getTargetView(), 100, 0, 0);
+    world.hits().dealDirectHit(witch, scene.giant.getTargetView(), 1, 0, 0);
+    world.hits().dealDirectHit(knight, scene.giant.getTargetView(), 100, 0, 0);
     scene.step(1);
 
     // The witch's reflected damage was dealt after the Knight's hit: the Giant was down.
@@ -447,8 +447,8 @@ class BattleElectroGiantTest {
     scene.step(25);
     scene.giant.getHitPoints().setHitPoints(1);
     BattleWorld world = scene.match.getWorld();
-    world.dealDamage(first, scene.giant.getTargetView(), 100, 0, 0);
-    world.dealDamage(second, scene.giant.getTargetView(), 100, 0, 0);
+    world.hits().dealDamage(first, scene.giant.getTargetView(), 100, 0, 0);
+    world.hits().dealDamage(second, scene.giant.getTargetView(), 100, 0, 0);
 
     assertThat(scene.giant.getHitPoints().getHitPoints()).isZero();
     // The first hit's reflected damage waits in the damage queue for the next drain.
@@ -463,7 +463,7 @@ class BattleElectroGiantTest {
     Scene scene = new Scene();
     CharacterEntity friend = scene.still(0, 0, "Knight", X, Y + 1500, "friend");
     scene.step(25);
-    scene.match.getWorld().dealDamage(friend, scene.giant.getTargetView(), 100, 0, 0);
+    scene.match.getWorld().hits().dealDamage(friend, scene.giant.getTargetView(), 100, 0, 0);
 
     assertThat(scene.from("friend")).hasSize(1);
     assertThat(scene.from("friend").get(0).buff()).isNull();
@@ -507,8 +507,8 @@ class BattleElectroGiantTest {
     // The Dark Prince's hit on the Giant, then a hit of exactly its shield on the Dark Prince
     // queued after it, both for the next step's drain.
     BattleWorld world = scene.match.getWorld();
-    world.dealDirectHit(prince, scene.giant.getTargetView(), 100, 0, 0);
-    world.dealQueuedDamage(prince.getTargetView(), shield, 0, 0, 0);
+    world.hits().dealDirectHit(prince, scene.giant.getTargetView(), 100, 0, 0);
+    world.hits().dealQueuedDamage(prince.getTargetView(), shield, 0, 0, 0);
     scene.step(1);
 
     // The later hit takes the whole shield; the reflected damage, dealt after it, comes off the
@@ -783,7 +783,7 @@ class BattleElectroGiantTest {
     scene.step(25);
     int knightHitPoints = knight.getHitPoints().getHitPoints();
 
-    scene.match.getWorld().circleKill(scene.giant, 1000);
+    scene.match.getWorld().hits().circleKill(scene.giant, 1000);
     // The kill lands at the damage drain of the next step.
     scene.step(1);
 
@@ -800,7 +800,7 @@ class BattleElectroGiantTest {
     Scene scene = new Scene();
     scene.step(25);
 
-    scene.match.getWorld().kill(scene.giant, null);
+    scene.match.getWorld().hits().kill(scene.giant, null);
     // The kill lands at the damage drain of the next step.
     scene.step(1);
 
@@ -819,7 +819,7 @@ class BattleElectroGiantTest {
     // The kill is queued, and refused as the next step's damage drain deals it.
     assertThatThrownBy(
             () -> {
-              scene.match.getWorld().kill(scene.giant, knight);
+              scene.match.getWorld().hits().kill(scene.giant, knight);
               scene.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
