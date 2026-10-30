@@ -331,8 +331,8 @@ public class ProjectileEntity extends BattleEntity
   /**
    * True for a clone's projectile: the death projectile a clone launches, which takes its
    * launcher's clone mark as it is launched. Only the impact's character spawn reads it here: each
-   * child it makes is set up as a clone (see {@link BattleWorld#impactSpawn}). The game marks the
-   * projectile of a clone whose hit destroys it as well; such a clone is cloned only when its
+   * child it makes is set up as a clone (see {@link CharacterSpawns#impactSpawn}). The game marks
+   * the projectile of a clone whose hit destroys it as well; such a clone is cloned only when its
    * projectile deals its damage alone, which reads no mark, so that launch leaves it unset.
    */
   @Getter private boolean clone;

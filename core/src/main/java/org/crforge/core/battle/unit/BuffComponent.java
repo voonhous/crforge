@@ -737,7 +737,7 @@ public final class BuffComponent implements BattleComponent {
       // The spawner comes after the source's clock and before the damage over time; its child is
       // made at once, inside the visit.
       if (instance.stepSpawner(spawnRate())) {
-        world.buffSpawn(entity, instance);
+        world.spawns().buffSpawn(entity, instance);
         instance.spawnerFired();
       }
       // The hit due comes in the instance's own turn, before the instances listed ahead of it are

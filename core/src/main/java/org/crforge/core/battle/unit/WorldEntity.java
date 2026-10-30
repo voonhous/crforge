@@ -2250,7 +2250,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
-    return world.spawnCharacters(this, arguments);
+    return world.spawns().spawnCharacters(this, arguments);
   }
 
   @Override
@@ -2260,7 +2260,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public SpawnPerform.PlacementSearch buildingPlacement(UnitData child) {
-    return world.buildingPlacement(this, child);
+    return world.spawns().buildingPlacement(this, child);
   }
 
   @Override
