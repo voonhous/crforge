@@ -146,7 +146,9 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `GameTables` | a folder of the game's own tables, one data version, and its action graph |
 | `GameTable` | one table's rows by name, in creation order |
 | `GameRow` | one row: its index, its class and its columns under the game's own names |
-| `BattleRecords` | the battle's units, projectiles and troop cards built from those rows |
+| `BattleRecords` | the battle's units, projectiles and troop cards built from those rows: the facade of the readers below, which it fronts and which ask it for a record another reader builds |
+| `RowReader` | what every reader shares: the tables, the facade and the row-reading helpers (a set column, a named action, an inline row, a rarity, a tag mask) |
+| `UnitRecords`, `AreaEffectRecords`, `BuffRecords`, `ProjectileRecords`, `FilterRecords`, `CardRecords` | one reader per table family: the units and their abilities, the area effects and their shapes, the buffs, the projectiles, the game object filters, the cards (a deploy card, a match card, a card's champion, the card groups) |
 | `ActionRows` | the battle's actions built from the game's action rows, for one entity |
 | `ActionBinding` | what an action row needs from its entity: expressions, variables, tags |
 | `GameVersions` | the game versions the simulator knows, named once: the data versions, the client versions and the data versions each client has run |
