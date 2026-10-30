@@ -116,8 +116,9 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - a Knight within the bayonet's reach taking only typed hits of the bayonet's damage, a Minion as close only shots
   - a buff on damage, patched onto the row, applied on the bayonet's tick before its typed hit lands
   - target_is_ground answering 0 with the targeting off and reading a character target's force tags before its row (a Minion held under FORCE_IS_GROUND taking the bayonet, a Knight under FORCE_IS_AIR shots, both tags its live height)
+  - target_is_ground reading a princess tower's force tags the same way, and a princess tower a real Vines holds staying ground: the musketeer inside its reach takes the bayonet, never a shot
   - an enchanting buff on a musketeer, whose attack sequence launches or acts, starting and listed on it
-  - the refusals: a force tag on a target that is not a character, and an entry's action in a sequence of one or beside a projectile
+  - the refusals: an entry's action in a sequence of one or beside a projectile
 - `CardPlacementTest` holds a listed character's offset on both sides and halves, and the top side's list on the left half.
 - `BattleMusketeerSnipeTest` holds the evolved Musketeer's snipe on the shipped rows:
   - its entry's own range

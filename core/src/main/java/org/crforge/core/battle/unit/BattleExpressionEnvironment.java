@@ -6,7 +6,6 @@
 
 package org.crforge.core.battle.unit;
 
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.action.ActionContext;
@@ -50,9 +49,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " target_is_ground as the"
             + " context's reference's row's flying height 0, none while its targeting is off,"
             + " held by card_ThreeMusketeers and cg_threemusketeers_bayonet, and for a character"
-            + " reference its force tags first, FORCE_IS_GROUND ground, FORCE_IS_AIR not, both"
-            + " its live height 0, held by grounded evolved Royal Hogs inside the musketeers'"
-            + " reach;"
+            + " or crown tower reference its force tags first, FORCE_IS_GROUND ground,"
+            + " FORCE_IS_AIR not, both its live height 0, held by grounded evolved Royal Hogs"
+            + " inside the musketeers' reach and by BattleThreeMusketeersTest, a princess tower"
+            + " Vines holds;"
             + " attack_count as"
             + " the context's attack time over its row's hit speed toward zero, 0 for a hit speed"
             + " below 1, whether its targeting runs or not, held by ability_little_prince and"
@@ -100,8 +100,7 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " two co-op functions answer 0 in a battle of two players; a name the table does"
             + " not know naming one of the battle's variables, read from the context entity, 0"
             + " for one never written, and then one of its game tags, true when the context"
-            + " entity carries every bit of it. Not modelled: a force-layer tag on a"
-            + " target_is_ground reference that is not a character, refused; target_max_hp on a"
+            + " entity carries every bit of it. Not modelled: target_max_hp on a"
             + " tower or on a reference that has left the battle, refused;"
             + " has_crown_tower_in_range on an object that is not a"
             + " character or of the neutral side, refused; the other 19 functions, which fail"
@@ -148,12 +147,6 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   /** What ability_charges_left answers for an object without counted charges to read. */
   private static final int NO_CHARGES = -1;
-
-  /**
-   * The game tags that force an object onto a layer, which a character's ground answer reads first
-   * and which target_is_ground refuses on any other object.
-   */
-  private static final List<String> FORCE_LAYER_TAGS = List.of("FORCE_IS_GROUND", "FORCE_IS_AIR");
 
   private static final int HP = BattleFunctions.id("hp");
   private static final int MAX_HP = BattleFunctions.id("max_hp");
@@ -618,10 +611,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
    * Whether the context's reference stands on the ground: none while its targeting component is off
    * or it has no reference, else the reference's own ground answer. Without a force tag that is its
    * row's flying height 0, so every building and crown tower is ground and every flying row is not,
-   * whatever its height. A character answers from its tag word first, as it does for every reader
+   * whatever its height. The reference answers from its tag word first, as it does for every reader
    * of its layer: with FORCE_IS_GROUND alone on the ground, with FORCE_IS_AIR alone not, with both
    * at height 0 (an air unit an air-to-ground run holds, a unit a knock or a ground-to-air run
-   * lifts). Any other object carrying a force tag is refused: no battle code raises one on it.
+   * lifts, a princess tower Vines holds). A crown tower answers as a character does: the game
+   * builds it as one, the king tower as the summoner kind, and both kinds share the ground answer.
    */
   private int targetIsGround() {
     TargetView target = context.getTargeting().getReference();
@@ -633,20 +627,6 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       throw new UnsupportedOperationException(
           "target_is_ground on " + context.name() + "'s reference, which has left the battle");
     }
-    if (entity instanceof CharacterEntity) {
-      return entity.layerGround() ? 1 : 0;
-    }
-    for (String tag : FORCE_LAYER_TAGS) {
-      Integer index = world.gameTagIndex(tag);
-      if (index != null && (entity.getView().getFlags() & world.gameTagMask(index)) != 0) {
-        throw new UnsupportedOperationException(
-            "target_is_ground on "
-                + entity.name()
-                + ", which is not a character and carries "
-                + tag
-                + ", not modelled");
-      }
-    }
-    return entity.getData().flyingHeight() == 0 ? 1 : 0;
+    return entity.layerGround() ? 1 : 0;
   }
 }
