@@ -6,6 +6,8 @@
 
 package org.crforge.core.battle.unit;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.filter.FilterSubject;
 
 /**
@@ -14,19 +16,14 @@ import org.crforge.core.battle.filter.FilterSubject;
  * Those answer a filter's team and type gates; anything a filter asks past them is not modelled for
  * such an object, and asking fails rather than guess.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class KindOnlySubject implements FilterSubject {
 
+  /** The object's kind, as the filter numbers kinds. */
   private final int kind;
-  private final int team;
 
-  /**
-   * @param kind the object's kind, as the filter numbers kinds
-   * @param team its side's low bit
-   */
-  KindOnlySubject(int kind, int team) {
-    this.kind = kind;
-    this.team = team;
-  }
+  /** Its side's low bit. */
+  private final int team;
 
   @Override
   public int objectType() {

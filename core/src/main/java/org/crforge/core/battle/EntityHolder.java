@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 
@@ -73,6 +74,7 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " anything reorders the live list between ticks. Traced on client 16.635.1 and"
             + " held by no reference yet: the leaving entity's own leaving hook, where a character"
             + " gives back an undelivered ability cost before its running actions hear of it.")
+@RequiredArgsConstructor
 public class EntityHolder {
 
   private final HolderPasses passes;
@@ -115,10 +117,6 @@ public class EntityHolder {
    * whose actions that pass has already stepped has this tick as its holder's last.
    */
   private int runPassTick = -1;
-
-  public EntityHolder(HolderPasses passes) {
-    this.passes = passes;
-  }
 
   /**
    * Hands an entity to the holder. It is given its id at once - its kind's band plus how many of

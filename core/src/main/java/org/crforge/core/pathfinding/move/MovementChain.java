@@ -9,6 +9,7 @@ package org.crforge.core.pathfinding.move;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.GridEntity;
@@ -30,7 +31,8 @@ import org.crforge.core.pathfinding.grid.CellGrid;
  * driver may act on them or ignore them, and tests read them to check the order of a visit. A chain
  * built {@link #withoutMarkers()} records nothing, for a driver that ignores them.
  *
- * <p>One chain covers one entity's visit. It is not thread safe.
+ * <p>One chain covers one entity's visit. It is not thread safe. A chain is built over the state
+ * one movement visit works on, with the neighbours looked up at the moment each pass asks for them.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -40,15 +42,31 @@ import org.crforge.core.pathfinding.grid.CellGrid;
             + " completed charge and a dash's landing to the owner's requests when it has them,"
             + " held by the reference battles card_Prince, card_HogRider and card_Assassin;"
             + " without them they are recorded by name only, as are the end actions.")
+@RequiredArgsConstructor
 public final class MovementChain {
 
+  /** The entity's movement component. */
   private final MovementState component;
+
+  /** The entity being moved. */
   private final GridEntity owner;
+
+  /** The arena's routing grid and cost overlay. */
   private final CellGrid grid;
+
+  /** The entity's movement configuration columns. */
   private final MovementConfig config;
+
+  /** The match-wide movement settings. */
   private final MovementGlobals globals;
+
+  /** The position the entity is heading for, or null when it has no reference. */
   private final ReferencePoint reference;
+
+  /** The query that answers which entities are near a point. */
   private final NeighbourQuery neighbours;
+
+  /** The answers the movement pass pulls from the rest of the simulation. */
   private final MovementQueries queries;
 
   /**
@@ -86,38 +104,6 @@ public final class MovementChain {
       List<GridEntity> others,
       MovementQueries queries) {
     this(component, owner, grid, config, globals, reference, NeighbourQuery.fixed(others), queries);
-  }
-
-  /**
-   * Creates a chain over the state one movement visit works on, with the neighbours looked up at
-   * the moment each pass asks for them.
-   *
-   * @param component the entity's movement component
-   * @param owner the entity being moved
-   * @param grid the arena's routing grid and cost overlay
-   * @param config the entity's movement configuration columns
-   * @param globals the match-wide movement settings
-   * @param reference the position the entity is heading for, or null when it has no reference
-   * @param neighbours the query that answers which entities are near a point
-   * @param queries the answers the movement pass pulls from the rest of the simulation
-   */
-  public MovementChain(
-      MovementState component,
-      GridEntity owner,
-      CellGrid grid,
-      MovementConfig config,
-      MovementGlobals globals,
-      ReferencePoint reference,
-      NeighbourQuery neighbours,
-      MovementQueries queries) {
-    this.component = component;
-    this.owner = owner;
-    this.grid = grid;
-    this.config = config;
-    this.globals = globals;
-    this.reference = reference;
-    this.neighbours = neighbours;
-    this.queries = queries;
   }
 
   /**

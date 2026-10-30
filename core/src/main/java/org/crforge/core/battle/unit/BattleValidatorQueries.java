@@ -6,6 +6,8 @@
 
 package org.crforge.core.battle.unit;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
 import org.crforge.core.pathfinding.combat.HitPoints;
@@ -37,13 +39,10 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " rule: translated, held by no run. The attack sequence test (an untouchable target"
             + " refused) by the coverage battles where an Inferno or Mighty Miner lets a dashing"
             + " Bandit, Boss Bandit or Golden Knight go, and by BattleDashTargetHoldTest.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class BattleValidatorQueries implements ValidatorQueries {
 
   private final BattleWorld world;
-
-  BattleValidatorQueries(BattleWorld world) {
-    this.world = world;
-  }
 
   /**
    * The lethal test: nothing is lethal while the target's shield is up or while it is untouchable;

@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.EntityActions;
 import org.crforge.core.battle.action.AbilityDelivered;
 import org.crforge.core.battle.action.ActionContext;
@@ -159,6 +160,7 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " (megaknight-slap-push-uppercut-v1); the other phase names are refused."
             + " ActionAbilityDelivered, traced on client 16.635.1, held by no reference yet."
             + " Refused: every other class, and every column not modelled.")
+@RequiredArgsConstructor
 public final class ActionRows {
 
   /** The columns every row may set, read into its shared columns. */
@@ -1252,17 +1254,11 @@ public final class ActionRows {
         "ProjectileStartOffset");
   }
 
+  /** The game tables of one data version. */
   private final GameTables tables;
-  private final BattleRecords records;
 
-  /**
-   * @param tables the game tables of one data version
-   * @param records the battle's records from the same tables, for the units a spawn names
-   */
-  public ActionRows(GameTables tables, BattleRecords records) {
-    this.tables = tables;
-    this.records = records;
-  }
+  /** The battle's records from the same tables, for the units a spawn names. */
+  private final BattleRecords records;
 
   /**
    * The action a row names, and every action it names in turn, built for one entity.

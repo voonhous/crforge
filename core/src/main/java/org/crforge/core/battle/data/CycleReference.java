@@ -8,6 +8,8 @@ package org.crforge.core.battle.data;
 
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.ActionInstance;
@@ -19,19 +21,14 @@ import org.crforge.core.battle.action.BattleAction;
  * chains back to the group is a loop the data can write. The reference answers as the row it names
  * once that row is built, which is before anything can be scheduled.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class CycleReference implements BattleAction {
 
+  /** The row's name. */
   private final String name;
-  private final Supplier<BattleAction> row;
 
-  /**
-   * @param name the row's name
-   * @param row the row once it is built
-   */
-  CycleReference(String name, Supplier<BattleAction> row) {
-    this.name = name;
-    this.row = row;
-  }
+  /** The row once it is built. */
+  private final Supplier<BattleAction> row;
 
   /** The row, built. */
   private BattleAction row() {

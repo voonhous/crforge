@@ -6,7 +6,9 @@
 
 package org.crforge.core.battle.action;
 
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -30,6 +32,7 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " which comes after the row's own start, is the attack chain's (its pick and first"
             + " link), held by recorded battles of a taunted Valkyrie hero ending its whirlwind;"
             + " not modelled: the start and on-finish hooks other classes override.")
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class ActionInstance {
 
   /** The action this is a run of. */
@@ -46,10 +49,6 @@ public abstract class ActionInstance {
    * run that schedules actions as it steps may hand it on.
    */
   private ActionContext context;
-
-  protected ActionInstance(BattleAction action) {
-    this.action = action;
-  }
 
   /** One step of the run, from the holder's run pass. */
   protected abstract void update(ActionHolder holder);

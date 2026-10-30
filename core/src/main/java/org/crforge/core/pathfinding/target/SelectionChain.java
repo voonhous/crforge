@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -43,6 +44,9 @@ import org.crforge.core.pathfinding.state.StateSetter;
  * <p>The selection runs at most once per tick: the visit may ask for it more than once, and the
  * answer is cached until {@link #beginTick()} clears it. A caller clears the cache once per tick,
  * before the visit.
+ *
+ * <p>A chain built with every answer given takes the game mode's answers explicitly; the shorter
+ * constructor takes the standard game's.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -52,17 +56,20 @@ import org.crforge.core.pathfinding.state.StateSetter;
             + " leaves is cleared directly and not through the setter's null path. Hits go to a"
             + " sink that applies nothing until the owner installs its own. The extra targets of a"
             + " hit that reaches several come from the lookup, over a query of its own.")
+@RequiredArgsConstructor
 public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueries {
+
+  private final SpatialIndex index;
+  private final TargetingState state;
 
   /** Arena length in routing cells, used by the default selection's lane bonus. */
   private final int arenaHeightCells;
 
-  private final SpatialIndex index;
-  private final TargetingState state;
-  private final Map<GridEntity, TargetView> views = new IdentityHashMap<>();
   private final ValidatorQueries validatorQueries;
   private final DefaultSelectionQueries defaultSelectionQueries;
   private final DefaultTargetSelection.Rules defaultSelectionRules;
+
+  private final Map<GridEntity, TargetView> views = new IdentityHashMap<>();
 
   /** The opposing side's registered towers, in placement order, king included. */
   @Getter private final List<TargetView> registeredTowers = new ArrayList<>();
@@ -132,22 +139,6 @@ public class SelectionChain implements MultiTargetLookup.Queries, TargetingQueri
         ValidatorQueries.standard1v1(),
         DefaultSelectionQueries.standard1v1(),
         DefaultTargetSelection.Rules.standard());
-  }
-
-  /** Creates a chain with explicit game-mode answers. */
-  public SelectionChain(
-      SpatialIndex index,
-      TargetingState state,
-      int arenaHeightCells,
-      ValidatorQueries validatorQueries,
-      DefaultSelectionQueries defaultSelectionQueries,
-      DefaultTargetSelection.Rules defaultSelectionRules) {
-    this.index = index;
-    this.state = state;
-    this.arenaHeightCells = arenaHeightCells;
-    this.validatorQueries = validatorQueries;
-    this.defaultSelectionQueries = defaultSelectionQueries;
-    this.defaultSelectionRules = defaultSelectionRules;
   }
 
   /** Registers the view the chain uses for one entity. */

@@ -6,6 +6,8 @@
 
 package org.crforge.core.battle.unit;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
 import org.crforge.core.fidelity.Fidelity;
@@ -23,19 +25,14 @@ import org.crforge.core.pathfinding.combat.HitPoints;
         "The maximum is the hit points' maximum at a growth of 100 percent plus the shield's"
             + " maximum; no unit that grows is modelled. An object without hit points is refused"
             + " as the strategy reads it.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class MarkCandidate implements SetIndicatorOnTarget.Candidate {
 
+  /** The object. */
   private final WorldEntity entity;
-  private final String action;
 
-  /**
-   * @param entity the object
-   * @param action the name of the action that resolves it, for a refusal
-   */
-  MarkCandidate(WorldEntity entity, String action) {
-    this.entity = entity;
-    this.action = action;
-  }
+  /** The name of the action that resolves it, for a refusal. */
+  private final String action;
 
   /** The object itself. */
   WorldEntity entity() {

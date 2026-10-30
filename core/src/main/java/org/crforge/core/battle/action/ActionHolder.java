@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.EntityActions;
@@ -56,6 +57,11 @@ import org.crforge.core.fidelity.FidelityStatus;
  * <p>Two orders are the standard game's and are kept. A pending pass takes the entry it finds and
  * moves the last entry into its place, then looks at that place again, so four due entries {@code a
  * b c d} start as {@code a d c b}. The run pass removes an instance the same way.
+ *
+ * <p>A holder built with an owner and a pending-pass answer belongs to an entity of a battle, whose
+ * pending passes the battle runs over every entity together: while any of them runs, an action with
+ * no delay scheduled here starts at once. The owner may be null for none, and the answer null for a
+ * holder that answers for its own passes.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -87,6 +93,7 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " carries, with the queue entry, the start gate and start, the run and its stop"
             + " gate, the row's hook and a next action either way, held by ActionContextTest and"
             + " pekka-resurrect-v2.")
+@RequiredArgsConstructor
 public class ActionHolder implements EntityActions {
 
   /** The delay that stands for the row's own. */
@@ -186,12 +193,6 @@ public class ActionHolder implements EntityActions {
   private int startingCauseX;
 
   /**
-   * Whether a pending pass is in progress, as the battle answers it for every entity at once, or
-   * null for a holder outside a battle, which answers for its own passes alone.
-   */
-  private final BooleanSupplier battleInPendingPass;
-
-  /**
    * The context of what the holder is doing now - scheduling an action, starting one or stepping a
    * run - which an expression evaluated meanwhile reads; null for none.
    */
@@ -202,6 +203,12 @@ public class ActionHolder implements EntityActions {
 
   /** The entity the holder belongs to, which the leaves that act on their owner act on. */
   @Getter private final ActionOwner owner;
+
+  /**
+   * Whether a pending pass is in progress, as the battle answers it for every entity at once, or
+   * null for a holder outside a battle, which answers for its own passes alone.
+   */
+  private final BooleanSupplier battleInPendingPass;
 
   /** A holder with no owner: its actions act on nothing but each other. */
   public ActionHolder() {
@@ -215,19 +222,6 @@ public class ActionHolder implements EntityActions {
    */
   public ActionHolder(ActionOwner owner) {
     this(owner, null);
-  }
-
-  /**
-   * A holder that belongs to an entity of a battle, whose pending passes the battle runs over every
-   * entity together: while any of them runs, an action with no delay scheduled here starts at once.
-   *
-   * @param owner the entity, or null for none
-   * @param battleInPendingPass whether the battle is inside a pending pass, or null for a holder
-   *     that answers for its own passes
-   */
-  public ActionHolder(ActionOwner owner, BooleanSupplier battleInPendingPass) {
-    this.owner = owner;
-    this.battleInPendingPass = battleInPendingPass;
   }
 
   @Setter private Listener listener = new Listener() {};

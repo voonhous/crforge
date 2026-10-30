@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
@@ -58,6 +59,7 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  * header's arena 0, no events, no emotes listed in each player's data, and each player named by its
  * side. Each avatar's arena is the plan's, a row of the arenas table, by its data id.
  */
+@RequiredArgsConstructor
 public final class ScenarioWriter {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -79,15 +81,11 @@ public final class ScenarioWriter {
   /** The table of the arenas, whose row each player's avatar names. */
   public static final String ARENAS = "arenas";
 
-  private final GameTables tables;
-
   /**
-   * @param tables the game tables the battle is played on, whose data version's replay fields and
-   *     command types the document is written in
+   * The game tables the battle is played on, whose data version's replay fields and command types
+   * the document is written in.
    */
-  public ScenarioWriter(GameTables tables) {
-    this.tables = tables;
-  }
+  private final GameTables tables;
 
   /**
    * A battle played as a Ladder match, as a translated scenario: its seed, towers, players' data,

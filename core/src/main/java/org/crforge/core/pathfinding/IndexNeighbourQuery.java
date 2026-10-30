@@ -7,6 +7,7 @@
 package org.crforge.core.pathfinding;
 
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.pathfinding.index.SpatialIndex;
 import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
@@ -24,16 +25,11 @@ import org.crforge.core.pathfinding.move.NeighbourQuery;
  * the pass that asked for it has finished. When none is free the answer is the shared empty list,
  * which is never handed back.
  */
+@RequiredArgsConstructor
 public final class IndexNeighbourQuery implements NeighbourQuery {
 
+  /** The spatial index, rebuilt once per tick before any pass asks. */
   private final SpatialIndex index;
-
-  /**
-   * @param index the spatial index, rebuilt once per tick before any pass asks
-   */
-  public IndexNeighbourQuery(SpatialIndex index) {
-    this.index = index;
-  }
 
   /** What a query answers when the index has no result list to lend. */
   private final List<GridEntity> noNeighbours = List.of();
