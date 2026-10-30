@@ -1,0 +1,16 @@
+{
+  "content_version": "16.635.3",
+  "battles": 43807,
+  "to_the_end": 99.9,
+  "ticks_agreed": 99.9,
+  "outcomes": {
+    "diagnostic_match": 43805,
+    "mismatch": 2
+  },
+  "first_failures": {
+    "mismatch $.entities.length": 1,
+    "mismatch $.entities[].x": 1
+  },
+  "set": "cc0efbd1bfdce125",
+  "commit": "73dd9e5c7f6ae7abf861798a345af1bcf245a7fb"
+}
