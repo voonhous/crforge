@@ -362,7 +362,7 @@ class AvoidanceHandlerTest {
   void theTwoHeightLayersDoNotSeeEachOther() {
     component.setRoute(Route.of(NEXT_NODE));
     GridEntity flyer = mover(2, 3400, 10400, 0, -256, GridEntityState.MOVING);
-    flyer.setZTotal(700);
+    flyer.setZ(700);
 
     run(List.of(flyer));
 

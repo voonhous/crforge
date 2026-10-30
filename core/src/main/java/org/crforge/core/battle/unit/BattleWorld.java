@@ -1210,6 +1210,18 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
+   * The end of a tiebreaker's step: the damage drain, then the holder's cleanup, after the step's
+   * clearing and its update, or its tower drain, or neither, and before its commands. A hit queued
+   * after the update's own drain lands here: the kill of an evolved Skeleton Army's General's death
+   * action, which its last pending pass queues on the spectral the clearing passed over. What the
+   * drain kills leaves the battle at the cleanup, in this step.
+   */
+  public void tiebreakStepEnd() {
+    hits.drainTypedHits();
+    holder.cleanup();
+  }
+
+  /**
    * How many princess towers of a side are still in the battle. A destroyed one counts until the
    * cleanup that removes it.
    */

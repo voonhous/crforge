@@ -1847,9 +1847,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * down from the next pre-hook, and the contact passes compare that height.
    *
    * <p>An entity an air-to-ground run or a knock has held also has its layer read again from its
-   * tag word and its live height, and its push height made its live height. For any other the push
-   * height only takes the offset's change, so a height its own movement writes (a dash's profile)
-   * is left as the push height already had it.
+   * tag word and its live height. The push height is the live height for every entity, read as the
+   * contact passes ask for it ({@link GridEntity#getZTotal()}).
    */
   private void foldLayer() {
     GridEntity view = getView();
@@ -1885,15 +1884,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         heights.clear();
         floors.clear();
       }
-      int offset = Math.max(Math.min(total, high - base), low - base);
-      if (!layered) {
-        view.setZTotal(view.getZTotal() + offset - view.getHeightOffset());
-      }
-      view.setHeightOffset(offset);
+      view.setHeightOffset(Math.max(Math.min(total, high - base), low - base));
     }
     heightPushes.clear();
     if (layered) {
-      view.setZTotal(view.getZ() + view.getHeightOffset());
       view.setAir(layerAir());
     }
   }

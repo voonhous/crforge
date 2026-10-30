@@ -88,9 +88,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * without hit points is removed at once, every other unit and building is killed at the update's
  * damage drain, the crown towers left standing - and run the update, with its entity tick, only on
  * a step whose clearing removed or killed something; then the battle waits, running only the
- * commands, every play refused, until the step that begins at 3250 ms. From then each step drains
- * every tower of both sides by one step the lowest tower's hit points pick: 1 below 21, 10 below
- * 200, 20 below 500, 40 below 1000, else 50. When a tower reaches 0, or the two sides' lowest
+ * commands, every play refused, until the step that begins at 3250 ms. Every step of the tiebreaker
+ * then ends with the damage drain and the holder's cleanup, before its commands, whether or not the
+ * update ran, so a hit queued after the update's own drain lands in the step. From then each step
+ * drains every tower of both sides by one step the lowest tower's hit points pick: 1 below 21, 10
+ * below 200, 20 below 500, 40 below 1000, else 50. When a tower reaches 0, or the two sides' lowest
  * towers are equal, the holder is cleaned up, and the next step ends the match by crowns: equal
  * lowest towers end it a draw.
  */
@@ -120,7 +122,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " attacks on it and the place of its death spawns; by battles of the coverage"
             + " sets: the clearing's kill lowered by a damage reduction (the evolved Knight,"
             + " the hero Valkyrie, the Monk) and short of a heal since (the evolved Bats), so the"
-            + " unit lives on; by cg_elixir_collector_played and"
+            + " unit lives on; and the drain and cleanup each step ends with, which deal the kill"
+            + " an evolved Skeleton Army's General's death queues on the spectral the walk passed"
+            + " over; by cg_elixir_collector_played and"
             + " card_ElixirGolem: the kings' elixir a collector and a death pay into; by"
             + " golden-gaps-v1/mirror_after_troop and"
             + " mirror_after_spell: the Mirror's item, its gates, its spend and its cycle, the"
@@ -522,7 +526,7 @@ public final class LadderMatch implements BattleMode {
   /**
    * One step of the tiebreaker: 50 more on its time, which holds every ordinary hit; then, by its
    * time before the step, the clearing and an update when it killed something, or nothing, or the
-   * drain; the commands last.
+   * drain; then, on every step, the damage drain and the holder's cleanup; the commands last.
    */
   private void tiebreakStep(Battle battle) {
     int before = tiebreakMs;
@@ -533,19 +537,17 @@ public final class LadderMatch implements BattleMode {
       if (clearField() >= 1) {
         afterUpdate(battle.runUpdate());
       }
-      battle.runCommands();
-      return;
+    } else if (before >= DRAIN_FROM_MS) {
+      drain();
+      if (lowestTower() < 1 || lowestTied()) {
+        // A dead princess tower leaves the holder here, and its crown counts from now.
+        world.getHolder().cleanup();
+        tiebreakDone = true;
+      }
     }
-    if (before < DRAIN_FROM_MS) {
-      battle.runCommands();
-      return;
-    }
-    drain();
-    if (lowestTower() < 1 || lowestTied()) {
-      // A dead princess tower leaves the holder here, and its crown counts from now.
-      world.getHolder().cleanup();
-      tiebreakDone = true;
-    }
+    // Every step of the tiebreaker, whatever ran before, ends with the damage drain and the
+    // cleanup: a hit queued after the update's own drain lands in this step.
+    world.tiebreakStepEnd();
     battle.runCommands();
   }
 

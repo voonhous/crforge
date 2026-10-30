@@ -65,12 +65,6 @@ public class GridEntity {
    */
   private int heightOffset;
 
-  /**
-   * Height used by the push and avoidance passes when they decide whether two entities occupy the
-   * same layer. It is the entity's own height plus whatever it is attached to contributes.
-   */
-  private int zTotal;
-
   /** Facing vector, x component, scaled so the pair has length 256. */
   private int dirX;
 
@@ -262,5 +256,16 @@ public class GridEntity {
    */
   public boolean besideAnotherBuilding() {
     return besideBuildingQuery != null && besideBuildingQuery.getAsBoolean();
+  }
+
+  /**
+   * Height used by the push and avoidance passes when they decide whether two entities occupy the
+   * same layer: the live height, the entity's own height and its height offset together, read as
+   * the passes ask for it. So a height the entity's own movement writes counts at once: a dash cut
+   * short in the air, as a tiebreaker's clearing resumes a dasher before it lands, leaves the unit
+   * on the air layer, where it neither pushes nor is pushed by a unit on the ground.
+   */
+  public int getZTotal() {
+    return z + heightOffset;
   }
 }
