@@ -262,7 +262,7 @@ final class ProjectileFlight {
         world.cellPass(p, p.getX(), p.getY(), 0);
       } else if ((data.deflectBehaviour() & ProjectileData.CHECK_ONLY_TARGET_POSITION) == 0
           || p.getDeflections() != 0) {
-        world.deflectPass(p, p.getX(), p.getY(), p.getZ());
+        world.deflection().deflectPass(p, p.getX(), p.getY(), p.getZ());
       }
     }
   }
@@ -445,7 +445,7 @@ final class ProjectileFlight {
    * at a target that kept out of the hook, its arrival is the ordinary one.
    */
   private static void arrive(ProjectileEntity p, BattleWorld world, boolean hookable) {
-    if (world.arrivalPass(p)) {
+    if (world.deflection().arrivalPass(p)) {
       return;
     }
     if (p.getData().checkCollisions()) {
