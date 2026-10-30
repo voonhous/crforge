@@ -383,6 +383,28 @@ The Miner, the one troop of the sample with more than half the arena, keeps 450.
 
 The mask reads the seat's own hand, elixir and waiting commands and the buildings and towers the seat sees, so it shows nothing the seat does not see. A play the mask let through is given (the try and the giving are the same check), and runs 20 ticks later against the battle as it stands then. So it may still be refused at its run, as a player's can: `last_run_refusal` shows it, and its cost stays held back for its promise.
 
+#### The hand after a play
+
+A played card does not give way to the next one at once, and the mask follows the player's screen through each step of it, so an agent cannot play the next card sooner than a player can:
+
+| Ticks after the giving | The played slot (`hand_card`, `hand_pending`) | The next card (`next_card`) | The slot in the mask |
+| --- | --- | --- | --- |
+| 0 to 19 | still the played card, `hand_pending` 1 | in the queue | closed (`CARD_PENDING`) |
+| 20, the play's run | the next card, when the refill cooldown has run out | joins the hand | open when its try passes |
+| from 20, while the cooldown runs | empty, -1 | still in the queue | closed (`NOT_IN_HAND`) |
+
+- The refill cooldown (`hand_refill_ms`) counts down 50 ms a tick, and restarts only when a slot is refilled, at the timeline's next-card cooldown: 1000 ms in a battle's first 120 seconds, 500 ms in the next 120 and 350 ms after that (`NextSpellCooldownMS` of the `Default` battle timeline, which Ladder, Path of Legends and the challenges play under, in 16.635.3). So a play run a cooldown or more after the last refill gets its next card on the tick of its run, and one run sooner leaves its slot empty for the rest of the cooldown. Two empty slots fill a cooldown apart.
+- A card is only ever played from a hand slot: no action names a card of the queue.
+
+The recordings hold this. Both hands are observed on every tick of every reference and coverage battle, and every one matches. In the first 1,000 battles of the 16.635.3 coverage set (measured 2026-10-30):
+
+- each of the 64,132 plays names a card that was in its side's hand on the tick before it was given, never a card of the queue;
+- of the 64,235 slots played, 63,155 took the next card on the tick of the run, and 1,080 stood empty for 1 to 30 ticks.
+
+`LadderEnvTest.aPlayedSlotOffersNoCardUntilTheNextOneJoinsTheHand` holds the mask and the observation to the table above.
+
+**Not modelled: a new card's arrival on the screen.** No recorded player gives a play of a card in the first 4 ticks after it joins the hand. Of the 56,429 plays of a card that joined mid-battle, the earliest came 5 ticks after (3 plays), then 6 (27 plays) and 7 (44 plays). Plays of cards already in the hand come closer together: 103 of 62,137 consecutive plays of a side are given 0 to 4 ticks apart. Whether the screen holds a new card back while it moves into its slot, or this is how fast a player reacts to it, is not established; it is filed for tracing in the client, not guessed. Until it is settled, the mask opens a new card from the tick it joins the hand, earlier than any recorded player has played one.
+
 ### The action
 
 One integer, unchanged since version 2:
