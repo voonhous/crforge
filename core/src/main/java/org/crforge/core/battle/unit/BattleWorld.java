@@ -33,21 +33,16 @@ import org.crforge.core.battle.action.ActionInstance;
 import org.crforge.core.battle.action.ActionOwner;
 import org.crforge.core.battle.action.AirToGround;
 import org.crforge.core.battle.action.BattleAction;
-import org.crforge.core.battle.action.Berserk;
-import org.crforge.core.battle.action.BossBanditAbility;
 import org.crforge.core.battle.action.CannonProjectileSpawn;
 import org.crforge.core.battle.action.CardDeployListener;
 import org.crforge.core.battle.action.Clone;
 import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.CreateParallelProjectiles;
 import org.crforge.core.battle.action.DamageType;
-import org.crforge.core.battle.action.GoblinHutLifeState;
 import org.crforge.core.battle.action.OverrideAbilityButtonState;
 import org.crforge.core.battle.action.RunActionOnTroopDestroyed;
-import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.SpawnGuard;
 import org.crforge.core.battle.action.TakeDamage;
-import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.WarpCharacter;
 import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.data.ActionRows;
@@ -106,7 +101,6 @@ import org.crforge.core.pathfinding.index.SpatialQuery;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.move.ContactRule;
 import org.crforge.core.pathfinding.move.MovementGlobals;
-import org.crforge.core.pathfinding.move.MovementState;
 import org.crforge.core.pathfinding.move.NeighbourQuery;
 import org.crforge.core.pathfinding.state.StateQueries;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
@@ -129,7 +123,7 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
  * <p>The world is also where a hit's or an impact's damage reaches its target, and where anything
  * outside the tick that wants to watch the arena attaches: an observer is told where the tick's
  * visits begin and end, about every hit that lands, about every projectile launched and arrived,
- * and about every arena entity that leaves.
+ * and about every arena entity that leaves. What it is told is the world's {@link WorldEvents}.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
@@ -324,7 +318,7 @@ public class BattleWorld implements HolderPasses {
   private final Map<String, Integer> cloneCounts = new HashMap<>();
 
   /** Those watching the arena from outside the tick, in the order they were added. */
-  private final List<WorldObserver> observers = new ArrayList<>();
+  private final WorldEvents events = new WorldEvents(this);
 
   /** Whether an observer reads the champion slots' views ({@link #championViews}). */
   private boolean championViewsWanted;
@@ -1096,7 +1090,7 @@ public class BattleWorld implements HolderPasses {
 
   /** Attaches an observer; it is told about every tick and every hit from the next one on. */
   public void addObserver(WorldObserver observer) {
-    observers.add(observer);
+    events.add(observer);
     championViewsWanted |= observer.wantsChampionViews();
   }
 
@@ -1257,9 +1251,7 @@ public class BattleWorld implements HolderPasses {
         entity.takeDamage(
             damage, 0, directionX, directionY, passesHidden, attacker, attacker, null, noCounter);
     reflect(entity, attacker, before, result, directionX, directionY);
-    for (WorldObserver observer : observers) {
-      observer.damageDealt(tick, entity, damage, result);
-    }
+    events.damageDealt(entity, damage, result);
     if (result.died()) {
       // A hit with no attacker kills for the side it was dealt for, if any.
       entity.die(attacker, attacker != null ? attacker.side() : side);
@@ -1345,7 +1337,7 @@ public class BattleWorld implements HolderPasses {
         || struck.untouchable(true)
         || (struck.side() & 1) == (target.side() & 1)
         || !withinReflect(target, struck, row.reflectedAttackRadius())) {
-      reflected(none);
+      events.reflected(none);
       return;
     }
     if (struck.getData().reflectedAttackBuff() != null) {
@@ -1367,7 +1359,7 @@ public class BattleWorld implements HolderPasses {
     // The once-per-attack key is the struck one's, after the swap to the parent: a rider's shots
     // all count as its parent's current attack.
     if (struck.getHitPoints() == null || !target.reflectOnce(struck)) {
-      reflected(
+      events.reflected(
           new Reflection(
               target,
               attacker,
@@ -1409,10 +1401,8 @@ public class BattleWorld implements HolderPasses {
     int before = struck.getHitPoints().getHitPoints();
     DamageResult hit =
         struck.takeReflectedDamage(target, due.damage(), due.directionX(), due.directionY());
-    for (WorldObserver observer : observers) {
-      observer.reflectedHit(tick, target, struck, due.damage(), hit);
-    }
-    reflected(
+    events.reflectedHit(target, struck, due.damage(), hit);
+    events.reflected(
         new Reflection(
             target,
             due.attacker(),
@@ -1560,9 +1550,7 @@ public class BattleWorld implements HolderPasses {
     // Only a character is asked: a building or a crown tower it hooked drags the owner instead.
     int old = unit.getView().getState();
     ((CharacterEntity) unit).requestState(state);
-    for (WorldObserver observer : observers) {
-      observer.dragStateSet(tick, projectile, unit, old, state);
-    }
+    events.dragStateSet(projectile, unit, old, state);
   }
 
   /**
@@ -1621,50 +1609,13 @@ public class BattleWorld implements HolderPasses {
     view.setZ(0);
   }
 
-  /** Tells every observer of a special load a unit's targeting visit armed. */
-  void specialArmed(
-      CharacterEntity unit,
-      WorldEntity reference,
-      long distanceSquared,
-      int ringMin,
-      int ringMax,
-      int loadMs,
-      int afterMs) {
-    for (WorldObserver observer : observers) {
-      observer.specialArmed(
-          tick, unit, reference, distanceSquared, ringMin, ringMax, loadMs, afterMs);
-    }
-  }
-
-  /** Tells every observer that a unit's targeting forgot the projectile it was held on. */
-  void holdLeft(WorldEntity unit, ProjectileEntity projectile) {
-    for (WorldObserver observer : observers) {
-      observer.holdLeft(tick, unit, projectile);
-    }
-  }
-
-  /** Tells every observer that a unit forgot the hooking projectile it followed. */
-  void followLeft(WorldEntity unit, ProjectileEntity projectile) {
-    for (WorldObserver observer : observers) {
-      observer.followLeft(tick, unit, projectile);
-    }
-  }
-
-  private void reflected(Reflection reflection) {
-    for (WorldObserver observer : observers) {
-      observer.reflected(tick, reflection);
-    }
-  }
-
   /**
    * Hands a launched projectile to the holder, which gives it its id at once and admits it at the
    * next cleanup, tells every observer of the launch, and runs its registration pass.
    */
   public void launch(ProjectileEntity projectile) {
     holder.add(projectile);
-    for (WorldObserver observer : observers) {
-      observer.projectileLaunched(tick, projectile);
-    }
+    events.projectileLaunched(projectile);
     registrationPass(projectile);
   }
 
@@ -2003,9 +1954,7 @@ public class BattleWorld implements HolderPasses {
   private void killNow(WorldEntity target, WorldEntity killer, int amount) {
     int before = target.getHitPoints() == null ? 0 : target.getHitPoints().getHitPoints();
     DamageResult result = target.takeKill(amount, null, killer);
-    for (WorldObserver observer : observers) {
-      observer.damageDealt(tick, target, before, result);
-    }
+    events.damageDealt(target, before, result);
     if (result.died()) {
       target.die(killer);
     }
@@ -2061,9 +2010,7 @@ public class BattleWorld implements HolderPasses {
       character.pushedOnDeploy(x, y, distance);
       pushed.add(character);
     }
-    for (WorldObserver observer : observers) {
-      observer.deployPushed(tick, unit, radius, distance, found, pushed);
-    }
+    events.deployPushed(unit, radius, distance, found, pushed);
   }
 
   /**
@@ -2120,30 +2067,7 @@ public class BattleWorld implements HolderPasses {
     holder.addRegistered(made);
     made.startDeployingAfterMorph();
     old.morphedAway();
-    for (WorldObserver observer : observers) {
-      observer.morphed(tick, old, made);
-    }
-  }
-
-  /** Tells every observer a card play made the unit, before the play starts it. */
-  void characterPlayed(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.characterPlayed(tick, unit);
-    }
-  }
-
-  /** Tells every observer a unit's ability was requested, and whether it is cast at once. */
-  void abilityRequested(CharacterEntity unit, boolean now) {
-    for (WorldObserver observer : observers) {
-      observer.abilityRequested(tick, unit, now);
-    }
-  }
-
-  /** Tells every observer a unit's ability fired. */
-  void abilityFired(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.abilityFired(tick, unit);
-    }
+    events.morphed(old, made);
   }
 
   /**
@@ -2162,23 +2086,9 @@ public class BattleWorld implements HolderPasses {
   private void kamikazeKillNow(WorldEntity unit, int amount) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKill(amount, unit, unit);
-    for (WorldObserver observer : observers) {
-      observer.kamikazeKilled(tick, unit, before, result);
-    }
+    events.kamikazeKilled(unit, before, result);
     if (result.died()) {
       unit.die(unit);
-    }
-  }
-
-  /**
-   * Tells every observer a Kamikaze unit's hit ended, before the kill it may run.
-   *
-   * @param unit the unit
-   * @param kills true when the end kills it
-   */
-  void kamikazeHitEnded(WorldEntity unit, boolean kills) {
-    for (WorldObserver observer : observers) {
-      observer.kamikazeHitEnded(tick, unit, kills);
     }
   }
 
@@ -2204,9 +2114,7 @@ public class BattleWorld implements HolderPasses {
   private void kamikazeDrainNow(WorldEntity unit, int damage) {
     int before = unit.getHitPoints().getHitPoints();
     DamageResult result = unit.takeKamikazeDrain(damage);
-    for (WorldObserver observer : observers) {
-      observer.kamikazeDrained(tick, unit, damage, before, result);
-    }
+    events.kamikazeDrained(unit, damage, before, result);
     if (result.died()) {
       unit.die(unit);
     }
@@ -2228,9 +2136,7 @@ public class BattleWorld implements HolderPasses {
   /** The circle's kill, dealt at the damage drain. */
   private void circleKillNow(WorldEntity target, int radius, int amount) {
     DamageResult result = target.takeKill(amount, null, null);
-    for (WorldObserver observer : observers) {
-      observer.circleKilled(tick, target, radius);
-    }
+    events.circleKilled(target, radius);
     if (result.died()) {
       target.die(null);
     }
@@ -2259,9 +2165,7 @@ public class BattleWorld implements HolderPasses {
    */
   private void clearingKillNow(CharacterEntity target, int amount) {
     DamageResult result = target.takeKill(amount, null, null);
-    for (WorldObserver observer : observers) {
-      observer.clearingKilled(tick, target);
-    }
+    events.clearingKilled(target);
     if (result.died()) {
       target.die(null);
     }
@@ -2290,26 +2194,9 @@ public class BattleWorld implements HolderPasses {
    */
   public void drain(WorldEntity target, int damage) {
     DamageResult result = target.takeDrain(damage);
-    for (WorldObserver observer : observers) {
-      observer.drained(tick, target, damage, target.getHitPoints().getHitPoints(), result.died());
-    }
+    events.drained(target, damage, target.getHitPoints().getHitPoints(), result.died());
     if (result.died()) {
       target.die(null);
-    }
-  }
-
-  /** Tells every observer a unit asked to push itself back after a launch. */
-  void pushbackRequested(
-      WorldEntity unit, boolean started, int fromX, int fromY, MovementState pushback) {
-    for (WorldObserver observer : observers) {
-      observer.pushbackRequested(tick, unit, started, fromX, fromY, pushback);
-    }
-  }
-
-  /** Tells every observer a unit's pushback visit moved it off a cell it may not stand on. */
-  void relocated(WorldEntity unit, int x, int y, int toX, int toY) {
-    for (WorldObserver observer : observers) {
-      observer.relocated(tick, unit, x, y, toX, toY);
     }
   }
 
@@ -2343,22 +2230,13 @@ public class BattleWorld implements HolderPasses {
     int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, 0, 0, false, attacker, attacker);
     reflect(victim, attacker, before, result, 0, 0);
-    for (WorldObserver observer : observers) {
-      observer.areaHit(tick, attacker, victim, damage, hitId, result);
-    }
+    events.areaHit(attacker, victim, damage, hitId, result);
     if (result.died()) {
       victim.die(attacker);
     } else if (result.landed()) {
       referenceDrop(attacker, victim, false);
     }
     return result;
-  }
-
-  /** Tells every observer what the area of an entity's hit did, once its victims are dealt. */
-  void areaDamaged(WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {
-    for (WorldObserver observer : observers) {
-      observer.areaDamaged(tick, owner, area, outcome);
-    }
   }
 
   /**
@@ -2443,9 +2321,7 @@ public class BattleWorld implements HolderPasses {
             projectile,
             projectile.hasActionHolder() ? () -> projectile.hitHeard(hitId, target) : null);
     reflect(target, projectile, before, result, directionX, directionY);
-    for (WorldObserver observer : observers) {
-      observer.projectileImpacted(tick, projectile, target, damage, result);
-    }
+    events.projectileImpacted(projectile, target, damage, result);
     if (result.died()) {
       target.die(projectile);
     } else if (result.landed()) {
@@ -2488,18 +2364,6 @@ public class BattleWorld implements HolderPasses {
 
   /** The kings' elixir in a match, which collectors and deaths pay into; null outside one. */
   @Getter @Setter private KingElixir kingElixir;
-
-  /**
-   * Tells every observer an elixir collector paid its king.
-   *
-   * @param collector the collector
-   * @param amount the whole elixir it paid
-   */
-  void elixirCollected(WorldEntity collector, int amount) {
-    for (WorldObserver observer : observers) {
-      observer.elixirCollected(tick, collector, collector.side(), amount);
-    }
-  }
 
   /**
    * Whether a match has ended: from then every attack timer is held at zero and every ordinary hit
@@ -2578,35 +2442,6 @@ public class BattleWorld implements HolderPasses {
     return false;
   }
 
-  /** Tells every observer that a hiding building's deploy end ran its targeting visit. */
-  void deployEndVisited(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.deployEndVisited(tick, unit);
-    }
-  }
-
-  /** Tells every observer of one visit of a hiding building's hide handler. */
-  void hideVisited(
-      CharacterEntity unit, int state, int before, int after, int step, List<String> effects) {
-    for (WorldObserver observer : observers) {
-      observer.hideVisited(tick, unit, state, before, after, step, List.copyOf(effects));
-    }
-  }
-
-  /** Tells every observer that a hiding building scheduled one of its hide handler's actions. */
-  void hidingHookScheduled(CharacterEntity unit, String column, String action) {
-    for (WorldObserver observer : observers) {
-      observer.hidingHookScheduled(tick, unit, column, action);
-    }
-  }
-
-  /** Tells every observer of one step of a king tower's activation. */
-  void activation(TowerEntity king, ActivationEvent event) {
-    for (WorldObserver observer : observers) {
-      observer.activation(tick, king, event);
-    }
-  }
-
   /**
    * The grid state of another character, or null for an entity that has none, such as a tower. The
    * movement pass asks this about its neighbours.
@@ -2657,11 +2492,9 @@ public class BattleWorld implements HolderPasses {
       locks.prePass(this::listedAlive);
     }
     // The observers share one copy of the list; with none, nothing is copied.
-    if (!observers.isEmpty()) {
+    if (events.listening()) {
       List<WorldEntity> snapshotOfPresent = present();
-      for (WorldObserver observer : observers) {
-        observer.afterPrePass(tick, snapshotOfPresent);
-      }
+      events.afterPrePass(snapshotOfPresent);
     }
   }
 
@@ -2673,9 +2506,7 @@ public class BattleWorld implements HolderPasses {
   @Override
   public void entityRemoved(BattleEntity removed) {
     if (removed instanceof AreaEffectEntity areaEffect) {
-      for (WorldObserver observer : observers) {
-        observer.areaEffectRemoved(tick, areaEffect);
-      }
+      events.areaEffectRemoved(areaEffect);
       return;
     }
     if (!(removed instanceof WorldEntity gone)) {
@@ -2695,20 +2526,16 @@ public class BattleWorld implements HolderPasses {
         entity.forget(gone.getView());
       }
     }
-    for (WorldObserver observer : observers) {
-      observer.entityRemoved(tick, gone);
-    }
+    events.entityRemoved(gone);
     // A child leaves its source's group as it is released, after every notice of the removal,
     // and a unit its card's group chain.
     if (gone instanceof CharacterEntity child) {
       CharacterEntity source = child.leaveGroup();
       if (source != null) {
-        for (WorldObserver observer : observers) {
-          observer.groupUnlinked(tick, source, child);
-        }
+        events.groupUnlinked(source, child);
       }
       if (child.leaveChain()) {
-        chainUnlinked(child);
+        events.chainUnlinked(child);
       }
     }
   }
@@ -2917,46 +2744,9 @@ public class BattleWorld implements HolderPasses {
                   false,
                   owner.actionHolder());
         }
-        for (WorldObserver observer : observers) {
-          observer.cardPlayHeard(
-              tick,
-              owner,
-              instance.getAction().name(),
-              side,
-              played,
-              deployed,
-              run.getTotal(),
-              scheduled);
-        }
+        events.cardPlayHeard(
+            owner, instance.getAction().name(), side, played, deployed, run.getTotal(), scheduled);
       }
-    }
-  }
-
-  /** Tells the observers a unit was linked into its card's group chain. */
-  void chainLinked(CharacterEntity unit, CharacterEntity after) {
-    for (WorldObserver observer : observers) {
-      observer.chainLinked(tick, unit, after);
-    }
-  }
-
-  /** Tells the observers a unit left its card's group chain. */
-  void chainUnlinked(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.chainUnlinked(tick, unit);
-    }
-  }
-
-  /** Tells the observers a run of Goblinstein's ability started on an area effect. */
-  void goblinsteinStarted(AreaEffectEntity owner, String action, int phase) {
-    for (WorldObserver observer : observers) {
-      observer.goblinsteinStarted(tick, owner, action, phase);
-    }
-  }
-
-  /** Tells the observers a run of Goblinstein's ability connected, to nothing for null. */
-  void goblinsteinConnected(AreaEffectEntity owner, BattleEntity connected) {
-    for (WorldObserver observer : observers) {
-      observer.goblinsteinConnected(tick, owner, connected);
     }
   }
 
@@ -2992,28 +2782,6 @@ public class BattleWorld implements HolderPasses {
     return deathArea;
   }
 
-  /** Tells the observers a run of Goblinstein's ability made its death area. */
-  void goblinsteinDeathAreaMade(
-      AreaEffectEntity owner, WorldEntity left, AreaEffectEntity deathArea, int x, int y) {
-    for (WorldObserver observer : observers) {
-      observer.goblinsteinDeathAreaMade(tick, owner, left, deathArea, x, y);
-    }
-  }
-
-  /** Tells the observers a run of Goblinstein's ability ended its death area. */
-  void goblinsteinDeathAreaEnded(AreaEffectEntity owner, AreaEffectEntity deathArea) {
-    for (WorldObserver observer : observers) {
-      observer.goblinsteinDeathAreaEnded(tick, owner, deathArea);
-    }
-  }
-
-  /** Tells the observers a run of Goblinstein's ability saw a cast, its end, or ended a tether. */
-  void goblinsteinStepped(AreaEffectEntity owner, String step) {
-    for (WorldObserver observer : observers) {
-      observer.goblinsteinStepped(tick, owner, step);
-    }
-  }
-
   /**
    * Schedules a tether's activation row on the area effect or on the connected object, built for
    * that object, the area effect its cause; a row the tether does not name is nothing.
@@ -3038,9 +2806,7 @@ public class BattleWorld implements HolderPasses {
     }
     holder.schedule(
         actions.build(row, binding), ActionHolder.OWN_DELAY, false, owner.actionHolder());
-    for (WorldObserver observer : observers) {
-      observer.tetherActivated(tick, owner, target, row);
-    }
+    events.tetherActivated(owner, target, row);
   }
 
   /**
@@ -3094,14 +2860,6 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /** Tells the observers a tether's damage pass ran its query. */
-  void tetherDamagePass(
-      AreaEffectEntity owner, int ax, int ay, int bx, int by, List<WorldEntity> found) {
-    for (WorldObserver observer : observers) {
-      observer.tetherDamagePass(tick, owner, ax, ay, bx, by, found);
-    }
-  }
-
   /**
    * A tether's hit, as its damage pass hands it to the damage entry: queued for the damage drain,
    * in the order hits are dealt (see {@link #queuedHits}), where it is dealt as {@link
@@ -3129,9 +2887,7 @@ public class BattleWorld implements HolderPasses {
     int before = hitPointsOf(victim);
     DamageResult result = victim.takeDamage(damage, 0, directionX, directionY, true, null, owner);
     reflect(victim, owner, before, result, directionX, directionY);
-    for (WorldObserver observer : observers) {
-      observer.tetherHit(tick, owner, victim, damage, directionX, directionY, result);
-    }
+    events.tetherHit(owner, victim, damage, directionX, directionY, result);
     if (result.died()) {
       victim.die(owner);
     }
@@ -3149,9 +2905,7 @@ public class BattleWorld implements HolderPasses {
             ActionHolder.OWN_DELAY,
             false,
             owner.actionHolder());
-    for (WorldObserver observer : observers) {
-      observer.tetherHitAction(tick, owner, target, row);
-    }
+    events.tetherHitAction(owner, target, row);
   }
 
   /**
@@ -3184,9 +2938,7 @@ public class BattleWorld implements HolderPasses {
   void championRefund(ChampionController slot, int mana) {
     int before = kingElixir.elixir(slot.side());
     kingElixir.add(slot.side(), mana * KingElixir.SCALE);
-    for (WorldObserver observer : observers) {
-      observer.championRefunded(tick, slot, mana, before, kingElixir.elixir(slot.side()));
-    }
+    events.championRefunded(slot, mana, before, kingElixir.elixir(slot.side()));
   }
 
   /**
@@ -3201,9 +2953,7 @@ public class BattleWorld implements HolderPasses {
     int side = unit.side();
     int before = kingElixir.elixir(side);
     kingElixir.add(side, mana * KingElixir.SCALE);
-    for (WorldObserver observer : observers) {
-      observer.undeliveredCostReturned(tick, unit, mana, before, kingElixir.elixir(side));
-    }
+    events.undeliveredCostReturned(unit, mana, before, kingElixir.elixir(side));
   }
 
   /**
@@ -3236,80 +2986,9 @@ public class BattleWorld implements HolderPasses {
     return views;
   }
 
-  /** Tells the observers a champion slot stepped in its king's run pass. */
-  void championStepped(ChampionController slot, int elixir, List<ChampionView> views) {
-    for (WorldObserver observer : observers) {
-      observer.championStepped(tick, slot, elixir, views);
-    }
-  }
-
   /** The raw elixir of a side's king, in ten-thousandths. */
   int elixir(int side) {
     return kingElixir.elixir(side);
-  }
-
-  /** Tells the observers the deck pass gave a champion slot its champion. */
-  void championDeckPass(ChampionController slot) {
-    for (WorldObserver observer : observers) {
-      observer.championDeckPass(tick, slot);
-    }
-  }
-
-  /** Tells the observers a champion slot followed a card play. */
-  void championFollowed(ChampionController slot, String play) {
-    for (WorldObserver observer : observers) {
-      observer.championFollowed(tick, slot, play);
-    }
-  }
-
-  /** Tells the observers a champion slot heard a paid ability and requested its live copies'. */
-  void championActivated(ChampionController slot, List<CharacterEntity> requested) {
-    for (WorldObserver observer : observers) {
-      observer.championActivated(tick, slot, requested);
-    }
-  }
-
-  /** Tells the observers a champion slot's cooldown ran out. */
-  void championCooldownOut(ChampionController slot) {
-    for (WorldObserver observer : observers) {
-      observer.championCooldownOut(tick, slot);
-    }
-  }
-
-  /** Tells the observers a unit whose dashes chain started a dash, with its chain's bookkeeping. */
-  void chainDashStarted(
-      CharacterEntity unit, int fromX, int fromY, int aimX, int aimY, int radius) {
-    for (WorldObserver observer : observers) {
-      observer.chainDashStarted(tick, unit, fromX, fromY, aimX, aimY, radius);
-    }
-  }
-
-  /** Tells the observers a chain found its next target as the unit left its dash. */
-  void chainDashed(CharacterEntity unit, WorldEntity next, int count, int x, int y) {
-    for (WorldObserver observer : observers) {
-      observer.chainDashed(tick, unit, next, count, x, y);
-    }
-  }
-
-  /** Tells the observers a chain ended as the unit left its dash. */
-  void chainDashEnded(CharacterEntity unit, int count, TargetView reference) {
-    for (WorldObserver observer : observers) {
-      observer.chainDashEnded(tick, unit, count, reference);
-    }
-  }
-
-  /** Tells the observers an ability gave its unit its buff. */
-  void abilityBuffed(CharacterEntity unit, String buff, int timeMs, int packedLevel) {
-    for (WorldObserver observer : observers) {
-      observer.abilityBuffed(tick, unit, buff, timeMs, packedLevel);
-    }
-  }
-
-  /** Tells the observers a child was linked into its source's group. */
-  void groupLinked(CharacterEntity source, CharacterEntity child) {
-    for (WorldObserver observer : observers) {
-      observer.groupLinked(tick, source, child);
-    }
   }
 
   /**
@@ -3410,9 +3089,7 @@ public class BattleWorld implements HolderPasses {
               + " wait; such a kill is not established");
     }
     boolean inPendingPass = holder.isInPendingPass();
-    for (WorldObserver observer : observers) {
-      observer.killedDoneScheduled(tick, killer, dying, action, inPendingPass);
-    }
+    events.killedDoneScheduled(killer, dying, action, inPendingPass);
     killer
         .actionHolder()
         .schedule(
@@ -3459,9 +3136,7 @@ public class BattleWorld implements HolderPasses {
     }
     boolean active = unit.isActive(CharacterEntity.TARGETING_SLOT);
     TargetView dropped = active ? unit.dropReferenceOnHit() : null;
-    for (WorldObserver observer : observers) {
-      observer.referenceDroppedOnHit(tick, unit, hit, via, kills, active, dropped);
-    }
+    events.referenceDroppedOnHit(unit, hit, via, kills, active, dropped);
   }
 
   /**
@@ -3475,9 +3150,7 @@ public class BattleWorld implements HolderPasses {
       return;
     }
     kingElixir.add(killingSide, amount);
-    for (WorldObserver observer : observers) {
-      observer.deathElixirPaid(tick, dying, killingSide, amount);
-    }
+    events.deathElixirPaid(dying, killingSide, amount);
   }
 
   /**
@@ -3541,9 +3214,7 @@ public class BattleWorld implements HolderPasses {
     }
     List<String> hooks = List.of(data.onKilledAction());
     boolean inPendingPass = holder.isInPendingPass();
-    for (WorldObserver observer : observers) {
-      observer.deathHooksScheduled(tick, dying, attacker, side, hooks, inPendingPass);
-    }
+    events.deathHooksScheduled(dying, attacker, side, hooks, inPendingPass);
     if (killed == null) {
       killed = actions.build(data.onKilledAction(), binding(dying));
     }
@@ -3579,9 +3250,7 @@ public class BattleWorld implements HolderPasses {
   private void slotDeathAction(WorldEntity dying, UnitData data) {
     List<String> hooks = List.of(data.onDeathAction());
     boolean inPendingPass = holder.isInPendingPass();
-    for (WorldObserver observer : observers) {
-      observer.deathHooksScheduled(tick, dying, dying, dying.side(), hooks, inPendingPass);
-    }
+    events.deathHooksScheduled(dying, dying, dying.side(), hooks, inPendingPass);
     dying
         .actionHolder()
         .schedule(
@@ -3599,9 +3268,7 @@ public class BattleWorld implements HolderPasses {
    * @param dying the object
    */
   void deathAtRemoval(WorldEntity dying) {
-    for (WorldObserver observer : observers) {
-      observer.diedAtRemoval(tick, dying);
-    }
+    events.diedAtRemoval(dying);
     deathSlot(dying, dying.getData());
   }
 
@@ -3616,9 +3283,7 @@ public class BattleWorld implements HolderPasses {
    */
   void decayDeath(WorldEntity dying, int hitPointsBefore) {
     UnitData data = dying.getData();
-    for (WorldObserver observer : observers) {
-      observer.decayDied(tick, dying, hitPointsBefore);
-    }
+    events.decayDied(dying, hitPointsBefore);
     // The death slot schedules the death action, on itself with itself as the cause.
     deathSlot(dying, data);
   }
@@ -3701,9 +3366,7 @@ public class BattleWorld implements HolderPasses {
       }
       cloneSpawn(spawner, spawned);
       holder.addRegistered(spawned);
-      for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, spawner, spawned, x, y);
-      }
+      events.characterSpawned(spawner, spawned, x, y);
       // The spawner's last act on each child: its running actions hear of it.
       spawner.actions().childSpawned(spawned.getId());
     }
@@ -3795,15 +3458,7 @@ public class BattleWorld implements HolderPasses {
     cloneSpawn(spawner, spawned);
     // With SpawnerAliveRequired the spawner's id is filed beside the child, which the fold reads.
     holder.addRegistered(spawned, buff.spawnerAliveRequired() ? spawner.getId() : 0);
-    for (WorldObserver observer : observers) {
-      observer.characterSpawned(tick, spawner, spawned, x, y);
-    }
-  }
-
-  void destroyedAtLimit(CharacterEntity spawner) {
-    for (WorldObserver observer : observers) {
-      observer.destroyedAtLimit(tick, spawner);
-    }
+    events.characterSpawned(spawner, spawned, x, y);
   }
 
   /**
@@ -3877,13 +3532,9 @@ public class BattleWorld implements HolderPasses {
         rider.getView().setDirY(parent.getView().getDirY());
       }
       holder.addRegistered(rider);
-      for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, parent, rider, x, y);
-      }
+      events.characterSpawned(parent, rider, x, y);
       rider.attachTo(parent, angle);
-      for (WorldObserver observer : observers) {
-        observer.riderAttached(tick, parent, rider, i, angle);
-      }
+      events.riderAttached(parent, rider, i, angle);
     }
   }
 
@@ -3901,9 +3552,7 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           parent.name() + " lets its riders go under an inherited ignore list, which is not held");
     }
-    for (WorldObserver observer : observers) {
-      observer.parentLeft(tick, rider, parent);
-    }
+    events.parentLeft(rider, parent);
     deathSlot(rider, rider.getData());
   }
 
@@ -3917,20 +3566,6 @@ public class BattleWorld implements HolderPasses {
       return 0;
     }
     return shift + FixedMath.angleOfVector(source.getView().getDirX(), source.getView().getDirY());
-  }
-
-  /** Tells the observers the combat gate dropped an entity's reference. */
-  void combatGateDropped(WorldEntity entity, TargetView reference, int hitSpeed) {
-    for (WorldObserver observer : observers) {
-      observer.combatGateDropped(tick, entity, reference, hitSpeed);
-    }
-  }
-
-  /** Tells the observers the combat gate switched a stunned entity's targeting off or on. */
-  void combatComponentSwitched(WorldEntity entity, boolean on, int hitSpeed) {
-    for (WorldObserver observer : observers) {
-      observer.combatComponentSwitched(tick, entity, on, hitSpeed);
-    }
   }
 
   /** The collision radius a thrown spell's height is taken from when the king has none. */
@@ -4237,9 +3872,7 @@ public class BattleWorld implements HolderPasses {
                 : null);
     // The impact stamps it with the projectile's cast.
     areaEffect.setCastId(projectile.castId());
-    for (WorldObserver observer : observers) {
-      observer.projectileAreaEffect(tick, projectile, areaEffect);
-    }
+    events.projectileAreaEffect(projectile, areaEffect);
   }
 
   /**
@@ -4330,9 +3963,7 @@ public class BattleWorld implements HolderPasses {
       spawned.setCastId(projectile.castId());
       spawned.startOnAdmission();
       holder.addRegistered(spawned);
-      for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, projectile, spawned, cx, cy);
-      }
+      events.characterSpawned(projectile, spawned, cx, cy);
       // The relocation reads where the child stands after its registration visit, so the step
       // that visit took is kept, and runs only for a child on the ground (its height and height
       // offset).
@@ -5143,9 +4774,7 @@ public class BattleWorld implements HolderPasses {
     if (rootless) {
       projectile.finishRootless();
     }
-    for (WorldObserver observer : observers) {
-      observer.projectileDeflected(tick, deflector, projectile, parent, sentAt);
-    }
+    events.projectileDeflected(deflector, projectile, parent, sentAt);
     return true;
   }
 
@@ -5449,13 +5078,6 @@ public class BattleWorld implements HolderPasses {
     return false;
   }
 
-  /** Tells the observers a hit met an entity's shield. */
-  void shieldHit(WorldEntity target, int damage, int before, int after) {
-    for (WorldObserver observer : observers) {
-      observer.shieldHit(tick, target, damage, before, after);
-    }
-  }
-
   /**
    * A shield broken by a hit, in the hit's own pass: every character of the tick with an attack
    * sequence mode that is attacking the entity has its attack reset, as an inferno's ramp is; then
@@ -5479,20 +5101,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Tells the observers a listed buff that gives a charge range reset a character's charge.
-   *
-   * @param unit the character
-   * @param instance the instance just listed
-   * @param before the charge progress before the reset
-   * @param after the charge progress after it
-   */
-  void buffChargeReset(CharacterEntity unit, BuffInstance instance, int before, int after) {
-    for (WorldObserver observer : observers) {
-      observer.buffChargeReset(tick, unit, instance, before, after);
-    }
-  }
-
-  /**
    * Tells the observers an entity's broken shield scheduled its row's action.
    *
    * @param unit the entity
@@ -5501,70 +5109,10 @@ public class BattleWorld implements HolderPasses {
    */
   void shieldLostScheduled(WorldEntity unit, String action, SpawnHost cause) {
     boolean inPendingPass = holder.isInPendingPass();
-    for (WorldObserver observer : observers) {
-      observer.shieldLostScheduled(tick, unit, action, cause, inPendingPass);
-    }
+    events.shieldLostScheduled(unit, action, cause, inPendingPass);
   }
 
   /** Tells the observers a character's spawner fired. */
-  /**
-   * Tells every observer that a unit started a dash.
-   *
-   * @param unit the dashing unit
-   * @param reference what it dashed at
-   * @param fromX where it stood, along the width
-   * @param fromY where it stood, along the length
-   * @param aimX the point it dashed toward, along the width
-   * @param aimY the point it dashed toward, along the length
-   */
-  void dashStarted(
-      CharacterEntity unit, TargetView reference, int fromX, int fromY, int aimX, int aimY) {
-    for (WorldObserver observer : observers) {
-      observer.dashStarted(tick, unit, reference, fromX, fromY, aimX, aimY);
-    }
-  }
-
-  /**
-   * Tells every observer that a unit landed its dash.
-   *
-   * @param unit the unit
-   * @param hit what its landing hit: the target of a single hit, or null for an area or nothing
-   * @param damage the landing's damage, or 0 when nothing was hit
-   * @param area true when the landing hit an area
-   */
-  void dashLanded(CharacterEntity unit, WorldEntity hit, int damage, boolean area) {
-    for (WorldObserver observer : observers) {
-      observer.dashLanded(tick, unit, hit, damage, area);
-    }
-  }
-
-  /** Tells every observer that a unit's charge completed. */
-  void chargeCompleted(CharacterEntity unit, int progress) {
-    for (WorldObserver observer : observers) {
-      observer.chargeCompleted(tick, unit, progress);
-    }
-  }
-
-  /** Tells every observer that a unit fully charged at its last movement visit is no longer. */
-  void chargeLost(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.chargeLost(tick, unit);
-    }
-  }
-
-  /** Tells every observer that a unit's movement pass had its state changed. */
-  void movementStateRequested(CharacterEntity unit, int from, int to) {
-    for (WorldObserver observer : observers) {
-      observer.movementStateRequested(tick, unit, from, to);
-    }
-  }
-
-  void spawnerFired(
-      CharacterEntity spawner, String row, int count, int radius, int timerAfter, int waveMade) {
-    for (WorldObserver observer : observers) {
-      observer.spawnerFired(tick, spawner, row, count, radius, timerAfter, waveMade);
-    }
-  }
 
   /**
    * The death slot: what a dying object's row does as it dies, in order - its starting buff taken
@@ -5637,9 +5185,7 @@ public class BattleWorld implements HolderPasses {
     }
     int amount = data.manaOnDeath() * KingElixir.SCALE;
     kingElixir.add(side, amount);
-    for (WorldObserver observer : observers) {
-      observer.deathManaPaid(tick, dying, side, amount);
-    }
+    events.deathManaPaid(dying, side, amount);
   }
 
   /**
@@ -5652,9 +5198,7 @@ public class BattleWorld implements HolderPasses {
     if (destroyedListeners.isEmpty()) {
       return;
     }
-    for (WorldObserver observer : observers) {
-      observer.destroyedNoticed(tick, dying, destroyedListeners.size());
-    }
+    events.destroyedNoticed(dying, destroyedListeners.size());
     for (RunActionOnTroopDestroyed.Listener listener : new ArrayList<>(destroyedListeners)) {
       listener.destroyed(dying.filterSubject(), dying.getId(), dying.side(), dying.actionHolder());
     }
@@ -5670,9 +5214,7 @@ public class BattleWorld implements HolderPasses {
   void listenForDestroyed(
       WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
     destroyedListeners.add(listener);
-    for (WorldObserver observer : observers) {
-      observer.destroyedListening(tick, owner, action, true);
-    }
+    events.destroyedListening(owner, action, true);
   }
 
   /**
@@ -5685,9 +5227,7 @@ public class BattleWorld implements HolderPasses {
   void unlistenForDestroyed(
       WorldEntity owner, String action, RunActionOnTroopDestroyed.Listener listener) {
     destroyedListeners.remove(listener);
-    for (WorldObserver observer : observers) {
-      observer.destroyedListening(tick, owner, action, false);
-    }
+    events.destroyedListening(owner, action, false);
   }
 
   /**
@@ -5727,13 +5267,6 @@ public class BattleWorld implements HolderPasses {
       }
     }
     return false;
-  }
-
-  /** Tells the observers a unit counted a soul for a death. */
-  void soulCounted(CharacterEntity unit, WorldEntity dying, int souls) {
-    for (WorldObserver observer : observers) {
-      observer.soulCounted(tick, unit, dying, souls);
-    }
   }
 
   /**
@@ -5802,9 +5335,7 @@ public class BattleWorld implements HolderPasses {
         projectile.markClone();
       }
       launch(projectile);
-      for (WorldObserver observer : observers) {
-        observer.deathProjectileLaunched(tick, dying, projectile);
-      }
+      events.deathProjectileLaunched(dying, projectile);
       angle += step;
     }
   }
@@ -5890,14 +5421,10 @@ public class BattleWorld implements HolderPasses {
         // The spawner queues the child for the holder; the fold that takes it in starts it.
         spawned.startOnAdmission();
         holder.addRegistered(spawned);
-        for (WorldObserver observer : observers) {
-          observer.characterSpawned(tick, dying, spawned, x, y);
-        }
+        events.characterSpawned(dying, spawned, x, y);
         made.add(spawned);
       }
-      for (WorldObserver observer : observers) {
-        observer.buffDeathSpawn(tick, dying, instance, made);
-      }
+      events.buffDeathSpawn(dying, instance, made);
     }
   }
 
@@ -6015,7 +5542,7 @@ public class BattleWorld implements HolderPasses {
                     && character.pushedByArea(fromX, fromY, distance);
               }
             });
-    areaDamaged(owner, area, outcome);
+    events.areaDamaged(owner, area, outcome);
   }
 
   /**
@@ -6140,9 +5667,7 @@ public class BattleWorld implements HolderPasses {
         // before each child, and is turned over by it and by the dying object's team.
         if (data.spawnConstPriority()) {
           int lane = LaneAssignment.lane(tileMap, fromX, fromY, -1, 0);
-          for (WorldObserver observer : observers) {
-            observer.ringLaneAsked(tick, dying, fromX, fromY, lane);
-          }
+          events.ringLaneAsked(dying, fromX, fromY, lane);
           at = SpawnPlacement.mirrored(at, fromX, fromY, lane, dying.side() & 1);
         }
       } else {
@@ -6210,9 +5735,7 @@ public class BattleWorld implements HolderPasses {
       if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         spawned.startSpawnImmunity();
       }
-      for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, dying, spawned, madeX, madeY);
-      }
+      events.characterSpawned(dying, spawned, madeX, madeY);
     }
   }
 
@@ -6361,9 +5884,7 @@ public class BattleWorld implements HolderPasses {
    * @param time how long it lasts
    */
   void filterBuff(AreaEffectEntity areaEffect, WorldEntity target, BuffData buff, int time) {
-    for (WorldObserver observer : observers) {
-      observer.areaBuff(tick, areaEffect, buff, time, List.of(target));
-    }
+    events.areaBuff(areaEffect, buff, time, List.of(target));
     AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
     target
         .getBuffs()
@@ -6539,9 +6060,7 @@ public class BattleWorld implements HolderPasses {
                 false,
                 hit.source() == null ? null : hit.source().actionHolder());
       }
-      for (WorldObserver observer : observers) {
-        observer.typedHitDealt(tick, source, target, amount, damageId, result);
-      }
+      events.typedHitDealt(source, target, amount, damageId, result);
     }
     queuedHits.clear();
     queuedTotalStarts.clear();
@@ -6664,9 +6183,7 @@ public class BattleWorld implements HolderPasses {
       throw new UnsupportedOperationException(
           source.name() + " deals a damage-taking action's hit with a BuffOnDamage, not modelled");
     }
-    for (WorldObserver observer : observers) {
-      observer.typedHitDealt(tick, source, target, amount, 0, result);
-    }
+    events.typedHitDealt(source, target, amount, 0, result);
   }
 
   /**
@@ -6706,9 +6223,7 @@ public class BattleWorld implements HolderPasses {
           .actionHolder()
           .schedule(type.actionOnTarget(), ActionHolder.OWN_DELAY, false, source.actionHolder());
     }
-    for (WorldObserver observer : observers) {
-      observer.typedHitDealt(tick, null, target, amount, damageId, result);
-    }
+    events.typedHitDealt(null, target, amount, damageId, result);
   }
 
   /**
@@ -6746,9 +6261,7 @@ public class BattleWorld implements HolderPasses {
     if (result.died()) {
       target.die(source);
     }
-    for (WorldObserver observer : observers) {
-      observer.typedHitDealt(tick, null, target, amount, 0, result);
-    }
+    events.typedHitDealt(null, target, amount, 0, result);
   }
 
   /**
@@ -6842,51 +6355,10 @@ public class BattleWorld implements HolderPasses {
             PackedLevel.level(PackedLevel.pack(areaEffect.getPackedLevel(), row.rarity())));
     guard.actionHolder().list(action.guardRun(guard.guardHost(), x, y));
     holder.addRegistered(guard);
-    for (WorldObserver observer : observers) {
-      observer.guardRegistered(tick, guard);
-    }
+    events.guardRegistered(guard);
     guard.faceToward(x, y);
     guard.deployAfterRegistration();
-    for (WorldObserver observer : observers) {
-      observer.guardStarted(tick, areaEffect, action.name(), phase, guard, x, behind, gx, gy);
-    }
-  }
-
-  /** A guard-spawning run's first step on an area effect, which finishes it. */
-  void guardFirstStepped(AreaEffectEntity areaEffect, SpawnGuard action) {
-    for (WorldObserver observer : observers) {
-      observer.guardFirstStepped(tick, areaEffect, action.name());
-    }
-  }
-
-  /** A step of a guard's run. */
-  void guardStepped(
-      CharacterEntity guard, boolean charging, long tags, boolean done, List<String> calls) {
-    for (WorldObserver observer : observers) {
-      observer.guardStepped(tick, guard, charging, tags, done, calls);
-    }
-  }
-
-  /** A Boss Bandit ability's run started on a unit. */
-  void bossBanditAbilityStarted(
-      CharacterEntity unit,
-      BossBanditAbility action,
-      int phase,
-      int warpTick,
-      int lockTick,
-      List<Boolean> requests) {
-    for (WorldObserver observer : observers) {
-      observer.bossBanditAbilityStarted(
-          tick, unit, action.name(), phase, warpTick, lockTick, requests);
-    }
-  }
-
-  /** A step of a Boss Bandit ability's run that changed it or asked for its lock again. */
-  void bossBanditAbilityStepped(
-      CharacterEntity unit, boolean locked, int releaseMs, List<String> calls) {
-    for (WorldObserver observer : observers) {
-      observer.bossBanditAbilityStepped(tick, unit, locked, releaseMs, calls);
-    }
+    events.guardStarted(areaEffect, action.name(), phase, guard, x, behind, gx, gy);
   }
 
   /** The blocked cell value a warp's landing avoids: not placeable, and no lane. */
@@ -6952,16 +6424,13 @@ public class BattleWorld implements HolderPasses {
     if (columns.resetTarget()) {
       unit.resetTargetAfterWarp();
     }
-    for (WorldObserver observer : observers) {
-      observer.warped(
-          tick,
-          unit,
-          action.name(),
-          phase,
-          startX,
-          startY,
-          referenceBefore == null ? null : referenceBefore.name());
-    }
+    events.warped(
+        unit,
+        action.name(),
+        phase,
+        startX,
+        startY,
+        referenceBefore == null ? null : referenceBefore.name());
   }
 
   /**
@@ -7134,9 +6603,7 @@ public class BattleWorld implements HolderPasses {
         // A ring whose children take a fixed priority asks the lane of the point before each
         // child, and is turned over by it and by the source's team.
         int lane = LaneAssignment.lane(tileMap, arguments.x(), arguments.y(), -1, 0);
-        for (WorldObserver observer : observers) {
-          observer.ringLaneAsked(tick, source, arguments.x(), arguments.y(), lane);
-        }
+        events.ringLaneAsked(source, arguments.x(), arguments.y(), lane);
         at = SpawnPlacement.mirrored(at, arguments.x(), arguments.y(), lane, source.side() & 1);
       }
       int x = inset(at[0], tileMap.width());
@@ -7186,9 +6653,7 @@ public class BattleWorld implements HolderPasses {
       if (arguments.deathSpawn() && DEATH_SPAWN_IMMUNE_FIRST_TICK) {
         child.startSpawnImmunity();
       }
-      for (WorldObserver observer : observers) {
-        observer.characterSpawned(tick, source, child, x, y);
-      }
+      events.characterSpawned(source, child, x, y);
       if (arguments.action() != null) {
         child
             .actionHolder()
@@ -7268,9 +6733,7 @@ public class BattleWorld implements HolderPasses {
     if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
       child.startSpawnImmunity();
     }
-    for (WorldObserver observer : observers) {
-      observer.characterSpawned(tick, source, child, cx, cy);
-    }
+    events.characterSpawned(source, child, cx, cy);
   }
 
   /**
@@ -7327,9 +6790,7 @@ public class BattleWorld implements HolderPasses {
     if (DEATH_SPAWN_IMMUNE_FIRST_TICK) {
       child.startSpawnImmunity();
     }
-    for (WorldObserver observer : observers) {
-      observer.characterSpawned(tick, unit, child, x, y);
-    }
+    events.characterSpawned(unit, child, x, y);
   }
 
   /**
@@ -7405,9 +6866,7 @@ public class BattleWorld implements HolderPasses {
       }
     }
     if (!dropped.isEmpty()) {
-      for (WorldObserver observer : observers) {
-        observer.projectilesDropped(tick, unit, dropped);
-      }
+      events.projectilesDropped(unit, dropped);
     }
   }
 
@@ -7497,147 +6956,6 @@ public class BattleWorld implements HolderPasses {
     return out;
   }
 
-  /** Tells the observers the hold, layer and contact tags of an entity's word changed. */
-  void tagWordChanged(WorldEntity entity, long word) {
-    for (WorldObserver observer : observers) {
-      observer.tagWordChanged(tick, entity, word);
-    }
-  }
-
-  /** Tells the observers an uppercut started on a unit. */
-  void uppercutStarted(
-      CharacterEntity unit,
-      String action,
-      int phase,
-      WorldEntity instigator,
-      WorldEntity target,
-      boolean finished) {
-    for (WorldObserver observer : observers) {
-      observer.uppercutStarted(tick, unit, action, phase, instigator, target, finished);
-    }
-  }
-
-  /** Tells the observers an uppercut's update changed its delay, pushed or finished. */
-  void uppercutStepped(
-      CharacterEntity unit, int delay, boolean finished, String outcome, int[] pushPoint) {
-    for (WorldObserver observer : observers) {
-      observer.uppercutStepped(tick, unit, delay, finished, outcome, pushPoint);
-    }
-  }
-
-  /**
-   * Tells the observers an uppercut marked its target, or a taunt its forced object, in the unit's
-   * targeting queue.
-   */
-  void uppercutMarked(CharacterEntity unit, WorldEntity target, int priority) {
-    for (WorldObserver observer : observers) {
-      observer.uppercutMarked(tick, unit, target, priority, unit.currentTarget());
-    }
-  }
-
-  /** Tells the observers a unit's pre-hook emptied its targeting queue. */
-  void targetQueueFlushed(CharacterEntity unit) {
-    for (WorldObserver observer : observers) {
-      observer.targetQueueFlushed(tick, unit);
-    }
-  }
-
-  /** Tells the observers an uppercut's target left the battle. */
-  void uppercutTargetLeft(CharacterEntity unit, WorldEntity target) {
-    for (WorldObserver observer : observers) {
-      observer.uppercutTargetLeft(tick, unit, target);
-    }
-  }
-
-  /** Tells the observers a knock started on a unit. */
-  void knockbackStarted(
-      CharacterEntity unit, String action, int phase, WorldEntity instigator, int counter) {
-    for (WorldObserver observer : observers) {
-      observer.knockbackStarted(tick, unit, action, phase, instigator, counter);
-    }
-  }
-
-  /** Tells the observers a knock's update ran. */
-  void knockbackStepped(
-      CharacterEntity unit, int before, int after, int height, long tags, boolean finished) {
-    for (WorldObserver observer : observers) {
-      observer.knockbackStepped(tick, unit, before, after, height, tags, finished);
-    }
-  }
-
-  /** Tells the observers a resetable action made its area effect. */
-  void resetableStarted(
-      CharacterEntity unit,
-      int phase,
-      WorldEntity instigator,
-      AreaEffectEntity areaEffect,
-      int x,
-      int y) {
-    for (WorldObserver observer : observers) {
-      observer.resetableStarted(tick, unit, phase, instigator, areaEffect, x, y);
-    }
-  }
-
-  /** Tells the observers a resetable action's run ended after its area effect left. */
-  void resetableEnded(CharacterEntity unit, String areaEffect) {
-    for (WorldObserver observer : observers) {
-      observer.resetableEnded(tick, unit, areaEffect);
-    }
-  }
-
-  /**
-   * Tells the observers a resetable action's singleton row was started again: the countdown its
-   * area effect got back, or null with none live.
-   */
-  void resetableRetriggered(CharacterEntity unit, int phase, String areaEffect, Integer countdown) {
-    for (WorldObserver observer : observers) {
-      observer.resetableRetriggered(tick, unit, phase, areaEffect, countdown);
-    }
-  }
-
-  /** Tells the observers a resetable action's area effect left. */
-  void resetableLeft(CharacterEntity unit, String areaEffect) {
-    for (WorldObserver observer : observers) {
-      observer.resetableLeft(tick, unit, areaEffect);
-    }
-  }
-
-  /** Tells the observers a resetable action's area effect had its life cut as the unit left. */
-  void resetableReleased(CharacterEntity unit, String areaEffect, int before, int after) {
-    for (WorldObserver observer : observers) {
-      observer.resetableReleased(tick, unit, areaEffect, before, after);
-    }
-  }
-
-  /** Tells the observers what a shaped area effect listed. */
-  void shapeListed(AreaEffectEntity areaEffect, List<WorldEntity> listed) {
-    for (WorldObserver observer : observers) {
-      observer.shapeListed(tick, areaEffect, listed);
-    }
-  }
-
-  /** Tells the observers a choice by team ran on an entity. */
-  void filteredByTeam(
-      WorldEntity unit, String action, SpawnHost instigator, boolean sameTeam, String chosen) {
-    for (WorldObserver observer : observers) {
-      observer.filteredByTeam(tick, unit, action, instigator, sameTeam, chosen);
-    }
-  }
-
-  /** Tells the observers a run that waited for its cause to leave scheduled its action. */
-  void instigatorGone(WorldEntity unit, String action, String scheduled) {
-    for (WorldObserver observer : observers) {
-      observer.instigatorGone(tick, unit, action, scheduled);
-    }
-  }
-
-  /** Tells the observers an action run at an age was scheduled on an area effect. */
-  void aliveTimerFired(AreaEffectEntity areaEffect, String action) {
-    for (WorldObserver observer : observers) {
-      observer.aliveTimerFired(tick, areaEffect, action);
-    }
-  }
-
   /**
    * The area effect an ability creates as it fires: at the unit's point, for its side, at its level
    * re-based on the area effect's rarity, the unit its parent and, for a row that follows its
@@ -7664,17 +6982,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Tells the observers a unit's ability spent its souls on its area effect, whose lifetime they
-   * set.
-   */
-  void soulsSpent(
-      CharacterEntity unit, AreaEffectEntity areaEffect, int souls, int count, int lifetimeMs) {
-    for (WorldObserver observer : observers) {
-      observer.soulsSpent(tick, unit, areaEffect, souls, count, lifetimeMs);
-    }
-  }
-
-  /**
    * The order an area effect's spawner takes its directions in: the numbers below the count, then
    * fifty pairs of draws of the battle's random source for each, at least one pair, each pair below
    * the count swapping the two entries it names.
@@ -7698,9 +7005,7 @@ public class BattleWorld implements HolderPasses {
         order[j] = kept;
       }
     }
-    for (WorldObserver observer : observers) {
-      observer.spawnOrdered(tick, areaEffect, order.clone(), before, random.getState());
-    }
+    events.spawnOrdered(areaEffect, order.clone(), before, random.getState());
     return order;
   }
 
@@ -7766,10 +7071,8 @@ public class BattleWorld implements HolderPasses {
     }
     holder.addRegistered(child);
     child.markClone(null);
-    for (WorldObserver observer : observers) {
-      observer.characterSpawned(tick, areaEffect, child, x, y);
-      observer.areaSpawned(tick, areaEffect, child, retries, random.getState());
-    }
+    events.characterSpawned(areaEffect, child, x, y);
+    events.areaSpawned(areaEffect, child, retries, random.getState());
   }
 
   /**
@@ -7892,43 +7195,6 @@ public class BattleWorld implements HolderPasses {
     return false;
   }
 
-  /** Tells the observers a unit's ability held it in its follow-up state. */
-  void abilityStateEntered(CharacterEntity unit, int countdown) {
-    for (WorldObserver observer : observers) {
-      observer.abilityStateEntered(tick, unit, countdown);
-    }
-  }
-
-  /** Tells the observers a unit's ability sent it across the arena. */
-  void lanesSwitched(
-      CharacterEntity unit, int mirroredX, int mirroredY, int toX, int toY, TargetView reference) {
-    for (WorldObserver observer : observers) {
-      observer.lanesSwitched(tick, unit, mirroredX, mirroredY, toX, toY, reference);
-    }
-  }
-
-  /** Tells the observers what a check of an action's cause found. */
-  void instigatorChecked(
-      WorldEntity owner, String action, ActionOwner instigator, String scheduled) {
-    for (WorldObserver observer : observers) {
-      observer.instigatorChecked(tick, owner, action, instigator, scheduled);
-    }
-  }
-
-  /** Tells the observers what a Berserker's run did to its unit's attack sequence index. */
-  void berserked(WorldEntity unit, Berserk.Event event, int before, int index) {
-    for (WorldObserver observer : observers) {
-      observer.berserked(tick, unit, event, before, index);
-    }
-  }
-
-  /** Tells the observers what a Goblin Hut's life state did. */
-  void goblinHutLogged(CharacterEntity hut, GoblinHutLifeState.Event event) {
-    for (WorldObserver observer : observers) {
-      observer.goblinHutLogged(tick, hut, event);
-    }
-  }
-
   /**
    * Hands a champion a spawn made to its side's champion slots: in a match the king's slot that
    * follows its row follows its play, or a slot takes it ({@link TowerEntity#championSpawned}). The
@@ -7944,9 +7210,7 @@ public class BattleWorld implements HolderPasses {
     if (king != null && king.championSlot(1) != null) {
       king.championSpawned(champion);
     }
-    for (WorldObserver observer : observers) {
-      observer.championHandedOver(tick, source, champion);
-    }
+    events.championHandedOver(source, champion);
   }
 
   /**
@@ -8179,9 +7443,7 @@ public class BattleWorld implements HolderPasses {
             this, data, side, x, y, PackedLevel.pack(packedLevel, data.rarity()), parent, follow);
     holder.add(areaEffect);
     areaEffect.setName(name != null ? name : row + "_" + areaEffect.getId());
-    for (WorldObserver observer : observers) {
-      observer.areaEffectCreated(tick, areaEffect, how, source);
-    }
+    events.areaEffectCreated(areaEffect, how, source);
     return areaEffect;
   }
 
@@ -8267,9 +7529,7 @@ public class BattleWorld implements HolderPasses {
     if (isClone(source)) {
       areaEffect.markClone();
     }
-    for (WorldObserver observer : observers) {
-      observer.areaEffectSpawned(tick, owner, action, phase, source, areaEffect);
-    }
+    events.areaEffectSpawned(owner, action, phase, source, areaEffect);
     return areaEffect;
   }
 
@@ -8349,9 +7609,7 @@ public class BattleWorld implements HolderPasses {
     ProjectileEntity projectile = new ProjectileEntity(this, data, owner.side());
     ProjectileLauncher.launchFromAction(projectile, owner, target, sx, sy, sz, hx, hy);
     launch(projectile);
-    for (WorldObserver observer : observers) {
-      observer.actionProjectileLaunched(tick, owner, action, phase, projectile);
-    }
+    events.actionProjectileLaunched(owner, action, phase, projectile);
   }
 
   /**
@@ -8376,69 +7634,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * Tells every observer that a projectile admitted to the battle scheduled its starting action.
-   */
-  public void projectileStarting(ProjectileEntity projectile, String action) {
-    for (WorldObserver observer : observers) {
-      observer.projectileStarting(tick, projectile, action);
-    }
-  }
-
-  /** Tells every observer that a data-changing action swapped a projectile's row. */
-  public void projectileSwapped(ProjectileEntity projectile, String from, String to) {
-    for (WorldObserver observer : observers) {
-      observer.projectileSwapped(tick, projectile, from, to);
-    }
-  }
-
-  /**
-   * Tells every observer that a row's own deflection action counted a deflection on its projectile
-   * and handed it the side of the deflector's parent.
-   */
-  public void projectileSelfDeflected(
-      ProjectileEntity projectile, String action, WorldEntity deflector) {
-    for (WorldObserver observer : observers) {
-      observer.projectileSelfDeflected(tick, projectile, action, deflector);
-    }
-  }
-
-  /** Tells every observer that the evolved Executioner's axe controller started on its axe. */
-  public void executionerStarted(ProjectileEntity axe, String action, int phase) {
-    for (WorldObserver observer : observers) {
-      observer.executionerStarted(tick, axe, action, phase);
-    }
-  }
-
-  /**
-   * Tells every observer of a damage the axe controller was asked for.
-   *
-   * @param target what the hit lands on, or null
-   * @param before the damage handed in
-   * @param after the damage handed on
-   * @param edge the target's distance from the axe's start less its radius, or null without one
-   * @param strong true for a strong hit
-   */
-  public void axeDamage(
-      ProjectileEntity axe,
-      WorldEntity target,
-      int hitId,
-      int before,
-      int after,
-      Integer edge,
-      boolean strong) {
-    for (WorldObserver observer : observers) {
-      observer.axeDamage(tick, axe, target, hitId, before, after, edge, strong);
-    }
-  }
-
-  /** Tells every observer that a strong hit of the axe scheduled its action on its target. */
-  public void axeHitAction(ProjectileEntity axe, WorldEntity target, String action, int hitId) {
-    for (WorldObserver observer : observers) {
-      observer.axeHitAction(tick, axe, target, action, hitId);
-    }
-  }
-
-  /**
    * A strong hit of the axe on its way out asks for a push of its target away from the axe's start:
    * of a character whose movement component is on, with every gate in place; the observers are told
    * first.
@@ -8448,25 +7643,8 @@ public class BattleWorld implements HolderPasses {
     if (!(target instanceof CharacterEntity character) || !character.movementOn()) {
       return;
     }
-    for (WorldObserver observer : observers) {
-      observer.axePushed(tick, axe, target, x, y, distance, hitId);
-    }
+    events.axePushed(axe, target, x, y, distance, hitId);
     character.pushedFrom(x, y, distance);
-  }
-
-  /** A roll started on a projectile, with the destination it took. */
-  public void rollStarted(
-      ProjectileEntity projectile, String action, int phase, int destinationX, int destinationY) {
-    for (WorldObserver observer : observers) {
-      observer.rollStarted(tick, projectile, action, phase, destinationX, destinationY);
-    }
-  }
-
-  /** A capture started on its owner, a projectile or a character. */
-  public void captureStarted(BattleEntity owner, String action, int phase) {
-    for (WorldObserver observer : observers) {
-      observer.captureStarted(tick, owner, action, phase);
-    }
   }
 
   /** The not-placeable value alone, which a cell blocks a roll's destination with. */
@@ -8565,25 +7743,11 @@ public class BattleWorld implements HolderPasses {
    * @param timeMs how long it lasts
    */
   public void rollBuff(ProjectileEntity projectile, WorldEntity target, String buff, int timeMs) {
-    for (WorldObserver observer : observers) {
-      observer.rollBuffed(tick, projectile, target, buff, timeMs);
-    }
+    events.rollBuffed(projectile, target, buff, timeMs);
     target
         .getBuffs()
         .apply(
             records.buff(buff), timeMs, projectile.getPackedLevel(), projectile, projectile.side());
-  }
-
-  /**
-   * A roll moved its projectile, or put it on its destination and released it.
-   *
-   * @param projectile the rolling projectile
-   * @param released true for the step that released it
-   */
-  public void rolled(ProjectileEntity projectile, boolean released) {
-    for (WorldObserver observer : observers) {
-      observer.rolled(tick, projectile, released);
-    }
   }
 
   /** Whether an object with an id is in the live list and alive, as a lock's holder is tested. */
@@ -8620,20 +7784,6 @@ public class BattleWorld implements HolderPasses {
   public boolean capturePasses(
       ProjectileEntity projectile, WorldEntity unit, GameObjectFilter filter) {
     return filter.matches(unit.filterSubject(), projectile.side() & 1, projectile.getData().name());
-  }
-
-  /** A capture asked for a lock on a unit, with the request's answer. */
-  public void captureRequested(BattleEntity owner, WorldEntity unit, int priority, boolean answer) {
-    for (WorldObserver observer : observers) {
-      observer.captureRequested(tick, owner, unit, priority, answer);
-    }
-  }
-
-  /** A capture scheduled an action on an object, with another as its cause. */
-  public void captureScheduled(BattleEntity owner, BattleEntity cause, String action) {
-    for (WorldObserver observer : observers) {
-      observer.captureScheduled(tick, owner, cause, action);
-    }
   }
 
   /**
@@ -8704,13 +7854,6 @@ public class BattleWorld implements HolderPasses {
     queuedHits.add(new CaptureHitDue(owner, unit, damage));
   }
 
-  /** A captured unit's pre-hook changed its hidden tag or the capture's tags in its word. */
-  void captureTagsFolded(WorldEntity unit, boolean hidden, long word) {
-    for (WorldObserver observer : observers) {
-      observer.captureTagsFolded(tick, unit, hidden, word);
-    }
-  }
-
   /**
    * A capture's drag step: the unit moved toward the owner's point, then turned to it.
    *
@@ -8765,22 +7908,6 @@ public class BattleWorld implements HolderPasses {
   }
 
   /**
-   * A capture's step ended.
-   *
-   * @param owner the capturing owner
-   * @param captured the ids it holds
-   * @param complete the ids whose drag is complete
-   * @param timesMs the time of each capture
-   */
-  public void captureStepped(
-      BattleEntity owner, List<Integer> captured, List<Integer> complete, List<Integer> timesMs) {
-    for (WorldObserver observer : observers) {
-      observer.captureStepped(
-          tick, owner, List.copyOf(captured), List.copyOf(complete), List.copyOf(timesMs));
-    }
-  }
-
-  /**
    * Makes one bomb's area effect of a barrage: its row at the point, for the owner's side and at
    * its level, re-based on the area effect's rarity, with no parent, handed to the holder, which
    * admits it at the tick's closing cleanup.
@@ -8798,20 +7925,6 @@ public class BattleWorld implements HolderPasses {
     // The barrage stamps it with its character's cast.
     areaEffect.setCastId(owner.castId());
     return areaEffect;
-  }
-
-  /** Tells every observer that a barrage's run started on a character. */
-  void barrageStarted(CharacterEntity owner, String action, int phase) {
-    for (WorldObserver observer : observers) {
-      observer.barrageStarted(tick, owner, action, phase);
-    }
-  }
-
-  /** Tells every observer of the area effects a barrage's update made. */
-  void barrageStepped(CharacterEntity owner, String action, List<AreaEffectEntity> made) {
-    for (WorldObserver observer : observers) {
-      observer.barrageStepped(tick, owner, action, List.copyOf(made));
-    }
   }
 
   /**
@@ -8836,21 +7949,12 @@ public class BattleWorld implements HolderPasses {
         new ProjectileEntity(this, records.projectile(action.getProjectile()), area.side());
     projectile.dropOnto(area, action.getHeight(), speed);
     launch(projectile);
-    for (WorldObserver observer : observers) {
-      observer.bombDropped(tick, area, action.name(), phase, projectile, lifetime);
-    }
+    events.bombDropped(area, action.name(), phase, projectile, lifetime);
   }
 
   /** Counts one more character made, which a summon's name carries. */
   void characterMade() {
     charactersMade++;
-  }
-
-  /** Tells the observers an evolved Royal Ghost's run started. */
-  void ghostEvoStarted(CharacterEntity ghost, String action, int phase) {
-    for (WorldObserver observer : observers) {
-      observer.ghostEvoStarted(tick, ghost, action, phase);
-    }
   }
 
   /**
@@ -8883,9 +7987,7 @@ public class BattleWorld implements HolderPasses {
             ghost.name(),
             ghost,
             null);
-    for (WorldObserver observer : observers) {
-      observer.ghostAreaMade(tick, ghost, area, target);
-    }
+    events.ghostAreaMade(ghost, area, target);
     return area;
   }
 
@@ -8924,13 +8026,6 @@ public class BattleWorld implements HolderPasses {
         owner.name(),
         owner,
         null);
-  }
-
-  /** Tells the observers an evolved Royal Ghost's hit summoned. */
-  void ghostSummoned(CharacterEntity ghost, WorldEntity reference, int x, int y, int countdownMs) {
-    for (WorldObserver observer : observers) {
-      observer.ghostSummoned(tick, ghost, reference, x, y, countdownMs);
-    }
   }
 
   /**
@@ -8987,15 +8082,11 @@ public class BattleWorld implements HolderPasses {
             PackedLevel.level(PackedLevel.pack(area.packedLevel(), data.rarity())));
     child.startDeploying();
     holder.add(child);
-    for (WorldObserver observer : observers) {
-      observer.ghostSummonMade(tick, area, child);
-    }
+    events.ghostSummonMade(area, child);
     child.takeSummonReference(reference);
     child.faceToward(x, y);
     child.summonReveal();
-    for (WorldObserver observer : observers) {
-      observer.ghostSummonSpawned(tick, area, child);
-    }
+    events.ghostSummonSpawned(area, child);
   }
 
   /**
@@ -9049,29 +8140,6 @@ public class BattleWorld implements HolderPasses {
     return projectile;
   }
 
-  /** Tells the observers what a target indicator attack's run did. */
-  void targetIndicatorLogged(CharacterEntity unit, TargetIndicatorAttack.Event event) {
-    for (WorldObserver observer : observers) {
-      observer.targetIndicatorLogged(tick, unit, event);
-    }
-  }
-
-  /** Tells the observers a taunt's perform reached a character. */
-  void tauntPerformed(
-      WorldEntity unit, String action, int phase, ActionOwner instigator, WorldEntity forced) {
-    for (WorldObserver observer : observers) {
-      observer.tauntPerformed(tick, unit, action, phase, instigator, forced);
-    }
-  }
-
-  /** Tells the observers what a taunt's arming or step did. */
-  void tauntStepped(
-      WorldEntity unit, WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
-    for (WorldObserver observer : observers) {
-      observer.tauntStepped(tick, unit, forced, durationMs, falloffMs, calls);
-    }
-  }
-
   /** A buff's row, refused when it sets a column the battle does not model. */
   BuffData buffData(String name) {
     BuffData buff = records.buff(name);
@@ -9103,9 +8171,7 @@ public class BattleWorld implements HolderPasses {
             buff,
             AREA_EFFECT_BUFF_LIMIT,
             areaEffect::buffReaches);
-    for (WorldObserver observer : observers) {
-      observer.areaBuff(tick, areaEffect, buff, time, targets);
-    }
+    events.areaBuff(areaEffect, buff, time, targets);
     // A buff its parent controls has the area effect as its parent too.
     AreaEffectEntity parent = buff.controlledByParent() ? areaEffect : null;
     for (WorldEntity target : targets) {
@@ -9145,9 +8211,7 @@ public class BattleWorld implements HolderPasses {
             buff,
             data.maximumTargets(),
             target -> projectileBuffReaches(projectile, target));
-    for (WorldObserver observer : observers) {
-      observer.projectileBuff(tick, projectile, buff, time, targets);
-    }
+    events.projectileBuff(projectile, buff, time, targets);
     for (WorldEntity target : targets) {
       target
           .getBuffs()
@@ -9288,9 +8352,7 @@ public class BattleWorld implements HolderPasses {
     }
     BuffData buff = buffData(data.targetBuff());
     int time = data.buffTime(projectile.getPackedLevel());
-    for (WorldObserver observer : observers) {
-      observer.projectileBuff(tick, projectile, buff, time, List.of(victim));
-    }
+    events.projectileBuff(projectile, buff, time, List.of(victim));
     victim.getBuffs().apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
   }
 
@@ -9316,9 +8378,7 @@ public class BattleWorld implements HolderPasses {
           .apply(buff, time, projectile.getPackedLevel(), projectile, projectile.side());
       targets = List.of(target);
     }
-    for (WorldObserver observer : observers) {
-      observer.projectileBuff(tick, projectile, buff, time, targets);
-    }
+    events.projectileBuff(projectile, buff, time, targets);
   }
 
   /**
@@ -9445,9 +8505,7 @@ public class BattleWorld implements HolderPasses {
       SpawnHost source,
       BattleEntity parent) {
     BuffData data = buffData(buff);
-    for (WorldObserver observer : observers) {
-      observer.buffSpawned(tick, owner, action, data, timeMs, source.packedLevel(), source);
-    }
+    events.buffSpawned(owner, action, data, timeMs, source.packedLevel(), source);
     owner
         .getBuffs()
         .applyByOwnAction(data, timeMs, source.packedLevel(), source, source.side(), parent);
@@ -9515,9 +8573,7 @@ public class BattleWorld implements HolderPasses {
     // it, scheduling its row's starting action.
     clone.startOnAdmission();
     holder.addRegistered(clone);
-    for (WorldObserver observer : observers) {
-      observer.cloned(tick, original, clone, instigator, visits);
-    }
+    events.cloned(original, clone, instigator, visits);
     clone.getBuffs().copyFrom(original.getBuffs());
     // The creator tells each run the unit lists of the clone, in their order; only an air-to-ground
     // run acts on it: it schedules its row on the clone with the unit as the cause, whose start
@@ -9540,9 +8596,7 @@ public class BattleWorld implements HolderPasses {
         CharacterEntity rider = riders.get(i);
         CharacterEntity riderClone = makeClone(rider, instigator, action);
         riderClone.attachTo(clone, rider.getAttachAngle());
-        for (WorldObserver observer : observers) {
-          observer.riderAttached(tick, clone, riderClone, i, rider.getAttachAngle());
-        }
+        events.riderAttached(clone, riderClone, i, rider.getAttachAngle());
       }
     }
     return clone;
@@ -9585,45 +8639,14 @@ public class BattleWorld implements HolderPasses {
         || source instanceof AreaEffectEntity area && area.isClone();
   }
 
-  void cloneRefused(WorldEntity original, String reason, SpawnHost instigator) {
-    for (WorldObserver observer : observers) {
-      observer.cloneRefused(tick, original, reason, instigator);
-    }
-  }
-
-  void buffCopied(WorldEntity original, WorldEntity clone, BuffInstance copy) {
-    for (WorldObserver observer : observers) {
-      observer.buffCopied(tick, original, clone, copy);
-    }
-  }
-
-  void cloneBuffGateAsked(
-      AreaEffectEntity areaEffect,
-      String buff,
-      CharacterEntity clone,
-      String path,
-      int query,
-      boolean refused) {
-    for (WorldObserver observer : observers) {
-      observer.cloneBuffGateAsked(tick, areaEffect, buff, clone, path, query, refused);
-    }
-  }
-
-  void cloneMoveStarted(CharacterEntity unit, int targetX, int targetY) {
-    for (WorldObserver observer : observers) {
-      observer.cloneMoveStarted(tick, unit, targetX, targetY);
-    }
-  }
-
-  void cloneMoveEnded(CharacterEntity unit, boolean resumed) {
-    for (WorldObserver observer : observers) {
-      observer.cloneMoveEnded(tick, unit, resumed);
-    }
-  }
-
   /** The battle tick of the entity tick in progress. */
   public int tick() {
     return tick;
+  }
+
+  /** What the world tells its observers. */
+  public WorldEvents events() {
+    return events;
   }
 
   /** The bit of FORCE_IS_GROUND in an entity's tag word, as the data numbers the game tags. */
@@ -9634,153 +8657,6 @@ public class BattleWorld implements HolderPasses {
   /** The bit of FORCE_IS_AIR in an entity's tag word, as the data numbers the game tags. */
   long forceIsAir() {
     return flagBits.forceIsAir();
-  }
-
-  void selectorStarted(AreaEffectEntity areaEffect, String action, int phase, List<Integer> due) {
-    for (WorldObserver observer : observers) {
-      observer.selectorStarted(tick, areaEffect, action, phase, due);
-    }
-  }
-
-  void selectorStepped(AreaEffectEntity areaEffect, String action, ShapeSelector.Step step) {
-    for (WorldObserver observer : observers) {
-      observer.selectorStepped(tick, areaEffect, action, step);
-    }
-  }
-
-  void airToGroundStarted(
-      WorldEntity unit, String action, int phase, int phaseNow, int counter, int height) {
-    for (WorldObserver observer : observers) {
-      observer.airToGroundStarted(tick, unit, action, phase, phaseNow, counter, height);
-    }
-  }
-
-  void airToGroundStepped(
-      WorldEntity unit,
-      int phaseBefore,
-      int phaseAfter,
-      int counterBefore,
-      int counterAfter,
-      boolean done,
-      List<Integer> pushes) {
-    for (WorldObserver observer : observers) {
-      observer.airToGroundStepped(
-          tick, unit, phaseBefore, phaseAfter, counterBefore, counterAfter, done, pushes);
-    }
-  }
-
-  void airToGroundRetriggered(WorldEntity unit, String action, int phase, int counter) {
-    for (WorldObserver observer : observers) {
-      observer.airToGroundRetriggered(tick, unit, action, phase, counter);
-    }
-  }
-
-  void groundToAirStarted(WorldEntity unit, String action, int phase, int phaseNow, int counter) {
-    for (WorldObserver observer : observers) {
-      observer.groundToAirStarted(tick, unit, action, phase, phaseNow, counter);
-    }
-  }
-
-  void groundToAirStepped(
-      WorldEntity unit,
-      int phaseBefore,
-      int phaseAfter,
-      int counterBefore,
-      int counterAfter,
-      List<Integer> pushes) {
-    for (WorldObserver observer : observers) {
-      observer.groundToAirStepped(
-          tick, unit, phaseBefore, phaseAfter, counterBefore, counterAfter, pushes);
-    }
-  }
-
-  void laserStarted(AreaEffectEntity areaEffect, String action, int phase, int timerMs) {
-    for (WorldObserver observer : observers) {
-      observer.laserStarted(tick, areaEffect, action, phase, timerMs);
-    }
-  }
-
-  void laserFired(
-      AreaEffectEntity areaEffect,
-      int count,
-      int index,
-      List<WorldEntity> targets,
-      String action,
-      int timerBefore,
-      int timerAfter) {
-    for (WorldObserver observer : observers) {
-      observer.laserFired(tick, areaEffect, count, index, targets, action, timerBefore, timerAfter);
-    }
-  }
-
-  void lifeTimeEndScheduled(AreaEffectEntity areaEffect, String action) {
-    for (WorldObserver observer : observers) {
-      observer.lifeTimeEndScheduled(tick, areaEffect, action);
-    }
-  }
-
-  void onHitActionScheduled(AreaEffectEntity areaEffect, WorldEntity target, BattleAction action) {
-    for (WorldObserver observer : observers) {
-      observer.onHitActionScheduled(tick, areaEffect, target, action);
-    }
-  }
-
-  void buffHookScheduled(WorldEntity carrier, BuffInstance buff, String action, boolean start) {
-    for (WorldObserver observer : observers) {
-      observer.buffHookScheduled(tick, carrier, buff, action, start);
-    }
-  }
-
-  void hitCounted(
-      WorldEntity attacker, WorldEntity target, int before, int after, String buff, int timeMs) {
-    for (WorldObserver observer : observers) {
-      observer.hitCounted(tick, attacker, target, before, after, buff, timeMs);
-    }
-  }
-
-  void buffApplied(WorldEntity target, BuffInstance buff) {
-    for (WorldObserver observer : observers) {
-      observer.buffApplied(tick, target, buff);
-    }
-  }
-
-  void buffHandedOver(
-      WorldEntity parent,
-      WorldEntity rider,
-      BuffData buff,
-      int time,
-      int packedLevel,
-      SpawnHost source,
-      List<BuffInstance> instances,
-      Set<String> heldBefore) {
-    for (WorldObserver observer : observers) {
-      observer.buffHandedOver(
-          tick, parent, rider, buff, time, packedLevel, source, instances, heldBefore);
-    }
-  }
-
-  void buffRefreshed(WorldEntity target, BuffInstance buff, int before, SpawnHost source) {
-    for (WorldObserver observer : observers) {
-      observer.buffRefreshed(tick, target, buff, before, source);
-    }
-  }
-
-  void attackCountRead(WorldEntity context, int attackTimeMs, int count) {
-    for (WorldObserver observer : observers) {
-      observer.attackCountRead(tick, context, attackTimeMs, count);
-    }
-  }
-
-  void lifeConditionAsked(WorldEntity carrier, BuffInstance buff, int answer) {
-    for (WorldObserver observer : observers) {
-      observer.lifeConditionAsked(tick, carrier, buff, answer);
-    }
-  }
-
-  void buffRemoved(WorldEntity target, BuffInstance buff) {
-    for (WorldObserver observer : observers) {
-      observer.buffRemoved(tick, target, buff);
-    }
   }
 
   /**
@@ -9826,9 +8702,7 @@ public class BattleWorld implements HolderPasses {
     }
     DamageResult result = target.takeDamageOverTime(due.damage(), source);
     reflect(target, (BattleEntity) source, before, result, 0, 0);
-    for (WorldObserver observer : observers) {
-      observer.buffDamaged(tick, target, due.buff(), due.damage(), before, result);
-    }
+    events.buffDamaged(target, due.buff(), due.damage(), before, result);
     // Every object a buff's source can be is a battle entity; with no source, nothing.
     BattleEntity attacker = (BattleEntity) source;
     if (result.died()) {
@@ -9846,72 +8720,7 @@ public class BattleWorld implements HolderPasses {
   void dealBuffHeal(WorldEntity target, BuffInstance buff, int heal) {
     int before = target.getHitPoints().getHitPoints();
     target.takeHeal(heal, buff.getBuff().allowedOverHealPercent());
-    for (WorldObserver observer : observers) {
-      observer.buffHealed(tick, target, buff, heal, before);
-    }
-  }
-
-  /** Tells the observers which units an area effect's hit pulled. */
-  void areaPulled(AreaEffectEntity areaEffect, List<AreaEffectEntity.Pull> pulls) {
-    for (WorldObserver observer : observers) {
-      observer.areaPulled(tick, areaEffect, pulls);
-    }
-  }
-
-  /**
-   * Tells the observers of an area effect's launch on a step whose hit count rose.
-   *
-   * @param areaEffect the area effect
-   * @param hit the hits due by the end of the step
-   * @param bound the hits due by its start
-   * @param choice what its chooser saw, or null for a row that drops its projectile on its point
-   * @param projectile the projectile launched, or null when the chooser found nobody
-   */
-  void areaEffectLaunched(
-      AreaEffectEntity areaEffect,
-      int hit,
-      int bound,
-      AreaEffectEntity.Choice choice,
-      ProjectileEntity projectile) {
-    for (WorldObserver observer : observers) {
-      observer.areaEffectLaunched(tick, areaEffect, hit, bound, choice, projectile);
-    }
-  }
-
-  /** Tells the observers an area effect was admitted. */
-  void areaEffectAdmitted(AreaEffectEntity areaEffect) {
-    for (WorldObserver observer : observers) {
-      observer.areaEffectAdmitted(tick, areaEffect);
-    }
-  }
-
-  /** Tells the observers an area effect updated. */
-  void areaEffectUpdated(
-      AreaEffectEntity areaEffect,
-      int before,
-      int after,
-      int hits,
-      int radius,
-      List<Integer> damages) {
-    for (WorldObserver observer : observers) {
-      observer.areaEffectUpdated(tick, areaEffect, before, after, hits, radius, damages);
-    }
-  }
-
-  /** Tells the observers what one hit of an area effect did. */
-  void areaEffectDamaged(
-      AreaEffectEntity areaEffect, AreaDamage.Area area, AreaDamage.Outcome outcome) {
-    for (WorldObserver observer : observers) {
-      observer.areaEffectDamaged(tick, areaEffect, area, outcome);
-    }
-  }
-
-  /** Tells the observers the area one hit of an area effect's filter form lists in. */
-  void areaEffectFilterHit(
-      AreaEffectEntity areaEffect, int x, int y, int radius, int halfWidth, int halfHeight) {
-    for (WorldObserver observer : observers) {
-      observer.areaEffectFilterHit(tick, areaEffect, x, y, radius, halfWidth, halfHeight);
-    }
+    events.buffHealed(target, buff, heal, before);
   }
 
   /**
@@ -9928,9 +8737,7 @@ public class BattleWorld implements HolderPasses {
     DamageResult result =
         victim.takeDamage(damage, 0, 0, 0, areaEffect.getData().affectsHidden(), null, areaEffect);
     reflect(victim, areaEffect, before, result, 0, 0);
-    for (WorldObserver observer : observers) {
-      observer.areaEffectHit(tick, areaEffect, victim, damage, result);
-    }
+    events.areaEffectHit(areaEffect, victim, damage, result);
     if (result.died()) {
       victim.die(areaEffect);
     }
@@ -10011,12 +8818,10 @@ public class BattleWorld implements HolderPasses {
     // Kamikaze kills. The observers see them landed.
     drainTypedHits();
     // The observers share one copy of each list; with none, nothing is copied.
-    if (!observers.isEmpty()) {
+    if (events.listening()) {
       List<WorldEntity> snapshotOfPresent = present();
       List<ProjectileEntity> snapshotOfProjectiles = projectiles();
-      for (WorldObserver observer : observers) {
-        observer.afterPostHooks(tick, snapshotOfPresent, snapshotOfProjectiles);
-      }
+      events.afterPostHooks(snapshotOfPresent, snapshotOfProjectiles);
     }
   }
 

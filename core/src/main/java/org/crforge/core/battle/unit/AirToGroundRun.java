@@ -184,6 +184,7 @@ final class AirToGroundRun extends ActionInstance {
     }
     if (phase != phaseBefore || isFinished()) {
       unit.world()
+          .events()
           .airToGroundStepped(
               unit, phaseBefore, phase, counterBefore, counter, isFinished(), pushes);
     }
@@ -301,6 +302,6 @@ final class AirToGroundRun extends ActionInstance {
         // A descent carries on as it was.
       }
     }
-    unit.world().airToGroundRetriggered(unit, row.name(), phase, counter);
+    unit.world().events().airToGroundRetriggered(unit, row.name(), phase, counter);
   }
 }

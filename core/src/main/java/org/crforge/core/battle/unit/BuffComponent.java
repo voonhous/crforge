@@ -397,7 +397,7 @@ public final class BuffComponent implements BattleComponent {
         if (instance.getRemaining() != before
             || instance.getTotal() != totalBefore
             || instance.getPackedLevel() != levelBefore) {
-          world.buffRefreshed(entity, instance, before, source);
+          world.events().buffRefreshed(entity, instance, before, source);
         }
         // Every refresh then schedules the row's stacked action, whether it changed the instance
         // or not, as a listing schedules the start action.
@@ -441,7 +441,7 @@ public final class BuffComponent implements BattleComponent {
         character.buffChargeReset(instance);
       }
       hook(instance, instance.getBuff().onStartAction(), true);
-      world.buffApplied(entity, instance);
+      world.events().buffApplied(entity, instance);
     }
     handOver(buff, time, packedLevel, source, side, parent);
   }
@@ -475,7 +475,9 @@ public final class BuffComponent implements BattleComponent {
           instances.add(instance);
         }
       }
-      world.buffHandedOver(carrier, rider, handed, time, packedLevel, source, instances, held);
+      world
+          .events()
+          .buffHandedOver(carrier, rider, handed, time, packedLevel, source, instances, held);
     }
   }
 
@@ -528,7 +530,7 @@ public final class BuffComponent implements BattleComponent {
       BuffInstance copy = instance.copy(world.nextBuffKey());
       items.add(copy);
       onListed(copy);
-      world.buffCopied(original.entity, entity, copy);
+      world.events().buffCopied(original.entity, entity, copy);
     }
     // The copies of a row that is not cloned come off as removals do, their remove actions run on
     // the clone; the index goes on after each removal.
@@ -552,7 +554,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getBuff().name().equals(buff) && instance.getParent() == null) {
         items.remove(i);
         onRemoved(instance);
-        world.buffRemoved(entity, instance);
+        world.events().buffRemoved(entity, instance);
       }
     }
   }
@@ -570,7 +572,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getBuff().name().equals(buff) && instance.getParent() == parent) {
         items.remove(i);
         onRemoved(instance);
-        world.buffRemoved(entity, instance);
+        world.events().buffRemoved(entity, instance);
       }
     }
   }
@@ -601,7 +603,7 @@ public final class BuffComponent implements BattleComponent {
                 + " target or gives a charge range, which is not modelled");
       }
       items.remove(i);
-      world.buffRemoved(entity, instance);
+      world.events().buffRemoved(entity, instance);
     }
   }
 
@@ -708,7 +710,7 @@ public final class BuffComponent implements BattleComponent {
     BattleAction row =
         hookRows.computeIfAbsent(
             action, name -> world.getActions().build(name, world.binding(entity)));
-    world.buffHookScheduled(entity, instance, action, start);
+    world.events().buffHookScheduled(entity, instance, action, start);
     entity.actionHolder().schedule(row, ActionHolder.OWN_DELAY, false, entity.actionHolder());
   }
 
@@ -756,7 +758,7 @@ public final class BuffComponent implements BattleComponent {
     }
     if (removed != null) {
       for (BuffInstance instance : removed) {
-        world.buffRemoved(entity, instance);
+        world.events().buffRemoved(entity, instance);
       }
     }
   }
@@ -776,7 +778,7 @@ public final class BuffComponent implements BattleComponent {
         lifeConditions.computeIfAbsent(
             condition, text -> ExpressionCompiler.compile(text, environment));
     int answer = ExpressionEvaluator.evaluate(expression, environment);
-    world.lifeConditionAsked(entity, instance, answer);
+    world.events().lifeConditionAsked(entity, instance, answer);
     if (answer == 0) {
       instance.expire();
     }
@@ -891,7 +893,7 @@ public final class BuffComponent implements BattleComponent {
       if (instance.getParent() == removed) {
         items.remove(i);
         onRemoved(instance);
-        world.buffRemoved(entity, instance);
+        world.events().buffRemoved(entity, instance);
       } else if (instance.getSource() == removed) {
         instance.forgetSource();
       }

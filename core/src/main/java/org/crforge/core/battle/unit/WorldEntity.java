@@ -707,7 +707,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (removed != null && removed == held) {
       held = null;
       targeting.setVisitSuspended(false);
-      world.holdLeft(this, (ProjectileEntity) removed);
+      world.events().holdLeft(this, (ProjectileEntity) removed);
     }
     // The buff component hears of it after the targeting component.
     buffs.entityRemoved(removed);
@@ -1120,7 +1120,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
                     WorldEntity.this, world.entityOf(victim.getEntity()), dealt, id);
               }
             });
-    world.areaDamaged(this, area, outcome);
+    world.events().areaDamaged(this, area, outcome);
   }
 
   /**
@@ -1332,12 +1332,12 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
             this::resumeAfterDrop,
             keepsTargetWhileCasting());
     if (before != null && targeting.getReference() == null) {
-      world.combatGateDropped(this, before, hitSpeed);
+      world.events().combatGateDropped(this, before, hitSpeed);
     }
     // Only a switch a stun causes, or the first after one, is told.
     boolean stunned = alive && hitSpeed == 0;
     if (on != isActive(GATED_SLOT) && (stunned || gateStunned)) {
-      world.combatComponentSwitched(this, on, hitSpeed);
+      world.events().combatComponentSwitched(this, on, hitSpeed);
     }
     gateStunned = stunned;
     setActive(GATED_SLOT, on);
@@ -1577,7 +1577,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     if (shieldBefore < 1 || damage < 1 || hitPoints.getShield() == shieldBefore) {
       return;
     }
-    world.shieldHit(this, damage, shieldBefore, hitPoints.getShield());
+    world.events().shieldHit(this, damage, shieldBefore, hitPoints.getShield());
     if (hitPoints.getShield() == 0) {
       world.shieldBroken(this, cause);
     }
@@ -1733,7 +1733,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       long word = view.getFlags() & watchedTagMask();
       if (word != watchedWord) {
         watchedWord = word;
-        world.tagWordChanged(this, word);
+        world.events().tagWordChanged(this, word);
       }
     }
     foldLayer();
@@ -1743,7 +1743,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       if (word != captureWord || hidden != captureHidden) {
         captureWord = word;
         captureHidden = hidden;
-        world.captureTagsFolded(this, hidden, word);
+        world.events().captureTagsFolded(this, hidden, word);
       }
     }
   }
@@ -2059,8 +2059,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         if (listed.getAction().name().equals(action.name())) {
           startLayering();
           AirToGroundRun copy = new AirToGroundRun(action, this, (AirToGroundRun) listed);
-          world.airToGroundStarted(
-              this, action.name(), phase, copy.phase(), copy.counter(), copy.height());
+          world
+              .events()
+              .airToGroundStarted(
+                  this, action.name(), phase, copy.phase(), copy.counter(), copy.height());
           return copy;
         }
       }
@@ -2074,7 +2076,9 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     startLayering();
     AirToGroundRun run = new AirToGroundRun(action, this);
-    world.airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
+    world
+        .events()
+        .airToGroundStarted(this, action.name(), phase, run.phase(), run.counter(), run.height());
     if (run.startsOnTheGround()
         && action.getOnGround() != null
         && AirToGroundRun.landingActionsRun(action, this)) {
@@ -2107,7 +2111,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     }
     startLayering();
     GroundToAirRun run = new GroundToAirRun(action, unit);
-    world.groundToAirStarted(this, action.name(), phase, run.phase(), run.counter());
+    world.events().groundToAirStarted(this, action.name(), phase, run.phase(), run.counter());
     return run;
   }
 
@@ -2120,13 +2124,15 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   @Override
   public void filteredByTeam(
       String action, ActionOwner instigator, boolean sameTeam, String chosen) {
-    world.filteredByTeam(
-        this, action, instigator instanceof SpawnHost host ? host : null, sameTeam, chosen);
+    world
+        .events()
+        .filteredByTeam(
+            this, action, instigator instanceof SpawnHost host ? host : null, sameTeam, chosen);
   }
 
   @Override
   public void instigatorGone(RunActionOnInstigatorDeath action, BattleAction scheduled) {
-    world.instigatorGone(this, action.name(), scheduled.name());
+    world.events().instigatorGone(this, action.name(), scheduled.name());
   }
 
   @Override
@@ -2595,7 +2601,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   /** Tells the observers what a taunt's arming or step did. */
   void tauntStepped(WorldEntity forced, int durationMs, int falloffMs, List<String> calls) {
-    world.tauntStepped(this, forced, durationMs, falloffMs, calls);
+    world.events().tauntStepped(this, forced, durationMs, falloffMs, calls);
   }
 
   /**
@@ -2866,7 +2872,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         hitCounter = 0;
       }
     }
-    world.hitCounted(this, target, old, hitCounter, buff, time);
+    world.events().hitCounted(this, target, old, hitCounter, buff, time);
     if (buff != null) {
       buffs.apply(world.buffData(buff), time, getPackedLevel(), this, side());
     }
@@ -3139,7 +3145,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void berserked(Berserk.Event event, int before, int index) {
-    world.berserked(this, event, before, index);
+    world.events().berserked(this, event, before, index);
   }
 
   @Override
@@ -3149,7 +3155,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void instigatorChecked(String action, ActionOwner instigator, String scheduled) {
-    world.instigatorChecked(this, action, instigator, scheduled);
+    world.events().instigatorChecked(this, action, instigator, scheduled);
   }
 
   /** The level a packed value stands for: the relative level plus the signed steps. */

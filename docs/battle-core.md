@@ -62,6 +62,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `UnitData` | the published columns of a unit, unconverted, its projectile row among them |
 | `AbilityData` | a unit's ability row: its cast, its trigger, the target it keeps, its action |
 | `WorldObserver` | what watches the arena from outside the tick: hits, areas, launches, impacts, removals, a king tower's activation |
+| `WorldEvents` | what the world tells its observers: every event, at the tick in progress, to each observer in the order it attached |
 | `Standard1v1Battle` | the standard arena with its six towers |
 | `ActivationEvent` | one step of a king tower's activation, as observers are told it |
 | `ActionOwnerEntity` | an object that only owns actions, standing in for the objects that run spawn rows in the data |
