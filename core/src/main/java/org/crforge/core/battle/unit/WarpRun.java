@@ -99,7 +99,7 @@ final class WarpRun extends ActionInstance {
     destY = target != null ? target.getView().getY() : lastY;
     addOffsets();
     if (row.getColumns().resetPendingDamage()) {
-      unit.world().resetPendingDamageAtWarp(unit, row.name());
+      unit.world().spawns().resetPendingDamageAtWarp(unit, row.name());
     }
   }
 

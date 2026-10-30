@@ -94,11 +94,11 @@ class BattleMusketeerHeroTest {
     int x = dummy.getView().getX();
     int y = dummy.getView().getY();
     // The dummy's own row: the turret's 600 circle overlaps the dummy's centre, which is passed by.
-    assertThat(battle.getWorld().buildingPlacement(dummy, turret).place(x, y))
+    assertThat(battle.getWorld().spawns().buildingPlacement(dummy, turret).place(x, y))
         .containsExactly(x, y);
     // The hero's row on the same point: the dummy is a building of the live list and blocks it, so
     // the turret is moved down the bottom side's column, off the point.
-    int[] moved = battle.getWorld().buildingPlacement(hero, turret).place(x, y);
+    int[] moved = battle.getWorld().spawns().buildingPlacement(hero, turret).place(x, y);
     assertThat(moved[0]).isEqualTo(x);
     assertThat(moved[1]).isLessThan(y);
   }

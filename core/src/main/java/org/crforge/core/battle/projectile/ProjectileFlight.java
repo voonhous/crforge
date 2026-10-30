@@ -534,7 +534,7 @@ final class ProjectileFlight {
     }
     // The impact's character spawn: its children in formation around the impact point.
     if (data.spawnCharacterCount() >= 1) {
-      world.impactSpawn(p, px, py);
+      world.spawns().impactSpawn(p, px, py);
     }
     // The area effect it spawns, made at the impact point once the hit is over.
     if (data.spawnAreaEffectObject() != null) {

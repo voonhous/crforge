@@ -57,7 +57,11 @@ class BattleBuildingPlacementTest {
     int row = RIVER_FIRST_ROW - 1 - half;
     int low = row - half;
     int[] placed =
-        battle.getWorld().buildingPlacement(battle.getWorld().kingTower(0), banner).place(x, y);
+        battle
+            .getWorld()
+            .spawns()
+            .buildingPlacement(battle.getWorld().kingTower(0), banner)
+            .place(x, y);
     assertThat(placed).containsExactly(x, (low - PlacementSearch.footprint(banner)) * CELL);
   }
 
@@ -75,7 +79,11 @@ class BattleBuildingPlacementTest {
     int row = RIVER_LAST_ROW + 1 + half;
     int low = row - half;
     int[] placed =
-        battle.getWorld().buildingPlacement(battle.getWorld().kingTower(1), banner).place(x, y);
+        battle
+            .getWorld()
+            .spawns()
+            .buildingPlacement(battle.getWorld().kingTower(1), banner)
+            .place(x, y);
     assertThat(placed).containsExactly(x, (low + PlacementSearch.footprint(banner)) * CELL);
   }
 
@@ -107,7 +115,7 @@ class BattleBuildingPlacementTest {
     }
     assertThat(open).isPositive();
     // No row passes, so the king's own point comes back.
-    assertThat(battle.getWorld().buildingPlacement(king, row).place(kx, ky))
+    assertThat(battle.getWorld().spawns().buildingPlacement(king, row).place(kx, ky))
         .containsExactly(kx, ky);
   }
 
@@ -125,7 +133,11 @@ class BattleBuildingPlacementTest {
     int y = map.height() * CELL + 200;
     assertThat(map.bits(0, map.height() - 1) & TileMap.NOT_PLACEABLE_BIT).isNotZero();
     assertThat(
-            battle.getWorld().buildingPlacement(battle.getWorld().kingTower(1), banner).place(x, y))
+            battle
+                .getWorld()
+                .spawns()
+                .buildingPlacement(battle.getWorld().kingTower(1), banner)
+                .place(x, y))
         .containsExactly(x, y);
   }
 

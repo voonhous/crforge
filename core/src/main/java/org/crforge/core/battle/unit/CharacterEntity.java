@@ -638,7 +638,7 @@ public class CharacterEntity extends WorldEntity {
           data.name() + " sets columns the battle does not model: " + data.unmodelledColumns());
     }
     refuseAttack(data);
-    world.characterMade();
+    world.spawns().characterMade();
     // The level setter copies the spawner's start time into its timer, and its limit into the
     // count of firings it has left.
     this.spawnTimer = data.spawnStartTimeMs();
@@ -648,7 +648,7 @@ public class CharacterEntity extends WorldEntity {
     // A building of the characters table asks the battle, each time its contact is asked, whether
     // another building stands beside it.
     view.setBesideBuildingQuery(
-        () -> getData().characterBuilding() && world.besideAnotherBuilding(this));
+        () -> getData().characterBuilding() && world.spawns().besideAnotherBuilding(this));
     TargetingState targeting = getTargeting();
     targeting.setMovementComponentActive(data.hasMovementComponent());
     this.unit =
@@ -1252,7 +1252,7 @@ public class CharacterEntity extends WorldEntity {
 
   @Override
   public void makeClone(ActionOwner instigator, Clone action) {
-    world.makeClone(this, (AreaEffectEntity) instigator, action);
+    world.spawns().makeClone(this, (AreaEffectEntity) instigator, action);
   }
 
   /** The row a clone of the character is made of: its own, or the one its row names. */
@@ -3485,7 +3485,7 @@ public class CharacterEntity extends WorldEntity {
   void enteredDeploying() {
     UnitData data = getData();
     if (data.spawnAttach()) {
-      world.attachRiders(this);
+      world.spawns().attachRiders(this);
     }
     if (data.pushesOnDeploy() && !clone) {
       world.spawnPush(this);
@@ -3853,7 +3853,7 @@ public class CharacterEntity extends WorldEntity {
     }
     // A unit that surfaced morphs into its row's morph, which is made, queued and deploying.
     if (calls.contains("spawn_pathfind_morph")) {
-      world.morph(this);
+      world.spawns().morph(this);
     }
     if (calls.contains("spawner")) {
       spawner();
@@ -4059,7 +4059,7 @@ public class CharacterEntity extends WorldEntity {
       switchLanes();
     }
     if (ability.activationSpawnCharacter() != null) {
-      world.activationSpawn(this, ability.activationSpawnCharacter());
+      world.spawns().activationSpawn(this, ability.activationSpawnCharacter());
     }
     if (ability.areaEffectObject() != null) {
       AreaEffectEntity areaEffect = world.abilityAreaEffect(this, ability.areaEffectObject());
@@ -4680,7 +4680,7 @@ public class CharacterEntity extends WorldEntity {
 
       @Override
       public void spawn(String row, int x, int y) {
-        world.spawnOne(CharacterEntity.this, row, x, y);
+        world.spawns().spawnOne(CharacterEntity.this, row, x, y);
       }
 
       @Override
@@ -5072,7 +5072,7 @@ public class CharacterEntity extends WorldEntity {
 
   @Override
   public void warp(WarpCharacter action, int phase) {
-    world.warp(this, action, phase);
+    world.spawns().warp(this, action, phase);
   }
 
   /**
@@ -5730,7 +5730,7 @@ public class CharacterEntity extends WorldEntity {
     int count = interval != 0 ? 1 : number;
     int radius = interval != 0 ? 0 : data.spawnRadius();
     String row = spawnRow(data);
-    world.liveSpawn(this, row, count, radius);
+    world.spawns().liveSpawn(this, row, count, radius);
     if (limit >= 1) {
       spawnsLeft--;
     }

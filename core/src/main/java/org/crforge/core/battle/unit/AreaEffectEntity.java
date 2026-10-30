@@ -1081,11 +1081,11 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
       return;
     }
     if (spawnOrder == null) {
-      spawnOrder = world.spawnOrder(this, total);
+      spawnOrder = world.spawns().spawnOrder(this, total);
     }
     for (int i = 0; i < due - done; i++) {
       int angle = spawnOrder[done % total] * 360 / total;
-      world.areaSpawn(this, angle, radius);
+      world.spawns().areaSpawn(this, angle, radius);
     }
   }
 
@@ -1591,7 +1591,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   @Override
   public GhostEvo.SummonHost ghostSummonHost() {
     return (row, reference, x, y) ->
-        world.ghostSummon(AreaEffectEntity.this, row, (WorldEntity) reference, x, y);
+        world.spawns().ghostSummon(AreaEffectEntity.this, row, (WorldEntity) reference, x, y);
   }
 
   /**
@@ -1617,7 +1617,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
   @Override
   public List<SpawnHost> spawnCharacters(SpawnArguments arguments) {
-    return world.spawnCharacters(this, arguments);
+    return world.spawns().spawnCharacters(this, arguments);
   }
 
   @Override
@@ -1799,7 +1799,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
     return new SpawnGuard.Maker() {
       @Override
       public void makeGuard(SpawnGuard guardAction, int phase) {
-        world.spawnGuard(AreaEffectEntity.this, guardAction, phase);
+        world.spawns().spawnGuard(AreaEffectEntity.this, guardAction, phase);
       }
 
       @Override
