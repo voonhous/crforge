@@ -43,8 +43,10 @@ import org.crforge.core.pathfinding.math.FixedMath;
     note =
         "Agrees with the reference line for line: early outs, skip order, the box and circle"
             + " rejects, the coincident case, the magnitude chain and the write order. Held: two"
-            + " and three equal units pushing apart. Not checked against a recorded battle:"
-            + " unequal masses, the height layers, the no-pushed-by flags and edge separation. A"
+            + " and three equal units pushing apart. The height layers, the live height compared,"
+            + " by a coverage battle whose evolved Mega Knight the tiebreaker's clearing resumed in"
+            + " the air. Not checked against a recorded battle: unequal masses, the no-pushed-by"
+            + " flags and edge separation. A"
             + " crown tower as a static neighbour was held at a mass of 0 by the tower-contact"
             + " run, the walk behind a unit's own king and six placement runs, all removed: a"
             + " tower is loaded at a mass of 20, held by the records' own test, and its push on a"

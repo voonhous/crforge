@@ -14,6 +14,7 @@ import org.crforge.core.pathfinding.grid.CellGrid;
 import org.crforge.core.pathfinding.grid.PathfindingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /** Behaviour of the pass that sums the pushes a unit takes from the units standing next to it. */
@@ -117,6 +118,22 @@ class PushPassTest {
     run(List.of(neighbour(2, 3700, 10000, 0, 6, 500, true)));
 
     assertThat(component.getPushCount()).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a neighbour its own movement left in the air, as a dash cut short before it lands, is on"
+          + " the air layer and does not push a unit on the ground")
+  void aNeighbourLeftInTheAirByItsOwnHeightDoesNotPush() {
+    GridEntity lifted = neighbour(2, 3700, 10000, 0, 6, 500, true);
+    // The height its own movement writes, with no height offset: the push pass compares the live
+    // height, the two together.
+    lifted.setZ(500);
+
+    run(List.of(lifted));
+
+    assertThat(component.getPushCount()).isZero();
+    assertThat(component.getPushX()).isZero();
   }
 
   @Test

@@ -2091,7 +2091,6 @@ public class CharacterEntity extends WorldEntity {
     // contact passes compare that height, the validator the air answer.
     view.setAir(data.air());
     view.setZ(data.flyingHeight());
-    view.setZTotal(data.flyingHeight());
     // A building has no movement component, and stands in the overlay as an obstacle; an
     // occluder stands in it too while it stands still. A row without a speed has no movement
     // component either, a building or not.

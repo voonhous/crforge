@@ -77,7 +77,7 @@ class AlignedStaticCheckTest {
     GridEntity entity = new GridEntity();
     entity.setX(x);
     entity.setY(y);
-    entity.setZTotal(height);
+    entity.setZ(height);
     entity.setMovementComponent(hasMovementComponent);
     entity.setMovementActive(hasMovementComponent);
     return entity;

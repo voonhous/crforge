@@ -53,7 +53,6 @@ class GridEntityTest {
     entity.setX(3500);
     entity.setY(10000);
     entity.setZ(0);
-    entity.setZTotal(0);
     entity.setDirX(81);
     entity.setDirY(243);
     entity.setCollisionRadius(500);

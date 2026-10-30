@@ -361,6 +361,51 @@ class LadderMatchTest {
   }
 
   @Test
+  @DisplayName(
+      "every step of the tiebreaker ends with the damage drain and the holder's cleanup, a step"
+          + " whose clearing found nothing and ran no update included")
+  void theTiebreakerStepEndsWithTheDrainAndTheCleanup() {
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    LadderMatch match = battle.startLadderMatch(DECK, DECK, 0, 0);
+    // The first step of the tiebreaker clears an empty field: only the towers stand.
+    stepTo(battle, timeUpTick() + 2);
+    assertThat(match.getTiebreakMs()).isEqualTo(50);
+    TowerEntity princess = princessTower(battle, 1);
+    List<String> removed = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void entityRemoved(int tick, WorldEntity entity) {
+                removed.add(battle.getBattle().getTick() + " " + entity.name());
+              }
+            });
+    // A kill queued outside the entity tick waits for the next damage drain. This step's clearing
+    // finds nothing, so it runs no update, and the kill lands at the drain the step ends with: the
+    // tower dies there and leaves at the cleanup after it, in this step.
+    battle.getWorld().getHits().kill(princess, null);
+    battle.getBattle().step();
+
+    assertThat(match.getTiebreakMs()).isEqualTo(100);
+    assertThat(match.isLastTicked()).as("no update ran").isFalse();
+    assertThat(princess.getHitPoints().getHitPoints()).isZero();
+    assertThat(battle.getWorld().getHolder().entities()).doesNotContain(princess);
+    // The battle's tick counter during a step is the step's own.
+    assertThat(removed).containsExactly((timeUpTick() + 2) + " " + princess.name());
+  }
+
+  /** A side's first princess tower in the holder's live list. */
+  private static TowerEntity princessTower(Standard1v1Battle battle, int side) {
+    return battle.getBattle().getHolder().entities().stream()
+        .filter(TowerEntity.class::isInstance)
+        .map(TowerEntity.class::cast)
+        .filter(tower -> tower.getData().summonerTower() && tower.side() == side)
+        .findFirst()
+        .orElseThrow();
+  }
+
+  @Test
   @DisplayName("the clearing refuses the stand-in owner of actions")
   void theClearingRefusesAStandIn() {
     Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
