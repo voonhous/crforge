@@ -24,8 +24,12 @@ import java.util.stream.Collectors;
  */
 final class TraceReader {
 
-  /** Every format a reference's trace is published in: zstd. */
-  static final TraceReader STANDARD = new TraceReader(List.of(new ZstdCompression()));
+  /**
+   * Every format a reference's trace is published in: zstd, and zstd over the trace's delta lines
+   * (the coverage sets').
+   */
+  static final TraceReader STANDARD =
+      new TraceReader(List.of(new ZstdCompression(), new DeltaZstdCompression()));
 
   private final List<TraceCompression> formats;
 

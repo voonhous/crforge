@@ -46,7 +46,8 @@ import org.crforge.core.battle.replay.ScenarioShape;
  * folder, the scenario's SHA-256 and the horizon) and the content the references were recorded
  * with, and one folder per reference battle: {@code scenario.json}, {@code reference.json} (the
  * schema, horizon, executed steps and termination, observation count and the digests of the trace
- * and the scenario) and the trace, {@code observations.jsonl.zst} (zstd, {@link TraceReader}). A
+ * and the scenario) and the trace, {@code observations.jsonl.zst} (zstd) or {@code
+ * observations.delta.jsonl.zst} (zstd over the trace's delta lines), read by {@link TraceReader}. A
  * listing may name the kind of scenario its cases are ({@code scenario_shape}, {@link
  * ScenarioShape}): {@code generated} for cases generated in 14.593.1's replay shape; without it
  * they are replays.
