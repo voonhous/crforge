@@ -81,8 +81,11 @@ public final class ReplaySmokeRun {
           .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
           .configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
 
-  /** Writes an observation on one line, every object's fields in key order. */
-  private static final ObjectWriter OBSERVATION_WRITER =
+  /**
+   * Writes an observation on one line, every object's fields in key order; {@link TraceDelta}
+   * rebuilds a delta trace's lines with it too.
+   */
+  static final ObjectWriter OBSERVATION_WRITER =
       MAPPER.writer().with(JsonNodeFeature.WRITE_PROPERTIES_SORTED);
 
   private ReplaySmokeRun() {

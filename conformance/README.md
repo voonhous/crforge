@@ -46,7 +46,7 @@ A trace belongs to the tables it was made with. When a new data version changes 
 - `SmokeObserver`, `SmokeSchema`: what one observation holds and the schemas a run can be made in.
 - `ReferenceComparison`: the first-divergence comparison of a run's trace with a reference trace.
 - `ReferenceSuite`: runs every case of a references folder and holds each outcome to `reference-expectations/<version>.json`.
-- `TraceReader`: reads a reference battle's trace in the format it is published in, one `TraceCompression` strategy per format (today `ZstdCompression`, for `observations.jsonl.zst`; another format is one more strategy). A folder with no trace, two traces, or a file not in its named format is refused, so the case is invalid with the reason.
+- `TraceReader`: reads a reference battle's trace in the format it is published in, one `TraceCompression` strategy per format: `ZstdCompression` for `observations.jsonl.zst`, and `DeltaZstdCompression` for `observations.delta.jsonl.zst`, the trace's delta lines (`TraceDelta`, [Delta traces](#delta-traces)). A folder with no trace, two traces, or a file not in its named format is refused, so the case is invalid with the reason.
 - `CoverageScore`: plays a coverage set (below) and sums up how much of it the battle core reproduces.
 
 ## What does not belong here
@@ -111,7 +111,24 @@ A coverage set is a large sample of them, up to about 20,000 battles of one data
 ./gradlew :conformance:coverageMerge -Pcrforge.coverage.tallies=<folder of the tallies>
 ```
 
-A set is packed in part files of up to 1,000 battles. A tally holds the counts behind a score (battles, matches, agreed and recorded ticks, outcomes and every first failure), so the tallies of all parts sum to exactly the score one run over the whole set gives.
+A set is packed in part files of up to 1,000 battles, each battle's trace as its delta lines (below). A tally holds the counts behind a score (battles, matches, agreed and recorded ticks, outcomes and every first failure), so the tallies of all parts sum to exactly the score one run over the whole set gives.
+
+### Delta traces
+
+A trace restates the whole battle on every tick, though from one tick to the next only a few values move: a unit's position, a side's elixir, the tick itself. A coverage set stores each trace as its delta lines, `observations.delta.jsonl.zst` (zstd), about a quarter of the size of the zstd trace: on the battles of a 16.635.3 set, 43 KB a battle against 185 KB.
+
+The delta file has one line per observation. Line 1 is the first observation as it is. Every later line is the delta of its observation against the one before, `{}` when they are equal. A delta is read against the old value:
+
+- an integer against an integer: the difference, new minus old
+- an object against an object: the keys that changed or are new, each value read against the old value of its key (a new key's value is taken as it is), and `"-"`: the keys removed
+- an object against a list:
+  - with `"*"`: the delta of each element in turn (`{}` for an element that did not change), the list keeping its length
+  - else: the change of a list of objects each with an integer `"id"`, in ascending id: `"-"` the ids removed, `"+"` the objects added, whole, and `"~"` for each kept object that changed, its `"id"` and its delta
+- anything else: the new value, whole
+
+For example, a tick on which one unit moved and both sides gained elixir is one short line, `{"entities":{"~":[{"id":5000033,"x":-58,"y":17}]},"sides":{"*":[{"elixir":178},{"elixir":178}]},"tick":1}`.
+
+`TraceDelta` rebuilds each observation and writes it as a run writes its trace, every object's keys sorted and no spaces, so the rebuilt trace is the original's bytes: a trace is packed in this form only when it rebuilds to them, and the comparison checks the rebuilt trace against `trace_sha256` as it checks any trace. A delta that does not apply (a removed key or id that is not there, an element count that differs) is refused, never guessed at. The reference battles of the game data repository keep the zstd trace.
 
 ### Scoring in CI
 
