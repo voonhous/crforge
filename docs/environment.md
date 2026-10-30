@@ -403,7 +403,11 @@ The recordings hold this. Both hands are observed on every tick of every referen
 
 `LadderEnvTest.aPlayedSlotOffersNoCardUntilTheNextOneJoinsTheHand` holds the mask and the observation to the table above.
 
-**Not modelled: a new card's arrival on the screen.** No recorded player gives a play of a card in the first 4 ticks after it joins the hand. Of the 56,429 plays of a card that joined mid-battle, the earliest came 5 ticks after (3 plays), then 6 (27 plays) and 7 (44 plays). Plays of cards already in the hand come closer together: 103 of 62,137 consecutive plays of a side are given 0 to 4 ticks apart. Whether the screen holds a new card back while it moves into its slot, or this is how fast a player reacts to it, is not established; it is filed for tracing in the client, not guessed. Until it is settled, the mask opens a new card from the tick it joins the hand, earlier than any recorded player has played one.
+**A new card's arrival on the screen.** Traced in client 16.635.1, the hand screen holds no newly joined card back. The card slides in from the next-card preview over 0.375 seconds. While it slides it can be touched only where it already covers its own slot, which it does within 0.125 seconds of joining (3 ticks at most, sooner for some slots, depending on the screen's layout). Nothing reads how long ago a card arrived: not the drag, the drop, nor the client's try before it sends a play.
+
+So the gap the recordings show is the player's, not a rule. No recorded player gives a play of a card in the first 4 ticks after it joins the hand: of the 56,429 plays of a card that joined mid-battle, the earliest came 5 ticks after (3 plays), then 6 (27 plays) and 7 (44 plays). Plays of cards already in the hand come closer together: 103 of 62,137 consecutive plays of a side are given 0 to 4 ticks apart.
+
+The mask opens a new card from the tick it joins the hand and leaves out the slide's touch limit: it depends on the slot and the screen's layout, it lasts at most 3 ticks, and at the default decision of 5 ticks an agent seldom acts that soon after a card joins.
 
 ### The action
 
