@@ -35,8 +35,8 @@ import org.junit.jupiter.api.io.TempDir;
  * both radii and a shot otherwise; the bayonet's action deals a typed hit on the target in the
  * drain of the hit's own tick, at the musketeer's level and with no crown-tower share. What the
  * references do not reach is held here: the buff on damage after a bayonet, target_is_ground with
- * the targeting off and on a target whose layer a tag forces, and the refusals around an entry's
- * action and a forced target that is not a character.
+ * the targeting off and on a character or princess tower whose layer a tag forces, a princess tower
+ * Vines holds, and the refusals around an entry's action.
  */
 class BattleThreeMusketeersTest {
 
@@ -216,8 +216,9 @@ class BattleThreeMusketeersTest {
 
   @Test
   @DisplayName(
-      "target_is_ground on a target that is not a character and carries a force tag is refused")
-  void aForcedTowerIsRefused() {
+      "target_is_ground on a princess tower reads its force tags before its row, as on a character:"
+          + " FORCE_IS_GROUND ground, FORCE_IS_AIR not, both its live height 0")
+  void aTowerAnswersItsForceTags() {
     Scene scene = new Scene(GameData.tables());
     TowerEntity tower = scene.match.getWorld().princessTowers(1).get(0);
     CharacterEntity musketeer =
@@ -230,10 +231,55 @@ class BattleThreeMusketeersTest {
     BattleWorld world = scene.match.getWorld();
     BattleExpressionEnvironment environment = new BattleExpressionEnvironment(musketeer, world);
     assertThat(evaluate("target_is_ground", environment)).isEqualTo(1);
-    tower.getView().setFlags(tower.getView().getFlags() | world.forceIsAir());
-    assertThatThrownBy(() -> evaluate("target_is_ground", environment))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("which is not a character and carries FORCE_IS_AIR");
+
+    GridEntity view = tower.getView();
+    long untagged = view.getFlags();
+    view.setFlags(untagged | world.forceIsAir());
+    assertThat(evaluate("target_is_ground", environment)).as("FORCE_IS_AIR").isZero();
+    view.setFlags(untagged | world.forceIsGround());
+    assertThat(evaluate("target_is_ground", environment)).as("FORCE_IS_GROUND").isEqualTo(1);
+    view.setFlags(untagged | world.forceIsAir() | world.forceIsGround());
+    assertThat(evaluate("target_is_ground", environment)).as("both at height 0").isEqualTo(1);
+    view.setHeightOffset(view.getHeightOffset() + 1);
+    assertThat(evaluate("target_is_ground", environment)).as("both above height 0").isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "a princess tower Vines holds carries FORCE_IS_GROUND and stays a ground target: the"
+          + " musketeer inside its reach keeps taking it with the bayonet, never a shot")
+  void aTowerVinesHoldsStaysGround() {
+    Scene scene = new Scene(GameData.tables());
+    BattleWorld world = scene.match.getWorld();
+    TowerEntity tower = world.princessTowers(1).get(0);
+    GridEntity view = tower.getView();
+    // Edges touching, so the musketeer stands inside the bayonet's reach whatever its range.
+    int apart =
+        tower.getData().collisionRadius() + world.getRecords().unit(MUSKETEER).collisionRadius();
+    CharacterEntity musketeer = scene.still(0, MUSKETEER, view.getX(), view.getY() - apart, "N");
+    while (musketeer.getTargeting().getReference() != tower.getTargetView() && scene.tick < 100) {
+      scene.step(1);
+    }
+    assertThat(musketeer.getTargeting().getReference()).isSameAs(tower.getTargetView());
+
+    scene.match.placeAreaEffect(scene.tick, "Vines_AeO", LEVEL, 0, view.getX(), view.getY(), "v");
+    List<Integer> held = new ArrayList<>();
+    for (int i = 0; i < 200; i++) {
+      scene.step(1);
+      if ((view.getFlags() & world.forceIsGround()) != 0) {
+        held.add(scene.tick);
+      }
+    }
+    assertThat(held).as("the steps Vines holds the tower").isNotEmpty();
+    assertThat(scene.typed)
+        .as("the bayonet's hits on the tower while it is held")
+        .anyMatch(
+            hit ->
+                hit.contains(" N " + tower.name() + " ")
+                    && held.contains(Integer.parseInt(hit.substring(0, hit.indexOf(' ')))));
+    // A hit inside the hold picks the next hit's entry with the tower under FORCE_IS_GROUND: the
+    // bayonet again, never a shot.
+    assertThat(scene.ownLaunches).as("the musketeer's shots").isEmpty();
   }
 
   @Test

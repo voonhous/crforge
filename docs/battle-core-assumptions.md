@@ -1420,8 +1420,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
   The starting-attack row is queued on the unit at the first attack step, at each hit and on a new reference already in range, and runs in its phase-2 pass. It picks the entry:
 
   - target_is_ground is the reference's row's flying height 0, so buildings and crown towers are ground and a flying row is not, and none while the unit's targeting is off.
-  - A character reference answers from its tag word first, as every reader of its layer does: ground under FORCE_IS_GROUND alone, not under FORCE_IS_AIR alone, at height 0 under both. So a grounded evolved Royal Hog inside the musketeers' reach takes the bayonet.
-  - A force tag on a reference that is not a character is refused.
+  - The reference answers from its tag word first, as every reader of its layer does: ground under FORCE_IS_GROUND alone, not under FORCE_IS_AIR alone, at height 0 under both. So a grounded evolved Royal Hog inside the musketeers' reach takes the bayonet.
+  - A crown tower answers as a character does: the game builds it as one (the king tower as the summoner kind) and both kinds share the ground answer. So a princess tower Vines holds stays ground, and a musketeer inside its reach keeps the bayonet (the reference battle vines_tower_threemusketeers_bayonet).
 
   Refused:
 
