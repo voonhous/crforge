@@ -128,7 +128,7 @@ class BattleSkeletonKingTest {
     }
 
     void kill(WorldEntity unit) {
-      battle.getWorld().kill(unit, null);
+      battle.getWorld().hits().kill(unit, null);
       battle.getBattle().step();
     }
 

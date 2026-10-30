@@ -849,7 +849,7 @@ class BattleUppercutWindTest {
         // whose damage drain kills the dragon.
         dragon.actionHolder().schedule(wind, 0);
       }
-      scene.world().kill(dragon, null);
+      scene.world().hits().kill(dragon, null);
       scene.step(1);
       assertThat(scene.match.getBattle().getHolder().isListed(dragon))
           .as("the dragon left")

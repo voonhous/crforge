@@ -124,7 +124,7 @@ class BattleEnchantGiverLeftTest {
       if (launched == 0 && !arrows.isEmpty()) {
         launched = tick;
         if (killArcher) {
-          world.kill(archer, null);
+          world.hits().kill(archer, null);
         }
       }
       if (archerLeft == 0 && launched > 0 && !knight.liveObject(archer.getId())) {

@@ -128,7 +128,7 @@ class BattleAbilityTest {
     BattleWorld world = match.getWorld();
     assertThat(world.locks().claim(buffer.getId(), knight.getId(), 1)).isTrue();
 
-    world.kill(knight, null);
+    world.hits().kill(knight, null);
     // The kill lands at the next step's damage drain and the death's cleanup takes it out of the
     // live list; the pre-pass of the step after drops its lock.
     match.getBattle().step();

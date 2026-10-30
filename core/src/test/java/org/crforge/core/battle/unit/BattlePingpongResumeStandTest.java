@@ -83,7 +83,7 @@ class BattlePingpongResumeStandTest {
     int y = executioner.getView().getY();
 
     // The clearing's kill: the resume at once, the kill queued for the drain.
-    match.getWorld().clearingKill(executioner);
+    match.getWorld().hits().clearingKill(executioner);
     assertThat(executioner.getView().getState()).isEqualTo(GridEntityState.MOVING);
     match.getBattle().step();
 

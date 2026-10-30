@@ -50,7 +50,7 @@ class BattleRageBottleTest {
     }
     // The kill lands at the next step's damage drain, after that step's walk: the bottle stands
     // where the Lumberjack died.
-    match.getWorld().kill(lumberjack, null);
+    match.getWorld().hits().kill(lumberjack, null);
     int x = -1;
     int y = -1;
 

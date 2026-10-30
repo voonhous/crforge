@@ -314,7 +314,7 @@ class BattleGoblinDrillEvoTest {
     // Destroyed from outside; the next step's cleanup takes it out of the battle and its side's
     // list.
     match.getBattle().step();
-    match.getWorld().dealDamage(left.getTargetView(), 1_000_000, 0, 1);
+    match.getWorld().hits().dealDamage(left.getTargetView(), 1_000_000, 0, 1);
     match.getBattle().step();
     assertThat(match.getBattle().getHolder().entities()).doesNotContain(left);
 

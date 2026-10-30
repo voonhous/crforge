@@ -91,7 +91,7 @@ class AngryBarbariansEvolutionTest {
       }
       // Each play's units are removed before the next play, so no tower falls and the match runs
       // on for as many plays as the evolved row's cost asks.
-      previous.forEach(unit -> battle.getWorld().kill(unit, null));
+      previous.forEach(unit -> battle.getWorld().hits().kill(unit, null));
       previous = play.units();
     }
 

@@ -64,6 +64,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `WorldObserver` | what watches the arena from outside the tick: hits, areas, launches, impacts, removals, a king tower's activation |
 | `WorldEvents` | what the world tells its observers: every event, at the tick in progress, to each observer in the order it attached |
 | `ProjectileDeflection` | the deflection of projectiles by the area effects that deflect them: the tick's deflectors as the index lists them, the pass over a flying projectile's position and its aim, and the turn-around itself |
+| `HitQueue` | the battle's damage: every hit queued for the drain, the drain that deals them after the post-hooks in the order queued, each with its reflect, buff on damage and kill, and whether the damage queued for an entity will kill it |
 | `Standard1v1Battle` | the standard arena with its six towers |
 | `ActivationEvent` | one step of a king tower's activation, as observers are told it |
 | `ActionOwnerEntity` | an object that only owns actions, standing in for the objects that run spawn rows in the data |

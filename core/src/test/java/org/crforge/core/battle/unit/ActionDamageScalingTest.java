@@ -372,7 +372,7 @@ class ActionDamageScalingTest {
             false,
             true,
             true);
-    battle.getWorld().queueActionDamage(quake, tesla, damage, 0);
+    battle.getWorld().hits().queueActionDamage(quake, tesla, damage, 0);
     battle.getWorld().clearingRemoval(quake);
     assertThat(battle.getWorld().isHitsHeld()).isFalse();
     assertThatThrownBy(() -> battle.getBattle().step())

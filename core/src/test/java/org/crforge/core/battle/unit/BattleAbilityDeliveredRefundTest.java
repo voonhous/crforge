@@ -159,7 +159,7 @@ class BattleAbilityDeliveredRefundTest {
 
     /** Kills her, which lands at the damage drain of the next step, and runs a few steps more. */
     void kill(CharacterEntity queen) {
-      battle.getWorld().kill(queen, null);
+      battle.getWorld().hits().kill(queen, null);
       step(4);
       assertThat(HitPoints.alive(queen.getHitPoints())).isFalse();
       assertThat(battle.getWorld().getHolder().isListed(queen)).as("she has left").isFalse();

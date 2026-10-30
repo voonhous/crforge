@@ -702,7 +702,7 @@ public final class ProjectileDeflection {
         // Queued with the projectile as the hit's source: the drain follows the damage with the
         // projectile's after-damage target buff, as it does an impact's, though the projectile
         // flies on to its new target.
-        world.queueDeflectedHit(projectile, parent, damage, hitId);
+        world.hits().queueDeflectedHit(projectile, parent, damage, hitId);
       }
       if (group != null) {
         group.doom(parent.getId());

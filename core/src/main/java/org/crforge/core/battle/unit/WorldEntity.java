@@ -816,7 +816,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       public void dealDamage(
           TargetView target, int damage, int hitId, int directionX, int directionY) {
         // Queued for the damage drain.
-        world.dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
+        world.hits().dealDirectHit(WorldEntity.this, target, damage, directionX, directionY);
       }
 
       @Override
@@ -1116,8 +1116,10 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
               @Override
               public DamageResult damage(TargetView victim, int dealt, int id) {
-                return world.dealAreaDamage(
-                    WorldEntity.this, world.entityOf(victim.getEntity()), dealt, id);
+                return world
+                    .hits()
+                    .dealAreaDamage(
+                        WorldEntity.this, world.entityOf(victim.getEntity()), dealt, id);
               }
             });
     world.events().areaDamaged(this, area, outcome);
@@ -3210,7 +3212,7 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
 
   @Override
   public void killBy(ActionOwner killer) {
-    world.kill(this, killer instanceof WorldEntity entity ? entity : null);
+    world.hits().kill(this, killer instanceof WorldEntity entity ? entity : null);
   }
 
   @Override
@@ -3223,12 +3225,14 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
         && !(source instanceof AreaEffectEntity)) {
       refuseReflect("a typed hit");
     }
-    world.queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
+    world
+        .hits()
+        .queueTypedHit(source instanceof WorldEntity entity ? entity : null, this, type, amount);
   }
 
   @Override
   public void queueActionDamage(ActionOwner source, TakeDamage.Damage damage, int added) {
-    world.queueActionDamage(source, this, damage, added);
+    world.hits().queueActionDamage(source, this, damage, added);
   }
 
   /**

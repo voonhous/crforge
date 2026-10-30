@@ -171,7 +171,7 @@ class BattlePhoenixTest {
     GameTables ring = ringOfThree(folder);
     Scene bottom = new Scene(ring);
     CharacterEntity phoenix = bottom.place(0, "Phoenix", X, Y);
-    bottom.match.getWorld().kill(phoenix, null);
+    bottom.match.getWorld().hits().kill(phoenix, null);
     // The kill lands at the next step's damage drain.
     bottom.step(1);
     assertThat(bottom.shots)
@@ -182,7 +182,7 @@ class BattlePhoenixTest {
 
     Scene top = new Scene(ring);
     CharacterEntity other = top.place(1, "Phoenix", X, Y);
-    top.match.getWorld().kill(other, null);
+    top.match.getWorld().hits().kill(other, null);
     top.step(1);
     assertThat(top.shots)
         .containsExactly(
@@ -205,7 +205,7 @@ class BattlePhoenixTest {
     CharacterEntity first = least.place(0, "Phoenix", X, Y);
     assertThatThrownBy(
             () -> {
-              least.match.getWorld().kill(first, null);
+              least.match.getWorld().hits().kill(first, null);
               least.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
@@ -220,7 +220,7 @@ class BattlePhoenixTest {
     CharacterEntity second = limit.place(0, "Phoenix", X, Y);
     assertThatThrownBy(
             () -> {
-              limit.match.getWorld().kill(second, null);
+              limit.match.getWorld().hits().kill(second, null);
               limit.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
@@ -235,7 +235,7 @@ class BattlePhoenixTest {
     CharacterEntity third = sweep.place(0, "Phoenix", X, Y);
     assertThatThrownBy(
             () -> {
-              sweep.match.getWorld().kill(third, null);
+              sweep.match.getWorld().hits().kill(third, null);
               sweep.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
@@ -253,7 +253,7 @@ class BattlePhoenixTest {
     clone.markClone(original);
     assertThatThrownBy(
             () -> {
-              cloned.match.getWorld().kill(clone, null);
+              cloned.match.getWorld().hits().kill(clone, null);
               cloned.step(1);
             })
         .isInstanceOf(UnsupportedOperationException.class)
@@ -269,7 +269,7 @@ class BattlePhoenixTest {
     CharacterEntity original = scene.place(0, "Knight", X, Y - 3000);
     CharacterEntity clone = scene.place(0, "Phoenix", X, Y);
     clone.markClone(original);
-    scene.match.getWorld().kill(clone, null);
+    scene.match.getWorld().hits().kill(clone, null);
     for (int i = 0; i < 100 && scene.spawned.isEmpty(); i++) {
       scene.step(1);
     }
@@ -301,7 +301,7 @@ class BattlePhoenixTest {
   void theEggsImmunityAndTags() {
     Scene scene = new Scene(GameData.tables());
     CharacterEntity phoenix = scene.place(0, "Phoenix", X, Y);
-    scene.match.getWorld().kill(phoenix, null);
+    scene.match.getWorld().hits().kill(phoenix, null);
     // The kill lands at the next step's damage drain; the fireball, aimed at its own start, lands
     // on its first flight visit, in the step after.
     scene.step(2);

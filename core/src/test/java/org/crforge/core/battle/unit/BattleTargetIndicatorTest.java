@@ -241,7 +241,7 @@ class BattleTargetIndicatorTest {
   void theRunStopsAsTheMachineDies(@TempDir Path folder) throws IOException {
     Scene scene = new Scene(written(folder));
     scene.stepTo(79);
-    scene.match.getWorld().kill(scene.machine, null);
+    scene.match.getWorld().hits().kill(scene.machine, null);
     scene.stepTo(93);
     assertThat(scene.log)
         .containsExactly(
@@ -268,7 +268,7 @@ class BattleTargetIndicatorTest {
               public void targetIndicatorLogged(
                   int t, CharacterEntity unit, TargetIndicatorAttack.Event event) {
                 if (event instanceof TargetIndicatorAttack.Signalled) {
-                  scene.match.getWorld().kill(unit, null);
+                  scene.match.getWorld().hits().kill(unit, null);
                 }
               }
             });

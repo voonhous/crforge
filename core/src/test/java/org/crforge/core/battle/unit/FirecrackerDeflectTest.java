@@ -126,7 +126,7 @@ class FirecrackerDeflectTest {
     // The Firecracker is killed as its rocket flies, so the rocket reaches the Deflect with no one
     // to be sent back at: its flight ends at the turn and it leaves at the next cleanup, before the
     // action it runs on the deflector is drained.
-    scene.world.kill(firecracker, null);
+    scene.world.hits().kill(firecracker, null);
     scene.step();
     assertThat(scene.world.getHolder().entities())
         .as("the Firecracker has left")

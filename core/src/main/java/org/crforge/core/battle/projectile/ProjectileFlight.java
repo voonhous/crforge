@@ -630,7 +630,9 @@ final class ProjectileFlight {
           @Override
           public DamageResult damage(TargetView victim, int dealt, int id) {
             // The area hands the damage on without a direction, queued for the damage drain.
-            return world.dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
+            return world
+                .hits()
+                .dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
           }
 
           @Override
@@ -656,6 +658,6 @@ final class ProjectileFlight {
     int directionX = p.getAimX() - p.getStartX();
     int directionY = p.getAimY() - p.getStartY();
     // Queued for the damage drain.
-    world.dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
+    world.hits().dealProjectileHit(p, p.getTarget(), dealt, hitId, directionX, directionY);
   }
 }

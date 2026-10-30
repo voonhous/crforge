@@ -151,6 +151,7 @@ class BattlePekkaEvoTest {
     // Leave the Giant one hit from death, so the Pekka is untouched when it kills it.
     match
         .getWorld()
+        .hits()
         .dealDamage(giant.getTargetView(), giant.getHitPoints().getHitPoints() - 1, 0, 1);
     giant.setActive(CharacterEntity.TARGETING_SLOT, false);
     stepUntilDead(match, giant, 400);

@@ -770,7 +770,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
         continue;
       }
       if (data.typedDamage() != null) {
-        world.queueAreaDamage(this, target, data.typedDamage());
+        world.hits().queueAreaDamage(this, target, data.typedDamage());
       }
       // The hit action, built for the object and scheduled on it, the area effect the cause.
       if (data.onHitAction() != null) {
@@ -955,8 +955,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
           target.actionHolder().schedule(action, ActionHolder.OWN_DELAY, false, actionHolder);
         }
         if (damage >= 1) {
-          world.queueTypedHit(
-              this, target, type, target.getTargetView().crownTower() ? tower : damage);
+          world
+              .hits()
+              .queueTypedHit(
+                  this, target, type, target.getTargetView().crownTower() ? tower : damage);
         }
         if (data.pushback() >= 1 && target instanceof CharacterEntity character) {
           character.pushedByArea(x, y, data.pushback());
@@ -1492,8 +1494,10 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
 
               @Override
               public DamageResult damage(TargetView victim, int amount, int hitId) {
-                return world.dealAreaEffectDamage(
-                    AreaEffectEntity.this, world.entityOf(victim.getEntity()), amount);
+                return world
+                    .hits()
+                    .dealAreaEffectDamage(
+                        AreaEffectEntity.this, world.entityOf(victim.getEntity()), amount);
               }
 
               @Override
