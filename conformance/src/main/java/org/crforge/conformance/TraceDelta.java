@@ -39,6 +39,39 @@ import java.util.TreeMap;
  *   <li>anything else: the new value, whole.
  * </ul>
  *
+ * <p>In a trace's terms, an observation holds three kinds of container, and each has its own kind
+ * of delta:
+ *
+ * <ul>
+ *   <li>an object (key to value), such as the observation itself, an entity or a side: only the
+ *       keys that changed, and {@code "-"} for the keys that are gone;
+ *   <li>a list of objects each with an {@code "id"}, the entities: {@code "-"} the ids removed,
+ *       {@code "+"} the objects added, {@code "~"} the objects changed;
+ *   <li>any other list of objects, matched by position, the sides (side 0, side 1): {@code "*"},
+ *       one delta per position.
+ * </ul>
+ *
+ * <p>So {@code "-"} has two jobs, removed keys in an object and removed ids in an id list; {@code
+ * "+"} and {@code "~"} only appear in an id list, {@code "*"} only in a list matched by position.
+ * Entities are matched by id, not position, because units come and go in the middle of the list:
+ * after one dies, every later entity moves up a place, and a delta by position would compare the
+ * wrong units. The sides never move, so their position is enough.
+ *
+ * <p>For example, a tick on which one unit appeared, another left, a third moved, and both sides
+ * gained elixir (the added unit shortened):
+ *
+ * <pre>{@code
+ * {"entities":{"+":[{"hp":1000,"id":5000040,...,"x":3500,"y":9000}],
+ *              "-":[5000031],
+ *              "~":[{"id":5000033,"x":-58,"y":17}]},
+ *  "sides":{"*":[{"elixir":178},{"elixir":178}]},
+ *  "tick":1}
+ * }</pre>
+ *
+ * <p>Read it as: entity 5000040 appeared, whole since it is new; entity 5000031 is gone; entity
+ * 5000033 moved, its x down by 58 and its y up by 17; side 0's elixir rose by 178 and so did side
+ * 1's; the tick is one more than before. Every key and value not named is as it was.
+ *
  * <p>Each observation rebuilt is written as a run writes its trace ({@link
  * ReplaySmokeRun#OBSERVATION_WRITER}): every object's keys sorted, no spaces. A trace is published
  * in this form only when its rebuilt lines are its own bytes, and the comparison checks the rebuilt
@@ -50,10 +83,18 @@ final class TraceDelta {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final JsonNodeFactory NODES = JsonNodeFactory.instance;
 
+  /** In an object delta, the keys removed; in an id list delta, the ids removed. */
   private static final String REMOVED = "-";
+
+  /** In an id list delta, the objects added, whole. */
   private static final String ADDED = "+";
+
+  /** In an id list delta, each kept object that changed: its id and its delta. */
   private static final String CHANGED = "~";
+
+  /** A list delta matched by position: one delta per element, {@code {}} when unchanged. */
   private static final String EACH = "*";
+
   private static final String ID = "id";
 
   private TraceDelta() {
