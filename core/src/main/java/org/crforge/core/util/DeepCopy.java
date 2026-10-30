@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Predicate;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import sun.misc.Unsafe;
 
 /**
@@ -83,6 +85,7 @@ import sun.misc.Unsafe;
  * a profile of the search shows the copy costs enough to matter (docs/environment.md, "What is not
  * offered yet").
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class DeepCopy {
 
   private static final Unsafe UNSAFE = unsafe();
@@ -104,10 +107,6 @@ public final class DeepCopy {
 
   /** Sorted collections and maps made empty: the copy, then its copied elements to insert. */
   private final ArrayDeque<Object> sorted = new ArrayDeque<>();
-
-  private DeepCopy(Predicate<Object> shared) {
-    this.shared = shared;
-  }
 
   /**
    * A deep copy of a graph.

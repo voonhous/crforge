@@ -7,6 +7,8 @@
 package org.crforge.core.battle.unit;
 
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.action.ActionContext;
 import org.crforge.core.battle.action.ActionHolder;
 import org.crforge.core.battle.expression.BattleFunctions;
@@ -104,6 +106,7 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " has_crown_tower_in_range on an object that is not a"
             + " character or of the neutral side, refused; the other 19 functions, which fail"
             + " when called, and a row whose negative id would fall among the other calls' ids.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
   private static final int KING_TOWER_DAMAGED = BattleFunctions.id("king_tower_damaged");
@@ -204,17 +207,11 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
   /** Princess towers a side must keep for tower_destroyed to answer false. */
   private static final int PRINCESS_TOWERS_KEPT = 2;
 
+  /** The entity every function starts from. */
   private final WorldEntity context;
-  private final BattleWorld world;
 
-  /**
-   * @param context the entity every function starts from
-   * @param world the battle it belongs to
-   */
-  BattleExpressionEnvironment(WorldEntity context, BattleWorld world) {
-    this.context = context;
-    this.world = world;
-  }
+  /** The battle it belongs to. */
+  private final BattleWorld world;
 
   @Override
   public Function resolve(String name) {

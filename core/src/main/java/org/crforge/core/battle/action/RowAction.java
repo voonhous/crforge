@@ -7,17 +7,16 @@
 package org.crforge.core.battle.action;
 
 import java.util.function.IntSupplier;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /** An action whose shared columns come from its row. */
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class RowAction implements BattleAction {
 
   /** The row's shared columns. */
   @Getter private final ActionRow row;
-
-  protected RowAction(ActionRow row) {
-    this.row = row;
-  }
 
   @Override
   public String name() {

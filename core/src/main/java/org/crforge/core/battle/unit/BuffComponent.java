@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.ToIntFunction;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.BattleComponent;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.action.ActionHolder;
@@ -178,6 +180,7 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " after the player-specific test, which decides alone when both are set; held by"
             + " BattleCastIdSpecificBuffTest. A cast-specific row applied from a source whose"
             + " cast id is not modelled is refused.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class BuffComponent implements BattleComponent {
 
   /** The slot of the buff component on every character and tower. */
@@ -205,11 +208,6 @@ public final class BuffComponent implements BattleComponent {
 
   /** The life conditions of the rows listed so far, compiled for the carrier, by their text. */
   private final Map<String, Expression> lifeConditions = new HashMap<>();
-
-  BuffComponent(WorldEntity entity, BattleWorld world) {
-    this.entity = entity;
-    this.world = world;
-  }
 
   @Override
   public int index() {

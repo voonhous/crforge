@@ -7,6 +7,8 @@
 package org.crforge.core.battle.unit;
 
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.crforge.core.battle.filter.FilterSubject;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
@@ -26,13 +28,10 @@ import org.crforge.core.pathfinding.GridEntity;
             + " the immunity left after its dash, which it reads under RespectDodgingDamageCooldown"
             + " (client 16.635.1, traced, no reference yet); the summoner is the king tower. Supplied: a princess tower is a row with the"
             + " summoner-tower column.")
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class EntityFilterSubject implements FilterSubject {
 
   private final WorldEntity entity;
-
-  EntityFilterSubject(WorldEntity entity) {
-    this.entity = entity;
-  }
 
   /** The entity it answers for. */
   WorldEntity entity() {
