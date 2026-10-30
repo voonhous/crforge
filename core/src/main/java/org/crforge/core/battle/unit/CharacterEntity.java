@@ -32,7 +32,6 @@ import org.crforge.core.battle.action.CannonBarrage;
 import org.crforge.core.battle.action.CaptureCharacter;
 import org.crforge.core.battle.action.ChainAttackHost;
 import org.crforge.core.battle.action.Clone;
-import org.crforge.core.battle.action.ConeShape;
 import org.crforge.core.battle.action.Counter;
 import org.crforge.core.battle.action.DamagingPushBack;
 import org.crforge.core.battle.action.DashingAttackChain;
@@ -53,13 +52,13 @@ import org.crforge.core.battle.action.PopBalloons;
 import org.crforge.core.battle.action.ReadyChampionAbility;
 import org.crforge.core.battle.action.RunOnResolvedObjects;
 import org.crforge.core.battle.action.SetIndicatorOnTarget;
-import org.crforge.core.battle.action.ShapeSelector;
 import org.crforge.core.battle.action.ShapeSelectorHost;
 import org.crforge.core.battle.action.SpawnResetableAreaEffect;
 import org.crforge.core.battle.action.TargetIndicatorAttack;
 import org.crforge.core.battle.action.TargetIndicatorHost;
 import org.crforge.core.battle.action.Taunt;
 import org.crforge.core.battle.action.WarpCharacter;
+import org.crforge.core.battle.data.ActionBinding;
 import org.crforge.core.battle.filter.GameObjectFilter;
 import org.crforge.core.battle.projectile.CaptureHost;
 import org.crforge.core.battle.projectile.CaptureRun;
@@ -5014,42 +5013,27 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * What an action that runs another on what its resolver finds asks of the battle about the
-   * character: the objects the filter lets through, asked by the character itself, its position,
-   * and a row built for and scheduled on what it found or on itself.
+   * What an action that runs another on what its resolver finds asks of the character: its team and
+   * row for the filter, its position, the heading it faces, and the binding and the holder of a row
+   * scheduled on itself. The rest the world answers (see {@link WorldResolvedObjectsHost}).
    */
   @Override
   public RunOnResolvedObjects.Host resolvedObjectsHost(BattleAction action) {
-    return new RunOnResolvedObjects.Host() {
+    return new WorldResolvedObjectsHost(world, action, this) {
       @Override
-      public List<SetIndicatorOnTarget.Candidate> candidates(GameObjectFilter filter) {
-        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
-        for (WorldEntity entity :
-            world.resolverCandidates(
-                filter, side() & 1, getData().name(), action.name(), CharacterEntity.this)) {
-          out.add(new MarkCandidate(entity, action.name()));
-        }
-        return out;
+      int team() {
+        return side() & 1;
       }
 
       @Override
-      public List<SetIndicatorOnTarget.Candidate> candidates(
-          GameObjectFilter filter, ConeShape cone) {
-        // A Cone turns with the heading the character faces, as a ring spawn's angle shift does.
-        List<SetIndicatorOnTarget.Candidate> out = new ArrayList<>();
-        for (WorldEntity entity :
-            world.resolverConeCandidates(
-                getView().getX(),
-                getView().getY(),
-                FixedMath.angleOfVector(getView().getDirX(), getView().getDirY()),
-                cone,
-                filter,
-                side() & 1,
-                getData().name(),
-                CharacterEntity.this)) {
-          out.add(new MarkCandidate(entity, action.name()));
-        }
-        return out;
+      String rowName() {
+        return getData().name();
+      }
+
+      // A Cone turns with the heading the character faces, as a ring spawn's angle shift does.
+      @Override
+      int heading() {
+        return FixedMath.angleOfVector(getView().getDirX(), getView().getDirY());
       }
 
       @Override
@@ -5063,20 +5047,13 @@ public class CharacterEntity extends WorldEntity {
       }
 
       @Override
-      public void schedule(
-          SetIndicatorOnTarget.Candidate target,
-          String row,
-          ActionHolder cause,
-          ActionContext context) {
-        WorldEntity entity = ((MarkCandidate) target).entity();
-        BattleAction built = world.getActions().build(row, world.binding(entity));
-        entity.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      ActionBinding ownerBinding() {
+        return world.binding(CharacterEntity.this);
       }
 
       @Override
-      public void scheduleOnOwner(String row, ActionHolder cause, ActionContext context) {
-        BattleAction built = world.getActions().build(row, world.binding(CharacterEntity.this));
-        actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      ActionHolder ownerHolder() {
+        return actionHolder();
       }
     };
   }
@@ -5272,58 +5249,18 @@ public class CharacterEntity extends WorldEntity {
   }
 
   /**
-   * What a shape selector's run on the character asks of the battle, as the Giant hero form's slap
-   * selector runs on itself: the battle tick, the circle around its point that tests buildings by
-   * their squares, an object's hit points and shield or its squared distance from the character,
-   * its own tag word, side and point and where a pick stands, the holder of a pick, and the actions
-   * it schedules, each with the cause and the context the run hands it: on what it picked, and on
-   * itself.
+   * What a shape selector's run on the character asks of it, as the Giant hero form's slap selector
+   * runs on itself: the circle around its point that tests buildings by their squares, its own tag
+   * word, side and point, and the action it schedules on itself with the cause and the context the
+   * run hands it. The rest of the run's asks the world answers (see {@link
+   * WorldShapeSelectorHost}).
    */
   @Override
   public ShapeSelectorHost shapeSelectorHost() {
-    return new ShapeSelectorHost() {
+    return new WorldShapeSelectorHost(world) {
       @Override
-      public int tick() {
-        return world.tick();
-      }
-
-      @Override
-      public List<Integer> collect(int radius, GameObjectFilter filter) {
-        List<Integer> ids = new ArrayList<>();
-        for (WorldEntity entity : world.shapeQuery(CharacterEntity.this, radius, filter)) {
-          ids.add(entity.getId());
-        }
-        return ids;
-      }
-
-      @Override
-      public int score(int id, int mode) {
-        WorldEntity object = (WorldEntity) world.liveObject(id);
-        if (mode == ShapeSelector.CLOSEST) {
-          // The guarded squared distance from the owner's point, its bits flipped.
-          return FixedMath.INT_MAX
-              ^ FixedMath.squaredDistance(
-                  getView().getX(), getView().getY(), object.x(), object.y());
-        }
-        HitPoints hitPoints = object.getHitPoints();
-        if (hitPoints == null) {
-          return 0;
-        }
-        return mode == ShapeSelector.HIGHEST_CURRENT_HP_INCLUDE_SHIELDS
-            ? hitPoints.getHitPoints() + hitPoints.getShield()
-            : hitPoints.getHitPoints();
-      }
-
-      @Override
-      public ActionHolder holder(int id) {
-        return ((WorldEntity) world.liveObject(id)).actionHolder();
-      }
-
-      @Override
-      public void schedule(int targetId, String action, ActionHolder cause, ActionContext context) {
-        WorldEntity target = (WorldEntity) world.liveObject(targetId);
-        BattleAction built = world.getActions().build(action, world.binding(target));
-        target.actionHolder().schedule(built, ActionHolder.OWN_DELAY, false, cause, context);
+      List<WorldEntity> around(int radius, GameObjectFilter filter) {
+        return world.shapeQuery(CharacterEntity.this, radius, filter);
       }
 
       @Override
@@ -5344,16 +5281,6 @@ public class CharacterEntity extends WorldEntity {
       @Override
       public int ownerY() {
         return getView().getY();
-      }
-
-      @Override
-      public int x(int id) {
-        return ((WorldEntity) world.liveObject(id)).x();
-      }
-
-      @Override
-      public int y(int id) {
-        return ((WorldEntity) world.liveObject(id)).y();
       }
 
       @Override
