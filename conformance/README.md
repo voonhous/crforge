@@ -90,7 +90,7 @@ The tables are the ones the build makes from the asset source (the Gradle proper
 
 The reference battles are chosen cases, each held to its expected outcome. Coverage asks a wider question: of the game's real battles of a data version, how many does the battle core reproduce?
 
-A coverage set is a large sample of them, up to about 20,000 battles of one data version, each with the game's own trace, every kind of battle the battle core plays (Ladder, Path of Legends and challenges) in the one set, in the layout of a references folder (a corpus listing under `corpora/` and its `battles/`). The sets are not in this repository or the game data repository. They live in the coverage dataset, and `coverage.lock` pins its revision and lists the data versions that have a set.
+A coverage set is a large sample of them, tens of thousands of battles of one data version (43,807 for 16.635.3), each with the game's own trace, every kind of battle the battle core plays (Ladder, Path of Legends and challenges) in the one set, in the layout of a references folder (a corpus listing under `corpora/` and its `battles/`). The sets are not in this repository or the game data repository. They live in the coverage dataset, and `coverage.lock` pins its revision and lists the data versions that have a set.
 
 `CoverageScore` runs every battle of a set as `ReferenceSuite` runs a case and writes only totals, never a battle:
 
