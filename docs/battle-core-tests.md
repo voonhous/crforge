@@ -1,0 +1,459 @@
+# The battle core's tests and reference battles
+
+The tests and reference battles that hold the battle core, as they landed. How a test treats the game data is under [Tests and game data](battle-core.md#tests-and-game-data), and the behaviour they hold is described in [What is covered today](battle-core.md#what-is-covered-today).
+
+- Two Knight walks have reference battles recorded for them: a Knight deployed inside the left lane near the middle, which holds the lane rule's first ten ticks (`golden-gaps-v1/walk_knight_left_inner`), and one deployed behind its right princess tower, steered around it (`golden-gaps-v1/walk_knight_right_rear`).
+- `FirstHitAfterLockTest` runs the targeting pass on a unit it writes standing inside a princess tower's reach and holds the first hit nine ticks after the lock.
+- `BattleProjectileFlightTest` holds a shooter's projectiles on rows it writes, a Musketeer standing in range of a princess tower:
+  - every launch with its id, row, owner, target, start and aim
+  - every position after every flight step, worked out from the written launch radius, speed and gravity with the flight's integer arithmetic
+  - every impact with its damage and the tower's remaining hit points
+  - the projectile's place ahead of every character in the holder while it flies and its removal in the tick it arrives
+  - a shot whose target is destroyed mid-flight flying on to where the tower stood and landing on nothing
+- `BattleTowerTargetingTest` holds the towers' own targeting:
+  - a king tower visited on its first two ticks and then switched off
+  - on rows it writes, the king switched off from the condition until its activating run has run out, its activation's every step, and its first visit, four ticks after the run's length, locking on the Knight that destroyed the princess tower
+  - a tower's elapsed time stepped from its first tick
+  - a passive tower that never selects
+- `AreaDamageTest` holds the area damage's rules one at a time, a chain's circle and id list among them: the owner's side spared unless asked, a unit's own radius and a building's square in the circle test, the crown-tower damage, one tower-slot entity per area, the limit, the split rounded up and the air gate.
+- `ExpressionCompilerTest` and `ExpressionEvaluatorTest` hold the expression language case by case: every operator's opcode, precedence and associativity, the literals and their 32-bit wrap, the tokenizer, symbols resolved in the environment before the builtins, every builtin, the fold and what it leaves to run, every refused string, the stack depth, 32-bit arithmetic with division by zero, truth, no short circuit, calls and the two early answers.
+- `BattleFunctionsTest` holds the 47 names, and `BattleRandomTest` the random source against 42 recorded sequences of draws.
+- `BattleExpressionEnvironmentTest` holds the battle's answers to these, and the refusal of a function it does not answer yet:
+  - the king's condition
+  - `x` and `y`, read from the context entity's position as it stands
+  - `team_index` and `team_y_direction` for either side
+  - `map_width` and `map_height`
+  - a character or building row's name as its global id, with `has_data` holding on that row alone and a negative id answering 0 by name
+  - `is_moving` answering 1 for a walking character only - not while it deploys, under NO_MOVE, with its movement component off or for a tower
+- `BattleCardPlayTest` holds the stamp of a player's play and the twenty ticks it waits, and refuses a card whose unit has a starting action.
+- `BattleRecordsTest` holds the mass a row is loaded at, which a tower's push on a unit in contact with it reads: a crown tower's worked out from its collision radius, as its row writes none, and every mass held between 1 and 20.
+- `PushbackRequestTest` holds the pushback request and its setter to 2000 recorded cases: the gates and what lifts them, the distance capped or less the separation, a longer pushback kept, the budget, the target and the zero vector.
+- `BattleDeathTickTest` holds the two Knights killing each other on one tick: both hits land, both leave in that tick's cleanup, and both have their movement switched off.
+- `AlignedStaticCheckTest` holds the push pass's aligned static neighbours check to 1500 recorded cases, and `PushPassTest` the neighbour a unit waiting to deploy is to it: not static, since it keeps its movement component switched off.
+- `BattleBuildingBesideBuildingContactTest` holds a building of the characters table out of contact while another building stands within 500 of it edge to edge. A death spawn's child flown over it takes the step it takes alone, and it pushes the child with the other building 500 clear of it, as a building of the buildings table does beside another.
+- `CardPlacementTest` holds parts of a card play's placement on rows it writes or the shipped card's columns: a listed character's offset turned by side and half, the top side's Three Musketeers on the left half, the first unit's radius, angle shift and deploy time serving every index, and the raw second count.
+- Plays at the arena's edge, where the formation is clamped, are held by the recorded reference battles `golden-gaps-v1/place_barbarians_edge` and `golden-gaps-v1/place_skeleton_army_edge`.
+- `FormationTest` holds the formation to 4992 recorded cases over every branch it takes, and `MapCheckTest` the map check's bounds and codes.
+- `ActionRuntimeTest` holds the action runtime to its recorded cases:
+  - a delay of zero starting now, and one in milliseconds queued as whole ticks, 49 ms included
+  - a pending pass taking only its own phase, and phase 0 going to any
+  - a paused entry held and counting past zero, and a false start gate dropping the run
+  - a run stepped once per pass and removed at the pass after it finishes, and a stopped one removed at once
+  - a singleton's second start re-triggering its run
+  - the next action after the run or alongside it, with the carried delay
+  - the row's tags on its run
+  - the swap order of a pending pass
+- `ActionCompositesTest` holds the composites to their recorded cases:
+  - a group's parts scheduled at once at their offsets, and none past a false start gate
+  - a select's choice by its condition modulo the list or its first true per-part condition, else the part past the last condition, and none with no condition
+  - the select's part queued with no delay and the select's cause, and nothing chosen or evaluated past a false start gate
+  - a filter's branches and its default of true
+  - a run on the instigator reversing the direction
+  - a check of the instigator scheduling its match branch on its owner when the cause's row is named, its miss branch for a cause of another row or of none, a match for any cause when it names no row, and nothing without a cause
+  - a duration's counter tested before it advances, at the usual step and the hit speed's, and its reset on a re-trigger
+  - an interval's half-rate step, its reload, the owner as the cause of what it fires, and its pause tag
+  - a wait's default of false and its end with or without an action
+  - a flip flop's full cycle and its reset on a flicker
+  - a select that passes its delay on, its part waiting the select's own
+- `ActionLeavesTest` holds the first leaves to their recorded cases:
+  - a variable written, replaced, a second key kept apart, 0 unread and nothing evaluated without a variable
+  - a shield's share of the maximum with its clamps and truncation, and none without hit points or with a maximum of zero
+  - the health thresholds' start conditions, each fired once at or below its share, several in one step, and none re-armed by healing
+- `BattleVariablesTest` reads a variable an action wrote back through a compiled expression, per entity.
+- `HealingTest` holds the heal to 2000 recorded cases and the worked heals of the data: the shield taking the whole heal, the dead object, the cap that keeps over-heal, the king tower's cap one short of full and the over-heal percentage.
+- `KillTest` holds the kill to its worked cases: a death, a shield broken and a shield dented, the battle's holds ignored.
+- `ClearingKillEntryTest` holds a tiebreaker's clearing's kill on hand-written buffs. Lowered by a damage reduction at the entry, the unit lives through each step's kill with the reduction's share. Short of a heal over time landing before the drain, the unit keeps the heal.
+- `DrainTest` holds a tiebreaker's drain step landing under both holds, where an ordinary hit is refused, the step that takes the last hit point killing, and an untouchable target spared.
+- `BattleKillActionTest` kills a walking Knight through the action - movement off, observers told, gone at the next cleanup - and lets a shield that is up take a kill.
+- `TypedHitTest` holds the typed hit's entry: the hit points or the shield lowered and the amount it answers, the holds refusing it, and an id listed once and refused again without its tick moving.
+- `DamageTypeTest` holds a damage type's switches, their defaults and the pipeline with no buffs. It holds the level-scaling stage to 165 recorded cases (the published rows and rows of its own, amounts whose product wraps), and deal-damage amounts at level 11 on the published Common row (76 becomes 194).
+- `BattleDealDamageTest` queues two typed hits on a Knight through the action, which land at the next drain in order, with the type's actions run on the source and the target in the same tick. It scales hits by a level 5 source and by a source on a row of its own, then by that source's level on the Common row once it has left, and refuses a scaling hit with no source at all.
+- `SpawnPerformTest` holds the perform of a character spawn row to 1000 recorded cases: the source, both classes' points with the side's flips, the expressions and the building search, the block the spawner is handed and every call after the spawn.
+- `SpawnPlacementTest` holds the spawner's placement to 600 recorded cases on the standard arena, a single child on the point or one unit right of it and the ring. `SpawnPassableTest` holds the in-front test to 3000 recorded cases on the arena and on grids of their own.
+- The Mirror after a Knight and after a Fireball, the Ram Rider's bola on two defenders under a Rage the Ram hands its rider, and an Electro Giant struck by two melee attackers and a Musketeer are held by the recorded reference battles `golden-gaps-v1/mirror_after_troop`, `golden-gaps-v1/mirror_after_spell`, `golden-gaps-v1/ram_rider_vs_knights` and `golden-gaps-v1/electro_giant_struck_by_knights`.
+- `BattleActionSpawnTest` holds an action with no delay scheduled onto another entity inside a pending pass starting at once, a child's action to run on spawned running in the spawning pass before the child is live, and the refusals.
+- `GameObjectFilterTest` holds the game object filter to its recorded cases: the team gate by the side's low bit, the type gate for each kind and the three ways a character passes it, the tag exclusion, each slot exclusion asked only when set and rejecting on its answer, their order, `FilterDead` set by default, the whole-name comparison, the character-only block and the two lists.
+- `BattleRecordsTest` reads filters from their rows: the default that filters the dead, a row that turns it off, the lists and the tags as their bits.
+- `BattleFiltersAndTagsTest` asks a filter about the towers, and reads the king's sleeping tag back through an expression from the tick after its wait starts.
+- `ActionHolderTest` holds the action holder's rules one at a time:
+  - the swap-with-last order of a pending pass
+  - a zero-delay action starting at once only inside a pending pass
+  - a delay waited out in the end passes
+  - a duration finishing on the step after it reaches its length, and its tag counted until the next run pass removes it
+  - a wait ending on the step its condition holds
+  - an entity leaving the battle dropping the queued entries it caused whose rows abort, swapping the last in, and keeping those whose rows do not
+- `BattleSelectDrawTest` holds a select's draw: at the scheduling while the select's own entry waits out its delay, a condition the data writes as a list compiling from its first element, and an action owner's expressions answering `rand` and refusing any other name as the row is built.
+- `BattleMegaKnightTest` holds the Mega Knight's play where its runs do not take it:
+  - its appearance starting five king radii short of the placed point along the length, whichever side plays
+  - a play's push finding nobody beside an enemy, the appearance then pushing the Knight but not the Giant, which ignores pushback
+  - a Mega Knight that waits its turn entering the deploying state inside the tick, whose push reaches the Knight and the Giant around it but not a friend, a flying enemy, a building or one out of reach
+  - an evolved Mega Knight placed directly, which pushes nobody and casts nothing
+- `SpellCardTest` reads a spell card - its projectile or area effect, the Goblin Barrel's search for its Goblin, Arrows' waves, and The Log thrown with the rolling projectile it spawns. Rage, which summons a character, stays a troop play, and so does Heal, which deploys as a spell. The Electro and Ice Wizards, which list their wizard and make an area effect, deploy as spells: each lists its wizard with the delay its row's list gives and makes its area effect.
+- `BattleAreaEffectLaunchTest` holds an area effect's launch where the Lightning and Royal Delivery runs do not take it:
+  - each hit striking the enemy with the most hit points and shield not struck before, the first of equals kept and a Recruit's shield lifting it above a Musketeer
+  - a friend and a unit outside the circle passed by, and a hit with nobody left launching nothing
+  - a hidden Tesla no candidate
+  - a hit with nobody in the circle lost, a unit placed after it struck by the next
+  - an update whose launch found nobody ending without its life-end action
+  - the area effect as the projectile's launcher and the cause it names, forgotten as it leaves
+  - an area effect whose projectile sets a column its impact does not model refused as it is created
+- `BattleElectroGiantTest` holds the Electro Giant's reflect where its runs do not take it:
+  - a shot from strictly inside its reach struck back, and one from exactly that far not
+  - a Zap, an area effect, never struck back, and nothing struck back while its stun holds
+  - every pellet of one Hunter attack re-applying the buff while only the first deals the damage
+  - the hit that kills it still struck back, but not a second hit on that tick, which finds it with no hit points
+  - a Cannon, no crown tower, taking the reflect's damage
+  - a Valkyrie's area hit struck back
+  - nothing struck back at its own side or for a shot whose row ignores the reflect
+  - a Giant Skeleton killed by the reflected damage dying and dropping its bomb
+  - the reflected damage landing at the end of the drain, after a hit queued after the one struck back, so a Night Witch it kills on the step another hit fells the Giant dies after the Giant and its Bat walks on instead of starting an attack on it
+  - a Spear Goblin's shot struck back at the Goblin Giant it rides on, which hands the buff to both its riders
+  - a Three Musketeers bayonet, a damage-taking action's hit, struck back at its musketeer, and an evolved Electro Giant's pulse not
+  - an unkillable attacker at 1 hit point held there by the reflected damage
+  - an attacker whose tags forbid damage keeping the buff and all its hit points
+  - a kill on it, a damage-taking action's Reflected hit and a reflect from a Giant whose buffs scale its damage refused
+- `BattleThreeMusketeersTest` holds the Three Musketeers' attack choice where its runs do not take it:
+  - a Knight within the bayonet's reach taking only typed hits of the bayonet's damage, a Minion as close only shots
+  - a buff on damage, patched onto the row, applied on the bayonet's tick before its typed hit lands
+  - target_is_ground answering 0 with the targeting off and reading a character target's force tags before its row (a Minion held under FORCE_IS_GROUND taking the bayonet, a Knight under FORCE_IS_AIR shots, both tags its live height)
+  - an enchanting buff on a musketeer, whose attack sequence launches or acts, starting and listed on it
+  - the refusals: a force tag on a target that is not a character, and an entry's action in a sequence of one or beside a projectile
+- `CardPlacementTest` holds a listed character's offset on both sides and halves, and the top side's list on the left half.
+- `BattleMusketeerSnipeTest` holds the evolved Musketeer's snipe on the shipped rows:
+  - its entry's own range
+  - the index kept at the normal entry while the only enemy stands inside the minimum range
+  - an enemy up the lane taken as the reference and shot with the snipe entry's projectile from beyond the row's reach, a round a shot, until the run ends with the index back at 0
+  - the setter's store of any other reference putting the index back at once
+- The snipe's look, the drop of the reference after each shot and the last round are held by the recorded reference battle `tv-replays-v3/tv_replay_023`.
+- `BattlePhoenixTest` holds the Phoenix where its runs do not take it:
+  - a ring of three death projectiles from a row given a spawn radius, an angle shift and a count, the bottom side's turned across the width and the top side's along the length
+  - a Zap reaching an egg still immune
+  - the egg's row tags absent on the tick its fireball's impact makes it, and in its tag word from the next
+  - an egg leaving once it hatches with no death, and one whose row keeps it staying with no second firing
+  - the refusals: a death projectile drawn from a least radius, counted by a spawner's limit, held by its launcher's targeting component or launched by a clone
+- `BattleRecordsTest` reads the Phoenix's and its egg's columns and refuses a row tag besides the egg's three.
+- `BattleSkeletonBarrelTest` holds the Skeleton Barrel where its runs do not take it:
+  - the top side's container in the right lane, its ring turned over along the length only and its children taken as 0, 6400 and on up to 230400 nearer
+  - a Kamikaze time longer than the hit points in visits draining one a visit, its hit killing nothing
+  - the refusal of a live spawner that asks for a fixed priority
+- `BattleRecordsTest` reads the barrel's and its container's columns.
+- `ActionRowsTest` holds the pop's run stepped doing nothing and refuses a pop that drops containers or is a singleton.
+- `GridMovementAnswersTest` holds the special waypoint at the attack range from the reference, along the length for a unit standing on it.
+- `DrainTest` holds the drain refused where damage is forbidden.
+- `BattleGoblinHutTest` holds the Goblin Hut's life state where its runs do not take it, each against the standard game's spawns:
+  - a target in reach at the start, spawned at once and then every interval
+  - of three in reach the nearest, and of two equally near the one the index lists first
+  - a flyer found
+  - a target east of the hut, turned the other way
+  - a fan of three from a row given a spawn count of 3
+  - a target that leaves the keep reach and comes back, taken again without a spawn
+  - a target killed between ticks marking the run lost, and another taken without a spawn
+  - the edge of the reach, strict for the finder and inclusive for the keep test
+  - a stun that holds the timer
+  - a spawn due on the tick the hut dies, after its death spawn
+  - a rage that quickens the timer, worked from the record
+  - the refusal of a child with a starting action of its own
+- `ActionRowsTest` and `BattleCardPlayTest` count the life state's rows built and refuse the Goblin Cage's starting action.
+- `BattleFishermanTest` holds the Fisherman's special where its runs do not take it:
+  - the ring from the reference's radius plus the special's minimum range out to its radius plus the special range, both bounds armed and one unit beyond either not
+  - the row's load taking 50 a visit and firing on the visit that empties it, and the slow's share of 50 a visit under IceWizardSlowDown
+  - a hook on a Cannon dragging him at the hook's self-drag speed until within both radii and letting him walk on
+  - a Knight written slower than 60 pulled at 60 of the drag-back speed, and a Golem at the speed its row is loaded at, its mass and pushback not read
+  - the pulled troop's reference out of range dropped as it is hooked, and both its components off until it is let go
+  - the reference it keeps then kept to the end of the pull, the Fisherman's targeting on and his movement off while he waits
+  - a Fisherman who leaves or is stunned during the pull ending his hook with no second impact, the troop let go where the pull left it
+  - a troop that leaves during the pull letting the hook go at once
+  - a troop let go on the river moved off it
+  - a troop cloned while the hook pulls it over the river set up as a clone where the hook had it, on the water, with no move off it, the hook flying on to be let go at its arrival and the Fisherman going on; a Fisherman cloned while a hook on a building drags him set up where he stands, his hook ending at its next step where it stands
+  - the refusals: a troop still followed asked to stand on the river, a hook flying at a dashing troop or arriving at a troop in the air
+  - a hook arriving at a troop another holds a lock on ending as an ordinary arrival, at its aim, nothing asked into a hook's state
+  - the refusals of a hook arriving after such a lock is gone and of a pulled troop another then holds
+  - a special that lists its targets and a special range without a special projectile
+- `BattleGraveyardTest` holds the Graveyard's area effect where its runs do not take it:
+  - The middle of the arena, where the first row's offset is kept at 9000 and turned over at 9500, as the offsets across the width are turned over only strictly right of the middle.
+  - A life of the first spawn's delay running it on the tick of its last update, and one 50 ms shorter dropping it, still queued as the area effect leaves.
+  - A point on the river refused, the skeleton made one unit right of it and still on the water.
+  - An area effect's expressions reading its point, its side's direction, the arena's width and the battle's random source, any other name refused as the row is built.
+- `BattleCloneTest` holds the Clone where its run does not take it:
+  - Its hit cloning the own troops in its circle, air ones too, but no building, enemy or unit a Clone passes by.
+  - A clone at the Clone's level rather than its unit's, with 1 hit point of 1, in the clone state with its targeting off and carrying a copy of the Clone buff.
+  - A shield kept as 1 of 1 while its unit's is up and none of 1 once broken.
+  - The two moving apart 125 a visit for ten visits and resumed.
+  - A Knight that lost its target while attacking having its target-lost timer cleared by the clone's setup with its targeting on, and keeping it when a stun has switched its targeting off.
+  - A second Clone cloning the units again and passing their clones by, the perform refusing a clone reached directly.
+  - A clone's death spawns made clones.
+  - A Goblin Giant with written riders cloned with them, each rider's clone attached to the Giant's clone on its rider's angle and riding there through the move, with no rider of the clone's own.
+  - A Knight written to deploy for 1500 ms cloned as it deploys, both set up with the countdown, held still with NO_MOVE past the move apart's duration and resumed by it once the countdown has ended.
+  - A Goblin Giant with written riders cloned as it deploys: its clone set up before its countdown, making no riders of its own, each rider's clone with its rider's countdown.
+  - A Knight written to deploy and to push as it enters the deploying state cloned as it deploys, its clone's entry pushing nobody.
+  - A Knight written with a lifetime whose drain takes a hit point or more a visit cloned: the clone's drain step from the full maximum, the clone dead in its registration visit, its move apart starting no move, the Knight moving apart alone.
+  - The copies of a Knight's written buffs listed on its clone with no start action and no charge reset. A copy of a row that is not cloned is taken off with its remove action, the walk passing over the copy moved down onto its index. A copy running out on the clone runs its remove action, as its unit's does.
+  - Written area effects a clone's action spawns marked a clone's and dealing the damage the original's deals, one they spawn in turn marked too and the Knight they spawn a clone of 1 of 1. An area effect that only hits is chained unmarked, and one that runs an action refused. A clone's death area is marked and spawns a clone where the original's spawns a plain Knight.
+  - Area effects with a buff over a Knight's and a Minion's clones: a Rage buffing both, a Heal Spirit's area refusing both, a Zap killing both before its buff, a Tornado's pull asking the test before its buff, and an Earthquake buffing the ground clone until it dies and refusing the air one by its air test after the buff test.
+- `BattleHealSpiritTest` holds the Heal Spirit's area effect where its run does not take it:
+  - Made by the impact at the impact point, for the projectile's side, at its level re-based on the area effect's rarity, after the impact's damage, and first updated on the next tick.
+  - Its one hit healing the own troops in its circle - a hurt Knight, a Minion up to its maximum, a Knight at full hit points, a Knight still deploying - while an own Cannon, an own princess tower and the enemy are left out.
+- `BattleAreaEffectTest` reads an area effect's row and its buff's, and refuses one whose buff sets a column not modelled.
+- `BuffComponentTest` holds how the listed buffs scale a speed: the largest boost times what the strongest slow leaves, Rage and Poison making 60 66, a stun making every step 0. It also holds:
+  - The damage over time at a level, on a unit and a crown tower.
+  - A refresh keeping the longer time, and two reducing buffs counting only the larger.
+  - An arrow of 109 taking 43 under the evolved Knight's Fortify and 38 with the Monk's 65 beside it.
+  - A buff's life condition: asked after the step of an instance with time left, not of one its step spends or one that never runs out. An answer of 0 removes it on that visit, and attack_count is read whether the targeting component is on or not. Poison's hit is lowered in its own instance's turn of the visit: once by a reduction listed before it whose life condition fails on that visit, the drain finding it gone, and not at all by one listed after it.
+- `BattleEarthquakeTest` holds where the Earthquake runs leave a buff whose hits follow their source:
+  - The count set from the area effect's age however late the instance was applied.
+  - The hit as the age reaches 950 of a second.
+  - An instance that never runs out or whose source has gone counting on as a plain one.
+  - The count for a hit frequency of 0.
+  - A source that is not an area effect refused.
+  - A hidden Tesla taking no damage over time, as no ordinary hit lands on it.
+- `BattleTornadoTest` holds who a Tornado's pull reaches: the enemy units in its circle, not a friendly unit or one outside it, and not a tower, a building or a unit whose movement is off, which take the buff. It also holds the parent an instance keeps:
+  - Only for a buff that stacks.
+  - An instance with the same parent stopping a new one.
+  - A removable parent removing the instance with time left.
+  - A parent that leaves removing its instances where a source is only forgotten.
+  - The not-attacking section sparing an instance with a parent.
+- `BuffPushTest` holds the pull on the push accumulators: the share of the configured speed, the water clamp for a unit that neither flies nor hovers, a unit on the centre, the skipped jumps and dashes, the lateral share, the mass factor and a pull without a speed factor.
+- `BattleAttackSequenceTest` holds the attack sequence where the Archer runs do not reach it:
+  - The evolved Archer's two entries from its numbered columns.
+  - The single element a row without a sequence keeps.
+  - An index-setting action storing only below the order's length.
+  - `target_in_range` against the target's edge, the argument and the unit's own radius.
+  - A timer-driven sequence refused.
+- `BattleDeathHookTest` holds a death's hooks on the Tombstone:
+  - A unit killed by another schedules its death action and then its killed action, with the killer as their cause, and both run in the next pending pass.
+  - A unit that kills itself schedules its death action alone.
+  - A kill inside a pending pass runs the hooks at once, inside the kill.
+  - A unit a Poison kills has the Poison's source for its killer. Its killed action runs with the source as the cause, for the source's side, and none runs for a Poison it applied itself for its own side.
+  - The Boss Bandit's check of its killer finds a Bandit that is the Poison's source and runs its voice line, and finds nothing in another source.
+  - A unit a Poison with no source applied for the other side kills runs its killed action with no cause when its chain reads none: the evolved Wall Breaker's spawn, for its own side.
+  - A Boss Bandit a Poison kills after the Bandit that applied it has left the battle runs its check with no cause, which finds nothing and runs no voice line.
+  - It refuses a killed action with no attacker whose chain reads its cause, a spawn from its cause, and a death hook with no pending pass of the tick ahead of it, and a Tombstone whose spawner makes a child with a shield.
+  - A death's damage landing on an enemy within its radius before the hooks.
+  - The Battle Ram's death spawn: its two Barbarians on a ring turned by its angle shift and the angle it faces, one in front of it and one behind.
+- `UnitSpawnerTest` holds a Witch's first wave on the twentieth visit after its deploy ends, and a stun holding its timer for every visit it lasts.
+- `TimelineTest`, `DeckShuffleTest`, `MatchSideTest` and `LadderMatchTest` hold:
+  - The Ladder timeline's boundaries: 2x on 2400 and 3x on 4800, overtime at 3:00 with equal crowns and the time up without, the freeze.
+  - The reference's two deck orders and a held-back card never in the opening hand.
+  - The elixir full on the visit of tick 224, 357 and 537 a step.
+  - A play's spend and cycle, the refill's cooldown, the gates 9 and 0xd.
+  - A fallen king's end: the winner, the frozen timeline, a play refused with 4, an ordinary hit refused, the 79 steps to the stop.
+  - The tiebreaker: both kings falling together, drained after the idle window and ended a draw on the 67th step.
+  - The tiebreaker's clearing killing a Knight and ticking the entities on that step only, an ordinary hit refused from its first step.
+  - The tiebreaker's clearing removing a volley's projectiles at once, every other one a step, an area effect at once with the projectile after it left for the next step, and a character without hit points at once with the unit after it killed on the next step.
+  - The refusal of the stand-in owner of actions.
+  - The drain's five steps at their bounds.
+- `MatchSideTest` also holds an add from a collector or a death clamped at the cap, the rest counted as wasted.
+- `BattleElixirTest` holds an Elixir Golem killed by Poison paying the side the buff was applied for, a kill with no side paying nothing, a row's ManaOnDeath paid to its own king as it dies and nothing without one, and an elixir collector refused outside a match where its elixir block first runs.
+- `BattleChampionRefundTest` holds a champion slot's refund window on a hand-written ability row:
+  - Its RefundWindow, not its trigger delay.
+  - The trigger delay for a row without one.
+  - The window running out while the champion casts.
+  - A window held while she waits to cast, which gives the cost back at a death long after.
+- `BattleAbilityDeliveredRefundTest` holds an ability row with RefundUntilDelivered (client 16.635.1) on a hand-written ability row:
+  - No refund window at a use; the cost given back as the unit leaves, long after a one-step window would have shut.
+  - Nothing given back once an ActionAbilityDelivered ran on the unit, even inside a long window.
+  - A death before the trigger delay fires the delivering action giving the cost back once, as the unit leaves.
+- `BattleDashTest` holds a Bandit untouchable while it dashes and for its immunity after, a Mega Knight that can be hurt while it dashes, the Mega Knight's landing hold, and the refusal of a Golden Knight's ability left pending.
+- `BattleChargeTest` holds a charge tracked from 0 for a row with a charge range and not at all without, and the refusal of a row whose completed charge runs an action.
+- `RiderTest` holds a Goblin Giant's riders:
+  - Made first with the lower ids, placed behind it at 4000 high, untouchable, answering no attacker, out of collisions, and gone from the pre-pass after the cleanup that removes the Giant, their Spear Goblins in.
+  - A buff on the Giant handed to each rider as an instance of its own, equal to the Giant's and kept when the Giant's is removed.
+  - A refresh handed over by the same rule.
+  - A row that names another for riders handing them that one.
+  - A Clone buff kept from them and the Goblin Curse refused by their own rows.
+  - A buff the remove action of a rider's handed-over instance spawns landing on the rider itself after its parent's instance was removed, refreshing the one the parent handed over.
+  - The refusals of a direct placement and of a buff applied to a rider other than through its parent or an action of its own.
+- `BattleChangeDataTest` holds the swap of a character onto another row:
+  - Hit points kept above a smaller maximum.
+  - The damage and maximum of the new row at the same level.
+  - A kept target stored again through the setter on the new row's columns.
+  - A target the row resets given up with the attack timing left as it was.
+  - A unit whose targeting component is off keeping its target through any swap.
+  - A walking row with a lifetime taken by a walking unit without one, its hit points and level kept and its drain started.
+  - A shield kept with its maximum through a row without one (a heal filling it back to that maximum, a level change keeping it).
+  - The refused swaps, and `hp` and `max_hp`.
+- `BattleShapeSelectorTest` holds the shape selector where the runs do not reach, on the Giant hero form's slap selector written in Vines' form and run by Vines' area effect 900 ms after it is placed. Vines' form here is three entries of Vines' group at 0, 50 and 150 ms, Vines' filter, and none of the slap's wait, tags or actions on its owner.
+  - A circle that holds nobody, whose due steps end before the finish's test, so the run finishes a tick late.
+  - Two Knights of equal hit points, the lower id picked first though the query finds the other first.
+  - A Guard whose shield lifts it over a Minion, and the Minion first when the row scores by hit points alone.
+  - A row that may pick an object again, whose later picks start the Knight's air-to-ground run over.
+  - A tunnelling Miner, which Vines' filter drops, never picked.
+  - A selector on a crown tower refused.
+- `BalloonHeroAbilityTest` holds the Balloon hero form's ability, its selector run from the character:
+  - The trooper's projectile launched at the enemy closest to the hero, its start moved toward it, speeding up and spawning the trooper where it lands.
+  - With nobody in the circle, the selector's finishing action, the failsafe, launching the projectile from the hero's point at no target.
+  - A hero killed before the selector's first step, which lets the run go unfinished. A run is never finished as its owner leaves, so its finishing action is not scheduled and nothing is launched.
+- `BattleAirToGroundTest` holds Vines' air-to-ground run where the references do not reach:
+  - A Baby Dragon pulled down in two steps, at height 0 from the next pre-hook and a ground unit from the one after. It climbs back as its hold ends and has its path reset there, so a route a ground search left it is gone.
+  - A held Knight carrying FORCE_IS_GROUND from the pre-hook after its first step to the one after its last, and none when the row does not ask for it.
+  - A Goblin Giant carrying riders held for the whole run like any ground unit, its riders given no run.
+  - A hovering unit held from the start for the whole run, carrying FORCE_IS_GROUND through its last step, its live height left at 0, and finishing there with no climb.
+  - An evolved Royal Hog Vines holds, whose fall, started by the snare's damage, starts held and lands it in that step, its grounded row and landing area at once, and holds it on the ground after Vines lets go.
+- `BattleLaserBallTest` holds Dark Magic's laser ball:
+  - A fire that finds nobody, which picks the first list and schedules nothing.
+  - A Cannon found by its square, its corner within the radius though its centre lies beyond the radius plus its collision radius.
+  - Two Dark Magics striking one Knight on the same tick, whose buffs, added as individual ones, deal both hits, and with that column cleared, one.
+  - A laser ball on a unit refused.
+- `BattleTargetIndicatorTest` holds the Goblin Machine's rocket in the scenes of three recorded cases, every tick twenty later than there:
+  - A Zap that ends the attack and its signal on the next tick and holds the load, the machine marking the Musketeer again ten ticks on and shooting twenty after that.
+  - A Musketeer moved off after it was marked, whom the rocket misses.
+  - The machine killed with its rocket in flight, whose run stops as it leaves and ends its signal while the rocket still lands.
+  - A signal whose machine leaves on the tick it is made, let go by the fold: never listed, its id spent (the next area effect takes the one after it), no rocket.
+- `BattleLittlePrinceTest` holds a stun where the Little Prince runs do not take it. A Zap on a ramped Little Prince clears its attack time, its row restarting the hit timer when it gives its reference up. The stun's combat gate raises COMBAT_DISABLED, so the step after, its constant ticker sets LP_AttackCount to 0. Its fastest speed-up, alive only while the count is 6 or more, ends at the buff visit that follows.
+- `BattleCombatDisabledTest` holds the tag itself on a stunned Knight.
+- `BattleGoblinsteinTest` holds Goblinstein where its runs do not reach:
+  - A monster that leaves before the ability run's first step leaves the doctor first in its chain, so the run connects to nothing and the doctor's death makes no death area.
+  - A listener given a cost, whose count adds each play's cost until a play finds it reached.
+  - A Merge Maiden's play tested as the option it was played as, so the shipped group, which lists neither, does not hear it. A group given the Merge Maiden does not either, and a group given the option does.
+  - The tether hitting an enemy on its segment for its tether damage at each of its passes and sparing one farther off.
+  - A Mirror of Goblinstein while the first pair lives. Its monster and doctor, one level up, are chained to each other apart from the first pair, and its doctor's run connects to its own monster. The first monster's listener hears its play as Goblinstein, and the champion's slot follows its doctor. A command naming the first doctor is refused.
+  - Refused: a variant card's play heard by a listener whose count is below its cost, and the ability's run on an owner other than an area effect that follows.
+- `BattleQueuedHitDeathActionTest` holds the tether's hit and the evolved Battle Ram's carried push's hit at the damage drain: an evolved Skeleton Army general either kills dies at the drain, so the spectral skeletons of its chain live through its death step and its death action's kill lands at the next step's drain.
+- `SegmentTestsTest` holds the segment geometry of the tether's query, a building by its square and anything else by its circle, and the nearest point.
+- `SpatialIndexTest` holds the segment walk, which tests each object once.
+- `BattleChampionCloneTest` holds a Clone that reaches the Archer Queen in a match: her clone is made of her row at 1 hit point of 1, her slot follows her alone, a tap naming the clone is refused at the gate that finds the unit (code 1006) and pays nothing, and a tap naming her is paid and only she casts.
+- `BattleChampionTest` holds a champion's ability where the Archer Queen runs do not reach. A second play of her card makes its slot follow the new copy, its cooldown cleared. A command naming the first copy, still on the field as a plain unit, is refused at the gate that finds the unit (code 1006) while one naming the new copy is paid. Refused: an ability command outside a match, a clone of a unit carrying a buff that is not cloned, and a deck with two champion cards.
+- `BattleReferenceLossTest` holds the lost-reference query on every shipped character row the battle builds: the rows whose area is centred on themselves or whose projectile does not home run on, every other row stops, a running burst runs on, and every row stops without ALLOW_AOE_ATTACKS_WITHOUT_TARGET, which is set.
+- `BattleBossBanditTest` holds the killer's hook where the Boss Bandit runs do not take it. A kill schedules the killer's killed-done check after the dying unit's death damage and before its death hooks, and the check runs in the killer's next pending pass. A projectile's kill for a launcher with a killed-done action is refused.
+- `BattleWarpTest` holds the Boss Bandit's warp where its runs do not take it: a landing on either side, on water, past the arena's edge and inside a tower's footprint, each where the game lands it. A warp with a projectile aimed at the unit is refused.
+- `ActionRowsTest` reads the ability's and the warp's columns with their defaults, and refuses tags, a next action, a speed byte clear, no warp row, a release in the warp's own step, another mode, a speed and a warp that waits as a next action.
+- `GoldenKnightChargeTest` holds the Golden Knight's charge, tapped in a match:
+  - With no enemy within the dash range the knight walks under the charge buff until one comes within its selector's shape.
+  - The charge dashes at the closest enemy character and the knight's own chain goes on to the others.
+  - A chain stops at its row's dash count with targets left in reach.
+  - A chain whose next target is a crown tower stops there with a Skeleton in reach.
+- `BattleRecordsTest` reads the Golden Knight's chain's columns and its ability's dash range and activation group.
+- `BattleMonkTest` holds the Monk's ability where its runs do not take it:
+  - The two tags from the tick after it enters its follow-up state to the tick it leaves it, standing.
+  - A Poison's damage over time cut to what its buff's reduction leaves of what it deals another Monk beside it.
+  - An area's push leaving it where it stands while the Monk beside it is pushed.
+  - The pending damage's lethal test at what the reduction leaves.
+  - A deflected Musketeer shot's damage on the Monk handed back, its side turned to the Monk's and its whole damage registered on the Musketeer, which it hits.
+  - A Princess's arrow, which carries a deflection radius of its own, deflected back at her for the Monk's side.
+- `BattleSkeletonKingTest` holds the Skeleton King's ability where its runs do not take it:
+  - Twelve deaths across the arena, both sides in turn, counting ten souls.
+  - A Golem, a Cannon and a clone dying without a soul, and a King placed directly, which no controller follows, collecting none.
+  - The graveyard staying where its King died and making all six skeletons there.
+  - A clone out of collision while it deploys.
+- `BattleMightyMinerTest` holds the Mighty Miner's lane switch where its runs do not take it:
+  - A Zap landing on it as it routes across passes it by while it hits a Knight beside it.
+  - A shot launched at it after the switch's own drop of the projectiles aimed at it lets it go on its first flight step, emptying the damage on its way to it, and flies on to where it stood.
+  - With a projectile aimed at it whose row keeps its target and deals nothing, that projectile keeps it, follows it across and lands on it. One with damage on its way is refused.
+  - A switch from within 250 of the arena's edge aims 250 inside the other edge.
+  - A deploy time for the bomb, and a row that stays visible as it routes across, are refused.
+- `BattleDeathAreaInsetTest` holds the death slot's area effect where no recorded battle takes it: a unit dying on the arena's left edge and one in its far corner leave their area effects 250 inside each edge they stood on, and one dying inside the arena leaves it where it stood. A Rage Barbarian pushed onto the left edge and killed there is held by the recorded reference battle `ragebarbarian-edge-death-v1/ragebarb_edge_death_t177`.
+- `BattleMirrorTest` holds the Mirror where the recorded Mirror battles do not reach:
+  - A Mirror after a Mirror repeats the same Knight one level up for 4 each, and a Mirror before any card is refused with code 23, nothing taken and nothing cycled.
+  - A Mirror given while Archers of its side are pending repeats them, not the Knight the king holds then.
+  - A Mirror given in the tick of another play of its side is refused, and one given the tick after or later repeats it, a Giant refused at its run included.
+  - A Giant refused at its run is repeated by a Mirror given while it is pending and by one given up to 60 ticks after its giving. A Mirror given within two ticks of that is refused, and one after repeats the Knight.
+  - A Mirror of the Archer Queen places a copy one level up while she lives, for the item's cost, and her slot follows the copy. So a command naming the first is refused and one naming the copy passes.
+  - A Mirror after a hero Mini Pekka repeats the hero row one level up and its champion's slot follows the copy.
+  - A Mirror outside a match and one with another play of its side due in the 21 ticks up to its own are refused.
+  - Battles recorded for it (a Mirror of the Golden Knight and of a hero Mini Pekka, each with a command naming the first copy and then the copy) agree step for step.
+- `BattleBuffAfterHitsTest` holds the hit counter where the BuffAfterHits runs do not take it:
+  - Counts of 2 and 4 applying the first buff on the second hit and the second on the fourth before the counter starts over.
+  - Counts out of order stopping the walk for good.
+  - A projectile's impact counted for its shooter and a reflected attack for the reflecting unit.
+  - The refusals of a typed hit and damage over time from a BuffAfterHits row and of lists of different lengths.
+  - A buff's start action on a new instance and not on a refresh, its remove action on an expiry and a cleanse and not at a death.
+  - The refusals of a clone of a hook carrier, a clone Ghost, a summon with a starting action that does more than show something and a summon area that follows its parent.
+- `GhostEvoTest` holds the Ghost's run on a stub: the latch, the two areas 2000 to either side across the line to the point, the damage area only on a countdown landing on 0, the summon runs and a reference forgotten as it leaves.
+- `DamageApplicationTest` holds where the hit is counted, `ActionHolderTest` a battle's holder starting an action with no delay at once inside another entity's pending pass, and `BattleExpressionEnvironmentTest` `is_clone`.
+- `BattleShieldLostTest` holds a broken shield's action where the shield runs do not take it:
+  - A break outside a pending pass queuing the action and its part with the hitting unit as their cause.
+  - A hit short of the shield queuing nothing, and a row without the action breaking with nothing.
+  - A kill with the shield up breaking only the shield, the killer the cause, and the king's circle naming none.
+  - A break inside another unit's pending pass starting the action at once and making the explosion.
+  - The Recruit's charge buff from the Recruit whatever caused the action, the reset as it is listed from none to 0, and a later reset leaving 0.
+  - The refusals of a swap and a clone's copy while the buff is listed, its removal, and the buff on a unit that fires.
+- `GridStateSetterTest` holds the setter's charge reset leaving 0 under a buff's charge range.
+- `BattleUppercutWindTest` holds the uppercut, the knock and the wind where the references do not take them:
+  - An uppercut on a tower ending as it starts, the Mega Knight carrying its row's tags for one step.
+  - The hold ending as the Mega Knight takes another target in range.
+  - An uppercut with no current target refused.
+  - An uppercut on a unit switching lanes pushing nothing and scheduling no knock.
+  - The targeting queue's flush taking nothing at priority 0 and refusing a priority above.
+- `BattleUppercutAttractTest` holds the uppercut's tags as client 16.635.1 sets them (no reference yet): the row's GameTagsToSet alone while the run is listed, so a row with NO_MOVE_ALLOW_ATTRACT leaves the Mega Knight to a Tornado's pull and one with NO_MOVE does not, and LOCK_TARGET after the push only while LockTargetAfterUppercut is on.
+  - The knock's arc for another duration.
+  - A knock postponing an ability, and a cast and an ability's follow-up state going on through a knock on the same steps as without it.
+  - A knock resetting a charged Prince's charge on each of its steps.
+  - A knock on a dashing Bandit leaving it dashing and lifting it.
+  - The top side's wind made and following 1500 below its dragon.
+  - A second start giving the wind its life back, and a start after the run has ended making a new wind.
+  - A choice by team with no cause refused.
+  - Actions run at an area effect's ages, again after its life is given back only with repeats, nothing from lists that do not match, and refused on a character.
+- `ActionRuntimeTest` holds a singleton whose run has finished starting a new one, `SpatialIndexTest` the rectangle's box query, and `GridMovementAnswersTest` the hovering answer under a force tag.
+- `BattleKnockCarrierTest` holds a knock and a push away from the cause on a Goblin Giant played by its card: the Giant lifted, pushed and landed as any unit, each rider on its ring around the point the Giant stood on as each step began, and a knock on a rider refused. A Knight clone is knocked and pushed as any unit, landing at 1 hit point of 1, and an evolved Mega Knight's uppercut whose push reaches a clone is refused.
+- `BattleBuildingEvoTest` holds the evolved buildings where the references do not take them:
+  - The Tesla's placement ring reaching each enemy once on the first update whose radius passes it: a Knight 2000 away on 8, a Minion 3500 away on 15, a Cannon 4500 away on 20 and one on the diagonal on 17 by its square, a Knight 4501 away on 21 and one 6000 away on 28, never one 6600 away or a friend.
+  - A princess tower it reaches taking its buff's crown-tower damage and dropping the Tesla while stunned.
+  - A top-side Furnace's spirit launched from 6000 high, 1500 to its left and 1000 behind it.
+  - A top-side Cannon's bombs at the same points across the arena, ahead of it toward the bottom.
+  - A bomb off the arena refused.
+- `BattleSnowballEvoTest` holds the evolved Snowball's rolling snowball where the references do not take it:
+  - Cast for side 1, it is aimed and rolls the roll's written distance down the length from the impact.
+  - Cast at (3500, 29000), its destination past the arena's end is walked back to (3500, 30900).
+  - A captured Goblin answers hidden from the tick after its hiding run first sets the tag to the tick after the snowball leaves.
+  - A captured Goblin held in a jump, or dashing under a row with a jump height, when its drag completes is put down on the ground and asked to stand. Dashing under a row with no jump height it is left as it is.
+- `ActionRowsTest` reads the roll's, the capture's, the hide's and the wait's columns, and a hide stopping with its hider when its row leaves it empty. Its refusals: the evolved Goblin Cage's capture, a drag delay, a capture without its buff and a roll without its buff. Every row of the actions table is built or refused by name.
+- `SnowballRollDeflectTest` holds the evolved Snowball's rolling snowball rolling into an enemy Monk's Deflect: it takes the Monk's side with one deflection counted, and rolls back from where it turned by the rest of its distance. Turned back and forth between two Monks of either side, the third deflection releases it where it stands.
+- `BattleGoblinCageEvoTest` holds the evolved Goblin Cage's capture where the references do not take it:
+  - A Giant captured with the capture buff, the cage its parent and source at its level, put on the cage's point hidden, hit once per hit frequency at the cage's level, and walking on once the cage's life ends and the buff leaves with it.
+  - A Giant Skeleton the cage's hit kills while it holds it. Its death runs at the damage drain, and its bomb, a building, stands on its own point, the cage's: the capture's find-location tag moves nothing.
+- `BattleIceSpiritEvoTest` holds the area following the unit the evolved Ice Spirit hit, once that unit leaves: it lets go, stays on the unit's last point and still hits the unit beside it there, on its sixtieth update.
+- `ProjectileActionsTest` holds a projectile's own actions: its expressions reading its sweep's distance from its start, any other name refused as the row is built, and the swap of the axe's row for its other forms, a row whose battle columns differ refused.
+- `BattleAttackActionTest` holds the evolved Valkyrie's tag in its tag word from the tick after its first hit for the ten ticks its buff is listed, and the refusal of a pull with an angle window.
+- `HitApplicationTest` holds the attack action after a direct hit and at a launch, and none for a hit cancelled for distance.
+- `BattleEvolutionTest` holds evolution and hero slots:
+  - A hero slot's Giant played as Giant_hero for 5, its champion the one the first slot follows.
+  - A Mirror after a hero play repeating the hero row for 6 and placing it.
+  - A card in both slots played as its hero form, which resets its count, so it never evolves.
+  - An evolution slot's Zap and Cannon played plain twice, evolved on their third plays as Zap_EV1 and Cannon_EV1, and plain again on their fourth.
+  - The evolved Goblin Barrel's third play casting its decoy barrel on the king at once, made right after the barrel, from the barrel's start to its aim turned over across the width, whose impact makes three GoblinDummy.
+  - Refused: a hero slot on a spell, the Mirror in either slot, two copies of an evolution slot's card, and a play of that card while another play of it is due.
+- `BattleMergeMaidenTest` holds the Merge Maiden:
+  - A play that carries its option runs as that option, on foot from a full bar where the elixir picks it mounted, for the on-foot cost. It needs no pick, so one given in the tick of another play of its side runs. One carrying an option its card does not have is refused.
+  - With no option carried, the option is picked from the elixir after the step 22 before the run. So 5.99 then plays the maiden on foot though the trigger is reached a step later and 6.34 is there at the run, and 6.01 a tick later the mounted one.
+  - A play picked on foot that finds less than 3 at its run is refused, the elixir short of its cost, nothing taken.
+  - A Zap given 9 ticks before the Merge Maiden and still pending at the pick has its cost set aside, so the maiden comes on foot where the elixir alone would pick it mounted.
+  - A Zap that runs in the pick's own tick has paid before the pick and is not set aside again, so the maiden comes mounted where the Zap's cost taken twice would pick it on foot.
+  - Refused: a Merge Maiden outside a match, run before tick 22, given in the tick of another play of its side or within the two ticks after, with a Mirror of its side pending, or within 62 ticks of a play of its side refused at its run.
+  - An ability command of a Golden Knight that ran before the pick holds nothing back, so the maiden comes mounted though the ability's cost set aside would pick it on foot.
+  - With the command still pending, the maiden is picked from the elixir alone where the cost set aside picks the same option, and refused where it would pick another.
+  - One given in the tick of an ability command of its side or within the two ticks after, or in the tick after one runs, is refused.
+  - A Mirror after a Merge Maiden, mounted or on foot, repeats the option it was played as one level up, for the Mirror's cost and the option's. A Mirror of a variant card whose row would have it repeat the card itself is refused.
+- `SpellVariantTest` holds the pick: the hundredths, the cap, the boundary at 6.0, the last option below every trigger, and the projection's 1 at 3x.
+- `TargetIndicatorAttackTest` holds the run against a machine stub:
+  - The ring's edges: a Knight at 3750 or 6249 marked and one at 3749 or 6250 not.
+  - The nearest less its const-priority offset, the earlier of equals, and the rocket's start 1200 behind the facing.
+  - The stop tag from a shot to the next step.
+  - An abort that puts a started cooldown back to 0 and holds it there.
+- `BattleTauntTest` holds the Goblin Demolisher's cancelling area effect:
+  - An own P.E.K.K.A whose circle holds the Demolisher's point taunted onto the Demolisher too, with the buff that locks its reference, which its next step ends.
+  - An own Giant, which attacks only buildings, left without reference or buff, its run finishing at once.
+  - The Demolisher attacking as its taunt steps, which keeps the reference it was forced onto.
+  - The Demolisher leaving while the P.E.K.K.A is taunted onto it, which ends the P.E.K.K.A's run.
+  - The area effect standing on the walking Demolisher's point at its update.
+  - A longer-lived one reaching the Demolisher once and leaving at the cleanup where the Demolisher leaves.
+  - The refusal of a following area effect placed by no action.
+- `BattleKnightHeroTauntBuildingTest` holds the hero Knight's taunt on an enemy Cannon:
+  - A Cannon shooting a Giant forced onto the Knight within its reach, at the arming and again on every step.
+  - One taunted from beyond its reach, forced at the arming (the Knight is not a building, so the arming tests no reach), giving the Knight up on the next step and forced again on the first step that finds it within reach.
+- `BattleKnightHeroTauntTest` holds the hero Knight's taunt on the crown towers: forced at the arming and again on every step within reach, let go at the end. A Knight that is captured, as the evolved Snowball's roll carries it, is given up by the step and not forced again while it stays captured, so the tower is free to choose another target.
+- `BattleKnightHeroTauntLaneSwitchTest` holds the hero Knight's taunt on a Mighty Miner that then switches lanes: underground as it routes across, it is let go on the taunt's next step, its reference, wait and buff gone.
+- `BattleKnightHeroTauntDeployingTest` holds the hero Knight's taunt on a troop still deploying from its card play: its targeting component off from the play, no route held through the deploy or made by the moving state's entry, and a first walking step that searches its route from the placed point.
+- `BattleValkyrieHeroTauntTest` holds the hero Valkyrie's whirlwind ending under the hero Knight's taunt. The chain is listed before the interval its begin starts. A taunt armed before the spin ends steps before the chain's end on its last step, queuing nothing, so no flush takes the Knight back once the hero may attack again.
+- `BattleRunIfExistsTest` holds the check whether objects exist on the battle's own units, rule by rule:
+  - The owner's battle's live objects through the row's filter, the owner among them and an action owner in the list.
+  - A named row found, one of the other side never shown.
+  - One excluded object vetoing the check.
+  - Named rows counted to the number needed, each object once, and a number of 0 matching on the first object.
+  - Without names the filtered objects counted.
+  - No filter doing nothing.
+  - Each branch run on the owner as its own cause.
+- `BattleLevelChangeTest` holds a level change on units in the battle: the cause changed and not the owner, the hit points keeping their share on a rise and kept on a fall, the damage and maxima of the new level, the absolute level, the same level left as it is, a dead cause or none left alone, a king tower taking the Royal Chef's level-up, a princess-slot tower refused, a clone keeping 1 hit point of 1 and its shield at most 1 of 1 through a fall while its damage and team pools follow the new level, and a clone's rise refused.
+
+A test can play a battle with the towers passive: `Standard1v1Battle` takes a flag that keeps every tower's targeting component off for the whole battle.
+- `LevelScalingTest` holds the two scaling rules to the published tables and percentages: for every level a card can have the card rule is the iterated floor of a tenth per step, and at the published values the tower rule is 1.07 (king hit points) or 1.08 per level up to the tournament cap and 1.10 from there.
+- `EntityHolderTest` and `BattleTest` pin the two orders of [One step](battle-core.md#one-step) line by line, the ids per kind and the fold that keeps a late projectile ahead of every character among them.

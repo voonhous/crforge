@@ -159,7 +159,8 @@ The plays are the replay's own: cards cannot be selected or played in the viewer
 | Document                                                     | Description                                                          |
 |--------------------------------------------------------------|----------------------------------------------------------------------|
 | [Architecture](docs/architecture.md)                         | Modules, packages, the 50 ms step and the debug visualizer           |
-| [The Battle Core](docs/battle-core.md)                       | The step, the entity tick, what is covered and what is assumed       |
+| [The Battle Core](docs/battle-core.md)                       | The step, the entity tick and what is covered                        |
+| [Battle Core Assumptions](docs/battle-core-assumptions.md)   | The supplied answers the battle core carries                         |
 | [Troop Pathfinding](docs/pathfinding.md)                     | Routing grid, cell costs, routes and movement rules                  |
 | [Game Tables and Reference Battles](docs/game-tables.md)     | The tables the battle core reads and the battles it is held to       |
 | [The Environment](docs/environment.md)                       | The RL environment: its schema, mask, faults, benchmark and Python package |

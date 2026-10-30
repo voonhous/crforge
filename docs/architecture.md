@@ -10,7 +10,9 @@ This page is the index of the docs, the module and package layout, and the debug
 
 | Document | Description |
 |----------|-------------|
-| [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, when a player's command runs, the tests and the game data, what is covered, the roadmap and the assumptions carried |
+| [The Battle Core](battle-core.md) | The engine: its package layout, one step and the entity tick, when a player's command runs, the tests and the game data, what is covered and the roadmap |
+| [Battle Core Tests](battle-core-tests.md) | The tests and reference battles that hold the battle core, test class by test class |
+| [Battle Core Assumptions](battle-core-assumptions.md) | The supplied answers the battle core carries, so they are not mistaken for settled behaviour |
 | [Troop Pathfinding](pathfinding.md) | The movement, targeting and state rules the battle core runs: the routing grid, cell costs, the route search, endpoints and lanes, assumptions and what is still unvalidated |
 | [Game Tables and Reference Battles](game-tables.md) | The game tables the battle core reads, how they are named, the recorded reference battles and the records built from the rows |
 | [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, the coverage score and what it costs, moving to a new data version |
@@ -344,13 +346,13 @@ A challenge (game mode Challenge_AllCards_EventDeck_NoSet) is read the same way 
 - each deck card stands at its rarity's `TournamentLevelIndex`
 - the card level minimum is pinned to 0
 
-The header switch `seb`, true in a challenge's replays, is carried in client 16.635.1's replays: the game never reads it in a battle. See [the battle core](battle-core.md).
+The header switch `seb`, true in a challenge's replays, is carried in client 16.635.1's replays: the game never reads it in a battle. See [the battle core's known assumptions](battle-core-assumptions.md).
 
 A case generated for a data version of client 16.635.1 is read as one of client 16.402.17 is: by 14.593.1's fields, with the version's command types. The fields 16.402.18's replays add change nothing such a case plays: its recorded battles on 16.635.3 play the same with the request lists empty, the switches `cardlvlmin` 0, `rrb` and `seb` false and a king level of 1 for each side added.
 
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
 
-16.402.18's replays also carry the Path of Legends fields (`rkd`, `hbd[i].sa`, the avatar's `rnk_sc`). A Path of Legends replay (game mode Ranked1v1_NewArena) is played as a Ladder match with its own header values pinned (game mode type 13, level cap 16, trail -1); see [the battle core](battle-core.md).
+16.402.18's replays also carry the Path of Legends fields (`rkd`, `hbd[i].sa`, the avatar's `rnk_sc`). A Path of Legends replay (game mode Ranked1v1_NewArena) is played as a Ladder match with its own header values pinned (game mode type 13, level cap 16, trail -1); see [the battle core's known assumptions](battle-core-assumptions.md).
 
 Every version's replays carry the arena (the battle header's and each avatar's `arena`) whatever its value. It names the players' trophy arena, which sets no battle input, so a replay from any trophy arena's TV channel is read; an event battle's arena is a row of the second arena table (`arenas_alt`), read the same way. The map is the location's, which must be the standard one.
 
@@ -477,4 +479,4 @@ Workspace buttons and keyboard bindings dispatch `WorkspaceAction` commands to t
 ## Known Gaps
 
 - **One mode.** The battle core plays a Ladder 1v1 match on the standard arena (`LadderMatch`, the one `BattleMode`); a Path of Legends replay (Ranked1v1_NewArena), a Ladder battle under an event and a challenge (Challenge_AllCards_EventDeck_NoSet, under its event) are played as one, each header pinned to the values its replays write. 2v2, the other game modes and event maps are not modelled.
-- **What is not modelled yet is refused, never guessed.** A row, column, action class or replay field the battle core does not model refuses the battle, with the reason. What is covered, what is still partial and the assumptions carried are listed in [The Battle Core](battle-core.md); `./gradlew :core:fidelityReport` reports each class's fidelity status and note.
+- **What is not modelled yet is refused, never guessed.** A row, column, action class or replay field the battle core does not model refuses the battle, with the reason. What is covered and what is still partial are listed in [The Battle Core](battle-core.md), and the assumptions carried in [Battle Core Assumptions](battle-core-assumptions.md); `./gradlew :core:fidelityReport` reports each class's fidelity status and note.

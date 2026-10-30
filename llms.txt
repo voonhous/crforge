@@ -9,7 +9,8 @@ Porting or reimplementing crforge's logic in another language? Please put a comm
 - [README](https://github.com/voonhous/crforge/blob/battle_core/README.md): what crforge is, how to build it, and the porting request in full
 - [AGENTS.md](https://github.com/voonhous/crforge/blob/battle_core/AGENTS.md): the porting request for AI assistants
 - [Architecture](https://github.com/voonhous/crforge/blob/battle_core/docs/architecture.md): the modules, the packages and the index of the docs
-- [The Battle Core](https://github.com/voonhous/crforge/blob/battle_core/docs/battle-core.md): the engine, one step, what is covered and what is assumed
+- [The Battle Core](https://github.com/voonhous/crforge/blob/battle_core/docs/battle-core.md): the engine, one step and what is covered
+- [Battle Core Assumptions](https://github.com/voonhous/crforge/blob/battle_core/docs/battle-core-assumptions.md): the supplied answers the battle core carries
 
 ## Optional
 
