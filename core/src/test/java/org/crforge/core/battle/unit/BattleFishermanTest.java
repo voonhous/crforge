@@ -411,7 +411,7 @@ class BattleFishermanTest {
     CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
     ProjectileEntity hook = scene.stepToTheHook();
     scene.step(2);
-    scene.match.getWorld().kill(scene.fisherman, null);
+    scene.match.getWorld().hits().kill(scene.fisherman, null);
     // Removed at that tick's cleanup; the next tick the troop takes the hook's last place and the
     // hook ends without a step, so the tick after the troop is let go where it stands.
     while (knight.getView().getState() == GridEntityState.FOLLOWING_REMOVED && scene.tick < 200) {
@@ -447,7 +447,7 @@ class BattleFishermanTest {
     CharacterEntity knight = scene.still(0, 1, "Knight", X, Y + IN_RING, "K");
     ProjectileEntity hook = scene.stepToTheHook();
     scene.step(2);
-    scene.match.getWorld().kill(knight, null);
+    scene.match.getWorld().hits().kill(knight, null);
     scene.step(2);
     assertThat(hook.isReleased()).isTrue();
     assertThat(scene.left).anyMatch(l -> l.endsWith("held F"));
@@ -481,7 +481,7 @@ class BattleFishermanTest {
     stepToTheFlight(scene);
     ProjectileEntity hook = scene.hooks.get(0);
     assertThat(hook.isHooked()).isFalse();
-    scene.match.getWorld().kill(knight, null);
+    scene.match.getWorld().hits().kill(knight, null);
     // Removed at that tick's cleanup; the hook's next step ends it where it stands.
     scene.step(1);
     int x = hook.getX();
@@ -505,7 +505,7 @@ class BattleFishermanTest {
     scene.step(2);
     // The kill lands at the tick's damage drain, after the hook's step, and the Knight leaves at
     // that tick's cleanup.
-    scene.match.getWorld().kill(knight, null);
+    scene.match.getWorld().hits().kill(knight, null);
     scene.step(1);
     assertThat(hook.isReleased()).isFalse();
     int x = hook.getX();

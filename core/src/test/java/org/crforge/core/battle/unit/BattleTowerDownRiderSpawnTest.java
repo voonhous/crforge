@@ -113,8 +113,8 @@ class BattleTowerDownRiderSpawnTest {
     // Both kills are queued for the next step's damage drain: the tower and the Giant die in that
     // step and leave in its closing cleanup, the tower first; the Giant's riders are let go after
     // the tower has left and each leaves its Spear Goblin there.
-    match.getWorld().kill(tower, null);
-    match.getWorld().kill(giant, null);
+    match.getWorld().hits().kill(tower, null);
+    match.getWorld().hits().kill(giant, null);
     int fell = WALK;
     at[0] = fell;
     match.getBattle().step();

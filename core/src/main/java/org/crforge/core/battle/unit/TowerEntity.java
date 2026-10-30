@@ -737,7 +737,7 @@ public class TowerEntity extends WorldEntity {
 
   /**
    * The hit points' own visit, in the third component pass, as a character's: it empties the
-   * tower's queued total (see {@link BattleWorld#emptyQueuedTotal}). A tower has no lifetime decay.
+   * tower's queued total (see {@link HitQueue#emptyQueuedTotal}). A tower has no lifetime decay.
    */
   private final class HitPointsComponent implements BattleComponent {
 
@@ -748,7 +748,7 @@ public class TowerEntity extends WorldEntity {
 
     @Override
     public void visit() {
-      world.emptyQueuedTotal(TowerEntity.this);
+      world.hits().emptyQueuedTotal(TowerEntity.this);
     }
   }
 

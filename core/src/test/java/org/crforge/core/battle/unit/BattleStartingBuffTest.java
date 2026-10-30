@@ -155,7 +155,7 @@ class BattleStartingBuffTest {
     assertThat(knight.getBuffs().items()).hasSize(1);
     assertThat(other.getBuffs().items()).hasSize(2);
 
-    world.kill(skeleton, null);
+    world.hits().kill(skeleton, null);
     // The kill lands at the next step's damage drain.
     match.getBattle().step();
 

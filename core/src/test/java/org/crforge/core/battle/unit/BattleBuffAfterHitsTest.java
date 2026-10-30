@@ -288,7 +288,7 @@ class BattleBuffAfterHitsTest {
     BuffData freeze = scene.match.getWorld().buffData("ZapFreeze");
     killed.getBuffs().apply(freeze, 1000, LEVEL, null, 1);
 
-    scene.match.getWorld().kill(killed, null);
+    scene.match.getWorld().hits().kill(killed, null);
     scene.step(3);
 
     assertThat(scene.hooks).isEmpty();

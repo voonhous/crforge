@@ -173,7 +173,11 @@ class BattleMightyMinerTest {
     // Created in the right lane, which it keeps across the switch, so the right princess tower
     // stays a candidate of its own lane.
     Scene scene = new Scene(GameData.tables(), 14500, 10000);
-    scene.match.getWorld().kill(BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER), null);
+    scene
+        .match
+        .getWorld()
+        .hits()
+        .kill(BattleTowers.towerNamed(scene.match.getBattle(), LEFT_TOWER), null);
     scene.switchLanes();
     while (scene.miner.getView().getState() != GridEntityState.MOVING) {
       scene.step();

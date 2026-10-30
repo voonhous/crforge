@@ -79,7 +79,7 @@ class BattleAreaLinkPathTest {
     Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
     CharacterEntity knight = deploy(battle, "Knight", 0, 10000);
     step(battle, 2);
-    battle.getWorld().kill(knight, null);
+    battle.getWorld().hits().kill(knight, null);
 
     assertThatThrownBy(() -> step(battle, 4))
         .isInstanceOf(UnsupportedOperationException.class)

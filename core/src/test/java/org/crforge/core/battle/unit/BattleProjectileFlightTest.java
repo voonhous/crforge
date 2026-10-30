@@ -484,7 +484,7 @@ class BattleProjectileFlightTest {
 
     // The tower is destroyed from outside, between two steps; the next step's opening cleanup
     // removes it and tells the shot, which keeps its aim on the tower's last position.
-    scene.match().getWorld().dealDamage(tower.getTargetView(), 100000, 0, 1);
+    scene.match().getWorld().hits().dealDamage(tower.getTargetView(), 100000, 0, 1);
     battle.step();
     assertThat(battle.getHolder().entities()).doesNotContain(tower);
     assertThat(shot.getTarget()).as("the target is forgotten").isNull();

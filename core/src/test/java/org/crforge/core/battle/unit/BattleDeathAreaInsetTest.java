@@ -68,7 +68,7 @@ class BattleDeathAreaInsetTest {
     for (int i = 0; i < units.size(); i++) {
       assertThat(units.get(i).getView().getX()).isEqualTo(points[i][0]);
       assertThat(units.get(i).getView().getY()).isEqualTo(points[i][1]);
-      world.kill(units.get(i), null);
+      world.hits().kill(units.get(i), null);
     }
     match.getBattle().step();
     match.getBattle().step();

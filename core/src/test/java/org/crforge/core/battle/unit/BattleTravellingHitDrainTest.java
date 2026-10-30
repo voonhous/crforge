@@ -220,8 +220,10 @@ class BattleTravellingHitDrainTest {
               assertThat(recording.pellets).as("the Hunter has shot before").isNotEmpty();
               ProjectileEntity projectile = recording.pellets.get(0);
               shooter.add(projectile);
-              world.dealProjectileHit(
-                  projectile, recording.ram, whole(recording.ram), world.nextHitId(), 0, 0);
+              world
+                  .hits()
+                  .dealProjectileHit(
+                      projectile, recording.ram, whole(recording.ram), world.nextHitId(), 0, 0);
             });
     assertThat(shooter).hasSize(1);
     assertThat(queued.tick()).isEqualTo(plain.tick());
@@ -246,18 +248,20 @@ class BattleTravellingHitDrainTest {
             (world, recording) ->
                 // A damage-taking action's hit on the ram with no source, large enough to kill it
                 // alone.
-                world.queueActionDamage(
-                    null,
-                    recording.ram,
-                    new TakeDamage.Damage(
-                        whole(recording.ram),
-                        TakeDamage.NO_TOWER_DAMAGE,
-                        false,
-                        false,
-                        false,
-                        false,
-                        false),
-                    0));
+                world
+                    .hits()
+                    .queueActionDamage(
+                        null,
+                        recording.ram,
+                        new TakeDamage.Damage(
+                            whole(recording.ram),
+                            TakeDamage.NO_TOWER_DAMAGE,
+                            false,
+                            false,
+                            false,
+                            false,
+                            false),
+                        0));
     assertThat(queued.tick()).isEqualTo(plain.tick());
     assertThat(queued.volleyPellets()).isEqualTo(plain.volleyPellets());
     assertThat(queued.pelletsFlyingOn()).isEqualTo(plain.pelletsFlyingOn());

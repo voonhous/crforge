@@ -115,7 +115,7 @@ class HunterVolleyQueuedTotalTest {
             if (step[0] == killStep) {
               int total =
                   giant[0].getHitPoints().getHitPoints() + giant[0].getHitPoints().getShield();
-              world.dealDirectHit(hunter[0], giant[0].getTargetView(), total, 0, 0);
+              world.hits().dealDirectHit(hunter[0], giant[0].getTargetView(), total, 0, 0);
             }
           }
         });

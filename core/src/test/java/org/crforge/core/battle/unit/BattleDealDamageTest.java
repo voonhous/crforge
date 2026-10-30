@@ -186,7 +186,7 @@ class BattleDealDamageTest {
     // Level 5 on the Common row is step 4 (146); level 11 on the row of its own is step 6 (286).
     assertThat(hits).containsExactly("40 110", "40 217");
 
-    match.getWorld().kill(ownRow, null);
+    match.getWorld().hits().kill(ownRow, null);
     battle.step();
     assertThat(battle.getHolder().entities()).as("the source has left").doesNotContain(ownRow);
     hits.clear();

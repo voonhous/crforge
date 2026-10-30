@@ -78,7 +78,7 @@ class BattleElixirTest {
     CharacterEntity golem = battle.deploy(0, GameData.unit("ElixirGolem1"), 11, 0, 9000, 6000);
     List<String> paid = deathPayouts(battle);
     battle.getBattle().step();
-    battle.getWorld().kill(golem, null);
+    battle.getWorld().hits().kill(golem, null);
     // The kill lands at the damage drain of the next step.
     battle.getBattle().step();
     assertThat(HitPoints.alive(golem.getHitPoints())).isFalse();
@@ -138,7 +138,7 @@ class BattleElixirTest {
     List<String> paid = ownDeathPayouts(battle);
     battle.getBattle().step();
     int[] before = {match.side(0).getElixir(), match.side(1).getElixir()};
-    battle.getWorld().kill(knight, null);
+    battle.getWorld().hits().kill(knight, null);
     // The kill lands at the damage drain of the next step.
     battle.getBattle().step();
     assertThat(HitPoints.alive(knight.getHitPoints())).isFalse();
@@ -161,7 +161,7 @@ class BattleElixirTest {
         battle.deploy(0, battle.getWorld().getRecords().unit("Knight"), 11, 0, 9000, 6000);
     List<String> paid = ownDeathPayouts(battle);
     battle.getBattle().step();
-    battle.getWorld().kill(knight, null);
+    battle.getWorld().hits().kill(knight, null);
     battle.getBattle().step();
     assertThat(HitPoints.alive(knight.getHitPoints())).isFalse();
     assertThat(paid).isEmpty();

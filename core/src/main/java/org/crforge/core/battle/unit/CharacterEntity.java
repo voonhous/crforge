@@ -3242,7 +3242,7 @@ public class CharacterEntity extends WorldEntity {
    * anything was hit, before the next state is asked for.
    *
    * <p>The single-target hit goes to the same damage entry as a direct hit, which queues it for the
-   * holder's damage drain (see {@link BattleWorld#dealDirectHit}): its damage lands after every
+   * holder's damage drain (see {@link HitQueue#dealDirectHit}): its damage lands after every
    * post-hook, so a unit the landing kills keeps its movement visit of that tick, and a unit
    * visited after the dasher still finds it moving. Whether the drain gives a dash's hit the
    * dasher's buff on damage, as it gives a direct hit's, is not traced, and no row has a dash and a
@@ -3286,7 +3286,7 @@ public class CharacterEntity extends WorldEntity {
                   + " no run holds");
         }
         hit = world.entityOf(reference.getEntity());
-        world.dealDirectHit(this, reference, damage, view.getDirX(), view.getDirY());
+        world.hits().dealDirectHit(this, reference, damage, view.getDirX(), view.getDirY());
         t.clearAttack();
         t.setLoadTimerMs(data.loadTimeMs());
       }
@@ -3747,7 +3747,7 @@ public class CharacterEntity extends WorldEntity {
           name() + " ends a Kamikaze hit without hit points or with a shield, not modelled");
     }
     world.events().kamikazeHitEnded(this, true);
-    world.kamikazeKill(this);
+    world.hits().kamikazeKill(this);
   }
 
   /**
@@ -3768,7 +3768,7 @@ public class CharacterEntity extends WorldEntity {
     int visits = getData().kamikazeTimeMs() / StateQueries.TICK_MS;
     int share = FixedMath.divOrZero(getHitPoints().getMaximum(), visits);
     // At least one, as an unsigned comparison takes it.
-    world.kamikazeDrain(this, Integer.compareUnsigned(share, 1) > 0 ? share : 1);
+    world.hits().kamikazeDrain(this, Integer.compareUnsigned(share, 1) > 0 ? share : 1);
   }
 
   /** The progress of the character's charge, while its movement component is on. */
@@ -5243,7 +5243,7 @@ public class CharacterEntity extends WorldEntity {
                 packedLevel(),
                 ScalingMode.CARD_DAMAGE,
                 getData().rarity());
-        world.captureHit(owner, unit, damage);
+        world.hits().captureHit(owner, unit, damage);
       }
     };
   }
@@ -5802,7 +5802,7 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * The hit points' own visit, in the third component pass: first, in every state, the queued total
-   * is emptied (see {@link BattleWorld#emptyQueuedTotal}); then, outside the deploying, waiting and
+   * is emptied (see {@link HitQueue#emptyQueuedTotal}); then, outside the deploying, waiting and
    * spawn-pathfinding states, and while it has hit points, the lifetime decay takes its step; the
    * step that takes the last hit point is a death of its own.
    */
@@ -5817,7 +5817,7 @@ public class CharacterEntity extends WorldEntity {
     public void visit() {
       // The queued total is emptied first: the hits queued so far this tick no longer count
       // against the hit points when a travelling hit asks whether the queued damage kills.
-      world.emptyQueuedTotal(CharacterEntity.this);
+      world.hits().emptyQueuedTotal(CharacterEntity.this);
       // A shield that is up is tagged in every state and at any hit points, from the next step.
       if (getHitPoints().getShield() >= 1) {
         getView()

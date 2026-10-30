@@ -142,13 +142,13 @@ class BattleTunnelTest {
         match.deploy(
             1, GameData.unit("MiniZapMachine"), Standard1v1Battle.DEFAULT_LEVEL, 1, 3500, 20000);
 
-    match.getWorld().buffOnDamage(sparky, miner);
+    match.getWorld().hits().buffOnDamage(sparky, miner);
     assertThat(miner.getBuffs().carries("ZapFreeze")).isFalse();
 
     while (miner.getView().getState() == GridEntityState.SPAWN_PATHFIND) {
       match.getBattle().step();
     }
-    match.getWorld().buffOnDamage(sparky, miner);
+    match.getWorld().hits().buffOnDamage(sparky, miner);
     assertThat(miner.getBuffs().carries("ZapFreeze")).isTrue();
   }
 
