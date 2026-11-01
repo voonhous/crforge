@@ -8,7 +8,7 @@ aircompressor = "2.0.3"
 sqlite-jdbc = "3.53.4.0"
 
 # A trained model's policy in the debug visualizer (desktop)
-onnxruntime = "1.31.0"
+onnxruntime = "1.31.1"
 
 # Benchmarks
 jmh = "1.37"
