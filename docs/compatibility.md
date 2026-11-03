@@ -22,6 +22,7 @@ The simulator's battle rules follow client 16.635.1 (`GameVersions.CLIENT_16_635
 | Client version | Seen as | First seen |
 | --- | --- | --- |
 | 16.635.1 | the reference client, installed on a test phone | 2026-10-27 |
+| 16.635.7 | an optional update: client 16.635.1 still logs in and plays without it, data version 16.635.8 included | 2026-10-31 |
 
 The range's minimum has not been checked against the game server yet.
 
