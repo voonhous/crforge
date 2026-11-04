@@ -558,7 +558,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The players' word is supplied as 0 and the battle's source starts from its default state. What a server battle starts them from is not established.
 
-- A Path of Legends replay, game mode Ranked1v1_NewArena, is played as a Ladder match. Its game mode row differs from the Ladder row only in the card level adjustment (Tournament), the fixed arena and whether it is a Ladder mode, and the replay mapping checks that the tables still say so.
+- A Path of Legends replay, game mode Ranked1v1_NewArena or, from the season of 2026-11-03, Ranked1v1_NewArena2 (the new arena), is played as a Ladder match. Each game mode row differs from the Ladder row only in the card level adjustment (Tournament), the fixed arena and whether it is a Ladder mode, and the replay mapping checks that the tables still say so. The two rows differ from each other in the fixed arena only.
 
   Its replays write game mode type 13, level cap 16 and trail -1 in the battle header, which the mapping pins. They also carry three fields with no battle input:
 
@@ -567,6 +567,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
   - each avatar's `rnk_sc` (the player's ranked score)
 
   Recorded battles of a Ladder replay with that header play exactly as the Ladder replay: cards, princess towers and kings at levels below and at the highest, 16.
+
+  The 15,875 Ranked1v1_NewArena2 battles of the 16.635.8 coverage set all write that header. Played as Ladder, 14,597 of them match to the end; 1,275 are refused for the evolved Giant's attack sequence and 2 for a Giant Buffer enchant on a Berserker, as battles of the other modes are, and 1 mismatches.
 
   The header is a battle input all the same. In the recordings:
 

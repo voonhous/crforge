@@ -137,6 +137,10 @@ public final class ReplayScenario {
   static final Map<String, String> LADDER_HEADER =
       Map.of("gmt", "1", "lvlcap", "0", "trail", "170000000");
 
+  /** The Path of Legends header: game mode type 13, level cap 16, trail -1. */
+  private static final Map<String, String> PATH_OF_LEGENDS_HEADER =
+      Map.of("gmt", "13", "lvlcap", "16", "trail", "-1");
+
   /**
    * The game modes other than Ladder whose battles the Ladder match plays, by row name, each with
    * the battle header values it is established on.
@@ -149,9 +153,15 @@ public final class ReplayScenario {
    * the recordings a level cap of 11 brings the princess towers and, under Tournament, the kings
    * down to level 11, and game mode type 1 with trail 170000000 brings a Tournament king down to
    * level 11.
+   *
+   * <p>Ranked1v1_NewArena2, Path of Legends on the new arena from the season of 2026-11-03: its row
+   * differs from Ranked1v1_NewArena's in the fixed arena only, whose look the battle does not read,
+   * and its replays write the same Path of Legends header. It is pinned to the same values.
    */
   private static final Map<String, Map<String, String>> PLAYED_AS_LADDER =
-      Map.of("Ranked1v1_NewArena", Map.of("gmt", "13", "lvlcap", "16", "trail", "-1"));
+      Map.of(
+          "Ranked1v1_NewArena", PATH_OF_LEGENDS_HEADER,
+          "Ranked1v1_NewArena2", PATH_OF_LEGENDS_HEADER);
 
   /**
    * The game mode columns a mode played as Ladder may set differently from the Ladder row: its
