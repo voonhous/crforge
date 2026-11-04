@@ -25,6 +25,8 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Replays with every field the game client writes, read against the configured tables: its command
@@ -156,8 +158,13 @@ class ReplayScenarioEveryFieldTest {
    * ({@code rnk_sc}).
    */
   private static ObjectNode pathOfLegends(ObjectNode scenario) {
+    return pathOfLegends(scenario, RANKED);
+  }
+
+  /** The knight replay as a Path of Legends battle of the game mode {@code mode}. */
+  private static ObjectNode pathOfLegends(ObjectNode scenario, String mode) {
     ObjectNode battle = (ObjectNode) scenario.path("battle");
-    battle.put("gamemode", 72_000_000 + tables.table("game_modes").row(RANKED).index());
+    battle.put("gamemode", 72_000_000 + tables.table("game_modes").row(mode).index());
     battle.put("gmt", 13);
     battle.put("lvlcap", 16);
     battle.put("trail", -1);
@@ -172,12 +179,17 @@ class ReplayScenarioEveryFieldTest {
   /** The Path of Legends game mode. */
   private static final String RANKED = "Ranked1v1_NewArena";
 
-  @Test
-  void readsAPathOfLegendsReplayAsTheLadderReplayOfTheSameBattle() {
+  /**
+   * Each Path of Legends game mode: the first arena's, and the new arena's from the season of
+   * 2026-11-03, whose row differs from it in the fixed arena only.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {RANKED, "Ranked1v1_NewArena2"})
+  void readsAPathOfLegendsReplayAsTheLadderReplayOfTheSameBattle(String mode) {
     ScenarioPlan ladder =
         new ReplayScenario(tables).translate(fit(Scenarios.knightWithEveryField()));
     ReplayScenario mapping = new ReplayScenario(tables);
-    ObjectNode scenario = fit(pathOfLegends(Scenarios.knightWithEveryField()));
+    ObjectNode scenario = fit(pathOfLegends(Scenarios.knightWithEveryField(), mode));
 
     assertThat(mapping.survey(scenario)).isEmpty();
     ScenarioPlan plan = mapping.translate(scenario);
