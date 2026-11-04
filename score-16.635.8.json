@@ -1,0 +1,18 @@
+{
+  "content_version": "16.635.8",
+  "battles": 20763,
+  "to_the_end": 92.2,
+  "ticks_agreed": 92.5,
+  "outcomes": {
+    "diagnostic_match": 19158,
+    "mismatch": 1,
+    "unsupported": 1604
+  },
+  "first_failures": {
+    "unsupported: Giant_EV1 sets columns the battle does not model: [AttackSequenceList]": 1602,
+    "unsupported: giantbuffer_enchanting_buff sets the Berserker's attack sequence step, which is not modelled": 2,
+    "mismatch $.entities[].x": 1
+  },
+  "set": "580ff32e61060216",
+  "commit": "82643b9a9077f3a61ad148166dffb5ca2bc54ff3"
+}
