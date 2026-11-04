@@ -284,7 +284,7 @@ Which characters and towers a seat sees, and what of them, is one rule, in one p
   |---|---|
   | A character or building row that does not set `HideHealthbar` (it names a health bar row, or none and is given a default one by its hit points) | always: every health bar row such a row reaches shows on the enemy's screen always; an unhurt unit's hit points are its `max_hp` |
   | A row that sets `HideHealthbar` and whose starting client actions name a health bar (`Healthbar_Medium` and the like: most champion, hero and evolution rows, the Dark Prince, the Guards, the Archer Queen) | from the unit's first damage on, and for its life, healed back to full or not. Damage is its hit points off their maximum, or its shield changing while the row has a shield (a hit, a lost shield and a shield that grows all count). Hidden while the unit runs an action that sets `HideHealthbarWhileRolling` (the Barb Log hero's roll) |
-  | A row that sets `HideHealthbar` and whose starting client actions name no health bar (dummies, ghosts and helper objects: 7 character rows in 16.402.18, 16.402.19, 16.402.21, 16.402.22 and 16.635.3) | never |
+  | A row that sets `HideHealthbar` and whose starting client actions name no health bar (dummies, ghosts and helper objects: 7 character rows in 16.402.18, 16.402.19, 16.402.21, 16.402.22, 16.635.3 and 16.635.8) | never |
 
   A player sees an enemy Dark Prince, Guards or Archer Queen without a bar until it is first damaged, and with one from then on, also once healed back to full. The damage is watched at every tick, not only at decisions, so a unit hurt and healed between two decisions shows its bar too.
 
