@@ -129,10 +129,10 @@ The tables opened are `<tables root>/<data version>`. The versions built beside 
 At startup the launcher prints the tables folder, the data version, the content sha and the versions built:
 
 ```
-game tables: /home/me/.crforge/tables/16.635.3
-data version: 16.635.3
-content sha: dae6c6cc7e9126338da0c606e47e48a9ef80462c
-data versions: 16.402.18, 16.402.19, 16.402.21, 16.402.22, 16.635.3 (V switches)
+game tables: /home/me/.crforge/tables/16.635.8
+data version: 16.635.8
+content sha: 062a11e0500c03cc041f123413b1ef1846b539a4
+data versions: 16.402.18, 16.402.19, 16.402.21, 16.402.22, 16.635.3, 16.635.8 (V switches)
 ```
 
 It stops:
