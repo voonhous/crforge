@@ -35,9 +35,9 @@ import org.crforge.core.battle.unit.UnitData;
  * the published row of that name.
  *
  * <p>Each table family has its reader - {@link UnitRecords}, {@link AreaEffectRecords}, {@link
- * BuffRecords}, {@link ProjectileRecords}, {@link FilterRecords} and {@link CardRecords}, on {@link
- * RowReader} - which this facade fronts; a reader that needs another table's record asks the
- * facade.
+ * BuffRecords}, {@link ProjectileRecords}, {@link FilterRecords}, {@link CardRecords} and {@link
+ * DamageTypeRecords}, on {@link RowReader} - which this facade fronts; a reader that needs another
+ * table's record asks the facade.
  */
 public final class BattleRecords {
 
@@ -58,6 +58,7 @@ public final class BattleRecords {
   private final ProjectileRecords projectileRecords;
   private final FilterRecords filterRecords;
   private final CardRecords cardRecords;
+  private final DamageTypeRecords damageTypeRecords;
 
   /**
    * @param tables the game tables of one data version
@@ -70,6 +71,7 @@ public final class BattleRecords {
     this.projectileRecords = new ProjectileRecords(tables, this);
     this.filterRecords = new FilterRecords(tables, this);
     this.cardRecords = new CardRecords(tables, this);
+    this.damageTypeRecords = new DamageTypeRecords(tables, this);
   }
 
   /**
@@ -110,6 +112,15 @@ public final class BattleRecords {
    */
   public GameObjectFilter filter(String name) {
     return filterRecords.filter(name);
+  }
+
+  /**
+   * The damage type a column writes, inline or as the name of a damage types row; null for none
+   * (see {@link DamageTypeRecords#damageType}). Every reader of a column that holds a damage type
+   * reads it here.
+   */
+  DamageTypeRow damageType(JsonNode written) {
+    return damageTypeRecords.damageType(written);
   }
 
   /** The radius of a shape row that is a circle (see {@link AreaEffectRecords#circleRadius}). */

@@ -2549,7 +2549,7 @@ public final class ActionRows {
               .continuousPushBack(bool(f, "ContinuosPushBack"))
               .distanceProportionalPush(bool(f, "DistanceProportinalPush"))
               .pushBackDamage(pushBackDamage(name, f))
-              .noCounter(pushBackNoCounter(name, f))
+              .noCounter(pushBackNoCounter(f))
               .pushToSide(bool(f, "PushToSide"))
               .pushRadiusDirectionalOffset(integer(f, "PushRadiusDirectionalOffset"))
               .gameObjectFilter(records.filter(f.get("GameObjectFilter").asText()))
@@ -2560,57 +2560,40 @@ public final class ActionRows {
     /**
      * A carried push's damage at the first level: the whole number the data of game client
      * 16.402.17 writes, or the BaseDamage (0 when left out) of the inline damage type the data of
-     * client 16.635.1 writes. Refused: a damage type named by row, an inline type with a field
-     * other than BaseDamage and Flags, or with a flag other than NoCounter, whose effect on the
-     * push's hit is not traced.
+     * client 16.635.1 writes, read by the one damage type reader. Refused: a damage type named by
+     * row, an inline type with a field other than BaseDamage and Flags, or with a flag other than
+     * NoCounter, whose effect on the push's hit is not traced.
      */
-    private static int pushBackDamage(String name, JsonNode f) {
-      JsonNode value = f.get("PushBackDamage");
-      if (value == null || !value.isObject()) {
-        if (value != null && value.isTextual() && !value.asText().isEmpty()) {
-          throw new UnsupportedOperationException(
-              name + " names the damage type row " + value.asText() + ", which is not modelled");
-        }
+    private int pushBackDamage(String name, JsonNode f) {
+      DamageTypeRow type = records.damageType(f.get("PushBackDamage"));
+      if (type != null && type.named()) {
+        throw new UnsupportedOperationException(
+            name + " names the damage type row " + type.name() + ", which is not modelled");
+      }
+      if (type == null || type.form() != DamageTypeRow.Form.INLINE) {
         return integer(f, "PushBackDamage");
       }
-      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
-        String field = it.next();
+      for (String field : type.fields()) {
         if (!field.equals("BaseDamage") && !field.equals("Flags")) {
           throw new UnsupportedOperationException(
               name + " sets " + field + " in its PushBackDamage, which is not modelled");
         }
       }
-      for (String flag : pushBackFlags(value)) {
+      for (String flag : type.flags()) {
         if (!flag.equals("NoCounter")) {
           throw new UnsupportedOperationException(
               name + " sets the damage flag " + flag + " on its push, which is not modelled");
         }
       }
-      return integer(value, "BaseDamage", 0);
+      return type.baseDamage();
     }
 
     /** Whether a carried push's inline damage type is flagged NoCounter. */
-    private static boolean pushBackNoCounter(String name, JsonNode f) {
-      JsonNode value = f.get("PushBackDamage");
-      return value != null && value.isObject() && pushBackFlags(value).contains("NoCounter");
-    }
-
-    /** The flags of an inline damage type, written as one comma-separated text or as a list. */
-    private static Set<String> pushBackFlags(JsonNode type) {
-      JsonNode written = type.get("Flags");
-      List<String> names = new ArrayList<>();
-      if (written != null && written.isArray()) {
-        written.forEach(flag -> names.add(flag.asText()));
-      } else if (written != null && !written.isNull()) {
-        names.addAll(List.of(written.asText().split(",")));
-      }
-      Set<String> flags = new HashSet<>();
-      for (String flag : names) {
-        if (!flag.isBlank()) {
-          flags.add(flag.trim());
-        }
-      }
-      return flags;
+    private boolean pushBackNoCounter(JsonNode f) {
+      DamageTypeRow type = records.damageType(f.get("PushBackDamage"));
+      return type != null
+          && type.form() == DamageTypeRow.Form.INLINE
+          && type.flags().contains("NoCounter");
     }
 
     /**
@@ -3940,23 +3923,34 @@ public final class ActionRows {
       return row.build();
     }
 
-    /** A damage type row, its switches on unless the row turns them off. */
-    private DamageType damageType(JsonNode name) {
-      if (name == null || name.isNull() || name.asText().isEmpty()) {
+    /**
+     * A damage type row, read by the one damage type reader, with the actions it runs on the hit's
+     * source and target. The game's damage type class has no column for the switches - its columns
+     * are BaseDamage, TowerDamage, Effect, ActionOnTarget, ActionOnSource and Flags - so each is
+     * on, as the builder leaves it. Refused: a type written inline, a name the damage types table
+     * has no row of, and a value of another form.
+     */
+    private DamageType damageType(JsonNode written) {
+      DamageTypeRow type = records.damageType(written);
+      if (type == null) {
         return null;
       }
-      GameRow row = tables.table("damage_types").row(name.asText());
-      JsonNode actionOnSource = row.value("ActionOnSource");
-      JsonNode actionOnTarget = row.value("ActionOnTarget");
+      if (type.form() == DamageTypeRow.Form.UNKNOWN_ROW) {
+        throw new MistypedField(
+            "names the damage type "
+                + type.name()
+                + ", which the damage types table has no row of");
+      }
+      if (type.form() != DamageTypeRow.Form.NAMED) {
+        throw new MistypedField(
+            "names its damage type as "
+                + GameRow.shape(written)
+                + " where a damage types row's name is read");
+      }
       return DamageType.builder()
-          .name(row.name())
-          .enableLevelScaling(on(row, "EnableLevelScaling"))
-          .enableProtection(on(row, "EnableProtection"))
-          .enableDamageMultiplier(on(row, "EnableDamageMultiplier"))
-          .enableDamageOnHit(on(row, "EnableDamageOnHit"))
-          .acquireDamageId(on(row, "AcquireDamageId"))
-          .actionOnSource(action(actionOnSource))
-          .actionOnTarget(action(actionOnTarget))
+          .name(type.name())
+          .actionOnSource(action(type.actionOnSource()))
+          .actionOnTarget(action(type.actionOnTarget()))
           .build();
     }
 
@@ -4017,37 +4011,24 @@ public final class ActionRows {
     }
 
     /**
-     * A damage-taking row's inline damage: BaseDamage (0 when left out), TowerDamage (none when
-     * left out), its Flags (one comma-separated text or a list) and an Effect only the view shows.
-     * Refused: a damage that is not a table, a flag other than Reflected, NoScaling, NoProtection,
-     * NoAmplification and DamagesHidden, and any other field.
+     * A damage-taking row's inline damage, read by the one damage type reader: BaseDamage (0 when
+     * left out), TowerDamage (none when left out), its Flags (one comma-separated text or a list)
+     * and an Effect only the view shows. Refused: a damage that is not a table, a flag other than
+     * Reflected, NoScaling, NoProtection, NoAmplification and DamagesHidden, and any other field.
      */
     private TakeDamage.Damage takenDamage(String name, JsonNode value) {
-      if (value == null || !value.isObject()) {
+      DamageTypeRow type = records.damageType(value);
+      if (type == null || type.form() != DamageTypeRow.Form.INLINE) {
         throw new UnsupportedOperationException(
             name + " writes its Damage as other than a table, which is not modelled");
       }
-      Set<String> flags = new HashSet<>();
-      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
-        String field = it.next();
+      for (String field : type.fields()) {
         if (!Set.of("BaseDamage", "TowerDamage", "Flags", "Effect").contains(field)) {
           throw new UnsupportedOperationException(
               name + " sets " + field + " in its Damage, which is not modelled");
         }
       }
-      // The flags are written as one comma-separated text or as a list of names.
-      JsonNode written = value.get("Flags");
-      List<String> names = new ArrayList<>();
-      if (written != null && written.isArray()) {
-        written.forEach(flag -> names.add(flag.asText()));
-      } else if (written != null && !written.isNull()) {
-        names.addAll(List.of(text(value, "Flags", "").split(",")));
-      }
-      for (String flag : names) {
-        if (!flag.isBlank()) {
-          flags.add(flag.trim());
-        }
-      }
+      Set<String> flags = type.flags();
       for (String flag : flags) {
         if (!Set.of("Reflected", "NoScaling", "NoProtection", "NoAmplification", "DamagesHidden")
             .contains(flag)) {
@@ -4056,8 +4037,8 @@ public final class ActionRows {
         }
       }
       return new TakeDamage.Damage(
-          integer(value, "BaseDamage", 0),
-          integer(value, "TowerDamage", TakeDamage.NO_TOWER_DAMAGE),
+          type.baseDamage(),
+          type.towerDamage(TakeDamage.NO_TOWER_DAMAGE),
           flags.contains("Reflected"),
           flags.contains("NoProtection"),
           flags.contains("NoAmplification"),
@@ -4362,11 +4343,5 @@ public final class ActionRows {
       }
     }
     return out;
-  }
-
-  /** A switch of a damage type row: on unless the row sets it off. */
-  private static boolean on(GameRow row, String column) {
-    JsonNode value = row.value(column);
-    return value == null || value.isNull() || value.asBoolean();
   }
 }
