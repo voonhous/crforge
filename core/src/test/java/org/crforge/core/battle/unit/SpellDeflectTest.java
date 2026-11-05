@@ -21,6 +21,7 @@ import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -287,6 +288,100 @@ class SpellDeflectTest {
     assertThat(bomb.isReleased()).as("it lands on the next step").isTrue();
     assertThat(bomb.getX()).isEqualTo(bombX);
     assertThat(bomb.getY()).isEqualTo(bombY);
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Cannon's bomb that an enemy Deflect reaches only at its arrival, after its area"
+          + " effect has left, is turned at its start for the Monk's side and finished: it lands on"
+          + " nothing")
+  void barrageBombReachedAfterItsAreaEffectLeftIsFinished() {
+    Scene scene = new Scene();
+    int cannonX = 8500;
+    int cannonY = 10500;
+    // The first of the farthest bombs ahead of a bottom-side Cannon, half tiles both.
+    List<Integer> across = Shipped.numbers("Cannon_EV1_barrage", "BombAbsoluteHorizontalOffsets");
+    List<Integer> ahead = Shipped.numbers("Cannon_EV1_barrage", "BombVerticalOffsets");
+    int far = 0;
+    for (int i = 1; i < ahead.size(); i++) {
+      if (ahead.get(i) > ahead.get(far)) {
+        far = i;
+      }
+    }
+    int bombX = across.get(far) * 500;
+    int bombY = cannonY + ahead.get(far) * 500;
+    // The bomb falls straight down over its area effect's lifetime and lands on the step after
+    // the area effect has left. The Monk stands just inside the reach of the Deflect widened by the
+    // bomb's deflect radius on the ground, ahead of the bomb along the length, away from the other
+    // bombs: so the Deflect touches the bomb at its arrival, at the ground, but not a step before,
+    // still a little above the ground with its area effect there.
+    int reach =
+        Shipped.number(row("area_effect_objects", DEFLECT), "Radius")
+            + Shipped.number(row("projectiles", "Cannon_EV1_barrage_projectile"), "DeflectRadius");
+    int alongOffset = reach - 1;
+    int acrossOffset = 0;
+    while (alongOffset * alongOffset + (acrossOffset + 1) * (acrossOffset + 1) < reach * reach) {
+      acrossOffset++;
+    }
+    CharacterEntity monk = scene.monkWithDeflect(1, bombX + acrossOffset, bombY + alongOffset);
+    // What the bomb's hits reach, and the bombs whose landing applied their buff around them.
+    List<WorldEntity> hit = new ArrayList<>();
+    List<ProjectileEntity> landed = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileImpacted(
+                  int tick,
+                  ProjectileEntity projectile,
+                  WorldEntity target,
+                  int damage,
+                  DamageResult result) {
+                if (projectile.getData().name().equals("Cannon_EV1_barrage_projectile")) {
+                  hit.add(target);
+                }
+              }
+
+              @Override
+              public void projectileBuff(
+                  int tick,
+                  ProjectileEntity projectile,
+                  BuffData buff,
+                  int time,
+                  List<WorldEntity> targets) {
+                landed.add(projectile);
+              }
+            });
+    scene.match.deploy(
+        scene.tick() + 1, scene.records.unit("Cannon_EV1"), LEVEL, 0, cannonX, cannonY, "C");
+    while (scene.deflections.isEmpty()) {
+      scene.step();
+    }
+    Deflection d = scene.deflections.get(0);
+    ProjectileEntity bomb = d.projectile();
+    assertThat(bomb.getStartX()).isEqualTo(bombX);
+    assertThat(bomb.getStartY()).isEqualTo(bombY);
+    assertThat(bomb.getAreaLauncher()).as("its area effect has left").isNull();
+    assertThat(d.parent()).isSameAs(monk);
+    assertThat(d.source()).as("sent at a point, not back at a source").isNull();
+    assertThat(d.side()).isEqualTo(monk.side());
+    // Turned at its start, where it was dropped, with no target, and its flight ended there.
+    assertThat(d.aimX()).isEqualTo(bombX);
+    assertThat(d.aimY()).isEqualTo(bombY);
+    assertThat(d.target()).isNull();
+    assertThat(d.areaTargeted()).isFalse();
+    assertThat(bomb.isReleased()).isTrue();
+    scene.step();
+    assertThat(scene.match.getWorld().getHolder().entities())
+        .as("it leaves at the cleanup")
+        .doesNotContain(bomb);
+    // The Monk took the bomb's own damage as the Deflect turned it, the only hit of a bomb; the
+    // bomb never landed, so it applied its buff to nothing around its point.
+    assertThat(hit).containsExactly(monk);
+    assertThat(landed).as("it lands on nothing").doesNotContain(bomb);
+    assertThat(scene.deflections).hasSize(1);
   }
 
   /**
