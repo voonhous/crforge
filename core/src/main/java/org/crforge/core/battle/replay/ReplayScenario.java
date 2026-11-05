@@ -102,9 +102,9 @@ public final class ReplayScenario {
   /**
    * The tower selections the simulator builds, by support card: the princess towers, the cannoneer
    * towers, the Dagger Duchess's towers and the Royal Chef's towers, each placed from the card's
-   * spawn group.
+   * spawn group. A Ladder environment's side setup names one of these too.
    */
-  static final Set<String> BUILT_TOWER_SELECTIONS =
+  public static final Set<String> BUILT_TOWER_SELECTIONS =
       Set.of("King_PrincessTowers", "King_CannonTowers", "King_KnifeTowers", "King_ChefTowers");
 
   /** What the simulator does not model of each other tower selection, by support card. */

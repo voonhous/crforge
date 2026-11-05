@@ -107,6 +107,28 @@ class LadderConfig:
 
 
 @dataclass(frozen=True)
+class SideSetup:
+    """One side's setup at reset (``org.crforge.env.SideSetup``): its tower troop and the levels of
+    its towers and deck cards, as a player's account gives them. A field left None takes the
+    vector's configuration: the princess towers, :attr:`LadderConfig.tower_level` for the king and
+    the princess towers, :attr:`LadderConfig.level` for every card. Checked against the tables at
+    reset: a setup the game cannot hold refuses the whole call (``ValueError``)."""
+
+    towers: str | None = None
+    """the tower selection, a row name of the tables' support cards that the battle core builds:
+    ``"King_PrincessTowers"``, ``"King_CannonTowers"`` (the Cannoneer), ``"King_KnifeTowers"``
+    (the Dagger Duchess) or ``"King_ChefTowers"`` (the Royal Chef)"""
+    king_level: int | None = None
+    """the king tower's level: a summoner level of the tables' exp levels"""
+    tower_level: int | None = None
+    """the level of the two princess slots' towers, counted from 1 across all rarities, within the
+    levels of the tower selection's rarity"""
+    card_levels: Sequence[int] | None = None
+    """the level of each deck card by deck index, eight of them, counted from 1 across all
+    rarities, each within the levels of its card's rarity"""
+
+
+@dataclass(frozen=True)
 class Fault:
     """Why an environment's episode ended with no result (``org.crforge.env.EnvFault``)."""
 
@@ -366,6 +388,8 @@ class VectorBattle:
         deck1: Sequence[str] | Sequence[Sequence[str]],
         slots0: Sequence[int] | Sequence[Sequence[int]] | None = None,
         slots1: Sequence[int] | Sequence[Sequence[int]] | None = None,
+        setup0: SideSetup | Sequence[SideSetup | None] | None = None,
+        setup1: SideSetup | Sequence[SideSetup | None] | None = None,
     ) -> None:
         """Starts an episode in every environment.
 
@@ -379,6 +403,12 @@ class VectorBattle:
         seeds and actions alone. A bad deck or slot flags refuse the whole call (``ValueError``)
         and change nothing; a card the battle core does not take in a slot ends that environment's
         episode as a refusal fault.
+
+        ``setup0`` and ``setup1`` are each side's :class:`SideSetup` (its tower troop, king and
+        princess tower levels and card levels), one for every environment or one per environment
+        (an entry None for none); None plays the princess towers and every level as the
+        configuration gives it. A bad setup refuses the whole call too. Decks, slot flags and
+        setups stay with each environment for its autoreset episodes.
         """
         if len(seeds) != self.count:
             raise ValueError(f"{self.count} seeds are needed, got {len(seeds)}")
@@ -387,10 +417,50 @@ class VectorBattle:
         j_deck1 = jpype.JArray(jpype.JString)(self._flatten(deck1))
         j_slots0 = self._flatten_slots(slots0)
         j_slots1 = self._flatten_slots(slots1)
+        j_setup0 = self._java_setups(setup0)
+        j_setup1 = self._java_setups(setup1)
         try:
-            self._env.reset(j_seeds, j_deck0, j_deck1, j_slots0, j_slots1)
+            self._env.reset(j_seeds, j_deck0, j_deck1, j_slots0, j_slots1, j_setup0, j_setup1)
         except self._illegal_argument as e:
             raise ValueError(str(e.getMessage())) from None
+
+    def _java_setups(self, setups):
+        """One side's setup for every environment, or one per environment, as the Java array; None
+        for none. A field left None is filled from the vector's configuration."""
+        if setups is None:
+            return None
+        rows = [setups] * self.count if isinstance(setups, SideSetup) else list(setups)
+        if len(rows) != self.count:
+            raise ValueError(
+                f"side setups for every environment or one per environment: {self.count} needed, "
+                f"got {len(rows)}"
+            )
+        config = self.metadata.get("config")
+        if config is None:
+            raise ValueError("a synthetic vector plays no battle: it takes no side setup")
+        side_setup = _jvm.java_class("org.crforge.env.SideSetup")
+        princess = str(
+            _jvm.java_class("org.crforge.core.battle.unit.Standard1v1Battle").PRINCESS_TOWERS
+        )
+        out = jpype.JArray(side_setup)(self.count)
+        for i, setup in enumerate(rows):
+            if setup is None:
+                continue
+            if not isinstance(setup, SideSetup):
+                raise ValueError(f"a side setup is a SideSetup or None, got {type(setup).__name__}")
+            levels = (
+                [int(config["level"])] * self.schema.deck_size
+                if setup.card_levels is None
+                else [int(level) for level in setup.card_levels]
+            )
+            tower_level = int(config["tower_level"])
+            out[i] = side_setup(
+                princess if setup.towers is None else str(setup.towers),
+                tower_level if setup.king_level is None else int(setup.king_level),
+                tower_level if setup.tower_level is None else int(setup.tower_level),
+                jpype.JArray(jpype.JInt)(levels),
+            )
+        return out
 
     def _flatten_slots(self, slots):
         """One deck's slot flags for every environment, or one per environment, as the flat Java

@@ -104,6 +104,11 @@ public final class VectorEnv implements AutoCloseable {
   private final List<List<String>> deck1s = new ArrayList<>();
   private final List<int[]> slots0s = new ArrayList<>();
   private final List<int[]> slots1s = new ArrayList<>();
+
+  /** Each environment's side setups, side 0's and side 1's, null for a side given none. */
+  private final List<SideSetup> setup0s = new ArrayList<>();
+
+  private final List<SideSetup> setup1s = new ArrayList<>();
   private final EnvFault[] faults;
   private final boolean[] broken;
 
@@ -184,6 +189,8 @@ public final class VectorEnv implements AutoCloseable {
       deck1s.add(List.of());
       slots0s.add(new int[Schema.DECK_SIZE]);
       slots1s.add(new int[Schema.DECK_SIZE]);
+      setup0s.add(null);
+      setup1s.add(null);
     }
   }
 
@@ -444,6 +451,33 @@ public final class VectorEnv implements AutoCloseable {
    * @param slots1 side 1's slot flags, as {@code slots0}
    */
   public void reset(int[] seeds, String[] deck0, String[] deck1, int[] slots0, int[] slots1) {
+    reset(seeds, deck0, deck1, slots0, slots1, null, null);
+  }
+
+  /**
+   * Starts an episode in every environment, each side with its own setup: its tower troop and the
+   * levels of its towers and deck cards ({@link SideSetup}). Every deck, its slot flags and its
+   * setup are checked before any environment is touched: a bad one refuses the whole call and
+   * changes nothing. A side given no setup plays {@link SideSetup#standard}. An autoreset episode
+   * keeps its environment's decks, slot flags and setups.
+   *
+   * @param seeds one seed per environment
+   * @param deck0 side 0's decks, environment after environment, {@link Schema#DECK_SIZE} names each
+   * @param deck1 side 1's decks, environment after environment
+   * @param slots0 side 0's slot flags, environment after environment, one per card; null for none
+   * @param slots1 side 1's slot flags, as {@code slots0}
+   * @param setups0 side 0's setup in each environment, an entry null for none; null for none in
+   *     every environment
+   * @param setups1 side 1's setups, as {@code setups0}
+   */
+  public void reset(
+      int[] seeds,
+      String[] deck0,
+      String[] deck1,
+      int[] slots0,
+      int[] slots1,
+      SideSetup[] setups0,
+      SideSetup[] setups1) {
     int count = envs.length;
     if (seeds.length != count) {
       throw new IllegalArgumentException(count + " seeds are needed, got " + seeds.length);
@@ -463,6 +497,12 @@ public final class VectorEnv implements AutoCloseable {
                 + slots.length);
       }
     }
+    for (SideSetup[] setups : new SideSetup[][] {setups0, setups1}) {
+      if (setups != null && setups.length != count) {
+        throw new IllegalArgumentException(
+            "each side's setups are " + count + ", one per environment, got " + setups.length);
+      }
+    }
     List<List<String>> decks0 = new ArrayList<>();
     List<List<String>> decks1 = new ArrayList<>();
     List<int[]> flags0 = new ArrayList<>();
@@ -476,6 +516,8 @@ public final class VectorEnv implements AutoCloseable {
       int[] f1 = slots1 == null ? new int[Schema.DECK_SIZE] : Arrays.copyOfRange(slots1, from, to);
       checkDeck(i, 0, d0, f0);
       checkDeck(i, 1, d1, f1);
+      checkSetup(i, 0, d0, setups0 == null ? null : setups0[i]);
+      checkSetup(i, 1, d1, setups1 == null ? null : setups1[i]);
       decks0.add(List.copyOf(d0));
       decks1.add(List.copyOf(d1));
       flags0.add(f0);
@@ -487,10 +529,21 @@ public final class VectorEnv implements AutoCloseable {
       deck1s.set(i, decks1.get(i));
       slots0s.set(i, flags0.get(i));
       slots1s.set(i, flags1.get(i));
+      setup0s.set(i, setups0 == null ? null : setups0[i]);
+      setup1s.set(i, setups1 == null ? null : setups1[i]);
     }
     run(i -> resetEnv(i, seeds[i], false));
     countFaults();
     started = true;
+  }
+
+  private void checkSetup(int index, int side, List<String> deck, SideSetup setup) {
+    try {
+      envs[index].checkSetup(deck, setup);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "environment " + index + ", side " + side + ": " + e.getMessage(), e);
+    }
   }
 
   private void checkDeck(int index, int side, List<String> deck, int[] slots) {
@@ -503,8 +556,8 @@ public final class VectorEnv implements AutoCloseable {
   }
 
   /**
-   * Resets one environment to a seed, keeping its decks and slot flags; its own sequence restarts
-   * from it.
+   * Resets one environment to a seed, keeping its decks, slot flags and setups; its own sequence
+   * restarts from it.
    *
    * @param index the environment
    * @param seed the seed
@@ -530,7 +583,9 @@ public final class VectorEnv implements AutoCloseable {
           deck0s.get(index),
           deck1s.get(index),
           slots0s.get(index).clone(),
-          slots1s.get(index).clone());
+          slots1s.get(index).clone(),
+          setup0s.get(index),
+          setup1s.get(index));
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
       fail(index, e);
     }
@@ -754,6 +809,8 @@ public final class VectorEnv implements AutoCloseable {
       deck1s.set(target, source.deck1s.get(sourceIndex));
       slots0s.set(target, source.slots0s.get(sourceIndex).clone());
       slots1s.set(target, source.slots1s.get(sourceIndex).clone());
+      setup0s.set(target, source.setup0s.get(sourceIndex));
+      setup1s.set(target, source.setup1s.get(sourceIndex));
       dones.put(target, (byte) 0);
     }
     started = true;
@@ -1116,7 +1173,7 @@ public final class VectorEnv implements AutoCloseable {
     try {
       return JSON.writeValueAsString(
           writer.write(
-              writer.plan(battle, ladder.config().level(), ladder.arenas()),
+              writer.plan(battle, ladder.deckLevels(), ladder.arenas()),
               battle.getBattle().getTick()));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
