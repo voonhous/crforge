@@ -177,9 +177,7 @@ class BattleMirrorEvolutionTest {
   }
 
   @Test
-  @DisplayName(
-      "an evolved Mirror after a hero play, which no recorded battle holds, is refused, and so is"
-          + " the Mirror in the hero slot")
+  @DisplayName("an evolved Mirror after a hero play, which no recorded battle holds, is refused")
   void anEvolvedMirrorAfterAHeroPlayIsRefused() {
     int[] slots = first(MatchSide.EVOLUTION_SLOT);
     slots[1] = MatchSide.HERO_SLOT;
@@ -190,12 +188,6 @@ class BattleMirrorEvolutionTest {
     assertThatThrownBy(() -> mirrorAfter(battle, match, "Knight"))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("an evolved Mirror of a hero play of Knight");
-    assertThatThrownBy(
-            () ->
-                new Standard1v1Battle(tables)
-                    .startLadderMatch(DECK, KNIGHTS, 0, 0, first(MatchSide.HERO_SLOT), NO_SLOTS))
-        .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Mirror in a hero slot");
   }
 
   /**
