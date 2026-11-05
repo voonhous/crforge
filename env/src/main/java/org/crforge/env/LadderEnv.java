@@ -690,6 +690,42 @@ public final class LadderEnv extends BufferedEnv {
         "the tables (" + tables.version() + ") have no card named " + card);
   }
 
+  /**
+   * Each side's setup as a replay's battle stands it: the tower selection whose spawn group places
+   * its towers, its king level, its princess towers' level and each deck card's level, the last two
+   * raised by the replay's card level minimum as the battle raises them.
+   *
+   * @param plan the replay's translation
+   * @return side 0's setup, then side 1's
+   * @throws IllegalArgumentException for a side whose spawn group no tower selection the battle
+   *     core builds places
+   */
+  List<SideSetup> setupsOf(ScenarioPlan plan) {
+    List<Standard1v1Battle.Towers> towers = plan.raisedTowers();
+    List<int[]> levels = plan.raisedDeckLevels();
+    List<SideSetup> out = new ArrayList<>();
+    for (int side = 0; side < 2; side++) {
+      Standard1v1Battle.Towers own = towers.get(side);
+      String selection = null;
+      for (String name : new TreeSet<>(ReplayScenario.BUILT_TOWER_SELECTIONS)) {
+        if (tables.table(SUPPORT_CARDS).has(name) && spawnGroup(name).equals(own.spawnGroup())) {
+          selection = name;
+          break;
+        }
+      }
+      if (selection == null) {
+        throw new IllegalArgumentException(
+            "side "
+                + side
+                + "'s towers of spawn group "
+                + own.spawnGroup()
+                + ", which no tower selection the battle core builds places");
+      }
+      out.add(new SideSetup(selection, own.kingLevel(), own.level(), levels.get(side)));
+    }
+    return out;
+  }
+
   /** The spawn group a tower selection places a side's towers from. */
   private String spawnGroup(String towers) {
     return tables.table(SUPPORT_CARDS).row(towers).string("SpawnGroup");

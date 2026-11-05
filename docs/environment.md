@@ -500,6 +500,7 @@ They are made once and valid for the vector's life, so a Python bridge maps them
 - `reset(seeds, deck0, deck1, int[] slots0, int[] slots1)` adds each deck's slot flags (eight a deck, battle after battle, `Schema.SLOT_EVOLUTION` 1 and `Schema.SLOT_HERO` 2; null for none, every card played plain, as the resets without them do). The shape is checked before any battle is touched, and a card the battle core does not take in a slot ends that battle's episode as a refusal fault as its match starts.
 - `reset(seeds, deck0, deck1, slots0, slots1, SideSetup[] setups0, SideSetup[] setups1)` adds each side's setup, one per battle (an entry null, or the array null, for none). See [Side setups](#side-setups).
 - `resetEnv(i, seed)` resets one battle on its decks, slot flags and setups. An autoreset episode keeps them too.
+- `startFromReplay(i, replay, tick)` and `startFromReplays(indices, replays, ticks)` start battles mid-match on replays' battles. See [Starting mid-match](#starting-mid-match).
 - `setAutoreset(false)` leaves finished battles for the caller.
 
 ### Side setups
@@ -516,6 +517,15 @@ A player brings more to a Ladder battle than a deck: a tower troop and an accoun
 Every setup is checked before any battle is touched: a bad one refuses the whole call and changes nothing, naming the battle, the side and what is wrong. A side given no setup plays `SideSetup.standard(config)`: the princess towers, the king and princess towers at `EnvConfig.towerLevel` and every card at `EnvConfig.level`, as before setups. `EnvConfig.level` and `EnvConfig.towerLevel` are not checked, as before.
 
 The setup reaches every place a level is read: each play is given at its card's level, the mask tries and searches each hand slot's card at it, the header's `deck_level` shows it, and the entity rows show each tower's and unit's level. A fork keeps the setup, and so does a battle played again from its start. A written replay (`replayJson`, a fault bundle's `replay.json`) names each side's tower selection and level, its king level and every deck card's level, played or not, so the replay labeller and the replay viewer read the battle as it was set up.
+
+### Starting mid-match
+
+`startFromReplay(i, replay, tick)` starts battle `i`'s episode on a replay's battle at a decision's tick, and `startFromReplays(indices, replays, ticks)` does several at once on the vector's threads. Every start is a state the game reached: there is no way to set a battle's tick, towers' hit points, elixir or hand directly, as a state set that way may be one no battle reaches.
+
+- **How it gets there.** The battle is built from the replay's setup (its seed, towers, decks with their levels and slot flags, players' data) and driven to the tick as the replay labeller drives it: each of the replay's commands is given on its own given tick through the player's commands, and each tick's items are checked against the replay's. So each seat's view at the tick (its entity ids, the enemy cards and elixir it has seen, its plays waiting) is the one a seat that had played those commands holds: the labeller's row at that tick.
+- **What is in flight.** A command given before the tick that runs after it still runs, as in the replay. No command given on the tick or after it is given: from the tick on, the episode is the seats', stepped as any.
+- **Refused, changing nothing:** a tick that is not a multiple of `EnvConfig.decisionTicks`, a tick at or after the replay's end or after its match is over, an unreadable replay, a replay or a command before the tick the battle core does not model, and a command the labeller queued as the replay states it (its client's try refused it, or its point would move) that still waits at the tick, as its seat's promised elixir and pending marks would leave it out. Each start is driven apart from the vector, and the vector is changed only when all succeed.
+- **After it.** The environment keeps the replay's decks, slot flags and setups (its tower troops and levels as `SideSetup`s), so an autoreset or `resetEnv` plays the same match-up from tick 0 with a new seed. A started episode forks as any (`fork`, `forkFrom`); one played again from its start (the tests' slow fork) is refused, as for any episode on a replay's setup.
 
 `VectorEnv.ladder(Path, ...)` takes a tables folder directly. The folder is one explicit argument, with no default.
 
@@ -795,6 +805,7 @@ The action count is `schema.actions` (the metadata's `actions`), the first abili
 
 Two wrappers over a vector of one battle, both with autoreset off:
 
+- `start_from_replay(i, replay, tick)` and `start_from_replays(indices, replays, ticks)` start battles mid-match on replays (JSON text or parsed), as [Starting mid-match](#starting-mid-match) says; a start that cannot be made raises `ValueError` and changes nothing. Both wrappers take it as a reset option: `reset(options={"replay": replay, "start_tick": tick})`, the replay's decks and setups in place of the ones given.
 - `ClashParallelEnv(deck0, deck1, install=..., tables=..., slots0=None, slots1=None, setup0=None, setup1=None)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 7024 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
 - `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0, slots=None, opponent_slots=None, setup=None, opponent_setup=None)`: a single-agent environment for the learner on `seat`, `slots` and `opponent_slots` each deck's slot flags, `setup` and `opponent_setup` each side's `SideSetup`. The other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
 
