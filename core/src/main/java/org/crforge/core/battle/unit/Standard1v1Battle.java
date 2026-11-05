@@ -1038,6 +1038,12 @@ public class Standard1v1Battle {
     int side = queued.side();
     Play refusedSource = mirrorSource(queued, name);
     int deckIndex = match.deckIndex(side, card);
+    // A Mirror in the evolution slot counts its plays as any evolution slot card does, so its item
+    // is refused where theirs is.
+    if ((match.side(side).slotFlags(deckIndex) & MatchSide.EVOLUTION_SLOT) != 0) {
+      checkNoneDue(queued.given(), target.getTick(), side, card, name);
+      checkCountKnown(side, deckIndex, card, name);
+    }
     MirrorItem item =
         refusedSource == null
             ? match.mirrorItem(side, deckIndex, level)
@@ -1046,6 +1052,7 @@ public class Standard1v1Battle {
     // nothing.
     int code = match.gate(side, deckIndex, item.cost(), target.getTick());
     if (code != 0) {
+      match.mirrorRefused(side, item);
       plays.add(
           new Play(name, side, x, y, target.getTick(), null, List.of(), code, item, null, null));
       return;
@@ -1053,6 +1060,7 @@ public class Standard1v1Battle {
     // With nothing to repeat the search is handed the king's last card, finds none and answers no
     // position.
     if (item.repeats() == null) {
+      match.mirrorRefused(side, item);
       CardPlacement.Result refused =
           new CardPlacement.Result(CardPlacement.NO_POSITION, 0, 0, null, 0, List.of());
       plays.add(

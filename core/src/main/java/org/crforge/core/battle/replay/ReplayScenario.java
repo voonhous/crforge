@@ -574,17 +574,20 @@ public final class ReplayScenario {
     for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
+      List<GameRow> rows = new ArrayList<>();
       List<Integer> levels = new ArrayList<>();
       List<Integer> slots = new ArrayList<>();
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
+        rows.add(card);
         levels.add(
             level(friendlyLevel > 0 ? tournamentLevelIndex(card) : deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
         excludedEvolution(card, slots.get(slots.size() - 1), side);
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
+      excludedEvolutionOfAMirror(rows, slots, side);
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
@@ -891,8 +894,10 @@ public final class ReplayScenario {
           "battle.hbd[i]." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD,
           "consumed: the evolutions excluded from the battle, each a data id; a replay is refused"
               + " when one is an evolved row of a card in an evolution slot of either side, whose"
-              + " plays the game's client builds unevolved and the battle core would build evolved;"
-              + " otherwise no play reads it");
+              + " plays the game's client builds unevolved and the battle core would build evolved,"
+              + " or of any card of a deck with the Mirror in its evolution slot, which an evolved"
+              + " Mirror repeats as the card itself when its evolved row is listed; otherwise no"
+              + " play reads it");
     }
     return choices;
   }
@@ -902,12 +907,14 @@ public final class ReplayScenario {
    * ReplayFormat#EXCLUDED_EVOLUTIONS_FIELD}), when it lists any: each a data id of a row the tables
    * hold.
    *
-   * <p>The game's client reads the list in every game mode. Only a play's item reads it in a Ladder
-   * match: a play the player's client would build evolved is built unevolved when its card's
-   * evolved row is listed for the side. The list also narrows the cards a draft or pick mode deals,
-   * which a Ladder match does not run. The battle core builds a play's item without the list, so a
-   * replay is refused where the list could change an item ({@link #excludedEvolution}); elsewhere
-   * the list leaves the battle as it is.
+   * <p>The game's client reads the list in every game mode. Only a Mirror's item reads it in a
+   * Ladder match: an evolved Mirror repeats the last card in its evolved form unless that evolved
+   * row is listed for the Mirror's side, and then repeats the card itself. The list also narrows
+   * the cards a draft or pick mode deals, which a Ladder match does not run. The battle core builds
+   * a play's item without the list, so a replay is refused where the list could change an item
+   * ({@link #excludedEvolutionOfAMirror}), and, more widely than the client reads it, where a card
+   * in an evolution slot has a listed evolved row ({@link #excludedEvolution}); elsewhere the list
+   * leaves the battle as it is.
    */
   private void excludedEvolutions(JsonNode entry, String field) {
     JsonNode listed = entry.get(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
@@ -943,12 +950,7 @@ public final class ReplayScenario {
     if (excludedEvolutions.isEmpty() || (slotFlags & MatchSide.EVOLUTION_SLOT) == 0) {
       return;
     }
-    JsonNode listed = card.value("EvolvedSpells");
-    List<String> evolved =
-        listed != null && listed.isArray()
-            ? card.strings("EvolvedSpells")
-            : List.of(card.string("EvolvedSpells"));
-    for (String name : evolved) {
+    for (String name : evolvedSpells(card)) {
       if (excludedEvolutions.contains(name)) {
         refuse(
             "an evolution excluded from the battle in an evolution slot, whose plays the battle"
@@ -956,6 +958,53 @@ public final class ReplayScenario {
             "battle.deck" + side + ".sp: " + card.name() + " (" + name + ")");
       }
     }
+  }
+
+  /**
+   * Refuses a deck with the Mirror in its evolution slot when an excluded evolution of either side
+   * is an evolved row ({@code EvolvedSpells}) of another card of the deck: the game's client builds
+   * an evolved Mirror's repeat of a card whose evolved row is listed for the Mirror's side as the
+   * card itself, and the battle core builds the Mirror's item without the list. The Mirror's own
+   * evolved row is refused by {@link #excludedEvolution} as any evolution slot card's is.
+   *
+   * @param cards the deck's card rows, by deck index
+   * @param slotFlags the deck's slot flags, by deck index
+   * @param side the deck's side
+   */
+  private void excludedEvolutionOfAMirror(List<GameRow> cards, List<Integer> slotFlags, int side) {
+    if (excludedEvolutions.isEmpty()) {
+      return;
+    }
+    boolean evolvedMirror = false;
+    for (int index = 0; index < cards.size(); index++) {
+      evolvedMirror |=
+          cards.get(index).bool(MIRROR_COLUMN)
+              && (slotFlags.get(index) & MatchSide.EVOLUTION_SLOT) != 0;
+    }
+    if (!evolvedMirror) {
+      return;
+    }
+    for (GameRow card : cards) {
+      if (card.bool(MIRROR_COLUMN)) {
+        continue;
+      }
+      for (String name : evolvedSpells(card)) {
+        if (excludedEvolutions.contains(name)) {
+          refuse(
+              "an evolution excluded from the battle of a card an evolved Mirror of its deck may"
+                  + " repeat, which the battle core would repeat evolved",
+              "battle.deck" + side + ".sp: " + card.name() + " (" + name + ")");
+        }
+      }
+    }
+  }
+
+  /** A card row's evolved rows ({@code EvolvedSpells}), a list or a single name. */
+  private static List<String> evolvedSpells(GameRow card) {
+    JsonNode listed = card.value("EvolvedSpells");
+    return listed != null && listed.isArray()
+        ? card.strings("EvolvedSpells")
+        : List.of(card.string("EvolvedSpells"));
   }
 
   /**
@@ -1535,11 +1584,13 @@ public final class ReplayScenario {
    * names the card it repeats, and {@code pd} carries the Mirror's own deck index, its level field
    * plus the level offset and its cost plus the repeated card's. The repeated card, the level field
    * and the cost depend on the battle, so they are checked as the play runs ({@link
-   * #checkMirrorItem}); the parts the deck decides are checked here: the deck index, no slot flags,
-   * and no evolution, option, count or cosmetic field.
+   * #checkMirrorItem}); the parts the deck decides are checked here: the deck index, the slot
+   * flags, and no option or cosmetic field. A Mirror outside the evolution slot carries no
+   * evolution or count field; one in the evolution slot carries its count plus 1 and is evolved or
+   * not, as any evolution slot card's play, which the run checks.
    *
    * <p>A Mirror item that names no repeated card, as one with nothing to repeat would be, and a
-   * Mirror in a deck's evolution or hero slot are in no reference, and are refused.
+   * Mirror in a deck's hero slot are in no reference, and are refused.
    */
   private ScenarioPlan.Play mirrorPlay(
       JsonNode body,
@@ -1552,9 +1603,9 @@ public final class ReplayScenario {
       int slots,
       int packed) {
     String field = "cmd[" + index + "]";
-    if (slots != 0) {
+    if ((slots & MatchSide.HERO_SLOT) != 0) {
       throw new UnsupportedScenarioException(
-          "a Mirror in a deck's evolution or hero slot, whose item no reference holds",
+          "a Mirror in a deck's hero slot, whose item no reference holds",
           "battle.deck" + side + ".sp[" + deckIndex + "].el=" + slots);
     }
     JsonNode repeats = item.get("fs");
@@ -1564,12 +1615,19 @@ public final class ReplayScenario {
           field + ".c.sel");
     }
     GameRow repeated = row(repeats.asInt(), field + ".c.sel.fs");
-    if ((packed & ITEM_FIELD_MASK) != 0
+    int packedField = packed & ITEM_FIELD_MASK;
+    int packedCount = (packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK;
+    // An evolution slot's Mirror carries its count plus 1 and is evolved or not, which the run
+    // checks; any other Mirror carries neither.
+    boolean fieldAllowed =
+        (slots & MatchSide.EVOLUTION_SLOT) != 0
+            ? (packedField == 0 || packedField == EvolutionItem.EVOLVED) && packedCount >= 1
+            : packedField == 0 && packedCount == 0;
+    if (!fieldAllowed
         || ((packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK) != 0
-        || ((packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK) != 0
         || (((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0
             && !format.cosmeticCarried())
-        || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != 0
+        || ((packed >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK) != slots
         || ((packed >>> ITEM_INDEX_SHIFT) & ITEM_INDEX_MASK) != deckIndex + 1) {
       throw new UnsupportedScenarioException(
           "a play whose packed item is not one its deck card can carry",
@@ -1712,8 +1770,10 @@ public final class ReplayScenario {
   /**
    * Checks a Mirror play's item against the Mirror item the simulator built as the play ran: the
    * card it repeats ({@code fs}) must be the one the simulator's Mirror repeats, and the packed
-   * item's level field, deck index and cost the built item's. The simulator builds the item from
-   * its side's last card, so a play given with another item is one it does not model.
+   * item's level field, deck index and cost the built item's, and so must its evolution field and
+   * count field (the count plus 1 for a Mirror in the evolution slot, else 0). The simulator builds
+   * the item from its side's last card and count, so a play given with another item is one it does
+   * not model.
    *
    * @param play the Mirror play as the scenario gives it
    * @param built the Mirror item the simulator built as the play ran, or null if it built none
@@ -1738,14 +1798,22 @@ public final class ReplayScenario {
               + "), where the simulator "
               + (repeated == null ? "has nothing to repeat" : "repeats " + repeated));
     }
+    // The slot flags were checked as the scenario was read; the count field holds an evolution
+    // slot's count plus 1, as the client packs it.
+    int slotFlags = (play.item() >>> ITEM_FLAGS_SHIFT) & ITEM_FLAGS_MASK;
+    int count = (slotFlags & MatchSide.EVOLUTION_SLOT) != 0 ? built.count() + 1 : 0;
     // The parts the deck decides are as given, checked as the scenario was read.
     int fromDeck =
         play.item()
-            & ~((ITEM_LEVEL_MASK << ITEM_LEVEL_SHIFT)
+            & ~(ITEM_FIELD_MASK
+                | (ITEM_COUNT_MASK << ITEM_COUNT_SHIFT)
+                | (ITEM_LEVEL_MASK << ITEM_LEVEL_SHIFT)
                 | (ITEM_INDEX_MASK << ITEM_INDEX_SHIFT)
                 | (-1 << ITEM_COST_SHIFT));
     int expected =
         fromDeck
+            | (built.field() & ITEM_FIELD_MASK)
+            | ((count & ITEM_COUNT_MASK) << ITEM_COUNT_SHIFT)
             | ((built.levelField() & ITEM_LEVEL_MASK) << ITEM_LEVEL_SHIFT)
             | (((built.index() + 1) & ITEM_INDEX_MASK) << ITEM_INDEX_SHIFT)
             | (built.cost() << ITEM_COST_SHIFT);

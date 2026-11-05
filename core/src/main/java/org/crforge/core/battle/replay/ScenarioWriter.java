@@ -206,9 +206,16 @@ public final class ScenarioWriter {
                   + ": a Mirror whose item repeats nothing, which a replay's Mirror item cannot"
                   + " carry");
         }
+        int flags = slotFlags[deckIndex];
+        // A Mirror in the evolution slot carries its evolution field and its count plus 1, as any
+        // evolution slot card's item does.
+        int count = (flags & MatchSide.EVOLUTION_SLOT) != 0 ? built.count() + 1 : 0;
         item =
             (built.levelField() << ReplayScenario.ITEM_LEVEL_SHIFT)
                 | ((built.index() + 1) << ReplayScenario.ITEM_INDEX_SHIFT)
+                | (flags << ReplayScenario.ITEM_FLAGS_SHIFT)
+                | built.field()
+                | (count << ReplayScenario.ITEM_COUNT_SHIFT)
                 | (built.cost() << ReplayScenario.ITEM_COST_SHIFT);
         String name = built.repeats().name();
         repeats = new ScenarioPlan.Repeated(repeatedId(name), name);

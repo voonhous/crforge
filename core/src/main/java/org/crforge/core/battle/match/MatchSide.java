@@ -51,8 +51,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " held by golden-gaps-v1/mirror_after_troop and mirror_after_spell. The slot flags,"
             + " the counts and each play's item are held by knight_evolved_third_play and the"
             + " hero reference battles (hero_giant, deck_hero_and_champion), and the count a"
-            + " play refused at its run moves by captured Ladder battles; a Mirror of an"
-            + " evolved play is not held by a recorded battle. Not modelled: a boost's scaled"
+            + " play refused at its run moves by captured Ladder battles; the count of a Mirror in"
+            + " the evolution slot by mirror-evolved-v1; a Mirror of an evolved play is not held"
+            + " by a recorded battle. Not modelled: a boost's scaled"
             + " rate and a paused regeneration, which no Ladder battle has, and the views'"
             + " counters.")
 public final class MatchSide {
@@ -349,11 +350,18 @@ public final class MatchSide {
    * evolved or hero play, else one more while it is below the evolved row's DarkElixirCost.
    */
   private void count(EvolutionItem item) {
-    int index = item.index();
+    count(item.index(), item.field());
+  }
+
+  /**
+   * Moves the count of an evolution slot's card for a play with the given evolution field, as
+   * {@link #count(EvolutionItem)} does.
+   */
+  private void count(int index, int field) {
     if ((slotFlags[index] & EVOLUTION_SLOT) == 0) {
       return;
     }
-    if (item.field() != 0) {
+    if (field != 0) {
       evolutionCounts[index] = 0;
     } else if (evolutionCounts[index]
         < deck.get(index).formRow(MatchCard.EVO_FORM).darkElixirCost()) {
@@ -376,13 +384,27 @@ public final class MatchSide {
   }
 
   /**
-   * A play of the Mirror: the item's cost taken, the repeated card's production stop started, and
-   * the Mirror moved from its slot to the back of the queue. The last card played stays as it was.
+   * A play of the Mirror: the item's cost taken, the repeated card's production stop started, the
+   * Mirror moved from its slot to the back of the queue, and the count of a Mirror in the evolution
+   * slot moved as any evolution slot card's play moves it. The last card played stays as it was.
    *
    * @param item the Mirror's item, which repeats a card
    */
   void playMirror(MirrorItem item) {
     play(item.index(), item.cost(), item.repeats().elixirProductionStopTimeMs());
+    count(item.index(), item.field());
+  }
+
+  /**
+   * A Mirror's play refused at its run, by the gates or with nothing to repeat: the count of a
+   * Mirror in the evolution slot is no longer established (see {@link #evolutionCountUnknown}).
+   *
+   * @param item the Mirror's item
+   */
+  void mirrorRefused(MirrorItem item) {
+    if ((slotFlags[item.index()] & EVOLUTION_SLOT) != 0) {
+      countsUnknown[item.index()] = true;
+    }
   }
 
   private void play(int index, int cost, int productionStopTimeMs) {
