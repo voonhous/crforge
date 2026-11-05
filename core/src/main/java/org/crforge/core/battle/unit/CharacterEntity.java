@@ -249,9 +249,11 @@ import org.crforge.core.pathfinding.target.ValidatorQueries;
             + " and as it rises, scheduled on itself and run in its phase-3 pending pass, held by"
             + " evo_tesla_vs_giant and evo_tesla_ring_giant_musketeer; their cause, itself, which"
             + " the evolved Tesla's ring does not read, by no run. Refused for a clone: a"
-            + " building, a unit whose hit destroys it, a champion, a rider running an"
-            + " air-to-ground action, and one still deploying whose clone's row spawns an area"
-            + " object. A clone of a unit still deploying: a carrier's clone set up before its"
+            + " building with hit points, a unit whose hit destroys it and whose projectile or"
+            + " area effect would spawn or run an action, a carrier's rider running an"
+            + " air-to-ground action, and a clone a Clone reaches. A champion, a hero form among"
+            + " them, is cloned as any unit, held by BattleChampionCloneTest. A clone of a unit"
+            + " still deploying: a carrier's clone set up before its"
             + " countdown, making no riders, its riders' clones with theirs, held by"
             + " clone-refusals-v1/carrier_clone_deploying; a Mega Knight's clone entering the"
             + " deploying state without its push, held by clone-refusals-v1/mk_clone_deploying."
@@ -921,8 +923,8 @@ public class CharacterEntity extends WorldEntity {
 
   /**
    * Creates a Clone's clone of a unit as a spawn creates a character, a row with riders too: a
-   * clone never enters the deploying state, whose entry makes a row's riders, so a carrier's clone
-   * makes none of its own and rides the clones of its original's riders instead.
+   * carrier's clone never enters the deploying state, whose entry makes a row's riders, so it makes
+   * none of its own and rides the clones of its original's riders instead.
    *
    * @param world the battle's shared arena state
    * @param data the clone's row
