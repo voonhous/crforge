@@ -45,11 +45,14 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " parent, a spell-like projectile sent at the enemy crown tower nearest the area"
             + " effect or passed untouched near its owner once deflected, a king tower's cast"
             + " sent the same way, a rolling body sent back by its flight, a projectile without a"
-            + " root owner turned at its start and finished, a rider's shot sent at its carrier,"
-            + " a volley turned as one or each projectile on its own, a hook ended where it is,"
+            + " root owner turned at its start and finished, a spell-like one too (the evolved"
+            + " Cannon's bomb met at its arrival after its area effect left), a rider's shot sent"
+            + " at its carrier, a volley turned as one or each projectile on its own, a hook ended"
+            + " where it is,"
             + " and a turn past MAX_DEFLECTION_TIMES ending the flight; held by the reference"
             + " battles of the deflect corpora: arrows-deflect-v1, barbloghero-deflect-v1,"
-            + " body-deflect-v1, bomber-evolved-deflect-v1, deflect-enchant-copy-v1,"
+            + " body-deflect-v1, bomber-evolved-deflect-v1, cannon-bomb-late-deflect-v1,"
+            + " deflect-enchant-copy-v1,"
             + " deflect-end-poison-v1, deflect-no-root-v1, deflect-rider-shot-v1,"
             + " deflect-source-left-v1, firecracker-deflect-v1, fisherman-deflect-v1,"
             + " goblin-barrel-deflect-v1, hunter-deflect-v1, hunter-ev1-net-deflect-v1,"
@@ -60,10 +63,9 @@ import org.crforge.core.pathfinding.target.ReferenceValidator;
             + " tower-shot-deflect-v1 and wizard-hero-air-shot-deflect-v1. Refused: the"
             + " projectiles refuseDeflection names, a pingpong projectile met at its aim on its"
             + " arrival, a projectile measured at its target's point without a chain's circle or"
-            + " of a volley's group, an area effect that follows nothing, a projectile without a"
-            + " root owner that is spell-like or has an action on reaching its target, a Goblin"
-            + " Barrel sent at a king tower, and a projectile an area effect launched that was not"
-            + " dropped onto it.")
+            + " of a volley's group, an area effect that follows nothing, a Goblin Barrel sent at"
+            + " a king tower, and a projectile an area effect launched that was not dropped onto"
+            + " it.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class ProjectileDeflection {
 
@@ -571,14 +573,16 @@ public final class ProjectileDeflection {
    * parent's side, and its flight is ended: it takes no further step and leaves at the next
    * cleanup, without an impact on its target and without its action on reaching its target. So the
    * evolved Elite Barbarians' spear, thrown by a barbarian that dies before it lands, spawns no
-   * rage where it would have landed.
+   * rage where it would have landed. A spell-like projectile goes the same way: the evolved
+   * Cannon's bomb lands on the step after its area effect leaves, and a Deflect that reaches it
+   * only then, at its arrival, finds it without a root owner; it is turned where it was dropped and
+   * lands on nothing, no buff and no pushback.
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
-   * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
-   * effect has left - which no recording holds; a Goblin Barrel the search would send at a king
-   * tower, which no recording holds; a projectile an area effect launched that was not dropped onto
-   * it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns it around all
-   * the same and then ends its flight.
+   * that follows nothing, a Goblin Barrel the search would send at a king tower, which no recording
+   * holds; a projectile an area effect launched that was not dropped onto it. A deflection past the
+   * most a projectile takes (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its
+   * flight.
    *
    * @return true when the projectile was deflected
    */
@@ -617,21 +621,13 @@ public final class ProjectileDeflection {
     }
     boolean rolling = rollingBody(projectile.getData());
     // A projectile without a root owner - its shooter has left - is turned at its start and
-    // finished: no gate, no search.
+    // finished: no gate, no search. The root is read before anything about the row, so a
+    // spell-like one goes the same way: the evolved Cannon's bomb whose area effect left before
+    // the Deflect reached it, at its arrival, is turned where it was dropped and lands on nothing.
+    // One with an action on reaching its target, as the evolved Elite Barbarians' spear or the
+    // hero Wizard's shot from the air, goes the same way too: the finish ends its flight without
+    // scheduling that action.
     boolean rootless = !rolling && source == null && areaSource == null;
-    // Refused there: a spell-like projectile, a bomb whose area effect has left, which no recording
-    // holds. One with an action on reaching its target, as the evolved Elite Barbarians' spear or
-    // the hero Wizard's shot from the air, goes the same way as any other: the finish ends its
-    // flight without scheduling that action.
-    if (rootless && spellLike) {
-      throw new UnsupportedOperationException(
-          deflector.name()
-              + " deflects "
-              + projectile.name()
-              + " ("
-              + projectile.getData().name()
-              + ") without a root owner, a spell-like projectile, which is not modelled");
-    }
     // A projectile whose root is a king tower and that has no target searches for the nearest
     // enemy crown tower, as a spell-like one does: a cast Goblin Barrel, which the king tower
     // casts, and a king tower's own shot whose target has left in its flight, which homes. One
