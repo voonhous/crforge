@@ -2543,37 +2543,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
   }
 
   /**
-   * Gives the entity's reference up, as a taunt's end does.
+   * Gives the entity's reference up, as a taunt's end does: the taunt's own call of the setter with
+   * no reference. The setter's path for no reference asks a dasher to resume, and the resume runs
+   * there and then, inside the taunt's run: the moving state is asked for in the holder's run pass,
+   * on the step the taunt lets go. The request does not wait for the targeting visit's outcome,
+   * which is cleared as the next visit begins: a standing dasher whose taunt ends would otherwise
+   * go on standing.
    *
    * @param keepWindUp true to keep the wind-up as it is, as the end of its duration does
    */
   void tauntDrop(boolean keepWindUp) {
-    tauntGiveUp(keepWindUp, false);
-  }
-
-  /**
-   * Gives the entity's reference up as a unit's taunt step does once its forced object is captured:
-   * the wind-up kept and the setter's re-check skipped.
-   */
-  void tauntRelease() {
-    tauntGiveUp(true, true);
-  }
-
-  /**
-   * A taunt's own call of the setter with no reference. The setter's path for no reference asks a
-   * dasher to resume, and the resume runs there and then, inside the taunt's run: the moving state
-   * is asked for in the holder's run pass, on the step the taunt lets go. The request does not wait
-   * for the targeting visit's outcome, which is cleared as the next visit begins: a standing dasher
-   * whose taunt ends would otherwise go on standing.
-   *
-   * @param keepWindUp true to keep the wind-up as it is
-   * @param skipRecheck true to skip the setter's re-check
-   */
-  private void tauntGiveUp(boolean keepWindUp, boolean skipRecheck) {
     TargetingOutcome outcome = new TargetingOutcome();
     outcome.setRoutePreparer(selection.getOutcome().getRoutePreparer());
     ReferenceSetter.setReference(
-        getTargeting(), null, false, keepWindUp, skipRecheck, selection, outcome);
+        getTargeting(), null, false, keepWindUp, false, selection, outcome);
     if (outcome.isResumeRequested()) {
       resumeAfterDrop();
     }

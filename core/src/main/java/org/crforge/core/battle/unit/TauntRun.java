@@ -266,24 +266,24 @@ final class TauntRun extends ActionInstance {
 
   /**
    * A unit's step while the duration lasts. With its targeting component off (a stun, a freeze or a
-   * deploy) nothing is done. A reference still on the forced object is given up, the wind-up kept,
-   * only when the object has been captured; the step's own test of a captured object, which comes
-   * first, has already given such a reference up, so the standard game never reaches this one
-   * either. A reference on anything else, or none, is forced back onto the object - marked in the
-   * unit's targeting queue at priority 1, set without the setter's re-check, the selector locked
-   * and the re-selection wait set to what is left of the duration - unless the object is captured
-   * or the unit is dashing, winding up a dash or carries the dashing tag.
+   * deploy) nothing is done. A reference still on the forced object is kept. A reference on
+   * anything else, or none, is forced back onto the object - marked in the unit's targeting queue
+   * at priority 1, set without the setter's re-check, the selector locked and the re-selection wait
+   * set to what is left of the duration - unless the object is captured or the unit is dashing,
+   * winding up a dash or carries the dashing tag.
+   *
+   * <p>The game's unit step also has a release of a reference still on a captured forced object. It
+   * never runs: the step's own test of a captured object comes first and has already given such a
+   * reference up, and what runs in between - the owner's building test, a plain read of its row,
+   * and the read of the unit it rides - changes neither the reference nor the object's tags. So a
+   * reference found on the forced object here is never on a captured one, and the release is left
+   * out.
    */
   private void stepUnit(List<String> calls) {
     if (!owner.isActive(CharacterEntity.TARGETING_SLOT)) {
       return;
     }
     if (referenced()) {
-      if (captured()) {
-        owner.tauntRelease();
-        calls.add("set_target null 0 1 1");
-        remaining(0, calls);
-      }
       return;
     }
     if (captured()
