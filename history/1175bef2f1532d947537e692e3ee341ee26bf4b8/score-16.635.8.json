@@ -1,0 +1,12 @@
+{
+  "content_version": "16.635.8",
+  "battles": 20763,
+  "to_the_end": 100.0,
+  "ticks_agreed": 100.0,
+  "outcomes": {
+    "diagnostic_match": 20763
+  },
+  "first_failures": {},
+  "set": "580ff32e61060216",
+  "commit": "1175bef2f1532d947537e692e3ee341ee26bf4b8"
+}

@@ -1,15 +1,12 @@
 {
   "content_version": "16.635.8",
   "battles": 20763,
-  "to_the_end": 92.2,
-  "ticks_agreed": 92.5,
+  "to_the_end": 100.0,
+  "ticks_agreed": 100.0,
   "outcomes": {
-    "diagnostic_match": 19161,
-    "unsupported": 1602
+    "diagnostic_match": 20763
   },
-  "first_failures": {
-    "unsupported: Giant_EV1 sets columns the battle does not model: [AttackSequenceList]": 1602
-  },
+  "first_failures": {},
   "set": "580ff32e61060216",
-  "commit": "eedace7dc357ebd8509e457b0b336519baaa3eac"
+  "commit": "1175bef2f1532d947537e692e3ee341ee26bf4b8"
 }
