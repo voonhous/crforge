@@ -9,11 +9,14 @@ package org.crforge.core.battle.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
@@ -32,7 +35,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Mirror in its deck's evolution slot: its plays counted as any evolution slot card's, and the
- * evolved Mirror, which repeats the last card in its evolved form when the card has one.
+ * evolved Mirror, which repeats the last card in its evolved form when the card has one, after a
+ * hero play of it too, and otherwise as a Mirror that is not evolved repeats it.
  */
 class BattleMirrorEvolutionTest {
 
@@ -51,6 +55,10 @@ class BattleMirrorEvolutionTest {
   private static final List<String> DECK =
       List.of("Mirror", "Knight", "Archer", "Zap", "Arrows", "Fireball", "Poison", "Rage");
 
+  /** The same deck with the Merge Maiden, a variant card, in the Archer's place. */
+  private static final List<String> MAIDEN_DECK =
+      List.of("Mirror", "Knight", "MergeMaiden", "Zap", "Arrows", "Fireball", "Poison", "Rage");
+
   private static final List<String> KNIGHTS = Collections.nCopies(8, "Knight");
 
   private static final int[] NO_SLOTS = new int[8];
@@ -67,6 +75,17 @@ class BattleMirrorEvolutionTest {
    */
   private static GameTables tables;
 
+  /**
+   * The same tables, with the Knight listing its hero row only: a hero card with no evolved row.
+   */
+  private static GameTables heroOnlyKnight;
+
+  /**
+   * The same tables, with the Knight's row setting MirrorUsesRootSpell false: a card with an
+   * evolved row that a Mirror repeats as the row its play was cast as.
+   */
+  private static GameTables rootlessKnight;
+
   private static int mirrorLevelOffset;
 
   private static int mirrorEvoLevelOffset;
@@ -76,23 +95,46 @@ class BattleMirrorEvolutionTest {
     mirrorLevelOffset =
         Shipped.number(Shipped.row("globals", "MIRROR_LEVEL_OFFSET"), "NumberValue");
     mirrorEvoLevelOffset = mirrorLevelOffset + 1;
+    String knightHero = GameData.records().matchCard("Knight").formRow(MatchCard.HERO_FORM).name();
+    tables = writeTheRows(folder.resolve("tables"), rows -> {});
+    heroOnlyKnight =
+        writeTheRows(
+            folder.resolve("heroOnlyKnight"),
+            rows -> GameData.columns(rows, "Knight").putArray("EvolvedSpells").add(knightHero));
+    rootlessKnight =
+        writeTheRows(
+            folder.resolve("rootlessKnight"),
+            rows -> GameData.columns(rows, "Knight").put("MirrorUsesRootSpell", false));
+  }
+
+  /**
+   * Writes the configured tables into a folder with the evolved Mirror's DarkElixirCost, the
+   * evolved Mirror's level offset and the Archer's empty EvolvedSpells, and one more change to the
+   * character cards' rows.
+   */
+  private static GameTables writeTheRows(Path into, Consumer<ObjectNode> characterCards)
+      throws IOException {
+    Files.createDirectories(into);
     String mirrorEvolved =
         GameData.records().matchCard("Mirror").formRow(MatchCard.EVO_FORM).name();
     GameData.altered(
-        folder,
+        into,
         "spells_evolved",
         rows -> GameData.columns(rows, mirrorEvolved).put("DarkElixirCost", MIRROR_EVOLUTION_COST));
     GameData.alterLoaded(
-        folder,
+        into,
         "globals",
         rows ->
             GameData.columns(rows, "MIRROR_EVO_LEVEL_OFFSET")
                 .put("NumberValue", mirrorEvoLevelOffset));
     GameData.alterLoaded(
-        folder,
+        into,
         "spells_characters",
-        rows -> GameData.columns(rows, "Archer").putArray("EvolvedSpells"));
-    tables = GameTables.load(folder);
+        rows -> {
+          GameData.columns(rows, "Archer").putArray("EvolvedSpells");
+          characterCards.accept(rows);
+        });
+    return GameTables.load(into);
   }
 
   /** Slot flags with the first card's set to the given flags. */
@@ -177,17 +219,113 @@ class BattleMirrorEvolutionTest {
   }
 
   @Test
-  @DisplayName("an evolved Mirror after a hero play, which no recorded battle holds, is refused")
-  void anEvolvedMirrorAfterAHeroPlayIsRefused() {
-    int[] slots = first(MatchSide.EVOLUTION_SLOT);
-    slots[1] = MatchSide.HERO_SLOT;
+  @DisplayName(
+      "an evolved Mirror after a hero play of a card with an evolved row repeats the card's evolved"
+          + " row, the global MIRROR_EVO_LEVEL_OFFSET above the Mirror's level, not its hero row")
+  void anEvolvedMirrorAfterAHeroPlayRepeatsTheEvolvedRow() {
     Standard1v1Battle battle = new Standard1v1Battle(tables);
-    LadderMatch match = battle.startLadderMatch(DECK, KNIGHTS, 0, 0, slots, NO_SLOTS);
+    LadderMatch match = battle.startLadderMatch(DECK, KNIGHTS, 0, 0, heroKnight(), NO_SLOTS);
+    MatchCard knight = match.side(0).deck().get(1);
+    MatchCard evolved = knight.formRow(MatchCard.EVO_FORM);
+    MatchCard hero = knight.formRow(MatchCard.HERO_FORM);
+    assertThat(evolved).isNotSameAs(knight);
+    assertThat(hero).isNotSameAs(knight);
+    Standard1v1Battle.Play plain = mirrorAfter(battle, match, "Knight");
+    Standard1v1Battle.Play play = mirrorAfter(battle, match, "Knight");
+
+    // The Mirror that is not evolved repeats the hero play as the hero row.
+    assertThat(plain.mirror().field()).isZero();
+    assertThat(plain.mirror().repeats().name()).isEqualTo(hero.name());
+    assertThat(plain.mirror().level()).isEqualTo(LEVEL + mirrorLevelOffset);
+    MirrorItem item = play.mirror();
+    assertThat(item.field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(item.repeats().name()).isEqualTo(evolved.name());
+    assertThat(item.level()).isEqualTo(LEVEL + mirrorEvoLevelOffset);
+    int maxMana = Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
+    assertThat(item.cost()).isEqualTo(Math.min(Shipped.cost("Mirror") + evolved.cost(), maxMana));
+    DeployCard cast = battle.getWorld().getRecords().card(evolved.name());
+    assertThat(play.units()).hasSize(1);
+    assertThat(play.units().get(0).getData().name()).isEqualTo(cast.unitAt(0).name());
+    assertThat(play.result().placed()).isTrue();
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mirror after a hero play of a card with no evolved row repeats the hero row, the"
+          + " global MIRROR_LEVEL_OFFSET above the Mirror's level, as a Mirror that is not evolved"
+          + " does")
+  void anEvolvedMirrorAfterAHeroPlayOfACardWithNoEvolvedRowRepeatsTheHeroRow() {
+    Standard1v1Battle battle = new Standard1v1Battle(heroOnlyKnight);
+    LadderMatch match = battle.startLadderMatch(DECK, KNIGHTS, 0, 0, heroKnight(), NO_SLOTS);
+    MatchCard knight = match.side(0).deck().get(1);
+    assertThat(knight.formRow(MatchCard.EVO_FORM)).isSameAs(knight);
+    MatchCard hero = knight.formRow(MatchCard.HERO_FORM);
+    mirrorAfter(battle, match, "Knight");
+    Standard1v1Battle.Play play = mirrorAfter(battle, match, "Knight");
+
+    MirrorItem item = play.mirror();
+    assertThat(item.field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(item.repeats().name()).isEqualTo(hero.name());
+    assertThat(item.level()).isEqualTo(LEVEL + mirrorLevelOffset);
+    DeployCard cast = battle.getWorld().getRecords().card(hero.name());
+    assertThat(play.units()).hasSize(1);
+    assertThat(play.units().get(0).getData().name()).isEqualTo(cast.unitAt(0).name());
+    assertThat(match.side(0).evolutionCount(0)).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mirror after a Merge Maiden, a card with no evolved row whose row sets"
+          + " MirrorUsesRootSpell false, repeats the option it was played as, the global"
+          + " MIRROR_LEVEL_OFFSET above the Mirror's level, as a Mirror that is not evolved does")
+  void anEvolvedMirrorOfAMergeMaidenRepeatsTheOptionPlayed() {
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    LadderMatch match =
+        battle.startLadderMatch(
+            MAIDEN_DECK, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
+    Standard1v1Battle.Play plain = mirrorAfter(battle, match, "MergeMaiden");
+    Standard1v1Battle.Play play = mirrorAfter(battle, match, "MergeMaiden");
+    List<Standard1v1Battle.Play> plays = battle.getPlays();
+    String option = plays.get(plays.size() - 2).variant().spell();
+
+    assertThat(plain.mirror().field()).isZero();
+    assertThat(plain.mirror().repeats().name())
+        .isEqualTo(plays.get(plays.indexOf(plain) - 1).variant().spell());
+    MirrorItem item = play.mirror();
+    assertThat(item.field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(item.repeats().name()).isEqualTo(option);
+    assertThat(item.level()).isEqualTo(LEVEL + mirrorLevelOffset);
+    int maxMana = Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
+    assertThat(item.cost())
+        .isEqualTo(Math.min(Shipped.cost("Mirror") + Shipped.cost(option), maxMana));
+    String character = Shipped.text(Shipped.row("spells_characters", option), "SummonCharacter");
+    assertThat(play.units()).hasSize(1);
+    assertThat(play.units().get(0).getData().name()).isEqualTo(character);
+    assertThat(match.side(0).lastPlayed().name()).isEqualTo("MergeMaiden");
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mirror after a card with an evolved row whose row sets MirrorUsesRootSpell"
+          + " false, which no shipped row sets, is refused")
+  void anEvolvedMirrorOfARootlessCardWithAnEvolvedRowIsRefused() {
+    Standard1v1Battle battle = new Standard1v1Battle(rootlessKnight);
+    LadderMatch match =
+        battle.startLadderMatch(DECK, KNIGHTS, 0, 0, first(MatchSide.EVOLUTION_SLOT), NO_SLOTS);
     mirrorAfter(battle, match, "Knight");
 
     assertThatThrownBy(() -> mirrorAfter(battle, match, "Knight"))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("an evolved Mirror of a hero play of Knight");
+        .hasMessageContaining(
+            "an evolved Mirror of Knight, a card with an evolved row whose row sets"
+                + " MirrorUsesRootSpell false");
+  }
+
+  /** The Mirror in the evolution slot, the Knight in the hero slot. */
+  private static int[] heroKnight() {
+    int[] slots = first(MatchSide.EVOLUTION_SLOT);
+    slots[1] = MatchSide.HERO_SLOT;
+    return slots;
   }
 
   /**
@@ -219,9 +357,15 @@ class BattleMirrorEvolutionTest {
           Math.max(
               Math.max(OPEN + 20, battle.getBattle().getTick() + AFTER_A_PLAY),
               coveredFrom(battle, cost));
+      if (side.deck().get(pick).variant() != null) {
+        // A variant play is picked as it is given, before its run: give it from the next tick.
+        tick = Math.max(tick, battle.getBattle().getTick() + AFTER_A_PLAY);
+      }
       String play = name + "@" + tick;
       if (pick == mirror) {
         battle.playMirror(tick, "Mirror", LEVEL, 0, 14500, 10000, play);
+      } else if (side.deck().get(pick).variant() != null) {
+        battle.playVariant(tick, name, LEVEL, 0, 3500, 10000, play);
       } else {
         DeployCard deck = battle.getWorld().getRecords().card(name);
         battle.play(

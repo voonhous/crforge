@@ -418,7 +418,9 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - Its plays counted as any evolution slot card's: plain while the count is below the evolved Mirror's DarkElixirCost, evolved once it reaches it, and that play resets the count.
   - The evolved Mirror after a Knight repeats the evolved Knight at the Mirror's level plus MIRROR_EVO_LEVEL_OFFSET (written one above MIRROR_LEVEL_OFFSET to tell them apart), for the Mirror's cost plus the evolved row's, and places the evolved unit.
   - The evolved Mirror after a card with no evolved row repeats the card itself at the Mirror's level plus MIRROR_LEVEL_OFFSET.
-  - Refused: the evolved Mirror after a hero play.
+  - After a hero Knight, the Mirror that is not evolved repeats the hero row, the evolved one the evolved Knight at MIRROR_EVO_LEVEL_OFFSET. After a hero play of a card with no evolved row (the Knight written with its hero row only) the evolved Mirror repeats the hero row at MIRROR_LEVEL_OFFSET.
+  - The evolved Mirror after a Merge Maiden repeats the option it was played as at MIRROR_LEVEL_OFFSET.
+  - Refused: the evolved Mirror of a card with an evolved row whose row sets MirrorUsesRootSpell false (the Knight written so).
 - `BattleMirrorHeroTest` holds the Mirror in the hero slot, which lists no row in the hero form and so plays as the Mirror itself:
   - After a plain play of a Knight, a card with a hero form, it repeats the Knight itself at the Mirror's level plus MIRROR_LEVEL_OFFSET, for the Mirror's cost plus the Knight's; its item carries the hero form field.
   - After a card with no hero form it repeats the card, and its plays move no count, even with the evolved Mirror's DarkElixirCost written 1: every play carries the hero form field, none is evolved.
