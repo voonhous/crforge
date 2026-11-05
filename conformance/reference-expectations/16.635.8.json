@@ -430,6 +430,7 @@
   "ghost-tornado-v1/gt_201": {"outcome": "diagnostic_match"},
   "ghost-tornado-v1/gt_202": {"outcome": "diagnostic_match"},
   "ghost-tornado-v1/gt_203": {"outcome": "diagnostic_match"},
+  "giantbuffer-berserker-v1/giantbuffer_enchant_berserker": {"outcome": "diagnostic_match"},
   "gianthero-ability-refund-v1/refund_slap_t895": {"outcome": "diagnostic_match"},
   "gianthero-ability-refund-v1/refund_wait_t870": {"outcome": "diagnostic_match"},
   "gianthero-ability-refund-v1/refund_wait_t910": {"outcome": "diagnostic_match"},

@@ -101,9 +101,13 @@ import org.crforge.core.pathfinding.math.FixedMath;
             + " gains any, as the shipped row's multiplier is 0 for the spear goblins' and the"
             + " Ram Rider's projectiles; the children's own counts and added damage are held by"
             + " BattleEnchantedRidersTest only."
+            + " A unit whose row name holds Berserker has its attack sequence index set to 2 on"
+            + " the attack that leaves the count one short, through its starting action's store;"
+            + " held by the reference battle giantbuffer_enchant_berserker, the Berserker and"
+            + " the hero Berserker each enchanted, and BattleEnchantedBerserkerTest. The shipped"
+            + " entries are equal, so no observation shows the index; the test does."
             + " Refused: a start in the run pass that hands a run on to a child that pass has"
-            + " stepped, which the game steps at once, the Berserker's attack sequence step, a"
-            + " walk that meets"
+            + " stepped, which the game steps at once, a walk that meets"
             + " an area effect, which the game follows to the area effect's parent, and a walk"
             + " that ends on one, which the game keeps as the giver by its id and rarity; no"
             + " shipped row starts the buff from an area effect or a projectile one launched.")
@@ -144,6 +148,12 @@ public final class GiantBufferBuff extends RowAction {
 
   /** The multiplier a row the map does not name has, in thousandths. */
   private static final int NO_MULTIPLIER = 1000;
+
+  /** The text a row name holds for the count to set its unit's attack sequence index. */
+  private static final String BERSERKER = "Berserker";
+
+  /** The attack sequence index such a unit gets one attack short of the count's completion. */
+  private static final int BERSERKER_INDEX = 2;
 
   /** The step the finish countdown loses. */
   private static final int STEP_MS = 50;
@@ -345,7 +355,9 @@ public final class GiantBufferBuff extends RowAction {
 
     /**
      * The end of one of the unit's attacks: the count goes up, and at the attack amount the row's
-     * action is scheduled on the unit and the count starts again.
+     * action is scheduled on the unit and the count starts again. On the attack that leaves the
+     * count one short, a unit whose row name holds "Berserker" - the Berserker, its hero form and
+     * their other rows - has its attack sequence index set to 2.
      *
      * @param holder the unit's holder
      */
@@ -354,9 +366,12 @@ public final class GiantBufferBuff extends RowAction {
       int before = counter;
       counter = before + 1;
       if (before == columns.attackAmount() - 2) {
-        if (owner.actionRowName().equals("Berserker")) {
-          throw new UnsupportedOperationException(
-              name() + " sets the Berserker's attack sequence step, which is not modelled");
+        // One short of the count's completion, a unit whose row name holds "Berserker" stores
+        // the index of its sequence's third entry, so the completing hit lands with it; the store
+        // is the flipping action's, below the order's length only and with the targeting
+        // component on or off. Nothing else is done on this attack, whatever the unit.
+        if (owner.actionRowName().contains(BERSERKER)) {
+          owner.setAttackSequenceIndex(BERSERKER_INDEX, true);
         }
       } else if (counter >= columns.attackAmount()) {
         if (columns.attackAmountAction() != null) {
