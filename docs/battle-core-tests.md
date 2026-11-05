@@ -413,12 +413,17 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - A card in both slots played as its hero form, which resets its count, so it never evolves.
   - An evolution slot's Zap and Cannon played plain twice, evolved on their third plays as Zap_EV1 and Cannon_EV1, and plain again on their fourth.
   - The evolved Goblin Barrel's third play casting its decoy barrel on the king at once, made right after the barrel, from the barrel's start to its aim turned over across the width, whose impact makes three GoblinDummy.
-  - Refused: a hero slot on a spell, the Mirror in the hero slot, two copies of an evolution slot's card (two Mirrors among them), and a play of that card while another play of it is due.
+  - Refused: a hero slot on a spell, the Mirror in both the evolution and the hero slot, two copies of an evolution slot's card (two Mirrors among them), and a play of that card while another play of it is due.
 - `BattleMirrorEvolutionTest` holds the Mirror in the evolution slot:
   - Its plays counted as any evolution slot card's: plain while the count is below the evolved Mirror's DarkElixirCost, evolved once it reaches it, and that play resets the count.
   - The evolved Mirror after a Knight repeats the evolved Knight at the Mirror's level plus MIRROR_EVO_LEVEL_OFFSET (written one above MIRROR_LEVEL_OFFSET to tell them apart), for the Mirror's cost plus the evolved row's, and places the evolved unit.
   - The evolved Mirror after a card with no evolved row repeats the card itself at the Mirror's level plus MIRROR_LEVEL_OFFSET.
-  - Refused: the evolved Mirror after a hero play, and the Mirror in the hero slot.
+  - Refused: the evolved Mirror after a hero play.
+- `BattleMirrorHeroTest` holds the Mirror in the hero slot, which lists no row in the hero form and so plays as the Mirror itself:
+  - After a plain play of a Knight, a card with a hero form, it repeats the Knight itself at the Mirror's level plus MIRROR_LEVEL_OFFSET, for the Mirror's cost plus the Knight's; its item carries the hero form field.
+  - After a card with no hero form it repeats the card, and its plays move no count, even with the evolved Mirror's DarkElixirCost written 1: every play carries the hero form field, none is evolved.
+  - After a hero play of the Knight it repeats the Knight's hero row, as a Mirror in no slot does.
+  - Refused: the Mirror in a slot that is both the evolution and the hero slot.
 - `BattleMergeMaidenTest` holds the Merge Maiden:
   - A play that carries its option runs as that option, on foot from a full bar where the elixir picks it mounted, for the on-foot cost. It needs no pick, so one given in the tick of another play of its side runs. One carrying an option its card does not have is refused.
   - With no option carried, the option is picked from the elixir after the step 22 before the run. So 5.99 then plays the maiden on foot though the trigger is reached a step later and 6.34 is there at the run, and 6.01 a tick later the mounted one.

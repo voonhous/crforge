@@ -52,7 +52,9 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " the counts and each play's item are held by knight_evolved_third_play and the"
             + " hero reference battles (hero_giant, deck_hero_and_champion), and the count a"
             + " play refused at its run moves by captured Ladder battles; the count of a Mirror in"
-            + " the evolution slot by mirror-evolved-v1; a Mirror of an evolved play is not held"
+            + " the evolution slot by mirror-evolved-v1, and the item of a Mirror in the hero"
+            + " slot, which carries the hero form field and moves no count, by mirror-hero-v1;"
+            + " a Mirror of an evolved play is not held"
             + " by a recorded battle. Not modelled: a boost's scaled"
             + " rate and a paused regeneration, which no Ladder battle has, and the views'"
             + " counters.")

@@ -61,11 +61,13 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * play the card repeated is the deck card itself, after a hero play its hero row. A Mirror in its
  * deck's evolution slot counts its plays as any evolution slot card does; once evolved it repeats a
  * last card that has an evolved row as that row, MIRROR_EVO_LEVEL_OFFSET above its own level, and
- * any other last card as a Mirror that is not evolved repeats it. The gates read the Mirror's own
- * hand slot and the item's cost. The card is then placed or cast as itself, at the item's level;
- * the play takes the item's cost, starts the card's production stop, and moves the Mirror to the
- * back of the queue. The last card stays the one the Mirror repeated. A Mirror with nothing to
- * repeat finds no position and is refused with 0x17, nothing taken.
+ * any other last card as a Mirror that is not evolved repeats it. A Mirror in its deck's hero slot
+ * carries the hero form field and plays as a Mirror in no slot does: the Mirror has no row in the
+ * hero form, so it repeats the last card as any Mirror does. The gates read the Mirror's own hand
+ * slot and the item's cost. The card is then placed or cast as itself, at the item's level; the
+ * play takes the item's cost, starts the card's production stop, and moves the Mirror to the back
+ * of the queue. The last card stays the one the Mirror repeated. A Mirror with nothing to repeat
+ * finds no position and is refused with 0x17, nothing taken.
  *
  * <p>A variant card, the Merge Maiden, is played as one of its options. The player's client picks
  * the option from the king's elixir as it gives the play, 20 ticks before it runs, at a reading of
@@ -139,7 +141,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " card's option carried by its play, its cost gated and spent, and the variant"
             + " card cycled; by mirror-evolved-v1: a Mirror in the evolution slot, its count and"
             + " its evolved item, which repeats a Knight as the evolved Knight and Minions, with no"
-            + " evolved row, as themselves. Not held by a recorded battle: the Mirror of an evolved"
+            + " evolved row, as themselves; by mirror-hero-v1: a Mirror in the hero slot, its item"
+            + " with the hero form field, which repeats a Knight from a plain slot as the Knight,"
+            + " a hero Knight as its hero row and Minions as themselves, at the Mirror's own level"
+            + " offset. Not held by a recorded battle: the Mirror of an evolved"
             + " play; the evolved Mirror's level offset, MIRROR_EVO_LEVEL_OFFSET, which every"
             + " shipped table sets equal to the Mirror's own. Held"
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
@@ -159,7 +164,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " its cast row, and a play of an evolution slot's Mirror after one of it refused at"
             + " its run, whose count the client may or may not have moved, which no recorded"
             + " battle holds; slot flags"
-            + " on a spell, a building, the Mirror in the hero slot or a variant card, and"
+            + " on a spell, a building or a variant card, the Mirror in both the evolution and"
+            + " the hero slot, and"
             + " two copies of an evolution slot's card in a deck, which no reference holds; a"
             + " play of an evolution slot's card while another play of it is due, whose item the"
             + " client builds from the count before that play runs; and a play of an evolution"
@@ -356,15 +362,20 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Refuses the slot flags no reference holds: flags on a variant card, a hero slot on the Mirror,
-   * a hero slot on a spell or building card with no hero form, a hero slot on a card that is not a
-   * troop, spell or building card, an evolution slot on a card that is not a troop, spell or
-   * building card, and two copies of an evolution slot's card in a deck, whose counts the play's
-   * deck index would mix.
+   * Refuses the slot flags no reference holds: flags on a variant card, the Mirror in a slot that
+   * is both the evolution and the hero slot, a hero slot on a spell or building card with no hero
+   * form, a hero slot on a card that is not a troop, spell or building card, an evolution slot on a
+   * card that is not a troop, spell or building card, and two copies of an evolution slot's card in
+   * a deck, whose counts the play's deck index would mix.
    *
    * <p>The Mirror in the evolution slot counts its plays as any evolution slot card does, and is
    * evolved once its count reaches its evolved row's DarkElixirCost ({@link #mirrorItem(int, int,
    * int)}).
+   *
+   * <p>The Mirror in the hero slot is played as a Mirror in no slot is: its item carries the hero
+   * form field, but the Mirror lists no row in the hero form, so the play casts the Mirror itself,
+   * which repeats the last card as any Mirror does; the slot moves no count, and the Mirror's row
+   * summons no champion for the deck pass. The table's Mirror_hero row is listed by no card.
    *
    * <p>A spell or building card in the evolution slot is counted and cast as a troop card is: the
    * item, the count and the row cast do not ask which kind of card it is. The evolved row it is
@@ -399,9 +410,14 @@ public final class LadderMatch implements BattleMode {
                 + " in an evolution or hero slot, which is a variant card, is held by no"
                 + " reference");
       }
-      if (card.mirror() && (flag & MatchSide.HERO_SLOT) != 0) {
+      // The Mirror in the hero slot lists no row in the hero form, so it plays as itself; in a slot
+      // that is both, its item would turn from the hero form to the evolved one as its count moves,
+      // which no recorded battle holds.
+      if (card.mirror() && flag == (MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT)) {
         throw new UnsupportedOperationException(
-            card.name() + " in a hero slot, which is the Mirror, is held by no reference");
+            card.name()
+                + " in a slot that is both the evolution and the hero slot, which no recorded"
+                + " battle holds");
       }
       if (!records.troopCard(card.name())) {
         if ((flag & MatchSide.HERO_SLOT) != 0 && !records.spellOrBuildingCard(card.name())) {
@@ -411,8 +427,10 @@ public final class LadderMatch implements BattleMode {
                   + " held by no reference");
         }
         if ((flag & MatchSide.HERO_SLOT) != 0
+            && !card.mirror()
             && card.evolvedSpells().stream().noneMatch(f -> f.form() == MatchCard.HERO_FORM)) {
-          // The play would cast the base row with the hero bit set, which no reference holds.
+          // The play would cast the base row with the hero bit set, which no reference holds; the
+          // Mirror's play does so, held by recorded battles.
           throw new UnsupportedOperationException(
               card.name()
                   + " in a hero slot, a "

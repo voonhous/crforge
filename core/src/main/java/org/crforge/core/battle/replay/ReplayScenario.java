@@ -710,8 +710,10 @@ public final class ReplayScenario {
             + " against the item the simulator builds as the play runs, and as the scenario is"
             + " read for a card outside the evolution slot: the evolution field 2 for a hero"
             + " slot's card, else 0, no count, and a plain play's cost the card row's ManaCost. A"
-            + " Mirror's: its deck index field as above, its slot flags, evolution, option, count"
-            + " and cosmetic fields 0, and its level field (the Mirror's plus the level offset)"
+            + " Mirror's: its deck index and slot flags fields as above, its option and"
+            + " cosmetic fields 0, its evolution and count fields as any card's of its slot"
+            + " (in the evolution slot its count plus 1, in the hero slot the evolution field 2),"
+            + " and its level field (the Mirror's plus the level offset)"
             + " and cost (the Mirror's plus the repeated card's) against the Mirror item the"
             + " simulator builds as the play runs. A variant card's: its deck index and level"
             + " fields as above, its slot flags, evolution, count and cosmetic fields 0, its"
@@ -1585,12 +1587,14 @@ public final class ReplayScenario {
    * plus the level offset and its cost plus the repeated card's. The repeated card, the level field
    * and the cost depend on the battle, so they are checked as the play runs ({@link
    * #checkMirrorItem}); the parts the deck decides are checked here: the deck index, the slot
-   * flags, and no option or cosmetic field. A Mirror outside the evolution slot carries no
-   * evolution or count field; one in the evolution slot carries its count plus 1 and is evolved or
-   * not, as any evolution slot card's play, which the run checks.
+   * flags, and no option or cosmetic field. A Mirror in no slot carries no evolution or count
+   * field; one in the evolution slot carries its count plus 1 and is evolved or not, as any
+   * evolution slot card's play, which the run checks; one in the hero slot carries the hero form
+   * field and no count, as any hero slot card's play.
    *
    * <p>A Mirror item that names no repeated card, as one with nothing to repeat would be, and a
-   * Mirror in a deck's hero slot are in no reference, and are refused.
+   * Mirror in a slot that is both the evolution and the hero slot are in no reference, and are
+   * refused.
    */
   private ScenarioPlan.Play mirrorPlay(
       JsonNode body,
@@ -1603,9 +1607,10 @@ public final class ReplayScenario {
       int slots,
       int packed) {
     String field = "cmd[" + index + "]";
-    if ((slots & MatchSide.HERO_SLOT) != 0) {
+    if (slots == (MatchSide.EVOLUTION_SLOT | MatchSide.HERO_SLOT)) {
       throw new UnsupportedScenarioException(
-          "a Mirror in a deck's hero slot, whose item no reference holds",
+          "a Mirror in a slot that is both the evolution and the hero slot, whose item no"
+              + " reference holds",
           "battle.deck" + side + ".sp[" + deckIndex + "].el=" + slots);
     }
     JsonNode repeats = item.get("fs");
@@ -1618,11 +1623,13 @@ public final class ReplayScenario {
     int packedField = packed & ITEM_FIELD_MASK;
     int packedCount = (packed >>> ITEM_COUNT_SHIFT) & ITEM_COUNT_MASK;
     // An evolution slot's Mirror carries its count plus 1 and is evolved or not, which the run
-    // checks; any other Mirror carries neither.
+    // checks; a hero slot's carries the hero form field and no count, as any hero slot card's
+    // play; any other Mirror carries neither.
     boolean fieldAllowed =
         (slots & MatchSide.EVOLUTION_SLOT) != 0
             ? (packedField == 0 || packedField == EvolutionItem.EVOLVED) && packedCount >= 1
-            : packedField == 0 && packedCount == 0;
+            : packedField == ((slots & MatchSide.HERO_SLOT) != 0 ? EvolutionItem.HERO : 0)
+                && packedCount == 0;
     if (!fieldAllowed
         || ((packed >>> ITEM_OPTION_SHIFT) & ITEM_OPTION_MASK) != 0
         || (((packed >>> ITEM_COSMETIC_SHIFT) & ITEM_COSMETIC_MASK) != 0

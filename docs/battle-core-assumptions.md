@@ -542,7 +542,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - a hero slot on a building card or on a spell card with no hero form
   - a deflected projectile whose impact would make its deflected spawn
-  - slot flags on a variant card, and the Mirror in the hero slot
+  - slot flags on a variant card, and the Mirror in a slot that is both the evolution and the hero slot
   - two copies of an evolution slot's card in a deck, which no reference holds
   - a play of an evolution slot's card while another play of it is due, as the client builds the item from the count before that play runs and the battle builds it as the play runs
 

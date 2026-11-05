@@ -547,7 +547,7 @@ class ReplayScenarioTest {
   }
 
   @Test
-  void readsAMirrorInTheEvolutionSlotWithItsCountAndRefusesOneInTheHeroSlot() {
+  void readsAMirrorInTheEvolutionSlotWithItsCount() {
     // The Mirror, deck index 5 of side 0, in the evolution slot: its item carries the slot flags
     // and its count plus 1, the count 0 before its first play.
     ObjectNode scenario = fit(Scenarios.knightThenMirror());
@@ -564,15 +564,39 @@ class ReplayScenarioTest {
     assertThatThrownBy(() -> new ReplayScenario(tables).translate(noCount))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessageContaining("packed item");
+  }
 
-    ObjectNode hero = fit(Scenarios.knightThenMirror());
-    ((ObjectNode) hero.path("battle").path("deck0").path("sp").get(5)).put("el", 2);
-    putItem(hero, 4, item(hero, 4) | (2 << 19));
-    assertThatThrownBy(() -> new ReplayScenario(tables).translate(hero))
+  @Test
+  void readsAMirrorInTheHeroSlotWithTheHeroFormField() {
+    // The Mirror, deck index 5 of side 0, in the hero slot: its item carries the slot flags and
+    // the hero form field 2, and no count.
+    ObjectNode scenario = fit(Scenarios.knightThenMirror());
+    ((ObjectNode) scenario.path("battle").path("deck0").path("sp").get(5)).put("el", 2);
+    putItem(scenario, 4, item(scenario, 4) | 2 | (2 << 19));
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    assertThat(plan.plays().get(4).card()).isEqualTo("Mirror");
+    assertThat(plan.plays().get(4).item()).isEqualTo(item(scenario, 4));
+
+    // Without the hero form field, or with a count field, the item is not one a hero slot's
+    // Mirror carries.
+    for (int extra : new int[] {0, 2 | (1 << 7)}) {
+      ObjectNode other = fit(Scenarios.knightThenMirror());
+      ((ObjectNode) other.path("battle").path("deck0").path("sp").get(5)).put("el", 2);
+      putItem(other, 4, item(other, 4) | extra | (2 << 19));
+      assertThatThrownBy(() -> new ReplayScenario(tables).translate(other))
+          .isInstanceOf(UnsupportedScenarioException.class)
+          .hasMessageContaining("packed item");
+    }
+
+    // The Mirror in both the evolution and the hero slot is refused.
+    ObjectNode both = fit(Scenarios.knightThenMirror());
+    ((ObjectNode) both.path("battle").path("deck0").path("sp").get(5)).put("el", 3);
+    putItem(both, 4, item(both, 4) | 2 | (1 << 7) | (3 << 19));
+    assertThatThrownBy(() -> new ReplayScenario(tables).translate(both))
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessage(
-            "a Mirror in a deck's hero slot, whose item no reference holds:"
-                + " battle.deck0.sp[5].el=2");
+            "a Mirror in a slot that is both the evolution and the hero slot, whose item no"
+                + " reference holds: battle.deck0.sp[5].el=3");
   }
 
   @Test
