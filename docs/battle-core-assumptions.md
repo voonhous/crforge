@@ -524,6 +524,10 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A Mirror after an evolved play repeats the deck card itself, after a hero play the hero row, which is a champion and refused. The marks an evolved or hero play leaves on its objects and its king are not carried: no battle code reads them.
 
+  A Mirror in its deck's evolution slot counts its plays as any evolution slot card does, against its evolved row's DarkElixirCost (Mirror_EV1, 2), and its item carries its evolution field and its count plus 1. The evolved Mirror repeats a last card that has an evolved row as that row, at the Mirror's level plus MIRROR_EVO_LEVEL_OFFSET (1, as MIRROR_LEVEL_OFFSET), for the Mirror's ManaCost plus the evolved row's. After a card with no evolved row it repeats the card as a Mirror that is not evolved does. The play resets the Mirror's count, and the evolved Mirror's own row adds nothing to the play: it sets no action. An evolved Mirror after a hero play, of a card a Mirror repeats as its cast row, and a Mirror of the evolution slot after one of its plays was refused at its run are refused.
+
+  The client does not repeat a card evolved when its evolved row is listed in the side's excluded evolutions (the player data's `es`): it repeats the card itself. A replay whose deck has the Mirror in its evolution slot and lists an evolved row of another of its cards is refused.
+
   A spell or building card in the evolution slot is counted and cast as a troop card is. The item, the count and the row cast do not ask which kind of card it is, and the evolved row is refused as it is cast when it sets something its kind's cast does not model.
 
   A spell's action on its cast (OnExecuteAction, only the evolved Goblin Barrel's) runs as the cast's last step on the side's king tower at once, with the first object the cast made as its cause. Its mirrored extra spell throws its projectile for the cause's side and level from where the cause stands, at its height, to the cause's aim (its target's position when it homes onto one) turned over across the arena's width. It throws with no delay, handed to the holder after the cast's own. A mirrored extra spell whose cause is not a projectile is refused.
@@ -538,7 +542,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   - a hero slot on a building card or on a spell card with no hero form
   - a deflected projectile whose impact would make its deflected spawn
-  - slot flags on the Mirror or a variant card
+  - slot flags on a variant card, and the Mirror in the hero slot
   - two copies of an evolution slot's card in a deck, which no reference holds
   - a play of an evolution slot's card while another play of it is due, as the client builds the item from the count before that play runs and the battle builds it as the play runs
 

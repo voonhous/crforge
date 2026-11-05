@@ -344,8 +344,8 @@ class BattleEvolutionTest {
 
   @Test
   @DisplayName(
-      "a spell in a hero slot, the Mirror in either slot, and two copies of an evolution slot's"
-          + " card are refused")
+      "a spell in a hero slot, the Mirror in the hero slot, and two copies of an evolution slot's"
+          + " card, the Mirror's among them, are refused")
   void theSlotsNoReferenceHoldsAreRefused() {
     List<String> zaps =
         List.of("Zap", "Archer", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror", "Mirror");
@@ -362,14 +362,14 @@ class BattleEvolutionTest {
                 new Standard1v1Battle(GameData.tables())
                     .startLadderMatch(KNIGHT_MIRRORS, KNIGHTS, 0, 0, mirrorSlot, NO_SLOTS))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Mirror in an evolution or hero slot");
+        .hasMessageContaining("Mirror in a hero slot");
     mirrorSlot[2] = MatchSide.EVOLUTION_SLOT;
     assertThatThrownBy(
             () ->
                 new Standard1v1Battle(GameData.tables())
                     .startLadderMatch(KNIGHT_MIRRORS, KNIGHTS, 0, 0, mirrorSlot, NO_SLOTS))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("Mirror in an evolution or hero slot");
+        .hasMessageContaining("two copies of Mirror");
     assertThatThrownBy(
             () ->
                 new Standard1v1Battle(GameData.tables())

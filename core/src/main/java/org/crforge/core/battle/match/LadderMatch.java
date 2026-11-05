@@ -58,11 +58,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * <p>A Mirror plays its side's last card again. Its play carries an item the player's client builds
  * from the copy of the last card the king keeps: that card, one level above the Mirror's, for the
  * Mirror's cost plus the card's, never more than the most elixir there can be. After an evolved
- * play the card repeated is the deck card itself, after a hero play its hero row. The gates read
- * the Mirror's own hand slot and the item's cost. The card is then placed or cast as itself, at the
- * item's level; the play takes the item's cost, starts the card's production stop, and moves the
- * Mirror to the back of the queue. The last card stays the one the Mirror repeated. A Mirror with
- * nothing to repeat finds no position and is refused with 0x17, nothing taken.
+ * play the card repeated is the deck card itself, after a hero play its hero row. A Mirror in its
+ * deck's evolution slot counts its plays as any evolution slot card does; once evolved it repeats a
+ * last card that has an evolved row as that row, MIRROR_EVO_LEVEL_OFFSET above its own level, and
+ * any other last card as a Mirror that is not evolved repeats it. The gates read the Mirror's own
+ * hand slot and the item's cost. The card is then placed or cast as itself, at the item's level;
+ * the play takes the item's cost, starts the card's production stop, and moves the Mirror to the
+ * back of the queue. The last card stays the one the Mirror repeated. A Mirror with nothing to
+ * repeat finds no position and is refused with 0x17, nothing taken.
  *
  * <p>A variant card, the Merge Maiden, is played as one of its options. The player's client picks
  * the option from the king's elixir as it gives the play, 20 ticks before it runs, at a reading of
@@ -134,7 +137,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " hero item, their row cast at its cost, and the hero form in the deck pass; by"
             + " card_item_merge_maiden_mounted and card_item_merge_maiden_on_foot: a variant"
             + " card's option carried by its play, its cost gated and spent, and the variant"
-            + " card cycled. Not held by a recorded battle: the Mirror of an evolved play. Held"
+            + " card cycled; by mirror-evolved-v1: a Mirror in the evolution slot, its count and"
+            + " its evolved item, which repeats a Knight as the evolved Knight and Minions, with no"
+            + " evolved row, as themselves. Not held by a recorded battle: the Mirror of an evolved"
+            + " play; the evolved Mirror's level offset, MIRROR_EVO_LEVEL_OFFSET, which every"
+            + " shipped table sets equal to the Mirror's own. Held"
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
             + " and the update it runs; by BattleMirrorTest alone: a Mirror after a Mirror and a"
             + " Mirror with nothing to repeat; by SpellVariantTest and BattleMergeMaidenTest"
@@ -148,7 +155,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " which the clearing only counts, and the stand-in owner of actions, which stands"
             + " for an object the battle does not have; a Mirror of a"
             + " variant card as the card itself, and of an evolved play as its evolved row, which"
-            + " no row sets; slot flags on a spell, a building, the Mirror or a variant card, and"
+            + " no row sets; an evolved Mirror after a hero play or of a card a Mirror repeats as"
+            + " its cast row, and a play of an evolution slot's Mirror after one of it refused at"
+            + " its run, whose count the client may or may not have moved, which no recorded"
+            + " battle holds; slot flags"
+            + " on a spell, a building, the Mirror in the hero slot or a variant card, and"
             + " two copies of an evolution slot's card in a deck, which no reference holds; a"
             + " play of an evolution slot's card while another play of it is due, whose item the"
             + " client builds from the count before that play runs; and a play of an evolution"
@@ -185,6 +196,12 @@ public final class LadderMatch implements BattleMode {
 
   /** The global that sets how many levels above its own a Mirror plays its card. */
   private static final String MIRROR_LEVEL_OFFSET = "MIRROR_LEVEL_OFFSET";
+
+  /**
+   * The global that sets how many levels above its own an evolved Mirror plays the evolved form of
+   * the card it repeats.
+   */
+  private static final String MIRROR_EVO_LEVEL_OFFSET = "MIRROR_EVO_LEVEL_OFFSET";
 
   /** The width of a card item's level field, which a Mirror's level must fit in. */
   private static final int LEVEL_FIELD_BITS = 7;
@@ -339,10 +356,15 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
-   * Refuses the slot flags no reference holds: flags on the Mirror or a variant card, a hero slot
-   * on a spell or building card with no hero form, a hero slot on a card that is not a troop, spell
-   * or building card, an evolution slot on a card that is not a troop, spell or building card, and
-   * two copies of an evolution slot's card in a deck, whose counts the play's deck index would mix.
+   * Refuses the slot flags no reference holds: flags on a variant card, a hero slot on the Mirror,
+   * a hero slot on a spell or building card with no hero form, a hero slot on a card that is not a
+   * troop, spell or building card, an evolution slot on a card that is not a troop, spell or
+   * building card, and two copies of an evolution slot's card in a deck, whose counts the play's
+   * deck index would mix.
+   *
+   * <p>The Mirror in the evolution slot counts its plays as any evolution slot card does, and is
+   * evolved once its count reaches its evolved row's DarkElixirCost ({@link #mirrorItem(int, int,
+   * int)}).
    *
    * <p>A spell or building card in the evolution slot is counted and cast as a troop card is: the
    * item, the count and the row cast do not ask which kind of card it is. The evolved row it is
@@ -371,11 +393,15 @@ public final class LadderMatch implements BattleMode {
       if (flag == 0) {
         continue;
       }
-      if (card.mirror() || card.variant() != null) {
+      if (card.variant() != null) {
         throw new UnsupportedOperationException(
             card.name()
-                + " in an evolution or hero slot, which is the Mirror or a variant card, is held"
-                + " by no reference");
+                + " in an evolution or hero slot, which is a variant card, is held by no"
+                + " reference");
+      }
+      if (card.mirror() && (flag & MatchSide.HERO_SLOT) != 0) {
+        throw new UnsupportedOperationException(
+            card.name() + " in a hero slot, which is the Mirror, is held by no reference");
       }
       if (!records.troopCard(card.name())) {
         if ((flag & MatchSide.HERO_SLOT) != 0 && !records.spellOrBuildingCard(card.name())) {
@@ -971,6 +997,14 @@ public final class LadderMatch implements BattleMode {
    * variant card the option it was played as, whose cost the item adds. A variant card repeated as
    * itself, and an evolved play repeated as its evolved row, are in no shipped row and are refused.
    *
+   * <p>A Mirror in its deck's evolution slot carries the evolution field and count of its side's
+   * count, as any evolution slot card's play does. An evolved Mirror repeats the last card in its
+   * evolved form - the card's first evolved row - when the card has one, at the Mirror's level
+   * field plus the global MIRROR_EVO_LEVEL_OFFSET, for the Mirror's cost plus the evolved row's;
+   * after a card with no evolved row it repeats as a Mirror that is not evolved does. An evolved
+   * Mirror after a hero play or of a card a Mirror repeats as the row its play was cast as is held
+   * by no recorded battle, and is refused.
+   *
    * @param side the playing side
    * @param index the Mirror's deck index
    * @param level the level the Mirror is played at, counted from 1
@@ -1009,13 +1043,36 @@ public final class LadderMatch implements BattleMode {
     MatchSide matchSide = sides.get(side);
     MatchCard mirror = matchSide.deck().get(index);
     checkArgument(mirror.mirror(), () -> mirror.name() + " is not a Mirror");
+    // The Mirror's own evolution field and count, as its side's count gives them: an evolution
+    // slot's Mirror is evolved once the count reaches its evolved row's DarkElixirCost.
+    EvolutionItem own = matchSide.item(index);
     int mirrorLevelField = level - 1;
     if (last == null) {
-      return new MirrorItem(index, null, mirrorLevelField, mirrorLevelField, mirror.cost());
+      return new MirrorItem(
+          index, null, mirrorLevelField, mirrorLevelField, mirror.cost(), own.field(), own.count());
     }
-    MatchCard source = repeatedCard(last, field, option);
+    MatchCard evolved = last.formRow(MatchCard.EVO_FORM);
+    boolean evolvedRepeat = own.field() == EvolutionItem.EVOLVED && evolved != last;
+    if (own.field() == EvolutionItem.EVOLVED
+        && (field == EvolutionItem.HERO || last.variant() != null || !last.mirrorUsesRootSpell())) {
+      throw new UnsupportedOperationException(
+          "an evolved Mirror of "
+              + (field == EvolutionItem.HERO ? "a hero play of " : "")
+              + last.name()
+              + (field == EvolutionItem.HERO
+                  ? ""
+                  : ", which a Mirror repeats as the row its play was cast as")
+              + ", which no recorded battle holds");
+    }
+    // An evolved Mirror repeats a card with an evolved row as that row, at its own level offset;
+    // after any other card it repeats as a Mirror that is not evolved does.
+    MatchCard source = evolvedRepeat ? evolved : repeatedCard(last, field, option);
+    int offset =
+        evolvedRepeat
+            ? world.getRecords().globalNumber(MIRROR_EVO_LEVEL_OFFSET)
+            : mirrorLevelOffset;
     // The level is not capped at the card's last: a level past it reads past its level tables.
-    int levelField = Math.max(mirrorLevelField + mirrorLevelOffset, 0);
+    int levelField = Math.max(mirrorLevelField + offset, 0);
     checkArgument(
         levelField < 1 << LEVEL_FIELD_BITS,
         () -> "a Mirror's level past its item's level field: " + levelField);
@@ -1024,7 +1081,9 @@ public final class LadderMatch implements BattleMode {
         source,
         mirrorLevelField,
         levelField,
-        Math.min(mirror.cost() + source.cost(), maxMana));
+        Math.min(mirror.cost() + source.cost(), maxMana),
+        own.field(),
+        own.count());
   }
 
   /**
@@ -1155,6 +1214,19 @@ public final class LadderMatch implements BattleMode {
    */
   public void placementRefused(int side, EvolutionItem item) {
     sides.get(side).placementRefused(item);
+  }
+
+  /**
+   * A Mirror's play the match's gates refused at its run, or with nothing to repeat: the count of
+   * an evolution slot's Mirror is no longer established. Whether the player's client counted the
+   * play, as it counts a refused play of any other evolution slot card, is held by no recorded
+   * battle.
+   *
+   * @param side the playing side
+   * @param item the Mirror's item
+   */
+  public void mirrorRefused(int side, MirrorItem item) {
+    sides.get(side).mirrorRefused(item);
   }
 
   /**

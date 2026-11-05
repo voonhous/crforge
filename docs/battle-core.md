@@ -90,7 +90,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `Hand` | four slots, the queue and the refill cooldown |
 | `DeckShuffle` | the order a deck is dealt in, from one draw of the battle's source |
 | `MatchCard` | what the match reads of a card: its cost and its opening-hand columns |
-| `MirrorItem` | the card item a Mirror play carries: the card it repeats, the level it is played at and its cost |
+| `MirrorItem` | the card item a Mirror play carries: the card it repeats, the level it is played at and its cost, and the Mirror's own evolution field and count |
 | `SpellVariant` | a card played as one of its options (the Merge Maiden's mounted or on-foot maiden), picked from the king's elixir as the play is given |
 | `VariantItem` | the card item a variant card's play carries: the option picked, its cost and the card's deck index |
 
