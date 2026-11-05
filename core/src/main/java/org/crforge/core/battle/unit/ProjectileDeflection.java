@@ -569,14 +569,16 @@ public final class ProjectileDeflection {
    * shot, a princess tower's arrow after the tower fell - is not sent back: no gate and no search.
    * The parent takes its damage as above, it is turned at its start with no target, for the
    * parent's side, and its flight is ended: it takes no further step and leaves at the next
-   * cleanup, without an impact on its target and without its action on reaching its target.
+   * cleanup, without an impact on its target and without its action on reaching its target. So the
+   * evolved Elite Barbarians' spear, thrown by a barbarian that dies before it lands, spawns no
+   * rage where it would have landed.
    *
    * <p>Refused rather than guessed: the projectiles {@link #refuseDeflection} names, an area effect
    * that follows nothing, a projectile without a root owner that is spell-like - a bomb whose area
-   * effect has left - or has an action on reaching its target, which no recording holds; a Goblin
-   * Barrel the search would send at a king tower, which no recording holds; a projectile an area
-   * effect launched that was not dropped onto it. A deflection past the most a projectile takes
-   * (MAX_DEFLECTION_TIMES) turns it around all the same and then ends its flight.
+   * effect has left - which no recording holds; a Goblin Barrel the search would send at a king
+   * tower, which no recording holds; a projectile an area effect launched that was not dropped onto
+   * it. A deflection past the most a projectile takes (MAX_DEFLECTION_TIMES) turns it around all
+   * the same and then ends its flight.
    *
    * @return true when the projectile was deflected
    */
@@ -617,18 +619,18 @@ public final class ProjectileDeflection {
     // A projectile without a root owner - its shooter has left - is turned at its start and
     // finished: no gate, no search.
     boolean rootless = !rolling && source == null && areaSource == null;
-    // Refused there: a spell-like projectile, a bomb whose area effect has left, and one with an
-    // action on reaching its target, which the finish does not schedule; no recording holds either.
-    if (rootless && (spellLike || projectile.getData().onTargetReachedAction() != null)) {
+    // Refused there: a spell-like projectile, a bomb whose area effect has left, which no recording
+    // holds. One with an action on reaching its target, as the evolved Elite Barbarians' spear or
+    // the hero Wizard's shot from the air, goes the same way as any other: the finish ends its
+    // flight without scheduling that action.
+    if (rootless && spellLike) {
       throw new UnsupportedOperationException(
           deflector.name()
               + " deflects "
               + projectile.name()
               + " ("
               + projectile.getData().name()
-              + ") without a root owner, "
-              + (spellLike ? "a spell-like projectile" : "with an action on reaching its target")
-              + ", which is not modelled");
+              + ") without a root owner, a spell-like projectile, which is not modelled");
     }
     // A projectile whose root is a king tower and that has no target searches for the nearest
     // enemy crown tower, as a spell-like one does: a cast Goblin Barrel, which the king tower

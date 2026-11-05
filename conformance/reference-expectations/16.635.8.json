@@ -382,6 +382,10 @@
   "eg-typed-hit-v1/eg_typed_freeze": {"outcome": "diagnostic_match"},
   "eg-typed-hit-v1/eg_typed_mirror": {"outcome": "diagnostic_match"},
   "eg-typed-hit-v1/eg_typed_zap": {"outcome": "diagnostic_match"},
+  "elitebarb-spear-rootless-v1/elitebarb_spear_rootless_rk2543": {"outcome": "diagnostic_match"},
+  "elitebarb-spear-rootless-v1/elitebarb_spear_rootless_rk2546": {"outcome": "diagnostic_match"},
+  "elitebarb-spear-rootless-v1/elitebarb_spear_rootless_rk2549": {"outcome": "diagnostic_match"},
+  "elitebarb-spear-rootless-v1/elitebarb_spear_rootless_rk2552": {"outcome": "diagnostic_match"},
   "enchant-spawned-captured-v1/firecracker_enchant_spawned_captured": {"outcome": "diagnostic_match"},
   "event-type10-v1/tv000_sticker_events": {"outcome": "diagnostic_match"},
   "evo-count-refused-v1/evo_skeletons_refused_then_plain": {"outcome": "diagnostic_match"},
@@ -1120,6 +1124,9 @@
   "wizard-hero-lift-knocked-v1/wizard_lift_knocked_w358_h2208": {"outcome": "diagnostic_match"},
   "wizard-hero-lift-knocked-v1/wizard_lift_knocked_w360_postponed": {"outcome": "diagnostic_match"},
   "wizard-swap-target-v1/wizard_hero_target_dies_before_swap": {"outcome": "diagnostic_match"},
-  "wizard-swap-target-v1/wizard_hero_target_dies_held": {"outcome": "diagnostic_match"}
+  "wizard-swap-target-v1/wizard_hero_target_dies_held": {"outcome": "diagnostic_match"},
+  "wizardhero-shot-rootless-v1/wizardhero_shot_rootless_rk2509": {"outcome": "diagnostic_match"},
+  "wizardhero-shot-rootless-v1/wizardhero_shot_rootless_rk2512": {"outcome": "diagnostic_match"},
+  "wizardhero-shot-rootless-v1/wizardhero_shot_rootless_rk2515": {"outcome": "diagnostic_match"}
  }
 }
