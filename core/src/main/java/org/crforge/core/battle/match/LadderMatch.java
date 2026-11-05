@@ -60,14 +60,14 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * Mirror's cost plus the card's, never more than the most elixir there can be. After an evolved
  * play the card repeated is the deck card itself, after a hero play its hero row. A Mirror in its
  * deck's evolution slot counts its plays as any evolution slot card does; once evolved it repeats a
- * last card that has an evolved row as that row, MIRROR_EVO_LEVEL_OFFSET above its own level, and
- * any other last card as a Mirror that is not evolved repeats it. A Mirror in its deck's hero slot
- * carries the hero form field and plays as a Mirror in no slot does: the Mirror has no row in the
- * hero form, so it repeats the last card as any Mirror does. The gates read the Mirror's own hand
- * slot and the item's cost. The card is then placed or cast as itself, at the item's level; the
- * play takes the item's cost, starts the card's production stop, and moves the Mirror to the back
- * of the queue. The last card stays the one the Mirror repeated. A Mirror with nothing to repeat
- * finds no position and is refused with 0x17, nothing taken.
+ * last card that has an evolved row as that row, MIRROR_EVO_LEVEL_OFFSET above its own level, also
+ * after a hero play of that card, and any other last card as a Mirror that is not evolved repeats
+ * it. A Mirror in its deck's hero slot carries the hero form field and plays as a Mirror in no slot
+ * does: the Mirror has no row in the hero form, so it repeats the last card as any Mirror does. The
+ * gates read the Mirror's own hand slot and the item's cost. The card is then placed or cast as
+ * itself, at the item's level; the play takes the item's cost, starts the card's production stop,
+ * and moves the Mirror to the back of the queue. The last card stays the one the Mirror repeated. A
+ * Mirror with nothing to repeat finds no position and is refused with 0x17, nothing taken.
  *
  * <p>A variant card, the Merge Maiden, is played as one of its options. The player's client picks
  * the option from the king's elixir as it gives the play, 20 ticks before it runs, at a reading of
@@ -144,7 +144,11 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " evolved row, as themselves; by mirror-hero-v1: a Mirror in the hero slot, its item"
             + " with the hero form field, which repeats a Knight from a plain slot as the Knight,"
             + " a hero Knight as its hero row and Minions as themselves, at the Mirror's own level"
-            + " offset. Not held by a recorded battle: the Mirror of an evolved"
+            + " offset;"
+            + " by mirror-evolved-edges-v1: the evolved Mirror after a"
+            + " hero play of a card with an evolved row, as that evolved row, after a hero play"
+            + " of a card with none, as its hero row, and after a Merge Maiden, as the option it"
+            + " was played as. Not held by a recorded battle: the Mirror of an evolved"
             + " play; the evolved Mirror's level offset, MIRROR_EVO_LEVEL_OFFSET, which every"
             + " shipped table sets equal to the Mirror's own. Held"
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
@@ -160,8 +164,9 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " which the clearing only counts, and the stand-in owner of actions, which stands"
             + " for an object the battle does not have; a Mirror of a"
             + " variant card as the card itself, and of an evolved play as its evolved row, which"
-            + " no row sets; an evolved Mirror after a hero play or of a card a Mirror repeats as"
-            + " its cast row, and a play of an evolution slot's Mirror after one of it refused at"
+            + " no row sets; an evolved Mirror of a card with an evolved row whose row sets"
+            + " MirrorUsesRootSpell false, which no row sets either, and a play of an evolution"
+            + " slot's Mirror after one of it refused at"
             + " its run, whose count the client may or may not have moved, which no recorded"
             + " battle holds; slot flags"
             + " on a spell, a building or a variant card, the Mirror in both the evolution and"
@@ -1018,10 +1023,12 @@ public final class LadderMatch implements BattleMode {
    * <p>A Mirror in its deck's evolution slot carries the evolution field and count of its side's
    * count, as any evolution slot card's play does. An evolved Mirror repeats the last card in its
    * evolved form - the card's first evolved row - when the card has one, at the Mirror's level
-   * field plus the global MIRROR_EVO_LEVEL_OFFSET, for the Mirror's cost plus the evolved row's;
-   * after a card with no evolved row it repeats as a Mirror that is not evolved does. An evolved
-   * Mirror after a hero play or of a card a Mirror repeats as the row its play was cast as is held
-   * by no recorded battle, and is refused.
+   * field plus the global MIRROR_EVO_LEVEL_OFFSET, for the Mirror's cost plus the evolved row's,
+   * also after a hero play of that card; after a card with no evolved row it repeats as a Mirror
+   * that is not evolved does: after a hero play the hero row, after the Merge Maiden the option it
+   * was played as. An evolved Mirror of a card with an evolved row whose row sets
+   * MirrorUsesRootSpell false would repeat the evolved form of the row the play was cast as, which
+   * no shipped row sets, and is refused.
    *
    * @param side the playing side
    * @param index the Mirror's deck index
@@ -1069,21 +1076,22 @@ public final class LadderMatch implements BattleMode {
       return new MirrorItem(
           index, null, mirrorLevelField, mirrorLevelField, mirror.cost(), own.field(), own.count());
     }
+    // The player's client asks whether the last card has an evolved row: the deck card itself,
+    // also when the last play was its hero form or, for a variant card, one of its options. Only
+    // an evolved Mirror of such a card repeats it in its evolved form, whatever form it was played.
     MatchCard evolved = last.formRow(MatchCard.EVO_FORM);
     boolean evolvedRepeat = own.field() == EvolutionItem.EVOLVED && evolved != last;
-    if (own.field() == EvolutionItem.EVOLVED
-        && (field == EvolutionItem.HERO || last.variant() != null || !last.mirrorUsesRootSpell())) {
+    if (evolvedRepeat && !last.mirrorUsesRootSpell()) {
+      // The client would then ask the row the last play was cast as for its evolved form.
       throw new UnsupportedOperationException(
           "an evolved Mirror of "
-              + (field == EvolutionItem.HERO ? "a hero play of " : "")
               + last.name()
-              + (field == EvolutionItem.HERO
-                  ? ""
-                  : ", which a Mirror repeats as the row its play was cast as")
-              + ", which no recorded battle holds");
+              + ", a card with an evolved row whose row sets MirrorUsesRootSpell false, which no"
+              + " shipped row sets");
     }
     // An evolved Mirror repeats a card with an evolved row as that row, at its own level offset;
-    // after any other card it repeats as a Mirror that is not evolved does.
+    // after any other card - a hero play of a card with no evolved row, or the Merge Maiden, which
+    // has none - it repeats as a Mirror that is not evolved does, at that Mirror's level offset.
     MatchCard source = evolvedRepeat ? evolved : repeatedCard(last, field, option);
     int offset =
         evolvedRepeat
