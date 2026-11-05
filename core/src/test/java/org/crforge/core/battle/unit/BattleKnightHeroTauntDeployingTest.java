@@ -103,4 +103,45 @@ class BattleKnightHeroTauntDeployingTest {
         .as("the route starts next to the placed point")
         .isBetween(1, 2);
   }
+
+  @Test
+  @DisplayName(
+      "a troop taunted while it deploys gives the Knight up when the Knight is captured, though its"
+          + " targeting component is off")
+  void troopTauntedWhileDeployingGivesACapturedKnightUp() {
+    Standard1v1Battle match = new Standard1v1Battle(GameData.tables(), LEVEL, true);
+    CharacterEntity knight =
+        match.deploy(0, GameData.unit("KnightHero"), LEVEL, 0, 3500, 13000, "knight");
+    knight.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+    match.play(5, match.getWorld().getRecords().card("Knight"), LEVEL, 1, 3500, 17500, "T");
+    int tick = 0;
+    CharacterEntity troop = null;
+    while (troop == null) {
+      match.getBattle().step();
+      assertThat(++tick).as("the troop is placed").isLessThan(TICKS);
+      for (BattleEntity entity : match.getBattle().getHolder().entities()) {
+        if (entity instanceof CharacterEntity unit && unit.side() == 1) {
+          troop = unit;
+        }
+      }
+    }
+    BattleAction spawn = GameData.actions().build(SPAWN, match.getWorld().binding(knight));
+    knight.actionHolder().start(spawn, knight.actionHolder());
+    match.getBattle().step();
+    assertThat(troop.getTargeting().getReference()).isSameAs(knight.getTargetView());
+    assertThat(troop.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(troop.isActive(CharacterEntity.TARGETING_SLOT)).isFalse();
+
+    // A capture raises its tags on the Knight every step it holds it, CAPTURED among them. The
+    // taunt's step gives a captured forced object up before it asks which kind of owner it steps,
+    // so the deploying troop, whose own branch does nothing while its targeting component is off,
+    // loses the reference all the same.
+    long captured = knight.getView().getFlagBits().captured();
+    knight.raiseCaptureTags(captured);
+    match.getBattle().step();
+    assertThat(knight.getView().getFlags() & captured).isNotZero();
+    assertThat(troop.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(troop.getTargeting().getReference()).as("the captured Knight is given up").isNull();
+    assertThat(troop.getTargeting().getRetargetCooldownMs()).isZero();
+  }
 }

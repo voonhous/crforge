@@ -182,4 +182,20 @@ class BattleKnightHeroTauntUnitTest {
     assertThat(scene.taunts).containsExactly("enemy " + (DURATION - 100) + " []");
     assertThat(reference(scene.enemy)).isNull();
   }
+
+  @Test
+  @DisplayName(
+      "a taunted troop whose Knight is captured gives the Knight up on the step, before the"
+          + " troop's own branch")
+  void capturedKnightIsGivenUp() {
+    Scene scene = armed();
+    long captured = scene.knight.getView().getFlagBits().captured();
+    scene.knight.raiseCaptureTags(captured);
+    scene.step(1);
+    assertThat(scene.knight.getView().getFlags() & captured).isNotZero();
+    assertThat(scene.taunts)
+        .containsExactly("enemy " + (DURATION - 50) + " [remaining 0, set_target null 0 0 0]");
+    assertThat(reference(scene.enemy)).isNull();
+    assertThat(scene.enemy.getTargeting().getRetargetCooldownMs()).isZero();
+  }
 }

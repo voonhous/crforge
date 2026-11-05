@@ -568,7 +568,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Recorded battles of a Ladder replay with that header play exactly as the Ladder replay: cards, princess towers and kings at levels below and at the highest, 16.
 
-  The 15,875 Ranked1v1_NewArena2 battles of the 16.635.8 coverage set all write that header. Played as Ladder, 14,599 of them match to the end; 1,275 are refused for the evolved Giant's attack sequence, as battles of the other modes are, and 1 mismatches.
+  The 15,875 Ranked1v1_NewArena2 battles of the 16.635.8 coverage set all write that header. Played as Ladder, 14,600 of them match to the end and 1,275 are refused for the evolved Giant's attack sequence, as battles of the other modes are.
 
   The header is a battle input all the same. In the recordings:
 
