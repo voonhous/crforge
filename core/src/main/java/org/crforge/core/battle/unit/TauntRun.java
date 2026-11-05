@@ -59,7 +59,12 @@ import org.crforge.core.pathfinding.target.TargetingState;
             + " A building's step that reaches a captured object gives it up and does not force it"
             + " again: settled line for line, held by tower_taunt_snowball_captured (a crown"
             + " tower) and cannon_taunt_captured_knight (a Cannon), a hero Knight the evolved"
-            + " Snowball's roll carries.")
+            + " Snowball's roll carries. A captured object is given up before the step asks"
+            + " which kind of owner it steps, a unit's reference too with its targeting component"
+            + " off: settled line for line on game client 16.635.1, held by"
+            + " knight_taunted_deploying_captured, where a Knight taunted while it deploys loses"
+            + " its reference as the evolved Snowball's roll captures the hero Knight, then takes"
+            + " its own target as it starts to walk.")
 final class TauntRun extends ActionInstance {
 
   /** Milliseconds one step takes off the duration. */
@@ -168,12 +173,13 @@ final class TauntRun extends ActionInstance {
    * when the row ends the run as the duration expires, and with that gone too the re-selection wait
    * is cleared and, unless the owner is attacking, its reference is given up, keeping its wind-up;
    * then the run finishes. While the duration lasts: a forced object no longer alive lets the owner
-   * go; a captured one stops being its reference; and a building owner that reaches the object has
-   * its reference forced again when the row allows building retargeting and the object is not
-   * captured, and its falloff reloaded when the row tests the reach by distance, while one that
-   * does not reach it loses falloff, let go once that is spent, and gives up the reference under
-   * building retargeting. A unit's step is {@link #stepUnit}. A reference on the forced object
-   * locks the selector again.
+   * go; a captured one stops being its reference, the re-selection wait cleared, for every owner
+   * before its kind is asked, a unit with its targeting component off among them; and a building
+   * owner that reaches the object has its reference forced again when the row allows building
+   * retargeting and the object is not captured, and its falloff reloaded when the row tests the
+   * reach by distance, while one that does not reach it loses falloff, let go once that is spent,
+   * and gives up the reference under building retargeting. A unit's step is {@link #stepUnit}. A
+   * reference on the forced object locks the selector again.
    */
   @Override
   protected void update(ActionHolder holder) {
@@ -217,15 +223,18 @@ final class TauntRun extends ActionInstance {
       report(calls);
       return;
     }
-    if (unit && !rider()) {
-      stepUnit(calls);
-      closeStep(calls);
-      return;
-    }
+    // A captured forced object stops being the owner's reference before the step asks which kind
+    // of owner it is: a unit's too, whether its targeting component is on or off, as for a troop
+    // taunted while it deploys and whose forced object is then captured.
     if (captured() && referenced()) {
       remaining(0, calls);
       owner.tauntDrop(false);
       calls.add("set_target null 0 0 0");
+    }
+    if (unit && !rider()) {
+      stepUnit(calls);
+      closeStep(calls);
+      return;
     }
     if (reach()) {
       // A captured object is not forced again: the step above gave it up, and it stays given up
@@ -256,13 +265,14 @@ final class TauntRun extends ActionInstance {
   }
 
   /**
-   * A unit's step while the duration lasts. With its targeting component off (a stun or a freeze)
-   * nothing is done. A reference still on the forced object is given up, the wind-up kept, only
-   * when the object has been captured. A reference on anything else, or none, is forced back onto
-   * the object - marked in the unit's targeting queue at priority 1, set without the setter's
-   * re-check, the selector locked and the re-selection wait set to what is left of the duration -
-   * unless the object is captured or the unit is dashing, winding up a dash or carries the dashing
-   * tag.
+   * A unit's step while the duration lasts. With its targeting component off (a stun, a freeze or a
+   * deploy) nothing is done. A reference still on the forced object is given up, the wind-up kept,
+   * only when the object has been captured; the step's own test of a captured object, which comes
+   * first, has already given such a reference up, so the standard game never reaches this one
+   * either. A reference on anything else, or none, is forced back onto the object - marked in the
+   * unit's targeting queue at priority 1, set without the setter's re-check, the selector locked
+   * and the re-selection wait set to what is left of the duration - unless the object is captured
+   * or the unit is dashing, winding up a dash or carries the dashing tag.
    */
   private void stepUnit(List<String> calls) {
     if (!owner.isActive(CharacterEntity.TARGETING_SLOT)) {

@@ -925,6 +925,7 @@
   "target-is-ground-forced-v1/tig_grounded_hogs_early": {"outcome": "diagnostic_match"},
   "target-is-ground-forced-v1/tig_grounded_hogs_tough": {"outcome": "diagnostic_match"},
   "taunt-captured-building-v1/cannon_taunt_captured_knight": {"outcome": "unsupported", "feature": "a replay recorded on client 16.635.1, data version 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c), read against the game tables of data version 16.635.8 (content sha 062a11e0500c03cc041f123413b1ef1846b539a4)", "input": "capture.content_sha=dae6c6cc7e9126338da0c606e47e48a9ef80462c"},
+  "taunt-captured-deploying-v1/knight_taunted_deploying_captured": {"outcome": "diagnostic_match"},
   "taunt-captured-v1/tower_taunt_snowball_captured": {"outcome": "diagnostic_match"},
   "taunt-carrier-force-v1/force_ctl_k12000_t260": {"outcome": "diagnostic_match"},
   "taunt-carrier-force-v1/force_gg_k10500_t300": {"outcome": "diagnostic_match"},
