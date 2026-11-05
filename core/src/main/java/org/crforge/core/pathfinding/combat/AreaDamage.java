@@ -179,8 +179,9 @@ public final class AreaDamage {
 
     /**
      * Pushes one victim away from a point, after its damage: the battle decides whether it can be
-     * pushed - it has a movement component, its row does not ignore pushback, and it is still alive
-     * - and asks for its pushback.
+     * pushed - it has a movement component, its row does not ignore pushback, it is still alive, no
+     * pushback of its own is in flight, it is not hidden and no hook on a building drags it - and
+     * asks for its pushback.
      *
      * @param victim the victim
      * @param x the point it is pushed away from, along the width

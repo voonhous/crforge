@@ -24,12 +24,18 @@ import org.junit.jupiter.api.io.TempDir;
  * An area's push on a unit a Fisherman's hook holds: the hook has switched the unit's movement
  * component off (the pulled troop, and the Fisherman holding the hook), and the push switches it
  * back on as one component, so its pushback flies from the next visit while the hook still holds
- * it.
+ * it. The area damage asks first, before it switches anything: a unit whose pushback is already in
+ * flight, and a Fisherman a hook on a building drags, are left as they are, their movement off, so
+ * a pushback the hook froze in flight stays frozen until the hook lets go.
  *
  * <p>The scene: the bottom side's Knight walks up the left lane, the top side's Fisherman stands in
  * front of its left princess tower and hooks it on tick 284, the hook pulls the Knight to the
  * Fisherman until it lets go on tick 293; a Fireball lands on tick 287 on the Knight (the
- * Fisherman's side casts it) or on the Fisherman (the Knight's side casts it).
+ * Fisherman's side casts it) or on the Fisherman (the Knight's side casts it). With a first
+ * Fireball on the Fisherman as he throws, his pushback is still in flight when the hook holds him,
+ * and the second lands on tick 289. Alone, the Fisherman walks down the left lane and hooks the
+ * bottom side's left princess tower, which drags him from tick 355 to 369; a Fireball lands on him
+ * on tick 358.
  *
  * <p>The scene writes every column its outcome is read from, so its ticks, budgets and points are
  * its own and not a version's: the Knight's, the Fisherman's and his hook's rows, the Fireball's
@@ -256,5 +262,79 @@ class BattleHookedAreaPushTest {
     assertThat(fisherman.getUnit().movement().getPushbackInFlight()).isZero();
     assertThat(fisherman.getView().getX()).isEqualTo(2883);
     assertThat(fisherman.getView().getY()).isEqualTo(21883);
+  }
+
+  @Test
+  @DisplayName(
+      "a Fireball on the Fisherman holding his hook while a pushback is in flight leaves his"
+          + " movement off: the frozen push waits for the hold to end")
+  void aFrozenPushStaysFrozenWhileTheFishermanHolds() {
+    Standard1v1Battle match = scene();
+    // The first lands as he throws, the second while the hook holds him.
+    match.play(245, card(match, "Fireball"), FIREBALL_LEVEL, 0, 3500, 22500, "B1");
+    match.play(255, card(match, "Fireball"), FIREBALL_LEVEL, 0, 3500, 22500, "B2");
+    stepTo(match, 285);
+    CharacterEntity fisherman = unit(match, 1);
+    MovementState movement = fisherman.getUnit().movement();
+    assertThat(fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
+    assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT)).as("the hold").isFalse();
+    assertThat(movement.getPushbackInFlight()).as("the first push in flight").isEqualTo(1);
+    int budget = movement.getPushbackBudget();
+    int x = fisherman.getView().getX();
+    int y = fisherman.getView().getY();
+    int hitPoints = fisherman.getHitPoints().getHitPoints();
+
+    stepTo(match, 289);
+    assertThat(fisherman.getHitPoints().getHitPoints())
+        .as("the second Fireball landed")
+        .isEqualTo(hitPoints - FIREBALL_DAMAGE);
+    stepTo(match, 291);
+    assertThat(fisherman.getView().getState()).isEqualTo(GridEntityState.COMPONENTS_DISABLED);
+    assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT))
+        .as("movement still off")
+        .isFalse();
+    assertThat(movement.getPushbackBudget()).as("no visit flew it").isEqualTo(budget);
+    assertThat(fisherman.getView().getX()).isEqualTo(x);
+    assertThat(fisherman.getView().getY()).isEqualTo(y);
+
+    // Once the hook lets go, his movement is on again and the frozen push flies on.
+    while (fisherman.getView().getState() == GridEntityState.COMPONENTS_DISABLED) {
+      stepTo(match, match.getBattle().getTick() + 1);
+    }
+    assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT)).as("the hold's end").isTrue();
+    stepTo(match, match.getBattle().getTick() + 1);
+    assertThat(movement.getPushbackBudget()).isLessThan(budget);
+  }
+
+  @Test
+  @DisplayName(
+      "a Fireball on the Fisherman a hook on a building drags leaves his movement off until the drag"
+          + " ends")
+  void theDraggedFishermanKeepsHisMovementOff() {
+    Standard1v1Battle match = new Standard1v1Battle(tables, 1, true);
+    match.getWorld().seed(SEED);
+    match.play(FISHERMAN_TICK, card(match, "Fisherman"), FISHERMAN_LEVEL, 1, 3500, 18000, "F");
+    match.play(338, card(match, "Fireball"), FIREBALL_LEVEL, 0, 3300, 13000, "B");
+    stepTo(match, 356);
+    CharacterEntity fisherman = unit(match, 0);
+    assertThat(fisherman.getView().getState())
+        .isEqualTo(GridEntityState.FOLLOWING_REMOVED_BUILDING);
+    int hitPoints = fisherman.getHitPoints().getHitPoints();
+
+    stepTo(match, 358);
+    assertThat(fisherman.getHitPoints().getHitPoints())
+        .as("the Fireball landed")
+        .isEqualTo(hitPoints - FIREBALL_DAMAGE);
+    assertThat(fisherman.getView().getState())
+        .isEqualTo(GridEntityState.FOLLOWING_REMOVED_BUILDING);
+    assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT))
+        .as("movement still off")
+        .isFalse();
+    assertThat(fisherman.getUnit().movement().getPushbackInFlight()).as("no push").isZero();
+
+    while (fisherman.getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING) {
+      stepTo(match, match.getBattle().getTick() + 1);
+    }
+    assertThat(fisherman.isActive(CharacterEntity.MOVEMENT_SLOT)).as("the drag's end").isTrue();
   }
 }

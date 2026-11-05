@@ -3716,7 +3716,7 @@ public class BattleWorld implements HolderPasses {
    */
   public boolean pushByArea(WorldEntity victim, int fromX, int fromY, int distance) {
     return victim instanceof CharacterEntity character
-        && character.pushedByArea(fromX, fromY, distance);
+        && character.pushedByAreaDamage(fromX, fromY, distance);
   }
 
   @Override
