@@ -4,14 +4,12 @@
   "to_the_end": 92.2,
   "ticks_agreed": 92.5,
   "outcomes": {
-    "diagnostic_match": 19160,
-    "mismatch": 1,
+    "diagnostic_match": 19161,
     "unsupported": 1602
   },
   "first_failures": {
-    "unsupported: Giant_EV1 sets columns the battle does not model: [AttackSequenceList]": 1602,
-    "mismatch $.entities[].x": 1
+    "unsupported: Giant_EV1 sets columns the battle does not model: [AttackSequenceList]": 1602
   },
   "set": "580ff32e61060216",
-  "commit": "964ee45739db44464286abe24b130a32608e4cae"
+  "commit": "eedace7dc357ebd8509e457b0b336519baaa3eac"
 }
