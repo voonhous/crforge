@@ -18,7 +18,14 @@ uv run crforge-env-bench --install ../env/build/install/env --tables ~/.crforge/
 ```
 
 ```python
-from crforge_env import ClashGymEnv, ClashParallelEnv, ScriptedBot, VectorBattle, evaluate
+from crforge_env import (
+    ClashGymEnv,
+    ClashParallelEnv,
+    ScriptedBot,
+    SideSetup,
+    VectorBattle,
+    evaluate,
+)
 
 deck = ["Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap"]
 install = "../env/build/install/env"  # ./gradlew :env:installDist
@@ -35,6 +42,17 @@ env = ClashGymEnv(deck, deck, install=install, tables=tables)  # one seat, a ran
 env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent=ScriptedBot())
 result = evaluate(policy, ScriptedBot(), deck=deck, episodes=200, install=install, tables=tables)
 both = ClashParallelEnv(deck, deck, install=install, tables=tables)  # both seats
+
+# a side's tower troop and levels, as a player's account gives them; a field left None takes
+# the configuration's (princess towers, LadderConfig.tower_level, LadderConfig.level)
+cannoneer = SideSetup(
+    towers="King_CannonTowers",
+    king_level=15,
+    tower_level=15,
+    card_levels=[15, 15, 15, 15, 15, 14, 15, 15],
+)
+vector.reset(seeds, deck, deck, setup1=cannoneer)  # or one SideSetup per battle
+env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent_setup=cannoneer)
 ```
 
 Neither folder has a default and no environment variable is read: every entry point takes `install` (the env module's installed distribution) and, for Ladder battles, `tables`. A faulted episode ends as truncated with no reward, the fault named in the info; it is never a result.

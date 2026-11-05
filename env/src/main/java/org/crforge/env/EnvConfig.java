@@ -13,8 +13,11 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *
  * @param decisionTicks ticks one decision advances the battle: both seats act, then the battle
  *     steps this many times, or fewer when the match ends; 1 decides every tick
- * @param level the level every card is played at, counted from 1 across all rarities
- * @param towerLevel the level of every tower
+ * @param level the level every card is played at, counted from 1 across all rarities, on a side
+ *     reset with no {@link SideSetup}; a setup gives each deck card its own
+ * @param towerLevel the level of every tower on a side reset with no {@link SideSetup}, whose
+ *     towers are the princess towers; a setup gives a side's tower troop and its king and princess
+ *     levels
  * @param maxTicks the tick at which an episode is cut short with no result, or 0 for none; a Ladder
  *     match ends by itself, so this is a guard
  * @param faultBundles the folder a faulted episode's bundle is written under (its replay and {@code

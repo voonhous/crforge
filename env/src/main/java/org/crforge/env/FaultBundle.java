@@ -104,6 +104,22 @@ public final class FaultBundle {
         flags.add(flag);
       }
     }
+    // Each side's setup as the reset gave it, null for a side given none.
+    ArrayNode setups = record.putArray("setups");
+    for (SideSetup setup : env.setups()) {
+      if (setup == null) {
+        setups.addNull();
+        continue;
+      }
+      ObjectNode node = setups.addObject();
+      node.put("towers", setup.towers());
+      node.put("king_level", setup.kingLevel());
+      node.put("tower_level", setup.towerLevel());
+      ArrayNode levels = node.putArray("card_levels");
+      for (int level : setup.cardLevels()) {
+        levels.add(level);
+      }
+    }
     record.put("tick", fault.tick());
     record.put("episode_step", env.episodeStep());
     ArrayNode actions = record.putArray("actions");
@@ -136,7 +152,7 @@ public final class FaultBundle {
       try {
         ScenarioWriter writer = new ScenarioWriter(tables);
         ObjectNode replay =
-            writer.write(writer.plan(battle, config.level(), env.arenas()), fault.tick() + 1);
+            writer.write(writer.plan(battle, env.deckLevels(), env.arenas()), fault.tick() + 1);
         MAPPER.writerWithDefaultPrettyPrinter().writeValue(folder.resolve(REPLAY).toFile(), replay);
       } catch (RuntimeException e) {
         refusal = e.getClass().getSimpleName() + ": " + e.getMessage();

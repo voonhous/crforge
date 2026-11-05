@@ -6,12 +6,15 @@
 
 package org.crforge.core.battle.replay;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +108,32 @@ public final class ScenarioWriter {
    *     why
    */
   public ScenarioPlan plan(Standard1v1Battle battle, int level, List<String> arenas) {
+    LadderMatch match = battle.getMatch();
+    List<int[]> levels = new ArrayList<>();
+    for (int side = 0; side < 2; side++) {
+      int[] same = new int[match == null ? 0 : match.side(side).deck().size()];
+      Arrays.fill(same, level);
+      levels.add(same);
+    }
+    return plan(battle, levels, arenas);
+  }
+
+  /**
+   * A battle played as a Ladder match, as a translated scenario, as {@link #plan(Standard1v1Battle,
+   * int, List)}, with each deck card no command plays at its own level.
+   *
+   * @param battle the battle, its match started
+   * @param unplayedLevels each side's levels by deck index, side 0 first, counted from 1: the level
+   *     of each deck card no command plays; a played card keeps the level its plays were given at
+   * @param arenas each side's arena, a row name of the arenas table
+   * @return the scenario, as {@link ReplayScenario#translate} would read it
+   * @throws IllegalArgumentException when a side has no arena named, or one that is no row of the
+   *     arenas table, or when a side's levels are not one per deck card
+   * @throws UnsupportedOperationException for a battle the version's replays cannot hold, naming
+   *     why
+   */
+  public ScenarioPlan plan(
+      Standard1v1Battle battle, List<int[]> unplayedLevels, List<String> arenas) {
     List<String> named = arenas(arenas);
     LadderMatch match = battle.getMatch();
     if (match == null) {
@@ -149,9 +178,17 @@ public final class ScenarioWriter {
       }
       levels[index] = command.level();
     }
-    for (int[] levels : deckLevels) {
-      for (int index = 0; index < levels.length; index++) {
-        levels[index] = levels[index] == 0 ? level : levels[index];
+    checkArgument(
+        unplayedLevels.size() == 2, () -> "two sides' levels, got " + unplayedLevels.size());
+    for (int side = 0; side < 2; side++) {
+      int[] played = deckLevels.get(side);
+      int[] unplayed = unplayedLevels.get(side);
+      int count = played.length;
+      checkArgument(
+          unplayed.length == count,
+          () -> "a side's levels are one per deck card, " + count + ", got " + unplayed.length);
+      for (int index = 0; index < count; index++) {
+        played[index] = played[index] == 0 ? unplayed[index] : played[index];
       }
     }
     List<ScenarioPlan.Play> plays = new ArrayList<>();

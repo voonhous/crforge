@@ -11,7 +11,7 @@ from gymnasium import spaces
 from pettingzoo import ParallelEnv
 
 from .gym_env import BattleFaultError, battle_seed, observation_space
-from .vector import LadderConfig, VectorBattle
+from .vector import LadderConfig, SideSetup, VectorBattle
 
 SEATS = ("seat_0", "seat_1")
 """The agents: ``seat_0`` plays side 0, ``seat_1`` side 1."""
@@ -31,7 +31,9 @@ class ClashParallelEnv(ParallelEnv):
 
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
     a data version (required for the ladder engine); ``slots0`` and ``slots1`` each deck's slot
-    flags, one per card (None for none; see :meth:`VectorBattle.reset`).
+    flags, one per card (None for none; see :meth:`VectorBattle.reset`); ``setup0`` and
+    ``setup1`` each side's :class:`SideSetup`, its tower troop and levels (None for the
+    configuration's).
     """
 
     metadata = {"render_modes": [], "name": "crforge_ladder_v2"}  # noqa: RUF012
@@ -47,6 +49,8 @@ class ClashParallelEnv(ParallelEnv):
         config: LadderConfig | None = None,
         slots0: Sequence[int] | None = None,
         slots1: Sequence[int] | None = None,
+        setup0: SideSetup | None = None,
+        setup1: SideSetup | None = None,
         **vector_kwargs: Any,
     ):
         self.vector = VectorBattle(
@@ -56,6 +60,7 @@ class ClashParallelEnv(ParallelEnv):
         self.schema = self.vector.schema
         self._decks = (list(deck0), list(deck1))
         self._slots = (slots0, slots1)
+        self._setups = (setup0, setup1)
         self.possible_agents = list(SEATS)
         self.agents: list[str] = []
         self._observation_space = observation_space(self.vector)
@@ -81,7 +86,7 @@ class ClashParallelEnv(ParallelEnv):
     def reset(self, seed: int | None = None, options: dict | None = None):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
-        self.vector.reset([battle_seed(seed, self._rng)], *self._decks, *self._slots)
+        self.vector.reset([battle_seed(seed, self._rng)], *self._decks, *self._slots, *self._setups)
         if self.vector.dones[0]:
             raise BattleFaultError(self.vector.fault(0))
         self.agents = list(self.possible_agents)

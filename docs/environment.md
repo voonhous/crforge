@@ -22,6 +22,7 @@ env/                     org.crforge.env
   BuffSlots              which of an entity's buffs its row's three slots list, in which order
   ElixirCount            one side's elixir as the other side's player counts it from what it sees
   EnvConfig              decision interval, card and tower level, tick limit, fault bundle folder, mask rule
+  SideSetup              one side's tower troop and the levels of its king, princess towers and deck cards, given at reset
   BattleEnv              one battle between two seats, writing into its share of the vector's buffers
   BufferedEnv            what every environment shares: the buffer views, the scratch arrays, the end by a fault
   LadderEnv              the environment on the battle core: plays, the mask, the observation, the result
@@ -52,7 +53,7 @@ One step of the vector is one decision in every battle:
 2. Each environment gives its two actions, one seat after the other. Commands given on the same tick run in the order they were given, so the side given first alternates: side 0 on even decisions (counted from 0 in the episode), side 1 on odd ones. `I_FIRST_SIDE` says which.
 3. Each action is given by its kind:
    - A wait does nothing.
-   - A play of an action the seat's mask left open is given with `PlayerCommands.playCard(side, slot, level, x, y, name)` at the tile's centre, at `EnvConfig.level`. The player's screen runs the placement search at the giving and the command carries the tile it finds, so a drop anywhere is moved to a legal tile rather than refused. The command is stamped with the tick counter and runs `PLAY_DELAY_TICKS` (20) ticks later against the battle as it stands then.
+   - A play of an action the seat's mask left open is given with `PlayerCommands.playCard(side, slot, level, x, y, name)` at the tile's centre, at the card's level: its side's `SideSetup` level, else `EnvConfig.level`. The player's screen runs the placement search at the giving and the command carries the tile it finds, so a drop anywhere is moved to a legal tile rather than refused. The command is stamped with the tick counter and runs `PLAY_DELAY_TICKS` (20) ticks later against the battle as it stands then.
    - An action the mask closed, out of range, or refused at its giving is taken as a wait and counted as illegal (`I_ILLEGAL_0`, `I_ILLEGAL_1`, the seat's `illegal`), with its refusal code in the seat's `last_refusal`.
    - An ability action the mask left open is given with `PlayerCommands.useAbility(side, unit, name)`, naming the unit of the play the champion slot follows by the name the battle gave it (below). It is stamped and runs 20 ticks later the same way.
    - A giving the battle core refuses as not modelled (an `UnsupportedOperationException` from `playCard` or `useAbility`) is refused the same way, with the code `NOT_MODELLED` and counted in `I_NOT_MODELLED`. It is not a fault.
@@ -111,7 +112,7 @@ With `EnvConfig.faultBundles` naming a folder (`EnvConfig.DEFAULT.withFaultBundl
 | File | What it holds |
 |---|---|
 | `replay.json` | the episode's battle as a replay of the tables' data version (`org.crforge.core.battle.replay.ScenarioWriter`): the seed, the decks with their levels and slot flags, the towers, each player's data, every command the seats gave with the tick it was given on and the tick it runs on and the item its client built, and a capture block naming the tables' client version, data version and content sha. Its `endTick` is the tick after the faulting step. Each player's avatar names `EnvConfig.arena`. Left out (`replay` null, `replay_refusal` the reason) when the battle cannot be written, for one when no battle was built or no arena is named |
-| `fault.json` | `kind`, `signature`, `exception`, `message`, `stack` (the full stack trace), `data_version`, `content_sha`, `schema_version`, `config` (decision ticks, levels, tick limit), `env_index`, `seed` (the episode's battle seed), `decks`, `slots` (each deck's slot flags), `tick`, `episode_step`, `actions` (both seats' actions of every decision of the episode, the faulting one last), `commands` (every command given to the battle, plays and ability commands: name, kind, side, card, level, given and run tick, point, option, and an ability command's unit and object id), `replay` |
+| `fault.json` | `kind`, `signature`, `exception`, `message`, `stack` (the full stack trace), `data_version`, `content_sha`, `schema_version`, `config` (decision ticks, levels, tick limit), `env_index`, `seed` (the episode's battle seed), `decks`, `slots` (each deck's slot flags), `setups` (each side's setup as the reset gave it: `towers`, `king_level`, `tower_level`, `card_levels`; null for a side given none), `tick`, `episode_step`, `actions` (both seats' actions of every decision of the episode, the faulting one last), `commands` (every command given to the battle, plays and ability commands: name, kind, side, card, level, given and run tick, point, option, and an ability command's unit and object id), `replay` |
 
 Read back and stepped, the replay meets the same fault at the same tick, with the same message and signature. `ReplayScenario` translates it and `ReplayBattle.build` builds its battle, which a step past the fault's tick refuses as the episode did (`FaultBundleTest`).
 
@@ -171,7 +172,7 @@ The header tables below give, per field (a field of several values is named once
 | `enemy_elixir` (changed) | the enemy's elixir as the seat's player counts it, in ten-thousandths (the rule below); never the enemy's own count |
 | enemy play rows 8 x (`enemy_play_card`, `enemy_play_cast`, `enemy_play_form`, `enemy_play_ticks`, `enemy_play_x`, `enemy_play_y`, `enemy_play_kind`, `enemy_play_flags`, `enemy_play_point_ticks`) (changed, three fields new) | the enemy's last 8 plays placed, newest first, each entering on its run tick as the screen shows it then (the rule below): the vocabulary id of the deck card played, the vocabulary id of the row it was cast as (its evolved or hero row, a variant card's option, the card a Mirror repeated; the card itself otherwise) and its form (0 plain, 1 evolved, 2 hero; 0 for a Mirror or a variant card), all three -1 until the screen shows the card; the ticks since it ran (1 at the earliest, never 0, see below); the point the screen shows it at in the seat's frame, -1, -1 until it shows one; its kind (1 `troop`, 2 `area`, 3 `launched`, 4 `thrown`, 5 `tunnel`; the metadata's `play_kind_names`); its flags (bit 0 `card_shown`, 1 `point_shown`, 2 `mirror`, 3 `evolution_diamond`; `play_flag_names`); and the ticks since its point was shown, -1 before. Unused rows are -1, -1 and zeros (kind 0). With all 8 cards seen, the order of these plays tells a player the enemy's hand: a card played k-th is back in the hand at the enemy's play k + 4 |
 | `queue` x4 | the seat's own queue behind the hand, the cards in the order they come back, by vocabulary id (the first is `next_card`), -1 beyond |
-| `deck_level` x8 | the level, counted from 1, each of the seat's deck cards is played at: `EnvConfig.level` (11 by default) in self-play, the replay's levels in a labelled replay |
+| `deck_level` x8 | the level, counted from 1, each of the seat's deck cards is played at: its side's `SideSetup` level, else `EnvConfig.level` (11 by default), in self-play; the replay's levels in a labelled replay |
 | `enemy_seen_evolution` x8, `enemy_seen_evolution_need` x8 (new) | the enemy's evolution progress as the seat's player counts it, by the place of the card in `enemy_seen`: for a card the screen marked as the enemy's evolution card (a play of it showed the evolution cycle diamond, or it was played evolved), the plays that showed the diamond since its last evolved play, held to the need, and the need, its evolved row's cycle cost as the tables list it (`DarkElixirCost`); -1 and 0 for a card not marked. Counted from the diamonds alone (below), never read from the enemy's own count |
 
 The remaining 8 header integers are reserved and zero.
@@ -472,6 +473,7 @@ try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 256, 8)) {
   env.writeMetadata(Path.of("run/metadata.json"));
   env.reset(seeds, deck0, deck1);           // one seed per battle; decks by card row name
   // or env.reset(seeds, deck0, deck1, slots0, slots1) with each deck's slot flags
+  // or env.reset(seeds, deck0, deck1, slots0, slots1, setups0, setups1) with each side's SideSetup
   IntBuffer actions = env.actions().asIntBuffer();
   while (training) {
     // read env.observations() and env.masks(), write each seat's action
@@ -496,8 +498,24 @@ They are made once and valid for the vector's life, so a Python bridge maps them
 
 - `reset(seeds, String[] deck0, String[] deck1)` gives each battle its own decks (eight names each, battle after battle).
 - `reset(seeds, deck0, deck1, int[] slots0, int[] slots1)` adds each deck's slot flags (eight a deck, battle after battle, `Schema.SLOT_EVOLUTION` 1 and `Schema.SLOT_HERO` 2; null for none, every card played plain, as the resets without them do). The shape is checked before any battle is touched, and a card the battle core does not take in a slot ends that battle's episode as a refusal fault as its match starts.
-- `resetEnv(i, seed)` resets one battle on its decks and slot flags.
+- `reset(seeds, deck0, deck1, slots0, slots1, SideSetup[] setups0, SideSetup[] setups1)` adds each side's setup, one per battle (an entry null, or the array null, for none). See [Side setups](#side-setups).
+- `resetEnv(i, seed)` resets one battle on its decks, slot flags and setups. An autoreset episode keeps them too.
 - `setAutoreset(false)` leaves finished battles for the caller.
+
+### Side setups
+
+A player brings more to a Ladder battle than a deck: a tower troop and an account whose cards and towers stand at their own levels. A `SideSetup` gives one side's:
+
+| Field | What it is | Checked against |
+|---|---|---|
+| `towers` | the tower selection, a row name of the `support_cards` table: `King_PrincessTowers`, `King_CannonTowers` (the Cannoneer), `King_KnifeTowers` (the Dagger Duchess) or `King_ChefTowers` (the Royal Chef). Its `SpawnGroup` places the side's towers | the selections the battle core builds (`ReplayScenario.BUILT_TOWER_SELECTIONS`), and the tables must hold it |
+| `kingLevel` | the king tower's level | a `SummonerLevel` of the `exp_levels` table |
+| `towerLevel` | the level of the two princess slots' towers, counted from 1 across all rarities | the levels of the selection's rarity in `support_rarities`: its `RelativeLevel` plus 1 to its `LevelCount` plus its `RelativeLevel` |
+| `cardLevels` | the level of each deck card by deck index, eight, counted from 1 across all rarities | each within the levels of its card's rarity in `rarities`, the same way |
+
+Every setup is checked before any battle is touched: a bad one refuses the whole call and changes nothing, naming the battle, the side and what is wrong. A side given no setup plays `SideSetup.standard(config)`: the princess towers, the king and princess towers at `EnvConfig.towerLevel` and every card at `EnvConfig.level`, as before setups. `EnvConfig.level` and `EnvConfig.towerLevel` are not checked, as before.
+
+The setup reaches every place a level is read: each play is given at its card's level, the mask tries and searches each hand slot's card at it, the header's `deck_level` shows it, and the entity rows show each tower's and unit's level. A fork keeps the setup, and so does a battle played again from its start. A written replay (`replayJson`, a fault bundle's `replay.json`) names each side's tower selection and level, its king level and every deck card's level, played or not, so the replay labeller and the replay viewer read the battle as it was set up.
 
 `VectorEnv.ladder(Path, ...)` takes a tables folder directly. The folder is one explicit argument, with no default.
 
@@ -744,7 +762,7 @@ The JVM starts once per process with the jars of the first `install`; another fo
 | `dones` | uint8 | `(count,)` |
 | `infos` | int32 | `(count, 12)` |
 
-`reset(seeds, deck0, deck1, slots0=None, slots1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), and each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none).
+`reset(seeds, deck0, deck1, slots0=None, slots1=None, setup0=None, setup1=None)` takes one deck for all battles or one per battle, by card row name (`"Archer"`, as the tables name it), each deck's slot flags the same way (eight values, `schema.slot_evolution` and `schema.slot_hero`; None for none), and each side's `SideSetup` the same way (one for all battles or a list with one per battle, an entry None for none; see [Side setups](#side-setups)). A `SideSetup`'s fields (`towers`, `king_level`, `tower_level`, `card_levels`) left None take the configuration's: the princess towers, `LadderConfig.tower_level` and `LadderConfig.level`.
 
 The vector also has `reset_env(i, seed)`, `set_autoreset(flag)`, `info(i)` (the info record by name), `seat_info(i, seat)` (below), `fault(i)`, `fault_counts()`, `fault_kind_counts()`, `replay_json(i)` (battle `i`'s episode so far as a replay document, `VectorEnv.replayJson`), `lookahead(indices, seats, actions, horizon_ticks)` (each request's seat observation and info record after a look ahead, `(n, 7024)` and `(n, 12)`, [Looking ahead](#looking-ahead)), `enemy_seen(i, seat)` and `enemy_unseen_slots(i, seat)` (what a seat's fork deals cards into) and `fork_from(source, index, seat, targets, shuffles=None, seeds=None, unseen_cards=None, unseen_slots=None)` (forks of a battle of `source` put into battles of this vector, [Looking ahead](#looking-ahead)).
 
@@ -777,8 +795,8 @@ The action count is `schema.actions` (the metadata's `actions`), the first abili
 
 Two wrappers over a vector of one battle, both with autoreset off:
 
-- `ClashParallelEnv(deck0, deck1, install=..., tables=..., slots0=None, slots1=None)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 7024 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
-- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0, slots=None, opponent_slots=None)`: a single-agent environment for the learner on `seat`, `slots` and `opponent_slots` each deck's slot flags. The other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
+- `ClashParallelEnv(deck0, deck1, install=..., tables=..., slots0=None, slots1=None, setup0=None, setup1=None)`: a parallel multi-agent environment whose agents `seat_0` and `seat_1` play sides 0 and 1. Each agent's observation is its seat's 7024 integers in its own frame; an agent left out of the actions waits. `action_mask(agent)` gives an agent's mask.
+- `ClashGymEnv(deck, opponent_deck, install=..., tables=..., opponent=..., seat=0, slots=None, opponent_slots=None, setup=None, opponent_setup=None)`: a single-agent environment for the learner on `seat`, `slots` and `opponent_slots` each deck's slot flags, `setup` and `opponent_setup` each side's `SideSetup`. The other seat is played by `opponent(observation, mask, rng)` (`random_opponent`, a random open action three decisions in ten, `wait_opponent` and the scripted `ScriptedBot` below come with it). `action_masks()` gives the learner's mask as booleans, the method masked-action trainers call.
 
 The observation space is a box of int32 of the seat's 7024 integers, not floats. Its values are vocabulary ids, codes, flags and integer amounts, and an encoder embeds the ids and scales the amounts itself.
 

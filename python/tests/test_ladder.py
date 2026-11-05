@@ -9,7 +9,15 @@ import pytest
 from gymnasium.utils.env_checker import check_env
 from pettingzoo.test import parallel_api_test
 
-from crforge_env import ClashGymEnv, ClashParallelEnv, LadderConfig, VectorBattle, random_opponent
+from crforge_env import (
+    ClashGymEnv,
+    ClashParallelEnv,
+    LadderConfig,
+    SideSetup,
+    VectorBattle,
+    _jvm,
+    random_opponent,
+)
 from crforge_env.bench import draw_actions
 from tests.decks import BLUE, RED, arena
 
@@ -210,6 +218,83 @@ def test_slot_flags_reach_the_match_and_the_seats_header(install, tables):
     try:
         observation, _ = env.reset(seed=3)
         assert list(env.schema.field(observation, "deck_slot")) == evolution
+    finally:
+        env.close()
+
+
+def _rows(tables, table):
+    return json.loads((Path(tables) / f"{table}.json").read_text(encoding="utf-8"))
+
+
+def _card_rarity(tables, card):
+    """A deck card's rarity row (its columns), read from the deck card tables."""
+    for table in ("spells_characters", "spells_other", "spells_buildings"):
+        rows = _rows(tables, table)["rows"]
+        if card in rows:
+            return _rows(tables, "rarities")["rows"][rows[card]["columns"]["Rarity"]]["columns"]
+    raise AssertionError(f"no deck card {card}")
+
+
+def _tower_rows(v, observation):
+    """The (row name, level) of every tower a seat's observation shows, sorted."""
+    s = v.schema
+    rows = s.entities(observation)
+    towers = rows[rows[:, s.entity["kind"]] == s.kinds["tower"]]
+    return sorted(
+        (v.vocabulary[int(r[s.entity["row"]])], int(r[s.entity["level"]])) for r in towers
+    )
+
+
+def test_a_side_setup_places_its_tower_troop_and_gives_its_levels(install, tables):
+    config = LadderConfig(arena=arena(tables))
+    with VectorBattle(1, 1, install=install, tables=tables, config=config) as v:
+        support = _rows(tables, "support_cards")
+        built = _jvm.java_class("org.crforge.core.battle.replay.ReplayScenario")
+        princess = "King_PrincessTowers"
+        towers = next(
+            str(name)
+            for name in sorted(str(n) for n in built.BUILT_TOWER_SELECTIONS)
+            if name != princess and name in support["rows"]
+        )
+        selection = support["rows"][towers]
+        rarity = _rows(tables, "support_rarities")["rows"][selection["columns"]["Rarity"]]
+        top = rarity["columns"]["RelativeLevel"] + rarity["columns"]["LevelCount"]
+        king = max(
+            row["columns"]["SummonerLevel"] for row in _rows(tables, "exp_levels")["rows"].values()
+        )
+        # The highest level every card rarity holds: a level each card of the deck may stand at.
+        rarities = _rows(tables, "rarities")["rows"].values()
+        level = min(r["columns"]["RelativeLevel"] + r["columns"]["LevelCount"] for r in rarities)
+        setup = SideSetup(towers=towers, king_level=king, tower_level=top, card_levels=[level] * 8)
+
+        v.reset([3], BLUE, RED)
+        plain = _tower_rows(v, v.observations[0, 0])
+        v.reset([3], BLUE, RED, setup1=setup)
+        placed = _tower_rows(v, v.observations[0, 0])
+
+        # Side 0's towers are unchanged; side 1's king stands at its level and its two princess
+        # slots hold the tower troop's rows at the setup's level.
+        changed = [t for t in placed if t not in plain]
+        plain_names = {name for name, _ in plain}
+        troop = [t for t in changed if t[0] not in plain_names]
+        assert [lvl for _, lvl in troop] == [top, top]
+        assert [lvl for name, lvl in changed if name in plain_names] == [king]
+
+        # A written replay names the tower selection and each deck card's level.
+        deck = json.loads(v.replay_json(0))["battle"]["deck1"]
+        expected = int(support["id"]) * 1_000_000 + selection["index"]
+        assert deck["sc"][0]["d"] == expected
+        for card, entry in zip(RED, deck["sp"], strict=True):
+            assert entry["l"] + _card_rarity(tables, card)["RelativeLevel"] + 1 == level
+
+        with pytest.raises(ValueError, match="NoSuchTowers"):
+            v.reset([3], BLUE, RED, setup1=SideSetup(towers="NoSuchTowers"))
+        with pytest.raises(ValueError, match="one per environment"):
+            v.reset([3], BLUE, RED, setup0=[setup, setup])
+    env = ClashGymEnv(BLUE, RED, install=install, tables=tables, opponent_setup=setup)
+    try:
+        env.reset(seed=3)
+        assert _tower_rows(env.vector, env.vector.observations[0, 0]) == placed
     finally:
         env.close()
 

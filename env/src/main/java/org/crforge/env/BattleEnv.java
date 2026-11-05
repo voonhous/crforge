@@ -58,6 +58,47 @@ public interface BattleEnv {
   void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1);
 
   /**
+   * Refuses a side setup this environment cannot play with a deck, after {@link #checkDeck} and
+   * before any environment of the vector is reset: the check touches no state. An environment that
+   * plays no towers or levels takes no setup and refuses any.
+   *
+   * @param deck the side's deck, by card row name, already checked
+   * @param setup the side's setup, or null for none
+   * @throws IllegalArgumentException naming what is wrong with it
+   */
+  default void checkSetup(List<String> deck, SideSetup setup) {
+    if (setup != null) {
+      throw new IllegalArgumentException(
+          getClass().getSimpleName() + " plays no towers or levels and takes no side setup");
+    }
+  }
+
+  /**
+   * Starts an episode with each side's setup and writes its first observation. A side given no
+   * setup plays {@link SideSetup#standard}.
+   *
+   * @param seed the battle's random seed
+   * @param deck0 side 0's deck, by card row name
+   * @param deck1 side 1's deck, by card row name
+   * @param slots0 side 0's slot flags, one per card
+   * @param slots1 side 1's slot flags, one per card
+   * @param setup0 side 0's setup, checked by {@link #checkSetup}, or null for none
+   * @param setup1 side 1's setup, as {@code setup0}
+   */
+  default void reset(
+      int seed,
+      List<String> deck0,
+      List<String> deck1,
+      int[] slots0,
+      int[] slots1,
+      SideSetup setup0,
+      SideSetup setup1) {
+    checkSetup(deck0, setup0);
+    checkSetup(deck1, setup1);
+    reset(seed, deck0, deck1, slots0, slots1);
+  }
+
+  /**
    * Takes both seats' actions, advances the battle one decision and writes the observation after
    * it, with the rewards and the info record.
    *

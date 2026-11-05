@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SplittableRandom;
+import java.util.TreeSet;
 import java.util.WeakHashMap;
 import org.crforge.core.battle.Battle;
 import org.crforge.core.battle.BattleEntity;
@@ -41,6 +42,7 @@ import org.crforge.core.battle.match.Timeline;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.replay.ReplayBattle;
+import org.crforge.core.battle.replay.ReplayScenario;
 import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.replay.ScenarioWriter;
 import org.crforge.core.battle.unit.AbilityCommand;
@@ -99,6 +101,18 @@ import org.crforge.env.EnvFault.CoreFailure;
  * decisions, counted from 0, side 1 on odd ones.
  */
 public final class LadderEnv extends BufferedEnv {
+
+  /** The table of the tower selections, the support cards a side setup names. */
+  private static final String SUPPORT_CARDS = "support_cards";
+
+  /** The table of the support cards' rarities, whose levels bound a setup's princess towers. */
+  private static final String SUPPORT_RARITIES = "support_rarities";
+
+  /** The table of the deck cards' rarities, whose levels bound a setup's card levels. */
+  private static final String RARITIES = "rarities";
+
+  /** The table of the exp levels, whose summoner levels bound a setup's king level. */
+  private static final String EXP_LEVELS = "exp_levels";
 
   /**
    * A play this environment gave that has not run yet.
@@ -341,10 +355,20 @@ public final class LadderEnv extends BufferedEnv {
   private List<String> replayArenas;
 
   /**
-   * Each side's card levels by deck index, for an episode reset on a replay's setup; null for every
-   * card at {@link EnvConfig#level}.
+   * Each side's card levels by deck index: a replay's, raised by its card level minimum, for an
+   * episode reset on a replay's setup; the side setups' for an episode reset with any; null for
+   * every card at {@link EnvConfig#level}.
    */
   private int[][] deckLevels;
+
+  /**
+   * Each side's setup as the episode's reset gave it, side 0's then side 1's, null for a side given
+   * none; both null for an episode reset on a replay's setup.
+   */
+  private SideSetup[] setups = new SideSetup[2];
+
+  /** Whether the episode was reset on a replay's setup ({@link #resetReplay}). */
+  private boolean replaySetup;
 
   /**
    * Both seats' actions of each decision of the episode, seat 0's then seat 1's: what a fault
@@ -559,12 +583,170 @@ public final class LadderEnv extends BufferedEnv {
     }
   }
 
+  /**
+   * Refuses a side setup the game cannot hold with a deck: a tower selection the battle core does
+   * not build or the tables do not hold, princess towers outside the levels of the selection's
+   * support rarity, a king level no exp level gives as its summoner level, or card levels that are
+   * not one per deck card each within the levels of its card's rarity. Every bound is read from the
+   * tables.
+   *
+   * @param deck the side's deck, by card row name, already checked by {@link #checkDeck}
+   * @param setup the side's setup, or null for none, which plays {@link SideSetup#standard}
+   * @throws IllegalArgumentException naming what is wrong with it
+   */
+  @Override
+  public void checkSetup(List<String> deck, SideSetup setup) {
+    if (setup == null) {
+      return;
+    }
+    String towers = setup.towers();
+    if (!ReplayScenario.BUILT_TOWER_SELECTIONS.contains(towers)) {
+      throw new IllegalArgumentException(
+          "the tower selection "
+              + towers
+              + " is not one the battle core builds: "
+              + String.join(
+                  ", ", ReplayScenario.BUILT_TOWER_SELECTIONS.stream().sorted().toList()));
+    }
+    if (!tables.table(SUPPORT_CARDS).has(towers)) {
+      throw new IllegalArgumentException(
+          "the tables (" + tables.version() + ") have no tower selection named " + towers);
+    }
+    GameRow selection = tables.table(SUPPORT_CARDS).row(towers);
+    checkLevel(
+        "the towers of " + towers,
+        setup.towerLevel(),
+        tables.table(SUPPORT_RARITIES).row(selection.string("Rarity")));
+    checkKingLevel(setup.kingLevel());
+    int[] levels = setup.cardLevels();
+    if (levels.length != deck.size()) {
+      throw new IllegalArgumentException(
+          "a side setup gives one card level per deck card, "
+              + deck.size()
+              + ", got "
+              + levels.length);
+    }
+    for (int index = 0; index < levels.length; index++) {
+      GameRow card = deckCard(deck.get(index));
+      checkLevel(card.name(), levels[index], tables.table(RARITIES).row(card.string("Rarity")));
+    }
+  }
+
+  /**
+   * Refuses a level outside a rarity's levels: from its RelativeLevel plus 1 to its LevelCount plus
+   * its RelativeLevel, counted from 1 across all rarities, as a replay's level index carries them.
+   */
+  private static void checkLevel(String what, int level, GameRow rarity) {
+    int first = rarity.intValue("RelativeLevel") + 1;
+    int last = rarity.intValue("LevelCount") + rarity.intValue("RelativeLevel");
+    if (level < first || level > last) {
+      throw new IllegalArgumentException(
+          what
+              + " at level "
+              + level
+              + ", outside the levels of the rarity "
+              + rarity.name()
+              + ": "
+              + first
+              + " to "
+              + last);
+    }
+  }
+
+  /**
+   * Refuses a king level below 1, and where the tables hold the exp levels, one no exp level gives
+   * as its summoner level.
+   */
+  private void checkKingLevel(int level) {
+    if (level < 1) {
+      throw new IllegalArgumentException("a king level is counted from 1, got " + level);
+    }
+    if (!tables.tableNames().contains(EXP_LEVELS)) {
+      return;
+    }
+    Set<Integer> given = new TreeSet<>();
+    for (GameRow row : tables.table(EXP_LEVELS).rows()) {
+      given.add(row.intValue("SummonerLevel"));
+    }
+    if (!given.contains(level)) {
+      throw new IllegalArgumentException(
+          "a king level of "
+              + level
+              + ", which no row of the "
+              + EXP_LEVELS
+              + " table gives as its summoner level: "
+              + given);
+    }
+  }
+
+  /** A deck card's row, from the first deck card table that holds it. */
+  private GameRow deckCard(String card) {
+    for (String table : Vocabulary.DECK_TABLES) {
+      if (tables.table(table).has(card)) {
+        return tables.table(table).row(card);
+      }
+    }
+    throw new IllegalArgumentException(
+        "the tables (" + tables.version() + ") have no card named " + card);
+  }
+
+  /** The spawn group a tower selection places a side's towers from. */
+  private String spawnGroup(String towers) {
+    return tables.table(SUPPORT_CARDS).row(towers).string("SpawnGroup");
+  }
+
+  /**
+   * The level a seat's hand slot's card is tried and searched at for its mask: the level its play
+   * would be given at, or {@link EnvConfig#level} for an empty slot.
+   */
+  private int slotLevel(int seat, int slot) {
+    int deckIndex = match.side(seat).getHand().slots()[slot];
+    return deckIndex == Hand.EMPTY ? config.level() : level(seat, deckIndex);
+  }
+
   @Override
   public void reset(int seed, List<String> deck0, List<String> deck1, int[] slots0, int[] slots1) {
-    begin(seed, deck0, deck1, slots0, slots1, null);
+    reset(seed, deck0, deck1, slots0, slots1, null, null);
+  }
+
+  /**
+   * Starts an episode with each side's setup: its towers placed from its tower selection's spawn
+   * group at its king and princess levels, and each play of a deck card given at the card's level
+   * in the setup. A side given no setup plays {@link SideSetup#standard}.
+   *
+   * @throws IllegalArgumentException for a setup {@link #checkSetup} refuses, before anything of
+   *     the last episode is forgotten
+   */
+  @Override
+  public void reset(
+      int seed,
+      List<String> deck0,
+      List<String> deck1,
+      int[] slots0,
+      int[] slots1,
+      SideSetup setup0,
+      SideSetup setup1) {
+    checkSetup(deck0, setup0);
+    checkSetup(deck1, setup1);
+    SideSetup side0 = setup0 == null ? SideSetup.standard(config) : setup0;
+    SideSetup side1 = setup1 == null ? SideSetup.standard(config) : setup1;
+    // With no setup every card plays at the configuration's level, as before setups.
+    int[][] levels =
+        setup0 == null && setup1 == null
+            ? null
+            : new int[][] {side0.cardLevels(), side1.cardLevels()};
+    begin(seed, deck0, deck1, slots0, slots1, levels);
     replayArenas = null;
+    replaySetup = false;
+    setups = new SideSetup[] {setup0, setup1};
     try {
-      standard = new Standard1v1Battle(tables, config.towerLevel());
+      standard =
+          new Standard1v1Battle(
+              tables,
+              List.of(
+                  side0.battleTowers(spawnGroup(side0.towers())),
+                  side1.battleTowers(spawnGroup(side1.towers()))),
+              true);
       standard.getWorld().seed(seed);
       // Each player's data is handed over before the decks are dealt, as the game's battle setup
       // does for every player: one choice each, so each draws once.
@@ -598,6 +780,8 @@ public final class LadderEnv extends BufferedEnv {
         // Each deck card at the level the battle's deck holds it: raised by the card level minimum.
         new int[][] {plan.raisedDeckLevels().get(0), plan.raisedDeckLevels().get(1)});
     replayArenas = plan.arenas();
+    replaySetup = true;
+    setups = new SideSetup[2];
     ScenarioPlan setup =
         new ScenarioPlan(
             plan.seed(),
@@ -700,7 +884,7 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * The level a play of a side's deck card is given at: the card's level as the replay the episode
-   * was reset on lists it, else {@link EnvConfig#level}.
+   * was reset on lists it, or as the side's setup gives it, else {@link EnvConfig#level}.
    */
   private int level(int side, int deckIndex) {
     return deckLevels == null ? config.level() : deckLevels[side][deckIndex];
@@ -973,7 +1157,7 @@ public final class LadderEnv extends BufferedEnv {
    */
   LadderEnv replayed(int seat) {
     checkForkable(seat);
-    if (deckLevels != null) {
+    if (replaySetup) {
       throw new IllegalStateException(
           "an episode reset on a replay's setup is not played again: its commands were not all"
               + " given by step");
@@ -1003,7 +1187,7 @@ public final class LadderEnv extends BufferedEnv {
         ByteBuffer.allocate(2 * Schema.ACTIONS),
         FloatBuffer.allocate(2),
         IntBuffer.allocate(Schema.INFO_INTS));
-    fork.reset(seed, decks.get(0), decks.get(1), slots[0], slots[1]);
+    fork.reset(seed, decks.get(0), decks.get(1), slots[0], slots[1], setups[0], setups[1]);
     fork.replayArenas = replayArenas;
     for (int d = 0; d < decisions; d++) {
       int action0 = actionLog[2 * d];
@@ -1352,6 +1536,30 @@ public final class LadderEnv extends BufferedEnv {
   /** The episode's slot flags by deck index, side 0's then side 1's. */
   int[][] slots() {
     return new int[][] {slots[0].clone(), slots[1].clone()};
+  }
+
+  /**
+   * Each side's setup as the episode's reset gave it, side 0's then side 1's, null for a side given
+   * none (and for both sides of an episode reset on a replay's setup).
+   */
+  List<SideSetup> setups() {
+    return Arrays.asList(setups.clone());
+  }
+
+  /**
+   * Each side's card levels by deck index, side 0's then side 1's, as the episode plays them: what
+   * a written replay of the episode gives each deck card no command played.
+   */
+  List<int[]> deckLevels() {
+    List<int[]> levels = new ArrayList<>();
+    for (int side = 0; side < 2; side++) {
+      int[] own = new int[decks.get(side).size()];
+      for (int index = 0; index < own.length; index++) {
+        own[index] = level(side, index);
+      }
+      levels.add(own);
+    }
+    return levels;
   }
 
   /** The decisions taken in the episode. */
@@ -2420,7 +2628,7 @@ public final class LadderEnv extends BufferedEnv {
       for (int k = 0; k < Schema.HAND_SLOTS; k++) {
         PlayerCommands.Giving tried;
         try {
-          tried = commands.tryCard(seat, k, config.level());
+          tried = commands.tryCard(seat, k, slotLevel(seat, k));
         } catch (UnsupportedOperationException e) {
           continue;
         } catch (RuntimeException | AssertionError | StackOverflowError e) {
@@ -2437,7 +2645,7 @@ public final class LadderEnv extends BufferedEnv {
       for (int k = 0; k < Schema.HAND_SLOTS; k++) {
         boolean[] lands;
         try {
-          lands = landingTiles(seat, commands.searchCards(seat, k, config.level()));
+          lands = landingTiles(seat, commands.searchCards(seat, k, slotLevel(seat, k)));
         } catch (UnsupportedOperationException e) {
           continue;
         } catch (RuntimeException | AssertionError | StackOverflowError e) {

@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 from gymnasium import Env, spaces
 
-from .vector import Fault, LadderConfig, VectorBattle
+from .vector import Fault, LadderConfig, SideSetup, VectorBattle
 
 OpponentPolicy = Callable[[np.ndarray, np.ndarray, np.random.Generator], int]
 """An opponent: given its observation, its mask and a random generator, an action."""
@@ -87,7 +87,8 @@ class ClashGymEnv(Env):
 
     ``deck`` is the learner's, ``opponent_deck`` the opponent's, eight card row names each;
     ``slots`` and ``opponent_slots`` their slot flags, one per card (None for none, every card
-    plain; see :meth:`VectorBattle.reset`).
+    plain; see :meth:`VectorBattle.reset`); ``setup`` and ``opponent_setup`` each side's
+    :class:`SideSetup`, its tower troop and levels (None for the configuration's).
     ``install`` is the env module's installed distribution; ``tables`` the game tables folder of
     a data version (required for the ladder engine). The remaining keywords go to
     :class:`VectorBattle` (``synthetic_*``, ``jvm_args``).
@@ -108,6 +109,8 @@ class ClashGymEnv(Env):
         config: LadderConfig | None = None,
         slots: Sequence[int] | None = None,
         opponent_slots: Sequence[int] | None = None,
+        setup: SideSetup | None = None,
+        opponent_setup: SideSetup | None = None,
         **vector_kwargs: Any,
     ):
         if seat not in (0, 1):
@@ -127,6 +130,8 @@ class ClashGymEnv(Env):
         flags = [slots, opponent_slots]
         self._decks = (decks[seat], decks[1 - seat])
         self._slots = (flags[seat], flags[1 - seat])
+        setups = [setup, opponent_setup]
+        self._setups = (setups[seat], setups[1 - seat])
         self.observation_space = observation_space(self.vector)
         self.action_space = spaces.Discrete(self.schema.actions)
         self._done = True
@@ -140,7 +145,9 @@ class ClashGymEnv(Env):
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        self.vector.reset([battle_seed(seed, self.np_random)], *self._decks, *self._slots)
+        self.vector.reset(
+            [battle_seed(seed, self.np_random)], *self._decks, *self._slots, *self._setups
+        )
         if self.vector.dones[0]:
             raise BattleFaultError(self.vector.fault(0))
         self._done = False
