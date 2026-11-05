@@ -170,6 +170,7 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - a hook arriving at a troop another holds a lock on ending as an ordinary arrival, at its aim, nothing asked into a hook's state
   - the refusals of a hook arriving after such a lock is gone and of a pulled troop another then holds
   - a special that lists its targets and a special range without a special projectile
+- `BattleHookedAreaPushTest` holds an area's push on a unit a Fisherman's hook holds: a Fireball on the pulled Knight, or on the Fisherman holding his hook, switches its movement on, and the push flies while the hook holds it. The area damage's test before that switch is held there too: a Fireball on the holding Fisherman whose pushback is still in flight, or on a Fisherman a hook on a building drags, leaves his movement off, and the frozen push flies on once the hook lets go. The recorded reference battles `fisherman-frozen-push-v1/fisherman_frozen_push_drag` and `fisherman-frozen-push-v1/fisherman_frozen_push_hold` hold the frozen push, a Snowball's, with the drag to a Cannon and with the hold while the hook pulls a Knight.
 - `BattleGraveyardTest` holds the Graveyard's area effect where its runs do not take it:
   - The middle of the arena, where the first row's offset is kept at 9000 and turned over at 9500, as the offsets across the width are turned over only strictly right of the middle.
   - A life of the first spawn's delay running it on the tick of its last update, and one 50 ms shorter dropping it, still queued as the area effect leaves.

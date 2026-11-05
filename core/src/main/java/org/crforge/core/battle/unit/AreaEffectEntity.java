@@ -1503,7 +1503,7 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
               @Override
               public boolean push(TargetView victim, int fromX, int fromY, int distance) {
                 return world.entityOf(victim.getEntity()) instanceof CharacterEntity character
-                    && character.pushedByArea(fromX, fromY, distance);
+                    && character.pushedByAreaDamage(fromX, fromY, distance);
               }
             });
     world.getEvents().areaEffectDamaged(this, area, outcome);

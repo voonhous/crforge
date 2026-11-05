@@ -437,6 +437,8 @@
   "fisherman-deflect-v1/hook_at_deflect_tap280": {"outcome": "diagnostic_match"},
   "fisherman-deflect-v1/hook_at_deflect_tap310": {"outcome": "diagnostic_match"},
   "fisherman-deflect-v1/hook_before_deflect_tap330": {"outcome": "diagnostic_match"},
+  "fisherman-frozen-push-v1/fisherman_frozen_push_drag": {"outcome": "diagnostic_match"},
+  "fisherman-frozen-push-v1/fisherman_frozen_push_hold": {"outcome": "diagnostic_match"},
   "gcage-capture-v1/gcage_giant": {"outcome": "diagnostic_match"},
   "gcage-capture-v1/gcage_giant_attacking": {"outcome": "diagnostic_match"},
   "gcage-capture-v1/gcage_giant_musk": {"outcome": "diagnostic_match"},

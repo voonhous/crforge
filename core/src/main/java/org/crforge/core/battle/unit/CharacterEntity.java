@@ -2418,16 +2418,58 @@ public class CharacterEntity extends WorldEntity {
    * (pulled, or the hook's owner) this lets the pushback fly from the next movement visit on while
    * the hold lasts.
    *
+   * <p>This is the push of a circle-shaped area effect's hits; an area's damage asks {@link
+   * #pushedByAreaDamage} instead, which tests more before the switch.
+   *
    * @param x the point it is pushed away from, along the width
    * @param y the point it is pushed away from, along the length
    * @param distance how far
    * @return true when the pushback was asked for
    */
   boolean pushedByArea(int x, int y, int distance) {
+    return pushedByArea(x, y, distance, false);
+  }
+
+  /**
+   * The push of an area's damage on the character, after its damage: a projectile's impact, a
+   * death, a landing or a dash's area, an area effect's damage. As {@link #pushedByArea(int, int,
+   * int)}, but before its movement is switched on the area damage also leaves where it is a
+   * character whose pushback is already in flight, a hidden one, and one a hook on a building drags
+   * (a Fisherman in FOLLOWING_REMOVED_BUILDING): its movement stays as it was, and nothing is
+   * asked.
+   *
+   * <p>Each of the three would have its request refused anyway; the test before the switch keeps a
+   * held unit's movement off. A Fisherman pushed just before his hook lands keeps that pushback in
+   * flight, frozen with his movement, while the hook drags him to a building or holds him as it
+   * pulls a troop: a second area on him leaves it frozen until the hook lets go, where a switch
+   * would let it fly on at once.
+   *
+   * @param x the point it is pushed away from, along the width
+   * @param y the point it is pushed away from, along the length
+   * @param distance how far
+   * @return true when the pushback was asked for
+   */
+  boolean pushedByAreaDamage(int x, int y, int distance) {
+    return pushedByArea(x, y, distance, true);
+  }
+
+  /**
+   * The area push of {@link #pushedByArea(int, int, int)}, with the area damage's own gate before
+   * the switch when asked.
+   */
+  private boolean pushedByArea(int x, int y, int distance, boolean areaDamage) {
     if (!getView().isMovementComponent()
         || getData().ignorePushback()
         || getBuffs().ignoresPushBack()
         || !HitPoints.alive(getHitPoints())) {
+      return false;
+    }
+    // The area damage's gate, asked before the switch: a pushback in flight, hidden, or dragged to
+    // a building by its own hook. None of them is lifted by an area's damage.
+    if (areaDamage
+        && (unit.movement().getPushbackInFlight() != 0
+            || hidden()
+            || getView().getState() == GridEntityState.FOLLOWING_REMOVED_BUILDING)) {
       return false;
     }
     switchComponent(MOVEMENT_SLOT, true);

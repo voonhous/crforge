@@ -666,7 +666,7 @@ public final class EntityDeaths {
               @Override
               public boolean push(TargetView victim, int fromX, int fromY, int distance) {
                 return world.entityOf(victim.getEntity()) instanceof CharacterEntity character
-                    && character.pushedByArea(fromX, fromY, distance);
+                    && character.pushedByAreaDamage(fromX, fromY, distance);
               }
             });
     world.getEvents().areaDamaged(owner, area, outcome);
