@@ -853,6 +853,41 @@ class VectorBattle:
         ``LadderConfig.arena``; without it this is refused."""
         return str(self._env.replayJson(int(i)))
 
+    def start_from_replay(self, i: int, replay: str | Mapping[str, Any], tick: int) -> None:
+        """Starts battle ``i``'s episode on a replay's battle at ``tick`` (``VectorEnv
+        .startFromReplay``), as :meth:`start_from_replays` does for several."""
+        self.start_from_replays([i], [replay], [tick])
+
+    def start_from_replays(
+        self,
+        indices: Sequence[int],
+        replays: Sequence[str | Mapping[str, Any]],
+        ticks: Sequence[int],
+    ) -> None:
+        """Starts battles' episodes mid-match, each on a replay's battle at a decision's tick
+        (``VectorEnv.startFromReplays``): a state the game reached. Each battle is built from its
+        replay's setup and driven to its tick with the replay's commands, each given on its own
+        tick as a player gives it, so each seat's view at the tick is the one it would hold having
+        played them. A command given before the tick that runs after it is still in flight; none
+        given on the tick or after it is. From the tick on, the seats play it as any episode.
+
+        ``replays`` are replay documents of the tables' data version, as JSON text or parsed;
+        ``ticks`` are multiples of the decision interval before each replay's end. The starts run
+        on the vector's threads, and the battles are changed only when all succeed: a start that
+        cannot be made raises ``ValueError``, naming the battle, and changes nothing. Each battle
+        then keeps its replay's decks, slot flags and :class:`SideSetup` (towers and levels): an
+        autoreset or :meth:`reset_env` plays the same match-up from tick 0. A Ladder vector only."""
+        texts = [r if isinstance(r, str) else json.dumps(r) for r in replays]
+        unsupported = _jvm.java_class("java.lang.UnsupportedOperationException")
+        try:
+            self._env.startFromReplays(
+                jpype.JArray(jpype.JInt)([int(i) for i in indices]),
+                jpype.JArray(jpype.JString)(texts),
+                jpype.JArray(jpype.JInt)([int(t) for t in ticks]),
+            )
+        except (self._illegal_argument, unsupported) as e:
+            raise ValueError(str(e.getMessage())) from None
+
     def write_metadata(self, path: str | Path) -> None:
         """Writes the metadata export, to be kept with a run or a checkpoint."""
         Path(path).write_text(str(self._env.metadataJson()) + "\n", encoding="utf-8")

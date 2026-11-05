@@ -322,6 +322,60 @@ public final class ReplayLabeller {
     return of(tables, decisionTicks, shape).withMaskVersion(maskVersion);
   }
 
+  /**
+   * A labeller of replays the game client records whose environments play as a configuration says:
+   * the one a vector's start on a replay ({@link VectorEnv#startFromReplay}) drives with.
+   */
+  static ReplayLabeller forConfig(GameTables tables, Vocabulary vocabulary, EnvConfig config) {
+    return new ReplayLabeller(tables, vocabulary, config, ScenarioShape.REPLAY);
+  }
+
+  /**
+   * An environment started on a replay's battle at a decision's tick, and the replay's translation.
+   *
+   * @param env the environment, at the tick, bound to buffers of its own
+   * @param plan the replay's translation
+   */
+  record Start(LadderEnv env, ScenarioPlan plan) {}
+
+  /**
+   * Starts an environment on a replay's battle at a decision's tick: the battle built from the
+   * replay's setup and driven to the tick as {@link #label} drives it, each command given on its
+   * given tick through the player's commands (or as the replay states it), so the seats' views at
+   * the tick are the ones a seat that had played the replay's commands would hold. A command given
+   * before the tick that runs after it waits in the battle; none given on the tick or after it is
+   * given. From the tick on the environment is the seats': {@link LadderEnv#step} plays it on.
+   *
+   * @param replay the replay, of the tables' data version
+   * @param tick the start tick, a multiple of the decision interval, before the replay's end
+   * @return the environment and the replay's translation
+   * @throws IllegalArgumentException for a start tick that is no decision's, or at which the
+   *     replay's battle is over or the replay ended
+   * @throws UnsupportedOperationException for a replay the battle core does not read, a command it
+   *     does not model before the tick, or a command queued as recorded still waiting at it
+   */
+  Start start(JsonNode replay, int tick) {
+    ScenarioPlan plan;
+    try {
+      plan = new ReplayScenario(tables, shape).translate(replay);
+    } catch (UnsupportedScenarioException e) {
+      throw new UnsupportedOperationException(
+          "unsupported: " + e.feature() + " (" + e.input() + ")", e);
+    }
+    Run run = new Run(plan, replay.path("endTick").asInt(-1));
+    LadderEnv env;
+    try {
+      env = run.startAt(tick);
+    } catch (UnsupportedScenarioException e) {
+      throw new UnsupportedOperationException(
+          "unsupported before the start tick: " + e.feature() + " (" + e.input() + ")", e);
+    } catch (CoreFailure e) {
+      throw new UnsupportedOperationException(
+          "the battle core failed before the start tick: " + e.getCause(), e);
+    }
+    return new Start(env, plan);
+  }
+
   /** The decision interval. */
   public int decisionTicks() {
     return config.decisionTicks();
@@ -686,6 +740,10 @@ public final class ReplayLabeller {
     private final TreeMap<Integer, List<Given>> byTick = new TreeMap<>();
 
     private int commandCount;
+
+    /** The replay's items checked so far ({@link ReplayBattle#checkItems}). */
+    private int itemsChecked;
+
     private final Rows rows = new Rows();
     private final int[] observation = new int[2 * Schema.SEAT_INTS];
     private final byte[] mask = new byte[2 * Schema.ACTIONS];
@@ -730,30 +788,11 @@ public final class ReplayLabeller {
       int stopTick = 0;
       try {
         env.resetReplay(plan);
-        int checked = 0;
         while (!env.done() && !atEnd()) {
           int decisionTick = tick();
           observations.get(0, observation);
           masks.get(0, mask);
-          for (Pending p : pending) {
-            p.action = Schema.WAIT;
-            p.flags = 0;
-            p.taken = false;
-            p.index = -1;
-            p.givenTick = -1;
-          }
-          env.beginDecision();
-          for (int t = 0; t < config.decisionTicks() && !env.over() && !atEnd(); t++) {
-            List<Given> now = byTick.get(tick());
-            if (now != null) {
-              for (Given command : now) {
-                give(command);
-              }
-            }
-            env.advance();
-            checked = ReplayBattle.checkItems(env.battle(), plan, checked);
-          }
-          env.endDecision();
+          driveDecision();
           if (pending[0].index >= 0 && pending[1].index >= 0) {
             int replayFirst = pending[0].index < pending[1].index ? 0 : 1;
             if (replayFirst != decisions % 2) {
@@ -808,6 +847,87 @@ public final class ReplayLabeller {
               orderDiffers,
               rowsUnpromised);
       return rows.labels(config.decisionTicks(), counts, stopTick, refusal);
+    }
+
+    /**
+     * Drives one decision of the replay's battle: each of the replay's commands given on its given
+     * tick, through the player's commands or as the replay states it, the battle stepped a tick at
+     * a time and each tick's items checked against the replay's, and the decision's observation
+     * written at its end.
+     */
+    private void driveDecision() {
+      for (Pending p : pending) {
+        p.action = Schema.WAIT;
+        p.flags = 0;
+        p.taken = false;
+        p.index = -1;
+        p.givenTick = -1;
+      }
+      env.beginDecision();
+      for (int t = 0; t < config.decisionTicks() && !env.over() && !atEnd(); t++) {
+        List<Given> now = byTick.get(tick());
+        if (now != null) {
+          for (Given command : now) {
+            give(command);
+          }
+        }
+        env.advance();
+        itemsChecked = ReplayBattle.checkItems(env.battle(), plan, itemsChecked);
+      }
+      env.endDecision();
+    }
+
+    /**
+     * Drives the replay's battle to a decision's tick and stops there: every command given before
+     * it is given, so one given before it that runs after it waits in the battle as in the
+     * replay's; none given on it or after it is.
+     *
+     * @param startTick the tick, a decision's: a multiple of the decision interval
+     * @return the environment, at the tick, its observation and mask written
+     * @throws IllegalArgumentException when the tick is no decision's, or the replay's battle ends
+     *     at it or before it
+     * @throws UnsupportedOperationException when a command the replay states waits to run at the
+     *     tick but was queued as recorded: its seat's view would leave out what its client held
+     *     back for it
+     */
+    LadderEnv startAt(int startTick) {
+      if (startTick < 0 || startTick % config.decisionTicks() != 0) {
+        throw new IllegalArgumentException(
+            "a start tick is a decision's, a multiple of "
+                + config.decisionTicks()
+                + " from 0, got "
+                + startTick);
+      }
+      if (endTick >= 0 && startTick >= endTick) {
+        throw new IllegalArgumentException(
+            "a start tick before the replay's end tick " + endTick + ", got " + startTick);
+      }
+      env.resetReplay(plan);
+      while (tick() < startTick && !env.done() && !atEnd()) {
+        driveDecision();
+        decisions++;
+      }
+      if (env.done() || tick() != startTick) {
+        throw new IllegalArgumentException(
+            "the replay's battle "
+                + (env.done() ? "is over" : "stops")
+                + " at tick "
+                + tick()
+                + ", not running at the start tick "
+                + startTick);
+      }
+      for (int seat = 0; seat < 2; seat++) {
+        if (unpromised(seat, startTick)) {
+          throw new UnsupportedOperationException(
+              "side "
+                  + seat
+                  + " has a command queued as the replay states it waiting to run at the start"
+                  + " tick "
+                  + startTick
+                  + ": its client's promise of it is not established, so its seat's view is not");
+        }
+      }
+      return env;
     }
 
     private int tick() {

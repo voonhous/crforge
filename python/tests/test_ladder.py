@@ -299,6 +299,44 @@ def test_a_side_setup_places_its_tower_troop_and_gives_its_levels(install, table
         env.close()
 
 
+def test_an_episode_starts_mid_match_on_a_replay_as_its_seats_saw_it(install, tables):
+    config = LadderConfig(arena=arena(tables))
+    with VectorBattle(2, 1, install=install, tables=tables, config=config) as v:
+        v.set_autoreset(False)
+        v.reset([5, 6], BLUE, RED)
+        rng = np.random.default_rng(2)
+        start = 300
+        seen = None
+        while v.seat_info(0, 0)["tick"] < 2 * start:
+            v.step(draw_actions(v.masks, rng, 0.3))
+            if v.seat_info(0, 0)["tick"] == start:
+                seen = (v.observations[0].copy(), v.masks[0].copy())
+        assert seen is not None
+        replay = v.replay_json(0)
+
+        v.start_from_replay(1, replay, start)
+
+        # Both seats are shown what they were shown at the start tick when they played it.
+        assert v.seat_info(1, 0)["tick"] == start
+        assert (v.observations[1] == seen[0]).all()
+        assert (v.masks[1] == seen[1]).all()
+        assert not v.dones[1]
+        v.step(draw_actions(v.masks, rng, 0.3))
+        assert v.seat_info(1, 0)["tick"] == start + int(v.metadata["config"]["decision_ticks"])
+
+        with pytest.raises(ValueError, match="environment 1"):
+            v.start_from_replay(1, replay, start + 1)
+        with pytest.raises(ValueError, match="end tick"):
+            v.start_from_replay(1, replay, 100 * start)
+    env = ClashGymEnv(BLUE, RED, install=install, tables=tables, config=config, seat=1)
+    try:
+        observation, info = env.reset(options={"replay": replay, "start_tick": start})
+        assert info["tick"] == start
+        assert (observation == seen[0][1]).all()
+    finally:
+        env.close()
+
+
 def test_the_ability_actions_stay_closed_with_no_champion(install, tables):
     with VectorBattle(2, 1, install=install, tables=tables) as v:
         v.reset([1, 2], BLUE, RED)

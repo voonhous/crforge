@@ -84,9 +84,18 @@ class ClashParallelEnv(ParallelEnv):
         return {a: self.vector.seat_info(0, i) for i, a in enumerate(SEATS)}
 
     def reset(self, seed: int | None = None, options: dict | None = None):
+        """Starts an episode: a fresh battle of the decks, or with ``options={"replay": replay,
+        "start_tick": tick}`` the replay's battle from that decision's tick, the replay's decks and
+        setups in place of the given ones (:meth:`VectorBattle.start_from_replay`)."""
         if seed is not None:
             self._rng = np.random.default_rng(seed)
-        self.vector.reset([battle_seed(seed, self._rng)], *self._decks, *self._slots, *self._setups)
+        options = options or {}
+        if "replay" in options:
+            self.vector.start_from_replay(0, options["replay"], int(options.get("start_tick", 0)))
+        else:
+            self.vector.reset(
+                [battle_seed(seed, self._rng)], *self._decks, *self._slots, *self._setups
+            )
         if self.vector.dones[0]:
             raise BattleFaultError(self.vector.fault(0))
         self.agents = list(self.possible_agents)

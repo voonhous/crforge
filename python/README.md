@@ -53,6 +53,10 @@ cannoneer = SideSetup(
 )
 vector.reset(seeds, deck, deck, setup1=cannoneer)  # or one SideSetup per battle
 env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent_setup=cannoneer)
+
+# start mid-match on a replay's battle, at a decision's tick: a state the game reached
+vector.start_from_replay(0, replay_json_text, 1200)
+observation, info = env.reset(options={"replay": replay_json_text, "start_tick": 1200})
 ```
 
 Neither folder has a default and no environment variable is read: every entry point takes `install` (the env module's installed distribution) and, for Ladder battles, `tables`. A faulted episode ends as truncated with no reward, the fault named in the info; it is never a result.

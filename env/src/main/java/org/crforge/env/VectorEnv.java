@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.replay.ScenarioPlan;
 import org.crforge.core.battle.replay.ScenarioWriter;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 
@@ -762,19 +764,6 @@ public final class VectorEnv implements AutoCloseable {
             thrown[r] = e;
             return;
           }
-          IntBuffer o =
-              observations
-                  .slice(target * 2 * Schema.SEAT_INTS * 4, 2 * Schema.SEAT_INTS * 4)
-                  .order(ByteOrder.nativeOrder())
-                  .asIntBuffer();
-          ByteBuffer m = masks.slice(target * 2 * Schema.ACTIONS, 2 * Schema.ACTIONS);
-          FloatBuffer w =
-              rewards.slice(target * 8, 8).order(ByteOrder.nativeOrder()).asFloatBuffer();
-          IntBuffer i =
-              infos
-                  .slice(target * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
-                  .order(ByteOrder.nativeOrder())
-                  .asIntBuffer();
           if (shuffles != null) {
             SplittableRandom deal = new SplittableRandom(shuffles[r]);
             try {
@@ -791,7 +780,7 @@ public final class VectorEnv implements AutoCloseable {
           if (seeds != null) {
             fork.reseed(new SplittableRandom(seeds[r]).nextInt());
           }
-          fork.moveTo(o, m, w, i);
+          moveInto(fork, target);
           envs[target] = fork;
         });
     for (RuntimeException e : thrown) {
@@ -812,6 +801,144 @@ public final class VectorEnv implements AutoCloseable {
       setup0s.set(target, source.setup0s.get(sourceIndex));
       setup1s.set(target, source.setup1s.get(sourceIndex));
       dones.put(target, (byte) 0);
+    }
+    started = true;
+  }
+
+  /**
+   * Moves a Ladder environment's last written results into an environment's share of the buffers.
+   */
+  private void moveInto(LadderEnv env, int target) {
+    IntBuffer o =
+        observations
+            .slice(target * 2 * Schema.SEAT_INTS * 4, 2 * Schema.SEAT_INTS * 4)
+            .order(ByteOrder.nativeOrder())
+            .asIntBuffer();
+    ByteBuffer m = masks.slice(target * 2 * Schema.ACTIONS, 2 * Schema.ACTIONS);
+    FloatBuffer w = rewards.slice(target * 8, 8).order(ByteOrder.nativeOrder()).asFloatBuffer();
+    IntBuffer i =
+        infos
+            .slice(target * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
+            .order(ByteOrder.nativeOrder())
+            .asIntBuffer();
+    env.moveTo(o, m, w, i);
+  }
+
+  /**
+   * Starts an environment's episode on a replay's battle at a decision's tick, as {@link
+   * #startFromReplays} does for several.
+   *
+   * @param index the environment
+   * @param replay the replay's JSON text, of the tables' data version
+   * @param tick the start tick, a multiple of {@link EnvConfig#decisionTicks}, before the replay's
+   *     end
+   */
+  public void startFromReplay(int index, String replay, int tick) {
+    startFromReplays(new int[] {index}, new String[] {replay}, new int[] {tick});
+  }
+
+  /**
+   * Starts environments' episodes on replays' battles, each at a decision's tick: a mid-match start
+   * that is a state the game reached. Each battle is built from its replay's setup (seed, towers,
+   * decks with their levels and slot flags, players' data) and driven to its tick as the replay
+   * labeller drives it: each of the replay's commands given on its given tick through the player's
+   * commands, so each seat's view at the tick (its ids, the cards and elixir it has seen of the
+   * enemy, the plays it has waiting) is the one a seat that had played those commands holds. A
+   * command given before the tick that runs after it is still in flight; none given on the tick or
+   * after it is given. From the tick on the episode is the seats', stepped as any.
+   *
+   * <p>Every start is driven apart from the vector, on its threads, and the environments are
+   * changed only when all succeed: a start that is refused refuses the call and changes nothing.
+   * Each environment then keeps its replay's decks, slot flags and setups ({@link SideSetup}: the
+   * replay's tower troop and levels): an autoreset or {@link #resetEnv} starts a fresh episode of
+   * the same match-up from tick 0.
+   *
+   * @param indices the environments, each at most once
+   * @param replays each environment's replay, JSON text of the tables' data version
+   * @param ticks each environment's start tick, a multiple of {@link EnvConfig#decisionTicks},
+   *     before its replay's end
+   * @throws IllegalArgumentException for a vector that plays no battles, an environment out of
+   *     range or given twice, an unreadable replay, or a start tick that is no decision's or at
+   *     which the replay's battle is over or ended, naming the environment
+   * @throws UnsupportedOperationException for a replay the battle core does not read, a command it
+   *     does not model before the tick, or a command queued as the replay states it still waiting
+   *     at the tick, naming the environment
+   */
+  public void startFromReplays(int[] indices, String[] replays, int[] ticks) {
+    if (vocabulary == null) {
+      throw new IllegalArgumentException("a vector of no battles starts none on a replay");
+    }
+    if (replays.length != indices.length || ticks.length != indices.length) {
+      throw new IllegalArgumentException(
+          "a replay and a start tick for each of the " + indices.length + " environments");
+    }
+    Set<Integer> seen = new HashSet<>();
+    for (int index : indices) {
+      if (index < 0 || index >= envs.length) {
+        throw new IllegalArgumentException("no environment " + index + " in " + envs.length);
+      }
+      if (!seen.add(index)) {
+        throw new IllegalArgumentException("environment " + index + " is given twice");
+      }
+      if (!(envs[index] instanceof LadderEnv)) {
+        throw new IllegalArgumentException("environment " + index + " plays no Ladder battle");
+      }
+    }
+    GameTables tables = ((LadderEnv) envs[indices[0]]).tables();
+    ReplayLabeller labeller = ReplayLabeller.forConfig(tables, vocabulary, config);
+    ReplayLabeller.Start[] starts = new ReplayLabeller.Start[indices.length];
+    List<List<SideSetup>> setups = new ArrayList<>(Collections.nCopies(indices.length, null));
+    RuntimeException[] thrown = new RuntimeException[indices.length];
+    run(
+        indices.length,
+        r -> {
+          try {
+            ReplayLabeller.Start start = labeller.start(JSON.readTree(replays[r]), ticks[r]);
+            LadderEnv env = start.env();
+            ScenarioPlan plan = start.plan();
+            List<SideSetup> sides = env.setupsOf(plan);
+            for (int side = 0; side < 2; side++) {
+              env.checkDeck(plan.decks().get(side), plan.slotFlags().get(side));
+              env.checkSetup(plan.decks().get(side), sides.get(side));
+            }
+            starts[r] = start;
+            setups.set(r, sides);
+          } catch (IOException e) {
+            thrown[r] = new IllegalArgumentException("an unreadable replay: " + e.getMessage(), e);
+          } catch (RuntimeException e) {
+            thrown[r] = e;
+          }
+        });
+    for (int r = 0; r < indices.length; r++) {
+      RuntimeException e = thrown[r];
+      if (e instanceof UnsupportedOperationException) {
+        throw new UnsupportedOperationException(
+            "environment " + indices[r] + ": " + e.getMessage(), e);
+      }
+      if (e != null) {
+        throw new IllegalArgumentException("environment " + indices[r] + ": " + e.getMessage(), e);
+      }
+    }
+    for (int r = 0; r < indices.length; r++) {
+      int index = indices[r];
+      LadderEnv env = starts[r].env();
+      ScenarioPlan plan = starts[r].plan();
+      moveInto(env, index);
+      envs[index] = env;
+      broken[index] = false;
+      faults[index] = null;
+      uncounted[index] = false;
+      episodeSeeds[index] = plan.seed();
+      if (seeds[index] == null) {
+        seeds[index] = new SplittableRandom(plan.seed());
+      }
+      deck0s.set(index, List.copyOf(plan.decks().get(0)));
+      deck1s.set(index, List.copyOf(plan.decks().get(1)));
+      slots0s.set(index, plan.slotFlags().get(0).clone());
+      slots1s.set(index, plan.slotFlags().get(1).clone());
+      setup0s.set(index, setups.get(r).get(0));
+      setup1s.set(index, setups.get(r).get(1));
+      dones.put(index, (byte) 0);
     }
     started = true;
   }
