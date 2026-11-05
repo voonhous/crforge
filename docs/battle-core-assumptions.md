@@ -323,7 +323,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The Archer Queen's ability fires TriggerDelay / 50 - 1 visits after her cast starts and applies ArcherQueenRapid to herself for 3500 ms, at her level, she its parent and source. Her attack restarts from its load time after the cast and steps 140 a visit, and she walks at 75 percent. While it lasts every character asker drops her at its next check, though an arrow in flight lands and area damage reaches her.
 
-  Its NotCloned is read only by the clone creator. A clone of a unit carrying such a buff is refused.
+  Its NotCloned is read only by the clone creator: a clone of a unit carrying the buff does not keep its copy, which is taken off the clone as it is made.
 
   A deck with two champion cards, which only another mode deals, is refused.
 
