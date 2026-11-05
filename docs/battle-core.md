@@ -47,7 +47,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `ExpressionEvaluator` | the stack machine that runs them over 32-bit integers |
 | `Expression` | one compiled expression: its words and its stack depth |
 | `ExpressionEnvironment` | what an expression's symbols name and what each call answers |
-| `BattleFunctions` | the 47 names of the battle's functions, their ids and argument counts |
+| `BattleFunctions` | the 59 names of the battle's functions, their ids and argument counts |
 | `Builtins` | the functions every expression may call whatever its environment: min, max, abs, clamp, select and the two logarithms |
 | `ExpressionException` | a string the expression compiler refuses |
 
@@ -128,7 +128,7 @@ The tables below say what each of those classes is, package by package. `unit/`,
 | `TargetIndicatorAttack` | lasts on a character, marks the nearest enemy in its ring with a signal and shoots a projectile at the signal's point a delay later |
 | `TargetIndicatorHost` | what a target indicator attack asks of the battle around its character |
 | `Heal` | heals its owner by its value, with its over-heal percentage |
-| `Kill` | schedules its kill action on its owner, then kills it with the cause as killer |
+| `Kill` | schedules its kill action on its owner, then kills it with the cause as killer; refuses an area effect owner, which the game ends instead |
 | `DamageType` | the switches a typed hit's pipeline runs, and the actions it runs after a hit |
 | `DealDamage` | queues a typed hit on its owner, with the cause as its source |
 | `InertAction` | a row that changes nothing the simulation reads: an inert class, an effect or a forced animation; an effect that loops keeps a run |

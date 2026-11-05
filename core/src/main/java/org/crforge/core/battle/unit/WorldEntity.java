@@ -3038,12 +3038,20 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
     return sequence.entryAt(targeting.getAttackSequenceIndex()).meleePushbackAll();
   }
 
+  /**
+   * The damage of the entity's next hit at its level, a special hit's aside: the row's own, or in
+   * an order of two or more the entry at the attack sequence index's, unless that entry leaves its
+   * Damage out (-1), when the row's own stands.
+   */
   int attackDamage() {
     AttackSequence sequence = data.attackSequence();
     if (!sequence.replacesAttack()) {
       return damage;
     }
     AttackSequence.Entry entry = sequence.entryAt(targeting.getAttackSequenceIndex());
+    if (entry.damage() == AttackSequence.Entry.ROW_DAMAGE) {
+      return damage;
+    }
     ScalingGlobals globals = ScalingGlobals.standard();
     ProjectileData projectile = entry.projectile();
     return LevelScaling.damage(

@@ -61,7 +61,8 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
   /**
    * One entry: what one attack of the sequence uses in place of the row's own columns.
    *
-   * @param damage the entry's damage at the first level
+   * @param damage the entry's damage at the first level, or -1 ({@link Entry#ROW_DAMAGE}) for a
+   *     list entry that leaves it to the row's
    * @param projectile the entry's projectile, or null for none
    * @param variableDamageTime how long the entry lasts in the timer-driven modes, in milliseconds
    * @param hitSpeedMultiplier the pace of the attack timer during the entry, in percent
@@ -114,6 +115,12 @@ public record AttackSequence(int mode, List<Integer> order, List<Entry> entries)
 
     /** The buff on damage time of an entry that leaves it to the row's. */
     public static final int ROW_BUFF_ON_DAMAGE_TIME = -1;
+
+    /**
+     * The damage of a list entry that leaves its Damage out, the loader's default: the entry's hit
+     * then deals the row's own damage at the unit's level.
+     */
+    public static final int ROW_DAMAGE = -1;
 
     /**
      * True when the entry sets a variable damage time outside a timer-driven mode, which walks no

@@ -12,14 +12,18 @@ import org.crforge.core.fidelity.FidelityStatus;
 /**
  * An action that kills its owner: its kill action is scheduled on the owner first, and the owner is
  * then killed with the entity that caused the action as its killer, the kill landing at the damage
- * drain of the tick. An owner without hit points is left alone, its kill action included.
+ * drain of the tick. An owner without hit points is left alone, its kill action included, except an
+ * area effect, which the game ends instead (its kill action scheduled on it, then its countdown set
+ * below 0): that end is refused rather than guessed, as no recording shows it.
  */
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: the kill action scheduled first, the kill with the cause's entity as killer, and"
-            + " nothing without hit points. Not modelled: an area effect's destroy, which comes with"
-            + " the area effects.")
+            + " nothing without hit points. Read from the build's perform, not modelled: an area"
+            + " effect owner's end, refused. The evolved Giant's rage areas schedule such a kill,"
+            + " but in every recorded battle an area ends on its own before the kill's delay has"
+            + " run, so no kill starts there.")
 public final class Kill extends RowAction {
 
   private final BattleAction onKillAction;
@@ -41,6 +45,11 @@ public final class Kill extends RowAction {
   @Override
   public ActionInstance start(ActionHolder holder, ActionHolder instigator) {
     ActionOwner owner = holder.getOwner();
+    if (owner != null && owner.actionAreaEffect()) {
+      // The game schedules the kill action on the area, the area its own cause, and ends it.
+      throw new UnsupportedOperationException(
+          name() + " kills an area effect, whose end by a kill is not modelled");
+    }
     if (owner == null || owner.actionHitPoints() == null) {
       return null;
     }
