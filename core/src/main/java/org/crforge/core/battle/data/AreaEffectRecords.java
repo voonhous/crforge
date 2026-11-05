@@ -10,7 +10,6 @@ import static org.crforge.core.util.ValidationUtils.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import org.crforge.core.battle.unit.AreaDamageType;
@@ -47,8 +46,6 @@ final class AreaEffectRecords extends RowReader {
           "LifeDurationIncreasePerLevel",
           "LifeDurationIncreaseAfterTournamentCap",
           "MinPushback");
-
-  private static final String DAMAGE_TYPES = "damage_types";
 
   /**
    * The fields of a damage type the filter form of an area effect deals as it is held for: its two
@@ -392,49 +389,24 @@ final class AreaEffectRecords extends RowReader {
   }
 
   /**
-   * The damage type a filter form row deals, from its Damage column: a table written inline or the
-   * name of a damage types row, each giving BaseDamage (0 when left out) and TowerDamage (none when
-   * left out), and an Effect, which only the view shows. A row without Damage deals none. A number,
-   * or a type that sets anything else (its Flags, an action on its source or its target, or a field
-   * the type has no column for), is refused by the Damage column.
+   * The damage type a filter form row deals, from its Damage column, read by the one damage type
+   * reader: a table written inline or the name of a damage types row, each giving BaseDamage (0
+   * when left out) and TowerDamage (none when left out), and an Effect, which only the view shows.
+   * A row without Damage deals none. A number, a name the table has no row of, or a type that sets
+   * anything else (its Flags, an action on its source or its target, or a field the type has no
+   * column for), is refused by the Damage column.
    */
   private AreaDamageType areaDamageType(GameRow row, List<String> unmodelled) {
-    JsonNode value = row.value("Damage");
-    if (value == null || value.isTextual() && value.asText().isEmpty()) {
+    DamageTypeRow type = records.damageType(row.value("Damage"));
+    if (type == null) {
       return null;
     }
-    if (value.isObject()) {
-      for (Iterator<String> it = value.fieldNames(); it.hasNext(); ) {
-        if (!DAMAGE_TYPE_FIELDS.contains(it.next())) {
-          unmodelled.add("Damage");
-          return null;
-        }
-      }
-      return new AreaDamageType(
-          null,
-          row.intField("Damage", value, "BaseDamage", 0),
-          row.intField("Damage", value, "TowerDamage", AreaDamageType.NO_TOWER_DAMAGE));
+    if (!type.read() || !DAMAGE_TYPE_FIELDS.containsAll(type.fields())) {
+      unmodelled.add("Damage");
+      return null;
     }
-    if (value.isTextual()) {
-      GameTable types = tables.table(DAMAGE_TYPES);
-      if (!types.has(value.asText())) {
-        unmodelled.add("Damage");
-        return null;
-      }
-      GameRow type = types.row(value.asText());
-      for (String column : type.setColumns()) {
-        if (!DAMAGE_TYPE_FIELDS.contains(column)) {
-          unmodelled.add("Damage");
-          return null;
-        }
-      }
-      return new AreaDamageType(
-          type.name(),
-          type.intValue("BaseDamage"),
-          type.has("TowerDamage") ? type.intValue("TowerDamage") : AreaDamageType.NO_TOWER_DAMAGE);
-    }
-    unmodelled.add("Damage");
-    return null;
+    return new AreaDamageType(
+        type.name(), type.baseDamage(), type.towerDamage(AreaDamageType.NO_TOWER_DAMAGE));
   }
 
   /**

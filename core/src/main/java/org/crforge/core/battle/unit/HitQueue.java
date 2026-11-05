@@ -1223,12 +1223,23 @@ public final class HitQueue {
    * for the hidden one: a hidden character, a tunnelling one among them, is not pushed. A
    * projectile that stops at collisions is finished by a hit that landed on an entity with hit
    * points left, and the pass ends; held by the Hunter's pellets in the reference battle
-   * card_Hunter.
+   * card_Hunter. Refused: a body whose row has an OnHitTargetAction, which the game runs on each
+   * object the body hits.
    *
    * @return true when the hit finished the projectile
    */
   boolean travellingHit(ProjectileEntity projectile, WorldEntity entity, int x, int y, int hitId) {
     ProjectileData data = projectile.getData();
+    // The game's travelling hit runs the row's OnHitTargetAction on each object it hits, once per
+    // object, after the hit is queued. That run is not modelled: a body with the action is refused
+    // as soon as it meets an object on its way, rather than passing it by without the action.
+    if (data.onHitTargetAction() != null) {
+      throw new UnsupportedOperationException(
+          data.name()
+              + " is a flying body with the OnHitTargetAction "
+              + data.onHitTargetAction()
+              + ", which its hits on its way would run, not modelled");
+    }
     if (data.onlyEnemies() && (entity.side() & 1) == (projectile.side() & 1)) {
       return false;
     }

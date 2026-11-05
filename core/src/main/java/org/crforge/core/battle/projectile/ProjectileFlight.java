@@ -499,6 +499,7 @@ final class ProjectileFlight {
     // The enchanting copies it carries change both damages, after the hit id is taken.
     int damage = p.listenedDamage(p.damage(), hitId, false, p.getTarget());
     int towerDamage = p.listenedDamage(p.towerDamage(), hitId, true, p.getTarget());
+    refuseBoxArea(p, damage, towerDamage);
     ProjectileChain chain = p.getChain();
     // A deflected projectile of a chain lands at its aim, the point it was sent at, not its ring
     // point.
@@ -552,6 +553,31 @@ final class ProjectileFlight {
       if (next != null) {
         p.hop(next);
       }
+    }
+  }
+
+  /**
+   * Refuses an impact whose area is a box and that would act on what the area holds. A row with a
+   * RadiusY makes the area of its impact a box, its Radius across the arena and its RadiusY along
+   * it; the impact here only knows the circle of the Radius. So an impact of such a row that deals
+   * damage, pushes, applies its target buff or makes an area effect is not modelled. One that does
+   * none of these lands as before: the Log's and the Barbarian Barrel's thrown projectiles set a
+   * RadiusY and only spawn their rolling bodies at their impact.
+   */
+  private static void refuseBoxArea(ProjectileEntity p, int damage, int towerDamage) {
+    ProjectileData data = p.getData();
+    if (data.radiusY() < 1) {
+      return;
+    }
+    if (damage >= 1
+        || towerDamage >= 1
+        || data.pushback() >= 1
+        || data.targetBuff() != null
+        || data.spawnAreaEffectObject() != null) {
+      throw new UnsupportedOperationException(
+          data.name()
+              + " has a RadiusY, which makes its impact's area a box, and its impact deals damage,"
+              + " pushes, applies a buff or makes an area effect, which is not modelled");
     }
   }
 
