@@ -17,22 +17,31 @@ class BattleFunctionsTest {
 
   @Test
   @DisplayName(
-      "52 functions with the ids 0 to 51, each once: the 47 of 14.593.1 and a newer version's five")
-  void fiftyTwoIds() {
-    assertThat(BattleFunctions.ALL).hasSize(52);
+      "59 functions with the ids 0 to 58, each once: the 47 of 14.593.1, a newer version's five and"
+          + " the seven 16.635.1 adds")
+  void fiftyNineIds() {
+    assertThat(BattleFunctions.ALL).hasSize(59);
     assertThat(BattleFunctions.byId(47).name()).isEqualTo("ability_charges_left");
     assertThat(BattleFunctions.byId(48).name()).isEqualTo("is_valid_position");
     assertThat(BattleFunctions.byId(49).name()).isEqualTo("is_dodging_damage");
     assertThat(BattleFunctions.byId(50).name()).isEqualTo("is_crown_tower");
     assertThat(BattleFunctions.byId(51).name()).isEqualTo("character_level");
-    for (int id = 0; id < 52; id++) {
+    assertThat(BattleFunctions.byId(52).name()).isEqualTo("is_enough_to_kill_target");
+    assertThat(BattleFunctions.byId(53).name()).isEqualTo("is_contained_by_circle");
+    assertThat(BattleFunctions.byId(54).name()).isEqualTo("collision_radius");
+    assertThat(BattleFunctions.byId(55).name()).isEqualTo("direction_offset_x");
+    assertThat(BattleFunctions.byId(56).name()).isEqualTo("direction_offset_y");
+    assertThat(BattleFunctions.byId(57).name()).isEqualTo("damage");
+    assertThat(BattleFunctions.byId(58).name()).isEqualTo("crown_tower_damage");
+    for (int id = 0; id < 59; id++) {
       assertThat(BattleFunctions.byId(id).id()).isEqualTo(id);
     }
   }
 
   @Test
   @DisplayName(
-      "seven take exactly one argument, two an optional one, one exactly two, the rest none")
+      "ten take exactly one argument, two an optional one, one exactly two, one exactly three,"
+          + " the rest none")
   void argumentCounts() {
     List<String> exactlyOne =
         BattleFunctions.ALL.stream()
@@ -41,8 +50,11 @@ class BattleFunctionsTest {
             .toList();
     assertThat(exactlyOne)
         .containsExactlyInAnyOrder(
+            "direction_offset_x",
+            "direction_offset_y",
             "has_crown_tower_in_range",
             "has_data",
+            "is_enough_to_kill_target",
             "rand",
             "random_chance",
             "target_in_range",
@@ -54,6 +66,8 @@ class BattleFunctionsTest {
     assertThat(BattleFunctions.byName("king_tower_damaged").maxArguments()).isZero();
     assertThat(BattleFunctions.byName("is_valid_position").minArguments()).isEqualTo(2);
     assertThat(BattleFunctions.byName("is_valid_position").maxArguments()).isEqualTo(2);
+    assertThat(BattleFunctions.byName("is_contained_by_circle").minArguments()).isEqualTo(3);
+    assertThat(BattleFunctions.byName("is_contained_by_circle").maxArguments()).isEqualTo(3);
   }
 
   @Test

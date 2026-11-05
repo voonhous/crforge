@@ -51,7 +51,19 @@ final class BattleValidatorQueries implements ValidatorQueries {
    */
   @Override
   public boolean pendingDamageAccepted(TargetView target, int amount) {
-    WorldEntity entity = world.entityOf(target.getEntity());
+    return lethal(world.entityOf(target.getEntity()), amount);
+  }
+
+  /**
+   * The lethal test on an entity with hit points: false while its shield is up or while it is
+   * untouchable; otherwise whether the amount, through its damage reduction and at least 1, reaches
+   * the hit points it has left. The pending-damage rule asks it, and so does the expression
+   * function is_enough_to_kill_target, which calls the same function in the game.
+   *
+   * @param entity the entity the amount would reach
+   * @param amount the amount
+   */
+  static boolean lethal(WorldEntity entity, int amount) {
     HitPoints hitPoints = entity.getHitPoints();
     if (hitPoints.getShield() > 0) {
       return false;

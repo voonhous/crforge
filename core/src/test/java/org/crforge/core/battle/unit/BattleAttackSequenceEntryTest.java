@@ -287,6 +287,67 @@ class BattleAttackSequenceEntryTest {
     assertThat(hit.stream().filter(h -> h.tick() > arrowsLanded)).hasSizeGreaterThanOrEqualTo(3);
   }
 
+  @Test
+  @DisplayName(
+      "an entry that leaves its Damage out hits for the row's own damage, in an order of two or"
+          + " more")
+  void anEntryWithoutDamageHitsForTheRowsDamage(@TempDir Path folder) throws IOException {
+    // A Knight given an order of two entries that set nothing, as the evolved Giant's do.
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "Knight");
+              columns.putArray("AttackSequence").add(0).add(1);
+              columns.put("AttackSequenceMode", "None");
+              ArrayNode list = columns.putArray("AttackSequenceList");
+              list.addObject();
+              list.addObject();
+            });
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, true);
+    CharacterEntity knight = battle.deploy(0, unit(battle, "Knight"), LEVEL, 0, 3500, 14000, "k");
+    CharacterEntity golem = battle.deploy(0, unit(battle, "Golem"), LEVEL, 1, 3500, 16000, "g");
+    List<Integer> dealt = new ArrayList<>();
+    battle
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void damageDealt(
+                  int tick, WorldEntity target, int damage, DamageResult result) {
+                if (target == golem) {
+                  dealt.add(damage);
+                }
+              }
+            });
+    stepThrough(battle, 300);
+
+    assertThat(knight.getDamage()).isPositive();
+    assertThat(dealt).isNotEmpty().allMatch(damage -> damage == knight.getDamage());
+  }
+
+  @Test
+  @DisplayName(
+      "an entry's death effect override on a kill is only shown: a row whose entry sets it is read"
+          + " with nothing left unmodelled")
+  void anEntryDeathEffectOverrideIsShown(@TempDir Path folder) throws IOException {
+    GameTables tables =
+        GameData.altered(
+            folder,
+            "characters",
+            rows -> {
+              ObjectNode columns = GameData.columns(rows, "Knight");
+              columns.putArray("AttackSequence").add(0).add(1);
+              ArrayNode list = columns.putArray("AttackSequenceList");
+              list.addObject();
+              list.addObject().put("CustomOnKillDeathEffectOverride", "");
+            });
+    Standard1v1Battle battle = new Standard1v1Battle(tables, LEVEL, false);
+
+    assertThat(unit(battle, "Knight").unmodelledColumns()).isEmpty();
+  }
+
   /** The Electro Wizard facing two Knights abreast, both inside its range on its first hit. */
   private static List<CharacterEntity> knights(Standard1v1Battle battle) {
     List<CharacterEntity> out = new ArrayList<>();

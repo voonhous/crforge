@@ -29,7 +29,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " otherwise, and only the name reaches the battle. Another later name,"
             + " is_valid_position (two arguments), takes 48 the same way, is_dodging_damage (no"
             + " arguments) 49, is_crown_tower (no arguments) 50 and character_level (no arguments)"
-            + " 51.")
+            + " 51. The seven names a 16.635.1 client adds take 52 to 58 in its order:"
+            + " is_enough_to_kill_target (one argument), is_contained_by_circle (three),"
+            + " collision_radius (none), direction_offset_x and direction_offset_y (one each), damage"
+            + " and crown_tower_damage (none).")
 public final class BattleFunctions {
 
   /** One function: its name, its id and the fewest and most arguments it takes. */
@@ -89,7 +92,14 @@ public final class BattleFunctions {
           new Entry("is_valid_position", 48, 2, 2),
           new Entry("is_dodging_damage", 49, 0, 0),
           new Entry("is_crown_tower", 50, 0, 0),
-          new Entry("character_level", 51, 0, 0));
+          new Entry("character_level", 51, 0, 0),
+          new Entry("is_enough_to_kill_target", 52, 1, 1),
+          new Entry("is_contained_by_circle", 53, 3, 3),
+          new Entry("collision_radius", 54, 0, 0),
+          new Entry("direction_offset_x", 55, 1, 1),
+          new Entry("direction_offset_y", 56, 1, 1),
+          new Entry("damage", 57, 0, 0),
+          new Entry("crown_tower_damage", 58, 0, 0));
 
   private static final Map<String, Entry> BY_NAME = new HashMap<>();
 

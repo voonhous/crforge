@@ -3699,13 +3699,13 @@ public final class ActionRows {
      * An area-effect spawn row's columns: the area effect, whether the owner is the source, the two
      * offsets and, for the location class, its two position expressions, which give the point in
      * place of the owner's, and UseDeploy and the two target expressions, which the area-effect
-     * branch does not read (the target expressions only aim a projectile); for the plain class, the
-     * action run on the area effect it spawns and whether that action shares the context. A
-     * location row that sets no position column at all spawns at the owner's point, as the plain
-     * class does: the location's x and y fall through the absolute, relative, expression and
-     * mirrored columns to the owner's own. A location row with only one expression, a row that sets
-     * any other spawn column, writes its area effect inline, or names one whose row sets a column
-     * not modelled is refused.
+     * branch does not read (the target expressions only aim a projectile); for either class, the
+     * action run on the area effect it spawns and whether that action shares the context, which the
+     * shared perform reads alike for the two classes. A location row that sets no position column
+     * at all spawns at the owner's point, as the plain class does: the location's x and y fall
+     * through the absolute, relative, expression and mirrored columns to the owner's own. A
+     * location row with only one expression, a row that sets any other spawn column, writes its
+     * area effect inline, or names one whose row sets a column not modelled is refused.
      */
     private SpawnAreaEffect spawnAreaEffect(
         String name, String type, ActionRow shared, JsonNode f) {
@@ -3744,7 +3744,9 @@ public final class ActionRows {
                   "YPositionExpression",
                   "UseDeploy",
                   "TargetExprX",
-                  "TargetExprY")
+                  "TargetExprY",
+                  "ActionToRunOnSpawned",
+                  "ShareContext")
               : Set.of(
                   "SpawnData",
                   "SpawnType",
@@ -3778,8 +3780,8 @@ public final class ActionRows {
           integer(f, "OffsetY"),
           location ? expression(f.get("XPositionExpression")) : null,
           location ? expression(f.get("YPositionExpression")) : null,
-          location ? null : rowName(f.get("ActionToRunOnSpawned")),
-          !location && bool(f, "ShareContext"));
+          rowName(f.get("ActionToRunOnSpawned")),
+          bool(f, "ShareContext"));
     }
 
     /**

@@ -21,6 +21,7 @@ import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.combat.RarityTable;
 import org.crforge.core.pathfinding.combat.ScalingGlobals;
 import org.crforge.core.pathfinding.grid.TileMap;
+import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.ReferenceValidator;
 import org.crforge.core.pathfinding.target.TargetView;
 
@@ -87,6 +88,15 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " as the context's level counted from 0: the signed steps"
             + " above its rarity's first level plus the rarity's relative level, read from the"
             + " build's function;"
+            + " target_hp as the hit points the context's reference has left, whether its"
+            + " targeting runs or not, 0 with none or with its hit points off;"
+            + " is_enough_to_kill_target as the pending damage rule's lethal test on the reference"
+            + " of a running targeting, 0 without one or with its hit points off; damage as a"
+            + " character's next hit's damage, the row's or its attack sequence entry's, the row's"
+            + " for an entry that leaves its Damage out; direction_offset_x and _y as a"
+            + " character's facing rescaled to the argument, truncated; each read from the"
+            + " build's function, and the entry damage and the facing held by the evolved Giant's"
+            + " coverage battles;"
             + " target_max_hp on the context's reference while its targeting runs, 0 without"
             + " one or with the reference's hit points off, with no argument its maximum and"
             + " with one its row's hit points at that many steps above the Common first level"
@@ -103,8 +113,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " entity carries every bit of it. Not modelled: target_max_hp on a"
             + " tower or on a reference that has left the battle, refused;"
             + " has_crown_tower_in_range on an object that is not a"
-            + " character or of the neutral side, refused; the other 19 functions, which fail"
-            + " when called, and a row whose negative id would fall among the other calls' ids.")
+            + " character or of the neutral side, refused; damage and direction_offset on another"
+            + " object, and damage while a special attack is loading, refused; the other 20"
+            + " functions, which fail when called, and a row whose negative id would fall among the"
+            + " other calls' ids.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class BattleExpressionEnvironment implements ExpressionEnvironment {
 
@@ -141,6 +153,12 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       BattleFunctions.id("has_crown_tower_in_range");
   private static final int IS_CROWN_TOWER = BattleFunctions.id("is_crown_tower");
   private static final int CHARACTER_LEVEL = BattleFunctions.id("character_level");
+  private static final int TARGET_HP = BattleFunctions.id("target_hp");
+  private static final int IS_ENOUGH_TO_KILL_TARGET =
+      BattleFunctions.id("is_enough_to_kill_target");
+  private static final int DAMAGE = BattleFunctions.id("damage");
+  private static final int DIRECTION_OFFSET_X = BattleFunctions.id("direction_offset_x");
+  private static final int DIRECTION_OFFSET_Y = BattleFunctions.id("direction_offset_y");
 
   /** Bits of a packed level that hold the steps above the rarity's first level. */
   private static final int LEVEL_STEPS_MASK = 0xff;
@@ -437,6 +455,18 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
       int packed = context.packedLevel();
       return (byte) packed + ((packed >> 8) & LEVEL_STEPS_MASK);
     }
+    if (id == TARGET_HP) {
+      return targetHp();
+    }
+    if (id == IS_ENOUGH_TO_KILL_TARGET) {
+      return enoughToKillTarget(arguments[0]);
+    }
+    if (id == DAMAGE) {
+      return damage();
+    }
+    if (id == DIRECTION_OFFSET_X || id == DIRECTION_OFFSET_Y) {
+      return directionOffset(arguments[0], id == DIRECTION_OFFSET_X);
+    }
     if (id == IS_NPC_BATTLE) {
       // A battle of two players is not played against the game's own opponent.
       return 0;
@@ -539,6 +569,89 @@ final class BattleExpressionEnvironment implements ExpressionEnvironment {
     int count = hitSpeed < 1 ? 0 : attackTime / hitSpeed;
     world.getEvents().attackCountRead(context, attackTime, count);
     return count;
+  }
+
+  /**
+   * The hit points the context's reference has left: its reference whether its targeting component
+   * runs or not, 0 with no reference or with the reference's hit points absent or switched off.
+   * Refused rather than guessed: a reference that has left the battle.
+   */
+  private int targetHp() {
+    TargetView target = context.getTargeting().getReference();
+    if (target == null) {
+      return 0;
+    }
+    WorldEntity entity = referenceEntity(target, "target_hp");
+    HitPoints hitPoints = entity.getHitPoints();
+    if (hitPoints == null || !entity.isActive(HIT_POINTS_SLOT)) {
+      return 0;
+    }
+    return hitPoints.getHitPoints();
+  }
+
+  /**
+   * is_enough_to_kill_target(amount): 1 when the amount would kill the context's reference, by the
+   * lethal test the pending-damage rule asks (nothing while its shield is up or while it is
+   * untouchable, else the amount through its damage reduction and at least 1 reaching its hit
+   * points); 0 while its targeting component is off, with no reference, or with the reference's hit
+   * points absent or switched off.
+   */
+  private int enoughToKillTarget(int amount) {
+    TargetView target = context.getTargeting().getReference();
+    if (!context.isActive(0) || target == null) {
+      return 0;
+    }
+    WorldEntity entity = referenceEntity(target, "is_enough_to_kill_target");
+    if (entity.getHitPoints() == null || !entity.isActive(HIT_POINTS_SLOT)) {
+      return 0;
+    }
+    return BattleValidatorQueries.lethal(entity, amount) ? 1 : 0;
+  }
+
+  /**
+   * The damage of a character's next hit at its level, as its hits deal it: the row's own, or in an
+   * attack sequence of two or more the entry's at the index, unless the entry leaves its Damage
+   * out. Refused rather than guessed: another kind of object, whose damage the game reads
+   * otherwise, and a character whose special attack is loading or loaded, whose special damage
+   * takes the row's place.
+   */
+  private int damage() {
+    if (!(context instanceof CharacterEntity character)) {
+      throw new UnsupportedOperationException(
+          "damage on " + context.name() + ", which is not a character, is not modelled");
+    }
+    if (character.getTargeting().isSpecialLoadPending()) {
+      throw new UnsupportedOperationException(
+          "damage on " + context.name() + " with a special attack loading, not modelled");
+    }
+    return character.attackDamage();
+  }
+
+  /**
+   * direction_offset_x(length) and direction_offset_y(length): a character's facing, rescaled to
+   * the length (a negative one points behind it) as the game rescales a vector, each part times the
+   * length over the facing's own length, truncated; the part along the width or along the length.
+   * Refused rather than guessed: another kind of object, which the game measures from its reference
+   * instead.
+   */
+  private int directionOffset(int length, boolean alongWidth) {
+    if (!(context instanceof CharacterEntity character)) {
+      throw new UnsupportedOperationException(
+          "direction_offset on " + context.name() + ", which is not a character, is not modelled");
+    }
+    int[] facing = {character.getView().getDirX(), character.getView().getDirY()};
+    FixedMath.normalize(facing, length);
+    return alongWidth ? facing[0] : facing[1];
+  }
+
+  /** The battle's entity behind the context's reference; refused when it has left the battle. */
+  private WorldEntity referenceEntity(TargetView target, String function) {
+    WorldEntity entity = world.entityOf(target.getEntity());
+    if (entity == null) {
+      throw new UnsupportedOperationException(
+          function + " on " + context.name() + "'s reference, which has left the battle");
+    }
+    return entity;
   }
 
   /**

@@ -26,11 +26,15 @@ import org.crforge.core.fidelity.FidelityStatus;
  * owner's. The level is re-based on the area effect's own rarity. A row that follows its parent
  * follows the holder's owner. It does not last.
  *
- * <p>Refused rather than guessed, as the row is built: a row of the location class, one that sets
- * any spawn column besides its data, its type, the owner as the source and the two offsets (a level
- * index, a count), and an area effect whose row sets a column not modelled. Refused as it starts: a
- * row with no cause that does not take the owner as the source, and a source that is a clone, whose
- * byte the area effect would copy.
+ * <p>A row of either class may name an action to run on the area effect it spawns, with the spawn's
+ * source as its cause and, when the row shares its context, the context the start carried.
+ *
+ * <p>Refused rather than guessed, as the row is built: a location row with only one position
+ * expression, one that sets any other spawn column besides its data, its type, the owner as the
+ * source, the two offsets and the action to run on what it spawns (a level index, a count), and an
+ * area effect whose row sets a column not modelled. Refused as it starts: a row with no cause that
+ * does not take the owner as the source, and a source that is a clone, whose byte the area effect
+ * would copy.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -44,9 +48,11 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " and parent the owner's, held by evo_valkyrie_vs_musketeer, where the area effect"
             + " follows the owner too, and by evo_royalgiant_vs_musketeer. The offsets, the one"
             + " along the length by the owner's side, held by ability_hero_wizard, where the hero"
-            + " Wizard's air projectile spawns its two area effects 1000 beyond its point."
-            + " Refused: the location class, the level index, a cause that is missing or a clone,"
-            + " and an area effect that follows its target.")
+            + " Wizard's air projectile spawns its two area effects 1000 beyond its point. The"
+            + " location class runs its spawned action and shares its context as the plain class"
+            + " does, read from the shared perform, as the evolved Giant's rage areas run it."
+            + " Refused: the level index, a cause that is missing or a clone, and an area effect"
+            + " that follows its target.")
 public final class SpawnAreaEffect extends RowAction {
 
   private final String areaEffect;

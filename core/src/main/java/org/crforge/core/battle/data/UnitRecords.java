@@ -417,12 +417,14 @@ final class UnitRecords extends RowReader {
   /**
    * The fields of an attack sequence entry that only show something: its effects, the stats its
    * card's info shows, the hit speed its animation shows, carried unread as before, classified by
-   * what they name, and DisableAttackAnimationFrameMatching, whose only reader is the unit's
-   * animation.
+   * what they name, DisableAttackAnimationFrameMatching, whose only reader is the unit's animation,
+   * and CustomOnKillDeathEffectOverride, an effect whose only reader collects the files the battle
+   * preloads.
    */
   private static final Set<String> PRESENTATION_SEQUENCE_ENTRY_FIELDS =
       Set.of(
           "AttackStartEffect",
+          "CustomOnKillDeathEffectOverride",
           "DamageEffect",
           "DisableAttackAnimationFrameMatching",
           "FlameEffect",
@@ -940,8 +942,10 @@ final class UnitRecords extends RowReader {
     // loader's defaults, which keep the row's BuffOnDamage and BuffOnDamageTime.
     // The buff is resolved as the drain applies it, as the row's BuffOnDamage is.
     String buff = row.textField(column, element, "CustomBuffOnDamage");
+    // An entry that leaves its Damage out reads -1, the loader's default, and its hit deals the
+    // row's own damage.
     return new AttackSequence.Entry(
-        row.intField(column, element, "Damage", 0),
+        row.intField(column, element, "Damage", AttackSequence.Entry.ROW_DAMAGE),
         projectile.isEmpty() ? null : records.projectile(projectile),
         row.intField(column, element, "VariableDamageTime", 0),
         row.intField(column, element, "HitSpeedMultiplier", 100),
