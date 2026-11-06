@@ -8,10 +8,17 @@ package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
+import org.crforge.core.battle.data.GameRow;
+import org.crforge.core.battle.data.GameTable;
 import org.crforge.core.battle.data.GameTables;
+import org.crforge.core.battle.match.EvolutionItem;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.junit.jupiter.api.Test;
 
@@ -84,5 +91,50 @@ class ReplayBattleTest {
             })
         .isInstanceOf(UnsupportedScenarioException.class)
         .hasMessageContaining("cmd[10].c.sel.pd=" + item);
+  }
+
+  @Test
+  void anEvolutionSlotsCardWhoseEvolvedRowTheExcludedEvolutionsListIsStillPlayedEvolved() {
+    GameTables tables = GameTables.loadConfigured();
+    assumeTrue(
+        ReplayFormat.orShared(tables.version()).excludedEvolutions(),
+        "the replays of data version " + tables.version() + " list no excluded evolutions");
+    // The Knight's evolved row, read from the tables: its first EvolvedSpells entry in the evolved
+    // cards' table.
+    GameRow knight = ScenarioItems.card(tables, "Knight");
+    GameTable evolvedCards = tables.table("spells_evolved");
+    GameRow evolved =
+        knight.strings("EvolvedSpells").stream()
+            .filter(evolvedCards::has)
+            .map(evolvedCards::row)
+            .findFirst()
+            .orElseThrow();
+    int evolvedId =
+        Integer.parseInt(evolvedCards.id()) * ReplayScenario.IDS_PER_TABLE + evolved.index();
+    // The Knight in side 0's evolution slot, played three times, with its evolved row listed in
+    // both sides' excluded evolutions. The game's client builds the third play evolved all the
+    // same: the list is read only when an evolved Mirror repeats a card.
+    ObjectNode scenario = ScenarioItems.fitted(Scenarios.knightEvolvedThirdPlay(), tables);
+    for (JsonNode data : scenario.path("battle").path("hbd")) {
+      ((ObjectNode) data).putArray(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD).add(evolvedId);
+    }
+    ScenarioPlan plan = new ReplayScenario(tables).translate(scenario);
+    Standard1v1Battle battle = ReplayBattle.build(tables, plan);
+
+    int checked = 0;
+    for (int tick = 0; tick < 1500; tick++) {
+      battle.getBattle().step();
+      checked = ReplayBattle.checkItems(battle, plan, checked);
+    }
+    assertThat(checked).isEqualTo(plan.plays().size());
+    // The third Knight play, command 10.
+    List<Standard1v1Battle.Play> third =
+        battle.getPlays().stream().filter(play -> play.name().equals("cmd10")).toList();
+    assertThat(third).hasSize(1);
+    assertThat(third.get(0).evolution().field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(third.get(0).units())
+        .extracting(CharacterEntity::getData)
+        .extracting(data -> data.name())
+        .containsOnly(evolved.string("SummonCharacter"));
   }
 }
