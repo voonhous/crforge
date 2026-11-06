@@ -973,6 +973,8 @@
   "stun-clone-lost-timer-v1/stun_clone_lost_z256_c258": {"outcome": "diagnostic_match"},
   "stun-clone-lost-timer-v1/stun_clone_lost_z257_c259": {"outcome": "diagnostic_match"},
   "stun-clone-lost-timer-v1/stun_clone_lost_z258_c260": {"outcome": "diagnostic_match"},
+  "surfacing-drill-lists-v1/lightning_over_surfacing_drill": {"outcome": "diagnostic_match"},
+  "surfacing-drill-lists-v1/log_over_surfacing_drill": {"outcome": "diagnostic_match"},
   "target-is-ground-forced-v1/tig_grounded_hogs_bayonet": {"outcome": "diagnostic_match"},
   "target-is-ground-forced-v1/tig_grounded_hogs_early": {"outcome": "diagnostic_match"},
   "target-is-ground-forced-v1/tig_grounded_hogs_tough": {"outcome": "diagnostic_match"},

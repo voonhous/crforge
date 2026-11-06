@@ -55,7 +55,9 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " traced. Traced on game client 16.635.1 and refused, reached by no row of"
             + " 16.635.8: what the drain does with a buff's damage over time from a character"
             + " source whose buffs scale its hits or that has a BuffOnDamage, or from a"
-            + " projectile source with a character shooter or an after-damage TargetBuff.")
+            + " projectile source with a character shooter or an after-damage TargetBuff. Refused"
+            + " as not established: the same from a projectile source a tower shot, which the"
+            + " game may credit as it credits a character shooter.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class HitQueue {
 
@@ -2050,6 +2052,9 @@ public final class HitQueue {
    *       TargetBuff to the carrier after it unless the row applies that before the damage.
    * </ul>
    *
+   * <p>Whether the game credits a tower that shot the projectile as it credits a character is not
+   * established, so a projectile source a tower shot is refused too.
+   *
    * <p>None of this is modelled for a buff's hit, and no buff of damage over time of 16.635.8 has
    * such a source: only area effects and the evolved Snowball's rolling projectiles, with no
    * shooter and no target buff, are seen as sources. The hit count of a character source is kept
@@ -2080,6 +2085,12 @@ public final class HitQueue {
       if (projectile.getOwner() instanceof CharacterEntity shooter) {
         refused =
             projectile.name() + ", whose shooter " + shooter.name() + " the game credits with it";
+      } else if (projectile.getOwner() instanceof TowerEntity tower) {
+        refused =
+            projectile.name()
+                + ", whose shooter is the tower "
+                + tower.name()
+                + ", which the game may credit with it";
       } else if (data.targetBuff() != null && !data.applyBuffBeforeDamage()) {
         refused = projectile.name() + ", whose TargetBuff the game applies to the carrier after it";
       }

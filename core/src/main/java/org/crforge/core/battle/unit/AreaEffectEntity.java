@@ -1251,6 +1251,16 @@ public final class AreaEffectEntity extends BattleEntity implements ActionOwner,
   }
 
   /**
+   * True when its list of the objects it reaches once, for a row that reaches each once, holds an
+   * id.
+   *
+   * @param id the id looked for
+   */
+  boolean reachedListHolds(int id) {
+    return reached.contains(id);
+  }
+
+  /**
    * The chooser: over the battle's live list, in its order, the character or tower not struck
    * before that the shared validator accepts as the area effect's target - of the other side, the
    * team test skipped for a row for its own troops; not untargetable; passing its own test; with

@@ -116,6 +116,18 @@ class BattleBuffHitSourceTest {
       return projectile;
     }
 
+    /**
+     * A projectile of the row the bottom side's king tower fires at the top Knight, never
+     * registered.
+     */
+    ProjectileEntity towerShot(String row) {
+      ProjectileData data = match.getWorld().getRecords().projectile(row);
+      ProjectileEntity projectile = new ProjectileEntity(match.getWorld(), data, 0);
+      TowerEntity king = match.getWorld().kingTower(0);
+      projectile.launchFromUnit(king, -1, king.x(), king.y(), 0, top.x(), top.y());
+      return projectile;
+    }
+
     /** The hit points the top Knight has lost to the burn over the scene's ticks. */
     int burnt(SpawnHost source) {
       int before = top.getHitPoints().getHitPoints();
@@ -197,6 +209,20 @@ class BattleBuffHitSourceTest {
     assertThatThrownBy(() -> scene.step(TICKS))
         .isInstanceOf(UnsupportedOperationException.class)
         .hasMessageContaining("shooter");
+  }
+
+  @Test
+  @DisplayName(
+      "a buff's damage over time from a projectile a tower shot is refused: whether the game"
+          + " credits a tower shooter with the hit is not established")
+  void aProjectileSourceWithATowerShooterIsRefused(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(withBurn(folder));
+    scene.burn(scene.towerShot(ARROW));
+
+    assertThatThrownBy(() -> scene.step(TICKS))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("shooter")
+        .hasMessageContaining("tower");
   }
 
   @Test
