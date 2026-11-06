@@ -584,7 +584,6 @@ public final class ReplayScenario {
         levels.add(
             level(friendlyLevel > 0 ? tournamentLevelIndex(card) : deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
-        excludedEvolution(card, slots.get(slots.size() - 1), side);
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
       excludedEvolutionOfAMirror(rows, slots, side);
@@ -895,11 +894,10 @@ public final class ReplayScenario {
       mapping.put(
           "battle.hbd[i]." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD,
           "consumed: the evolutions excluded from the battle, each a data id; a replay is refused"
-              + " when one is an evolved row of a card in an evolution slot of either side, whose"
-              + " plays the game's client builds unevolved and the battle core would build evolved,"
-              + " or of any card of a deck with the Mirror in its evolution slot, which an evolved"
-              + " Mirror repeats as the card itself when its evolved row is listed; otherwise no"
-              + " play reads it");
+              + " when one is an evolved row of another card of a deck with the Mirror in its"
+              + " evolution slot, which an evolved Mirror repeats as the card itself when its"
+              + " evolved row is listed; otherwise no play reads it, a card's own plays in an"
+              + " evolution slot, the Mirror's included, among them");
     }
     return choices;
   }
@@ -912,11 +910,12 @@ public final class ReplayScenario {
    * <p>The game's client reads the list in every game mode. Only a Mirror's item reads it in a
    * Ladder match: an evolved Mirror repeats the last card in its evolved form unless that evolved
    * row is listed for the Mirror's side, and then repeats the card itself. The list also narrows
-   * the cards a draft or pick mode deals, which a Ladder match does not run. The battle core builds
-   * a play's item without the list, so a replay is refused where the list could change an item
-   * ({@link #excludedEvolutionOfAMirror}), and, more widely than the client reads it, where a card
-   * in an evolution slot has a listed evolved row ({@link #excludedEvolution}); elsewhere the list
-   * leaves the battle as it is.
+   * the cards a draft or pick mode deals, which a Ladder match does not run. A card's own plays are
+   * built as its evolution slot's count gives them whatever the list says, the Mirror's own too:
+   * the replays of client 16.635.1 list the Mirror's evolved row, and an evolved Mirror is still
+   * built evolved. The battle core builds a play's item without the list, so a replay is refused
+   * only where the list could change an item ({@link #excludedEvolutionOfAMirror}); elsewhere the
+   * list leaves the battle as it is.
    */
   private void excludedEvolutions(JsonNode entry, String field) {
     JsonNode listed = entry.get(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
@@ -939,35 +938,11 @@ public final class ReplayScenario {
   }
 
   /**
-   * Refuses a deck card in the evolution slot whose evolved rows ({@code EvolvedSpells}) include an
-   * excluded evolution of either side: the game's client builds such a card's evolved play
-   * unevolved, and the battle core builds a play's item without the list. A card outside the
-   * evolution slot is never built evolved, and is read as it is.
-   *
-   * @param card the deck card's row
-   * @param slotFlags the deck card's slot flags
-   * @param side the deck's side
-   */
-  private void excludedEvolution(GameRow card, int slotFlags, int side) {
-    if (excludedEvolutions.isEmpty() || (slotFlags & MatchSide.EVOLUTION_SLOT) == 0) {
-      return;
-    }
-    for (String name : evolvedSpells(card)) {
-      if (excludedEvolutions.contains(name)) {
-        refuse(
-            "an evolution excluded from the battle in an evolution slot, whose plays the battle"
-                + " core would build evolved",
-            "battle.deck" + side + ".sp: " + card.name() + " (" + name + ")");
-      }
-    }
-  }
-
-  /**
    * Refuses a deck with the Mirror in its evolution slot when an excluded evolution of either side
    * is an evolved row ({@code EvolvedSpells}) of another card of the deck: the game's client builds
    * an evolved Mirror's repeat of a card whose evolved row is listed for the Mirror's side as the
    * card itself, and the battle core builds the Mirror's item without the list. The Mirror's own
-   * evolved row is refused by {@link #excludedEvolution} as any evolution slot card's is.
+   * evolved row is passed over: the client never asks it, a Mirror being never the last card.
    *
    * @param cards the deck's card rows, by deck index
    * @param slotFlags the deck's slot flags, by deck index

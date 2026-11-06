@@ -890,20 +890,41 @@ class ReplayScenarioEveryFieldTest {
   }
 
   @Test
-  void refusesAnExcludedEvolutionOfACardInTheEvolutionSlot() {
+  void readsAnExcludedEvolutionOfAnEvolutionSlotsOwnCardAsNoInputOfItsPlays() {
     assumeExcludedEvolutionsRead();
     Object[] card = deckCardWithAnEvolvedRow();
     ObjectNode scenario = withExcludedEvolutions((int) card[2]);
-    ObjectNode entry =
-        (ObjectNode) scenario.path("battle").path("deck1").path("sp").get((int) card[0]);
-    entry.put("el", 1);
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sp").get((int) card[0])).put("el", 1);
 
-    assertThat(new ReplayScenario(tables).survey(scenario))
-        .contains(
-            new ReplayScenario.Refusal(
-                "an evolution excluded from the battle in an evolution slot, whose plays the"
-                    + " battle core would build evolved",
-                "battle.deck1.sp: " + card[1]));
+    // The game's client builds the card's own plays as the evolution slot's count gives them,
+    // whatever the list says: only an evolved Mirror's repeat of a card reads it.
+    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
+  }
+
+  @Test
+  void readsTheMirrorInTheEvolutionSlotWithItsOwnEvolvedRowExcluded() {
+    assumeExcludedEvolutionsRead();
+    // The Mirror's evolved row, read from the tables, listed as the replays of client 16.635.1
+    // list it.
+    GameRow mirror = new ReplayScenario(tables).find(Scenarios.MIRROR).orElseThrow();
+    GameTable evolvedCards = tables.table("spells_evolved");
+    List<String> evolved =
+        mirror.value("EvolvedSpells") != null && mirror.value("EvolvedSpells").isArray()
+            ? mirror.strings("EvolvedSpells")
+            : List.of(mirror.string("EvolvedSpells"));
+    assumeTrue(evolvedCards.has(evolved.get(0)), "the Mirror has no evolved row in these tables");
+    ObjectNode scenario =
+        withExcludedEvolutions(
+            Integer.parseInt(evolvedCards.id()) * ReplayScenario.IDS_PER_TABLE
+                + evolvedCards.row(evolved.get(0)).index());
+    // The Mirror, in the evolution slot, in place of the last card of side 1's deck.
+    ((ObjectNode) scenario.path("battle").path("deck1").path("sp").get(Scenarios.DECK.length - 1))
+        .put("d", Scenarios.MIRROR)
+        .put("el", 1);
+
+    // The list holds no evolved row of another card of the deck, which an evolved Mirror would
+    // repeat, so it changes no item of the battle.
+    assertThat(new ReplayScenario(tables).survey(scenario)).isEmpty();
   }
 
   @Test
