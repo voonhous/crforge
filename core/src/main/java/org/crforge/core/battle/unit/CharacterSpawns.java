@@ -63,7 +63,10 @@ import org.crforge.core.pathfinding.target.TargetView;
             + " deploying for its row's deploy time though its spawn does not ask, held by"
             + " card_RageBarbarian. Refused: a least radius that draws, a child without hit"
             + " points that has a range, a spawner's turned or drawn ring and a spawner child"
-            + " without hit points, a building, pathing or starting an action.")
+            + " without hit points, a building, pathing or starting an action. Traced on game"
+            + " client 16.635.1 and refused, reached by no row of 16.635.8: a morph of an object"
+            + " that a projectile's hit list or an area effect's hit-once list holds, which the"
+            + " game lists the new object in too.")
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public final class CharacterSpawns {
 
@@ -87,7 +90,9 @@ public final class CharacterSpawns {
    *
    * <p>A morph hands the new object to the removal notice of every entity that referenced the old
    * one, whose replacement path clears a continuous-damage attacker's ramp; that path is not
-   * established, so a morph of a unit such an attacker references is refused.
+   * established, so a morph of a unit such an attacker references is refused. It also lists the new
+   * object in every id list that holds the old one, which the battle core does not do, so a morph
+   * of a unit some list holds is refused too (see {@link #refuseListedMorph}).
    *
    * <p>Like any object the holder admits, the new object is started at the closing cleanup's fold:
    * its row's starting action - the Goblin Drill's damage area, or the evolved Goblin Drill's
@@ -107,12 +112,44 @@ public final class CharacterSpawns {
                 + " as it morphs, whose replacement is not modelled");
       }
     }
+    refuseListedMorph(old);
     CharacterEntity made = CharacterEntity.morphedFrom(old, data);
     made.startOnAdmission();
     world.getHolder().addRegistered(made);
     made.startDeployingAfterMorph();
     old.morphedAway();
     world.getEvents().morphed(old, made);
+  }
+
+  /**
+   * Refuses a morph of a unit that an id list holds. The game's morph walks the live list and, for
+   * every other object whose id list holds the old unit's id, adds the new object's id to it: a
+   * projectile's list of the objects its flying body has hit and of its chained hops' targets, and
+   * an area effect's list of the objects it reaches once. A body that has hit the old unit then
+   * passes the new one by. The battle core hands no list over, so the new object would be hit where
+   * the game passes it by. No row of 16.635.8 reaches it: the only morph of a Ladder battle is a
+   * Goblin Drill dig surfacing, and a dig has no collision radius, so no body or area finds it.
+   *
+   * @param old the unit about to morph
+   */
+  private void refuseListedMorph(CharacterEntity old) {
+    int held = old.getId();
+    for (BattleEntity entity : world.getHolder().entities()) {
+      String list = null;
+      if (entity instanceof ProjectileEntity projectile && projectile.getHitIds().contains(held)) {
+        list = "the hit list of " + projectile.name();
+      } else if (entity instanceof AreaEffectEntity areaEffect
+          && (areaEffect.struckListHolds(held) || areaEffect.reachedListHolds(held))) {
+        list = "the hit-once list of " + areaEffect.name();
+      }
+      if (list != null) {
+        throw new UnsupportedOperationException(
+            old.name()
+                + " morphs while "
+                + list
+                + " holds it, which the game would list the new object in too, not modelled");
+      }
+    }
   }
 
   /**

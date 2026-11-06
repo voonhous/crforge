@@ -820,7 +820,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Only the rings of the enemy princess towers still listed are looked at: not the king's, and not a destroyed tower's once the cleanup has taken it out. So a building that surfaces there, or on no ring point at all, comes up again where it stood. The arena-quarter rule and character spawns or reappear actions of the relocation are refused.
 
-  A morph into a character, of another rarity, of a unit riding another or carrying buffs, or out of the deploying and waiting states is refused.
+  A morph into a character, of another rarity, of a unit riding another or carrying buffs, or out of the deploying and waiting states is refused. So is a morph of a unit that a projectile's hit list or an area effect's hit-once list holds: the game lists the new object in that list too, so a rolling body that hit the dig would pass the building by. No shipped dig is ever listed, as a dig has no collision radius (`BattleMorphIdListTest`).
 
   A card that names no unit - no summoned character, second group or list - but casts a projectile or an area effect is a spell whichever card table it is in.
 
@@ -1083,6 +1083,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
   The cause is the attacker's own holder, where the game hands the hook a copy of the attacker made at the kill. A hook reads no more of it than its presence and its row, which the copy shares.
 
   A buff's damage over time is dealt with the buff's source as the attacker, as the instance held it when the hit was queued, for the side the buff was applied for. The source is what killed the carrier, the cause of its killed action and the one whose killer's hook hears the kill. A hit that lands and does not kill reaches the source's reference drop as any other hit does. The Boss Bandit's check of its killer finds a Poison, a Tornado or a projectile, which match no name.
+
+  Where the source would do more to the hit in the game, the hit is refused: a character source whose buffs scale its hits or that has a BuffOnDamage, a projectile source that a character shot, or one with an after-damage TargetBuff. A projectile source that a tower shot is refused too, as whether the game credits a tower shooter with the hit is not established (`BattleBuffHitSourceTest`).
 
   A death with a killing side and no attacker is handed in the game a cause that carries the side alone and no object, which the battle does not hold. Such a death is the damage of a buff applied with no source or whose source has left the battle, which the buff then forgets, or a hit of the evolved Dart Goblin's poison run.
 
