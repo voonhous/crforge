@@ -179,7 +179,8 @@ final class ProjectileFlight {
     // A target routing across the arena from its ability is let go here, under a row that allows
     // it: the target's reset hook runs, as entering that state runs it, and the projectile flies on
     // to its aim. A projectile launched in the step its target starts across meets it so, as the
-    // entry's run of the hook came before it joined the battle.
+    // entry's run of the hook came before it joined the battle. A hooking projectile that lets go
+    // so has lost its target, and the test below ends it on this same step.
     if (p.getTarget() instanceof CharacterEntity unit
         && unit.getView().getState() == GridEntityState.INGAME_PATHFIND
         && data.allowResetTarget()) {

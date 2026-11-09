@@ -893,7 +893,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   A lane switch, the Mighty Miner's, fires nine ticks into its cast. The unit is aimed at the mirror of its position across the arena's width, its own length kept, moved 250 inside the arena and off water, and sent there in the in-game pathfinding state, which ends the cast. Every projectile aimed at it whose row allows it loses it and lands on nothing.
 
-  A projectile launched in that step joins the battle after the drop. Its first flight step finds the unit routing across and runs the same reset, emptying the damage on its way to the unit and dropping it from every projectile aimed at it that allows it, and it flies on to where the unit stood.
+  A projectile launched in that step joins the battle after the drop. Its first flight step finds the unit routing across and runs the same reset, emptying the damage on its way to the unit and dropping it from every projectile aimed at it that allows it, and it flies on to where the unit stood. A Fisherman's hook launched in that step lets the unit go the same way on its first flight step and ends there, where it was launched, with no pull and no impact, and the Fisherman's targeting goes on once it has left.
 
   A projectile aimed at the unit whose row keeps its target through that reset, the Royal Chef's pancake, keeps the unit, follows it across and lands on it. It hands back its part of the emptied amount, 0 for the rows that keep their target, which deal no damage. One with damage on its way is refused.
 
@@ -1237,7 +1237,7 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   Leaving 14 to attack switches the movement component on.
 
-  A hook whose owner has left or has its targeting switched off ends where it is, with no impact. One whose target left arrives at once where the target stood.
+  A hook whose owner has left or has its targeting switched off ends where it is, with no impact. So does one whose target left or that lost its target, a Mighty Miner it was aimed at starting across included.
 
   A hook arriving at a dashing troop that the untouchable test passes by (a dash under a row with a dash immunity, the immunity left after one, a tunnel or a parent) does not hook it. Its arrival is an ordinary one, at its aim, with its impact. A dashing troop the test does not pass by is hooked.
 

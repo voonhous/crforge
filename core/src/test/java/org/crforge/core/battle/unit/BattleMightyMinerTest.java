@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import org.crforge.core.battle.BattleTowers;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.data.GameTables;
@@ -21,6 +22,7 @@ import org.crforge.core.battle.projectile.ProjectileData;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.projectile.ProjectileLauncher;
 import org.crforge.core.pathfinding.GridEntityState;
+import org.crforge.core.pathfinding.combat.DamageResult;
 import org.crforge.core.pathfinding.math.FixedMath;
 import org.crforge.core.pathfinding.target.TargetView;
 import org.junit.jupiter.api.DisplayName;
@@ -67,6 +69,19 @@ class BattleMightyMinerTest {
    */
   private static final int KEEPER_SPEED = 100;
 
+  /** The Mighty Miner's place in the hook scenes: in the Fisherman's lane, walking up to him. */
+  private static final int MINER_X = 3500;
+
+  private static final int MINER_Y = 12000;
+
+  /**
+   * Where the Fisherman stands to start with, far enough up the lane to walk to his hook's ring.
+   */
+  private static final int FISHERMAN_Y = 20000;
+
+  /** The steps searched for an ability request whose switch falls in the hook's launch step. */
+  private static final int HOOK_SEARCH_TICKS = 400;
+
   /** A Mighty Miner placed for the bottom side, with each lane switch it made. */
   private static final class Scene {
     final Standard1v1Battle match;
@@ -75,7 +90,15 @@ class BattleMightyMinerTest {
     int tick;
 
     Scene(GameTables tables, int x, int y) {
+      this(tables, x, y, battle -> {});
+    }
+
+    /**
+     * @param first deploys what must take its turn in each step before the Mighty Miner does
+     */
+    Scene(GameTables tables, int x, int y, Consumer<Standard1v1Battle> first) {
       match = new Standard1v1Battle(tables, LEVEL, false);
+      first.accept(match);
       miner =
           match.deploy(
               0, match.getWorld().getRecords().unit("MightyMiner"), LEVEL, 0, x, y, "Miner");
@@ -298,6 +321,105 @@ class BattleMightyMinerTest {
     long dy = scene.miner.getView().getY() - aimY;
     assertThat(dx * dx + dy * dy).as("the Mighty Miner has moved on").isPositive();
     assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
+  }
+
+  @Test
+  @DisplayName(
+      "a Fisherman's hook launched as the Mighty Miner starts across lets it go on its first flight"
+          + " step and ends there: no pull, no impact, and the Fisherman goes on")
+  void aHookLaunchedAsTheMinerStartsAcrossEndsOnItsFirstFlightStep() {
+    HookOnSwitch found = null;
+    for (int request = 1; request < HOOK_SEARCH_TICKS && found == null; request++) {
+      found = hookOnSwitch(request);
+    }
+    assertThat(found)
+        .as("an ability request whose switch falls in the hook's launch step")
+        .isNotNull();
+    Scene scene = found.scene;
+    ProjectileEntity hook = found.hook;
+    assertThat(hook.getTarget()).as("launched after the switch's own drop").isSameAs(scene.miner);
+    int startX = hook.getX();
+    int startY = hook.getY();
+    int full = scene.miner.getHitPoints().getHitPoints();
+    List<ProjectileEntity> impacts = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileImpacted(
+                  int t, ProjectileEntity p, WorldEntity target, int damage, DamageResult result) {
+                impacts.add(p);
+              }
+            });
+
+    // The first flight step finds the target routing across and lets it go, and with its target
+    // gone the hook ends where it was launched, before it would take a step.
+    scene.step();
+    assertThat(hook.getTarget()).isNull();
+    assertThat(hook.isReleased()).isTrue();
+    assertThat(new int[] {hook.getX(), hook.getY()}).containsExactly(startX, startY);
+    assertThat(impacts).as("a hook that ends in flight lands nowhere").isEmpty();
+    assertThat(scene.miner.getView().getState()).isEqualTo(GridEntityState.INGAME_PATHFIND);
+    assertThat(scene.miner.getHitPoints().getHitPoints()).isEqualTo(full);
+
+    // It leaves at that step's closing cleanup, and that lets the Fisherman's targeting go on.
+    assertThat(found.fisherman.getTargeting().isVisitSuspended()).isFalse();
+  }
+
+  /** A battle stopped right after the step a hook was launched at the Miner starting across. */
+  private record HookOnSwitch(Scene scene, CharacterEntity fisherman, ProjectileEntity hook) {}
+
+  /**
+   * Plays a Mighty Miner against a Fisherman that hooks it, the ability requested on the given
+   * step.
+   *
+   * @param request the step the ability is requested on
+   * @return the battle at the end of the step, when the hook's launch and the switch fell in that
+   *     one step; else null
+   */
+  private static HookOnSwitch hookOnSwitch(int request) {
+    // The Fisherman takes his turn first: his visit fires the hook before the Mighty Miner's starts
+    // it across in that step. The other way round his visit would find it routing and let it go.
+    CharacterEntity[] deployed = new CharacterEntity[1];
+    Scene scene =
+        new Scene(
+            GameData.tables(),
+            MINER_X,
+            MINER_Y,
+            battle ->
+                deployed[0] =
+                    battle.deploy(
+                        0, GameData.unit("Fisherman"), LEVEL, 1, MINER_X, FISHERMAN_Y, "F"));
+    CharacterEntity fisherman = deployed[0];
+    List<ProjectileEntity> hooks = new ArrayList<>();
+    scene
+        .match
+        .getWorld()
+        .addObserver(
+            new WorldObserver() {
+              @Override
+              public void projectileLaunched(int t, ProjectileEntity projectile) {
+                if (projectile.getData().dragBackSpeed() >= 1) {
+                  hooks.add(projectile);
+                }
+              }
+            });
+    while (hooks.isEmpty() && scene.tick < HOOK_SEARCH_TICKS) {
+      if (scene.tick == request) {
+        if (scene.miner.getView().getState() != GridEntityState.MOVING) {
+          return null;
+        }
+        scene.miner.requestAbility();
+      }
+      scene.step();
+      boolean atMiner = !hooks.isEmpty() && hooks.get(0).getTarget() == scene.miner;
+      if (atMiner && scene.miner.getView().getState() == GridEntityState.INGAME_PATHFIND) {
+        return new HookOnSwitch(scene, fisherman, hooks.get(0));
+      }
+    }
+    return null;
   }
 
   @Test
