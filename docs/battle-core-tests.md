@@ -340,6 +340,7 @@ The tests and reference battles that hold the battle core, as they landed. How a
 - `BattleMightyMinerTest` holds the Mighty Miner's lane switch where its runs do not take it:
   - A Zap landing on it as it routes across passes it by while it hits a Knight beside it.
   - A shot launched at it after the switch's own drop of the projectiles aimed at it lets it go on its first flight step, emptying the damage on its way to it, and flies on to where it stood.
+  - A Fisherman's hook launched at it in that step lets it go on its first flight step and ends there: no pull, no impact, and the Fisherman goes on once the hook has left.
   - With a projectile aimed at it whose row keeps its target and deals nothing, that projectile keeps it, follows it across and lands on it. One with damage on its way is refused.
   - A switch from within 250 of the arena's edge aims 250 inside the other edge.
   - A deploy time for the bomb, and a row that stays visible as it routes across, are refused.

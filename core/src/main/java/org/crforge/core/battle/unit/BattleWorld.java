@@ -2385,8 +2385,8 @@ public class BattleWorld implements HolderPasses {
    * it loses it as its target, the one flying among them, handing nothing back; each flies on to
    * its aim, where the unit last stood for it, and lands on nothing. The switch's entry runs the
    * same hook, but a projectile launched in the step the unit starts across joins the battle after
-   * it, so its own first flight step lets the unit go. A hook that would let its target go so,
-   * whose flight goes on reading the target it let go, is refused.
+   * it, so its own first flight step lets the unit go. A Fisherman's hook is let go of the same
+   * way: with its target gone, the step's own test ends its flight there, with no impact.
    *
    * <p>A projectile aimed at the unit whose row keeps its target through the reset
    * (AllowResetTarget cleared) is left alone, as at a warp: it keeps the unit as its target,
@@ -2399,10 +2399,6 @@ public class BattleWorld implements HolderPasses {
    * @param unit its target
    */
   public void targetRoutingInFlight(ProjectileEntity projectile, CharacterEntity unit) {
-    if (projectile.getData().dragBackSpeed() >= 1) {
-      throw new UnsupportedOperationException(
-          projectile.name() + " lets " + unit.name() + " go as it routes across, not modelled");
-    }
     for (BattleEntity entity : holder.entities()) {
       if (entity instanceof ProjectileEntity p
           && p.getTarget() == unit
