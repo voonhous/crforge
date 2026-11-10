@@ -30,6 +30,7 @@ One table per client range: the client versions that share the battle rules, fro
 | 16.635.1 | 16.635.3 | `dae6c6cc7e9126338da0c606e47e48a9ef80462c` | not known | update | 2026-10-27 | not known |
 | 16.635.7 | 16.635.3 | `dae6c6cc7e9126338da0c606e47e48a9ef80462c` | not known | shipped | 2026-10-31 | not known |
 | 16.635.1 | 16.635.8 | `062a11e0500c03cc041f123413b1ef1846b539a4` | not known | update | 2026-11-03 | not known |
+| 16.635.10 | 16.635.8 | `062a11e0500c03cc041f123413b1ef1846b539a4` | not known | not known | 2026-11-05 | not known |
 
 ## One data set, two labels
 
