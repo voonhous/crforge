@@ -19,11 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 import org.crforge.core.battle.BattleEntity;
+import org.crforge.core.battle.CardKindTables;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.SpawnedChampionTables;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
+import org.crforge.core.battle.match.MatchCard;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.unit.ChampionController;
@@ -59,18 +61,6 @@ class LadderEnvTest {
       List.of(
           "Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "MergeMaiden", "Zap");
 
-  /** A champion, the Archer Queen, and seven cards to cycle her back with. */
-  private static final List<String> QUEEN =
-      List.of(
-          "ArcherQueen",
-          "Knight",
-          "Archer",
-          "Musketeer",
-          "Giant",
-          "MiniPekka",
-          "Fireball",
-          "Arrows");
-
   private static GameTables tables;
   private static Vocabulary vocabulary;
 
@@ -83,6 +73,21 @@ class LadderEnvTest {
   private static VectorEnv ladder(
       int count, int threads, EnvConfig config, List<String> deck0, List<String> deck1) {
     VectorEnv env = VectorEnv.ladder(tables, config, count, threads);
+    int[] seeds = new int[count];
+    for (int i = 0; i < count; i++) {
+      seeds[i] = 100 + i;
+    }
+    env.reset(seeds, deck0, deck1);
+    return env;
+  }
+
+  /**
+   * A vector of Ladder environments on tables a test wrote, reset with the same seeds as {@link
+   * #ladder}.
+   */
+  private static VectorEnv written(
+      GameTables written, int count, EnvConfig config, List<String> deck0, List<String> deck1) {
+    VectorEnv env = VectorEnv.ladder(written, config, count, 1);
     int[] seeds = new int[count];
     for (int i = 0; i < count; i++) {
       seeds[i] = 100 + i;
@@ -149,20 +154,24 @@ class LadderEnvTest {
     return open;
   }
 
-  /** The first hand slot of a seat holding a card, or -1. */
-  private static int handSlot(VectorEnv env, int index, int seat, String card) {
+  /** The first hand slot of a seat holding a card, by the ids of a vocabulary, or -1. */
+  private static int handSlot(VectorEnv env, int index, int seat, Vocabulary names, String card) {
     for (int k = 0; k < Schema.HAND_SLOTS; k++) {
-      if (header(env, index, seat, Schema.H_HAND_CARD + k) == vocabulary.id(card)) {
+      if (header(env, index, seat, Schema.H_HAND_CARD + k) == names.id(card)) {
         return k;
       }
     }
     return -1;
   }
 
-  /** The first open hand slot of a seat whose card is not the one named, or -1. */
-  private static int otherOpenSlot(VectorEnv env, int index, int seat, String card) {
+  /**
+   * The first open hand slot of a seat whose card is not the one named, by the ids of a vocabulary,
+   * or -1.
+   */
+  private static int otherOpenSlot(
+      VectorEnv env, int index, int seat, Vocabulary names, String card) {
     for (int k = 0; k < Schema.HAND_SLOTS; k++) {
-      if (header(env, index, seat, Schema.H_HAND_CARD + k) != vocabulary.id(card)
+      if (header(env, index, seat, Schema.H_HAND_CARD + k) != names.id(card)
           && slotOpen(env, index, seat, k)) {
         return k;
       }
@@ -360,9 +369,15 @@ class LadderEnvTest {
   }
 
   @Test
-  void aMirrorDeckAndAVariantDeckPlayAWholeEpisodeWithNoFault() {
-    for (List<String> deck : List.of(MIRROR, VARIANT)) {
-      try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, deck, deck)) {
+  void aMirrorDeckAndAVariantDeckPlayAWholeEpisodeWithNoFault(@TempDir Path folder)
+      throws IOException {
+    GameTables written = CardKindTables.write(folder);
+    Vocabulary names = VectorEnv.vocabulary(written);
+    for (List<String> deck :
+        List.of(
+            CardKindTables.deck(CardKindTables.MIRROR_CARD),
+            CardKindTables.deck(CardKindTables.VARIANT_CARD))) {
+      try (VectorEnv env = written(written, 1, EnvConfig.DEFAULT, deck, deck)) {
         env.setAutoreset(false);
         LadderEnv ladder = ladderEnv(env, 0);
         SplittableRandom random = new SplittableRandom(17);
@@ -380,7 +395,7 @@ class LadderEnvTest {
         assertThat(info(env, 0, Schema.I_TRUNCATED)).isZero();
         assertThat(info(env, 0, Schema.I_WINNER)).isNotEqualTo(Schema.WINNER_NONE);
         // The special card was played, and its plays were seen by the enemy as a player sees
-        // them: a Mirror's as the Mirror and the card it repeated.
+        // them: a Mirror's as the Mirror and the card it repeated, a variant's as the card.
         int special = 0;
         for (Standard1v1Battle.Play play : ladder.battle().getPlays()) {
           boolean placed = play.matchCode() == 0 && play.result() != null && play.result().placed();
@@ -395,10 +410,10 @@ class LadderEnvTest {
           }
           if (play.mirror() != null) {
             assertThat(seen)
-                .contains(vocabulary.id("Mirror"))
-                .contains(vocabulary.id(play.mirror().repeats().name()));
+                .contains(names.id(CardKindTables.MIRROR_CARD))
+                .contains(names.id(play.mirror().repeats().name()));
           } else {
-            assertThat(seen).contains(vocabulary.id("MergeMaiden"));
+            assertThat(seen).contains(names.id(CardKindTables.VARIANT_CARD));
           }
         }
         assertThat(special).as("%s", deck).isPositive();
@@ -603,13 +618,20 @@ class LadderEnvTest {
       actions.put(0, Schema.WAIT);
       actions.put(1, Schema.WAIT);
       // Full elixir pays any two cards of the deck: wait for it and for two open slots.
+      int full = vocabulary.maxElixir() * MatchSide.SCALE;
+      int dearest =
+          ladderEnv(env, 0).battle().getMatch().side(0).deck().stream()
+              .mapToInt(MatchCard::cost)
+              .max()
+              .orElseThrow();
+      assertThat(2 * dearest * MatchSide.SCALE).isLessThanOrEqualTo(full);
       int first = -1;
       int second = -1;
       while (first < 0 || second < 0) {
         env.step();
         first = -1;
         second = -1;
-        if (header(env, 0, 0, Schema.H_ELIXIR) == 100000) {
+        if (header(env, 0, 0, Schema.H_ELIXIR) == full) {
           for (int k = 0; k < Schema.HAND_SLOTS; k++) {
             if (slotOpen(env, 0, 0, k)) {
               if (first < 0) {
@@ -729,10 +751,13 @@ class LadderEnvTest {
   }
 
   @Test
-  void aFullFieldLeavesOutProjectilesBeforeCharacters() {
-    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT.withDecisionTicks(1), BASIC, BASIC)) {
+  void aFullFieldLeavesOutProjectilesBeforeCharacters(@TempDir Path folder) throws IOException {
+    GameTables written = SpawnedChampionTables.write(folder);
+    List<String> fillers = SpawnedChampionTables.fillers();
+    EnvConfig config = EnvConfig.DEFAULT.withDecisionTicks(1);
+    try (VectorEnv env = written(written, 1, config, fillers, fillers)) {
       Standard1v1Battle battle = ladderEnv(env, 0).battle();
-      UnitData unit = GameData.unit("Skeleton");
+      UnitData unit = battle.getWorld().getRecords().unit(SpawnedChampionTables.FILLER);
       int level = EnvConfig.DEFAULT.level();
       // A few characters of side 0 before side 1's princess towers, until a tower's shot flies.
       int tick = battle.getBattle().getTick() + 1;
@@ -842,39 +867,86 @@ class LadderEnvTest {
     assertThat(VectorEnv.vocabulary(tables)).isSameAs(vocabulary);
   }
 
+  /**
+   * A giving the battle core does not model is refused, counted as illegal and as not modelled with
+   * its own code, never a fault. The giving is a Mirror whose item repeats a waiting spell's play
+   * while its king's last card is a troop, dropped on the enemy's half: there the troop's search
+   * moves the point and the spell's does not, and which of the two the screen's search is handed is
+   * not traced. Every tile of an open slot is open under {@link Schema#MASK_ALL_TILES}, so the
+   * action is taken and reaches the giving.
+   */
   @Test
-  void aPlayTheCoreDoesNotModelIsRefusedNotAFault() {
-    // Counted as illegal with its own code, never a fault: shown on a Mirror deck's episode, whose
-    // known not-modelled givings may or may not be reached, so this checks the bookkeeping only.
-    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, MIRROR, MIRROR)) {
-      SplittableRandom random = new SplittableRandom(29);
+  void aPlayTheCoreDoesNotModelIsRefusedNotAFault(@TempDir Path folder) throws IOException {
+    GameTables written = CardKindTables.write(folder);
+    Vocabulary names = VectorEnv.vocabulary(written);
+    List<String> deck = CardKindTables.deck(CardKindTables.MIRROR_CARD, CardKindTables.SPELL_CARD);
+    EnvConfig config =
+        EnvConfig.DEFAULT.withDecisionTicks(1).withMaskVersion(Schema.MASK_ALL_TILES);
+    try (VectorEnv env = VectorEnv.ladder(written, config, 1, 1)) {
+      // A seed that deals the Mirror and the spell to seat 0's first hand.
+      int seed = 0;
+      do {
+        env.reset(new int[] {++seed}, deck, SpawnedChampionTables.fillers());
+      } while (handSlot(env, 0, 0, names, CardKindTables.MIRROR_CARD) < 0
+          || handSlot(env, 0, 0, names, CardKindTables.SPELL_CARD) < 0);
       IntBuffer actions = env.actions().asIntBuffer();
-      for (int step = 0; step < 400 && env.dones().get(0) == 0; step++) {
-        actions.put(0, randomAction(env, 0, 0, random, 6));
-        actions.put(1, randomAction(env, 0, 1, random, 6));
+      actions.put(0, Schema.WAIT);
+      actions.put(1, Schema.WAIT);
+      int mirror = handSlot(env, 0, 0, names, CardKindTables.MIRROR_CARD);
+      int spell = handSlot(env, 0, 0, names, CardKindTables.SPELL_CARD);
+      int troop = 0;
+      while (troop == mirror || troop == spell) {
+        troop++;
+      }
+      // Elixir for the troop, the spell and the Mirror's repeat of the spell, one more.
+      int needed = 3 * CardKindTables.CARD_COST + 1;
+      while (!slotOpen(env, 0, 0, troop)
+          || header(env, 0, 0, Schema.H_ELIXIR) < needed * MatchSide.SCALE) {
         env.step();
-        int notModelled = info(env, 0, Schema.I_NOT_MODELLED);
-        int refusedAsNotModelled = 0;
-        for (int seat = 0; seat < 2; seat++) {
-          if (header(env, 0, seat, Schema.H_LAST_REFUSAL) == Schema.REFUSAL_NOT_MODELLED) {
-            refusedAsNotModelled++;
-            assertThat(info(env, 0, seat == 0 ? Schema.I_ILLEGAL_0 : Schema.I_ILLEGAL_1))
-                .isEqualTo(1);
-          }
-        }
-        assertThat(notModelled).isEqualTo(refusedAsNotModelled);
+      }
+      // The troop runs and is the king's last card.
+      actions.put(0, Schema.play(troop, Schema.COLS / 2, 4));
+      env.step();
+      actions.put(0, Schema.WAIT);
+      while (header(env, 0, 0, Schema.H_PENDING_COUNT) > 0) {
+        env.step();
+      }
+      // The spell waits, and the Mirror is given on the enemy's half while it does.
+      actions.put(0, Schema.play(spell, Schema.COLS / 2, 4));
+      env.step();
+      assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isEqualTo(1);
+      int drop = Schema.play(mirror, Schema.COLS / 2, Schema.ROWS - 4);
+      assertThat(open(env, 0, 0, drop)).as("the Mirror's tile on the enemy's half").isTrue();
+      actions.put(0, drop);
+      env.step();
+      assertThat(header(env, 0, 0, Schema.H_LAST_REFUSAL)).isEqualTo(Schema.REFUSAL_NOT_MODELLED);
+      assertThat(info(env, 0, Schema.I_ILLEGAL_0)).isEqualTo(1);
+      assertThat(info(env, 0, Schema.I_NOT_MODELLED)).isEqualTo(1);
+      assertThat(info(env, 0, Schema.I_FAULT)).isZero();
+      // Nothing was sent: the spell is the only play waiting.
+      assertThat(header(env, 0, 0, Schema.H_PENDING_COUNT)).isEqualTo(1);
+      actions.put(0, Schema.WAIT);
+      for (int step = 0; step < 40; step++) {
+        env.step();
         assertThat(info(env, 0, Schema.I_FAULT)).isZero();
       }
+      assertThat(env.fault(0)).isNull();
     }
   }
 
   @Test
-  void anAbilityActionOpensOnceTheChampionStandsAndClosesAfterItsUse() {
-    try (VectorEnv env = ladder(1, 1, EnvConfig.DEFAULT, QUEEN, BASIC)) {
+  void anAbilityActionOpensOnceTheChampionStandsAndClosesAfterItsUse(@TempDir Path folder)
+      throws IOException {
+    GameTables written = CardKindTables.write(folder);
+    Vocabulary names = VectorEnv.vocabulary(written);
+    // The champion card and seven filler cards to cycle it back with.
+    List<String> deck = CardKindTables.deck(CardKindTables.CHAMPION_CARD);
+    try (VectorEnv env =
+        written(written, 1, EnvConfig.DEFAULT, deck, SpawnedChampionTables.fillers())) {
       LadderEnv ladder = ladderEnv(env, 0);
       Standard1v1Battle battle = ladder.battle();
       IntBuffer actions = env.actions().asIntBuffer();
-      int queen = vocabulary.id("ArcherQueen");
+      int champion = names.id(CardKindTables.CARD_CHAMPION);
       boolean played = false;
       boolean openSeen = false;
       int usedSlot = -1;
@@ -886,8 +958,7 @@ class LadderEnvTest {
           int at = Schema.H_ABILITY + k * Schema.ABILITY_INTS;
           // The header shows the slot as the battle core holds it.
           assertThat(header(env, 0, 0, at))
-              .isEqualTo(
-                  slot.getChampion() == null ? -1 : vocabulary.id(slot.getChampion().name()));
+              .isEqualTo(slot.getChampion() == null ? -1 : names.id(slot.getChampion().name()));
           assertThat(header(env, 0, 0, at + 2)).isEqualTo(slot.getState());
           assertThat(header(env, 0, 0, at + 3)).isEqualTo(slot.getCooldownMs());
           assertThat(header(env, 0, 0, at + 4)).isEqualTo(slot.getCharges());
@@ -935,10 +1006,10 @@ class LadderEnvTest {
           break;
         }
         int action = Schema.WAIT;
-        int queenSlot = handSlot(env, 0, 0, "ArcherQueen");
+        int cardSlot = handSlot(env, 0, 0, names, CardKindTables.CHAMPION_CARD);
         int abilitySlot = -1;
         for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
-          if (header(env, 0, 0, Schema.H_ABILITY + k * Schema.ABILITY_INTS) == queen
+          if (header(env, 0, 0, Schema.H_ABILITY + k * Schema.ABILITY_INTS) == champion
               && open(env, 0, 0, Schema.ability(k))) {
             abilitySlot = k;
           }
@@ -946,12 +1017,12 @@ class LadderEnvTest {
         if (usedSlot < 0 && abilitySlot >= 0) {
           action = Schema.ability(abilitySlot);
           usedSlot = abilitySlot;
-        } else if (!played && queenSlot >= 0 && slotOpen(env, 0, 0, queenSlot)) {
-          action = nearOpen(env, 0, 0, queenSlot, 4, 6);
+        } else if (!played && cardSlot >= 0 && slotOpen(env, 0, 0, cardSlot)) {
+          action = nearOpen(env, 0, 0, cardSlot, 4, 6);
           played = true;
-        } else if (!played && queenSlot < 0) {
-          // Cycle the deck until she is dealt.
-          int other = otherOpenSlot(env, 0, 0, "ArcherQueen");
+        } else if (!played && cardSlot < 0) {
+          // Cycle the deck until the champion card is dealt.
+          int other = otherOpenSlot(env, 0, 0, names, CardKindTables.CHAMPION_CARD);
           action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 13, 2);
         }
         actions.put(0, action);
@@ -1099,12 +1170,17 @@ class LadderEnvTest {
   }
 
   @Test
-  void anEvolutionSlotFlagReachesTheMatchAndItsCountTheHeader() {
-    int knight = BASIC.indexOf("Knight");
+  void anEvolutionSlotFlagReachesTheMatchAndItsCountTheHeader(@TempDir Path folder)
+      throws IOException {
+    GameTables written = CardKindTables.write(folder);
+    Vocabulary names = VectorEnv.vocabulary(written);
+    List<String> deck = CardKindTables.deck(CardKindTables.EVOLVING_CARD);
+    List<String> other = SpawnedChampionTables.fillers();
+    int evolving = deck.indexOf(CardKindTables.EVOLVING_CARD);
     int[] slots0 = new int[Schema.DECK_SIZE];
-    slots0[knight] = Schema.SLOT_EVOLUTION;
-    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
-      env.reset(new int[] {7}, BASIC, OTHER, slots0, null);
+    slots0[evolving] = Schema.SLOT_EVOLUTION;
+    try (VectorEnv env = VectorEnv.ladder(written, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(new int[] {7}, deck, other, slots0, null);
       LadderMatch match = ladderEnv(env, 0).battle().getMatch();
       for (int k = 0; k < Schema.DECK_SIZE; k++) {
         assertThat(match.side(0).slotFlags(k)).isEqualTo(slots0[k]);
@@ -1112,19 +1188,19 @@ class LadderEnvTest {
         assertThat(header(env, 0, 0, Schema.H_DECK_SLOTS + k)).isEqualTo(slots0[k]);
         assertThat(header(env, 0, 1, Schema.H_DECK_SLOTS + k)).isZero();
       }
-      // Play the Knight whenever it is open, until a play of it reads evolved.
+      // Play the evolving card whenever it is open, until a play of it reads evolved.
       IntBuffer actions = env.actions().asIntBuffer();
       boolean evolvedSeen = false;
       for (int decision = 0; decision < 1500 && env.dones().get(0) == 0; decision++) {
         MatchSide side = match.side(0);
-        assertThat(header(env, 0, 0, Schema.H_DECK_EVOLUTION + knight))
-            .isEqualTo(side.evolutionCountUnknown(knight) ? -1 : side.evolutionCount(knight));
+        assertThat(header(env, 0, 0, Schema.H_DECK_EVOLUTION + evolving))
+            .isEqualTo(side.evolutionCountUnknown(evolving) ? -1 : side.evolutionCount(evolving));
         for (int k = 0; k < Schema.HAND_SLOTS; k++) {
           int index = side.getHand().slots()[k];
           int form = index < 0 ? 0 : side.item(index).field();
           assertThat(header(env, 0, 0, Schema.H_HAND_FORM + k)).isEqualTo(form);
         }
-        int slot = handSlot(env, 0, 0, "Knight");
+        int slot = handSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD);
         evolvedSeen |=
             slot >= 0 && header(env, 0, 0, Schema.H_HAND_FORM + slot) == Schema.FORM_EVOLVED;
         if (evolvedSeen) {
@@ -1134,18 +1210,18 @@ class LadderEnvTest {
         if (slot >= 0 && slotOpen(env, 0, 0, slot)) {
           action = nearOpen(env, 0, 0, slot, 13, 2);
         } else if (slot < 0) {
-          int other = otherOpenSlot(env, 0, 0, "Knight");
-          action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 4, 2);
+          int cycled = otherOpenSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD);
+          action = cycled < 0 ? Schema.WAIT : nearOpen(env, 0, 0, cycled, 4, 2);
         }
         actions.put(0, action);
         actions.put(1, Schema.WAIT);
         env.step();
       }
       assertThat(evolvedSeen)
-          .as("the Knight's form reads evolved once its count is reached")
+          .as("the evolving card's form reads evolved once its count is reached")
           .isTrue();
       // A reset with no flags plays every card plain again.
-      env.reset(new int[] {7}, BASIC, OTHER);
+      env.reset(new int[] {7}, deck, other);
       LadderMatch plain = ladderEnv(env, 0).battle().getMatch();
       for (int k = 0; k < Schema.DECK_SIZE; k++) {
         assertThat(plain.side(0).slotFlags(k)).isZero();
@@ -1155,38 +1231,43 @@ class LadderEnvTest {
   }
 
   @Test
-  void aPlayTheCoreWouldRefuseAtItsRunIsClosedInTheMaskNotAFault() {
-    int knight = BASIC.indexOf("Knight");
+  void aPlayTheCoreWouldRefuseAtItsRunIsClosedInTheMaskNotAFault(@TempDir Path folder)
+      throws IOException {
+    GameTables written = CardKindTables.write(folder);
+    Vocabulary names = VectorEnv.vocabulary(written);
+    List<String> deck = CardKindTables.deck(CardKindTables.EVOLVING_CARD);
+    int evolving = deck.indexOf(CardKindTables.EVOLVING_CARD);
     int[] slots0 = new int[Schema.DECK_SIZE];
-    slots0[knight] = Schema.SLOT_EVOLUTION;
-    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
-      env.reset(new int[] {7}, BASIC, OTHER, slots0, null);
+    slots0[evolving] = Schema.SLOT_EVOLUTION;
+    try (VectorEnv env = VectorEnv.ladder(written, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(new int[] {7}, deck, SpawnedChampionTables.fillers(), slots0, null);
       Standard1v1Battle battle = ladderEnv(env, 0).battle();
       MatchSide side = battle.getMatch().side(0);
-      int knightCost = side.deck().get(knight).cost();
+      int cardCost = side.deck().get(evolving).cost();
       IntBuffer actions = env.actions().asIntBuffer();
-      // Cycle other cards until the Knight's slot is open with the elixir for two of its plays.
-      int slot = handSlot(env, 0, 0, "Knight");
+      // Cycle other cards until the evolving card's slot is open with the elixir for two of its
+      // plays.
+      int slot = handSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD);
       for (int decision = 0;
           decision < 1500
               && env.dones().get(0) == 0
-              && !(slot >= 0 && slotOpen(env, 0, 0, slot) && side.wholeElixir() >= 2 * knightCost);
+              && !(slot >= 0 && slotOpen(env, 0, 0, slot) && side.wholeElixir() >= 2 * cardCost);
           decision++) {
-        int other = slot >= 0 ? -1 : otherOpenSlot(env, 0, 0, "Knight");
+        int other = slot >= 0 ? -1 : otherOpenSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD);
         actions.put(0, other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 4, 2));
         actions.put(1, Schema.WAIT);
         env.step();
-        slot = handSlot(env, 0, 0, "Knight");
+        slot = handSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD);
       }
       assertThat(slot).isNotNegative();
       assertThat(slotOpen(env, 0, 0, slot)).isTrue();
       int open = nearOpen(env, 0, 0, slot, 13, 2);
-      // A play of the Knight queued on the battle directly, as a replay's labeller queues a
+      // A play of the evolving card queued on the battle directly, as a replay's labeller queues a
       // recorded play it does not give: the seat's client keeps no promise for it, so only the
       // battle knows that a second play of the evolution slot's card before its run would be
       // refused at that run as not modelled.
       battle.submit(
-          battle.getWorld().getRecords().card("Knight"),
+          battle.getWorld().getRecords().card(CardKindTables.EVOLVING_CARD),
           Standard1v1Battle.DEFAULT_LEVEL,
           0,
           3500,
@@ -1195,7 +1276,7 @@ class LadderEnvTest {
       actions.put(0, Schema.WAIT);
       actions.put(1, Schema.WAIT);
       env.step();
-      assertThat(handSlot(env, 0, 0, "Knight")).isEqualTo(slot);
+      assertThat(handSlot(env, 0, 0, names, CardKindTables.EVOLVING_CARD)).isEqualTo(slot);
 
       assertThat(slotOpen(env, 0, 0, slot)).as("closed by the giving's own check").isFalse();
       // Taken anyway, it is refused at the giving as the mask closed it, and nothing faults.
