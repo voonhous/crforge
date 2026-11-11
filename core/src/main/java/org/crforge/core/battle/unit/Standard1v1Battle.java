@@ -1137,9 +1137,10 @@ public class Standard1v1Battle {
    * more later, so the item is built from the last card as the Mirror runs. A listed play the match
    * refused at its run is not, and the item repeats it: its card and the evolution field it
    * carried. Refused: a Mirror given in the tick of another play of its side, whose promise is
-   * still staged, which no recording holds; one given within two ticks of the tick a refused play's
-   * promise is dropped, which is not traced to the tick; one whose listed play is a Mirror's, or a
-   * variant card's the match refused, which no reference holds.
+   * still staged, which no recording holds, and which {@link PlayerCommands} refuses at the giving
+   * of whichever of the two comes second ({@link #checkGiving}); one given within two ticks of the
+   * tick a refused play's promise is dropped, which is not traced to the tick; one whose listed
+   * play is a Mirror's, or a variant card's the match refused, which no reference holds.
    *
    * @return the listed play the match refused at its run, which the item repeats, or null for an
    *     item built from the last card
@@ -1155,11 +1156,8 @@ public class Standard1v1Battle {
         continue;
       }
       int otherGiven = other.given();
-      if (otherGiven >= given) {
-        throw new UnsupportedOperationException(
-            name
-                + ": a Mirror given in the tick of another play of its side, which the player's"
-                + " client does not list until the next step, is not modelled");
+      if (givenInMirrorsTick(queued, other)) {
+        throw new UnsupportedOperationException(name + MIRROR_IN_TICK);
       }
       // Given the tick before the Mirror or earlier, so run one tick or more before the Mirror's
       // run.
@@ -1206,6 +1204,85 @@ public class Standard1v1Battle {
               + " modelled");
     }
     return lastRun;
+  }
+
+  /** Why a Mirror's run refuses a play of its side given in its tick ({@link #mirrorSource}). */
+  private static final String MIRROR_IN_TICK =
+      ": a Mirror given in the tick of another play of its side, which the player's client does"
+          + " not list until the next step, is not modelled";
+
+  /**
+   * Whether another play of a Mirror's side was given in the Mirror's tick, before or after it, and
+   * runs no later than it: a play the player's client does not list yet as it builds the Mirror's
+   * item, at a moment not modelled, so the Mirror's run refuses it ({@link #mirrorSource}). The
+   * giving refuses it the same way ({@link #checkGiving}).
+   *
+   * @param mirror the Mirror's play
+   * @param other another play
+   */
+  private static boolean givenInMirrorsTick(QueuedPlay mirror, QueuedPlay other) {
+    return other != mirror
+        && other.side() == mirror.side()
+        && other.tick() <= mirror.tick()
+        && other.given() >= mirror.given();
+  }
+
+  /**
+   * Refuses, as not modelled, a play of a side's hand card that its player's client gives now
+   * stamped with a given tick, when the battle already knows that it would refuse the play's run,
+   * or the run of a Mirror of its side, as not modelled: the same checks those runs make, made with
+   * the play's own ticks, so a player's command that would halt a later step is refused before
+   * anything is given. Each is settled at the giving, as nothing that can be given after it changes
+   * it before the run:
+   *
+   * <ul>
+   *   <li>a Mirror given in the tick of another play of its side, or another play given in the tick
+   *       of a Mirror of its side ({@link #givenInMirrorsTick}): a play given later runs after the
+   *       Mirror;
+   *   <li>a play of an evolution slot's card, the Mirror's included, while another play of it is
+   *       due between the giving and the run ({@link #checkNoneDue}), or after a play of it was
+   *       refused at its placement ({@link #checkCountKnown}): only a play of the card due before
+   *       the run moves either, and none is given after this one to run before it.
+   * </ul>
+   *
+   * <p>The runs keep their own checks. A play queued on the battle with its run tick, as a
+   * replay's, is not checked here.
+   *
+   * @param given the tick the play would be stamped with
+   * @param side the playing side
+   * @param deckIndex the deck index of the hand's card played
+   * @param name the play's name, for the message
+   * @throws UnsupportedOperationException for a play whose run the battle would refuse as not
+   *     modelled
+   */
+  void checkGiving(int given, int side, int deckIndex, String name) {
+    checkState(match != null, () -> name + ": a player's play is given in a match");
+    MatchCard card = match.side(side).deck().get(deckIndex);
+    PlayKind kind =
+        card.mirror() ? PlayKind.MIRROR : card.variant() != null ? PlayKind.VARIANT : PlayKind.CARD;
+    int tick = given + PLAY_DELAY_TICKS;
+    QueuedPlay giving = new QueuedPlay(given, tick, side, card.name(), kind, name);
+    for (QueuedPlay other : queuedPlays) {
+      if (kind == PlayKind.MIRROR && givenInMirrorsTick(giving, other)) {
+        throw new UnsupportedOperationException(name + MIRROR_IN_TICK);
+      }
+      if (other.kind() == PlayKind.MIRROR && givenInMirrorsTick(other, giving)) {
+        throw new UnsupportedOperationException(
+            name
+                + ": a play given in the tick of the Mirror's play "
+                + other.name()
+                + " of its side, which that Mirror's run refuses, is not modelled: the player's"
+                + " client does not list a play until the next step");
+      }
+    }
+    // The card's deck index as the runs look it up, by its name: an evolution slot's card has one
+    // copy in the deck. A variant card is in no evolution slot: the match refuses one there.
+    int runIndex = match.deckIndex(side, card.name());
+    if (kind != PlayKind.VARIANT
+        && (match.side(side).slotFlags(runIndex) & MatchSide.EVOLUTION_SLOT) != 0) {
+      checkNoneDue(given, tick, side, card.name(), name);
+      checkCountKnown(side, runIndex, card.name(), name);
+    }
   }
 
   /** The play run under the given name. */
@@ -1657,7 +1734,8 @@ public class Standard1v1Battle {
   /**
    * Refuses a play of an evolution slot's card after a play of it that passed the gates was refused
    * at its placement, which no recorded battle holds: whether the player's client counted that play
-   * in the count it builds this item from is not established.
+   * in the count it builds this item from is not established. A player's play given through {@link
+   * PlayerCommands} is refused so at its giving ({@link #checkGiving}).
    */
   private void checkCountKnown(int side, int deckIndex, String card, String name) {
     if (match.side(side).evolutionCountUnknown(deckIndex)) {
@@ -1673,7 +1751,8 @@ public class Standard1v1Battle {
   /**
    * Refuses a play of an evolution slot's card while another play of the same card of its side is
    * due in the ticks between the play's giving and its run: the player's client builds the item
-   * from the count before that play runs, the item here from the count after.
+   * from the count before that play runs, the item here from the count after. A player's play given
+   * through {@link PlayerCommands} is refused so at its giving ({@link #checkGiving}).
    *
    * @param given the tick the play was given on
    * @param tick the tick the play runs on

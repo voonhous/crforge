@@ -606,6 +606,148 @@ class PlayerCommandsTest {
 
   @Test
   @DisplayName(
+      "a Mirror given in the tick of another play of its side, which the Mirror's run refuses as"
+          + " not modelled, is refused at its giving with nothing promised, and the battle steps on")
+  void aMirrorInTheTickOfAnotherPlayIsRefusedAtItsGiving() {
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Archer", "Mirror");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    // An Archer's play runs first, so the king has a last card for the Mirror's search.
+    playAndRun(battle, commands, "Archer", "a");
+    int knightCost = Shipped.cost("Knight");
+    int mirrorItemCost = Shipped.cost("Mirror") + knightCost;
+    while (match.side(0).wholeElixir() < knightCost + mirrorItemCost) {
+      battle.getBattle().step();
+    }
+    Giving knight = commands.playCard(0, slot(match, "Knight"), LEVEL, X, Y, "k");
+    assertThat(knight.given()).isTrue();
+    int mirror = slot(match, "Mirror");
+
+    assertThatThrownBy(() -> commands.tryCard(0, mirror, LEVEL))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("a Mirror given in the tick of another play of its side")
+        .hasMessageContaining("not modelled");
+    assertThatThrownBy(() -> commands.playCard(0, mirror, LEVEL, 14500, Y, "m"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("m: a Mirror given in the tick of another play of its side")
+        .hasMessageContaining("not modelled");
+    assertThat(commands.promised(0)).as("only the Knight's cost").isEqualTo(knightCost);
+    stepTo(battle, knight.runTick() + 5);
+    assertThat(battle.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .containsExactly("a", "k");
+  }
+
+  @Test
+  @DisplayName(
+      "a play given in the tick of a Mirror's play of its side, which the Mirror's run refuses as"
+          + " not modelled, is refused at its giving, its slot closed to the try, and the battle"
+          + " steps on")
+  void aPlayInTheTickOfAMirrorIsRefusedAtItsGiving() {
+    Standard1v1Battle battle = dealt(KNIGHT_MIRRORS, "Knight", "Archer", "Mirror");
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    playAndRun(battle, commands, "Archer", "a");
+    int mirrorItemCost = Shipped.cost("Mirror") + Shipped.cost("Archer");
+    while (match.side(0).wholeElixir() < mirrorItemCost + Shipped.cost("Knight")) {
+      battle.getBattle().step();
+    }
+    Giving mirror = commands.playCard(0, slot(match, "Mirror"), LEVEL, X, Y, "m");
+    assertThat(mirror.given()).isTrue();
+    int knight = slot(match, "Knight");
+
+    assertThatThrownBy(() -> commands.tryCard(0, knight, LEVEL))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("in the tick of the Mirror's play m of its side")
+        .hasMessageContaining("not modelled");
+    assertThatThrownBy(() -> commands.searchCards(0, knight, LEVEL))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> commands.playCard(0, knight, LEVEL, X, Y, "k"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("k: a play given in the tick of the Mirror's play m of its side")
+        .hasMessageContaining("not modelled");
+    assertThat(commands.promised(0)).as("only the Mirror's cost").isEqualTo(mirrorItemCost);
+    // A tick later the Knight is given, and the Mirror runs as it would have without the try.
+    battle.getBattle().step();
+    assertThat(commands.playCard(0, knight, LEVEL, X, Y, "k").given()).isTrue();
+    stepTo(battle, mirror.runTick() + 5);
+    assertThat(battle.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .containsExactly("a", "m", "k");
+    assertThat(battle.getPlays().get(1).mirror().repeats().name()).isEqualTo("Archer");
+  }
+
+  @Test
+  @DisplayName(
+      "a play of an evolution slot's card given while a play of it queued on the battle is due,"
+          + " which its run refuses as not modelled, is refused at its giving, and the battle steps"
+          + " on")
+  void anEvolutionCardWhileAPlayOfItIsDueIsRefusedAtItsGiving() {
+    Standard1v1Battle battle = evolutionKnight();
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, OPEN);
+    while (match.side(0).wholeElixir() < 2 * Shipped.cost("Knight")) {
+      battle.getBattle().step();
+    }
+    // A play of the Knight queued on the battle with its run tick, outside the client: the client
+    // keeps no promise for it, so the screen still offers the card.
+    battle.submit(GameData.card("Knight"), LEVEL, 0, 14500, Y, "outside");
+    battle.getBattle().step();
+    int knight = slot(match, "Knight");
+
+    assertThatThrownBy(() -> commands.tryCard(0, knight, LEVEL))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("an evolution slot's card, given while another play of it is due")
+        .hasMessageContaining("not modelled");
+    assertThatThrownBy(() -> commands.playCard(0, knight, LEVEL, X, Y, "k"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("k: a play of Knight, an evolution slot's card, given while another")
+        .hasMessageContaining("not modelled");
+    assertThat(commands.promised(0)).isZero();
+    stepTo(battle, battle.getBattle().getTick() + Standard1v1Battle.PLAY_DELAY_TICKS + 5);
+    assertThat(battle.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .containsExactly("outside");
+  }
+
+  @Test
+  @DisplayName(
+      "a play of an evolution slot's card given after a play of it was refused at its placement,"
+          + " which its run refuses as not modelled, is refused at its giving, and the battle steps"
+          + " on")
+  void anEvolutionCardAfterAPlacementRefusalIsRefusedAtItsGiving() {
+    Standard1v1Battle battle = evolutionKnight();
+    LadderMatch match = battle.getMatch();
+    PlayerCommands commands = new PlayerCommands(battle);
+    // Queued on the battle left of the map, outside the client: the map check refuses it at its
+    // run after the gates let it through, so the count is no longer established.
+    battle.play(OPEN + 20, GameData.card("Knight"), LEVEL, 0, -1000, Y, "outside");
+    stepTo(battle, OPEN + 21);
+    assertThat(battle.getPlays().get(0).result().placed()).isFalse();
+    assertThat(match.side(0).evolutionCountUnknown(0)).isTrue();
+    while (match.side(0).wholeElixir() < Shipped.cost("Knight")) {
+      battle.getBattle().step();
+    }
+    int knight = slot(match, "Knight");
+
+    assertThatThrownBy(() -> commands.tryCard(0, knight, LEVEL))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("after a play of it refused at its placement")
+        .hasMessageContaining("not modelled");
+    assertThatThrownBy(() -> commands.playCard(0, knight, LEVEL, X, Y, "k"))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("k: a play of Knight, an evolution slot's card, after a play of it")
+        .hasMessageContaining("not modelled");
+    assertThat(commands.promised(0)).isZero();
+    stepTo(battle, battle.getBattle().getTick() + Standard1v1Battle.PLAY_DELAY_TICKS + 5);
+    assertThat(battle.getPlays())
+        .extracting(Standard1v1Battle.Play::name)
+        .containsExactly("outside");
+  }
+
+  @Test
+  @DisplayName(
       "a Mirror dropped while its king has no last card but a play of its side waits is refused"
           + " as not modelled: which card the screen's search is handed then is not traced")
   void aMirrorWhoseSearchCardIsUntracedIsRefused() {
@@ -796,6 +938,18 @@ class PlayerCommandsTest {
         return battle;
       }
     }
+  }
+
+  /**
+   * A Ladder battle whose side 0 plays the Knight from the evolution slot, with the Archer and the
+   * Mirrors the shuffle holds back: the Knight is in the opening hand.
+   */
+  private static Standard1v1Battle evolutionKnight() {
+    int[] slots = new int[8];
+    slots[0] = MatchSide.EVOLUTION_SLOT;
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(KNIGHT_MIRRORS, KNIGHTS, 0, 0, slots, new int[8]);
+    return battle;
   }
 
   /** Side 0's first hand slot holding a card. */

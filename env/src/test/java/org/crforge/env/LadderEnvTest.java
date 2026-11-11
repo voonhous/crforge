@@ -1115,6 +1115,65 @@ class LadderEnvTest {
   }
 
   @Test
+  void aPlayTheCoreWouldRefuseAtItsRunIsClosedInTheMaskNotAFault() {
+    int knight = BASIC.indexOf("Knight");
+    int[] slots0 = new int[Schema.DECK_SIZE];
+    slots0[knight] = Schema.SLOT_EVOLUTION;
+    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(new int[] {7}, BASIC, OTHER, slots0, null);
+      Standard1v1Battle battle = ladderEnv(env, 0).battle();
+      MatchSide side = battle.getMatch().side(0);
+      int knightCost = side.deck().get(knight).cost();
+      IntBuffer actions = env.actions().asIntBuffer();
+      // Cycle other cards until the Knight's slot is open with the elixir for two of its plays.
+      int slot = handSlot(env, 0, 0, "Knight");
+      for (int decision = 0;
+          decision < 1500
+              && env.dones().get(0) == 0
+              && !(slot >= 0 && slotOpen(env, 0, 0, slot) && side.wholeElixir() >= 2 * knightCost);
+          decision++) {
+        int other = slot >= 0 ? -1 : otherOpenSlot(env, 0, 0, "Knight");
+        actions.put(0, other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 4, 2));
+        actions.put(1, Schema.WAIT);
+        env.step();
+        slot = handSlot(env, 0, 0, "Knight");
+      }
+      assertThat(slot).isNotNegative();
+      assertThat(slotOpen(env, 0, 0, slot)).isTrue();
+      int open = nearOpen(env, 0, 0, slot, 13, 2);
+      // A play of the Knight queued on the battle directly, as a replay's labeller queues a
+      // recorded play it does not give: the seat's client keeps no promise for it, so only the
+      // battle knows that a second play of the evolution slot's card before its run would be
+      // refused at that run as not modelled.
+      battle.submit(
+          battle.getWorld().getRecords().card("Knight"),
+          Standard1v1Battle.DEFAULT_LEVEL,
+          0,
+          3500,
+          8500,
+          "outside");
+      actions.put(0, Schema.WAIT);
+      actions.put(1, Schema.WAIT);
+      env.step();
+      assertThat(handSlot(env, 0, 0, "Knight")).isEqualTo(slot);
+
+      assertThat(slotOpen(env, 0, 0, slot)).as("closed by the giving's own check").isFalse();
+      // Taken anyway, it is refused at the giving as the mask closed it, and nothing faults.
+      actions.put(0, open);
+      env.step();
+      assertThat(header(env, 0, 0, Schema.H_LAST_REFUSAL)).isEqualTo(Schema.REFUSAL_MASKED);
+      assertThat(info(env, 0, Schema.I_ILLEGAL_0)).isEqualTo(1);
+      for (int decision = 0; decision < 10; decision++) {
+        actions.put(0, Schema.WAIT);
+        env.step();
+      }
+      assertThat(env.fault(0)).isNull();
+      // The queued play ran, the last of the battle's plays.
+      assertThat(battle.getPlays().get(battle.getPlays().size() - 1).name()).isEqualTo("outside");
+    }
+  }
+
+  @Test
   void slotFlagsOfTheWrongShapeAreRefusedBeforeAnyEnvironmentIsTouched() {
     try (VectorEnv env = ladder(2, 1, EnvConfig.DEFAULT, BASIC, BASIC)) {
       env.step();

@@ -78,6 +78,14 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * lists. {@link #useAbility(int, String, String)} names a unit a play of the side made by the
  * play's name instead. A champion slot's unit, the one its button names, is {@link #championUnit}.
  *
+ * <p>A play the client's try passes is refused as not modelled at its giving, with an {@link
+ * UnsupportedOperationException} and nothing given, when the battle already knows it would refuse
+ * the play's run, or the run of a Mirror of its side, as not modelled ({@link
+ * Standard1v1Battle#checkGiving}, the runs' own checks): a Mirror and another play of its side
+ * given in one tick, whichever is given second, and a play of an evolution slot's card while
+ * another play of it is due before its run or after a play of it was refused at its placement. So
+ * {@link #tryCard} and {@link #searchCards} refuse it too, and no later step halts on such a play.
+ *
  * <p>Only the commands given through this object are counted as promised: a command queued on the
  * battle with its run tick, as a replay's, promises nothing here.
  */
@@ -266,6 +274,9 @@ public final class PlayerCommands {
    * @param y the dropped point in game units
    * @param name the play's name, new to this battle: unit {@code k} is named {@code name_k}
    * @return what the giving came to, with the tile sent when given
+   * @throws UnsupportedOperationException for a giving the battle core does not model, among them a
+   *     play whose run the battle would refuse as not modelled ({@link
+   *     Standard1v1Battle#checkGiving}); nothing is given
    */
   public Giving playCard(int side, int slot, int level, int x, int y, String name) {
     checkNameNew(name);
@@ -326,6 +337,8 @@ public final class PlayerCommands {
    * @param slot the hand slot, 0 to 3
    * @param level the level it would be played at, counted from 1
    * @return what a giving now would come to, but for its point
+   * @throws UnsupportedOperationException for a giving the battle core does not model, as {@link
+   *     #playCard}
    */
   public Giving tryCard(int side, int slot, int level) {
     Tried tried = tryCard(side, slot, level, "a play of slot " + slot);
@@ -676,6 +689,10 @@ public final class PlayerCommands {
       // A Mirror whose king has no last card: the search finds no tile wherever it is dropped.
       return refused(Refusal.NO_TILE, SCREEN, givenTick, runTick, cost);
     }
+    // A play the try passes whose run, or the run of a Mirror of its side given in this tick, the
+    // battle already knows it would refuse as not modelled is refused now, with the run's own
+    // checks: nothing is promised or queued, and no later step halts on it.
+    battle.checkGiving(givenTick, side, deckIndex, name);
     return new Tried(null, deckIndex, kind, cost, searchCard, option, itemCard);
   }
 

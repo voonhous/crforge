@@ -335,6 +335,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The screen's cancel of a card dragged back over the hand is a gesture, not a point, and is not modelled. No recording holds the giving: recordings carry only the points the clients sent. The screen's refusal of a card whose play waits is held by the recorded Ladder battles, which never play one, not by the client's try.
 
+  A play whose run the battle would refuse as not modelled for a reason it knows at the giving is refused as not modelled at the giving, by the run's own checks: a Mirror and another play of its side given in one tick, and a play of an evolution slot's card while another play of it is due or after one was refused at its placement. This is no claim about the game's client, which sends such a play: it keeps a player's or agent's battle from halting in a later step.
+
 - The Little Prince's ability keeps his target through the cast, so his attack time and his speed-ups wait out the 18 visits.
 
   Its handler runs his wait, LittlePrinceWaitGuard, which carries NO_MOVE for 1500 ms. With it, as its next action does not wait, the handler runs the area effect DummySpawnLittlePrinceGuard at his point, for 1000 ms, never hitting. 850 ms later its starting action, a guard spawn, makes ChampionGuard.

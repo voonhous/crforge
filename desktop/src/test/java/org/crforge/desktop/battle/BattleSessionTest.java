@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameTables;
@@ -229,7 +230,38 @@ class BattleSessionTest {
       "a step the battle core refuses to finish halts the session with its message, and no"
           + " further step runs")
   void aRefusedStepHalts() {
-    // A Mirror given in the tick of another play of its side is refused inside the step.
+    // A Knight's and a Mirror's play of one side queued on the battle in one tick, as a replay
+    // may hold them: the Mirror's run refuses a Mirror given in the tick of another play of its
+    // side inside the step. The screen refuses such a Mirror at its giving instead (below).
+    Standard1v1Battle battle = new Standard1v1Battle(GameData.tables());
+    battle.startLadderMatch(MIRRORS, KNIGHTS, 0, 0);
+    int given = battle.getMatch().getStartCooldownTicks();
+    int run = given + Standard1v1Battle.PLAY_DELAY_TICKS;
+    battle.play(given, run, GameData.card("Knight"), BattleSession.LEVEL, 0, 3500, 8500, "k");
+    battle.playMirror(given, run, "Mirror", BattleSession.LEVEL, 0, 14500, 8500, "m");
+    BattleSession session = BattleSession.of(battle, Map.of("k", "Knight", "m", "Mirror"));
+
+    boolean stepped = true;
+    for (int i = 0; i <= run && stepped; i++) {
+      stepped = session.step();
+    }
+
+    assertThat(stepped).isFalse();
+    assertThat(session.getHalted()).contains("Mirror");
+    int tick = session.tick();
+    assertThat(session.step()).isFalse();
+    assertThat(session.tick()).isEqualTo(tick);
+    assertThat(session.messages()).last().asString().contains("battle stopped");
+    assertThat(session.cardUnavailableReason(1, 0)).contains("stopped");
+    assertThat(session.play(1, 0, 9500, 23500)).isFalse();
+  }
+
+  @Test
+  @DisplayName(
+      "a Mirror given in the tick of another play of its side, whose run the battle core would"
+          + " refuse, is unavailable and refused on the spot as not modelled, and the battle steps"
+          + " on")
+  void aMirrorInTheTickOfAnotherPlayIsRefusedOnTheSpot() {
     BattleSession session =
         BattleSession.ladder(GameData.tables(), MIRRORS, Collections.nCopies(8, "Knight"));
     // An Archer's play runs first, so the king's last card, which the screen's search places a
@@ -250,24 +282,16 @@ class BattleSessionTest {
       assertThat(session.step()).isTrue();
     }
     assertThat(session.play(0, knight, 3500, 8500)).isTrue();
-    assertThat(session.cardUnavailableReason(0, mirror)).isNull();
+    assertThat(session.cardUnavailableReason(0, mirror)).contains("not modelled");
     assertThat(BattleAdapter.frame(session).sides().get(0).hand().get(mirror).unavailableReason())
-        .isNull();
-    assertThat(session.play(0, mirror, 14500, 8500)).isTrue();
+        .contains("not modelled");
+    assertThat(session.play(0, mirror, 14500, 8500)).isFalse();
+    assertThat(session.messages()).last().asString().contains("not modelled");
 
-    boolean stepped = true;
-    for (int i = 0; i < 40 && stepped; i++) {
-      stepped = session.step();
+    for (int i = 0; i < 40; i++) {
+      assertThat(session.step()).isTrue();
     }
-
-    assertThat(stepped).isFalse();
-    assertThat(session.getHalted()).contains("Mirror");
-    int tick = session.tick();
-    assertThat(session.step()).isFalse();
-    assertThat(session.tick()).isEqualTo(tick);
-    assertThat(session.messages()).last().asString().contains("battle stopped");
-    assertThat(session.cardUnavailableReason(1, 0)).contains("stopped");
-    assertThat(session.play(1, 0, 9500, 23500)).isFalse();
+    assertThat(session.getHalted()).isNull();
   }
 
   @Test
