@@ -189,56 +189,6 @@ class BattleBarbLogHeroTest {
 
   @Test
   @DisplayName(
-      "the player's commands name the barbarian the roll's end left: the champion slot's unit is"
-          + " the barbarian, the try passes once the elixir is there, and the ability command given"
-          + " names its game object id and has it cast")
-  void thePlayersCommandsNameTheBarbarian() {
-    Standard1v1Battle battle = null;
-    LadderMatch match = null;
-    for (int word = 0; match == null || !inHand(match, "BarbLog"); word++) {
-      battle = new Standard1v1Battle(GameData.tables());
-      match = battle.startLadderMatch(BARREL_DECK, KNIGHTS, word, 0, heroFirst(), new int[8]);
-    }
-    int cost = GameData.records().matchCard("BarbLog").cost();
-    while (battle.getBattle().getTick() < match.getStartCooldownTicks()
-        || match.side(0).wholeElixir() < cost) {
-      step(battle);
-    }
-    PlayerCommands commands = new PlayerCommands(battle);
-    battle.play(battle.getBattle().getTick(), GameData.card("BarbLog"), LEVEL, 0, 3500, 20500, "b");
-    int limit = battle.getBattle().getTick() + 200;
-    while (named(battle, BARBARIAN).isEmpty()) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit);
-      step(battle);
-    }
-    CharacterEntity barbarian = named(battle, BARBARIAN).get(0);
-    // No play made the barbarian, so the slot's unit is found among the live characters it
-    // follows.
-    assertThat(battle.getPlays().stream().flatMap(play -> play.units().stream()))
-        .doesNotContain(barbarian);
-    assertThat(commands.championUnit(0, 0)).isSameAs(barbarian);
-    int abilityCost = Shipped.number(ABILITY, "ManaCost");
-    while (match.side(0).wholeElixir() < abilityCost
-        || !commands.tryAbility(0, barbarian.getId()).given()) {
-      assertThat(battle.getBattle().getTick()).isLessThan(limit + 400);
-      step(battle);
-    }
-    PlayerCommands.Giving giving = commands.useAbility(0, barbarian.getId(), "a");
-    assertThat(giving.given()).isTrue();
-    Standard1v1Battle.Command command = battle.getCommands().get(battle.getCommands().size() - 1);
-    assertThat(command.kind()).isEqualTo(Standard1v1Battle.CommandKind.ABILITY);
-    assertThat(command.objectId()).isEqualTo(barbarian.getId());
-    while (battle.getAbilityUses().isEmpty()) {
-      step(battle);
-    }
-    Standard1v1Battle.AbilityUse use = battle.getAbilityUses().get(0);
-    assertThat(use.tick()).isEqualTo(giving.runTick());
-    assertThat(use.outcome().code()).isZero();
-    assertThat(use.outcome().requested()).containsExactly(barbarian);
-  }
-
-  @Test
-  @DisplayName(
       "the ability's reroll backs the barbarian off toward its side by the offset's share of a"
           + " step while its spawn delay runs, then rolls it in its projectile from where it"
           + " stands, healed by the variable's percent of its missing hit points; it follows the"

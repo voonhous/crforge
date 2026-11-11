@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.SplittableRandom;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
-import org.crforge.core.battle.Shipped;
+import org.crforge.core.battle.SpawnedChampionTables;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
@@ -33,8 +33,10 @@ import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
 import org.crforge.core.battle.unit.UnitData;
 import org.crforge.core.battle.unit.WorldEntity;
+import org.crforge.core.pathfinding.combat.HitPoints;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Ladder environment on the configured tables, which the build makes for every test task. The
@@ -976,38 +978,62 @@ class LadderEnvTest {
   }
 
   @Test
-  void anAbilityActionNamesTheBannerTheHeroGoblinsLeaveByItsObjectId() {
-    // The hero form's banner: a champion the last goblin's fall spawns, which no play lists.
-    String banner =
-        Shipped.text(Shipped.row("spells_hero_form", "Goblins_hero"), "LinkedChampionCharacter");
-    List<String> goblins = new ArrayList<>(QUEEN);
-    goblins.set(0, "Goblins");
+  void anAbilityActionNamesAChampionADeathActionSpawnsByItsObjectId(@TempDir Path folder)
+      throws IOException {
+    anAbilityActionNamesASpawnedChampion(folder, SpawnedChampionTables.CARRIER_CARD);
+  }
+
+  @Test
+  void anAbilityActionNamesAChampionAProjectileSpawnsByItsObjectId(@TempDir Path folder)
+      throws IOException {
+    anAbilityActionNamesASpawnedChampion(folder, SpawnedChampionTables.DROP_CARD);
+  }
+
+  /**
+   * An episode on written rows ({@link SpawnedChampionTables}) in which seat 0 plays its written
+   * card from the hero slot, and the champion the card brings in through an action stands: the
+   * carrier's death action spawns it once the test kills the carrier, or the thrown projectile's
+   * end does. No play lists the champion, so the ability action opens for the live character the
+   * slot follows, and the command the action gives names it by its game object id, as the game's
+   * command does, and runs.
+   *
+   * @param folder the folder the tables are written into
+   * @param card the written card, first in seat 0's deck, in its hero slot
+   */
+  private static void anAbilityActionNamesASpawnedChampion(Path folder, String card)
+      throws IOException {
+    GameTables written = SpawnedChampionTables.write(folder);
+    int cardId = VectorEnv.vocabulary(written).id(card);
     int[] slots0 = new int[Schema.DECK_SIZE];
     slots0[0] = Schema.SLOT_HERO;
-    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
-      env.reset(new int[] {7}, goblins, BASIC, slots0, null);
+    try (VectorEnv env = VectorEnv.ladder(written, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(
+          new int[] {7},
+          SpawnedChampionTables.deck(card),
+          SpawnedChampionTables.fillers(),
+          slots0,
+          null);
       LadderEnv ladder = ladderEnv(env, 0);
       Standard1v1Battle battle = ladder.battle();
       IntBuffer actions = env.actions().asIntBuffer();
       boolean played = false;
       int usedSlot = -1;
       int named = -1;
-      for (int decision = 0; decision < 1500 && env.dones().get(0) == 0; decision++) {
-        CharacterEntity standing =
-            battle.getWorld().getHolder().entities().stream()
-                .filter(e -> e instanceof CharacterEntity unit && unit.side() == 0)
-                .map(CharacterEntity.class::cast)
-                .filter(unit -> unit.getData().name().equals(banner))
-                .findFirst()
-                .orElse(null);
+      for (int decision = 0; decision < 600 && env.dones().get(0) == 0; decision++) {
+        // The carrier is killed as it stands, and its death action spawns the champion.
+        CharacterEntity carrier = standing(battle, SpawnedChampionTables.CARRIER);
+        if (carrier != null && HitPoints.alive(carrier.getHitPoints())) {
+          battle.getWorld().getHits().kill(carrier, null);
+        }
+        CharacterEntity champion = standing(battle, SpawnedChampionTables.CHAMPION);
         int open = -1;
         for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
           int at = Schema.H_ABILITY + k * Schema.ABILITY_INTS;
           int unitId = header(env, 0, 0, at + 1);
           if (open(env, 0, 0, Schema.ability(k))) {
-            // Open only for the banner, which the slot's row names by its id.
-            assertThat(standing).as("decision %d", decision).isNotNull();
-            assertThat(ladder.battleId(0, unitId)).isEqualTo(standing.getId());
+            // Open only for the champion, which the slot's row names by its id.
+            assertThat(champion).as("decision %d", decision).isNotNull();
+            assertThat(ladder.battleId(0, unitId)).isEqualTo(champion.getId());
             open = k;
           }
         }
@@ -1015,18 +1041,19 @@ class LadderEnvTest {
           break;
         }
         int action = Schema.WAIT;
-        int goblinsSlot = handSlot(env, 0, 0, "Goblins");
+        int cardSlot = -1;
+        for (int k = 0; k < Schema.HAND_SLOTS; k++) {
+          if (header(env, 0, 0, Schema.H_HAND_CARD + k) == cardId) {
+            cardSlot = k;
+          }
+        }
         if (open >= 0) {
           action = Schema.ability(open);
           usedSlot = open;
-          named = standing.getId();
-        } else if (!played && goblinsSlot >= 0 && slotOpen(env, 0, 0, goblinsSlot)) {
-          action = nearOpen(env, 0, 0, goblinsSlot, 4, 6);
+          named = champion.getId();
+        } else if (!played && cardSlot >= 0 && slotOpen(env, 0, 0, cardSlot)) {
+          action = nearOpen(env, 0, 0, cardSlot, 4, 6);
           played = true;
-        } else if (!played && goblinsSlot < 0) {
-          // Cycle the deck until the Goblins are dealt.
-          int other = otherOpenSlot(env, 0, 0, "Goblins");
-          action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 13, 2);
         }
         actions.put(0, action);
         actions.put(1, Schema.WAIT);
@@ -1034,8 +1061,11 @@ class LadderEnvTest {
         assertThat(info(env, 0, Schema.I_ILLEGAL_0)).as("decision %d", decision).isZero();
       }
       assertThat(played).isTrue();
-      assertThat(usedSlot).as("the banner's ability action opened").isNotNegative();
-      // The command given names the banner by its game object id, as the game's command does.
+      assertThat(usedSlot).as("the champion's ability action opened").isNotNegative();
+      assertThat(battle.getPlays().stream().flatMap(play -> play.units().stream()))
+          .extracting(BattleEntity::getId)
+          .doesNotContain(named);
+      // The command given names the champion by its game object id, as the game's command does.
       Standard1v1Battle.Command command =
           battle.getCommands().stream()
               .filter(c -> c.kind() == Standard1v1Battle.CommandKind.ABILITY)
@@ -1056,6 +1086,16 @@ class LadderEnvTest {
       assertThat(header(env, 0, 0, Schema.H_LAST_ABILITY_RUN_REFUSAL)).isZero();
       assertThat(env.fault(0)).isNull();
     }
+  }
+
+  /** The first character of side 0 of a row the battle's holder lists, or null. */
+  private static CharacterEntity standing(Standard1v1Battle battle, String row) {
+    return battle.getWorld().getHolder().entities().stream()
+        .filter(e -> e instanceof CharacterEntity unit && unit.side() == 0)
+        .map(CharacterEntity.class::cast)
+        .filter(unit -> unit.getData().name().equals(row))
+        .findFirst()
+        .orElse(null);
   }
 
   @Test
