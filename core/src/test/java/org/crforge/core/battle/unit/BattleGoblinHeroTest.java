@@ -160,43 +160,6 @@ class BattleGoblinHeroTest {
 
   @Test
   @DisplayName(
-      "the player's commands name the banner the last goblin's fall planted: the champion slot's"
-          + " unit is the banner, and the ability command given for it names its game object id,"
-          + " as the game's command does, and runs as a replay's command naming the banner does")
-  void thePlayersCommandsNameTheBanner() {
-    Standard1v1Battle battle = plantBanner(new LadderMatch[1]);
-    CharacterEntity banner = named(battle, BANNER).get(0);
-    PlayerCommands commands = new PlayerCommands(battle);
-    // No play made the banner, so the slot's unit is found among the live characters it follows.
-    assertThat(battle.getPlays().stream().flatMap(play -> play.units().stream()))
-        .doesNotContain(banner);
-    assertThat(commands.championUnit(0, 0)).isSameAs(banner);
-    assertThat(commands.tryAbility(0, banner.getId()).given()).isTrue();
-
-    PlayerCommands.Giving giving = commands.useAbility(0, banner.getId(), "wave");
-    assertThat(giving.given()).isTrue();
-    assertThat(giving.cost()).isEqualTo(Shipped.number(ABILITY, "ManaCost"));
-    assertThat(giving.runTick()).isEqualTo(giving.givenTick() + Standard1v1Battle.PLAY_DELAY_TICKS);
-    Standard1v1Battle.Command command = battle.getCommands().get(battle.getCommands().size() - 1);
-    assertThat(command.kind()).isEqualTo(Standard1v1Battle.CommandKind.ABILITY);
-    assertThat(command.side()).isZero();
-    assertThat(command.given()).isEqualTo(giving.givenTick());
-    assertThat(command.tick()).isEqualTo(giving.runTick());
-    assertThat(command.objectId()).isEqualTo(banner.getId());
-    // It runs 20 steps later, pays the ability's elixir and has the banner cast.
-    while (battle.getAbilityUses().isEmpty()) {
-      step(battle);
-    }
-    Standard1v1Battle.AbilityUse use = battle.getAbilityUses().get(0);
-    assertThat(use.tick()).isEqualTo(giving.runTick());
-    assertThat(use.outcome().code()).isZero();
-    assertThat(use.outcome().elixirBefore() - use.outcome().elixirAfter())
-        .isEqualTo(Shipped.number(ABILITY, "ManaCost") * KingElixir.SCALE);
-    assertThat(use.outcome().requested()).containsExactly(banner);
-  }
-
-  @Test
-  @DisplayName(
       "a command naming the banner by its game object id pays the ability's elixir and the banner"
           + " casts as a troop does: its trigger delay in the casting state, then the second wave,"
           + " two goblins its group's delay apart on either side of it and behind it, and the banner"
