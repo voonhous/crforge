@@ -43,14 +43,16 @@ public final class ReplayBattle {
       battle.addPlayerData(choices);
     }
     // A player's word, which joins its deck shuffle's draw, is the low word of its account id. Each
-    // deck card comes with its slot flags.
+    // deck card comes with its slot flags, and each side with the evolutions its player's data
+    // excludes from the battle, which an evolved Mirror's repeat reads.
     battle.startLadderMatch(
         plan.decks().get(0),
         plan.decks().get(1),
         plan.accounts().get(0)[1],
         plan.accounts().get(1)[1],
         plan.slotFlags().get(0),
-        plan.slotFlags().get(1));
+        plan.slotFlags().get(1),
+        plan.excludedEvolutions());
     // The commands are queued in the scenario's order, plays and ability commands alike: within a
     // tick they run in the order they were queued.
     Map<Integer, ScenarioPlan.Play> playsByIndex = new HashMap<>();

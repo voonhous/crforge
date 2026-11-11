@@ -421,11 +421,12 @@ The tests and reference battles that hold the battle core, as they landed. How a
   - The evolved Mirror after a card with no evolved row repeats the card itself at the Mirror's level plus MIRROR_LEVEL_OFFSET.
   - After a hero Knight, the Mirror that is not evolved repeats the hero row, the evolved one the evolved Knight at MIRROR_EVO_LEVEL_OFFSET. After a hero play of a card with no evolved row (the Knight written with its hero row only) the evolved Mirror repeats the hero row at MIRROR_LEVEL_OFFSET.
   - The evolved Mirror after a Merge Maiden repeats the option it was played as at MIRROR_LEVEL_OFFSET.
+  - The evolved Mirror after a Knight whose evolved row its own side's excluded evolutions list repeats the Knight itself at MIRROR_LEVEL_OFFSET, for the Mirror's cost plus the Knight's, and places the Knight; listed by the other side alone, the evolved Knight at MIRROR_EVO_LEVEL_OFFSET.
   - Refused: the evolved Mirror of a card with an evolved row whose row sets MirrorUsesRootSpell false (the Knight written so).
 - `ReplayBattleTest` and `ReplayScenarioEveryFieldTest` hold the excluded evolutions (the player data's `es`) of a card in the evolution slot:
   - The Knight in the evolution slot with its evolved row listed in both sides' lists is read, and its third play is checked and cast evolved, placing the evolved Knight.
   - The Mirror in the evolution slot with its own evolved row listed is read.
-  - Refused: a deck with the Mirror in its evolution slot whose list holds an evolved row of another of its cards.
+  - Each side's list is read into the plan, also beside an evolved Mirror that may repeat a listed row (`ScenarioWriterTest` writes each side's list and reads it back into the match).
 - `BattleMirrorHeroTest` holds the Mirror in the hero slot, which lists no row in the hero form and so plays as the Mirror itself:
   - After a plain play of a Knight, a card with a hero form, it repeats the Knight itself at the Mirror's level plus MIRROR_LEVEL_OFFSET, for the Mirror's cost plus the Knight's; its item carries the hero form field.
   - After a card with no hero form it repeats the card, and its plays move no count, even with the evolved Mirror's DarkElixirCost written 1: every play carries the hero form field, none is evolved.

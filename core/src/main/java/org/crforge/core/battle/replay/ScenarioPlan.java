@@ -6,6 +6,8 @@
 
 package org.crforge.core.battle.replay;
 
+import static org.crforge.core.util.ValidationUtils.checkArgument;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -38,6 +40,10 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *     scenario's order within a tick
  * @param cardLevelMinimum the replay's card level minimum ({@value
  *     ReplayFormat#CARD_LEVEL_MIN_FIELD}), counted from 1 across all rarities; 0 for none
+ * @param excludedEvolutions each side's evolutions excluded from the battle ({@value
+ *     ReplayFormat#EXCLUDED_EVOLUTIONS_FIELD}), by row name in the order its player's data lists
+ *     them, empty where it lists none; an evolved Mirror repeats a card whose evolved row its side
+ *     lists as the card itself
  */
 public record ScenarioPlan(
     int seed,
@@ -50,36 +56,18 @@ public record ScenarioPlan(
     List<Integer> playerDataChoices,
     List<Play> plays,
     List<Ability> abilities,
-    int cardLevelMinimum) {
+    int cardLevelMinimum,
+    List<List<String>> excludedEvolutions) {
 
-  /**
-   * A scenario with no card level minimum: every deck card and tower stands at its own level.
-   *
-   * @see #ScenarioPlan(int, List, List, List, List, List, List, List, List, List, int)
-   */
-  public ScenarioPlan(
-      int seed,
-      List<Standard1v1Battle.Towers> towers,
-      List<List<String>> decks,
-      List<int[]> deckLevels,
-      List<int[]> slotFlags,
-      List<int[]> accounts,
-      List<String> arenas,
-      List<Integer> playerDataChoices,
-      List<Play> plays,
-      List<Ability> abilities) {
-    this(
-        seed,
-        towers,
-        decks,
-        deckLevels,
-        slotFlags,
-        accounts,
-        arenas,
-        playerDataChoices,
-        plays,
-        abilities,
-        0);
+  /** Two sides that list no excluded evolution, as a replay that does not read them gives. */
+  public static final List<List<String>> NONE_EXCLUDED = List.of(List.of(), List.of());
+
+  /** Each side's list of excluded evolutions, one per side, kept as given. */
+  public ScenarioPlan {
+    int sides = excludedEvolutions.size();
+    checkArgument(sides == 2, () -> "excluded evolutions of " + sides + " sides, not two");
+    excludedEvolutions =
+        List.of(List.copyOf(excludedEvolutions.get(0)), List.copyOf(excludedEvolutions.get(1)));
   }
 
   /**

@@ -61,7 +61,8 @@ import org.crforge.core.pathfinding.grid.TileMap;
  * play the card repeated is the deck card itself, after a hero play its hero row. A Mirror in its
  * deck's evolution slot counts its plays as any evolution slot card does; once evolved it repeats a
  * last card that has an evolved row as that row, MIRROR_EVO_LEVEL_OFFSET above its own level, also
- * after a hero play of that card, and any other last card as a Mirror that is not evolved repeats
+ * after a hero play of that card, unless its side's player data lists that row among the evolutions
+ * excluded from the battle; it repeats any other last card as a Mirror that is not evolved repeats
  * it. A Mirror in its deck's hero slot carries the hero form field and plays as a Mirror in no slot
  * does: the Mirror has no row in the hero form, so it repeats the last card as any Mirror does. The
  * gates read the Mirror's own hand slot and the item's cost. The card is then placed or cast as
@@ -148,7 +149,10 @@ import org.crforge.core.pathfinding.grid.TileMap;
             + " by mirror-evolved-edges-v1: the evolved Mirror after a"
             + " hero play of a card with an evolved row, as that evolved row, after a hero play"
             + " of a card with none, as its hero row, and after a Merge Maiden, as the option it"
-            + " was played as. Not held by a recorded battle: the Mirror of an evolved"
+            + " was played as; by excluded-evolutions-mirror-v1: the evolved Mirror after a"
+            + " Knight whose evolved row its side's player data excludes from the battle, as the"
+            + " Knight itself, and after one only the other side excludes, as its evolved row."
+            + " Not held by a recorded battle: the Mirror of an evolved"
             + " play; the evolved Mirror's level offset, MIRROR_EVO_LEVEL_OFFSET, which every"
             + " shipped table sets equal to the Mirror's own. Held"
             + " by LadderMatchTest alone: the gate 4, the timeline's freeze, the clearing's kills"
@@ -236,6 +240,12 @@ public final class LadderMatch implements BattleMode {
   private final int mirrorLevelOffset;
 
   /**
+   * Each side's evolutions excluded from the battle, by row name, as its player's data lists them:
+   * an evolved Mirror of that side repeats a card whose evolved row is listed as the card itself.
+   */
+  private final List<List<String>> excludedEvolutions;
+
+  /**
    * The start cooldown in ticks: a card play is refused while the battle's tick counter is below
    * it. The game mode row's BattleStartCooldown, or the global when the row leaves it empty, in
    * milliseconds over the step's 50.
@@ -314,8 +324,36 @@ public final class LadderMatch implements BattleMode {
       List<List<String>> decks,
       int[] playerWords,
       List<int[]> slotFlags) {
+    this(world, records, decks, playerWords, slotFlags, List.of(List.of(), List.of()));
+  }
+
+  /**
+   * Sets a match up on a battle whose towers stand, with each deck's evolution and hero slots and
+   * each side's evolutions excluded from the battle.
+   *
+   * @param world the battle's world, whose random source the shuffles draw from
+   * @param records the battle's records
+   * @param decks each side's deck, by card row name
+   * @param playerWords each side's word, added to its shuffle's draw
+   * @param slotFlags each side's slot flags, by deck index: {@link MatchSide#EVOLUTION_SLOT},
+   *     {@link MatchSide#HERO_SLOT}, both or neither
+   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name, as its
+   *     player's data lists them ({@link #excludedEvolutions(int)})
+   */
+  public LadderMatch(
+      BattleWorld world,
+      BattleRecords records,
+      List<List<String>> decks,
+      int[] playerWords,
+      List<int[]> slotFlags,
+      List<List<String>> excludedEvolutions) {
     checkArgument(decks.size() == 2 && playerWords.length == 2, () -> "a match has two players");
     checkArgument(slotFlags.size() == 2, () -> "a match has two decks of slot flags");
+    checkArgument(
+        excludedEvolutions.size() == 2,
+        () -> "a match has two sides' excluded evolutions, got " + excludedEvolutions.size());
+    this.excludedEvolutions =
+        List.of(List.copyOf(excludedEvolutions.get(0)), List.copyOf(excludedEvolutions.get(1)));
     this.world = world;
     this.timeline = new Timeline(records.gameModeTimeline(GAME_MODE));
     this.maxMana = records.globalNumber("MAX_MANA");
@@ -1010,6 +1048,20 @@ public final class LadderMatch implements BattleMode {
   }
 
   /**
+   * A side's evolutions excluded from the battle, by row name, in the order its player's data lists
+   * them. The player's client reads the list of the Mirror's side when an evolved Mirror repeats a
+   * card with an evolved row: a listed evolved row is repeated as the card itself ({@link
+   * #mirrorItem(int, int, int)}). No other play of a Ladder match reads it; a card's own plays, the
+   * Mirror's among them, are built as its evolution slot's count gives them whatever it lists.
+   *
+   * @param side the side
+   * @return the rows listed, empty when the player's data lists none
+   */
+  public List<String> excludedEvolutions(int side) {
+    return excludedEvolutions.get(side);
+  }
+
+  /**
    * The item a Mirror's play carries, as the player's client builds it from the king's copy of the
    * side's last card: that card, at the Mirror's level field plus the level offset, floored at 0,
    * for the Mirror's cost plus the card's, at most the most elixir there can be. With nothing to
@@ -1022,13 +1074,14 @@ public final class LadderMatch implements BattleMode {
    *
    * <p>A Mirror in its deck's evolution slot carries the evolution field and count of its side's
    * count, as any evolution slot card's play does. An evolved Mirror repeats the last card in its
-   * evolved form - the card's first evolved row - when the card has one, at the Mirror's level
-   * field plus the global MIRROR_EVO_LEVEL_OFFSET, for the Mirror's cost plus the evolved row's,
-   * also after a hero play of that card; after a card with no evolved row it repeats as a Mirror
-   * that is not evolved does: after a hero play the hero row, after the Merge Maiden the option it
-   * was played as. An evolved Mirror of a card with an evolved row whose row sets
-   * MirrorUsesRootSpell false would repeat the evolved form of the row the play was cast as, which
-   * no shipped row sets, and is refused.
+   * evolved form - the card's first evolved row - when the card has one that the Mirror's side does
+   * not exclude from the battle ({@link #excludedEvolutions(int)}), at the Mirror's level field
+   * plus the global MIRROR_EVO_LEVEL_OFFSET, for the Mirror's cost plus the evolved row's, also
+   * after a hero play of that card; after a card with no evolved row, or one whose evolved row its
+   * side lists, it repeats as a Mirror that is not evolved does: the card itself, after a hero play
+   * the hero row, after the Merge Maiden the option it was played as. An evolved Mirror of a card
+   * with an evolved row whose row sets MirrorUsesRootSpell false would repeat the evolved form of
+   * the row the play was cast as, which no shipped row sets, and is refused.
    *
    * @param side the playing side
    * @param index the Mirror's deck index
@@ -1078,9 +1131,14 @@ public final class LadderMatch implements BattleMode {
     }
     // The player's client asks whether the last card has an evolved row: the deck card itself,
     // also when the last play was its hero form or, for a variant card, one of its options. Only
-    // an evolved Mirror of such a card repeats it in its evolved form, whatever form it was played.
+    // an evolved Mirror of such a card repeats it in its evolved form, whatever form it was played,
+    // and only when the evolved row is not on the list of evolutions the Mirror's side excludes
+    // from the battle; a listed one is repeated as a Mirror that is not evolved repeats it.
     MatchCard evolved = last.formRow(MatchCard.EVO_FORM);
-    boolean evolvedRepeat = own.field() == EvolutionItem.EVOLVED && evolved != last;
+    boolean evolvedRepeat =
+        own.field() == EvolutionItem.EVOLVED
+            && evolved != last
+            && !excludedEvolutions.get(side).contains(evolved.name());
     if (evolvedRepeat && !last.mirrorUsesRootSpell()) {
       // The client would then ask the row the last play was cast as for its evolved form.
       throw new UnsupportedOperationException(

@@ -400,10 +400,10 @@ public final class ReplayScenario {
   private int friendlyLevel;
 
   /**
-   * The rows of the evolutions excluded from the battle, by name, which the players' data lists in
-   * a format that reads them ({@link ReplayFormat#excludedEvolutions}); else empty.
+   * Each side's evolutions excluded from the battle, by row name in the order its player's data
+   * lists them, in a format that reads them ({@link ReplayFormat#excludedEvolutions}); else empty.
    */
-  private final Set<String> excludedEvolutions = new TreeSet<>();
+  private final List<List<String>> excludedEvolutions = new ArrayList<>();
 
   /** The refusals a survey has met, or null outside a survey, when a refusal is thrown. */
   private List<Refusal> refusals;
@@ -574,19 +574,16 @@ public final class ReplayScenario {
     for (int side = 0; side < 2; side++) {
       JsonNode deck = required(battle, "deck" + side);
       List<String> names = new ArrayList<>();
-      List<GameRow> rows = new ArrayList<>();
       List<Integer> levels = new ArrayList<>();
       List<Integer> slots = new ArrayList<>();
       for (JsonNode entry : required(deck, "sp")) {
         GameRow card = cardRow(required(entry, "d").asInt(), "battle.deck" + side + ".sp");
         names.add(card.name());
-        rows.add(card);
         levels.add(
             level(friendlyLevel > 0 ? tournamentLevelIndex(card) : deckLevelIndex(entry), card));
         slots.add(slotFlags(entry, "battle.deck" + side + ".sp[" + slots.size() + "]"));
         onlyFields(entry, "battle.deck" + side + ".sp", with(format.cardCarried(), "d", "l", "el"));
       }
-      excludedEvolutionOfAMirror(rows, slots, side);
       decks.add(names);
       deckLevels.add(levels.stream().mapToInt(Integer::intValue).toArray());
       slotFlags.add(slots.stream().mapToInt(Integer::intValue).toArray());
@@ -737,7 +734,10 @@ public final class ReplayScenario {
         playerDataChoices,
         plays,
         abilities,
-        minimum);
+        minimum,
+        excludedEvolutions.isEmpty()
+            ? ScenarioPlan.NONE_EXCLUDED
+            : List.copyOf(excludedEvolutions));
   }
 
   /**
@@ -867,7 +867,7 @@ public final class ReplayScenario {
               ? with(format.playerData(), ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD)
               : format.playerData().toArray(String[]::new));
       if (format.excludedEvolutions()) {
-        excludedEvolutions(entry, field);
+        excludedEvolutions.add(excludedEvolutions(entry, field));
       }
       JsonNode level = required(entry, ReplayFormat.KING_LEVEL_FIELD);
       if (!level.isInt() || level.asInt() < 1 || level.asInt() > levelCount) {
@@ -893,11 +893,11 @@ public final class ReplayScenario {
     if (format.excludedEvolutions()) {
       mapping.put(
           "battle.hbd[i]." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD,
-          "consumed: the evolutions excluded from the battle, each a data id; a replay is refused"
-              + " when one is an evolved row of another card of a deck with the Mirror in its"
-              + " evolution slot, which an evolved Mirror repeats as the card itself when its"
-              + " evolved row is listed; otherwise no play reads it, a card's own plays in an"
-              + " evolution slot, the Mirror's included, among them");
+          "consumed: the evolutions excluded from the battle, each a data id of a row the tables"
+              + " hold, carried per side into the match (ScenarioPlan.excludedEvolutions): an"
+              + " evolved Mirror repeats a card whose evolved row its side lists as the card"
+              + " itself, as a Mirror that is not evolved repeats it; no other play reads it, a"
+              + " card's own plays in an evolution slot, the Mirror's included, among them");
     }
     return choices;
   }
@@ -909,23 +909,24 @@ public final class ReplayScenario {
    *
    * <p>The game's client reads the list in every game mode. Only a Mirror's item reads it in a
    * Ladder match: an evolved Mirror repeats the last card in its evolved form unless that evolved
-   * row is listed for the Mirror's side, and then repeats the card itself. The list also narrows
-   * the cards a draft or pick mode deals, which a Ladder match does not run. A card's own plays are
-   * built as its evolution slot's count gives them whatever the list says, the Mirror's own too:
-   * the replays of client 16.635.1 list the Mirror's evolved row, and an evolved Mirror is still
-   * built evolved. The battle core builds a play's item without the list, so a replay is refused
-   * only where the list could change an item ({@link #excludedEvolutionOfAMirror}); elsewhere the
-   * list leaves the battle as it is.
+   * row is listed for the Mirror's side, and then repeats the card itself, as a Mirror that is not
+   * evolved does. The list also narrows the cards a draft or pick mode deals, which a Ladder match
+   * does not run. A card's own plays are built as its evolution slot's count gives them whatever
+   * the list says, the Mirror's own too: the replays of client 16.635.1 list the Mirror's evolved
+   * row, and an evolved Mirror is still built evolved.
+   *
+   * @return the rows listed, by name in the order given; empty when the entry lists none
    */
-  private void excludedEvolutions(JsonNode entry, String field) {
+  private List<String> excludedEvolutions(JsonNode entry, String field) {
     JsonNode listed = entry.get(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
+    List<String> rows = new ArrayList<>();
     if (listed == null) {
-      return;
+      return rows;
     }
     String where = field + "." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD;
     if (!listed.isArray()) {
       refuse("excluded evolutions that are not a list of data ids", where + "=" + listed);
-      return;
+      return rows;
     }
     for (JsonNode id : listed) {
       Optional<GameRow> row = id.isInt() ? find(id.asInt()) : Optional.empty();
@@ -933,55 +934,9 @@ public final class ReplayScenario {
         refuse("an excluded evolution of no row the tables hold", where + "=" + listed);
         continue;
       }
-      excludedEvolutions.add(row.get().name());
+      rows.add(row.get().name());
     }
-  }
-
-  /**
-   * Refuses a deck with the Mirror in its evolution slot when an excluded evolution of either side
-   * is an evolved row ({@code EvolvedSpells}) of another card of the deck: the game's client builds
-   * an evolved Mirror's repeat of a card whose evolved row is listed for the Mirror's side as the
-   * card itself, and the battle core builds the Mirror's item without the list. The Mirror's own
-   * evolved row is passed over: the client never asks it, a Mirror being never the last card.
-   *
-   * @param cards the deck's card rows, by deck index
-   * @param slotFlags the deck's slot flags, by deck index
-   * @param side the deck's side
-   */
-  private void excludedEvolutionOfAMirror(List<GameRow> cards, List<Integer> slotFlags, int side) {
-    if (excludedEvolutions.isEmpty()) {
-      return;
-    }
-    boolean evolvedMirror = false;
-    for (int index = 0; index < cards.size(); index++) {
-      evolvedMirror |=
-          cards.get(index).bool(MIRROR_COLUMN)
-              && (slotFlags.get(index) & MatchSide.EVOLUTION_SLOT) != 0;
-    }
-    if (!evolvedMirror) {
-      return;
-    }
-    for (GameRow card : cards) {
-      if (card.bool(MIRROR_COLUMN)) {
-        continue;
-      }
-      for (String name : evolvedSpells(card)) {
-        if (excludedEvolutions.contains(name)) {
-          refuse(
-              "an evolution excluded from the battle of a card an evolved Mirror of its deck may"
-                  + " repeat, which the battle core would repeat evolved",
-              "battle.deck" + side + ".sp: " + card.name() + " (" + name + ")");
-        }
-      }
-    }
-  }
-
-  /** A card row's evolved rows ({@code EvolvedSpells}), a list or a single name. */
-  private static List<String> evolvedSpells(GameRow card) {
-    JsonNode listed = card.value("EvolvedSpells");
-    return listed != null && listed.isArray()
-        ? card.strings("EvolvedSpells")
-        : List.of(card.string("EvolvedSpells"));
+    return rows;
   }
 
   /**

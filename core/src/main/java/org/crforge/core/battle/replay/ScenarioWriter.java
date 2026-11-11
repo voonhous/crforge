@@ -214,7 +214,9 @@ public final class ScenarioWriter {
         named,
         List.copyOf(battle.getPlayerDataChoices()),
         plays,
-        abilities);
+        abilities,
+        0,
+        List.of(match.excludedEvolutions(0), match.excludedEvolutions(1)));
   }
 
   /** A play's command with the packed item its client built. */
@@ -530,10 +532,23 @@ public final class ScenarioWriter {
   /**
    * The players' data: in a format that gives each side's king level there, one entry per side
    * holding it beside an emote list that lists none, as the game's replays give every entry its
-   * emote list (an entry without one is not an entry the game writes); otherwise one entry with no
-   * emotes listed per player's data, whose kings stand at the first level.
+   * emote list (an entry without one is not an entry the game writes), and after them the side's
+   * excluded evolutions by data id when it lists any; otherwise one entry with no emotes listed per
+   * player's data, whose kings stand at the first level.
    */
   private ArrayNode playerData(ScenarioPlan plan, ReplayFormat format) {
+    for (int side = 0; side < 2; side++) {
+      if (!plan.excludedEvolutions().get(side).isEmpty() && !format.excludedEvolutions()) {
+        throw new UnsupportedOperationException(
+            "side "
+                + side
+                + "'s excluded evolutions "
+                + plan.excludedEvolutions().get(side)
+                + ", where a replay of data version "
+                + tables.version()
+                + " lists none");
+      }
+    }
     for (int choices : plan.playerDataChoices()) {
       if (choices != ReplayScenario.NO_EMOTES_CHOICES) {
         throw new UnsupportedOperationException(
@@ -555,10 +570,16 @@ public final class ScenarioWriter {
       for (int side = 0; side < 2; side++) {
         // The entry with no emotes listed, its king level written beside its emotes.
         ObjectNode entry = (ObjectNode) json(ReplayScenario.NO_EMOTES);
-        entries
-            .addObject()
-            .put(ReplayFormat.KING_LEVEL_FIELD, plan.towers().get(side).kingLevel())
-            .setAll(entry);
+        ObjectNode written =
+            entries
+                .addObject()
+                .put(ReplayFormat.KING_LEVEL_FIELD, plan.towers().get(side).kingLevel())
+                .setAll(entry);
+        List<String> excluded = plan.excludedEvolutions().get(side);
+        if (!excluded.isEmpty()) {
+          ArrayNode listed = written.putArray(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
+          excluded.forEach(row -> listed.add(repeatedId(row)));
+        }
       }
       return entries;
     }
