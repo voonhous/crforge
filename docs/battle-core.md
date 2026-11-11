@@ -420,6 +420,15 @@ Each command given promises its cost until its run places it, or, a play refused
 
 Besides the client's try, the screen does not offer a card while a play of it from the same hand slot waits (`CARD_PENDING`). No recorded Ladder battle plays a card while a play of the same card of its side waits, though tens of thousands of plays are given while another play of their side waits.
 
+#### Refused as not modelled at the giving
+
+Some plays the client's try passes would be refused as not modelled at their run, which halts the battle in that step. When the battle already knows this at the giving, `playCard` refuses the play there instead, with an `UnsupportedOperationException` and nothing given: no cost promised, no command queued. It uses the same checks the run makes (`Standard1v1Battle.checkGiving`), and the run keeps them too.
+
+- A Mirror and another play of its side given in the same tick, in either order: the one given second is refused.
+- A play of an evolution slot's card, a Mirror there included, while another play of it is due before its run, or after a play of it was refused at its placement. Through `PlayerCommands` alone the screen already refuses the first (`CARD_PENDING`) and the second cannot happen on the standard arena, so these are reached only beside a play queued on the battle directly.
+
+`tryCard` and `searchCards` refuse such a play the same way, so a slot's try shows it before anything is given.
+
 #### Trying without giving
 
 - `tryCard` makes the same checks without a point and without giving anything, for a hand slot's availability (the desktop hand, an agent's mask). It does not run the search, which finds a tile from every point of the standard arena, but refuses a Mirror whose king has no last card as `NO_TILE`.
