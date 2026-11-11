@@ -7,6 +7,7 @@
 package org.crforge.core.pathfinding.combat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,48 @@ class LevelScalingTest {
             .isEqualTo(1000 * multiplier / 100);
       }
     }
+  }
+
+  @Test
+  @DisplayName(
+      "one step below the first level, as a generated case's king stands: the tower rules give the"
+          + " base, the card rule 0 for a base of 0 and is refused for any other")
+  void oneStepBelowTheFirstLevel() {
+    // A king of a generated case: level 0, the steps -1 in the low byte.
+    int belowFirst = PackedLevel.king(0, RarityTable.COMMON);
+    assertThat(PackedLevel.steps(belowFirst)).isEqualTo(-1);
+    for (ScalingMode mode :
+        new ScalingMode[] {
+          ScalingMode.KING_HITPOINTS,
+          ScalingMode.KING_DAMAGE,
+          ScalingMode.TOWER_HITPOINTS,
+          ScalingMode.TOWER_DAMAGE
+        }) {
+      assertThat(LevelScaling.scale(GLOBALS, 1234, belowFirst, mode, RarityTable.COMMON))
+          .as(mode.name())
+          .isEqualTo(1234);
+    }
+    assertThat(
+            LevelScaling.scale(GLOBALS, 0, belowFirst, ScalingMode.CARD_DAMAGE, RarityTable.COMMON))
+        .isZero();
+    assertThatThrownBy(
+            () ->
+                LevelScaling.scale(
+                    GLOBALS, 1234, belowFirst, ScalingMode.CARD_DAMAGE, RarityTable.COMMON))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("below its rarity's first level");
+  }
+
+  @Test
+  @DisplayName("a king's level packs as the setup packs it: from 1 as a Common level, 0 one below")
+  void aKingsLevelPacks() {
+    for (int level = 1; level <= 16; level++) {
+      assertThat(PackedLevel.king(level, RarityTable.COMMON))
+          .isEqualTo(PackedLevel.fromLevel(level, RarityTable.COMMON));
+    }
+    assertThat(PackedLevel.king(0, RarityTable.COMMON)).isEqualTo(0xff);
+    assertThatThrownBy(() -> PackedLevel.king(-1, RarityTable.COMMON))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test

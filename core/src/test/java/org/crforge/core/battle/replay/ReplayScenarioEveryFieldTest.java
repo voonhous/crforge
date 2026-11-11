@@ -803,12 +803,14 @@ class ReplayScenarioEveryFieldTest {
     assertThat(mapping.survey(scenario)).isEmpty();
     ScenarioPlan plan = mapping.translate(scenario);
 
-    // No player data gives a king level: each king stands at level 1, the princess towers at
-    // level index 0 at their first level.
+    // No player data gives a king level: each king stands one below its first level, the princess
+    // towers at level index 0 at their first level.
     assertThat(plan.towers())
         .containsExactly(
-            new Standard1v1Battle.Towers("King_PrincessTowers", 1, princessLevel()),
-            new Standard1v1Battle.Towers("King_PrincessTowers", 1, princessLevel()));
+            new Standard1v1Battle.Towers(
+                "King_PrincessTowers", ReplayScenario.GENERATED_KING_LEVEL, princessLevel()),
+            new Standard1v1Battle.Towers(
+                "King_PrincessTowers", ReplayScenario.GENERATED_KING_LEVEL, princessLevel()));
     int item = scenario.path("cmd").get(0).path("c").path("sel").path("pd").asInt();
     assertThat(plan.plays())
         .containsExactly(

@@ -26,7 +26,9 @@ import org.crforge.core.fidelity.FidelityStatus;
     status = FidelityStatus.PARTIAL,
     note =
         "Settled: both scaling rules, the mode each getter names, and the projectile fallback of"
-            + " the damage getter. Not settled: the second flag that makes a building's hit"
+            + " the damage getter; one step below the first level, the tower rules' base and the"
+            + " card rule's 0 for a base of 0. Not settled: the card rule below the first level"
+            + " for any other base (refused); the second flag that makes a building's hit"
             + " points scale as a princess tower's, whose column has no published name and is not"
             + " carried; and the hit-points getter's caller, which also applies a percentage to"
             + " the result before it becomes a maximum.")
@@ -56,8 +58,27 @@ public final class LevelScaling {
       if (steps == 0) {
         return base;
       }
+      if (steps < 0) {
+        // Below the rarity's first level, as a generated case's king stands. The card rule indexes
+        // the rarity's multipliers one below the steps, so here it reads ahead of the table and
+        // multiplies the base by what it finds: a base of 0, such as the king's death damage, stays
+        // 0 whatever that is, and any other base is not modelled (no shipped king row has one that
+        // scales by the card rule).
+        if (base == 0) {
+          return 0;
+        }
+        throw new UnsupportedOperationException(
+            "a stat of "
+                + base
+                + " scaled as a card's at "
+                + steps
+                + " steps, below its rarity's first level, which reads ahead of the rarity's"
+                + " multipliers, is not modelled");
+      }
       return base * rarity.multiplier(steps - 1) / 100;
     }
+    // The tower rules compound one percentage per step, so below the first level (a king of a
+    // generated case, at steps -1) they compound nothing and give the base, as at the first.
     int cap = globals.towerScalingStartExpLevel() - (rarity != null ? rarity.relativeLevel() : 0);
     ScalingGlobals.Percentages percentages = globals.percentages(mode);
     int multiplier = 100;
