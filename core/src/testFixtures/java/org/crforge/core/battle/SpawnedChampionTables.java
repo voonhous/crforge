@@ -6,14 +6,11 @@
 
 package org.crforge.core.battle;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.IntStream;
 import org.crforge.core.battle.data.GameTables;
 
@@ -85,12 +82,6 @@ public final class SpawnedChampionTables {
   /** Every written card's cost, in whole elixir. */
   public static final int CARD_COST = 1;
 
-  /** The suffix of a card's hero form row. */
-  private static final String HERO = "_hero";
-
-  /** The first global id the written characters may take, the first free one from it on. */
-  private static final int FIRST_GLOBAL_ID = 34_900_000;
-
   private SpawnedChampionTables() {
     // Utility class
   }
@@ -102,6 +93,17 @@ public final class SpawnedChampionTables {
    * @return the tables with the rows
    */
   public static GameTables write(Path folder) throws IOException {
+    writeRows(folder);
+    return GameTables.load(folder);
+  }
+
+  /**
+   * Copies the configured tables into a folder and writes the rows, for a fixture that writes more
+   * rows of its own before it loads the folder.
+   *
+   * @param folder the folder to copy them into
+   */
+  public static void writeRows(Path folder) throws IOException {
     GameData.altered(folder, "characters", SpawnedChampionTables::writeCharacters);
     GameData.alterLoaded(folder, "character_abilities", SpawnedChampionTables::writeAbility);
     GameData.alterLoaded(folder, "actions", SpawnedChampionTables::writeActions);
@@ -111,27 +113,32 @@ public final class SpawnedChampionTables {
         folder,
         "spells_characters",
         rows -> {
-          card(rows, CARRIER_CARD).put("SummonCharacter", CARRIER).put("ForceToStartingHand", true);
+          WrittenRows.card(rows, CARRIER_CARD, CARD_COST)
+              .put("SummonCharacter", CARRIER)
+              .put("ForceToStartingHand", true);
           for (String filler : FILLER_CARDS) {
-            card(rows, filler).put("SummonCharacter", FILLER);
+            WrittenRows.card(rows, filler, CARD_COST).put("SummonCharacter", FILLER);
           }
-          heroForms(rows, CARRIER_CARD);
+          WrittenRows.heroForms(rows, CARRIER_CARD);
         });
     GameData.alterLoaded(
         folder,
         "spells_other",
         rows -> {
-          card(rows, DROP_CARD).put("Projectile", DROP_PROJECTILE).put("ForceToStartingHand", true);
-          heroForms(rows, DROP_CARD);
+          WrittenRows.card(rows, DROP_CARD, CARD_COST)
+              .put("Projectile", DROP_PROJECTILE)
+              .put("ForceToStartingHand", true);
+          WrittenRows.heroForms(rows, DROP_CARD);
         });
     GameData.alterLoaded(
         folder,
         "spells_hero_form",
         rows -> {
-          heroForm(rows, CARRIER_CARD).put("SummonCharacter", CARRIER);
-          heroForm(rows, DROP_CARD).put("Projectile", DROP_PROJECTILE);
+          WrittenRows.heroForm(rows, CARRIER_CARD, CARD_COST, CHAMPION)
+              .put("SummonCharacter", CARRIER);
+          WrittenRows.heroForm(rows, DROP_CARD, CARD_COST, CHAMPION)
+              .put("Projectile", DROP_PROJECTILE);
         });
-    return GameTables.load(folder);
   }
 
   /**
@@ -153,61 +160,19 @@ public final class SpawnedChampionTables {
 
   /** The hero form row of a written card. */
   public static String heroForm(String card) {
-    return card + HERO;
+    return WrittenRows.heroForm(card);
   }
 
   /** The champion, the carrier and the filler, each a plain walker on rows of its own. */
   private static void writeCharacters(ObjectNode rows) {
-    Set<Integer> taken = new HashSet<>();
-    for (JsonNode row : rows) {
-      if (row.has("global_id")) {
-        taken.add(row.get("global_id").asInt());
-      }
-    }
-    int[] next = {FIRST_GLOBAL_ID};
-    for (String name : List.of(CHAMPION, CARRIER, FILLER)) {
-      while (taken.contains(next[0])) {
-        next[0]++;
-      }
-      ObjectNode columns = walker(rows, name, next[0]++);
-      if (name.equals(CHAMPION)) {
-        columns.put("Ability", ABILITY);
-      } else if (name.equals(CARRIER)) {
-        columns.put("OnDeathAction", PLANT);
-      }
-    }
-  }
-
-  /** A character row of a plain melee walker, its columns to add to. */
-  private static ObjectNode walker(ObjectNode rows, String name, int globalId) {
-    ObjectNode row = rows.putObject(name);
-    row.put("index", rows.size() - 1);
-    row.put("class", "LogicCharacterData");
-    row.put("global_id", globalId);
-    ObjectNode columns = row.putObject("columns");
-    columns
-        .put("Name", name)
-        .put("Rarity", "Common")
-        .put("Hitpoints", 1000)
-        .put("Damage", 10)
-        .put("HitSpeed", 1000)
-        .put("LoadTime", 500)
-        .put("Range", 500)
-        .put("SightRange", 5500)
-        .put("Speed", 60)
-        .put("CollisionRadius", 500)
-        .put("Mass", 4)
-        .put("DeployTime", 1000)
-        .put("AttacksGround", true);
-    return columns;
+    WrittenRows.walker(rows, CHAMPION).put("Ability", ABILITY);
+    WrittenRows.walker(rows, CARRIER).put("OnDeathAction", PLANT);
+    WrittenRows.walker(rows, FILLER);
   }
 
   /** The champion's ability: a cast with a cost, its activation counted as it fires. */
   private static void writeAbility(ObjectNode rows) {
-    ObjectNode row = rows.putObject(ABILITY);
-    row.put("index", rows.size() - 1);
-    row.put("class", "LogicCharacterAbilityData");
-    row.putObject("columns")
+    WrittenRows.row(rows, ABILITY, "CharacterAbility")
         .put("Name", ABILITY)
         .put("IsChampion", true)
         .put("ManaCost", ABILITY_COST)
@@ -221,60 +186,20 @@ public final class SpawnedChampionTables {
    * ability's activation, which counts itself in {@link GameData#TEST_VARIABLE}.
    */
   private static void writeActions(ObjectNode rows) {
-    action(rows, PLANT, "ActionSpawnToLocation")
+    WrittenRows.action(rows, PLANT, "ActionSpawnToLocation")
         .put("SpawnData", CHAMPION)
         .put("SpawnType", "CharacterType");
-    action(rows, ACTIVATION, "ActionSetVariable")
+    WrittenRows.action(rows, ACTIVATION, "ActionSetVariable")
         .put("Variable", GameData.TEST_VARIABLE)
         .put("Value", GameData.TEST_VARIABLE + " + 1");
   }
 
-  /** An action row of a class, its fields to fill. */
-  private static ObjectNode action(ObjectNode rows, String name, String type) {
-    ObjectNode row = rows.putObject(name);
-    row.put("class", "Logic" + type + "Data");
-    row.put("ClassType", type);
-    return row.putObject("fields").put("ClassType", type);
-  }
-
   /** The thrown projectile, which deals nothing and spawns the champion where it ends. */
   private static void writeProjectile(ObjectNode rows) {
-    ObjectNode row = rows.putObject(DROP_PROJECTILE);
-    row.put("index", rows.size() - 1);
-    row.put("class", "LogicProjectileData");
-    row.putObject("columns")
+    WrittenRows.row(rows, DROP_PROJECTILE, "Projectile")
         .put("Name", DROP_PROJECTILE)
         .put("Rarity", "Common")
         .put("Speed", 500)
         .put("SpawnCharacter", CHAMPION);
-  }
-
-  /** A card row of a cost of {@link #CARD_COST}, its columns to add to. */
-  private static ObjectNode card(ObjectNode rows, String name) {
-    ObjectNode row = rows.putObject(name);
-    row.put("index", rows.size() - 1);
-    row.put("class", "LogicSpellData");
-    return row.putObject("columns")
-        .put("Name", name)
-        .put("Rarity", "Common")
-        .put("ManaCost", CARD_COST);
-  }
-
-  /** Lists a card's hero form as its only other form. */
-  private static void heroForms(ObjectNode rows, String card) {
-    GameData.columns(rows, card).putArray("EvolvedSpells").add(heroForm(card));
-  }
-
-  /** A hero form row of a card, linking the champion, its columns to add to. */
-  private static ObjectNode heroForm(ObjectNode rows, String card) {
-    ObjectNode row = rows.putObject(heroForm(card));
-    row.put("index", rows.size() - 1);
-    row.put("class", "LogicSpellHeroFormData");
-    return row.putObject("columns")
-        .put("Name", heroForm(card))
-        .put("Rarity", "Common")
-        .put("CardForm", "HeroForm")
-        .put("ManaCost", CARD_COST)
-        .put("LinkedChampionCharacter", CHAMPION);
   }
 }
