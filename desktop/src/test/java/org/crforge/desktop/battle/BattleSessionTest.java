@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -327,9 +328,52 @@ class BattleSessionTest {
 
   @Test
   @DisplayName(
-      "the impact of a projectile whose area is a box is collected as that box, its half width"
-          + " the row's Radius and its half height its RadiusY, not as a circle")
-  void boxAreaHitsAreCollected() {
+      "the impact of a projectile with an area is collected as its circle about the aim when it"
+          + " deals damage, and not at all when it deals none, as the impact then hits nothing")
+  void projectileAreaHitsAreCollectedOnlyWhenTheImpactHits(@TempDir Path folder)
+      throws IOException {
+    // The Fireball's projectile, written to an area of 2500 with damage, and once more without
+    // damage or a push it always applies, so its impact returns before it collects anyone.
+    String projectile = GameData.card("Fireball").projectile();
+    GameTables damaging =
+        GameData.altered(
+            Files.createDirectories(folder.resolve("damaging")),
+            "projectiles",
+            rows ->
+                GameData.columns(rows, projectile)
+                    .put("Radius", 2500)
+                    .put("Damage", 300)
+                    .remove(List.of("AlwaysApplyPushback")));
+    GameTables empty =
+        GameData.altered(
+            Files.createDirectories(folder.resolve("empty")),
+            "projectiles",
+            rows ->
+                GameData.columns(rows, projectile)
+                    .put("Radius", 2500)
+                    .remove(List.of("Damage", "AlwaysApplyPushback")));
+
+    List<AreaHitLog.AreaHit> dealt = fireballHits(damaging);
+    List<AreaHitLog.AreaHit> none = fireballHits(empty);
+
+    assertThat(dealt)
+        .singleElement()
+        .satisfies(
+            hit -> {
+              assertThat(hit.side()).isEqualTo(1);
+              assertThat(hit.x()).isEqualTo(9500);
+              assertThat(hit.y()).isEqualTo(20500);
+              assertThat(hit.radius()).isEqualTo(2500);
+              assertThat(hit.box()).isFalse();
+            });
+    assertThat(none).as("%s's impact without damage", projectile).isEmpty();
+  }
+
+  @Test
+  @DisplayName(
+      "the thrown projectile of a card whose areas are boxes deals nothing at its impact, so no"
+          + " area hit is collected for it")
+  void aThrownBoxImpactIsNotCollected() {
     String card = BoxRows.boxCard();
     ProjectileData thrown = BoxRows.thrown(card);
     BattleSession session = only(card);
@@ -341,15 +385,20 @@ class BattleSessionTest {
       hits.addAll(session.getAreaHits().drain());
     }
 
-    assertThat(hits)
-        .as("%s's impact", thrown.name())
-        .anySatisfy(
-            hit -> {
-              assertThat(hit.side()).isEqualTo(1);
-              assertThat(hit.radius()).isEqualTo(thrown.radius());
-              assertThat(hit.halfHeight()).isEqualTo(thrown.radiusY());
-            });
-    assertThat(hits).noneMatch(hit -> hit.halfHeight() == 0);
+    assertThat(hits).as("%s's impact", thrown.name()).isEmpty();
+  }
+
+  /** The area hits of side 1's Fireball played at a point of its own half nobody stands near. */
+  private static List<AreaHitLog.AreaHit> fireballHits(GameTables tables) {
+    List<String> fireballs = Collections.nCopies(8, "Fireball");
+    BattleSession session = open(BattleSession.ladder(tables, fireballs, fireballs));
+    assertThat(session.play(1, 0, 9500, 20500)).as("%s", session.messages()).isTrue();
+    List<AreaHitLog.AreaHit> hits = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      assertThat(session.step()).as("%s", session.messages()).isTrue();
+      hits.addAll(session.getAreaHits().drain());
+    }
+    return hits;
   }
 
   @Test

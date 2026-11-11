@@ -641,33 +641,37 @@ final class ProjectileFlight {
                 ? new AreaDamage.Chain(0, 0, 0, chain.getHitIds())
                 : new AreaDamage.Chain(
                     chain.getX(), chain.getY(), chain.getRadius(), chain.getHitIds());
-    AreaDamage.damage(
-        p.areaOwner(),
-        entities,
-        area,
-        shared,
-        ValidatorQueries.standard1v1(),
-        new AreaDamage.Queries() {
-          // A hidden victim, and one the area's state gate refuses as it collects.
-          @Override
-          public boolean untouchable(TargetView victim) {
-            return world.entityOf(victim.getEntity()).passedByAreaCollection();
-          }
+    AreaDamage.Outcome outcome =
+        AreaDamage.damage(
+            p.areaOwner(),
+            entities,
+            area,
+            shared,
+            ValidatorQueries.standard1v1(),
+            new AreaDamage.Queries() {
+              // A hidden victim, and one the area's state gate refuses as it collects.
+              @Override
+              public boolean untouchable(TargetView victim) {
+                return world.entityOf(victim.getEntity()).passedByAreaCollection();
+              }
 
-          @Override
-          public DamageResult damage(TargetView victim, int dealt, int id) {
-            // The area hands the damage on without a direction, queued for the damage drain.
-            return world
-                .getHits()
-                .dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
-          }
+              @Override
+              public DamageResult damage(TargetView victim, int dealt, int id) {
+                // The area hands the damage on without a direction, queued for the damage drain.
+                return world
+                    .getHits()
+                    .dealProjectileAreaDamage(p, world.entityOf(victim.getEntity()), dealt, id);
+              }
 
-          @Override
-          public boolean push(TargetView victim, int fromX, int fromY, int distance) {
-            // Its victims are pushed away from the impact point, as an area effect's are.
-            return world.pushByArea(world.entityOf(victim.getEntity()), fromX, fromY, distance);
-          }
-        });
+              @Override
+              public boolean push(TargetView victim, int fromX, int fromY, int distance) {
+                // Its victims are pushed away from the impact point, as an area effect's are.
+                return world.pushByArea(world.entityOf(victim.getEntity()), fromX, fromY, distance);
+              }
+            });
+    // Only an impact that got this far dealt its area: the observers hear of it, an empty impact
+    // above returned without a word.
+    world.projectileAreaDamaged(p, area, outcome);
   }
 
   /** The hit on the one target: nothing without damage or a target without hit points. */

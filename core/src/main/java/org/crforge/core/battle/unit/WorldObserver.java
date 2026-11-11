@@ -449,6 +449,20 @@ public interface WorldObserver {
       int tick, WorldEntity owner, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
 
   /**
+   * The area of a projectile's impact is done: who stood in it, whom the validator accepted, and
+   * whom it damaged. Told after every victim's own hit. An impact with no damage, and no push it
+   * always applies, collects nobody and is not told, nor is the impact of a projectile that flies
+   * to a point, which only hits what its body covers at its aim.
+   *
+   * @param tick the tick of the impact
+   * @param projectile the projectile that landed
+   * @param area the circle it dealt, about its impact point: its aim, or its chain's ring point
+   * @param outcome who stood in it, whom the validator accepted, and whom it damaged
+   */
+  default void projectileAreaDamaged(
+      int tick, ProjectileEntity projectile, AreaDamage.Area area, AreaDamage.Outcome outcome) {}
+
+  /**
    * A unit asked to push itself back after a launch, away from the launch's aim.
    *
    * @param tick the battle tick
