@@ -1350,6 +1350,8 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The projectile is the source, and the buff is applied at its level for the row's buff time plus its increase for each step of that level. Only the sparing of the launcher's own side is held by no run.
 
+  A projectile of a group, a wave of Arrows or a volley its launcher links into one (the Hunter's and the Princess's), whose row applies its target buff before its damage on a circle is refused. The game bounds that buff by the group's circle and keeps the objects it reached in a list of the group's, so a later projectile of the group buffs none of them again; the buff pass here reads neither. No shipped projectile of a group applies its buff before its damage (`BattleProjectileGroupBuffTest`).
+
   A projectile without a radius buffs its one target, after its damage or before it when the row says so, with no alive test. A target riding or dashing under a dash immunity gets nothing unless the row applies it even then. The lingering immunity after a dash does not count.
 
   A buff applied before the damage is on the target when the damage kills it, so its death sees it. As the death slot runs, after the dying object's own area effect and before its death damage, each listed instance with a death spawn makes its characters, unless the dying object is a building. They are made:

@@ -518,6 +518,7 @@ final class ProjectileFlight {
     boolean buffFirst = data.applyBuffBeforeDamage() && data.targetBuff() != null;
     if (data.radius() >= 1) {
       if (buffFirst) {
+        refuseGroupedAreaBuff(p);
         world.projectileAreaBuff(p, px, py);
       }
       areaImpact(p, world, px, py, damage, towerDamage, hitId);
@@ -580,6 +581,29 @@ final class ProjectileFlight {
               + " has a RadiusY, which makes its impact's area a box, and its impact deals damage,"
               + " pushes, applies a buff or makes an area effect, which is not modelled");
     }
+  }
+
+  /**
+   * Refuses the target buff a projectile of a group applies before its damage on the circle of its
+   * impact. The group is a wave of Arrows (its chain) or a volley its launcher links into one
+   * (GroupProjectiles, the Princess's arrows). The game buffs such an impact's circle through the
+   * group: an undeflected projectile's victims must also stand in the group's own circle, and the
+   * group keeps a list of the objects the buff has reached, apart from the list of those its damage
+   * has hit, so a later projectile of the group buffs none of them again. The buff pass here reads
+   * neither, so it would buff them again. No shipped projectile of a group, Arrows' or one of a
+   * Hunter's or a Princess's volley, applies its buff before its damage, so no battle meets this.
+   */
+  private static void refuseGroupedAreaBuff(ProjectileEntity p) {
+    if (p.getChain() == null && !p.isGrouped()) {
+      return;
+    }
+    ProjectileData data = p.getData();
+    throw new UnsupportedOperationException(
+        data.name()
+            + " is a projectile of a group whose impact applies its TargetBuff "
+            + data.targetBuff()
+            + " before its damage on its Radius; the game bounds that buff by the group's circle"
+            + " and lists the objects it reached for the whole group, which is not modelled");
   }
 
   /**

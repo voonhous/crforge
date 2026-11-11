@@ -3495,6 +3495,10 @@ public class BattleWorld implements HolderPasses {
    * by, as the impact's damage passes it by. Unlike an area effect it has no filter of its own, so
    * the air and the ground are reached alike.
    *
+   * <p>It reads no group: the impact refuses a projectile of an Arrows wave or of a volley linked
+   * into one group before it comes here, as the game bounds that buff by the group's circle and
+   * keeps the objects it reached in a list of the group's.
+   *
    * @param projectile the projectile that landed
    * @param x the impact point along the width
    * @param y the impact point along the length
