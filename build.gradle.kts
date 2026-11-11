@@ -7,7 +7,7 @@
 plugins {
     java
     idea
-    id("com.diffplug.spotless") version "8.10.4"
+    id("com.diffplug.spotless") version "8.11.0"
 }
 
 /** A Gradle property's value, or null when it is not set or blank. */

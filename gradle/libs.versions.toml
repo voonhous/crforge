@@ -1,11 +1,11 @@
 [versions]
 # Core dependencies
-jackson = "2.22.2"
-lombok = "1.18.46"
-slf4j = "2.0.18"
+jackson = "2.22.4"
+lombok = "1.18.48"
+slf4j = "2.0.20"
 xz = "1.12"
 aircompressor = "2.0.3"
-sqlite-jdbc = "3.53.4.0"
+sqlite-jdbc = "3.54.1.0"
 
 # A trained model's policy in the debug visualizer (desktop)
 onnxruntime = "1.31.1"
@@ -49,4 +49,4 @@ gdx-backend-lwjgl3 = { module = "com.badlogicgames.gdx:gdx-backend-lwjgl3", vers
 gdx-freetype = { module = "com.badlogicgames.gdx:gdx-freetype", version.ref = "gdx" }
 
 [plugins]
-spotless = { id = "com.diffplug.spotless", version = "8.10.4" }
+spotless = { id = "com.diffplug.spotless", version = "8.11.0" }
