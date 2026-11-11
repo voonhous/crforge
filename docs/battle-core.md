@@ -390,7 +390,7 @@ The recordings agree: every command of every reference battle and coverage battl
 In the battle core `Standard1v1Battle.PLAY_DELAY_TICKS` is the 20. A player or an agent of the battle core gives its commands through `PlayerCommands`, as a player's client does:
 
 - `playCard` plays a deck card, a Mirror or a variant card, from a hand slot.
-- `useAbility` names a unit a play of its side made.
+- `useAbility` names the unit whose ability it uses, by its game object id as the game's own command does, or by the name of a play of its side that made it. A champion slot's unit is `championUnit`: the unit of the play the slot follows, or, for a champion an action spawned (the Goblins hero's banner, the Barbarian Barrel hero's barbarian), the live character the slot follows. No play lists those two, so only the object id names them.
 
 Both stamp the command with the tick counter, or 1 at tick 0, and queue it to run 20 steps after the stamp. They first try it as the client does, returning a `Giving` that names the refusal (`Refusal`, with the command's own code) or the given and run ticks, the cost promised and, for a play, the point sent. A refused giving changes nothing.
 
@@ -423,7 +423,7 @@ Besides the client's try, the screen does not offer a card while a play of it fr
 #### Trying without giving
 
 - `tryCard` makes the same checks without a point and without giving anything, for a hand slot's availability (the desktop hand, an agent's mask). It does not run the search, which finds a tile from every point of the standard arena, but refuses a Mirror whose king has no last card as `NO_TILE`.
-- `tryAbility` tries an ability command naming a unit the same way, with the same gates and refusals as `useAbility` and nothing given (an agent's mask of a champion's button).
+- `tryAbility` tries an ability command naming a unit the same way, by object id or by name, with the same gates and refusals as `useAbility` and nothing given (an agent's mask of a champion's button).
 - `promised` reads the costs a side holds back.
 
 Where a card would land is read the same way, changing nothing:

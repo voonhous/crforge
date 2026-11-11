@@ -12,6 +12,7 @@ import static org.crforge.core.util.ValidationUtils.checkState;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.data.BattleRecords;
 import org.crforge.core.battle.deploy.DeployCard;
 import org.crforge.core.battle.deploy.MapCheck;
@@ -23,6 +24,7 @@ import org.crforge.core.battle.match.MirrorItem;
 import org.crforge.core.battle.match.VariantItem;
 import org.crforge.core.fidelity.Fidelity;
 import org.crforge.core.fidelity.FidelityStatus;
+import org.crforge.core.pathfinding.combat.HitPoints;
 
 /**
  * The commands of a Ladder battle's players, given as a player's client gives them: what a player
@@ -69,6 +71,12 @@ import org.crforge.core.fidelity.FidelityStatus;
  * given from the same hand slot is waiting to run: no command of a recorded Ladder battle plays a
  * card while a play of the same card of its side waits, though tens of thousands are given while
  * another play of their side waits. That is refused here as {@link Refusal#CARD_PENDING}.
+ *
+ * <p>An ability command names one unit. The game's own command names it by its game object id, as
+ * {@link #useAbility(int, int, String)} does; that reaches every champion, the ones an action
+ * spawns included (the Goblins hero's banner, the Barbarian Barrel hero's barbarian), which no play
+ * lists. {@link #useAbility(int, String, String)} names a unit a play of the side made by the
+ * play's name instead. A champion slot's unit, the one its button names, is {@link #championUnit}.
  *
  * <p>Only the commands given through this object are counted as promised: a command queued on the
  * battle with its run tick, as a replay's, promises nothing here.
@@ -397,47 +405,131 @@ public final class PlayerCommands {
   }
 
   /**
+   * Gives an ability command naming a unit by its game object id, as the game's own command names
+   * it: any live character, a champion an action spawned included (the Goblins hero's banner, the
+   * Barbarian Barrel hero's barbarian), which no play made and so no name of a play reaches. Given,
+   * it runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks after its stamp, as a replay's command
+   * naming the id does ({@link Standard1v1Battle#useAbility(int, int, int, String)}), and promises
+   * the ability's cost until then; refused, nothing changes.
+   *
+   * @param side the commanding side
+   * @param objectId the game object id of the unit it names
+   * @param name the command's name, new to this battle
+   * @return what the giving came to
+   */
+  public Giving useAbility(int side, int objectId, String name) {
+    checkNameNew(name);
+    Giving tried = tryAbility(side, objectId, name);
+    if (!tried.given()) {
+      return tried;
+    }
+    battle.useAbility(tried.runTick(), side, objectId, name);
+    given.add(
+        new Given(
+            side,
+            Kind.ABILITY,
+            -1,
+            name,
+            tried.runTick(),
+            battle.getBattle().getTick() + Standard1v1Battle.PROMISE_TICKS,
+            tried.cost()));
+    return tried;
+  }
+
+  /**
+   * Tries an ability command naming a unit by its game object id as {@link #useAbility(int, int,
+   * String)} does, without giving it: the same gates in the same order, nothing queued or promised.
+   *
+   * @param side the commanding side
+   * @param objectId the game object id of the unit it would name
+   * @return what a giving now would come to
+   */
+  public Giving tryAbility(int side, int objectId) {
+    return tryAbility(side, objectId, "an ability command naming the object " + objectId);
+  }
+
+  /**
    * The unit an ability command for one of a side's champion slots names now, as the player's
    * button for the slot names it: the unit of the play the slot follows (its deploy count) whose
    * row names the champion's ability, not a clone, found among the side's plays that have run.
    *
+   * <p>A champion an action spawned is listed by no play: the Goblins hero's banner, which the last
+   * goblin's fall plants, and the Barbarian Barrel hero's barbarian, which the roll's end leaves.
+   * The slot follows it as the battle hands it over (the banner by no deploy count, the banner's
+   * own). For such a slot the unit is the live character the slot follows, the one the run's gates
+   * accept: one banner or barbarian a play. It carries no name of a play, so an ability command
+   * names it by its game object id ({@link #useAbility(int, int, String)}), as the game's own
+   * command names every unit.
+   *
    * @param side the commanding side
    * @param slot the champion slot, 0 for the king's first, 1 for its second
-   * @return the unit, or null when the slot follows no play, or no play of the side that has run
-   *     made such a unit (a champion an action spawned, which the player's commands cannot name)
+   * @return the unit, or null when the slot follows no champion, or neither a play of the side that
+   *     has run made such a unit nor a live character the slot follows stands
    */
   public CharacterEntity championUnit(int side, int slot) {
     ChampionController controller = battle.getWorld().kingTower(side).championSlot(slot + 1);
     UnitData champion = controller == null ? null : controller.getChampion();
     int index = controller == null ? -1 : controller.getDeployIndex();
-    if (champion == null || champion.ability() == null || index < 0) {
+    if (champion == null || champion.ability() == null) {
       return null;
     }
-    String ability = champion.ability().name();
-    for (Standard1v1Battle.Play play : battle.getPlays()) {
-      if (play.side() != side) {
-        continue;
-      }
-      for (CharacterEntity unit : play.units()) {
-        AbilityData data = unit.getData().ability();
-        if (unit.getDeployIndex() == index
-            && !unit.isClone()
-            && data != null
-            && data.name().equals(ability)) {
-          return unit;
+    if (index >= 0) {
+      String ability = champion.ability().name();
+      for (Standard1v1Battle.Play play : battle.getPlays()) {
+        if (play.side() != side) {
+          continue;
         }
+        for (CharacterEntity unit : play.units()) {
+          AbilityData data = unit.getData().ability();
+          if (unit.getDeployIndex() == index
+              && !unit.isClone()
+              && data != null
+              && data.name().equals(ability)) {
+            return unit;
+          }
+        }
+      }
+    }
+    // A champion an action spawned: no play lists it, so it is the live character the slot follows.
+    for (BattleEntity entity : battle.getWorld().getHolder().entities()) {
+      if (entity instanceof CharacterEntity unit && controller.follows(unit)) {
+        return unit;
       }
     }
     return null;
   }
 
-  /** The client's try of an ability command: the run's gates, the promised costs set aside. */
+  /**
+   * The client's try of an ability command naming a unit by its play's name: one no play of the
+   * side made is refused as no champion found.
+   */
   private Giving tryAbility(int side, String unit, String name) {
+    return tryAbility(side, playedUnit(side, unit), AbilityCommand.NO_CHAMPION, name);
+  }
+
+  /**
+   * The client's try of an ability command naming a unit by its game object id: an id no live
+   * character holds is refused as the run refuses it ({@link AbilityCommand#run(BattleWorld, int,
+   * int)}), the king dead first, else no champion found.
+   */
+  private Giving tryAbility(int side, int objectId, String name) {
+    int missing =
+        HitPoints.alive(battle.getWorld().kingTower(side).getHitPoints())
+            ? AbilityCommand.NO_CHAMPION
+            : AbilityCommand.KING_GONE;
+    return tryAbility(side, liveCharacter(objectId), missing, name);
+  }
+
+  /**
+   * The client's try of an ability command: the run's gates, the promised costs set aside.
+   *
+   * @param missing the code a command naming no unit is refused with
+   */
+  private Giving tryAbility(int side, CharacterEntity named, int missing, String name) {
     int givenTick = stamp(battle.getBattle().getTick());
     int runTick = givenTick + Standard1v1Battle.PLAY_DELAY_TICKS;
-    CharacterEntity named = playedUnit(side, unit);
     if (named == null) {
-      return new Giving(Refusal.NO_CHAMPION, AbilityCommand.NO_CHAMPION, givenTick, runTick, 0);
+      return new Giving(abilityRefusal(missing), missing, givenTick, runTick, 0);
     }
     int[] promised = promisedSplit(side);
     int code = AbilityCommand.tryGates(battle.getWorld(), side, named, promised[0]);
@@ -675,6 +767,19 @@ public final class PlayerCommands {
   /** Whether the king's whole elixir less what is set aside, never below 0, covers a cost. */
   private boolean covers(int side, int cost, int setAside) {
     return Math.max(battle.getMatch().side(side).wholeElixir() - setAside, 0) >= cost;
+  }
+
+  /**
+   * The live character holding a game object id, of either side, as the run of a command naming the
+   * id looks it up; null for none.
+   */
+  private CharacterEntity liveCharacter(int objectId) {
+    for (BattleEntity entity : battle.getWorld().getHolder().entities()) {
+      if (entity.getId() == objectId) {
+        return entity instanceof CharacterEntity unit ? unit : null;
+      }
+    }
+    return null;
   }
 
   /** The unit of the side a play that has run made under a name, or null. */

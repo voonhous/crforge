@@ -20,12 +20,14 @@ import java.util.List;
 import java.util.SplittableRandom;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
+import org.crforge.core.battle.Shipped;
 import org.crforge.core.battle.data.GameRow;
 import org.crforge.core.battle.data.GameTables;
 import org.crforge.core.battle.match.LadderMatch;
 import org.crforge.core.battle.match.MatchSide;
 import org.crforge.core.battle.projectile.ProjectileEntity;
 import org.crforge.core.battle.unit.ChampionController;
+import org.crforge.core.battle.unit.CharacterEntity;
 import org.crforge.core.battle.unit.KingElixir;
 import org.crforge.core.battle.unit.PlayerCommands;
 import org.crforge.core.battle.unit.Standard1v1Battle;
@@ -968,6 +970,89 @@ class LadderEnvTest {
       assertThat(battle.getAbilityUses().get(0).outcome().code()).isZero();
       assertThat(closedAfterUse).as("closed after its use").isTrue();
       assertThat(unitNamed).as("a slot's unit named").isTrue();
+      assertThat(header(env, 0, 0, Schema.H_LAST_ABILITY_RUN_REFUSAL)).isZero();
+      assertThat(env.fault(0)).isNull();
+    }
+  }
+
+  @Test
+  void anAbilityActionNamesTheBannerTheHeroGoblinsLeaveByItsObjectId() {
+    // The hero form's banner: a champion the last goblin's fall spawns, which no play lists.
+    String banner =
+        Shipped.text(Shipped.row("spells_hero_form", "Goblins_hero"), "LinkedChampionCharacter");
+    List<String> goblins = new ArrayList<>(QUEEN);
+    goblins.set(0, "Goblins");
+    int[] slots0 = new int[Schema.DECK_SIZE];
+    slots0[0] = Schema.SLOT_HERO;
+    try (VectorEnv env = VectorEnv.ladder(tables, EnvConfig.DEFAULT, 1, 1)) {
+      env.reset(new int[] {7}, goblins, BASIC, slots0, null);
+      LadderEnv ladder = ladderEnv(env, 0);
+      Standard1v1Battle battle = ladder.battle();
+      IntBuffer actions = env.actions().asIntBuffer();
+      boolean played = false;
+      int usedSlot = -1;
+      int named = -1;
+      for (int decision = 0; decision < 1500 && env.dones().get(0) == 0; decision++) {
+        CharacterEntity standing =
+            battle.getWorld().getHolder().entities().stream()
+                .filter(e -> e instanceof CharacterEntity unit && unit.side() == 0)
+                .map(CharacterEntity.class::cast)
+                .filter(unit -> unit.getData().name().equals(banner))
+                .findFirst()
+                .orElse(null);
+        int open = -1;
+        for (int k = 0; k < Schema.ABILITY_SLOTS; k++) {
+          int at = Schema.H_ABILITY + k * Schema.ABILITY_INTS;
+          int unitId = header(env, 0, 0, at + 1);
+          if (open(env, 0, 0, Schema.ability(k))) {
+            // Open only for the banner, which the slot's row names by its id.
+            assertThat(standing).as("decision %d", decision).isNotNull();
+            assertThat(ladder.battleId(0, unitId)).isEqualTo(standing.getId());
+            open = k;
+          }
+        }
+        if (usedSlot >= 0) {
+          break;
+        }
+        int action = Schema.WAIT;
+        int goblinsSlot = handSlot(env, 0, 0, "Goblins");
+        if (open >= 0) {
+          action = Schema.ability(open);
+          usedSlot = open;
+          named = standing.getId();
+        } else if (!played && goblinsSlot >= 0 && slotOpen(env, 0, 0, goblinsSlot)) {
+          action = nearOpen(env, 0, 0, goblinsSlot, 4, 6);
+          played = true;
+        } else if (!played && goblinsSlot < 0) {
+          // Cycle the deck until the Goblins are dealt.
+          int other = otherOpenSlot(env, 0, 0, "Goblins");
+          action = other < 0 ? Schema.WAIT : nearOpen(env, 0, 0, other, 13, 2);
+        }
+        actions.put(0, action);
+        actions.put(1, Schema.WAIT);
+        env.step();
+        assertThat(info(env, 0, Schema.I_ILLEGAL_0)).as("decision %d", decision).isZero();
+      }
+      assertThat(played).isTrue();
+      assertThat(usedSlot).as("the banner's ability action opened").isNotNegative();
+      // The command given names the banner by its game object id, as the game's command does.
+      Standard1v1Battle.Command command =
+          battle.getCommands().stream()
+              .filter(c -> c.kind() == Standard1v1Battle.CommandKind.ABILITY)
+              .findFirst()
+              .orElseThrow();
+      assertThat(command.side()).isZero();
+      assertThat(command.objectId()).isEqualTo(named);
+      assertThat(command.tick()).isEqualTo(command.given() + Schema.PLAY_DELAY_TICKS);
+      while (battle.getAbilityUses().isEmpty() && env.dones().get(0) == 0) {
+        actions.put(0, Schema.WAIT);
+        actions.put(1, Schema.WAIT);
+        env.step();
+      }
+      Standard1v1Battle.AbilityUse use = battle.getAbilityUses().get(0);
+      assertThat(use.tick()).isEqualTo(command.tick());
+      assertThat(use.outcome().code()).isZero();
+      assertThat(use.outcome().requested()).extracting(BattleEntity::getId).containsExactly(named);
       assertThat(header(env, 0, 0, Schema.H_LAST_ABILITY_RUN_REFUSAL)).isZero();
       assertThat(env.fault(0)).isNull();
     }

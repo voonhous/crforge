@@ -573,7 +573,7 @@ public final class BattleSession {
       if (unit == null) {
         return champion + " is not on the field";
       }
-      tried = commands.tryAbility(side, unit.name());
+      tried = commands.tryAbility(side, unit.getId());
     } catch (RuntimeException e) {
       return champion + "'s ability refused, " + e.getMessage();
     }
@@ -600,7 +600,9 @@ public final class BattleSession {
       return false;
     }
     String champion = championSlot(side, slot).getChampion().name();
-    String unit = commands.championUnit(side, slot).name();
+    // Named by its game object id, as the game's command names it: a champion an action spawned
+    // (the Goblins hero's banner, the Barbarian Barrel hero's barbarian) carries no play's name.
+    int unit = commands.championUnit(side, slot).getId();
     String name = (side == 0 ? "b" : "r") + (playsGiven + 1);
     Giving giving;
     try {
