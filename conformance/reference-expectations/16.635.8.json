@@ -432,6 +432,8 @@
   "evo-sweep-v2/evo_wizard_vs_musketeer": {"outcome": "diagnostic_match"},
   "evo-sweep-v2/evo_zap_on_musketeer": {"outcome": "diagnostic_match"},
   "evolution-v2/knight_evolved_third_play": {"outcome": "diagnostic_match"},
+  "excluded-evolutions-mirror-v1/evo_mirror_after_knight_listed_by_opponent": {"outcome": "diagnostic_match"},
+  "excluded-evolutions-mirror-v1/evo_mirror_after_listed_knight": {"outcome": "diagnostic_match"},
   "excluded-evolutions-v1/evo_knight_listed": {"outcome": "diagnostic_match"},
   "excluded-evolutions-v1/evo_mirror_listed": {"outcome": "diagnostic_match"},
   "filter-underground-v1/filter_earthquake_over_miner_tunnel": {"outcome": "diagnostic_match"},

@@ -928,22 +928,26 @@ class ReplayScenarioEveryFieldTest {
   }
 
   @Test
-  void refusesAnExcludedEvolutionOfACardAnEvolvedMirrorOfItsDeckMayRepeat() {
+  void readsEachSidesExcludedEvolutionsIntoThePlanBesideAnEvolvedMirrorThatMayRepeatThem() {
     assumeExcludedEvolutionsRead();
     Object[] card = deckCardWithAnEvolvedRow();
     ObjectNode scenario = withExcludedEvolutions((int) card[2]);
+    // Side 0 lists none; side 1 lists the card's evolved row.
+    ((ObjectNode) scenario.path("battle").path("hbd").get(0))
+        .putArray(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
     // The Mirror, in the evolution slot, in place of another card of side 1's deck.
     int other = (int) card[0] == Scenarios.DECK.length - 1 ? 0 : Scenarios.DECK.length - 1;
     ((ObjectNode) scenario.path("battle").path("deck1").path("sp").get(other))
         .put("d", Scenarios.MIRROR)
         .put("el", 1);
+    ReplayScenario mapping = new ReplayScenario(tables);
 
-    assertThat(new ReplayScenario(tables).survey(scenario))
-        .contains(
-            new ReplayScenario.Refusal(
-                "an evolution excluded from the battle of a card an evolved Mirror of its deck may"
-                    + " repeat, which the battle core would repeat evolved",
-                "battle.deck1.sp: " + card[1]));
+    // An evolved Mirror of side 1 repeats the card as itself, as the player's client builds it
+    // from its side's list: the battle carries each side's list into the match.
+    assertThat(mapping.survey(scenario)).isEmpty();
+    String evolved = mapping.find((int) card[2]).orElseThrow().name();
+    assertThat(mapping.translate(scenario).excludedEvolutions())
+        .containsExactly(List.of(), List.of(evolved));
   }
 
   @Test

@@ -799,10 +799,11 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * Starts an episode on a replay's setup, with none of its commands: the battle {@link
    * ReplayBattle#build} builds from the replay's translation (its seed, towers, each player's data,
-   * the account words its deck shuffles draw with, the decks with their slot flags), and each play
-   * of a deck card at the card's level as the replay lists it, raised by its card level minimum
-   * ({@link ScenarioPlan#raisedDeckLevels}), not {@link EnvConfig#level}. The commands are then
-   * given to it as a player's are, by {@link #step} or a replay's labeller.
+   * the account words its deck shuffles draw with, the decks with their slot flags, the evolutions
+   * each side excludes from the battle), and each play of a deck card at the card's level as the
+   * replay lists it, raised by its card level minimum ({@link ScenarioPlan#raisedDeckLevels}), not
+   * {@link EnvConfig#level}. The commands are then given to it as a player's are, by {@link #step}
+   * or a replay's labeller.
    *
    * @param plan the replay's translation; its commands are left out
    */
@@ -830,7 +831,8 @@ public final class LadderEnv extends BufferedEnv {
             plan.playerDataChoices(),
             List.of(),
             List.of(),
-            plan.cardLevelMinimum());
+            plan.cardLevelMinimum(),
+            plan.excludedEvolutions());
     try {
       standard = ReplayBattle.build(tables, setup);
       match = standard.getMatch();

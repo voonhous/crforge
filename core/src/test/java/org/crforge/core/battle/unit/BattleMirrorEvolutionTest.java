@@ -35,8 +35,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The Mirror in its deck's evolution slot: its plays counted as any evolution slot card's, and the
- * evolved Mirror, which repeats the last card in its evolved form when the card has one, after a
- * hero play of it too, and otherwise as a Mirror that is not evolved repeats it.
+ * evolved Mirror, which repeats the last card in its evolved form when the card has one its side's
+ * excluded evolutions do not list, after a hero play of it too, and otherwise as a Mirror that is
+ * not evolved repeats it.
  */
 class BattleMirrorEvolutionTest {
 
@@ -196,6 +197,70 @@ class BattleMirrorEvolutionTest {
             Shipped.scaled(Shipped.number(row, "Hitpoints"), row, LEVEL + mirrorEvoLevelOffset));
     // The last card stays the deck card the Mirror repeated.
     assertThat(match.side(0).lastPlayed().name()).isEqualTo("Knight");
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mirror after a play of a card whose evolved row its side's excluded evolutions"
+          + " list repeats the card itself, the global MIRROR_LEVEL_OFFSET above the Mirror's"
+          + " level, for the Mirror's cost plus the card's, and places the card's unit")
+  void anEvolvedMirrorOfACardWhoseEvolvedRowItsSideExcludesRepeatsTheCard() {
+    String evolvedKnight =
+        GameData.records().matchCard("Knight").formRow(MatchCard.EVO_FORM).name();
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    // The Knight's evolved row listed for side 0, the Mirror's side, alone.
+    LadderMatch match =
+        battle.startLadderMatch(
+            DECK,
+            KNIGHTS,
+            0,
+            0,
+            first(MatchSide.EVOLUTION_SLOT),
+            NO_SLOTS,
+            List.of(List.of(evolvedKnight), List.of()));
+    mirrorAfter(battle, match, "Knight");
+    Standard1v1Battle.Play play = mirrorAfter(battle, match, "Knight");
+
+    MirrorItem item = play.mirror();
+    assertThat(item.field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(item.repeats().name()).isEqualTo("Knight");
+    assertThat(item.level()).isEqualTo(LEVEL + mirrorLevelOffset);
+    int maxMana = Shipped.number(Shipped.row("globals", "MAX_MANA"), "NumberValue");
+    assertThat(item.cost())
+        .isEqualTo(Math.min(Shipped.cost("Mirror") + Shipped.cost("Knight"), maxMana));
+    DeployCard cast = battle.getWorld().getRecords().card("Knight");
+    assertThat(play.units()).hasSize(1);
+    assertThat(play.units().get(0).getData().name()).isEqualTo(cast.unitAt(0).name());
+    // The Mirror's own play is evolved all the same, and resets its count.
+    assertThat(match.side(0).evolutionCount(0)).isZero();
+  }
+
+  @Test
+  @DisplayName(
+      "an evolved Mirror after a play of a card whose evolved row only the other side's excluded"
+          + " evolutions list repeats that evolved row, the global MIRROR_EVO_LEVEL_OFFSET above"
+          + " the Mirror's level")
+  void theOtherSidesExcludedEvolutionsLeaveTheEvolvedRepeat() {
+    MatchCard evolved = GameData.records().matchCard("Knight").formRow(MatchCard.EVO_FORM);
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    LadderMatch match =
+        battle.startLadderMatch(
+            DECK,
+            KNIGHTS,
+            0,
+            0,
+            first(MatchSide.EVOLUTION_SLOT),
+            NO_SLOTS,
+            List.of(List.of(), List.of(evolved.name())));
+    mirrorAfter(battle, match, "Knight");
+    Standard1v1Battle.Play play = mirrorAfter(battle, match, "Knight");
+
+    MirrorItem item = play.mirror();
+    assertThat(item.field()).isEqualTo(EvolutionItem.EVOLVED);
+    assertThat(item.repeats().name()).isEqualTo(evolved.name());
+    assertThat(item.level()).isEqualTo(LEVEL + mirrorEvoLevelOffset);
+    assertThat(match.excludedEvolutions(1)).containsExactly(evolved.name());
+    assertThat(match.excludedEvolutions(0)).isEmpty();
   }
 
   @Test

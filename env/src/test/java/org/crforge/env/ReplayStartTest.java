@@ -107,7 +107,8 @@ class ReplayStartTest {
         plan.playerDataChoices(),
         plan.plays().stream().filter(p -> p.givenTick() < tick).toList(),
         plan.abilities().stream().filter(a -> a.givenTick() < tick).toList(),
-        plan.cardLevelMinimum());
+        plan.cardLevelMinimum(),
+        plan.excludedEvolutions());
   }
 
   private static Standard1v1Battle steppedTo(ScenarioPlan plan, int tick) {

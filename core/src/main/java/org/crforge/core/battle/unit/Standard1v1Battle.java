@@ -579,13 +579,41 @@ public class Standard1v1Battle {
       int playerWord1,
       int[] slots0,
       int[] slots1) {
+    return startLadderMatch(
+        deck0, deck1, playerWord0, playerWord1, slots0, slots1, List.of(List.of(), List.of()));
+  }
+
+  /**
+   * Plays the battle as a Ladder match whose decks mark their evolution and hero slots and whose
+   * players' data list the evolutions excluded from the battle: an evolved Mirror repeats a card
+   * whose evolved row its side lists as the card itself ({@link LadderMatch#excludedEvolutions}).
+   *
+   * @param deck0 side 0's deck, by card row name
+   * @param deck1 side 1's deck, by card row name
+   * @param playerWord0 side 0's word, added to its shuffle's draw
+   * @param playerWord1 side 1's word, added to its shuffle's draw
+   * @param slots0 side 0's slot flags, by deck index
+   * @param slots1 side 1's slot flags, by deck index
+   * @param excludedEvolutions each side's evolutions excluded from the battle, by row name
+   * @return the match
+   * @see #startLadderMatch(List, List, int, int, int[], int[])
+   */
+  public LadderMatch startLadderMatch(
+      List<String> deck0,
+      List<String> deck1,
+      int playerWord0,
+      int playerWord1,
+      int[] slots0,
+      int[] slots1,
+      List<List<String>> excludedEvolutions) {
     LadderMatch ladder =
         new LadderMatch(
             world,
             world.getRecords(),
             List.of(deck0, deck1),
             new int[] {playerWord0, playerWord1},
-            List.of(slots0, slots1));
+            List.of(slots0, slots1),
+            excludedEvolutions);
     battle.setMode(ladder);
     world.setKingVisit(ladder::kingVisit);
     this.match = ladder;

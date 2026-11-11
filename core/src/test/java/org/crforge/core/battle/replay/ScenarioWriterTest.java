@@ -8,6 +8,7 @@ package org.crforge.core.battle.replay;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -329,6 +330,46 @@ class ScenarioWriterTest {
     assertThat(battle.getPlays())
         .anyMatch(play -> play.evolution() != null && play.evolution().count() > 0);
     replays(document, played, battle.getPlays().size());
+  }
+
+  @Test
+  void eachSidesExcludedEvolutionsAreWrittenInItsPlayersDataAndReadBack() throws Exception {
+    assumeTrue(
+        ReplayFormat.orShared(tables.version()).excludedEvolutions(),
+        "the replays of data version " + tables.version() + " list no excluded evolutions");
+    // Side 0's deck's Knight's evolved row, read from the tables, listed for side 0 alone.
+    String evolved = ScenarioItems.evolvedRow(tables, ScenarioItems.card(tables, "Knight")).name();
+    Standard1v1Battle battle = new Standard1v1Battle(tables);
+    battle.addPlayerData(1);
+    battle.addPlayerData(1);
+    List<List<String>> decks = decks();
+    battle.startLadderMatch(
+        decks.get(0),
+        decks.get(1),
+        3,
+        5,
+        new int[8],
+        new int[8],
+        List.of(List.of(evolved), List.of()));
+
+    ScenarioWriter writer = new ScenarioWriter(tables);
+    JsonNode document =
+        throughText(
+            writer.write(
+                writer.plan(battle, Standard1v1Battle.DEFAULT_LEVEL, Scenarios.arenas(tables))));
+
+    // The list after the emotes, by data id, as the game's replays give it; none where a side
+    // lists none.
+    JsonNode entries = document.path("battle").path("hbd");
+    JsonNode listed = entries.get(0).path(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD);
+    assertThat(listed.size()).isEqualTo(1);
+    assertThat(new ReplayScenario(tables).find(listed.get(0).asInt()).orElseThrow().name())
+        .isEqualTo(evolved);
+    assertThat(entries.get(1).has(ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD)).isFalse();
+    ScenarioPlan read = new ReplayScenario(tables).translate(document);
+    assertThat(read.excludedEvolutions()).containsExactly(List.of(evolved), List.of());
+    assertThat(ReplayBattle.build(tables, read).getMatch().excludedEvolutions(0))
+        .containsExactly(evolved);
   }
 
   @Test
