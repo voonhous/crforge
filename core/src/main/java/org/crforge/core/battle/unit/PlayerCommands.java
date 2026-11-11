@@ -43,9 +43,14 @@ import org.crforge.core.pathfinding.combat.HitPoints;
  * in the enemy half, on the river, on a tower, off the map or on a cell the map check refuses is
  * moved to the nearest legal tile, not refused; a drop is refused only when the search finds no
  * tile ({@link Refusal#NO_TILE}). On the standard arena only a Mirror finds none, while its king
- * has no last card: the search places a Mirror as the king's last card. The play's run searches
- * again from the tile sent, against the battle as it stands then, so a tower or building that falls
- * or lands in between moves the play again.
+ * has no last card: the search places a Mirror as the king's last card. One drop off the map is not
+ * moved: a card dropped beyond the side's own back edge of the arena, along its length, before its
+ * start for side 0 and at or past its end for side 1, is dropped back over the side's hand, and the
+ * screen cancels it before its search and before the client's try. It is refused as {@link
+ * Refusal#NO_TILE} too, whatever the try would say, and its cost is not worked out. No point on the
+ * arena is cancelled so, and a point beyond the width or the enemy's edge is moved. The play's run
+ * searches again from the tile sent, against the battle as it stands then, so a tower or building
+ * that falls or lands in between moves the play again.
  *
  * <p>Before it sends a command the client tries it against the battle as it stands, and drops it,
  * with nothing changed, when that try refuses it. For a card play the try is, in order: the match's
@@ -110,8 +115,11 @@ import org.crforge.core.pathfinding.combat.HitPoints;
             + " hero play's row and a variant card's option as the run places them, and a Mirror's"
             + " own row, which the search places as the king's last card; a Mirror whose item"
             + " repeats a listed play of its side is refused when that play's card and the king's"
-            + " last card would be sent on different tiles. Not modelled: the screen's cancel of a card"
-            + " dragged back over the hand, a gesture and no point.")
+            + " last card would be sent on different tiles. From the screen's handling, held by no"
+            + " recording, which hold only the plays sent: a card dropped beyond the side's own back"
+            + " edge of the arena, over its hand, is cancelled before the search and the try; the"
+            + " band is the game's edge margin, which no data sets, so 0, and no arena point is"
+            + " cancelled.")
 public final class PlayerCommands {
 
   /** Why a giving was refused, or {@link #NONE} for a command given. */
@@ -132,7 +140,11 @@ public final class PlayerCommands {
     CARD_PENDING,
     /** The elixir less the promised costs does not cover the cost. */
     NOT_ENOUGH_ELIXIR,
-    /** The screen's placement search finds no tile for the play: nothing is sent. */
+    /**
+     * The screen sends nothing for the drop: its placement search finds no tile for the play, or
+     * the card is dropped beyond the side's own back edge of the arena, over its hand, which the
+     * screen cancels before it searches.
+     */
     NO_TILE,
     /** No unit of the side is found for an ability command, or no champion slot follows it. */
     NO_CHAMPION,
@@ -263,9 +275,10 @@ public final class PlayerCommands {
    * Gives a play of the card in one of a side's hand slots dropped at a point, as its player does
    * now: a deck card's, a Mirror's or a variant card's. The play is sent on the tile the placement
    * search finds from the point against the battle as it stands now, and refused when it finds
-   * none. Given, it runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks after its stamp through
-   * the battle's play path, which searches again from the tile sent, and promises its item's cost;
-   * refused, nothing changes.
+   * none, or, first of all, when the point lies beyond the side's own back edge of the arena, where
+   * the screen cancels the drop. Given, it runs {@link Standard1v1Battle#PLAY_DELAY_TICKS} ticks
+   * after its stamp through the battle's play path, which searches again from the tile sent, and
+   * promises its item's cost; refused, nothing changes.
    *
    * @param side the playing side
    * @param slot the hand slot, 0 to 3
@@ -280,6 +293,13 @@ public final class PlayerCommands {
    */
   public Giving playCard(int side, int slot, int level, int x, int y, String name) {
     checkNameNew(name);
+    if (beyondOwnEdge(side, y)) {
+      // The screen cancels the drop before its search and before the client's try: nothing is
+      // searched, set aside, promised or queued, and the cost is not yet known.
+      int givenTick = stamp(battle.getBattle().getTick());
+      return new Giving(
+          Refusal.NO_TILE, SCREEN, givenTick, givenTick + Standard1v1Battle.PLAY_DELAY_TICKS, 0);
+    }
     Tried tried = tryCard(side, slot, level, name);
     if (tried.refused() != null) {
       return tried.refused();
@@ -331,7 +351,9 @@ public final class PlayerCommands {
    * giving it: whether the screen offers it and the client's try passes. It does not run the
    * placement search, which on the standard arena finds a tile from every point but for a Mirror
    * whose king has no last card, which it refuses as {@link Refusal#NO_TILE} wherever it is
-   * dropped.
+   * dropped. Without a point it leaves out the screen's cancel of a drop beyond the side's own back
+   * edge, which no point on the arena meets: a giving on an arena point comes to what this try
+   * says, but for the search.
    *
    * @param side the playing side
    * @param slot the hand slot, 0 to 3
@@ -606,6 +628,18 @@ public final class PlayerCommands {
       }
     }
     return false;
+  }
+
+  /**
+   * Whether a point a side drops a card on lies beyond the side's own back edge of the arena, along
+   * its length, where the player's screen cancels the drop: before the start of the length for side
+   * 0, at or past its end for side 1, over the side's hand. The screen would also cancel a band of
+   * the side's own back map rows as wide as the game's edge margin, the margin the map check's rows
+   * keep too; no data sets it, so it is 0 and no point on the arena is cancelled. The width and the
+   * far, enemy edge are not tested: a point off them is moved by the search.
+   */
+  private boolean beyondOwnEdge(int side, int y) {
+    return side == 0 ? y < 0 : y >= battle.getWorld().getTileMap().heightUnits();
   }
 
   /** The client's try of a play, but for its point. */

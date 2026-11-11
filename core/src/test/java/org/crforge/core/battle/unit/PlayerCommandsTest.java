@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.ToIntFunction;
 import org.crforge.core.battle.BattleEntity;
 import org.crforge.core.battle.GameData;
 import org.crforge.core.battle.Shipped;
@@ -556,6 +557,98 @@ class PlayerCommandsTest {
     assertThat(battle.getPlays())
         .extracting(play -> play.result().placed())
         .containsExactly(true, true, true);
+  }
+
+  @Test
+  @DisplayName(
+      "a card side 0 drops before the start of the arena's length, beyond its own back edge, is"
+          + " cancelled on the screen: nothing is sent, nothing promised, and the battle runs on"
+          + " unchanged")
+  void aDropBeyondSideZerosOwnEdgeIsCancelled() {
+    // Side 0's back edge is the start of the length: the first point beyond it is -1.
+    assertDropBeyondOwnEdgeIsCancelled(0, battle -> -1);
+  }
+
+  @Test
+  @DisplayName(
+      "a card side 1 drops at or past the end of the arena's length, beyond its own back edge, is"
+          + " cancelled on the screen: nothing is sent, nothing promised, and the battle runs on"
+          + " unchanged")
+  void aDropBeyondSideOnesOwnEdgeIsCancelled() {
+    // Side 1's back edge is the end of the length: the first point beyond it is the length.
+    assertDropBeyondOwnEdgeIsCancelled(1, PlayerCommandsTest::lengthUnits);
+  }
+
+  @Test
+  @DisplayName(
+      "a card dropped on either end row of the arena, or beyond the far, enemy edge, is given on"
+          + " the tile the search finds, for either side: only the own edge cancels")
+  void dropsOnTheArenaAndBeyondTheFarEdgeAreGiven() {
+    // For each side: its own back row, the enemy's back row, and the first point beyond the enemy's
+    // back edge, which the search moves onto a tile of the side's own half.
+    for (int side = 0; side < 2; side++) {
+      for (int pick = 0; pick < 3; pick++) {
+        Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+        PlayerCommands commands = new PlayerCommands(battle);
+        stepTo(battle, OPEN + 30);
+        int length = lengthUnits(battle);
+        int ownRow = side == 0 ? 0 : length - 1;
+        int enemyRow = side == 0 ? length - 1 : 0;
+        int beyondEnemy = side == 0 ? length : -1;
+        int y = new int[] {ownRow, enemyRow, beyondEnemy}[pick];
+        DeployCard knight = battle.getWorld().getRecords().card("Knight");
+        int[] found = battle.searchPlacement(knight, side, X, y);
+
+        Giving giving = commands.playCard(side, 0, LEVEL, X, y, "k");
+
+        assertThat(giving.given()).as("side %d dropped at %d", side, y).isTrue();
+        assertThat(new int[] {giving.x(), giving.y()}).containsExactly(found);
+        stepTo(battle, giving.runTick() + 1);
+        assertThat(battle.getPlays())
+            .extracting(play -> play.result().placed())
+            .containsExactly(true);
+      }
+    }
+  }
+
+  /**
+   * Drops the card in a side's first hand slot at a point beyond its own back edge, once the side's
+   * elixir covers it, and checks that the screen cancels it: refused with the screen's mark,
+   * carrying no point, nothing promised or pending, and the battle stepping on as one where nothing
+   * was dropped.
+   *
+   * @param side the dropping side
+   * @param beyond the point along the length beyond the side's own back edge, from the battle
+   */
+  private static void assertDropBeyondOwnEdgeIsCancelled(
+      int side, ToIntFunction<Standard1v1Battle> beyond) {
+    Standard1v1Battle battle = ladder(KNIGHTS, KNIGHTS, 0);
+    Standard1v1Battle untouched = ladder(KNIGHTS, KNIGHTS, 0);
+    PlayerCommands commands = new PlayerCommands(battle);
+    stepTo(battle, OPEN + 30);
+    stepTo(untouched, OPEN + 30);
+    assertThat(battle.getMatch().side(side).wholeElixir())
+        .as("the elixir covers the play")
+        .isGreaterThanOrEqualTo(Shipped.cost("Knight"));
+    assertThat(commands.tryCard(side, 0, LEVEL).given()).as("the client's try passes").isTrue();
+    int y = beyond.applyAsInt(battle);
+
+    Giving giving = commands.playCard(side, 0, LEVEL, X, y, "k");
+
+    assertThat(giving.refusal()).isEqualTo(Refusal.NO_TILE);
+    assertThat(giving.code()).isEqualTo(PlayerCommands.SCREEN);
+    assertThat(new int[] {giving.x(), giving.y()})
+        .containsExactly(PlayerCommands.NO_POINT, PlayerCommands.NO_POINT);
+    assertThat(commands.promised(side)).isZero();
+    assertThat(commands.isPending(side, battle.getMatch().side(side).getHand().slots()[0]))
+        .isFalse();
+    assertThat(commands.tryCard(side, 0, LEVEL).given()).as("still offered").isTrue();
+    for (int tick = 0; tick < 40; tick++) {
+      battle.getBattle().step();
+      untouched.getBattle().step();
+      assertThat(state(battle)).as("tick %d", tick).isEqualTo(state(untouched));
+    }
+    assertThat(battle.getPlays()).isEmpty();
   }
 
   @Test
