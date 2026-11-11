@@ -55,7 +55,7 @@ One step of the vector is one decision in every battle:
    - A wait does nothing.
    - A play of an action the seat's mask left open is given with `PlayerCommands.playCard(side, slot, level, x, y, name)` at the tile's centre, at the card's level: its side's `SideSetup` level, else `EnvConfig.level`. The player's screen runs the placement search at the giving and the command carries the tile it finds, so a drop anywhere is moved to a legal tile rather than refused. The command is stamped with the tick counter and runs `PLAY_DELAY_TICKS` (20) ticks later against the battle as it stands then.
    - An action the mask closed, out of range, or refused at its giving is taken as a wait and counted as illegal (`I_ILLEGAL_0`, `I_ILLEGAL_1`, the seat's `illegal`), with its refusal code in the seat's `last_refusal`.
-   - An ability action the mask left open is given with `PlayerCommands.useAbility(side, unit, name)`, naming the unit of the play the champion slot follows by the name the battle gave it (below). It is stamped and runs 20 ticks later the same way.
+   - An ability action the mask left open is given with `PlayerCommands.useAbility(side, objectId, name)`, naming the champion slot's unit (below) by its game object id, as the game's own ability command names its unit. It is stamped and runs 20 ticks later the same way.
    - A giving the battle core refuses as not modelled (an `UnsupportedOperationException` from `playCard` or `useAbility`) is refused the same way, with the code `NOT_MODELLED` and counted in `I_NOT_MODELLED`. It is not a fault.
 4. The battle steps `EnvConfig.decisionTicks` times (5 by default, four decisions a second of game time; 1 decides every tick), or fewer when the match ends.
 5. The environment writes both seats' observations and masks, the rewards and the info record. The step returns; everything is in the buffers.
@@ -327,7 +327,7 @@ Tests hold the rule (`LadderEnvTest`, `SeatObservationTest`, `HealthBarTest`):
   - a Dark Prince whose shield grows shows its bar;
   - on tables altered by hand, a Knight row that sets `HideHealthbar` and builds no bar never shows its hit points, and one naming no health bar row shows them unhurt.
 
-  The roll's rule is held by no test yet: neither the ability action nor the player's commands reach a Barb Log hero, which its barrel leaves rather than its play.
+  The roll's rule is held by no test yet. The ability action reaches a Barb Log hero, which its barrel leaves rather than its play, by its game object id (see the mask), but no test rolls it in a seat's view.
 - An evolution slot's Knight played in base form shows the diamond and is counted from it to the evolved play, equal to the king's count. A battle where the Knight is in no slot is seen byte for byte alike but for the diamond and the count.
 
 A random battle checks every row against the core (the health bar rule from the tables, the buff slots' order, a trail's fields, a hidden aim). Another holds the ids: the ids a seat is first shown at a decision follow on from those before with no gap, also when the battle made an enemy unit the seat was not shown between two it was. An id names one entity for the episode, a target names its row, and the two seats number apart.
@@ -355,9 +355,9 @@ What a trainer would misread without a note:
 - The wait is always open.
 - Before the match's start cooldown (`LadderMatch.getStartCooldownTicks()`, from the game mode's row) nothing else is.
 - After it, a hand slot is open when the client's try of its card passes (`PlayerCommands.tryCard(side, slot, level)`: the match's gates, the elixir less the promised costs, no play of the card waiting, and a Mirror with a card to repeat). Then the tiles of its 576 its card lands on without being moved are open (the mask rule, below). A try the core refuses as not modelled closes the slot.
-- A champion slot's ability action is open when the client's try of an ability command naming the slot's unit passes (`PlayerCommands.tryAbility(side, unit)`: the same gates `useAbility` applies, in order, with the elixir less the promised costs, and nothing given).
+- A champion slot's ability action is open when the client's try of an ability command naming the slot's unit passes (`PlayerCommands.tryAbility(side, objectId)`: the same gates `useAbility` applies, in order, with the elixir less the promised costs, and nothing given).
 
-  The unit is the one of the play the slot follows (its deploy count) whose row names the champion's ability, not a clone, by the name `Standard1v1Battle` gave it. A slot that follows no play, or a champion no play of the side made, keeps its action closed. The match does not gate an ability command on its start cooldown; no champion stands before it anyway.
+  The unit is the one of the play the slot follows (its deploy count) whose row names the champion's ability, not a clone (`PlayerCommands.championUnit`). A champion an action spawned is listed by no play: the Goblins hero's banner, which the last goblin's fall plants, and the Barbarian Barrel hero's barbarian, which the roll's end leaves. For its slot the unit is the live character the slot follows, the one the run's gates accept. Both are named by their game object id, as the game's command names every unit. A slot whose unit is not standing keeps its action closed: the hero Goblins' slot while its goblins live, before the banner stands. The match does not gate an ability command on its start cooldown; no champion stands before it anyway.
 
 **The mask rule.** Which tiles of an open slot are open is the mask rule, versioned apart from the schema (`Schema.MASK_LANDING_TILES` 2, the default, and `Schema.MASK_ALL_TILES` 1; `EnvConfig.maskVersion`):
 
@@ -592,7 +592,7 @@ Decisions fall every `decisionTicks` ticks from tick 0, as the environment takes
 - **Two commands of one seat in a window**: the first, in the replay's order, is the label; the others are counted as collisions and the row flagged. At 1-tick decisions only two commands given on one tick collide; at 5 ticks any two within five ticks do.
 - **A command the action space cannot say at the row** is labelled the wait and the row flagged:
   - its card is not in the row's hand (at 5 ticks, a card that came into the hand within the window);
-  - no champion slot follows the unit an ability command names (a champion an action spawned, or an object id that names no slot's unit);
+  - no champion slot follows the unit an ability command names (an object id that names no slot's unit);
   - or a variant card's recorded option is not the one the client would pick now (the action names no option).
 - **Under the landing mask rule** (rule 2, the labeller's default; `withMaskVersion` and `label_replays(mask_version=...)` pick the rule) the tile the play landed on comes first. That is the tile of the game's grid holding the recorded point, when the screen's search from its centre sends to the point, which it does when the card lands there unmoved.
 
@@ -715,10 +715,11 @@ Under schema version 4 (2026-10-18: the screen's visibility rule, health bars, p
 
 At 1 tick 12 of 25, 9 of 25 and 10 of 33 recorded replays are driven exactly, and 18, 12 and 13 have the state reproduced. At 5 ticks 20 of 970 generated cases are driven exactly, and 253 have the state reproduced.
 
+Since 2026-11-11 the ability action also names a champion an action spawned (the Goblins hero's banner, the Barbarian Barrel hero's barbarian), by its game object id. On 200 battles of the 16.635.8 coverage set where a side with one of the two in its hero slot taps an ability, at 1-tick decisions: 681 ability commands, of which 334 named such a champion and were inexpressible before; now none is. Driven from the labels, the commands matched in kind, side, given and run tick and object id rose from 4,130 to 11,270 of 13,465, the replays driven exactly from 3 to 95 and those with the state reproduced from 4 to 140. The rest stop at a play's point or two seats' commands in the other order, as above.
+
 ## What is not offered yet
 
 - **A fork's copy by generated code**: `LadderEnv.fork` copies the battle by reflection (`DeepCopy`), through `sun.misc.Unsafe` (deprecated for removal from JDK 23) and the JDK's own layout of a lambda's captures. The plan: an annotation processor that writes each battle state class's copy at build time, with the lambdas that capture state made named classes, and `DeepCopy` kept as the test oracle that a copy reaches no original but the shared data. Waiting on a profile of the search: a fork's copy is about 1 ms against a look ahead's 160 ticks of a few milliseconds, so it is not yet what a look ahead mostly costs.
-- **Champion abilities of spawned champions**: an ability action names a unit a card play of the side made (`PlayerCommands.useAbility` names units by the play's name); a champion slot that follows a champion an action spawned keeps its action closed.
 - **The enemy's champion slots and slot flags**: a seat sees only its own; the enemy's champion shows on the field as an entity.
 - **Deck slot rules**: the environment checks the slot flags' shape only; which cards a slot may hold, and how many slots a deck has, are the battle core's to refuse as the match starts.
 - **Levels**: every card is played at one level (`EnvConfig.level`, 11 by default) and every tower at `EnvConfig.towerLevel`; the header's `deck_level` and each row's `level` show them, and a labelled replay's vary.

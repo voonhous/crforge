@@ -87,8 +87,10 @@ import org.crforge.env.EnvFault.CoreFailure;
  * is moved to the tile the placement search finds. A champion slot's ability action is open when
  * the client's try of an ability command naming the slot's unit passes ({@link
  * PlayerCommands#tryAbility}); the unit is the one of the play the slot follows whose row names the
- * champion's ability, by the name the battle gave it. A play or ability command the mask let
- * through may still be refused at its run, as a player's can, and the seat is shown so.
+ * champion's ability, or, for a champion an action spawned, the live character the slot follows
+ * ({@link PlayerCommands#championUnit}), named by its game object id as the game's command names
+ * it. A play or ability command the mask let through may still be refused at its run, as a player's
+ * can, and the seat is shown so.
  *
  * <p>An action the mask closed, out of range, or refused at its giving is taken as a wait and
  * counted as illegal, with its refusal code in the seat's header. A giving the battle core refuses
@@ -468,7 +470,10 @@ public final class LadderEnv extends BufferedEnv {
   private final List<Map<String, boolean[]>> landingSeen =
       List.of(new HashMap<>(), new HashMap<>());
 
-  /** Per seat and champion slot: the unit its ability action names, or null for none found. */
+  /**
+   * Per seat and champion slot: the unit its ability action names, or null for none found. Kept
+   * only for a unit a play made, found once per play the slot follows.
+   */
   private final CharacterEntity[][] abilityUnits = new CharacterEntity[2][Schema.ABILITY_SLOTS];
 
   /** Per seat and champion slot: the champion row the unit was found for. */
@@ -542,8 +547,9 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * The name of the unit a seat's ability action of a champion slot names now, as the battle named
-   * it, or null when the slot follows no play or no unit of the play is found: the unit of the play
-   * the slot follows (its deploy count) whose row names the champion's ability, not a clone.
+   * it, or null when no such unit is found: the unit of the play the slot follows (its deploy
+   * count) whose row names the champion's ability, not a clone, or the live character the slot
+   * follows for a champion an action spawned ({@link PlayerCommands#championUnit}).
    *
    * @param seat the seat, 0 or 1
    * @param slot the champion slot, 0 or 1
@@ -1759,7 +1765,7 @@ public final class LadderEnv extends BufferedEnv {
     String name = "cmd" + (standard.getCommands().size() + withdrawn);
     PlayerCommands.Giving giving;
     try {
-      giving = giveAbility(side, slot, unit.name(), name);
+      giving = giveAbility(side, slot, unit.getId(), name);
     } catch (UnsupportedOperationException e) {
       // A giving the battle core does not model: nothing was sent, as for a refusal.
       notModelled++;
@@ -1772,20 +1778,20 @@ public final class LadderEnv extends BufferedEnv {
   }
 
   /**
-   * Gives an ability command naming a unit through the player's commands, and keeps it as waiting
-   * for its champion slot when given.
+   * Gives an ability command naming a unit by its game object id through the player's commands, as
+   * the game's command names it, and keeps it as waiting for its champion slot when given.
    *
    * @param side the commanding side
    * @param slot the champion slot whose button is tapped
-   * @param unit the name of the unit it names
+   * @param objectId the game object id of the unit it names
    * @param name the command's name, new to the battle
    * @return what the giving came to
    * @throws UnsupportedOperationException for a giving the battle core does not model
    */
-  PlayerCommands.Giving giveAbility(int side, int slot, String unit, String name) {
+  PlayerCommands.Giving giveAbility(int side, int slot, int objectId, String name) {
     PlayerCommands.Giving giving;
     try {
-      giving = commands.useAbility(side, unit, name);
+      giving = commands.useAbility(side, objectId, name);
     } catch (UnsupportedOperationException e) {
       throw e;
     } catch (RuntimeException | AssertionError | StackOverflowError e) {
@@ -1808,16 +1814,20 @@ public final class LadderEnv extends BufferedEnv {
   /**
    * The unit a seat's ability action of a champion slot names: the one the player's commands find
    * for the slot ({@link PlayerCommands#championUnit}), the unit of the play the slot follows whose
-   * row names the champion's ability, not a clone; null when the slot follows no play, or no play
-   * of the side that has run made such a unit (a champion an action spawned, which the player's
-   * commands cannot name). Found once per play the slot follows.
+   * row names the champion's ability, not a clone, or the live character the slot follows for a
+   * champion an action spawned (the Goblins hero's banner, the Barbarian Barrel hero's barbarian);
+   * null when neither stands. A unit found is kept once per play the slot follows; a slot that
+   * follows a unit by no deploy count, as the banner, is looked up anew each time.
    */
   private CharacterEntity findAbilityUnit(int seat, int slot) {
     ChampionController controller = standard.getWorld().kingTower(seat).championSlot(slot + 1);
     UnitData champion = controller == null ? null : controller.getChampion();
     int index = controller == null ? -1 : controller.getDeployIndex();
-    if (champion == null || champion.ability() == null || index < 0) {
+    if (champion == null || champion.ability() == null) {
       return null;
+    }
+    if (index < 0) {
+      return commands.championUnit(seat, slot);
     }
     if (abilityUnits[seat][slot] != null
         && abilityChampions[seat][slot] == champion
@@ -2707,7 +2717,7 @@ public final class LadderEnv extends BufferedEnv {
       }
       PlayerCommands.Giving tried;
       try {
-        tried = commands.tryAbility(seat, unit.name());
+        tried = commands.tryAbility(seat, unit.getId());
       } catch (UnsupportedOperationException e) {
         continue;
       } catch (RuntimeException | AssertionError | StackOverflowError e) {

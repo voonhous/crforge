@@ -1067,7 +1067,7 @@ public final class ReplayLabeller {
       if (unit != null) {
         PlayerCommands.Giving giving;
         try {
-          giving = env.giveAbility(side, slot, unit.name(), name);
+          giving = env.giveAbility(side, slot, unit.getId(), name);
         } catch (UnsupportedOperationException e) {
           notModelledAtGiving++;
           giving = null;

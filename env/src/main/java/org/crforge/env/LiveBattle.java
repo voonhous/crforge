@@ -193,16 +193,17 @@ public final class LiveBattle {
    *
    * @param side the commanding side
    * @param slot the champion slot, 0 or 1
-   * @param unit the name of the unit it names ({@link PlayerCommands#championUnit})
+   * @param objectId the game object id of the unit it names ({@link PlayerCommands#championUnit}),
+   *     as the game's command names it
    * @param name the command's name, new to the battle
    * @return what the giving came to
    * @throws UnsupportedOperationException for a giving the battle core does not model
    */
-  public PlayerCommands.Giving useAbility(int side, int slot, String unit, String name) {
+  public PlayerCommands.Giving useAbility(int side, int slot, int objectId, String name) {
     if (env.done()) {
       throw new IllegalStateException("the battle is over");
     }
-    return env.giveAbility(side, slot, unit, name);
+    return env.giveAbility(side, slot, objectId, name);
   }
 
   /**
