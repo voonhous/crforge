@@ -265,7 +265,8 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
    * @param data the entity's published columns
    * @param view the entity as the grid sees it
    * @param targetingConfig the entity's targeting columns
-   * @param level the entity's level, counted from 1
+   * @param level the entity's level, counted from 1; a king tower's may be 0, one below its
+   *     rarity's first level
    */
   protected WorldEntity(
       BattleWorld world,
@@ -333,7 +334,13 @@ public abstract class WorldEntity extends BattleEntity implements ActionOwner, S
       selection.setDeprioritizingBuffCarrier(
           candidate -> world.entityOf(candidate.getEntity()).getBuffs().carries(ranked));
     }
-    this.packedLevel = PackedLevel.fromLevel(level, data.rarity());
+    // A king tower's level is packed as the battle's setup packs it, with no floor, so a king
+    // level of 0 stands one step below the rarity's first level; every other row's is re-based on
+    // its rarity from a Common level.
+    this.packedLevel =
+        data.king()
+            ? PackedLevel.king(level, data.rarity())
+            : PackedLevel.fromLevel(level, data.rarity());
     targetView.setPendingDamageKey(packedLevel);
     ScalingGlobals globals = ScalingGlobals.standard();
     int maximum =

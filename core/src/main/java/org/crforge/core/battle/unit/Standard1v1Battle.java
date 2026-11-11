@@ -142,7 +142,8 @@ public class Standard1v1Battle {
    *
    * @param spawnGroup the spawn group's row name, whose objects are the towers in creation order,
    *     each a row of the characters or buildings and a routing cell on the bottom side
-   * @param kingLevel the level the group's king row is created at, counted from 1
+   * @param kingLevel the level the group's king row is created at, counted from 1, or 0 for one
+   *     step below its rarity's first level, where a generated case's king stands
    * @param level the level the group's other rows are created at, counted from 1
    */
   public record Towers(String spawnGroup, int kingLevel, int level) {}

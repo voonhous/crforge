@@ -121,11 +121,22 @@ public final class ReplayScenario {
   private static final int EXP_LEVEL = 1;
 
   /**
-   * The level a side's king row is created at, counted from 1: the summoner level of the avatar's
-   * exp level, which for {@link #EXP_LEVEL} is the first. It does not depend on the side's tower
-   * selection or its level index.
+   * The level a side's king row is created at, counted from 1, in a replay read by 14.593.1's
+   * fields, which give no king level: the summoner level of the avatar's exp level, which for
+   * {@link #EXP_LEVEL} is the first. It does not depend on the side's tower selection or its level
+   * index.
    */
   static final int KING_LEVEL = 1;
+
+  /**
+   * The level a side's king row is created at in a generated case, which leaves the players' king
+   * levels out: the game reads the missing king level as 0 and creates the king one step below its
+   * rarity's first level, on client 16.402.17 as on 16.635.1, whatever the avatar's exp level, the
+   * tower selection or its level index. The king's hit points and hits there are the first level's
+   * (the king's scaling adds nothing below one step), so only a change of the king's level shows
+   * it: a level-up brings such a king to its first level, its hit points unchanged.
+   */
+  static final int GENERATED_KING_LEVEL = 0;
 
   /** The table of the game modes. */
   static final String GAME_MODES = "game_modes";
@@ -1196,8 +1207,10 @@ public final class ReplayScenario {
    * level index counted from 0 on the card's rarity's first level.
    *
    * <p>The rows in the princess slots stand at the level index plus the support rarity's
-   * RelativeLevel plus 1, as a Common row. The king row stands at the avatar's level, {@link
-   * #KING_LEVEL}, whatever the selection and its level index are.
+   * RelativeLevel plus 1, as a Common row. The king row stands at the side's king level from its
+   * player data where the format gives one, else in a generated case at {@link
+   * #GENERATED_KING_LEVEL}, one below its first level, and in a replay read by 14.593.1's fields at
+   * the avatar's level, {@link #KING_LEVEL}, whatever the selection and its level index are.
    *
    * @return the side's towers
    */
@@ -1257,9 +1270,13 @@ public final class ReplayScenario {
             + " princess slots' rows at the index plus the support rarity's RelativeLevel plus 1"
             + (format.ladderEvents() ? ", or at the card level minimum when below it" : "")
             + "; the king row does not use it");
-    // The king row stands at the avatar's level, or where the format gives one, at the side's own
-    // king level from its player data.
-    int kingLevel = kingLevels.isEmpty() ? KING_LEVEL : kingLevels.get(side);
+    // The king row stands at the side's own king level from its player data where the format gives
+    // one; a generated case leaves it out and stands the king one below its first level; a replay
+    // read by 14.593.1's fields stands it at the avatar's level.
+    int kingLevel =
+        !kingLevels.isEmpty()
+            ? kingLevels.get(side)
+            : shape == ScenarioShape.GENERATED ? GENERATED_KING_LEVEL : KING_LEVEL;
     if (friendlyLevel > 0) {
       // Under the Friendly adjustment the game puts the king and the towers at one level of its
       // own, whatever the replay's.
@@ -1279,9 +1296,11 @@ public final class ReplayScenario {
    */
   private int[] avatar(JsonNode avatar, int side, List<String> arenas) {
     String field = "battle.avatar" + side;
-    // The king tower is created at the summoner level of the avatar's exp level; only the first
-    // exp level, whose king level is KING_LEVEL, has a production input.
-    // A format whose king level is in the player data has no exp level pinned.
+    // In a replay read by 14.593.1's fields the king tower is created at the summoner level of the
+    // avatar's exp level; only the first exp level, whose king level is KING_LEVEL, has a
+    // production input. A generated case's king does not follow the exp level
+    // (GENERATED_KING_LEVEL). A format whose king level is in the player data has no exp level
+    // pinned.
     format.avatarPins().forEach((name, value) -> pin(avatar, name, value));
     arenas.add(arena(required(avatar, "arena").asInt(), field + ".arena"));
     onlyFields(

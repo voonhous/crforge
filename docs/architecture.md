@@ -350,6 +350,8 @@ The header switch `seb`, true in a challenge's replays, is carried in client 16.
 
 A case generated for a data version of client 16.635.1 is read as one of client 16.402.17 is: by 14.593.1's fields, with the version's command types. The fields 16.402.18's replays add change nothing such a case plays: its recorded battles on 16.635.3 play the same with the request lists empty, the switches `cardlvlmin` 0, `rrb` and `seb` false and a king level of 1 for each side added.
 
+Such a case leaves each player's king level out, and the game reads the missing king level as 0: each king stands one step below its rarity's first level, not at level 1. Its hit points and its shots are the first level's all the same, so a king of level 1 only plays differently once its level changes: the Royal Chef's level-up brings a generated case's king to its first level with its hit points unchanged, where it raises a king of level 1 to the second level's hit points.
+
 A replay of a version whose fields are not decided is read by 14.593.1's, so a field only a later version writes is refused.
 
 16.402.18's replays also carry the Path of Legends fields (`rkd`, `hbd[i].sa`, the avatar's `rnk_sc`). A Path of Legends replay (game mode Ranked1v1_NewArena, or Ranked1v1_NewArena2 on the new arena) is played as a Ladder match with its own header values pinned (game mode type 13, level cap 16, trail -1); see [the battle core's known assumptions](battle-core-assumptions.md).

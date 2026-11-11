@@ -456,6 +456,8 @@
   "gcage-capture-v1/gcage_giant": {"outcome": "diagnostic_match"},
   "gcage-capture-v1/gcage_giant_attacking": {"outcome": "diagnostic_match"},
   "gcage-capture-v1/gcage_giant_musk": {"outcome": "diagnostic_match"},
+  "generated-king-level-v1/generated_king_level_860": {"outcome": "diagnostic_match"},
+  "generated-king-level-v1/generated_king_level_870": {"outcome": "diagnostic_match"},
   "ghost-tornado-v1/gt_200": {"outcome": "diagnostic_match"},
   "ghost-tornado-v1/gt_201": {"outcome": "diagnostic_match"},
   "ghost-tornado-v1/gt_202": {"outcome": "diagnostic_match"},

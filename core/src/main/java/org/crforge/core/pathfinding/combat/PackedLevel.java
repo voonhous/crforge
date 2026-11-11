@@ -23,7 +23,9 @@ import org.crforge.core.fidelity.FidelityStatus;
 @Fidelity(
     status = FidelityStatus.PARTIAL,
     note =
-        "Settled: the packing, its re-basing on the rarity and the floor at zero steps. Not"
+        "Settled: the packing, its re-basing on the rarity and the floor at zero steps, and a"
+            + " king's packing from its level with no floor (one step below the first level for a"
+            + " king level of 0). Not"
             + " settled: nothing here; the class only exists so that the level is packed once,"
             + " at creation, as the entity does.")
 public final class PackedLevel {
@@ -55,6 +57,21 @@ public final class PackedLevel {
   public static int fromLevel(int level, RarityTable rarity) {
     checkArgument(level >= 1, () -> "a level is counted from 1, got " + level);
     return pack(level - 1, rarity);
+  }
+
+  /**
+   * Packs a king tower's level, counted from 1, as the battle's setup packs it: the level less 1 as
+   * the steps in the low byte and the king row's own rarity's relative level above them, with no
+   * floor. A level of 0, which a side whose player data gives no king level has, so stands one step
+   * below the rarity's first level (steps -1). For a level of at least 1 on a Common row, as every
+   * king row is, this is {@link #fromLevel}.
+   *
+   * @param level the king's level, counted from 1, or 0 for one below the first
+   * @param rarity the king row's rarity
+   */
+  public static int king(int level, RarityTable rarity) {
+    checkArgument(level >= 0, () -> "a king's level is counted from 1 or is 0, got " + level);
+    return pack((rarity.relativeLevel() << 8) | ((level - 1) & 0xff), rarity);
   }
 
   /** Steps above the rarity's first level: the packed level's low byte, sign extended. */

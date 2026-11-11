@@ -253,18 +253,24 @@ public record ReplayFormat(
    * switches {@code cardlvlmin}, {@code rrb} and {@code seb}, and the players' king levels ({@code
    * kt}), and keeps 14.593.1's arena. The recorded battles of such cases on data version 16.402.18
    * play the same with the request lists empty, the switches at the values this client's replays
-   * pin, the arena of this client's replays and a king level of 1 for each side added, so each king
-   * stands at level 1, as the 14.593.1 fields give it; without a king level, the avatar's exp level
-   * does not change it. The fields are the client's, as its replays' are ({@link #BY_VERSION}), so
-   * they hold on every data version the client runs.
+   * pin, the arena of this client's replays and a king level of 1 for each side added. That a king
+   * level of 1 plays the same does not make it the absent one: the game reads a missing king level
+   * as 0 and creates the king one step below its first level, whose hit points and hits are the
+   * first level's, so only a change of the king's level tells the two apart ({@link
+   * ReplayScenario#GENERATED_KING_LEVEL}); without a king level, the avatar's exp level does not
+   * change it. The fields are the client's, as its replays' are ({@link #BY_VERSION}), so they hold
+   * on every data version the client runs.
    *
    * <p>Client 16.635.1 reads such a case by the same fields, for every data version it runs ({@link
    * GameVersions#CLIENT_16_635_1_DATA}). Its recorded battles of generated cases on data version
    * 16.635.3 play the same with the request lists empty, the switches {@code cardlvlmin} 0, {@code
    * rrb} and {@code seb} false and a king level of 1 for each side added, all together, and on one
    * case also the request lists, the switches and the king levels each added alone; a king level of
-   * 2 raises that side's king to that level's hit points, so the absent king level is 1; without a
-   * king level, the avatar's exp level does not change the battle.
+   * 2 raises that side's king to that level's hit points. The absent king level is 0, as on client
+   * 16.402.17: each king is created one step below its first level, and the Royal Chef's level-up
+   * landing on such a king brings it to its first level with its hit points unchanged, where a king
+   * of level 1 is raised to the second level's; without a king level, the avatar's exp level does
+   * not change the battle.
    */
   private static final Map<String, ReplayFormat> GENERATED_BY_VERSION = generatedByVersion();
 

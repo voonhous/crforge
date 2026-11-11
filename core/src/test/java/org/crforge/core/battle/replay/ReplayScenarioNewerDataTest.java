@@ -102,7 +102,7 @@ class ReplayScenarioNewerDataTest {
     assertThat(mapping.survey(scenario)).isEmpty();
     assertThat(mapping.translate(scenario).towers())
         .extracting(Standard1v1Battle.Towers::kingLevel)
-        .containsExactly(1, 1);
+        .containsExactly(ReplayScenario.GENERATED_KING_LEVEL, ReplayScenario.GENERATED_KING_LEVEL);
     assertThat(mapping.mapping().get("cmd[i].ct")).startsWith("consumed: 153, a card play, or 189");
   }
 }
