@@ -1487,6 +1487,16 @@ public final class WorldEvents {
     }
   }
 
+  /**
+   * Tells every observer what the area of a projectile's impact did, once its victims are dealt.
+   */
+  void projectileAreaDamaged(
+      ProjectileEntity projectile, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+    for (WorldObserver observer : observers) {
+      observer.projectileAreaDamaged(tick(), projectile, area, outcome);
+    }
+  }
+
   /** A projectile's impact made the area effect its row names, at the impact point. */
   void projectileAreaEffect(ProjectileEntity projectile, AreaEffectEntity areaEffect) {
     for (WorldObserver observer : observers) {

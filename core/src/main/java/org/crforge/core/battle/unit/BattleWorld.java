@@ -60,6 +60,7 @@ import org.crforge.core.pathfinding.GridEntity;
 import org.crforge.core.pathfinding.GridEntityState;
 import org.crforge.core.pathfinding.GridUnitState;
 import org.crforge.core.pathfinding.IndexNeighbourQuery;
+import org.crforge.core.pathfinding.combat.AreaDamage;
 import org.crforge.core.pathfinding.combat.HitPoints;
 import org.crforge.core.pathfinding.combat.PackedLevel;
 import org.crforge.core.pathfinding.grid.CellCosts;
@@ -2116,6 +2117,20 @@ public class BattleWorld implements HolderPasses {
     }
     long sum = (long) x * x + (long) y * y;
     return sum > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) sum;
+  }
+
+  /**
+   * Tells every observer what the area of a projectile's impact did, once its victims are dealt.
+   * Only an impact that dealt its area is told: one with no damage, and no push it always applies,
+   * returns before it collects anyone and is not.
+   *
+   * @param projectile the projectile that landed
+   * @param area the circle it dealt, about its impact point
+   * @param outcome who stood in it, whom the validator accepted, and whom it damaged
+   */
+  public void projectileAreaDamaged(
+      ProjectileEntity projectile, AreaDamage.Area area, AreaDamage.Outcome outcome) {
+    events.projectileAreaDamaged(projectile, area, outcome);
   }
 
   /**
