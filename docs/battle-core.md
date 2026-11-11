@@ -370,7 +370,7 @@ A player's command does not run when the player gives it. The game client stamps
   A command that passes promises its cost until its run, or, refused at its run, until 60 steps after its giving. An ability command's run releases its promise before its gates.
 - **Where a tapped card goes.** The player's screen does not send the point the card was dropped at. On the drop the client runs the placement search, the same one the run makes, against the battle as it stands at that moment. The command carries the tile the search found: the nearest tile the card may take (for a troop, a tile of its own half or of an open pocket, never on a tower's or building's footprint), at the tile's centre, or a building's tile corner.
 
-  A troop dropped in the enemy half, on the river, on a tile the map check refuses or inside a building is moved before anything is sent, not refused. A drop is cancelled, with nothing sent, only when the search finds no tile, when the card is dragged back over the hand, or when the client's try refuses it. Since the command already carries a legal tile, the try's map check does not refuse a play the screen made.
+  A troop dropped in the enemy half, on the river, on a tile the map check refuses or inside a building is moved before anything is sent, not refused. A drop is cancelled, with nothing sent, only when the search finds no tile, when the card is dropped back over the hand, beyond the player's own back edge of the arena, or when the client's try refuses it. The screen tests that edge on the dropped point before its search: it cancels a point before the start of the arena's length for side 0, and at or past its end for side 1. The game would also cancel a band of the player's own back rows as wide as an edge margin, but no data sets that margin, so it is 0 and no point on the arena is cancelled. This comes from the screen's handling: no recording holds it, as recordings hold only the plays that were sent. Since the command already carries a legal tile, the try's map check does not refuse a play the screen made.
 
   At the run the placement search runs again from the tile sent. That moves it only if the board changed in the 20 steps between: a pocket opened or closed or a building placed or destroyed. The recordings agree: every play of the live Ladder battles in the coverage sets of 16.402.19 and 16.402.21, about 820,000, is sent on a tile centre or a building's tile corner.
 - **The earliest play.** A card play is refused while the battle's tick counter is below the game mode's start cooldown. That is the game mode row's `BattleStartCooldown` in milliseconds over 50, or, where the row leaves it empty, the global `LOGIC_BATTLE_START_COOLDOWN` over 50. Ladder and Ranked1v1_NewArena leave the column empty and the global is 4500 ms in 16.402.18, 16.402.19, 16.402.21 and 16.635.3. So a play can be given from tick counter 90 (4.5 seconds) and runs at 110 at the earliest.
@@ -399,6 +399,8 @@ Both stamp the command with the tick counter, or 1 at tick 0, and queue it to ru
 A play is sent as the screen sends it. `playCard` runs the play's own placement search (`Standard1v1Battle.searchPlacement`, the search the run makes, with no map check before it) on the dropped point against the battle as it stands, and the command carries the tile found. So a troop dropped in the enemy half, on the river, on a tower, off the map or on a cell the map check refuses is moved, and a spell is sent on its tile's centre.
 
 It refuses a play only when the search finds no tile (`NO_TILE`, the screen's, with no code). On the standard arena that is a Mirror while its king has no last card, as the search places a Mirror as the king's last card.
+
+Before all of that, a point beyond the side's own back edge of the arena (y below 0 for side 0, y at or past the arena's length for side 1, the length read from the battle's tile map) is refused as `NO_TILE` too, with no search, no try and no cost worked out, as the screen cancels such a drop over the hand. A point beyond the width or beyond the enemy's edge is still moved by the search.
 
 The try of a play is:
 
@@ -431,7 +433,7 @@ Some plays the client's try passes would be refused as not modelled at their run
 
 #### Trying without giving
 
-- `tryCard` makes the same checks without a point and without giving anything, for a hand slot's availability (the desktop hand, an agent's mask). It does not run the search, which finds a tile from every point of the standard arena, but refuses a Mirror whose king has no last card as `NO_TILE`.
+- `tryCard` makes the same checks without a point and without giving anything, for a hand slot's availability (the desktop hand, an agent's mask). It does not run the search, which finds a tile from every point of the standard arena, but refuses a Mirror whose king has no last card as `NO_TILE`. Having no point, it leaves out the own-edge cancel, which no point on the arena meets, so a mask of arena tiles built from it agrees with `playCard`.
 - `tryAbility` tries an ability command naming a unit the same way, by object id or by name, with the same gates and refusals as `useAbility` and nothing given (an agent's mask of a champion's button).
 - `promised` reads the costs a side holds back.
 
