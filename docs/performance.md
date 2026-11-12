@@ -128,3 +128,5 @@ Earlier baselines and each round of optimisations, with the numbers before and a
 ## The environment
 
 The reinforcement learning environment (`env`) steps many battles in one call behind direct buffers. Its benchmark, `./gradlew :env:envBenchmark` (JMH), and the numbers it gave are in [The Environment](environment.md#performance). A Ladder decision costs what this page's tick benchmark says for its ticks plus the environment's encoding, masks and tries, which the synthetic engine puts at a few microseconds.
+
+What a fork of a battle costs (`LadderEnv.fork`, the copy a search makes to look ahead), its benchmark and each round of work on it are in [Fork performance](performance/fork.md).

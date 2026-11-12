@@ -20,6 +20,7 @@ This page is the index of the docs, the module and package layout, and the debug
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
 | [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures, how to profile and the current baseline |
 | [Performance History](performance-history.md) | The earlier benchmark baselines and each round of optimisations, with their numbers and profiles |
+| [Fork Performance](performance/fork.md) | What a fork of a battle costs (`:env:envBenchmark`, `ForkBenchmark`), what it copies, and each round of work on it |
 | [The Environment](environment.md) | The reinforcement learning environment on the battle core: the observation schema, the action space and mask, the faults, the vector environment and its benchmark, and the Python package on it |
 | [Debug Visualizer](#debug-visualizer) | Below: the debug screen, the game tables it opens, its controls, the replay viewer and the overlays |
 

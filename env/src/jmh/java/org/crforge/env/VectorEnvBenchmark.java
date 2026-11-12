@@ -46,7 +46,7 @@ import org.openjdk.jmh.annotations.Warmup;
 public class VectorEnvBenchmark {
 
   /** One deck for both sides, a mirror match: every card a row of the tables. */
-  private static final List<String> DECK =
+  static final List<String> DECK =
       List.of("Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap");
 
   /** The counters beside the score: environment steps and battle ticks run. */

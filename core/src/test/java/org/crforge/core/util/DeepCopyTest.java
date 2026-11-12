@@ -55,6 +55,12 @@ class DeepCopyTest {
 
   record Pair(Node left, List<Node> right) {}
 
+  /** A record of values only, by its components' types; it may hold another of its kind. */
+  record Amount(int count, String unit, Amount next) {}
+
+  /** A record that may hold anything. */
+  record Tagged(Object subject, List<String> tags, Map<String, Integer> counts) {}
+
   /** A plain class that hashes by its fields. */
   static final class Valued {
     int value;
@@ -147,6 +153,71 @@ class DeepCopyTest {
     Node copy = DeepCopy.of(a, o -> o == data);
     assertThat(copy.peer).isSameAs(data);
     assertThat(DeepCopy.reachable(a)).contains(a, data, a.children, a.counts);
+  }
+
+  @Test
+  void whatHoldsNothingThatChangesIsKept() {
+    Node data = new Node("data");
+    // Values only by its components' types, values and shared data by what it holds, and a lambda
+    // that captures shared data.
+    Amount amount = new Amount(7, "seven", new Amount(1, "one", null));
+    Tagged tagged = new Tagged(data, List.of("x", "y"), Map.of("k", 300));
+    IntSupplier reader = data.reader();
+    Holder holder = new Holder();
+    holder.held = new ArrayList<>(List.of(amount, tagged, reader, List.of(tagged), Set.of(1)));
+    List<?> held = (List<?>) DeepCopy.of(holder, o -> o == data).held;
+    assertThat(held).isNotSameAs(holder.held);
+    for (int i = 0; i < held.size(); i++) {
+      assertThat(held.get(i)).isSameAs(((List<?>) holder.held).get(i));
+    }
+  }
+
+  @Test
+  void whatHoldsAnObjectThatChangesIsBuiltAgainAtAnyDepth() {
+    Node a = new Node("a");
+    // The node is two records and a list down.
+    Tagged tagged = new Tagged(List.of(new Tagged(a, List.of(), Map.of())), List.of(), Map.of());
+    Holder holder = new Holder();
+    holder.held = tagged;
+    Tagged copy = (Tagged) DeepCopy.of(holder, o -> false).held;
+    assertThat(copy).isNotSameAs(tagged);
+    Tagged inner = (Tagged) ((List<?>) copy.subject()).get(0);
+    assertThat(inner.subject()).isInstanceOf(Node.class).isNotSameAs(a);
+    // A mutable list is copied even when all it holds is kept, and so is the record holding it.
+    Tagged listed = new Tagged("s", new ArrayList<>(List.of("x")), Map.of());
+    holder.held = listed;
+    Tagged listedCopy = (Tagged) DeepCopy.of(holder, o -> false).held;
+    assertThat(listedCopy).isNotSameAs(listed).isEqualTo(listed);
+    assertThat(listedCopy.tags()).isNotSameAs(listed.tags());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void aMemoKeepsWhatAnEarlierCopyFoundUnchangingAndCopiesTheSame() {
+    Node data = new Node("data");
+    Node a = new Node("a");
+    Tagged unchanging = new Tagged(data, List.of("x"), Map.of());
+    Tagged changing = new Tagged(a, List.of("x"), Map.of());
+    Holder holder = new Holder();
+    holder.held = new ArrayList<>(List.of(a, unchanging, changing));
+    DeepCopy.Memo memo = new DeepCopy.Memo();
+    for (int round = 0; round < 3; round++) {
+      List<?> held = (List<?>) DeepCopy.of(holder, o -> o == data, memo).held;
+      Node node = (Node) held.get(0);
+      assertThat(node).isNotSameAs(a);
+      assertThat(held.get(1)).isSameAs(unchanging);
+      assertThat(held.get(2)).isNotSameAs(changing);
+      assertThat(((Tagged) held.get(2)).subject()).isSameAs(node);
+      // The record, both records' lists of tags and the one empty map they share: found by the
+      // first copy, and not added again.
+      assertThat(memo.size()).isEqualTo(4);
+    }
+    // What a later copy first reaches is added.
+    Tagged later = new Tagged("s", List.of(), Map.of());
+    ((List<Object>) holder.held).add(later);
+    assertThat(((List<?>) DeepCopy.of(holder, o -> o == data, memo).held).get(3)).isSameAs(later);
+    // The record and its empty list.
+    assertThat(memo.size()).isEqualTo(6);
   }
 
   @Test

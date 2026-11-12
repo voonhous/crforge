@@ -71,3 +71,18 @@ tasks.register<JavaExec>("envBenchmark") {
     doFirst { results.parentFile.mkdirs() }
     outputs.upToDateWhen { false }
 }
+
+// Counts what a fork of a Ladder battle copies, by kind and by class (docs/performance/fork.md).
+// --args gives the ticks to count at, for example --args="1500".
+tasks.register<JavaExec>("forkCensus") {
+    description = "Counts the objects a fork of a Ladder battle copies (docs/performance/fork.md)."
+    group = "verification"
+    classpath = jmh.runtimeClasspath
+    mainClass.set("org.crforge.env.ForkCensus")
+    dependsOn(":tables:dataVersionTables")
+    systemProperty(
+        "crforge.gameTables",
+        "${rootProject.extra["crforge.builtTablesRoot"]}/${rootProject.extra["crforge.dataVersion"]}",
+    )
+    outputs.upToDateWhen { false }
+}
