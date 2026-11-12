@@ -867,6 +867,7 @@ public final class LadderEnv extends BufferedEnv {
     battle = null;
     match = null;
     commands = null;
+    unchanging = new DeepCopy.Memo();
     givenCards.clear();
     givenAt.clear();
     waiting.clear();
@@ -1130,7 +1131,7 @@ public final class LadderEnv extends BufferedEnv {
    */
   public LadderEnv fork(int seat) {
     checkForkable(seat);
-    Set<Object> data = SHARED.computeIfAbsent(tables, DeepCopy::reachable);
+    SharedData data = SHARED.computeIfAbsent(tables, SharedData::of);
     LadderEnv fork =
         DeepCopy.of(
             this,
@@ -1139,7 +1140,9 @@ public final class LadderEnv extends BufferedEnv {
                     || object == config
                     || object instanceof Buffer
                     || object instanceof RarityTable
-                    || data.contains(object));
+                    || object == unchanging
+                    || data.contains(object),
+            unchanging);
     fork.bind(
         IntBuffer.allocate(2 * Schema.SEAT_INTS),
         ByteBuffer.allocate(2 * Schema.ACTIONS),
@@ -1178,8 +1181,35 @@ public final class LadderEnv extends BufferedEnv {
    * Every object the game tables hold, by tables: what a {@link #fork} shares rather than copies.
    * Walked once per tables, as the tables never change.
    */
-  private static final Map<GameTables, Set<Object>> SHARED =
+  private static final Map<GameTables, SharedData> SHARED =
       Collections.synchronizedMap(new WeakHashMap<>());
+
+  /**
+   * Every object some game tables hold, and the classes of those objects. Most of a battle's own
+   * objects are of classes the tables hold none of (its units, their components), and asking for
+   * the class first answers for them without a look up among the tables' hundred thousand objects.
+   */
+  private record SharedData(Set<Object> objects, Set<Class<?>> classes) {
+    static SharedData of(GameTables tables) {
+      Set<Object> objects = DeepCopy.reachable(tables);
+      Set<Class<?>> classes = new HashSet<>();
+      for (Object object : objects) {
+        classes.add(object.getClass());
+      }
+      return new SharedData(objects, classes);
+    }
+
+    boolean contains(Object object) {
+      return classes.contains(object.getClass()) && objects.contains(object);
+    }
+  }
+
+  /**
+   * What the forks of this episode found to never change, so the next fork does not read it again
+   * ({@link DeepCopy.Memo}): mostly the records a unit holds of its rows' values. A fork shares its
+   * episode's, and a new episode starts an empty one, so it holds only a live battle's objects.
+   */
+  private DeepCopy.Memo unchanging = new DeepCopy.Memo();
 
   private void checkForkable(int seat) {
     if (seat < -1 || seat > 1) {

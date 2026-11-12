@@ -147,6 +147,34 @@ class LookaheadTest {
   }
 
   @Test
+  void aForkOfAForkSteppedOnIsTheBattleSteppedTheSame() {
+    try (VectorEnv env = ladder(1, 1)) {
+      SplittableRandom random = new SplittableRandom(11);
+      play(env, 0, 200, random);
+      LadderEnv original = ladderEnv(env, 0);
+      assertThat(original.done()).isFalse();
+      // Each fork is of the fork before, stepped on: a later fork keeps what the earlier ones found
+      // to never change, among units played since.
+      LadderEnv fork = original.fork(-1);
+      for (int round = 0; round < 4 && !original.done(); round++) {
+        for (int d = 0; d < 60 && !original.done(); d++) {
+          int action0 = randomAction(original, 0, random);
+          int action1 = randomAction(original, 1, random);
+          original.step(action0, action1);
+          fork.step(action0, action1);
+          assertThat(written(fork))
+              .as("decision %d of round %d", d, round)
+              .isEqualTo(written(original));
+        }
+        if (!original.done()) {
+          fork = fork.fork(-1);
+          assertThat(written(fork)).isEqualTo(written(original));
+        }
+      }
+    }
+  }
+
+  @Test
   void aCopiedForkIsTheBattlePlayedAgainFromItsStart() {
     for (int seed = 0; seed < 3; seed++) {
       try (VectorEnv env = ladder(1, 1)) {

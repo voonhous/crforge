@@ -54,10 +54,13 @@ import sun.misc.Unsafe;
  *       and every instance field of it and of its superclasses copied; an anonymous or inner class
  *       copies its enclosing instance as a field.
  *   <li>A record is built by its canonical constructor from its copied components, and a lambda
- *       that captures values by its own constructor from its copied captures.
+ *       that captures values by its own constructor from its copied captures. Neither can change
+ *       what it holds, so one whose values are all kept as they are (leaves, shared objects and
+ *       others so kept) is the original, as is a record whose components can only be values (by
+ *       their types: primitives, strings, boxed primitives, enums and such records).
  *   <li>A collection or map of the JDK is rebuilt as one of its own class holding the copied
  *       elements, in the original's order of iteration; an immutable one ({@code List.of} and the
- *       like) is rebuilt immutable.
+ *       like) is rebuilt immutable, or is the original when its elements are all kept as they are.
  * </ul>
  *
  * <p>A JDK class not listed here (other than the shared kinds above) is refused, naming it: its
@@ -100,7 +103,22 @@ public final class DeepCopy {
       };
 
   private final Predicate<Object> shared;
-  private final IdentityHashMap<Object, Object> copies = new IdentityHashMap<>();
+
+  /** What earlier copies found unchanging, as this copy began; empty without a memo. */
+  private final IdentityHashMap<Object, Object> unchanging;
+
+  /** What this copy finds unchanging, to add to its memo; null without one. */
+  private final List<Object> found;
+
+  /**
+   * How many objects the last copy made, in any thread: the next copy's map of copies is made for
+   * as many and a quarter more, as a map grown from empty is rehashed several times over a battle's
+   * few thousand objects. Only a hint: a graph of another size is copied as well.
+   */
+  private static volatile int lastCopies = 256;
+
+  private final IdentityHashMap<Object, Object> copies =
+      new IdentityHashMap<>(lastCopies + lastCopies / 4);
 
   /** Plain objects allocated and not yet filled in: the original then the copy. */
   private final ArrayDeque<Object> unfilled = new ArrayDeque<>();
@@ -118,11 +136,66 @@ public final class DeepCopy {
    * @throws UnsupportedOperationException naming a class the graph holds that cannot be copied
    */
   public static <T> T of(T root, Predicate<Object> shared) {
-    DeepCopy copy = new DeepCopy(shared);
+    return of(root, shared, null);
+  }
+
+  /**
+   * As {@link #of(Object, Predicate)}, remembering between copies what never changes.
+   *
+   * @param root the graph's root
+   * @param shared the objects the copy keeps as they are; it must answer the same for an object at
+   *     every copy that uses the memo
+   * @param memo what the copies of these graphs found unchanging so far, added to by this one, or
+   *     null for none
+   * @return the root's copy
+   * @throws UnsupportedOperationException naming a class the graph holds that cannot be copied
+   */
+  public static <T> T of(T root, Predicate<Object> shared, Memo memo) {
+    DeepCopy copy =
+        new DeepCopy(
+            shared,
+            memo == null ? new IdentityHashMap<>(0) : memo.unchanging,
+            memo == null ? null : new ArrayList<>());
     @SuppressWarnings("unchecked")
     T result = (T) copy.copy(root);
     copy.drain();
+    lastCopies = copy.copies.size();
+    if (memo != null && !copy.found.isEmpty()) {
+      memo.add(copy.found);
+    }
     return result;
+  }
+
+  /**
+   * The records, capturing lambdas and immutable collections that copies found to hold nothing a
+   * copy changes: only leaves, shared objects and others of their kind. Such an object can never
+   * change, so every later copy keeps it too, and a copy given the memo keeps it without reading it
+   * again. A battle's units each hold records of some hundred values read from the tables, which
+   * cost a copy more to read than the battle's own state.
+   *
+   * <p>One memo serves the copies of graphs that share objects, such as a battle and its forks; a
+   * graph is copied the same with it as without. It holds the objects strongly, so it should live
+   * no longer than the graphs do. Several threads may copy with one memo at once: a copy reads the
+   * objects known as it began, and adds the ones it found as a new map when it ends, which costs a
+   * pass over the memo only when it found some.
+   */
+  public static final class Memo {
+    private volatile IdentityHashMap<Object, Object> unchanging = new IdentityHashMap<>(0);
+
+    /** How many objects the memo holds. */
+    public int size() {
+      return unchanging.size();
+    }
+
+    private synchronized void add(List<Object> found) {
+      IdentityHashMap<Object, Object> next =
+          new IdentityHashMap<>(unchanging.size() + found.size());
+      next.putAll(unchanging);
+      for (Object object : found) {
+        next.put(object, object);
+      }
+      unchanging = next;
+    }
   }
 
   /**
@@ -194,16 +267,23 @@ public final class DeepCopy {
     if (object == null) {
       return null;
     }
+    Class<?> type = object.getClass();
+    if (type.isArray()) {
+      Object made = copies.get(object);
+      return made != null ? made : copyArray(object, type);
+    }
+    Plan plan = PLANS.get(type);
+    // A leaf is never in the copies: asked first, as boxed numbers, strings and enum constants are
+    // the most of what a battle's collections hold, and the look up costs more than the answer.
+    if (plan.kind == Kind.LEAF) {
+      return object;
+    }
     Object made = copies.get(object);
     if (made != null) {
       return made;
     }
-    Class<?> type = object.getClass();
-    if (type.isArray()) {
-      return copyArray(object, type);
-    }
-    Plan plan = PLANS.get(type);
-    if (plan.kind == Kind.LEAF || shared.test(object)) {
+    // A plain object is never unchanging: only what cannot change what it holds is.
+    if (plan.kind != Kind.PLAIN && unchanging.containsKey(object) || shared.test(object)) {
       return object;
     }
     switch (plan.kind) {
@@ -216,10 +296,15 @@ public final class DeepCopy {
       }
       case RECORD, LAMBDA -> {
         Object[] values = new Object[plan.fields.length];
+        boolean same = true;
         for (int i = 0; i < values.length; i++) {
-          values[i] = copy(read(plan.fields[i], object));
+          Object value = read(plan.fields[i], object);
+          values[i] = copy(value);
+          same &= values[i] == value;
         }
-        made = construct(plan.constructor, values);
+        // Neither can change what it holds, so one whose values are all kept as they are (leaves
+        // and shared data) is itself kept: a new one would differ in nothing but its identity.
+        made = same ? unchanging(object) : construct(plan.constructor, values);
         copies.put(object, made);
         return made;
       }
@@ -240,28 +325,40 @@ public final class DeepCopy {
       }
       case IMMUTABLE_LIST -> {
         List<Object> elements = new ArrayList<>();
+        boolean same = true;
         for (Object element : (List<?>) object) {
-          elements.add(copy(element));
+          Object copied = copy(element);
+          elements.add(copied);
+          same &= copied == element;
         }
-        made = List.copyOf(elements);
+        // An immutable collection whose elements are all kept as they are is itself kept, as a
+        // record is: so a record of the tables' values and lists of them is not built again.
+        made = same ? unchanging(object) : List.copyOf(elements);
         copies.put(object, made);
         return made;
       }
       case IMMUTABLE_SET -> {
         List<Object> elements = new ArrayList<>();
+        boolean same = true;
         for (Object element : (Set<?>) object) {
-          elements.add(hashed(copy(element)));
+          Object copied = hashed(copy(element));
+          elements.add(copied);
+          same &= copied == element;
         }
-        made = Set.copyOf(elements);
+        made = same ? unchanging(object) : Set.copyOf(elements);
         copies.put(object, made);
         return made;
       }
       case IMMUTABLE_MAP -> {
         Map<Object, Object> entries = new LinkedHashMap<>();
+        boolean same = true;
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
-          entries.put(hashed(copy(entry.getKey())), copy(entry.getValue()));
+          Object key = hashed(copy(entry.getKey()));
+          Object value = copy(entry.getValue());
+          entries.put(key, value);
+          same &= key == entry.getKey() && value == entry.getValue();
         }
-        made = Map.copyOf(entries);
+        made = same ? unchanging(object) : Map.copyOf(entries);
         copies.put(object, made);
         return made;
       }
@@ -277,6 +374,14 @@ public final class DeepCopy {
       }
       default -> throw refused(type);
     }
+  }
+
+  /** An object kept because nothing it holds changes, noted for the memo. */
+  private Object unchanging(Object object) {
+    if (found != null) {
+      found.add(object);
+    }
+    return object;
   }
 
   private Object copyArray(Object array, Class<?> type) {
@@ -556,7 +661,8 @@ public final class DeepCopy {
         try {
           Constructor<?> constructor = type.getDeclaredConstructor(types);
           constructor.setAccessible(true);
-          return new Plan(Kind.RECORD, fields, constructor);
+          // A record of values only is kept as it is, without reading it.
+          return new Plan(valuesOnly(type) ? Kind.LEAF : Kind.RECORD, fields, constructor);
         } catch (NoSuchMethodException e) {
           throw new IllegalStateException(type + " has no canonical constructor", e);
         }
@@ -604,6 +710,41 @@ public final class DeepCopy {
         return new Plan(Kind.REFUSED, new Field[0], null);
       }
       return new Plan(Kind.PLAIN, instanceFields(type), null, definesHashCode(type));
+    }
+
+    /**
+     * Whether a record can hold nothing a battle changes, by its components' declared types: each a
+     * primitive, a {@code String}, a boxed primitive, an enum or another such record.
+     */
+    private static boolean valuesOnly(Class<?> record) {
+      return valuesOnly(record, new HashSet<>());
+    }
+
+    /** As above, with the records being asked about: one that holds itself is not asked again. */
+    private static boolean valuesOnly(Class<?> record, Set<Class<?>> asking) {
+      if (!asking.add(record)) {
+        return true;
+      }
+      for (RecordComponent component : record.getRecordComponents()) {
+        Class<?> type = component.getType();
+        boolean value =
+            type.isPrimitive()
+                || type == String.class
+                || type == Integer.class
+                || type == Long.class
+                || type == Short.class
+                || type == Byte.class
+                || type == Character.class
+                || type == Boolean.class
+                || type == Double.class
+                || type == Float.class
+                || type.isEnum()
+                || type.isRecord() && valuesOnly(type, asking);
+        if (!value) {
+          return false;
+        }
+      }
+      return true;
     }
 
     private static boolean definesHashCode(Class<?> type) {
