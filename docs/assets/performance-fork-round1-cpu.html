@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<style>
+	:root      {--bg: #ffffff; --fg: #000000; --hl-bg: #ffffe0; --hl-border: #ffc000; --link: #0366d6; --legend-bg: #ffffe0; --legend-border: #666666}
+	:root.dark {--bg: #1e1e1e; --fg: #cccccc; --hl-bg: #3a3a00; --hl-border: #8a7000; --link: #58a6ff; --legend-bg: #333333; --legend-border: #888888}
+	body {margin: 0; padding: 10px 10px 22px 10px; background-color: var(--bg); color: var(--fg)}
+	h1 {margin: 5px 0 0 0; font-size: 18px; font-weight: normal; text-align: center}
+	header {margin: -22px 0 6px 0}
+	button {border: none; background: none; width: 24px; height: 24px; cursor: pointer; margin: 0; padding: 2px 0 0 0; text-align: center}
+	button:hover {background-color: var(--hl-bg); outline: 1px solid var(--hl-border); border-radius: 4px}
+	dl {margin: 0 4px 8px 4px}
+	dt {margin: 1px; padding: 2px 0; font-weight: bold}
+	dd {margin: 1px; padding: 2px 4px}
+	dl.frames {float: left; width: 160px}
+	dl.frames > dd {color: #000000}
+	dl.hotkeys {clear: left; border-top: 1px solid var(--legend-border)}
+	dl.hotkeys > dt {float: left; clear: left; width: 158px; margin-right: 4px; text-align: right}
+	dl.hotkeys > dd {float: left}
+	p {position: fixed; bottom: 0; margin: 0; padding: 2px 3px 2px 3px; outline: 1px solid var(--hl-border); display: none; overflow: hidden; white-space: nowrap; background-color: var(--hl-bg); color: var(--fg)}
+	a {color: var(--link)}
+	#legend {padding: 4px; border-radius: 4px; background: var(--legend-bg); border: 1px solid var(--legend-border); display: none}
+	#hl {position: absolute; display: none; overflow: hidden; white-space: nowrap; pointer-events: none; background-color: var(--hl-bg); outline: 1px solid var(--hl-border); height: 15px}
+	#hl span {padding: 0 3px 0 3px}
+	#status {left: 0}
+	#match {right: 0}
+	#reset {cursor: pointer}
+	#canvas {width: 100%; height: 416px}
+</style>
+<script>
+{
+	let theme;
+	try { theme = localStorage.getItem('flame-theme'); } catch (ignored) {}
+	if (theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches) {
+		document.documentElement.classList.add('dark');
+	}
+}
+</script>
+</head>
+<body style='font: 12px Verdana, sans-serif'>
+<h1>LadderEnv.fork, CPU, tick 1500, after</h1>
+<header style='float: left'>
+<button id='inverted' title='Invert (I)'><svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 392 392'><path d='M196,36 L316,156 L76,156 Z' fill='#004d80'/><path d='M196,356 L76,236 L316,236 Z' fill='#004d80'/><path d='M196,54 L298,156 L94,156 Z' fill='#ff8d40'/><path d='M196,338 L94,236 L298,236 Z' fill='#40b2ff'/><rect x='94' y='188' width='204' height='16' fill='#004d80'/></svg></button>
+<button id='search' title='Search (Ctrl+F)'><svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='-39.3 -39.3 471.1 471.1'><circle cx='147.7' cy='147.8' r='125.9' fill='#fff'/><path fill='#40b2ff' d='M370.7 348.7c0 1.4-1.6 6.3-7.2 12.3-6.2 6.7-12.5 9.8-14.7 9.8h-.1c-19.5-1.6-62-43.2-109.6-106.8 9.2-7.2 17.5-15.5 24.6-24.6 63.6 47.6 105.2 90.2 106.8 109.6z'/><path fill='#ff8d40' d='M208.7 86.9l-14.5 14.5c-17.1 17.1-46.5 5-46.5-19.3V61.6c-49 0-88.4 40.8-86.1 90.2 2 43.9 38.1 80 82 82 49.5 2.3 90.2-37.2 90.2-86.1 0-23.7-9.6-45.2-25.1-60.8z'/><path fill='#004d80' d='M276.1 221c12.3-21.5 19.5-46.5 19.5-73.2C295.6 66.3 229.2.1 147.7.1S0 66.3 0 147.9s66.3 147.7 147.7 147.7c26.6 0 51.5-7.1 73.2-19.5 39.8 53.3 91.9 113.5 126.1 116.4 12.3.5 22.9-6.7 32.8-16.7 5.2-5.6 13.8-16.9 12.8-28.8-2.9-34.1-63.1-86.2-116.4-126.1zM147.7 273.8c-69.5 0-125.9-56.5-125.9-125.9S78.3 21.9 147.7 21.9 273.6 78.4 273.6 147.8s-56.4 126-125.9 126zm215.9 87.2c-6.2 6.7-12.4 9.8-14.7 9.8h-.1c-19.5-1.6-62-43.2-109.6-106.8 9.2-7.2 17.5-15.5 24.6-24.6 63.6 47.6 105.2 90.2 106.8 109.6 0 1.4-1.6 6.3-7.2 12.4z'/></svg></button>
+<button id='darkmode' title='Toggle dark mode (D)'><svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><path d='M10 4a6 6 0 0 1 0 12z' fill='#ff8d40'/><path d='M10 4a6 6 0 0 0 0 12z' fill='#ffffff'/><circle cx='10' cy='10' r='8' fill='none' stroke='#004d80'/></svg></button>
+<button id='info'><svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'><circle cx='10' cy='10' r='8' stroke='#004d80' fill='none'/><path d='M10 5.5c-1.25 0-2.25 1-2.25 2.25H9a1.25 1.25 0 0 1 2.5 0c0 .65-.55 1-1 1.2-.7.35-1.25.85-1.25 1.8V11h1.5v-.25c0-.37.29-.65.68-.83.73-.34 1.32-.87 1.32-2.17 0-1.25-1.5-2.25-2.75-2.25' fill='#ff8d40' stroke='#ff8d40' stroke-width='.6' stroke-linecap='round' stroke-linejoin='round'/><circle cx='10' cy='13.5' r='1.2' fill='#ff8d40'/></svg></button>
+</header>
+<header style='float: right'>Produced by <a href='https://github.com/async-profiler/async-profiler'>async-profiler</a></header>
+<div id='legend' style='position: absolute'>
+<dl class='frames'>
+	<dt>Frame types</dt>
+	<dd style='background-color: #e17d00'>Kernel</dd>
+	<dd style='background-color: #e15a5a'>Native</dd>
+	<dd style='background-color: #c8c83c'>C++ (VM)</dd>
+	<dd style='background-color: #50e150'>Java compiled</dd>
+	<dd style='background-color: #cce880'>Java compiled by C1</dd>
+	<dd style='background-color: #50cccc'>Inlined</dd>
+	<dd style='background-color: #b2e1b2'>Interpreted</dd>
+</dl>
+<dl class='frames'>
+	<dt>Allocation profile</dt>
+	<dd style='background-color: #50cccc'>Allocated class</dd>
+	<dd style='background-color: #e17d00'>Allocation outside TLAB</dd>
+	<dt>Lock profile</dt>
+	<dd style='background-color: #50cccc'>Lock class</dd>
+	<dt>&nbsp;</dt>
+	<dt>Search</dt>
+	<dd style='background-color: #ee00ee'>Matches regexp</dd>
+</dl>
+<dl class='hotkeys'>
+	<dt>Click frame</dt><dd>Zoom into frame</dd>
+	<dt>Ctrl/Alt+Click</dt><dd>Remove stack</dd>
+	<dt>0</dt><dd>Reset zoom</dd>
+	<dt>I</dt><dd>Invert graph</dd>
+	<dt>Ctrl+F</dt><dd>Search</dd>
+	<dt>N</dt><dd>Next match</dd>
+	<dt>Shift+N</dt><dd>Previous match</dd>
+	<dt>Esc</dt><dd>Cancel search</dd>
+</dl>
+</div>
+<canvas id='canvas'></canvas>
+<div id='hl'><span></span></div>
+<p id='status'></p>
+<p id='match'>Matched: <span id='matchval'></span> <span id='reset' title='Clear'>&#x274c;</span></p>
+<script>
+	// Copyright The async-profiler authors
+	// SPDX-License-Identifier: Apache-2.0
+	'use strict';
+	let root, px, pattern;
+	let level0 = 0, left0 = 0, width0 = 0, d = 0;
+	let nav = [], navIndex, matchval;
+	let inverted = true;
+	const U = undefined;
+	const maxdiff = -1;
+	const levels = Array(26);
+	for (let h = 0; h < levels.length; h++) {
+		levels[h] = [];
+	}
+
+	const canvas = document.getElementById('canvas');
+	const c = canvas.getContext('2d');
+	const hl = document.getElementById('hl');
+	const status = document.getElementById('status');
+
+	const canvasWidth = canvas.offsetWidth;
+	const canvasHeight = canvas.offsetHeight;
+	canvas.style.width = canvasWidth + 'px';
+	canvas.width = canvasWidth * (devicePixelRatio || 1);
+	canvas.height = canvasHeight * (devicePixelRatio || 1);
+	if (devicePixelRatio) c.scale(devicePixelRatio, devicePixelRatio);
+	c.font = document.body.style.font;
+
+	const palette = [
+		[11723186, 20, 20, 20],
+		[5300560, 30, 30, 30],
+		[5295308, 30, 30, 30],
+		[14768730, 30, 40, 40],
+		[13158460, 30, 30, 10],
+		[14777600, 30, 30,  0],
+		[13428864, 20, 20, 20],
+	];
+
+	function getColor(p) {
+		const v = Math.random();
+		return '#' + (p[0] + ((p[1] * v) << 16 | (p[2] * v) << 8 | (p[3] * v))).toString(16);
+	}
+
+	function getDiffColor(diff) {
+		if (diff === U) return '#ffdd33';
+		if (diff === 0) return '#e0e0e0';
+		const v = Math.round(128 * (maxdiff - Math.abs(diff)) / maxdiff) + 96;
+		return diff > 0 ? 'rgb(255,' + v + ',' + v + ')' : 'rgb(' + v + ',' + v + ',255)';
+	}
+
+	function f(key, level, left, width, inln, c1, int) {
+		levels[level0 = level].push({level, left: left0 += left, width: width0 = width || width0,
+			color: maxdiff >= 0 ? getDiffColor(d) : getColor(palette[key & 7]),
+			title: cpool[key >>> 3],
+			details: (d ? (d > 0 ? ', +' : ', ') + d : '') + (int ? ', int=' + int : '') + (c1 ? ', c1=' + c1 : '') + (inln ? ', inln=' + inln : '')
+		});
+	}
+
+	function u(key, width, inln, c1, int) {
+		f(key, level0 + 1, 0, width, inln, c1, int)
+	}
+
+	function n(key, width, inln, c1, int) {
+		f(key, level0, width0, width, inln, c1, int)
+	}
+
+	function samples(n) {
+		return n === 1 ? '1 sample' : n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' samples';
+	}
+
+	function pct(a, b) {
+		return a >= b ? '100' : (100 * a / b).toFixed(2);
+	}
+
+	function findFrame(frames, x) {
+		let left = 0;
+		let right = frames.length - 1;
+
+		while (left <= right) {
+			const mid = (left + right) >>> 1;
+			const f = frames[mid];
+
+			if (f.left > x) {
+				right = mid - 1;
+			} else if (f.left + f.width <= x) {
+				left = mid + 1;
+			} else {
+				return f;
+			}
+		}
+
+		if (frames[left] && (frames[left].left - x) * px < 0.5) return frames[left];
+		if (frames[right] && (x - (frames[right].left + frames[right].width)) * px < 0.5) return frames[right];
+
+		return null;
+	}
+
+	function removeStack(left, width) {
+		for (let h = 0; h < levels.length; h++) {
+			const frames = levels[h], newFrames = [];
+			for (let i = 0; i < frames.length; i++) {
+				const f = frames[i];
+				if (f.left >= left + width) {
+					f.left -= width;
+				} else if (f.left + f.width > left) {
+					if ((f.width -= width) <= 0 && h) continue;
+				}
+				newFrames.push(f);
+			}
+			levels[h] = newFrames;
+		}
+	}
+
+	function search(r) {
+		if (r === true && (r = prompt('Enter regexp to search:', '')) === null) {
+			return;
+		}
+
+		pattern = r ? RegExp(r) : undefined;
+		const matched = render(root, nav = []);
+		navIndex = -1;
+		document.getElementById('matchval').textContent = matchval = pct(matched, root.width) + '%';
+		document.getElementById('match').style.display = r ? 'inline-block' : 'none';
+	}
+
+	function render(newRoot, nav) {
+		const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+
+		if (root) {
+			c.fillStyle = bg;
+			c.fillRect(0, 0, canvasWidth, canvasHeight);
+		}
+
+		root = newRoot || levels[0][0];
+		px = canvasWidth / root.width;
+
+		const x0 = root.left;
+		const x1 = x0 + root.width;
+		const marked = [];
+
+		function mark(f) {
+			return marked[f.left] || (marked[f.left] = f);
+		}
+
+		function totalMarked() {
+			let total = 0;
+			let left = 0;
+			Object.keys(marked).sort(function(a, b) { return a - b; }).forEach(function(x) {
+				if (+x >= left) {
+					const m = marked[x];
+					if (nav) nav.push(m);
+					total += m.width;
+					left = +x + m.width;
+				}
+			});
+			return total;
+		}
+
+		function drawFrame(f, y) {
+			if (f.left < x1 && f.left + f.width > x0) {
+				c.fillStyle = pattern && f.title.match(pattern) && mark(f) ? '#ee00ee' : f.color;
+				c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+
+				if (f.width * px >= 21) {
+					const chars = Math.floor(f.width * px / 7);
+					const title = f.title.length <= chars ? f.title : f.title.substring(0, chars - 2) + '..';
+					c.fillStyle = '#000000';
+					c.fillText(title, Math.max(f.left - x0, 0) * px + 3, y + 12, f.width * px - 6);
+				}
+
+				if (f.level < root.level) {
+					c.fillStyle = bg + '80';
+					c.fillRect((f.left - x0) * px, y, f.width * px, 15);
+				}
+			}
+		}
+
+		for (let h = 0; h < levels.length; h++) {
+			const y = inverted ? h * 16 : canvasHeight - (h + 1) * 16;
+			const frames = levels[h];
+			for (let i = 0; i < frames.length; i++) {
+				drawFrame(frames[i], y);
+			}
+		}
+
+		return totalMarked();
+	}
+
+	function unpack(cpool) {
+		for (let i = 1; i < cpool.length; i++) {
+			cpool[i] = cpool[i - 1].substring(0, cpool[i].charCodeAt(0) - 32) + cpool[i].substring(1);
+		}
+	}
+
+	canvas.onmousemove = function() {
+		const h = Math.floor((inverted ? event.offsetY : (canvasHeight - event.offsetY)) / 16);
+		if (h >= 0 && h < levels.length) {
+			const f = findFrame(levels[h], event.offsetX / px + root.left);
+			if (f) {
+				if (f !== root) getSelection().removeAllRanges();
+				hl.style.left = (Math.max(f.left - root.left, 0) * px + canvas.offsetLeft) + 'px';
+				hl.style.width = (Math.min(f.width, root.width) * px) + 'px';
+				hl.style.top = ((inverted ? h * 16 : canvasHeight - (h + 1) * 16) + canvas.offsetTop) + 'px';
+				hl.firstChild.textContent = f.title;
+				hl.style.display = 'block';
+				canvas.title = f.title + '\n(' + samples(f.width) + f.details + ', ' + pct(f.width, levels[0][0].width) + '%)';
+				canvas.style.cursor = 'pointer';
+				canvas.onclick = function() {
+					if ((event.altKey || event.ctrlKey) && h >= root.level && h > 0) {
+						removeStack(f.left, f.width);
+						root.width > f.width ? render(root) : render();
+					} else if (f !== root) {
+						render(f);
+					}
+					canvas.onmousemove();
+				};
+				status.textContent = 'Function: ' + canvas.title;
+				status.style.display = 'inline-block';
+				return;
+			}
+		}
+		canvas.onmouseout();
+	}
+
+	canvas.onmouseout = function() {
+		hl.style.display = 'none';
+		status.style.display = 'none';
+		canvas.title = '';
+		canvas.style.cursor = '';
+		canvas.onclick = null;
+	}
+
+	canvas.ondblclick = function() {
+		getSelection().selectAllChildren(hl);
+	}
+
+	document.getElementById('inverted').onclick = function() {
+		inverted = !inverted;
+		render();
+	}
+
+	document.getElementById('search').onclick = function() {
+		search(true);
+	}
+
+	document.getElementById('reset').onclick = function() {
+		search(false);
+	}
+
+	document.getElementById('darkmode').onclick = function() {
+		const theme = document.documentElement.classList.toggle('dark') ? 'dark' : 'light';
+		try { localStorage.setItem('flame-theme', theme); } catch (ignored) {}
+		render(root);
+	}
+
+	const btnInfo = document.getElementById('info');
+	const legend = document.getElementById('legend');
+
+	btnInfo.onmouseover = function() {
+		legend.style.left = (btnInfo.offsetLeft + 24) + 'px';
+		legend.style.top = (btnInfo.offsetTop + 24) + 'px';
+		legend.style.display = 'block';
+	}
+
+	btnInfo.onmouseout = function() {
+		legend.style.display = 'none';
+	}
+
+	window.onkeydown = function(event) {
+		if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+			event.preventDefault();
+			search(true);
+			return false;
+		} else if (event.key === 'Escape') {
+			search(false);
+		} else if ((event.key === 'n' || event.key === 'N') && nav.length > 0) {
+			navIndex = (navIndex + (event.shiftKey ? nav.length - 1 : 1)) % nav.length;
+			render(nav[navIndex]);
+			document.getElementById('matchval').textContent = matchval + ' (' + (navIndex + 1) + ' of ' + nav.length + ')';
+			window.scroll(0, inverted ? root.level * 16 : canvasHeight - (root.level + 1) * 16);
+			canvas.onmousemove();
+			return false;
+		} else if (event.key === 'i') {
+			canvas.onmouseout();
+			document.getElementById('inverted').onclick();
+			return false;
+		} else if (event.key === 'd') {
+			document.getElementById('darkmode').onclick();
+			return false;
+		} else if (event.key === '0') {
+			canvas.onmouseout();
+			root = levels[0][0];
+			search(false);
+			return false;
+		}
+	}
+
+const cpool = [
+'all',
+' AccessInternal::PostRuntimeDispatch<G1BarrierSet::AccessBarrier<548964ull, G1BarrierSet>, (AccessInternal::BarrierType)2, 548964ull>::oop_access_barrier',
+'a98116ull, G1BarrierSet>, (AccessInternal::BarrierType)2, 598116ull>::oop_access_barrier',
+'!llocTracer::send_allocation_in_new_tlab',
+'=outside_tlab',
+'%ateHeap',
+'!nyObj::operator new',
+'!rena::grow',
+'"rayKlass::allocate_arrayArray',
+' CallTraceStorage::calcHash',
+'2put',
+'"rdTableBarrierSet::on_slowpath_allocation_exit',
+'!hunk::chop',
+'\'next_chop',
+'\'operator new',
+'!lassLoaderData::holder',
+'!odeBlob::is_runtime_stub',
+'-upcall_stub',
+'$Cache::find_blob',
+'$Heap::find_blob',
+'"llectedHeap::array_allocate',
+'/fill_with_object',
+'"mpiledMethod::scope_desc_at',
+'"ntinuation::is_continuation_enterSpecial',
+'1return_barrier_entry',
+',s::enabled',
+' Dictionary::lookup',
+' FlightRecorder::recordEvent',
+' G1AllocRegion::new_alloc_region_and_allocate',
+'/retire_internal',
+'\'ator::unsafe_max_tlab_alloc',
+'"BarrierSet::invalidate',
+'.write_ref_array_work',
+',Runtime::write_ref_array_post_entry',
+'"CardTable::g1_mark_as_young',
+'-is_in_young',
+'#ollectedHeap::allocate_new_tlab',
+'2ttempt_allocation',
+'C_slow',
+'1capacity',
+'1max_tlab_size',
+'2em_allocate',
+'1new_mutator_alloc_region',
+'1retire_mutator_alloc_region',
+'1unsafe_max_tlab_alloc',
+')ionSet::add_eden_region',
+'"FromCardCache::clear',
+'"MonitoringSupport::recalculate_sizes',
+'5update_eden_size',
+'"NUMA::index_of_current_thread',
+'"Policy::should_allocate_mutator_region',
+'"RemSetTrackingPolicy::update_at_allocate',
+'"SurvivorRegions::length',
+'!rowableArrayCHeapAllocator::allocate',
+'-WithAllocator<OopHandle, GrowableArray<OopHandle>>::shrink_to_fit',
+' HandleMark::initialize',
+',~HandleMark',
+'!eapRegion::fill_with_dummy_object',
+',set_eden',
+'*Manager::allocate_free_region',
+' ImmutableOopMap::update_register_map',
+'/Set::find_map_at_offset',
+'!nstanceKlass::allocate_instance',
+'8objArray',
+'0rray_klass',
+'/check_valid_for_instantiation',
+'/get_jmethod_id',
+'/initialize',
+'/should_be_initialized',
+'0ignature_name',
+' JNIHandleBlock::allocate_block',
+'9handle',
+')s::make_local',
+'!VM_IHashCode',
+'!avaFrameAnchor::make_walkable',
+'$Thread::is_Java_thread',
+',last_java_vframe',
+',pd_last_frame',
+'-op_jni_handle_block',
+'-ush_jni_handle_block',
+',vthread',
+'!frAllocationTracer::JfrAllocationTracer',
+'#ObjectAllocationSample::send_event',
+'!vmtiClassEventMark::JvmtiClassEventMark',
+'%Env::Deallocate',
+'*GetClassSignature',
+'-StackTrace',
+'(Base::get_cthread_last_java_vframe',
+'2stack_trace',
+'2threadOop_and_JavaThread',
+'.is_valid',
+'.jvmtiMalloc',
+'&ventCollector::is_dynamic_code_event',
+'8vm_object_alloc_event',
+'&xport::post_sampled_object_alloc',
+'%ObjectAllocEventCollector::JvmtiObjectAllocEventCollector',
+'@generate_call_for_allocated',
+'@record_allocation',
+'5Mark::JvmtiObjectAllocEventMark',
+'%SampledObjectAllocEventCollector::is_sampled_object_alloc_event',
+'Gstart',
+'G~JvmtiSampledObjectAllocEventCollector',
+'%ThreadState::state_for',
+'%VMObjectAllocEventCollector::JvmtiVMObjectAllocEventCollector',
+'B~JvmtiVMObjectAllocEventCollector',
+'&TMSTransitionDisabler::JvmtiVTMSTransitionDisabler',
+'=VTMS_transition_disable_for_all',
+'=~JvmtiVTMSTransitionDisabler',
+' Klass::is_subclass_of',
+'\'signature_name',
+' MemAllocator::Allocation::check_out_of_memory',
+':notify_allocation',
+'K_jvmti_sampler',
+'.allocate',
+'.mem_allocate_inside_tlab_slow',
+'"thod::bci_from',
+'*p_from',
+'(jmethod_id',
+'!onitor::wait',
+'!utatorAllocRegion::retire',
+'#ex::lock',
+'+_without_safepoint_check',
+' OS::nanotime',
+'!bjAllocator::initialize',
+'$rrayAllocator::initialize',
+'(Klass::array_klass',
+'#ectSampler::is_created',
+'/recordAllocation',
+'\'ynchronizer::FastHashCode',
+'!opStorage::Block::block_for_ptr',
+'3release_entries',
+',allocate',
+',release',
+'!ptoRuntime::new_array_C',
+'1instance_C',
+' PcDescCache::add_pc_desc',
+'\'ontainer::find_pc_desc_internal',
+'!latformMonitor::wait',
+'!reserveExceptionMark::~PreserveExceptionMark',
+'"ofiler::getJavaTraceJvmti',
+'-NativeTrace',
+'*recordSample',
+' Recording::addThread',
+'+flushIfNeeded',
+'+recordAllocationInNewTLAB',
+'"gisterMap::RegisterMap',
+'!untimeStub::is_runtime_stub',
+' SafeFetchN_impl',
+'!copeDesc::ScopeDesc',
+'+decode_body',
+'2object_values',
+'+is_top',
+'+sender',
+'!haredRuntime::on_slowpath_allocation_exit',
+'!ymbol::as_C_string',
+' Thread::is_Compiler_thread',
+'+Named_thread',
+'&Critical::ThreadCritical',
+'0~ThreadCritical',
+'&HeapSampler::check_for_sampling',
+'&LocalAllocBuffer::end_reserve',
+'8fill',
+'8print_stats',
+'8retire_before_allocation',
+'8set_back_allocation_end',
+'<sample_end',
+'8thread',
+'&Shadow::clear_pending_exception',
+'&sListHandle::ThreadsListHandle',
+'!ypeArrayKlass::allocate_common',
+' Unsafe_AllocateInstance',
+' VMThread::execute',
+'*wait_until_executed',
+'"_GC_Operation::skip_operation',
+' __bzero',
+'"psynch_cvbroad',
+'+wait',
+')mutexwait',
+'!free',
+'!kernelrpc_mach_port_deallocate_trap',
+'!malloc_zone_malloc',
+'!nanov2_free',
+'"ew_array_Java',
+'%instance_Java',
+'!platform_memmove',
+'-set',
+'*strcpy',
+'-len',
+'-ncmp$VARIANT$Base',
+'"thread_cond_wait',
+')mutex_firstfit_lock_slow',
+'!tlv_get_addr',
+' arrayof_jint_disjoint_arraycopy',
+')long_disjoint_arraycopy',
+'(oop_arraycopy',
+',disjoint_arraycopy',
+' backward_copy_longs',
+' compiledVFrame::compiledVFrame',
+'0method',
+'0sender',
+' forward_copy_longs',
+'!rame::entry_frame_is_first',
+'\'interpreter_frame_bcp',
+'9method',
+'(s_first_vthread_frame',
+'*runtime_frame',
+'\'real_sender',
+'\'sender_for_compiled_frame',
+'2interpreter_frame',
+'.raw',
+' g1_post_barrier_slow',
+'!eneric_arraycopy',
+' interpretedVFrame::bci',
+'5p',
+'3method',
+'!table stub',
+' java/lang/Boolean.booleanValue',
+'*Class.cast',
+'0getComponentType',
+'/Value$ClassValueMap.getCache',
+'CloadFromCache',
+'CprobeHomeLocation',
+'4.get',
+'8CacheCarefully',
+'5match',
+'*Enum.ordinal',
+'*Integer.hashCode',
+'2intValue',
+'2valueOf',
+'*Long.valueOf',
+'*String.hashCode',
+'+ystem.identityHashCode',
+'*invoke/DirectMethodHandle$Holder.getBoolean',
+'NInt',
+'KinvokeSpecial',
+'Rtatic',
+'KnewInvokeSpecial',
+'C.allocateInstance',
+'1Invokers$Holder.invokeExact_MT',
+'9.checkCustomized',
+'?ExactType',
+'1LambdaForm$DMH.newInvokeSpecial',
+'<MH.invoke',
+'EExact_MT',
+'1MethodHandle.invokeBasic',
+'>type',
+'=Impl.checkSpreadArgument',
+'*ref/ReferenceQueue.poll',
+'-lect/Array.newInstance',
+'2Constructor.newInstance',
+'IWithCaller',
+'2Field.get',
+';OverrideFieldAccessor',
+'%nio/Buffer.<init>',
+'0limit',
+'0position',
+'*yteBuffer.<init>',
+'4allocate',
+'4position',
+'5ut',
+'7Buffer',
+')FloatBuffer.<init>',
+'5allocate',
+'5put',
+'8Buffer',
+')HeapByteBuffer.<init>',
+'8put',
+'-FloatBuffer.<init>',
+'9put',
+'-IntBuffer.<init>',
+'7put',
+')IntBuffer.<init>',
+'3allocate',
+'3limit',
+'3put',
+'6Buffer',
+'%util/ArrayDeque.<init>',
+'5add',
+'8Last',
+'5elementAt',
+'5grow',
+'5inc',
+'6sEmpty',
+'5poll',
+'9First',
+'/List$Itr.<init>',
+'8checkForComodification',
+'8hasNext',
+'8next',
+'3.<init>',
+'4add',
+'4grow',
+'4isEmpty',
+'5terator',
+'4toArray',
+'/s.copyOf',
+'*Collections$SetFromMap.contains',
+'7ynchronizedMap.computeIfAbsent',
+'*HashMap$EntryIterator.<init>',
+'@next',
+'7Set.iterator',
+'2HashIterator.<init>',
+'?nextNode',
+'2KeyIterator.<init>',
+'5Set.iterator',
+'2Node.<init>',
+'7getValue',
+'1.containsKey',
+'2entrySet',
+'2getNode',
+'2hash',
+'2keySet',
+'2newNode',
+'2put',
+'5Val',
+'2resize',
+'.Set.add',
+'2contains',
+'2iterator',
+'*IdentityHashMap$EntryIterator$Entry.getKey',
+'QValue',
+'G.<init>',
+'Hnext',
+'?Set.iterator',
+':IdentityHashMapIterator.<init>',
+'RhasNext',
+'RnextIndex',
+'9.<init>',
+':containsKey',
+':entrySet',
+':get',
+':hash',
+':init',
+':nextKeyIndex',
+':put',
+':unmaskNull',
+'+mmutableCollections$AbstractImmutableList.iterator',
+'?List12.<init>',
+'Fget',
+'CItr.<init>',
+'GhasNext',
+'Gnext',
+'>.listCopy',
+'*LinkedHashMap.linkNodeAtEnd',
+'8newNode',
+',st.copyOf',
+'/of',
+'*Map.computeIfAbsent',
+'*Objects.checkFromIndexSize',
+'2requireNonNull',
+'*WeakHashMap.expungeStaleEntries',
+'6get',
+'9Table',
+'$VFrame::is_java_frame',
+'$_lang_VirtualThread::is_instance',
+'!byte_arraycopy',
+'&disjoint_arraycopy',
+'!dk/internal/misc/ScopedMemoryAccess.copyMemory',
+'OInternal',
+'2Unsafe.allocateInstance',
+'9checkPointer',
+'?rimitivePointer',
+':opyMemory',
+'CChecks',
+'-reflect/DirectConstructorHandleAccessor.invokeImpl',
+'UnewInstance',
+'5MethodHandleBooleanFieldAccessorImpl.get',
+']Boolean',
+'AFieldAccessorImpl.isStatic',
+'AIntegerFieldAccessorImpl.get',
+']Int',
+'ALongFieldAccessorImpl.get',
+'ZLong',
+'AObjectFieldAccessorImpl.get',
+'-util/Preconditions.checkFromIndexSize',
+'!int_arraycopy',
+'%disjoint_arraycopy',
+'!short_arraycopy',
+'\'disjoint_arraycopy',
+'!vmti_Deallocate',
+'&GetClassSignature',
+')StackTrace',
+' lookupClassId',
+' mach_absolute_time',
+'%port_deallocate',
+'%thread_self',
+'"lloc',
+'!ethodHandle::~methodHandle',
+' nanov2_malloc_type',
+'!method::metadata_at',
+')scopes_pcs_begin',
+' oopDesc::metadata_field',
+'!rg/crforge/core/battle/action/ActionRow.<init>',
+'8deploy/CardPlacement$Result.<init>',
+'8expression/Expression.<init>',
+'8unit/Standard1v1Battle$Play.<init>',
+'1pathfinding/GridUnitState.<init>',
+'=state/StateQueries.<init>',
+'=target/TargetingConfig.<init>',
+'1util/DeepCopy.<init>',
+'?allocate',
+'?construct',
+'Apy',
+'CArray',
+'?drain',
+'?emptyLike',
+'?fill',
+'?hashReadsState',
+'Ced',
+'?of',
+'?read',
+',env/BufferedEnv.bind',
+'<fault',
+'0LadderEnv$$Lambda.test',
+':SharedData.contains',
+'9.checkForkable',
+':fork',
+':lambda$fork$0',
+'!s::current_thread_enable_wx',
+'$free',
+'$malloc',
+' pthread_cond_broadcast',
+'(getspecific',
+'(jit_write_protect_np',
+'(mutex_lock',
+'.trylock',
+'.unlock',
+'(self',
+' resource_allocate_bytes',
+' stub:JVM_IHashCode',
+'%bzero',
+'%malloc',
+'&emcpy',
+'%pthread_getspecific',
+'-jit_write_protect_np',
+'-mutex_lock',
+'3unlock',
+'-self',
+'%strcpy',
+'!un/invoke/util/ValueConversions.unboxBoolean',
+'FInteger',
+'$misc/Unsafe.allocateInstance',
+'0getBoolean',
+'3Object',
+'0putBoolean',
+'3Long',
+'3Object',
+' thread_self_trap',
+' unsafe_arraycopy',
+' vframe::java_sender',
+'(new_vframe',
+'(sender',
+'(vframe',
+' write',
+' zero_blocks'
+];
+unpack(cpool);
+
+n(3,62637)
+u(3329)
+f(2058,2,1,79)
+u(2122)
+f(2050,4,25,40)
+u(2026)
+u(2066)
+u(2065)
+f(2130,2,56,46)
+u(2074)
+u(2082)
+u(2858)
+u(2866)
+u(2898)
+f(3027,8,3,41)
+f(1603,9,2,39)
+f(2162,2,44,346)
+u(2194)
+u(2202)
+u(2858)
+u(2866)
+u(2898)
+u(1547)
+f(1603,9,2,344)
+f(2178,2,344,257)
+u(2154)
+f(1459,4,5,163)
+f(1068,5,2,157)
+u(164)
+u(908)
+f(900,8,7,130)
+u(812,123)
+u(772)
+f(756,11,1,122)
+f(1020,12,3,119)
+f(1132,13,1,90)
+f(1116,14,1,80)
+f(3051,15,1,79)
+f(692,16,1,78)
+u(708,76)
+f(708,18,10,61)
+f(3596,19,8,52)
+f(3612,20,21,31)
+f(3635,4,115,81)
+f(3274,2,91,61883)
+f(3194,3,5,335)
+f(2618,4,9,326)
+u(2658)
+f(1459,6,23,209)
+f(1068,7,1,203)
+f(508,8,2,197)
+u(164)
+u(908)
+f(900,11,5,161)
+f(812,12,1,150)
+u(772)
+u(756,148)
+f(1020,15,1,147)
+f(1132,16,1,113)
+f(1116,17,7,96)
+f(3051,18,1,95)
+u(692)
+u(708)
+f(708,21,10,82)
+f(3596,22,12,70)
+f(3612,23,30,40)
+f(3635,6,140,92)
+f(3217,3,92,39)
+n(3233,61504)
+f(1778,4,4446,215)
+f(1770,5,5,98)
+u(1762)
+f(1786,5,98,70)
+n(1794,42)
+f(2258,4,42,149)
+n(2266,680)
+u(2274)
+f(2234,6,562,114)
+f(3217,4,118,53362)
+f(1459,5,6594,35)
+u(1068)
+f(508,7,1,33)
+u(164)
+u(908)
+u(900)
+u(812)
+u(772)
+u(756)
+f(1020,14,1,32)
+f(1778,5,33,1390)
+f(1770,6,45,418)
+u(1762)
+f(1786,6,418,108)
+n(1794,819)
+f(2218,5,822,481)
+u(2226)
+f(2241,7,131,295)
+f(1539,8,119,66)
+f(1603,9,3,63)
+f(2362,8,108,46)
+u(1459)
+u(1068)
+f(508,11,2,44)
+u(164)
+u(908)
+u(900,42)
+u(812)
+u(772)
+u(756,41)
+f(1020,18,2,39)
+u(1132,32)
+u(1116,31)
+u(3051)
+u(692)
+f(2250,7,61,55)
+f(2625,5,75,2839)
+f(2650,6,2648,186)
+f(2642,5,191,2904)
+f(2650,6,2506,393)
+f(2673,5,398,1847)
+f(2650,6,1730,89)
+f(3202,5,141,267)
+u(3530)
+f(1467,7,173,36)
+u(1076)
+u(500)
+u(908)
+u(900,35)
+u(812,34)
+u(772)
+u(756,33)
+u(1020)
+f(3635,7,36,58)
+f(3210,5,58,1698)
+u(1994)
+f(2001,7,6,1692)
+f(2922,8,217,1475)
+f(2914,9,46,1429)
+f(1906,10,30,1389)
+f(1914,11,1,31)
+f(1937,11,53,1237,0,596,0)
+f(1890,12,402,135)
+f(1898,13,17,118)
+f(1930,12,118,61)
+n(1938,629)
+u(1874,84)
+f(1930,13,94,266)
+f(1898,14,15,208)
+f(2873,15,1,207)
+f(1363,16,8,59)
+f(500,17,4,36)
+f(3387,16,55,140)
+f(3190,14,145,38,0,38,0)
+f(1938,13,38,269)
+f(1882,14,3,266)
+f(1953,15,51,57)
+n(3513,79)
+n(3521)
+f(1953,11,89,98)
+f(3217,5,108,4747)
+f(1778,6,1382,492)
+f(1770,7,15,143)
+u(1762)
+f(1794,7,171,306)
+f(2218,6,307,58)
+u(2226)
+f(2625,6,58,251)
+n(2642,457)
+f(2650,7,358,99)
+f(2673,6,99,359)
+n(3202,144)
+u(3530)
+f(3635,8,71,73)
+f(3210,6,73,276)
+u(1994)
+f(2001,8,1,275)
+f(2922,9,56,219)
+f(2914,10,12,207)
+f(1906,11,2,205)
+f(1937,12,11,167)
+f(1890,13,93,53)
+f(1898,14,11,42)
+f(3217,6,90,257)
+f(1778,7,120,77)
+f(1794,8,22,55)
+f(2642,7,55,47)
+f(3249,6,84,600)
+f(2506,7,138,44)
+f(2513,8,1,43)
+f(3217,7,56,371)
+f(2218,8,76,38)
+u(2226)
+f(2241,10,4,33)
+f(3225,8,91,181)
+f(1986,9,11,112)
+f(1459,10,13,51)
+f(1068,11,1,48)
+u(164)
+u(908)
+f(900,14,1,38)
+f(812,15,1,37)
+u(772)
+u(756)
+f(1020,18,1,36)
+f(1132,19,1,31)
+f(3635,10,46,48)
+f(2851,9,63,43)
+f(1603,10,7,36)
+f(3266,7,55,34)
+u(3258)
+f(3306,9,1,33)
+f(3338,10,2,31)
+f(3282,6,31,211)
+u(2010)
+f(2986,8,45,166)
+u(1906,164)
+f(1937,10,23,123)
+f(3306,6,143,235)
+f(3338,7,1,234)
+f(3314,8,87,147)
+f(2538,9,55,92)
+f(2458,10,16,76)
+u(2474)
+f(3225,5,76,7662)
+f(1691,6,937,79)
+n(1746,76)
+n(1986,1044)
+f(1459,7,199,449)
+f(1068,8,1,437)
+f(164,9,12,409)
+f(908,10,1,405)
+f(900,11,10,359)
+f(812,12,2,346)
+f(772,13,1,344)
+f(756,14,1,341)
+f(1020,15,7,334)
+f(1132,16,1,273)
+f(1116,17,11,248)
+f(3051,18,1,247)
+u(692,244)
+u(708,235)
+f(708,21,25,208)
+f(3596,22,19,188)
+f(3612,23,49,139)
+f(1652,24,36,49)
+f(3604,24,66,37)
+f(3579,16,84,42)
+f(3635,7,122,396)
+f(2674,6,396,339)
+n(2851,60)
+f(1603,7,6,54)
+f(3011,6,64,1498)
+f(1603,7,40,1458)
+f(3217,6,1458,3619)
+f(1778,7,656,69)
+f(1794,8,21,48)
+f(2641,7,65,1261)
+f(2650,8,925,330)
+f(2673,7,336,77)
+n(3202,31)
+u(3530)
+f(3225,7,31,1476)
+f(1691,8,226,113)
+f(1986,8,143,212)
+f(1459,9,146,56)
+f(1068,10,1,55)
+f(164,11,1,54)
+u(908)
+u(900,42)
+f(812,14,1,36)
+u(772)
+u(756,35)
+u(1020)
+u(1132,32)
+f(2674,8,63,325)
+f(3011,8,345,102)
+n(3217,448)
+f(2641,9,69,39)
+f(3225,9,60,317)
+f(1691,10,27,74)
+f(1986,10,78,104)
+f(1459,11,14,33)
+u(1068)
+u(164)
+u(908)
+u(900,32)
+f(3635,11,33,57)
+f(3011,10,78,87)
+f(1603,11,19,68)
+f(3306,7,70,32)
+u(3338)
+f(3241,5,32,873)
+f(1467,6,373,88)
+u(1076,84)
+u(500)
+u(908)
+f(900,10,4,76)
+u(812,71)
+u(772)
+u(756,70)
+u(1020)
+u(1132,57)
+f(1116,16,5,46)
+u(3051)
+u(692)
+u(708)
+f(708,20,6,39)
+f(3596,21,4,35)
+f(2314,6,69,304)
+n(2618,108)
+u(2658)
+f(3635,8,40,68)
+f(3249,5,68,16209)
+f(2298,6,2220,69)
+n(2306,186)
+f(2290,7,146,40)
+f(2322,6,40,133)
+f(2322,7,12,121)
+f(2346,6,121,94)
+f(1467,7,2,49)
+u(1076)
+u(500)
+u(908)
+u(900)
+u(812,48)
+u(772)
+u(756)
+f(1020,15,1,47)
+u(1132,41)
+f(1116,17,5,33)
+u(3051)
+u(692)
+u(708,31)
+f(2282,7,43,43)
+f(2394,6,43,570)
+u(2394)
+u(2418)
+f(2402,6,570,119)
+f(2386,7,56,63)
+f(2410,8,2,61)
+f(2506,6,63,2925)
+f(2482,7,46,50)
+n(2513,2829)
+f(2498,8,1254,242)
+f(1467,9,55,107)
+u(1076,106)
+u(500)
+f(908,12,1,105)
+u(900,100)
+f(812,14,1,97)
+u(772)
+u(756,95)
+f(1020,17,2,93)
+u(1132,80)
+f(1116,19,5,68)
+f(3051,20,1,67)
+u(692)
+u(708)
+f(708,23,4,62)
+f(3596,24,9,53)
+f(3612,25,16,37)
+f(2442,9,68,80)
+f(2521,8,80,1172)
+f(1459,9,1049,53)
+u(1068,52)
+f(508,11,1,51)
+u(164)
+u(908)
+f(900,14,1,49)
+u(812)
+u(772)
+u(756,47)
+u(1020)
+f(1132,19,1,36)
+f(1116,20,2,32)
+f(3051,21,1,31)
+u(692)
+u(708)
+f(3635,9,47,70)
+f(2754,8,70,161)
+u(2746)
+f(2554,6,190,49)
+f(2578,6,68,139)
+u(2578)
+f(2610,8,28,111)
+f(2602,6,134,313)
+n(2634,857)
+n(2674,1014)
+f(2650,7,537,477)
+f(1849,8,83,394)
+f(3387,9,36,354)
+f(3217,6,358,5514)
+f(1778,7,1972,847)
+f(1770,8,10,302)
+u(1762)
+f(1786,8,302,83)
+n(1794,452)
+f(2218,7,452,149)
+u(2226)
+f(2241,9,53,71)
+f(2625,7,96,93)
+n(2642,323)
+f(2650,8,264,59)
+f(2673,7,59,166)
+n(3202,207)
+u(3530)
+f(1467,9,48,124)
+f(1076,10,2,117)
+f(500,11,2,115)
+f(908,12,1,111)
+f(900,13,10,92)
+f(812,14,1,85)
+f(772,15,1,84)
+f(756,16,1,83)
+f(1020,17,1,82)
+f(1132,18,1,67)
+f(1116,19,1,64)
+u(3051)
+f(692,21,1,63)
+f(708,22,1,62)
+f(708,23,8,53)
+f(3596,24,5,48)
+f(3612,25,15,33)
+f(3635,9,73,35)
+f(3210,7,35,33)
+u(1994)
+f(2001,9,1,32)
+f(3217,7,32,1010)
+f(1778,8,144,49)
+f(1794,9,15,34)
+f(2625,8,55,58)
+f(2762,8,114,48)
+u(2738)
+f(2354,10,2,32)
+u(2362)
+f(3217,8,73,468)
+f(1778,9,78,48)
+f(3202,9,130,68)
+u(3530)
+f(3635,11,27,41)
+f(3225,9,41,35)
+f(3249,9,44,77)
+f(3217,10,43,34)
+f(3306,9,34,71)
+u(3338)
+f(3314,11,7,64)
+f(2370,12,4,49)
+f(2625,13,4,45)
+f(3282,8,56,122)
+u(2010)
+f(2953,10,39,66)
+f(2962,11,27,39)
+u(1946,35)
+f(3241,7,73,32)
+n(3249,252)
+f(3217,8,88,164)
+f(2218,9,59,48)
+u(2226)
+f(3282,7,105,233)
+u(2010)
+f(1723,9,25,31)
+f(2953,9,41,95)
+f(2962,10,35,60)
+u(1946,55)
+f(1937,12,8,31)
+f(2986,9,52,72)
+f(1906,10,1,71)
+f(1937,11,13,48)
+f(3306,7,58,197)
+f(3338,8,6,191)
+f(3314,9,80,111)
+f(2370,10,31,33)
+n(2538,47)
+f(2458,11,9,38)
+u(2474)
+f(3266,6,38,1934)
+f(3258,7,9,1925)
+f(1778,8,143,32)
+n(3306,1750)
+f(3338,9,64,1686)
+f(3314,10,158,1528)
+f(2370,11,149,904)
+f(2625,12,56,848)
+f(2650,13,753,94)
+f(2538,11,95,475)
+f(2458,12,41,434)
+f(2474,13,1,433)
+f(2482,14,337,96)
+f(3282,5,96,2757)
+u(2010)
+f(1723,7,337,285)
+n(2018,99)
+n(2929,491)
+f(2938,8,187,304)
+f(1946,9,7,264)
+f(1937,10,16,183)
+n(1953,65)
+f(2946,9,65,33)
+f(2953,7,33,412)
+f(2962,8,133,279)
+f(1946,9,5,250)
+f(1937,10,26,175)
+n(1953,49)
+f(2986,7,78,1128)
+f(1906,8,2,1117)
+f(1922,9,104,88)
+f(1962,10,14,74)
+f(1937,9,74,731)
+n(1953,194)
+f(3306,5,203,2966)
+f(3338,6,4,2962)
+f(3314,7,529,2433)
+f(2370,8,328,1506)
+f(2625,9,70,1436)
+f(2650,10,1377,57)
+f(2538,8,59,599)
+f(2458,9,61,538)
+f(2474,10,4,534)
+f(2482,11,352,182)
+f(3635,5,182,46)
+f(3538,4,46,32)
+n(3546,1142)
+n(3554,136)
+n(3562,488)
+n(3570,854)
+
+search();
+</script></body></html>

@@ -108,6 +108,8 @@ Where the time went, at tick 1,500 (63,000 CPU samples inside `LadderEnv.fork`):
 
 ![CPU flame graph of LadderEnv.fork at 43552311](../assets/performance-fork-43552311-cpu.png)
 
+The same graph as a page to hover and search: [performance-fork-43552311-cpu.html](../assets/performance-fork-43552311-cpu.html) (GitHub shows its source; download it and open it in a browser).
+
 The surprise was the first row. Plain objects are copied field by field with direct memory reads, which is fast. Records and lambdas cannot be read that way (the JDK refuses it), so each field goes through reflection, at roughly 13 ns a field. A unit's two big records alone are 248 fields, and none of them ever changes.
 
 ## Round 1 (2026-11-12)
@@ -155,6 +157,8 @@ Where the time goes now, at tick 1,500:
 
 ![CPU flame graph of LadderEnv.fork after round 1](../assets/performance-fork-round1-cpu.png)
 
+As a page: [performance-fork-round1-cpu.html](../assets/performance-fork-round1-cpu.html).
+
 Each picture is as wide as its own fork, so the second one shows a fork a third as long.
 
 One thing to know about the memo: the first fork of a battle after new units arrive still reads their records once, and then adds them to the memo. The benchmark forks a battle that stands still, so it shows the later forks. A search that forks one position many times gets the same; a search that forks, steps and forks again pays a little more on each fork that follows a card play.
@@ -184,5 +188,6 @@ Not measured yet:
 3. Change one thing at a time, and measure after each.
 4. Run `./gradlew :core:test :env:test`. A fork must still be the same battle.
 5. Add a section above "What is left": what was changed, the table of steps, the result and the new shares. Update the summary at the top and the list of what is left.
+6. Add the flame graph as a picture and as a page under `docs/assets`. Both are the graph cut to start at `LadderEnv.fork`: the collapsed stacks (`jfrconv --cpu -o collapsed`) with the frames above it removed, turned back into a page with `jfrconv --inverted --title "<title>" --minwidth 0.05`, and a screenshot of that page (1800 by 520). In the page, write the palette's colours as decimal numbers and drop the lambda class numbers, so that the build's check for hex references passes.
 
 Say what did not work as well. A change that gave nothing is worth a line, so nobody tries it twice.
