@@ -118,6 +118,13 @@ public record ReplayFormat(
    */
   public static final String TRAIL_PROGRESS_FIELD = "trl";
 
+  /**
+   * The player data field that names the player's competitive league: a signed data id of a row of
+   * the competitive leagues table, which holds the league's labels, rank and icons, presentation
+   * only.
+   */
+  public static final String COMPETITIVE_LEAGUE_FIELD = "cpl";
+
   /** The fields of version 14.593.1's replays, which every version's replays share. */
   public static final ReplayFormat V14_593_1 =
       new ReplayFormat(
@@ -221,7 +228,8 @@ public record ReplayFormat(
    * <p>A Ladder battle under an event is read too ({@link #ladderEvents}): its event block, game
    * mode type {@value #EVENT_GAME_MODE_TYPE}, the event's trail and id, and the card level minimum,
    * which is no longer pinned to 0; each player data entry may hold the player's trail progress
-   * ({@value #TRAIL_PROGRESS_FIELD}), carried. Traced on client 16.635.1 only.
+   * ({@value #TRAIL_PROGRESS_FIELD}) and competitive league ({@value #COMPETITIVE_LEAGUE_FIELD}),
+   * both carried. Traced on client 16.635.1 only.
    *
    * <p>The header switch {@value #SEB_FIELD}, true in a challenge's replays, is carried, no longer
    * pinned to false: the game stores it with the header and reads it only to write the header out
@@ -378,13 +386,15 @@ public record ReplayFormat(
 
   /**
    * The same fields with a Ladder battle under an event read: the card level minimum leaves the
-   * pinned header fields, and a player data entry may hold the trail progress.
+   * pinned header fields, and a player data entry may hold the trail progress and the competitive
+   * league.
    */
   private ReplayFormat withLadderEvents() {
     Map<String, String> pins = new LinkedHashMap<>(battlePins);
     pins.remove(CARD_LEVEL_MIN_FIELD);
     List<String> data = new ArrayList<>(playerData);
     data.add(TRAIL_PROGRESS_FIELD);
+    data.add(COMPETITIVE_LEAGUE_FIELD);
     return new ReplayFormat(
         dataVersion,
         rootPins,

@@ -60,7 +60,7 @@ class ReplayFormatTest {
               "playerData")
           .isEqualTo(ReplayFormat.V16_402_18);
       // The card level minimum is read and seb carried, neither pinned any more; the trail progress
-      // is carried.
+      // and the competitive league are carried.
       Map<String, String> pins = new LinkedHashMap<>(ReplayFormat.V16_402_18.battlePins());
       pins.remove(ReplayFormat.CARD_LEVEL_MIN_FIELD);
       pins.remove(ReplayFormat.SEB_FIELD);
@@ -71,7 +71,9 @@ class ReplayFormatTest {
           .hasSize(ReplayFormat.V16_402_18.battleCarried().size() + 1);
       assertThat(format.playerData())
           .containsExactlyElementsOf(
-              with(ReplayFormat.V16_402_18.playerData(), ReplayFormat.TRAIL_PROGRESS_FIELD));
+              with(
+                  with(ReplayFormat.V16_402_18.playerData(), ReplayFormat.TRAIL_PROGRESS_FIELD),
+                  ReplayFormat.COMPETITIVE_LEAGUE_FIELD));
     }
     assertThat(ReplayFormat.V16_402_18.excludedEvolutions()).isFalse();
     assertThat(ReplayFormat.V14_593_1.excludedEvolutions()).isFalse();

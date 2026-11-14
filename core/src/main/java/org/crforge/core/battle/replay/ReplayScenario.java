@@ -880,6 +880,13 @@ public final class ReplayScenario {
       if (format.excludedEvolutions()) {
         excludedEvolutions.add(excludedEvolutions(entry, field));
       }
+      // The competitive league is carried, never looked up: only its shape is checked.
+      JsonNode league = entry.get(ReplayFormat.COMPETITIVE_LEAGUE_FIELD);
+      if (league != null && !league.isInt()) {
+        refuse(
+            "a competitive league reference that is not a signed data id",
+            field + "." + ReplayFormat.COMPETITIVE_LEAGUE_FIELD);
+      }
       JsonNode level = required(entry, ReplayFormat.KING_LEVEL_FIELD);
       if (!level.isInt() || level.asInt() < 1 || level.asInt() > levelCount) {
         refuse(
@@ -901,6 +908,13 @@ public final class ReplayScenario {
         "battle.hbd[i]." + ReplayFormat.KING_LEVEL_FIELD,
         "consumed: the side's king level, counted from 1, 1 to the Common rarity's LevelCount: the"
             + " level its king row is created at");
+    if (format.playerData().contains(ReplayFormat.COMPETITIVE_LEAGUE_FIELD)) {
+      mapping.put(
+          "battle.hbd[i]." + ReplayFormat.COMPETITIVE_LEAGUE_FIELD,
+          "carried: the player's competitive league, a signed data id of a competitive leagues"
+              + " row (labels, rank and icons), profile presentation; it may be negative and sets"
+              + " no card or tower level");
+    }
     if (format.excludedEvolutions()) {
       mapping.put(
           "battle.hbd[i]." + ReplayFormat.EXCLUDED_EVOLUTIONS_FIELD,
