@@ -450,6 +450,40 @@ class ReplayScenarioEveryFieldTest {
   }
 
   @Test
+  void carriesEachPlayersCompetitiveLeagueWithoutChangingTheBattle() {
+    assumeLadderEventsRead();
+    ScenarioPlan without =
+        new ReplayScenario(tables).translate(fit(Scenarios.knightWithEveryField()));
+    ReplayScenario mapping = new ReplayScenario(tables);
+    ObjectNode scenario = fit(Scenarios.knightWithEveryField());
+    // A signed 32-bit data id of the player's competitive league, negative or positive as these
+    // replays write it; the battle never looks it up, so any id stands in for a real one.
+    ArrayNode playerData = (ArrayNode) scenario.path("battle").path("hbd");
+    ((ObjectNode) playerData.get(0)).put(ReplayFormat.COMPETITIVE_LEAGUE_FIELD, -2_000_000_001);
+    ((ObjectNode) playerData.get(1)).put(ReplayFormat.COMPETITIVE_LEAGUE_FIELD, 2_000_000_001);
+
+    assertThat(mapping.survey(scenario)).isEmpty();
+    ScenarioPlan plan = mapping.translate(scenario);
+
+    // The same towers, levels and plays as the replay with no league listed.
+    assertThat(plan.towers()).isEqualTo(without.towers());
+    for (int side = 0; side < 2; side++) {
+      assertThat(plan.deckLevels().get(side)).containsExactly(without.deckLevels().get(side));
+    }
+    assertThat(plan.plays()).isEqualTo(without.plays());
+    assertThat(mapping.mapping().get("battle.hbd[i]." + ReplayFormat.COMPETITIVE_LEAGUE_FIELD))
+        .startsWith("carried: ");
+
+    // A league that is not a signed data id is refused.
+    ((ObjectNode) playerData.get(0)).put(ReplayFormat.COMPETITIVE_LEAGUE_FIELD, "League1");
+    assertThat(new ReplayScenario(tables).survey(scenario))
+        .containsExactly(
+            new ReplayScenario.Refusal(
+                "a competitive league reference that is not a signed data id",
+                "battle.hbd[0]." + ReplayFormat.COMPETITIVE_LEAGUE_FIELD));
+  }
+
+  @Test
   void refusesAnEventUnderAnotherGameModeTypeOrEventIdOrMode() {
     assumeLadderEventsRead();
     ObjectNode scenario = fit(underAnEvent(Scenarios.knightWithEveryField()));
