@@ -1,0 +1,20 @@
+{
+ "corpus": "replays",
+ "schema": "crforge.native-battle-smoke.v2",
+ "content_version": "16.635.8",
+ "content_sha": "062a11e0500c03cc041f123413b1ef1846b539a4",
+ "cases": [
+  {
+   "id": "scripted_ladder",
+   "reference": "battles/scripted_ladder",
+   "scenario_sha256": "117a29ae5e22335f6cd253f3b515b996828007b96dcb79cb5135a0ed6d3006ef",
+   "ticks": 3100
+  },
+  {
+   "id": "real_ladder",
+   "reference": "battles/real_ladder",
+   "scenario_sha256": "8e78b9c8bbcc930bfda76e98908ecddfeb59f5ee586e653d299d93362b1e8d0b",
+   "ticks": 7000
+  }
+ ]
+}

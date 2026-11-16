@@ -22,9 +22,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The shipped example replay ({@code examples/replays/ladder.json}) is the battle {@link
- * ExampleReplay} plays on the configured tables, and the viewer plays it in full. The file is a
- * replay of one data version; on the tables of another version the checks are skipped.
+ * The shipped example replay ({@code examples/<version>/battles/scripted_ladder/scenario.json}) is
+ * the battle {@link ExampleReplay} plays on the configured tables, and the viewer plays it in full.
+ * The file is a replay of one data version; on the tables of another version the checks are
+ * skipped.
  */
 class ExampleReplayTest {
 
@@ -58,7 +59,7 @@ class ExampleReplayTest {
     String played = ExampleReplay.text(ExampleReplay.play(tables));
 
     assertThat(Files.readString(file))
-        .as("examples/replays/ladder.json; rewrite it with ./gradlew :desktop:exampleReplay")
+        .as(file + "; rewrite it with ./gradlew :desktop:exampleReplay")
         .isEqualTo(played);
   }
 

@@ -26,9 +26,10 @@ import org.crforge.desktop.battle.BattleDecks;
 import org.crforge.desktop.battle.BattleSession;
 
 /**
- * The example replay the repository ships ({@code examples/replays/}): a whole Ladder battle the
- * battle core plays between the debug screen's two decks ({@link BattleDecks}), with a fixed script
- * for both sides, written as a replay of the tables' data version ({@link ScenarioWriter}).
+ * The example replay the repository ships ({@code examples/<version>/battles/scripted_ladder/},
+ * beside the game's trace of the same battle): a whole Ladder battle the battle core plays between
+ * the debug screen's two decks ({@link BattleDecks}), with a fixed script for both sides, written
+ * as a replay of the tables' data version ({@link ScenarioWriter}).
  *
  * <p>It is made by the battle core alone, so it holds no battle recorded in the game and no
  * player's data. The script: each side waits until it has {@link #PLAY_AT} elixir, then plays the

@@ -1,0 +1,15 @@
+{
+ "corpus": "generated",
+ "schema": "crforge.native-battle-smoke.v1",
+ "content_version": "16.635.8",
+ "content_sha": "062a11e0500c03cc041f123413b1ef1846b539a4",
+ "scenario_shape": "generated",
+ "cases": [
+  {
+   "id": "knight",
+   "reference": "battles/knight",
+   "scenario_sha256": "378f2401088a94f6c982afd704029d479d24e19455426a07eb132f69b27c41ef",
+   "ticks": 600
+  }
+ ]
+}

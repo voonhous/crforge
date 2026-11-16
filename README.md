@@ -120,13 +120,13 @@ This opens the replay viewer on a replay file instead of a Ladder battle. You ca
 - a replay file (`.json`): one battle and the plays of both sides
 - a file of many replays, one a line (`.jsonl`, or compressed as `.jsonl.zst` or `.jsonl.gz`): the viewer lists them above the arena, and `[` and `]` open the previous and next
 
-To try the viewer, open the example replay this repository ships, [examples/replays/ladder.json](examples/replays/ladder.json), from the repository root:
+To try the viewer, open an example battle this repository ships, [examples/16.635.8/battles/scripted_ladder/scenario.json](examples/16.635.8/battles/scripted_ladder/scenario.json), from the repository root:
 
 ```bash
-./gradlew :desktop:run -Pcrforge.assetSource=<source> --args="--replay $PWD/examples/replays/ladder.json"
+./gradlew :desktop:run -Pcrforge.assetSource=<source> --args="--replay $PWD/examples/16.635.8/battles/scripted_ladder/scenario.json"
 ```
 
-It is a whole battle the battle core played between the debug screen's two decks with a fixed script, not a battle recorded in the game ([examples](examples/README.md)). The repository ships no recorded replays. The battle core can write any battle it plays as a replay file (`org.crforge.core.battle.replay.ScenarioWriter`), and the environment writes one for a battle that faults ([fault bundles](docs/environment.md#fault-bundles)).
+It is a whole battle the battle core played between the debug screen's two decks with a fixed script. [examples/16.635.8](examples/README.md) holds it and two more battles, one of them a real Ladder battle, anonymized, each with the game's own trace of it, so you can hold the battle core to them. The battle core can write any battle it plays as a replay file (`org.crforge.core.battle.replay.ScenarioWriter`), and the environment writes one for a battle that faults ([fault bundles](docs/environment.md#fault-bundles)).
 
 A replay plays only on the tables of the data version it was recorded on. When the replay names its data version, the viewer switches to that version if you have built its tables, and refuses the replay with the reason if you have not. Build a version's tables with `-Pcrforge.dataVersion=<version>`. A replay the battle core cannot play in full is refused with every reason, never played in part.
 
