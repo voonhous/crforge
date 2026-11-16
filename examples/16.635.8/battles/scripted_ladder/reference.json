@@ -1,0 +1,12 @@
+{
+ "schema": "crforge.native-battle-smoke.v2",
+ "ticks": 3100,
+ "executed_ticks": 3051,
+ "termination": {
+  "reason": "battle_stopped",
+  "tick": 3051
+ },
+ "observations": 3052,
+ "trace_sha256": "5e3c73019a59461915695268d128371e07e50e17b3a8fe3cace6674a95bc28ae",
+ "scenario_sha256": "117a29ae5e22335f6cd253f3b515b996828007b96dcb79cb5135a0ed6d3006ef"
+}

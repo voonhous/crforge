@@ -32,7 +32,7 @@ This page is the index of the docs, the module and package layout, and the debug
 
 `conformance` and `env` depend on `core` only. `desktop` depends on `core` and on `env`, whose environment builds a model opponent's observation and takes its actions as in training, and on ONNX Runtime, which runs the model (see [Playing against a model](#playing-against-a-model)). Nothing depends on `desktop` or `conformance`. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository. The build makes the tables on your machine from the game's files (`crforge.assetSource`), and the reference battles live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
 
-`python/` and `examples/` are not Gradle modules: `python/` is the crforge-env package, which runs the env module's jars in the JVM ([README](../python/README.md)), and `examples/` holds a replay the replay viewer opens ([README](../examples/README.md)).
+`python/` and `examples/` are not Gradle modules: `python/` is the crforge-env package, which runs the env module's jars in the JVM ([README](../python/README.md)), and `examples/` holds a few battles of the lock's data version with the game's own trace of each, which the replay viewer opens and the battle core can be held to ([README](../examples/README.md)).
 
 How `conformance` checks a reference battle is drawn in [How a case is checked](../conformance/README.md#how-a-case-is-checked).
 
@@ -373,12 +373,12 @@ At startup the launcher prints:
 - its battle header: the game mode and location, both decks by card name, the end tick, the command count by type
 - either what the mapping read or every reason the replay is refused
 
-For the example replay (`examples/replays/ladder.json`, whose capture block names no capture time) on the tables of 16.635.3:
+For the example replay (`examples/16.635.8/battles/scripted_ladder/scenario.json`, whose capture block names no capture time) on the tables of 16.635.8:
 
 ```
-replay: /home/me/crforge/examples/replays/ladder.json
-  recorded on: client 16.635.1, data version 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c)
-  data version: 16.635.3 (content sha dae6c6cc7e9126338da0c606e47e48a9ef80462c), named by the replay
+replay: /home/me/crforge/examples/16.635.8/battles/scripted_ladder/scenario.json
+  recorded on: client 16.635.1, data version 16.635.8 (content sha 062a11e0500c03cc041f123413b1ef1846b539a4)
+  data version: 16.635.8 (content sha 062a11e0500c03cc041f123413b1ef1846b539a4), named by the replay
   game mode: Ladder, location FirstMatch
   side 0 deck (red, top): LavaHound, MegaMinion, SkeletonArmy, Lightning, Minions, Tombstone, Arrows, Miner
   side 1 deck (blue, bottom): MegaKnight, ElectroGiant, Assassin, SkeletonWarriors, Tombstone, DarkWitch, SkeletonArmy, RamRider

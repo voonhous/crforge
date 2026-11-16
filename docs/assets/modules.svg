@@ -106,9 +106,9 @@
 <text x="1102" y="370" class="s" font-size="12" font-style="italic" text-anchor="end" fill="#57606a">reference battles</text>
 <rect x="30" y="801" width="260" height="101" rx="8" fill="#f6f8fa" stroke="#8c959f" stroke-width="1.5" stroke-dasharray="6 4"/>
 <text x="42" y="828" class="m" font-size="15" font-weight="600" fill="#424a53">examples/</text>
-<text x="42" y="850" class="s" font-size="13.5" fill="#424a53">a replay the viewer opens</text>
+<text x="42" y="850" class="s" font-size="13.5" fill="#424a53">battles with the game's traces</text>
 <text x="42" y="868" class="s" font-size="13.5" fill="#424a53">(not a Gradle module)</text>
-<text x="42" y="892" class="m" font-size="13" fill="#1f2328">replays/ladder.json</text>
+<text x="42" y="892" class="m" font-size="13" fill="#1f2328">&lt;version&gt;/battles/</text>
 <polyline points="160,801 160,753" fill="none" stroke="#57606a" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#head)"/>
 <text x="170" y="783" class="s" font-size="12" font-style="italic" fill="#57606a">opened by the replay viewer</text>
 <polyline points="350,831 390,831" fill="none" stroke="#57606a" stroke-width="1.6" marker-end="url(#head)"/>
