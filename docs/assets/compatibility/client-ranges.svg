@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="600" viewBox="0 0 1220 600" role="img" aria-label="Client ranges on a timeline: which client versions the game accepted when, the data served, and the battle rules the simulator follows">
+<title>Client ranges on a timeline: which client versions the game accepted when, the data served, and the battle rules the simulator follows</title>
+<defs>
+<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<style>.s{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif} .m{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; white-space:pre}</style>
+</defs>
+<rect x="0" y="0" width="1220" height="600" rx="12" fill="#ffffff"/>
+<text x="30" y="34" class="s" font-size="18" font-weight="600" fill="#1f2328">Client ranges: which client versions the game accepts, and when</text>
+<rect x="200" y="58" width="428" height="470" fill="#f6f8fa" opacity="0.55"/>
+<text x="414" y="76" class="m" font-size="14" font-weight="600" text-anchor="middle" fill="#424a53">16.402.12 to 16.402.20</text>
+<text x="414" y="91" class="s" font-size="13" font-style="italic" text-anchor="middle" fill="#424a53">closed 2026-10-27</text>
+<rect x="628" y="58" width="281" height="470" fill="#fff8c5" opacity="0.55"/>
+<text x="768" y="76" class="m" font-size="14" font-weight="600" text-anchor="middle" fill="#7d4e00">16.635.1 to 16.635.9</text>
+<text x="768" y="91" class="s" font-size="13" font-style="italic" text-anchor="middle" fill="#7d4e00">closed 2026-11-19</text>
+<rect x="909" y="58" width="281" height="470" fill="#dafbe1" opacity="0.55"/>
+<text x="1049" y="76" class="m" font-size="14" font-weight="600" text-anchor="middle" fill="#116329">16.635.10 to current</text>
+<text x="1049" y="91" class="s" font-size="13" font-style="italic" text-anchor="middle" fill="#116329">minimum 16.635.10</text>
+<line x1="200" y1="532" x2="1190" y2="532" stroke="#8c959f" stroke-width="1"/>
+<line x1="310" y1="532" x2="310" y2="537" stroke="#8c959f" stroke-width="1"/>
+<text x="310" y="552" class="s" font-size="13" text-anchor="middle" fill="#57606a">2026-10-01</text>
+<line x1="481" y1="532" x2="481" y2="537" stroke="#8c959f" stroke-width="1"/>
+<text x="481" y="552" class="s" font-size="13" text-anchor="middle" fill="#57606a">2026-10-15</text>
+<line x1="689" y1="532" x2="689" y2="537" stroke="#8c959f" stroke-width="1"/>
+<text x="689" y="552" class="s" font-size="13" text-anchor="middle" fill="#57606a">2026-11-01</text>
+<line x1="860" y1="532" x2="860" y2="537" stroke="#8c959f" stroke-width="1"/>
+<text x="860" y="552" class="s" font-size="13" text-anchor="middle" fill="#57606a">2026-11-15</text>
+<line x1="628" y1="58" x2="628" y2="528" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 4"/>
+<line x1="909" y1="58" x2="909" y2="528" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="30" y="119" class="m" font-size="14" fill="#1f2328">16.402.12</text>
+<rect x="237" y="106" width="391" height="16" rx="4" fill="#8c959f"/>
+<text x="634" y="119" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="650" y="119" class="s" font-size="13" font-style="italic" fill="#57606a">studied client binary</text>
+<text x="30" y="157" class="m" font-size="14" fill="#1f2328">16.402.14</text>
+<rect x="383" y="144" width="244" height="16" rx="4" fill="#8c959f"/>
+<text x="634" y="157" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="30" y="195" class="m" font-size="14" fill="#1f2328">16.402.17</text>
+<rect x="347" y="182" width="281" height="16" rx="4" fill="#8c959f"/>
+<text x="634" y="195" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="30" y="233" class="m" font-size="14" fill="#1f2328">16.402.20</text>
+<rect x="383" y="220" width="244" height="16" rx="4" fill="#8c959f"/>
+<text x="634" y="233" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="30" y="271" class="m" font-size="14" fill="#1f2328">16.635.1</text>
+<rect x="628" y="258" width="281" height="16" rx="4" fill="#8c959f"/>
+<text x="915" y="271" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="30" y="309" class="m" font-size="14" fill="#1f2328">16.635.7</text>
+<rect x="677" y="296" width="232" height="16" rx="4" fill="#8c959f"/>
+<text x="915" y="309" class="s" font-size="14" font-weight="600" fill="#cf222e">x</text>
+<text x="30" y="347" class="m" font-size="14" fill="#1f2328">16.635.10</text>
+<rect x="738" y="334" width="446" height="16" rx="4" fill="#4ac26b"/>
+<path d="M1184,330 L1194,342 L1184,354 z" fill="#4ac26b"/>
+<text x="748" y="347" class="s" font-size="13" font-weight="600" fill="#ffffff">the minimum since 2026-11-19</text>
+<text x="30" y="385" class="m" font-size="14" fill="#1f2328">16.635.13</text>
+<rect x="836" y="372" width="348" height="16" rx="4" fill="#4ac26b"/>
+<path d="M1184,368 L1194,380 L1184,392 z" fill="#4ac26b"/>
+<text x="30" y="437" class="s" font-size="14" font-weight="600" fill="#1f2328">data served</text>
+<rect x="237" y="421" width="108" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="291" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">16.402.15</text>
+<rect x="347" y="421" width="22" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="358" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">.18</text>
+<rect x="371" y="421" width="35" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="388" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">.19</text>
+<rect x="408" y="421" width="120" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="468" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">.21</text>
+<rect x="530" y="421" width="96" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="578" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">.22</text>
+<rect x="628" y="421" width="84" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="670" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">16.635.3</text>
+<rect x="713" y="421" width="475" height="22" rx="4" fill="#ffffff" stroke="#d4a72c" stroke-width="1.2"/>
+<text x="951" y="437" class="m" font-size="13" text-anchor="middle" fill="#7d4e00">16.635.8</text>
+<text x="917" y="462" class="s" font-size="13" font-style="italic" fill="#57606a">no new data on 2026-11-19</text>
+<text x="30" y="499" class="s" font-size="14" font-weight="600" fill="#1f2328">battle rules</text>
+<rect x="201" y="483" width="437" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
+<text x="420" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">client 16.402.17's rules</text>
+<rect x="641" y="483" width="547" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
+<text x="914" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">client 16.635.1's rules, kept on the 16.635.10 range</text>
+<rect x="30" y="568" width="34" height="12" rx="3" fill="#8c959f"/>
+<text x="70" y="578" class="s" font-size="13" fill="#57606a">accepted, then refused from the x</text>
+<rect x="315" y="568" width="34" height="12" rx="3" fill="#4ac26b"/>
+<text x="355" y="578" class="s" font-size="13" fill="#57606a">still accepted</text>
+<line x1="470" y1="574" x2="504" y2="574" stroke="#cf222e" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="510" y="578" class="s" font-size="13" fill="#57606a">required update: the game stops accepting clients below a new minimum</text>
+</svg>
