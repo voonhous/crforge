@@ -217,6 +217,14 @@ jobs:
           uv run ruff format --check
           uv run pytest -rs --install=${{ github.workspace }}/env/build/install/env $TABLES_ARG
 
+      # The example trainer (python/examples/ppo.py) needs torch, which the package does not depend
+      # on: the step above skips its test, and this one runs it with the CPU build of torch.
+      - name: Test the example trainer
+        working-directory: python
+        run: |
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv run --no-sync pytest -rs tests/test_ppo_example.py --install=${{ github.workspace }}/env/build/install/env
+
   # The unit tests on the tables of every compatible data version other than the lock's version,
   # which the build job covers. The versions share the client's battle rules and the tests pin no
   # game data, so they pass on each one unchanged.

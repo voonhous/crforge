@@ -47,6 +47,7 @@ python/                  crforge_env (the crforge-env package)
   evaluate               a policy against an opponent over many episodes, as wins, losses and draws
   label_replays          replays labelled for behavioural training, as numpy arrays per replay
   bench                  the Python-side benchmark (crforge-env-bench)
+  examples/ppo.py        a minimal PPO trainer on the vector, in one file (an example, not part of the package)
 ```
 
 ## A decision
@@ -967,6 +968,38 @@ A fault is never a result. When a battle's episode ends by a fault (a refusal of
 
 A trainer bootstraps such a step as it bootstraps a tick limit, and never learns from it as a loss or a win. A tick limit (`LadderConfig.max_ticks`) truncates the same way, with `fault` `none`. A reset whose new episode faults before its first decision raises `BattleFaultError` with the fault.
 
+### A minimal PPO trainer
+
+`python/examples/ppo.py` is a PPO trainer on the vector in one file, in the shape of CleanRL's PPO: an example to read and to copy, not a framework. torch is not a dependency of `crforge-env`, so it is added for the run:
+
+```bash
+cd python
+uv run --with torch python examples/ppo.py --install ../env/build/install/env --tables ~/.crforge/tables/<data version> --out runs/ppo --minutes 20
+```
+
+- **The policy.** The header's amounts are scaled to about 0 to 1, the card ids go through one embedding of the vocabulary, and the first 64 entity rows (`--entities`; towers and characters are listed first) go through a shared network pooled by mean and max. One masked categorical covers every action; its logits are built the way the action is: the wait, each hand slot's logit plus a tile's (one tile head for the four slots, given the slot's card), then the champion abilities.
+- **The seats.** The learner plays one seat of each battle, seat 0 in even battles and seat 1 in odd ones, against `--opponent` (`random` by default, `scripted` or `wait`), or both seats of every battle with `--opponent self`. Both sides play one deck (`--deck`, eight card row names).
+- **The reward.** The match's result (+1, -1, 0 for a draw), plus `--shaping` (0.5) times the change of the tower balance: the seat's share of tower hit points left less the enemy's.
+- **Episode ends.** The step after a battle's end restarts it and ignores its actions, so that step's sample is left out of the loss. An episode cut short by a fault or a tick limit takes no shaping on its last step and bootstraps from the value of that step's own observation, as [Faults are truncations](#faults-are-truncations) asks.
+- **The run folder.** Every `--eval-every` updates (20) `evaluate` plays the policy against `--eval-opponent` and adds a row to `curve.csv`; `policy.pt` holds the weights, the settings and the vector's metadata, and `metadata.json` the metadata alone. `runs/` is ignored by git.
+
+`--help` lists the rest (the battles and their threads, the rollout length, the PPO coefficients, the device).
+
+Measured on 2026-11-19 on one Mac (Apple M4 Pro, 14 cores, JDK 21.0.9, Python 3.12.7, torch 2.15.0), data version 16.635.8, with other work running (1-minute load average 8 to 13). One run of 20 minutes with the defaults: the deck `Knight`, `Archer`, `Musketeer`, `Giant`, `MiniPekka`, `Fireball`, `Arrows`, `Zap` on both sides at level 11, the learner on one seat of 64 battles on 4 threads against the random opponent, rollouts of 128 decisions, on the CPU. Each evaluation is 32 battles against the random opponent, the same seeds every time.
+
+| updates | learner decisions | minutes | vs random |
+|---:|---:|---:|---:|
+| 0 | 0 | 0 | 16 of 32 (0.50) |
+| 20 | 163,659 | 1.1 | 28 of 32 (0.88) |
+| 60 | 490,853 | 3.2 | 30 of 32 (0.94) |
+| 100 | 818,031 | 5.3 | 27 of 32 (0.84) |
+| 140 | 1,145,187 | 7.2 | 32 of 32 (1.00) |
+| 200 | 1,635,723 | 10.0 | 32 of 32 (1.00) |
+| 300 | 2,453,184 | 15.3 | 31 of 32 (0.97) |
+| 387 | 3,164,309 | 20.0 | 32 of 32 (1.00) |
+
+From update 140 on, every evaluation won 30 to 32 of its 32 battles. The run made about 2,600 learner decisions a second, the updates and evaluations included, and no battle faulted. The same policy then lost 32 of 32 battles against `ScriptedBot`: a policy trained only against random play never had to answer an attack at the bridge. Training against the scripted bot (`--opponent scripted`) or in self-play is where to go from here; this example stops at showing the loop.
+
 ### Tests and checks
 
 ```bash
@@ -1031,7 +1064,9 @@ The scripted bot's tests hold:
   - a deck's win condition played in each bot-against-bot battle (a tank on its back line, any other at the bridge);
   - a siege building placed at the bridge, or on the open tile nearest to it when it does not land there unmoved.
 
-CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files.
+The example trainer's tests (`tests/test_ppo_example.py`) run it as a user does, on synthetic environments: a tiny training against the random opponent and one in self-play each write a curve with an evaluation before the first update, at the interval and at the end, and a checkpoint of finite weights with the vector's metadata; and with short episodes the steps that restart a battle are not counted as decisions. They are skipped without torch, and the run says so.
+
+CI runs them in the `python` job of `build-and-test.yml`, on the tables of the lock's version built from the data repository's copy of the asset files. A step of its own installs the CPU build of torch and runs the example trainer's tests.
 
 ### The Python-side benchmark
 
