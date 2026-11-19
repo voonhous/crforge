@@ -60,3 +60,13 @@ observation, info = env.reset(options={"replay": replay_json_text, "start_tick":
 ```
 
 Neither folder has a default and no environment variable is read: every entry point takes `install` (the env module's installed distribution) and, for Ladder battles, `tables`. A faulted episode ends as truncated with no reward, the fault named in the info; it is never a result.
+
+## A minimal trainer
+
+`examples/ppo.py` is a PPO trainer on the vector in one file: a policy with a masked action head, rollouts against the random opponent, the scripted bot or itself, and an evaluation curve. It is an example to read and to copy; torch is added for the run only.
+
+```bash
+uv run --with torch python examples/ppo.py --install ../env/build/install/env --tables ~/.crforge/tables/<data version> --out runs/ppo --minutes 20
+```
+
+What it does and a measured run are in [docs/environment.md](../docs/environment.md#a-minimal-ppo-trainer).
