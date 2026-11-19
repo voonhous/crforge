@@ -22,7 +22,7 @@ One table per client range: the client versions that share the battle rules, fro
 | 16.402.14 | 16.402.21 | `c99947391d7d95cc51a894935c370e4f4d14014b` | 16.426.24 | update | 2026-10-09 | not known |
 | 16.402.20 | 16.402.22 | `97869d43e0745841430d11d7b4286ac0f8057363` | 16.426.25 | update | 2026-10-19 | [Season 88 mid-season - RoyaleAPI](https://royaleapi.com/blog/season-88-balance-mid-season-october-2026)<br>[Season 88 mid-season - riggedroyale](https://riggedroyale.com/blog/clash-royale-mid-season-balance-changes-october-2026) |
 
-### Client range: 16.635.1 to current
+### Client range: 16.635.1 to 16.635.9 (closed 2026-11-19)
 
 | Client version | Data version | Content sha | Asset CDN label | Kind | First seen | Balance notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -30,6 +30,15 @@ One table per client range: the client versions that share the battle rules, fro
 | 16.635.1 | 16.635.3 | `dae6c6cc7e9126338da0c606e47e48a9ef80462c` | not known | update | 2026-10-27 | not known |
 | 16.635.7 | 16.635.3 | `dae6c6cc7e9126338da0c606e47e48a9ef80462c` | not known | shipped | 2026-10-31 | not known |
 | 16.635.1 | 16.635.8 | `062a11e0500c03cc041f123413b1ef1846b539a4` | not known | update | 2026-11-03 | not known |
+
+No longer accepted since 2026-11-19: the game stopped accepting clients 16.635.1 to 16.635.9 between 2026-11-18 09:07 UTC and 2026-11-19 06:03 UTC ([Compatibility](compatibility.md#client-range-166351-to-166359-closed-2026-11-19)).
+
+### Client range: 16.635.10 to current
+
+The range began with a required update on 2026-11-19 that raised the lowest accepted client to 16.635.10, with no new data version ([Compatibility](compatibility.md#client-range-1663510-to-current)). Clients 16.635.10 and 16.635.13 were released while client 16.635.1 was still accepted; their pairs below date from then.
+
+| Client version | Data version | Content sha | Asset CDN label | Kind | First seen | Balance notes |
+| --- | --- | --- | --- | --- | --- | --- |
 | 16.635.10 | 16.635.8 | `062a11e0500c03cc041f123413b1ef1846b539a4` | not known | not known | 2026-11-05 | not known |
 | 16.635.13 | 16.635.8 | `062a11e0500c03cc041f123413b1ef1846b539a4` | not known | not known | 2026-11-13 | not known |
 
