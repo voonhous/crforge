@@ -1,3 +1,7 @@
+---
+description: 'The tests and recorded reference battles that hold crforge''s Clash Royale battle core, test class by test class.'
+---
+
 # The battle core's tests and reference battles
 
 The tests and reference battles that hold the battle core, as they landed. How a test treats the game data is under [Tests and game data](battle-core.md#tests-and-game-data), and the behaviour they hold is described in [What is covered today](battle-core.md#what-is-covered-today).
@@ -483,5 +487,6 @@ The tests and reference battles that hold the battle core, as they landed. How a
 - `GeneratedKingLevelTest` holds a generated case's king, built into the battle from the case: it stands one step below its rarity's first level with the row's own hit points, and the Royal Chef's level-up brings it to its first level with the same maximum.
 
 A test can play a battle with the towers passive: `Standard1v1Battle` takes a flag that keeps every tower's targeting component off for the whole battle.
+
 - `LevelScalingTest` holds the two scaling rules to the published tables and percentages: for every level a card can have the card rule is the iterated floor of a tenth per step, and at the published values the tower rule is 1.07 (king hit points) or 1.08 per level up to the tournament cap and 1.10 from there; one step below the first level, where a generated case's king stands, the tower rules give the base and the card rule 0 for a base of 0 and a refusal for any other; and a king's level packs as a Common level from 1, 0 one step below.
 - `EntityHolderTest` and `BattleTest` pin the two orders of [One step](battle-core.md#one-step) line by line, the ids per kind and the fold that keeps a late projectile ahead of every character among them.

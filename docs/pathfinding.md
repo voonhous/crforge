@@ -1,3 +1,7 @@
+---
+description: 'How troops move in crforge''s Clash Royale battle core: the routing grid, cell costs, the route search, endpoints and lanes, and the movement, targeting and state rules.'
+---
+
 # Troop pathfinding
 
 `org.crforge.core.pathfinding` holds the movement, target-acquisition and state rules the battle core runs:
@@ -226,6 +230,6 @@ What is left are the cases outside the current scope and the pieces below.
 
 ## How to check
 
-- `./gradlew :conformance:referenceTest -Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>` (with the asset source the build reads, `-Pcrforge.assetSource=...`) plays every recorded reference battle of that data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](../conformance/README.md)). It is skipped without a references folder.
+- `./gradlew :conformance:referenceTest -Pcrforge.dataVersion=<version> -Pcrforge.references=<data checkout>/references/<version>` (with the asset source the build reads, `-Pcrforge.assetSource=...`) plays every recorded reference battle of that data version on the battle core, the Knight walks among them, and compares every tick with the recording (see [conformance/README.md](https://github.com/voonhous/crforge/blob/main/conformance/README.md)). It is skipped without a references folder.
 - The unit tests under `core/src/test/java/org/crforge/core/pathfinding` hold each rule on its own: the route search, its heap and the cost field (`grid`), the movement and push passes (`move`), the targeting visit and default selection (`target`), the state visit (`state`), and the hit points and damage chain (`combat`).
 - The debug visualizer runs the battle core: its `G` and `N` keys paint the battle's routing cell costs and draw routes and references. See the controls table and the overlays section in [architecture.md](architecture.md#overlays).

@@ -1,3 +1,7 @@
+---
+description: 'crforge''s Clash Royale reinforcement learning environment: the observation schema, the action space and mask, faults, the vector environment and its benchmark, and the Python package with Gymnasium and PettingZoo wrappers.'
+---
+
 # The Environment
 
 The reinforcement learning environment on the battle core: a vector of Ladder battles stepped in the JVM behind flat buffers, which a Python trainer reads as arrays of the same memory. The `env` module is the Java side; the `crforge-env` package under `python/` is the Python side ([Python](#python)).
@@ -277,6 +281,7 @@ Which characters and towers a seat sees, and what of them, is one rule, in one p
   Its row is at its current position, with its move, its state and the flags `alive`, `hidden` and `underground`, and nothing else: its `row`, `max_hp` and `level` are -1, its `hp` and `shield` -1, no target, timers or buffs. Nothing is drawn where it will come up, so no field shows that point before it does.
 
   The two tunnelling cards' trails are different effects, but whether a player tells them apart by eye is not settled. So the trail names no row until the unit comes up (`SeatView.TRAIL_NAMES_CARD`, false, the one switch for both the row and the play's card). The trail's speed differs between the two cards and shows in `dx`, `dy`, as it does on the screen.
+
 - **Health bars.** An enemy character's `hp` and `shield` are shown only while the screen draws its health bar, by the table below. Elsewhere they are -1 (`Schema.UNKNOWN`), and never while the unit is underground or waiting its turn to deploy. Its `level` is always shown (but on a trail): the level badge is on the screen whether or not the hit points are.
 
   The table gives, per kind of row, when the player sees the enemy unit's hit points and shield.
@@ -328,6 +333,7 @@ Tests hold the rule (`LadderEnvTest`, `SeatObservationTest`, `HealthBarTest`):
   - on tables altered by hand, a Knight row that sets `HideHealthbar` and builds no bar never shows its hit points, and one naming no health bar row shows them unhurt.
 
   The roll's rule is held by no test yet. The ability action reaches a Barb Log hero, which its barrel leaves rather than its play, by its game object id (see the mask), but no test rolls it in a seat's view.
+
 - An evolution slot's Knight played in base form shows the diamond and is counted from it to the evolved play, equal to the king's count. A battle where the Knight is in no slot is seen byte for byte alike but for the diamond and the count.
 
 A random battle checks every row against the core (the health bar rule from the tables, the buff slots' order, a trail's fields, a hidden aim). Another holds the ids: the ids a seat is first shown at a decision follow on from those before with no gap, also when the battle made an enemy unit the seat was not shown between two it was. An id names one entity for the episode, a target names its row, and the two seats number apart.
@@ -370,6 +376,7 @@ What a trainer would misread without a note:
   - a building of an even footprint lands on the tile's corner of the lowest coordinates, one tile for each corner it may take.
 
   `PlayerCommands.searchCards` names the card the search is handed (an evolved or hero row, a variant's option, the card a Mirror repeats). `PlacementSearch.landingTiles` gives the tiles. The field the mask reads is the one the seat sees: every building of both sides, a hidden Tesla lowered included (no building waits its turn to deploy), so it is the whole field's buildings and towers. The tiles are kept per seat and card until the buildings and towers the seat sees change.
+
 - Rule 1, every tile: every tile of an open slot is open, as a drop anywhere is moved to the tile the placement search finds. It is the rule before rule 2, kept for models trained under it.
 
 The mask rule is not part of the observation, and both rules use the same 2307 actions, so a change of rule leaves the schema's version where it is. The metadata exports it as its own `mask_version`, outside `schema` and `config`, and a model trained under one rule loads and plays under the other.
@@ -588,6 +595,7 @@ Decisions fall every `decisionTicks` ticks from tick 0, as the environment takes
 - **A card play**: the hand slot its card holds in the row's observation, and a tile of the seat's frame. A replay records the tile the screen's search found: a tile centre (less 1 on a coordinate the symmetrical snap shifts) or a building's tile corner (see [When a player's command runs](battle-core.md#when-a-players-command-runs)).
 
   So the label's tile is the first of the tiles touching the recorded point, the one holding it first, whose centre the screen's search, run on the battle at the giving, sends to the recorded point. Driven from the label, the play is then sent on the replay's point. When no tile's centre does, the tile holding the point is named and the row flagged.
+
 - **An ability command**: the ability action of the champion slot whose unit is the one the command names (by its object id).
 - **Two commands of one seat in a window**: the first, in the replay's order, is the label; the others are counted as collisions and the row flagged. At 1-tick decisions only two commands given on one tick collide; at 5 ticks any two within five ticks do.
 - **A command the action space cannot say at the row** is labelled the wait and the row flagged:
@@ -599,6 +607,7 @@ Decisions fall every `decisionTicks` ticks from tick 0, as the environment takes
   That is the one tile the row's mask opens for the point. So a tap the screen moved before sending it is labelled with the tile it landed on, not the tile the player touched (which the replay does not record). The tiles above follow only when it does not send there.
 
   On a building's tile corner the tile holding the point in the seat's frame is the corner's other neighbour on a mirrored axis. Its centre may be moved onto the corner, and under rule 1 that tile is the label.
+
 - **A label the mask closes** is kept, and the row flagged: the client sent a command the environment's try would have refused (for example a play the battle core finds short of elixir at the giving, or given after the match was decided).
 
 Nothing is dropped: every command of the replay is a label, a collision, inexpressible, or after the labelling's end.

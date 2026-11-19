@@ -1,3 +1,7 @@
+---
+description: 'Which Clash Royale client versions share the battle rules crforge follows, and the data versions it runs.'
+---
+
 # Compatibility
 
 Which game versions the simulator's battle rules hold for: the client it follows, the client versions that share its rules, and the data it runs. The versions the game has shipped are recorded in [Game Versions](game-versions.md).
@@ -32,7 +36,7 @@ The range's minimum was checked against the game server on 2026-11-19: it refuse
 
 The range began with the required update of 2026-11-19 that closed client 16.635.1's range (below). No new data version came with it: the server still serves data version 16.635.8 to clients of this range. Clients 16.635.10 and 16.635.13 were released while client 16.635.1 was still accepted and met it in the same battles, so by the reasoning above they share its battle rules. The move to 16.635.13 checked it too: client 16.635.13 reads the game data as client 16.635.1 does (its schema facts, `tables/.../schema/16.635.13.json`, equal 16.635.1's), and it plays every reference battle of 16.635.8 the same, tick for tick, as client 16.635.1 recorded it.
 
-Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_13_DATA` lists the ones the simulator has game tables for (16.635.8), and CI tests each of them (`compatible` in `crforge-data.lock`). Its reference battles are the game's own recordings on 16.635.8: every listing recorded on 16.635.3, recorded again on 16.635.8, and the cases recorded since. CI holds them to `conformance/reference-expectations/16.635.8.json` and scores 16.635.8's coverage set after each merge ([conformance](../conformance/README.md#coverage)).
+Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_13_DATA` lists the ones the simulator has game tables for (16.635.8), and CI tests each of them (`compatible` in `crforge-data.lock`). Its reference battles are the game's own recordings on 16.635.8: every listing recorded on 16.635.3, recorded again on 16.635.8, and the cases recorded since. CI holds them to `conformance/reference-expectations/16.635.8.json` and scores 16.635.8's coverage set after each merge ([conformance](https://github.com/voonhous/crforge/blob/main/conformance/README.md#coverage)).
 
 ## Former reference client: 16.635.1
 

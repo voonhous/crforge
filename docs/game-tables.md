@@ -1,3 +1,7 @@
+---
+description: 'The Clash Royale game tables crforge''s battle core reads, how they are built on your machine from the game''s own files, and the recorded reference battles it is held to.'
+---
+
 # Game tables and reference battles
 
 The battle core reads the game's own tables, which this repository does not ship: they are built on your machine from the game's files (see [Building the game tables](#building-the-game-tables)). The battle core is held to recorded reference battles kept in the game data repository.
@@ -83,7 +87,7 @@ The decoder is held to the game data repository: for each data version it knows,
 
 The same repository holds recorded reference battles under `references/<version>/`:
 
-- `battles/`: one folder per battle (`scenario.json`, `reference.json` and the observation trace, zstd-compressed `observations.jsonl.zst`). `trace_sha256` names the uncompressed trace. The coverage sets store the trace as its delta lines instead ([Delta traces](../conformance/README.md#delta-traces)).
+- `battles/`: one folder per battle (`scenario.json`, `reference.json` and the observation trace, zstd-compressed `observations.jsonl.zst`). `trace_sha256` names the uncompressed trace. The coverage sets store the trace as its delta lines instead ([Delta traces](https://github.com/voonhous/crforge/blob/main/conformance/README.md#delta-traces)).
 - `corpora/*.json`: listing the cases.
 
 `./gradlew :conformance:referenceTest -Pcrforge.references=<data checkout>/references/<version>` runs every case in one JVM, in parallel, through the same code path as the `conformance` command line run. It compares each trace with its reference observation by observation, and holds each case's outcome to `conformance/reference-expectations/<version>.json`. The outcome is one of:
