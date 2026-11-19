@@ -1,3 +1,7 @@
+---
+description: 'The supplied answers crforge''s Clash Royale battle core carries, listed so they are not mistaken for settled behaviour.'
+---
+
 # The battle core's known assumptions
 
 These are supplied answers, recorded on the classes that carry them and listed here so they are not mistaken for settled behaviour.

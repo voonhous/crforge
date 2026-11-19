@@ -1,3 +1,7 @@
+---
+description: 'How fast crforge''s Clash Royale battle core runs headless: the JMH tick benchmark, how to profile it and the current baseline.'
+---
+
 # Performance
 
 How fast the battle core runs, headless: the benchmark, how to profile it, and the baseline the next change is measured against.
@@ -123,7 +127,7 @@ Every entity's candidates registered (6% at the round's start, now 0.4%) and the
 
 ![Allocation flame graph of Battle.step at d7aaec93](assets/performance-d7aaec93-alloc.png)
 
-Earlier baselines and each round of optimisations, with the numbers before and after, are in [Performance history](performance-history.md). What a coverage score costs, and how to profile it, is in the conformance module's [README](../conformance/README.md#what-a-score-costs).
+Earlier baselines and each round of optimisations, with the numbers before and after, are in [Performance history](performance-history.md). What a coverage score costs, and how to profile it, is in the conformance module's [README](https://github.com/voonhous/crforge/blob/main/conformance/README.md#what-a-score-costs).
 
 ## The environment
 

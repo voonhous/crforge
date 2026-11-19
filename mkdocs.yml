@@ -1,0 +1,74 @@
+# The documentation site, built from docs/ with MkDocs and the Material theme and published to GitHub Pages by .github/workflows/docs.yml.
+# Build it locally: pip install -r docs/requirements.txt && mkdocs build --strict (or mkdocs serve to preview).
+site_name: crforge
+site_url: https://voonhous.github.io/crforge/
+site_description: crforge is an open source, deterministic Clash Royale battle simulator in Java, held tick by tick to battles recorded in the game, with a reinforcement learning environment for Python (Gymnasium and PettingZoo style wrappers).
+site_author: voonhous
+repo_url: https://github.com/voonhous/crforge
+repo_name: voonhous/crforge
+copyright: crforge is an independent fan project, not affiliated with, endorsed by, or associated with Supercell. Clash Royale is a trademark of Supercell Oy.
+
+docs_dir: docs
+# The pinned build dependencies sit beside the pages but are not a page of the site.
+exclude_docs: |
+  requirements.txt
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+# Strict builds fail on a link to a missing page or a missing heading anchor.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+      # Heading anchors as GitHub makes them, so a link to a heading works both on GitHub and on the site.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.highlight
+  - pymdownx.superfences
+  # The pages nest lists with two spaces, as GitHub reads them.
+  - mdx_truly_sane_lists:
+      nested_indent: 2
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - The Battle Core: battle-core.md
+  - Battle Core Tests: battle-core-tests.md
+  - Battle Core Assumptions: battle-core-assumptions.md
+  - Troop Pathfinding: pathfinding.md
+  - Game Tables and Reference Battles: game-tables.md
+  - The Environment: environment.md
+  - Compatibility: compatibility.md
+  - Game Versions: game-versions.md
+  - Performance:
+      - Performance: performance.md
+      - Performance History: performance-history.md
+      - Fork Performance: performance/fork.md

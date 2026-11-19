@@ -1,3 +1,7 @@
+---
+description: 'The modules and packages of crforge, a deterministic Clash Royale battle simulator in Java, its 50 ms battle step, and the reference of its debug visualizer and replay viewer.'
+---
+
 # crforge -- Architecture Overview
 
 crforge is a deterministic Clash Royale battle simulator. Its engine, the battle core (`org.crforge.core.battle`), plays a battle in steps of 50 ms of game time, 20 steps a second, on the game's own tables of one data version, and the `conformance` module holds it tick by tick to battles recorded in the game. The same inputs on the same tables give the same battle, step for step.
@@ -15,7 +19,7 @@ This page is the index of the docs, the module and package layout, and the debug
 | [Battle Core Assumptions](battle-core-assumptions.md) | The supplied answers the battle core carries, so they are not mistaken for settled behaviour |
 | [Troop Pathfinding](pathfinding.md) | The movement, targeting and state rules the battle core runs: the routing grid, cell costs, the route search, endpoints and lanes, assumptions and what is still unvalidated |
 | [Game Tables and Reference Battles](game-tables.md) | The game tables the battle core reads, how they are named, the recorded reference battles and the records built from the rows |
-| [Conformance](../conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, the coverage score and what it costs, moving to a new data version |
+| [Conformance](https://github.com/voonhous/crforge/blob/main/conformance/README.md) | How a reference battle is checked, the four outcomes and the expectations file, the coverage score and what it costs, moving to a new data version |
 | [Compatibility](compatibility.md) | The client the simulator follows, the client versions that share its battle rules, and the data it runs |
 | [Game Versions](game-versions.md) | Which data versions each game client version has run |
 | [Performance](performance.md) | The headless tick benchmark (`:conformance:tickBenchmark`, JMH), what it measures, how to profile and the current baseline |
@@ -32,9 +36,9 @@ This page is the index of the docs, the module and package layout, and the debug
 
 `conformance` and `env` depend on `core` only. `desktop` depends on `core` and on `env`, whose environment builds a model opponent's observation and takes its actions as in training, and on ONNX Runtime, which runs the model (see [Playing against a model](#playing-against-a-model)). Nothing depends on `desktop` or `conformance`. `tables` depends on nothing in the project. The game tables and the reference battles are not in this repository. The build makes the tables on your machine from the game's files (`crforge.assetSource`), and the reference battles live in the game data repository, at the commit `crforge-data.lock` names, one folder per data version (see [Game Tables and Reference Battles](game-tables.md)).
 
-`python/` and `examples/` are not Gradle modules: `python/` is the crforge-env package, which runs the env module's jars in the JVM ([README](../python/README.md)), and `examples/` holds a few battles of the lock's data version with the game's own trace of each, which the replay viewer opens and the battle core can be held to ([README](../examples/README.md)).
+`python/` and `examples/` are not Gradle modules: `python/` is the crforge-env package, which runs the env module's jars in the JVM ([README](https://github.com/voonhous/crforge/blob/main/python/README.md)), and `examples/` holds a few battles of the lock's data version with the game's own trace of each, which the replay viewer opens and the battle core can be held to ([README](https://github.com/voonhous/crforge/blob/main/examples/README.md)).
 
-How `conformance` checks a reference battle is drawn in [How a case is checked](../conformance/README.md#how-a-case-is-checked).
+How `conformance` checks a reference battle is drawn in [How a case is checked](https://github.com/voonhous/crforge/blob/main/conformance/README.md#how-a-case-is-checked).
 
 ### Core Package Layout
 

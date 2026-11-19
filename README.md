@@ -156,6 +156,8 @@ The plays are the replay's own: cards cannot be selected or played in the viewer
 
 ## Docs
 
+The docs are also published as a site: [voonhous.github.io/crforge](https://voonhous.github.io/crforge/).
+
 | Document                                                     | Description                                                          |
 |--------------------------------------------------------------|----------------------------------------------------------------------|
 | [Architecture](docs/architecture.md)                         | Modules, packages, the 50 ms step and the debug visualizer           |

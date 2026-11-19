@@ -1,3 +1,7 @@
+---
+description: 'The engine of crforge, a Clash Royale battle simulator: its package layout, one 50 ms step and the entity tick, when a player''s command runs, the tests and the game data, what is covered and the roadmap.'
+---
+
 # The battle core
 
 The battle core (`org.crforge.core.battle`) is crforge's engine. It only takes in behaviour that is established, and every class in it says which parts are settled and which are not. Run `./gradlew :core:fidelityReport` to see how far that has come.
@@ -368,16 +372,19 @@ A player's command does not run when the player gives it. The game client stamps
   - For an ability command: the run's gates, its elixir gate setting the promised costs aside.
 
   A command that passes promises its cost until its run, or, refused at its run, until 60 steps after its giving. An ability command's run releases its promise before its gates.
+
 - **Where a tapped card goes.** The player's screen does not send the point the card was dropped at. On the drop the client runs the placement search, the same one the run makes, against the battle as it stands at that moment. The command carries the tile the search found: the nearest tile the card may take (for a troop, a tile of its own half or of an open pocket, never on a tower's or building's footprint), at the tile's centre, or a building's tile corner.
 
   A troop dropped in the enemy half, on the river, on a tile the map check refuses or inside a building is moved before anything is sent, not refused. A drop is cancelled, with nothing sent, only when the search finds no tile, when the card is dropped back over the hand, beyond the player's own back edge of the arena, or when the client's try refuses it. The screen tests that edge on the dropped point before its search: it cancels a point before the start of the arena's length for side 0, and at or past its end for side 1. The game would also cancel a band of the player's own back rows as wide as an edge margin, but no data sets that margin, so it is 0 and no point on the arena is cancelled. This comes from the screen's handling: no recording holds it, as recordings hold only the plays that were sent. Since the command already carries a legal tile, the try's map check does not refuse a play the screen made.
 
   At the run the placement search runs again from the tile sent. That moves it only if the board changed in the 20 steps between: a pocket opened or closed or a building placed or destroyed. The recordings agree: every play of the live Ladder battles in the coverage sets of 16.402.19 and 16.402.21, about 820,000, is sent on a tile centre or a building's tile corner.
+
 - **The earliest play.** A card play is refused while the battle's tick counter is below the game mode's start cooldown. That is the game mode row's `BattleStartCooldown` in milliseconds over 50, or, where the row leaves it empty, the global `LOGIC_BATTLE_START_COOLDOWN` over 50. Ladder and Ranked1v1_NewArena leave the column empty and the global is 4500 ms in 16.402.18, 16.402.19, 16.402.21 and 16.635.3. So a play can be given from tick counter 90 (4.5 seconds) and runs at 110 at the earliest.
 
   The play checks it among its own gates, after the card's hand slot and before the elixir, with code 22. It does so in the client's try at the giving, so a card dropped earlier is refused and nothing is sent, and again at the run. An ability command has no such gate. Whether the screen also holds the hand back during this time is not established.
 
   No live Ladder battle of the coverage sets, 11,733 battles, gives its first play before tick 103. Some reference battles give a play at tick 80, which a player's client would refuse, but those run at tick 100, after the cooldown, and are placed.
+
 - **What the run checks.** The battle checks the play again at its run and only then spends the elixir and moves the card to the back of the queue. A play refused at its run changes nothing. It is not retried.
 - **Several waiting commands.** A player may give another command while one is waiting. The client sets no limit beyond the elixir check. Captured Ladder battles have up to three commands of one side waiting at once, and two given on the same tick.
 - **When the next card joins the hand.** A play takes its card out of the hand at its run, not at its giving: until then the card stays in its slot, offered by no screen (above). At the run the card goes to the back of the queue, and the empty slot takes the queue's front once the hand's refill cooldown has run out (`Hand`). The cooldown counts down 50 ms a step and restarts only when a slot is refilled, at the timeline's next-card cooldown (`NextSpellCooldownMS`, by the battle's time). So a play run a cooldown or more after the last refill gets its next card on the step of its run, and one run sooner leaves its slot empty for the rest of the cooldown. Both hands are observed on every tick of every reference and coverage battle, which all match. In the first 1,000 battles of the 16.635.3 coverage set, each of 64,132 plays names a card in its side's hand on the tick before its giving, never a card of the queue. What an agent is shown of it, and what the screen does as a new card arrives (it holds none back), are in [The hand after a play](environment.md#the-hand-after-a-play).

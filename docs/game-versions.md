@@ -1,3 +1,7 @@
+---
+description: 'Which Clash Royale data versions each game client version has run.'
+---
+
 # Game Versions
 
 The game carries two version numbers, and they move apart:

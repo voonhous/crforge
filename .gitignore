@@ -41,6 +41,9 @@ venv/
 # Fault bundles of the environment (docs/environment.md): local files of a run, never committed
 fault-bundles/
 
+# The documentation site, as mkdocs build writes it (mkdocs.yml)
+site/
+
 # Backup files
 *.bak
 

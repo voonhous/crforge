@@ -1,3 +1,7 @@
+---
+description: 'What a fork of a crforge battle costs, what it copies, and each round of work on making it faster.'
+---
+
 # Fork performance
 
 A log of how fast a fork of a battle is, what was tried to make it faster, and what is left. Newest numbers first, one section per round of work.

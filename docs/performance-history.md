@@ -1,3 +1,7 @@
+---
+description: 'The earlier benchmark baselines of crforge''s Clash Royale battle core and each round of optimisations, with their numbers and profiles.'
+---
+
 # Performance history
 
 The battle core's earlier baselines and each round of optimisations, newest first, kept with their numbers and profiles. The benchmark, its workloads and the profiler commands are described in [Performance](performance.md), which also holds the current baseline.
