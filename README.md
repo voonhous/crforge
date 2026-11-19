@@ -3,7 +3,10 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Build](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/voonhous/crforge/actions/workflows/build-and-test.yml)
 [![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://adoptium.net/)
+[![Docs](https://img.shields.io/badge/docs-voonhous.github.io%2Fcrforge-blue.svg)](https://voonhous.github.io/crforge/)
 [![16.635.8 coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fvoonhous%2Fcrforge%2Fbadges%2Fbadge-16.635.8.json)](https://github.com/voonhous/crforge/blob/badges/score-16.635.8.json)
+
+**[Documentation](https://voonhous.github.io/crforge/)** | [The battle core](https://voonhous.github.io/crforge/battle-core/) | [The RL environment](https://voonhous.github.io/crforge/environment/) | [Python package](python/README.md)
 
 A deterministic Clash Royale battle simulator in Java. Its battle core plays a battle in 50 ms steps on the game's own tables of one data version, and is held tick by tick to battles recorded in the game. A LibGDX debug visualizer plays battles by hand and replays recorded ones. A reinforcement learning environment steps a vector of battles behind flat buffers a Python trainer reads without a copy ([docs/environment.md](docs/environment.md)).
 
