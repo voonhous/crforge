@@ -246,8 +246,8 @@ public record ReplayFormat(
    * game client's: client 16.402.17's replays of data version 16.402.18 decided them for every data
    * version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}); its replays of 16.402.19
    * write the same fields. Client 16.635.1's replays of data version 16.635.3 decided {@link
-   * #V16_635_1} for every data version that client runs ({@link
-   * GameVersions#CLIENT_16_635_1_DATA}).
+   * #V16_635_1}; client 16.635.13 writes and reads the same fields, so it holds for every data
+   * version 16.635.13 runs ({@link GameVersions#CLIENT_16_635_13_DATA}).
    */
   private static final Map<String, ReplayFormat> BY_VERSION = byVersion();
 
@@ -269,16 +269,16 @@ public record ReplayFormat(
    * change it. The fields are the client's, as its replays' are ({@link #BY_VERSION}), so they hold
    * on every data version the client runs.
    *
-   * <p>Client 16.635.1 reads such a case by the same fields, for every data version it runs ({@link
-   * GameVersions#CLIENT_16_635_1_DATA}). Its recorded battles of generated cases on data version
-   * 16.635.3 play the same with the request lists empty, the switches {@code cardlvlmin} 0, {@code
-   * rrb} and {@code seb} false and a king level of 1 for each side added, all together, and on one
-   * case also the request lists, the switches and the king levels each added alone; a king level of
-   * 2 raises that side's king to that level's hit points. The absent king level is 0, as on client
-   * 16.402.17: each king is created one step below its first level, and the Royal Chef's level-up
-   * landing on such a king brings it to its first level with its hit points unchanged, where a king
-   * of level 1 is raised to the second level's; without a king level, the avatar's exp level does
-   * not change the battle.
+   * <p>Client 16.635.1 reads such a case by the same fields, and so does client 16.635.13, for
+   * every data version 16.635.13 runs ({@link GameVersions#CLIENT_16_635_13_DATA}). Its recorded
+   * battles of generated cases on data version 16.635.3 play the same with the request lists empty,
+   * the switches {@code cardlvlmin} 0, {@code rrb} and {@code seb} false and a king level of 1 for
+   * each side added, all together, and on one case also the request lists, the switches and the
+   * king levels each added alone; a king level of 2 raises that side's king to that level's hit
+   * points. The absent king level is 0, as on client 16.402.17: each king is created one step below
+   * its first level, and the Royal Chef's level-up landing on such a king brings it to its first
+   * level with its hit points unchanged, where a king of level 1 is raised to the second level's;
+   * without a king level, the avatar's exp level does not change the battle.
    */
   private static final Map<String, ReplayFormat> GENERATED_BY_VERSION = generatedByVersion();
 
@@ -289,7 +289,7 @@ public record ReplayFormat(
     for (String version : GameVersions.CLIENT_16_402_17_DATA) {
       byVersion.put(version, V16_402_18.forDataVersion(version));
     }
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       byVersion.put(version, V16_635_1.forDataVersion(version));
     }
     return Map.copyOf(byVersion);
@@ -302,7 +302,7 @@ public record ReplayFormat(
     for (String version : GameVersions.CLIENT_16_402_17_DATA) {
       byVersion.put(version, V14_593_1.forDataVersion(version));
     }
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       byVersion.put(version, V14_593_1.forDataVersion(version));
     }
     return Map.copyOf(byVersion);

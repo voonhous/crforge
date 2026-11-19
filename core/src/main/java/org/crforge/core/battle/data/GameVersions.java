@@ -65,24 +65,31 @@ public final class GameVersions {
   /**
    * Data version 16.635.3, served to game client 16.635.1 from 2026-10-27 (content sha
    * dae6c6cc7e9126338da0c606e47e48a9ef80462c; the client ships data 16.635.1 and updates to it).
+   * Never served to a client of the 16.635.10 range, so the battle no longer plays it; the release
+   * v16.635.1-range-16.635.1-16.635.9 does. The name stays as the data version whose replays
+   * decided client 16.635.1's replay fields ({@code ReplayFormat}).
    */
   public static final String DATA_16_635_3 = "16.635.3";
 
   /**
    * Data version 16.635.8, served to game client 16.635.1 from 2026-11-03 (content sha
    * 062a11e0500c03cc041f123413b1ef1846b539a4; client 16.635.1 plays it without the optional update
-   * to 16.635.7).
+   * to 16.635.7), and to clients 16.635.10 and 16.635.13, which shipped after it.
    */
   public static final String DATA_16_635_8 = "16.635.8";
 
-  /** Game client version 16.635.1, as a replay's capture block names it. */
-  public static final String CLIENT_16_635_1 = "16.635.1";
+  /**
+   * Game client version 16.635.13, as a replay's capture block names it: the client whose rules the
+   * battle follows since 2026-11-19, when the game stopped accepting clients below 16.635.10. It
+   * loads the game data and plays the recorded battles of 16.635.8 as client 16.635.1 did.
+   */
+  public static final String CLIENT_16_635_13 = "16.635.13";
 
   /**
-   * The data versions of game client 16.635.1's range (docs/compatibility.md), the client whose
-   * rules the battle follows: 16.635.3 from 2026-10-27, then 16.635.8 from 2026-11-03.
+   * The data versions of game client 16.635.13's range (docs/compatibility.md): 16.635.8, the data
+   * served to the range since it began.
    */
-  public static final Set<String> CLIENT_16_635_1_DATA = Set.of(DATA_16_635_3, DATA_16_635_8);
+  public static final Set<String> CLIENT_16_635_13_DATA = Set.of(DATA_16_635_8);
 
   private GameVersions() {
     // Constants only

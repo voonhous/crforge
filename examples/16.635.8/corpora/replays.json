@@ -7,13 +7,13 @@
   {
    "id": "scripted_ladder",
    "reference": "battles/scripted_ladder",
-   "scenario_sha256": "117a29ae5e22335f6cd253f3b515b996828007b96dcb79cb5135a0ed6d3006ef",
+   "scenario_sha256": "c6c0a43305607839cb25890a2b35e1fbde26f9370c8a294b95b05f98416c3071",
    "ticks": 3100
   },
   {
    "id": "real_ladder",
    "reference": "battles/real_ladder",
-   "scenario_sha256": "8e78b9c8bbcc930bfda76e98908ecddfeb59f5ee586e653d299d93362b1e8d0b",
+   "scenario_sha256": "f22174f33d2a63bc3d93d721710d881ef93c08275ac503b0f351d543301c05a9",
    "ticks": 7000
   }
  ]

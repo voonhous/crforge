@@ -10,4 +10,4 @@
 #   has references, each case held to conformance/reference-expectations/<version>.json.
 commit=1a11161dc76584db47416a3d6f4b365c7fcbbc8c
 version=16.635.8
-compatible=16.635.3 16.635.8
+compatible=16.635.8

@@ -37,7 +37,7 @@ class ReplayFormatTest {
 
   @Test
   void readsEveryDataVersionOfClient16_635_1sReplaysBy16_402_18sFieldsAndTheExcludedEvolutions() {
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       ReplayFormat format = ReplayFormat.of(version).orElseThrow();
 
       assertThat(format.dataVersion()).isEqualTo(version);
@@ -92,7 +92,7 @@ class ReplayFormatTest {
   void readsEveryDataVersionOfClient16_635_1sGeneratedCasesByThe14_593_1Fields() {
     // Client 16.635.1 reads a generated case as client 16.402.17 does: the fields its replays add
     // beyond 14.593.1's (the request lists, the header switches, each king level 1) change nothing.
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       ReplayFormat format = ReplayFormat.generated(version).orElseThrow();
 
       assertThat(format.dataVersion()).isEqualTo(version);

@@ -71,8 +71,10 @@
 <text x="30" y="499" class="s" font-size="14" font-weight="600" fill="#1f2328">battle rules</text>
 <rect x="201" y="483" width="437" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
 <text x="420" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">client 16.402.17's rules</text>
-<rect x="641" y="483" width="547" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
-<text x="914" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">client 16.635.1's rules, kept on the 16.635.10 range</text>
+<rect x="641" y="483" width="266" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
+<text x="774" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">16.635.1's rules</text>
+<rect x="910" y="483" width="278" height="22" rx="4" fill="#ddf4ff" stroke="#54aeff" stroke-width="1.2"/>
+<text x="1049" y="499" class="m" font-size="13" text-anchor="middle" fill="#0550ae">16.635.13's (the same rules)</text>
 <rect x="30" y="568" width="34" height="12" rx="3" fill="#8c959f"/>
 <text x="70" y="578" class="s" font-size="13" fill="#57606a">accepted, then refused from the x</text>
 <rect x="315" y="568" width="34" height="12" rx="3" fill="#4ac26b"/>

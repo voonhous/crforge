@@ -17,9 +17,26 @@ It follows for the data too. The game only serves a data version to clients that
 
 Each bar runs from the day a client version was first seen to the required update the game server refused it from; the ranges, the data served and the battle rules followed are the ones in the tables below.
 
-## Reference client: 16.635.1
+## Reference client: 16.635.13
 
-The simulator's battle rules follow client 16.635.1 (`GameVersions.CLIENT_16_635_1`), from 2026-10-28. What it is compatible with:
+The simulator's battle rules follow client 16.635.13 (`GameVersions.CLIENT_16_635_13`), from 2026-11-19. What it is compatible with:
+
+### Client range: 16.635.10 to current
+
+| Client version | Seen as | First seen |
+| --- | --- | --- |
+| 16.635.10 | released on Google Play, on data version 16.635.8 (no new data version came with it); an optional update while client 16.635.1 was still accepted, and the range's minimum since 2026-11-19 | 2026-11-05 |
+| 16.635.13 | the reference client, installed on a test phone; released on 2026-11-13, on data version 16.635.8 (no new data version came with it); an optional update while client 16.635.1 was still accepted | 2026-11-13 |
+
+The range's minimum was checked against the game server on 2026-11-19: it refused clients 16.635.1 to 16.635.9 with the update-required status and accepted 16.635.10. It accepted every patch tried above that too, 16.635.11, .12, .14, .15, .16, .20 and .50 included, which are not known as released clients, so the server checks only the minimum, as it did for the 16.402 range.
+
+The range began with the required update of 2026-11-19 that closed client 16.635.1's range (below). No new data version came with it: the server still serves data version 16.635.8 to clients of this range. Clients 16.635.10 and 16.635.13 were released while client 16.635.1 was still accepted and met it in the same battles, so by the reasoning above they share its battle rules. The move to 16.635.13 checked it too: client 16.635.13 reads the game data as client 16.635.1 does (its schema facts, `tables/.../schema/16.635.13.json`, equal 16.635.1's), and it plays every reference battle of 16.635.8 the same, tick for tick, as client 16.635.1 recorded it.
+
+Every data version served to a client of this range is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_13_DATA` lists the ones the simulator has game tables for (16.635.8), and CI tests each of them (`compatible` in `crforge-data.lock`). Its reference battles are the game's own recordings on 16.635.8: every listing recorded on 16.635.3, recorded again on 16.635.8, and the cases recorded since. CI holds them to `conformance/reference-expectations/16.635.8.json` and scores 16.635.8's coverage set after each merge ([conformance](../conformance/README.md#coverage)).
+
+## Former reference client: 16.635.1
+
+The simulator's battle rules followed client 16.635.1 from 2026-10-28 until 2026-11-19. What it was compatible with:
 
 ### Client range: 16.635.1 to 16.635.9 (closed 2026-11-19)
 
@@ -30,20 +47,9 @@ The simulator's battle rules follow client 16.635.1 (`GameVersions.CLIENT_16_635
 
 The range's minimum was not checked against the game server while it was open.
 
-**No longer accepted since 2026-11-19.** The range closed with a required update: the game stopped accepting clients 16.635.1 to 16.635.9 between 2026-11-18 09:07 UTC, when client 16.635.1 last logged in, and 2026-11-19 06:03 UTC, when the game server refused it with the update-required status.
+**No longer accepted since 2026-11-19.** The range closed with a required update: the game stopped accepting clients 16.635.1 to 16.635.9 between 2026-11-18 09:07 UTC, when client 16.635.1 last logged in, and 2026-11-19 06:03 UTC, when the game server refused it with the update-required status. The simulator's state at the closure is the release [v16.635.1-range-16.635.1-16.635.9](https://github.com/voonhous/crforge/releases/tag/v16.635.1-range-16.635.1-16.635.9); the simulator moved to client 16.635.13 the same day (above).
 
-### Client range: 16.635.10 to current
-
-| Client version | Seen as | First seen |
-| --- | --- | --- |
-| 16.635.10 | released on Google Play, on data version 16.635.8 (no new data version came with it); an optional update while client 16.635.1 was still accepted, and the range's minimum since 2026-11-19 | 2026-11-05 |
-| 16.635.13 | released on 2026-11-13, on data version 16.635.8 (no new data version came with it); an optional update while client 16.635.1 was still accepted | 2026-11-13 |
-
-The range's minimum was checked against the game server on 2026-11-19: it refused clients 16.635.1 to 16.635.9 with the update-required status and accepted 16.635.10. It accepted every patch tried above that too, 16.635.11, .12, .14, .15, .16, .20 and .50 included, which are not known as released clients, so the server checks only the minimum, as it did for the 16.402 range.
-
-The range began with the required update of 2026-11-19 that closed the range above. No new data version came with it: the server still serves data version 16.635.8 to clients of this range. Clients 16.635.10 and 16.635.13 were released while client 16.635.1 was still accepted and met it in the same battles, so by the reasoning above they share its battle rules. The simulator keeps following the reference client 16.635.1 on this range, although that client can no longer log in itself.
-
-Every data version served to a client of these two ranges is compatible; the pairs are in [Game Versions](game-versions.md). `GameVersions.CLIENT_16_635_1_DATA` lists the ones the simulator has game tables for (16.635.3 and 16.635.8), and CI tests each of them (`compatible` in `crforge-data.lock`). Its reference battles are the game's own recordings on 16.635.3: every listing first recorded on 16.402.22, recorded again under its own name, and the cases recorded since for client 16.635.1. Each of them was recorded again on 16.635.8. CI holds each version's to `conformance/reference-expectations/<version>.json` and scores each version's coverage set after each merge ([conformance](../conformance/README.md#coverage)).
+Every data version served to a client of this range was compatible: 16.635.3 and 16.635.8, both with game tables and reference battles. 16.635.8 carries on into the next range. 16.635.3 was never served to a client of the next range, so it left `compatible` in `crforge-data.lock` with the move, and its expectation file and coverage badge went with it; `GameVersions.DATA_16_635_3` stays as the data version whose replays decided client 16.635.1's replay fields. The release above plays it.
 
 ## Former reference client: 16.402.17
 
@@ -70,5 +76,5 @@ Every data version served to a client of this range was compatible; the pairs ar
 - When the range's minimum is checked again, replace the date and the versions of the last check.
 - A new data version goes into its range's pairs table in [Game Versions](game-versions.md); it is compatible when it is served to a client of the range.
 - A required update closes the reference client's range: record it, and start a new reference client section for the new range when the simulator moves to it.
-- A required update that only raises the minimum, when the clients from the new minimum on were released while the reference client was still accepted, starts the new range under the same reference client: those clients played the same battles as the reference client, so the battle rules carry on (as for 16.635.10 on 2026-11-19).
+- A required update that only raises the minimum, when the clients from the new minimum on were released while the reference client was still accepted, carries the battle rules on: those clients played the same battles as the reference client. Move the reference to a client of the new range once it is shown to read the game data and play the reference battles as the old one did, and drop the data versions never served to the new range (as 16.635.13 and 16.635.3 on 2026-11-19).
 - Redraw the timeline (`assets/compatibility/client-ranges.svg`) when a client version is first seen, a data version is served or a range closes.

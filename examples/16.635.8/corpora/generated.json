@@ -8,7 +8,7 @@
   {
    "id": "knight",
    "reference": "battles/knight",
-   "scenario_sha256": "378f2401088a94f6c982afd704029d479d24e19455426a07eb132f69b27c41ef",
+   "scenario_sha256": "8e0c2b683c7e4137bdf08f7eb38bd9755aa616fb758d49b518412af74dfe5764",
    "ticks": 600
   }
  ]
