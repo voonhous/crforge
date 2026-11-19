@@ -357,8 +357,8 @@ public final class ScenarioWriter {
    * clients the simulator knows runs it.
    */
   private static String clientOf(String dataVersion) {
-    if (GameVersions.CLIENT_16_635_1_DATA.contains(dataVersion)) {
-      return GameVersions.CLIENT_16_635_1;
+    if (GameVersions.CLIENT_16_635_13_DATA.contains(dataVersion)) {
+      return GameVersions.CLIENT_16_635_13;
     }
     if (GameVersions.CLIENT_16_402_17_DATA.contains(dataVersion)) {
       return GameVersions.CLIENT_16_402_17;

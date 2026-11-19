@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class ClientSchemaTest {
 
   /** The client versions a schema ships for. */
-  private static final String[] CLIENT_VERSIONS = {"16.402.17", "16.635.1"};
+  private static final String[] CLIENT_VERSIONS = {"16.402.17", "16.635.1", "16.635.13"};
 
   @Test
   @DisplayName("each shipped schema loads as the schema of its own client version")

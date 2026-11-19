@@ -6,4 +6,4 @@
 # - revision: the dataset commit CI downloads the sets from.
 # - versions: the data versions with a coverage set at that revision, separated by spaces.
 revision=bf1406dc4dd2d77e968f74ee2cc10f45b05e53e1
-versions=16.635.3 16.635.8
+versions=16.635.8

@@ -26,8 +26,9 @@ public record CommandTypes(String dataVersion, int play, int ability) {
   /**
    * The command types of each data version whose replays have established them. The numbers are the
    * game client's: client 16.402.17's replays of data version 16.402.18 established them for every
-   * data version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}), and client 16.635.1
-   * keeps them for every data version it runs ({@link GameVersions#CLIENT_16_635_1_DATA}).
+   * data version that client runs ({@link GameVersions#CLIENT_16_402_17_DATA}), and clients
+   * 16.635.1 and 16.635.13 keep them for every data version 16.635.13 runs ({@link
+   * GameVersions#CLIENT_16_635_13_DATA}).
    */
   private static final Map<String, CommandTypes> BY_VERSION = byVersion();
 
@@ -45,8 +46,8 @@ public record CommandTypes(String dataVersion, int play, int ability) {
     // play, the command that reads the play's position (px, py), side (sid) and item (sel), and 189
     // the ability command, the one that reads the character it is given for (cgid); 124 and 178
     // build no command. The types it adds name neither a play nor an ability command, and are
-    // refused like any type not mapped here.
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    // refused like any type not mapped here. Client 16.635.13 numbers them as 16.635.1 does.
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       byVersion.put(version, new CommandTypes(version, 153, 189));
     }
     return Map.copyOf(byVersion);

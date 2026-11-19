@@ -52,20 +52,31 @@ class BattleDataVersionTest {
 
     assertThatThrownBy(() -> new Standard1v1Battle(older))
         .isInstanceOf(UnsupportedOperationException.class)
-        .hasMessageContaining("game client " + GameVersions.CLIENT_16_635_1)
+        .hasMessageContaining("game client " + GameVersions.CLIENT_16_635_13)
         .hasMessageContaining("does not play tables of data version 14.593.1");
+  }
+
+  @Test
+  @DisplayName("tables of 16.635.3, served only to the closed 16.635.1 range, are refused")
+  void theClosedRangesDataVersionIsRefused(@TempDir Path folder) throws IOException {
+    GameTables closed = labelled(folder, GameVersions.DATA_16_635_3);
+
+    assertThatThrownBy(() -> new Standard1v1Battle(closed))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("game client " + GameVersions.CLIENT_16_635_13)
+        .hasMessageContaining("does not play tables of data version 16.635.3");
   }
 
   @Test
   @DisplayName("tables of each data version the modelled client runs are played")
   void theClientsDataVersionsArePlayed(@TempDir Path folder) throws IOException {
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       Path dir = Files.createDirectories(folder.resolve(version));
       Standard1v1Battle battle = new Standard1v1Battle(labelled(dir, version));
       battle.getBattle().step();
       assertThat(battle.getWorld().getRecords()).isNotNull();
     }
-    assertThat(GameData.tables().version()).isIn(GameVersions.CLIENT_16_635_1_DATA);
+    assertThat(GameData.tables().version()).isIn(GameVersions.CLIENT_16_635_13_DATA);
   }
 
   @Test

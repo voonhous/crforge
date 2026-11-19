@@ -301,7 +301,7 @@ The viewer picks the tables from the block, on `--replay` and on a dropped file:
 - When no version built has that sha, the replay is not played on other data: it is refused, the first reason saying that no version has the sha, and the mapping's reason naming the client version, data version and sha it was recorded on.
 - A replay without a block is read on the version on screen, as before, and its data version is marked **assumed**, not named by the replay, in the startup print and the data details.
 
-The command type numbers and replay fields (`CommandTypes`, `ReplayFormat`) are still keyed by the data version, although they are the client's: each client's numbers and fields are listed for every data version of its range (`GameVersions.CLIENT_16_402_17_DATA`, `GameVersions.CLIENT_16_635_1_DATA`), and a replay of any other data version has every command refused.
+The command type numbers and replay fields (`CommandTypes`, `ReplayFormat`) are still keyed by the data version, although they are the client's: each client's numbers and fields are listed for every data version of its range (`GameVersions.CLIENT_16_402_17_DATA`, `GameVersions.CLIENT_16_635_13_DATA`), and a replay of any other data version has every command refused.
 
 #### The replay mapping
 
@@ -313,9 +313,9 @@ The command type numbers are the tables' data version's (`org.crforge.core.battl
 |---|---|---|
 | 14.593.1 | 124 | 178 |
 | 16.402.18 | 153 | 189 |
-| 16.635.3 | 153 | 189 |
+| 16.635.8 | 153 | 189 |
 
-The numbers are the client's: 16.402.18's hold for every data version of client 16.402.17, and 16.635.3's for every data version of client 16.635.1, which builds a play for 153 and an ability command for 189 as 16.402.17 does. In both, 124 and 178 are refused. A version whose command types are not established has every command refused rather than read by another version's numbers.
+The numbers are the client's: 16.402.18's hold for every data version of client 16.402.17, and clients 16.635.1 and 16.635.13 build a play for 153 and an ability command for 189 as 16.402.17 does, 16.635.3's numbers, which hold for every data version of client 16.635.13. In both, 124 and 178 are refused. A version whose command types are not established has every command refused rather than read by another version's numbers.
 
 The fields a version's replays write beyond 14.593.1's are the version's too (`org.crforge.core.battle.replay.ReplayFormat`). 16.402.18's replays:
 

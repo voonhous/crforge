@@ -49,7 +49,7 @@ class CommandTypesTest {
   void everyDataVersionOfClient16_635_1PlaysWith153AndTapsAbilitiesWith189() {
     // Client 16.635.1 builds a play for 153 and an ability command for 189, as 16.402.17 does, and
     // no command for 124 or 178.
-    for (String version : GameVersions.CLIENT_16_635_1_DATA) {
+    for (String version : GameVersions.CLIENT_16_635_13_DATA) {
       CommandTypes types = CommandTypes.of(version).orElseThrow();
 
       assertThat(types.dataVersion()).isEqualTo(version);

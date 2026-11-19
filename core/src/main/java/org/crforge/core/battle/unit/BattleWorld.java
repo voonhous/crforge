@@ -413,18 +413,18 @@ public class BattleWorld implements HolderPasses {
 
   /**
    * Refuses tables whose data version is not one the battle models: a data version game client
-   * 16.635.1 has run ({@link GameVersions#CLIENT_16_635_1_DATA}).
+   * 16.635.13 has run ({@link GameVersions#CLIENT_16_635_13_DATA}).
    *
    * @param tables the game tables
    * @throws UnsupportedOperationException for any other data version
    */
   public static void requireModelled(GameTables tables) {
-    if (!GameVersions.CLIENT_16_635_1_DATA.contains(tables.version())) {
+    if (!GameVersions.CLIENT_16_635_13_DATA.contains(tables.version())) {
       throw new UnsupportedOperationException(
           "the battle models the rules of game client "
-              + GameVersions.CLIENT_16_635_1
+              + GameVersions.CLIENT_16_635_13
               + ", which runs data versions "
-              + new TreeSet<>(GameVersions.CLIENT_16_635_1_DATA)
+              + new TreeSet<>(GameVersions.CLIENT_16_635_13_DATA)
               + "; it does not play tables of data version "
               + tables.version());
     }
