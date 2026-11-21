@@ -28,7 +28,8 @@ import org.crforge.core.battle.data.GameTables;
  *       #ROLLING}, whose end leaves {@link #ROLL_HERO} (or, turned by a deflection, {@link
  *       #ROLL_DEFLECTED}). Both projectiles hold the hero's slot ready while they fly. The hero's
  *       ability is {@link #REROLL}, a reroll in {@link #REROLL_PROJECTILE} that heals it by {@link
- *       #HEAL_PERCENT_VARIABLE}'s percent of its missing hit points.
+ *       #HEAL_PERCENT_VARIABLE}'s percent of its missing hit points; a reroll a deflection turned
+ *       ends with {@link #REROLL_TURNED}, which changes the hero into {@link #ROLL_DEFLECTED}.
  *   <li>{@link #DEFLECTOR}, a walker whose ability spawns {@link #DEFLECT_AREA}, an area effect
  *       that follows it and deflects projectiles.
  *   <li>{@link #PLAIN_SPELL} and {@link #PLAIN_BUILDING}, a spell and a building card with no hero
@@ -187,6 +188,12 @@ public final class HeroFormTables {
 
   /** The reroll's starting action, the heal. */
   public static final String REROLL_HEAL = "Test_Roll_Heal";
+
+  /**
+   * The reroll's action as a roll a deflection turned ends: the hero takes the row of {@link
+   * #ROLL_DEFLECTED}, which names no ability.
+   */
+  public static final String REROLL_TURNED = "Test_Roll_Reroll_Turned";
 
   /** The variable whose value is the percent of its missing hit points the heal gives back. */
   public static final String HEAL_PERCENT_VARIABLE = "Test_Roll_Heal_Percent";
@@ -417,9 +424,12 @@ public final class HeroFormTables {
         .put("SpawnDelay", REROLL_SPAWN_DELAY_MS)
         .put("ReRollProjectile", REROLL_PROJECTILE)
         .put("OnReRollStartAction", REROLL_HEAL)
+        .put("OnDeflectedAction", REROLL_TURNED)
         .put("GameTagsToSetWhileOnReRolling", "NO_ATTACK,UNTARGETABLE,NO_DAMAGE");
     WrittenRows.action(rows, REROLL_HEAL, "ActionHeal")
         .put("Value", "(max_hp - hp) * " + HEAL_PERCENT_VARIABLE + " / 100");
+    WrittenRows.action(rows, REROLL_TURNED, "ActionChangeGameObjectData")
+        .put("NewCharacterData", ROLL_DEFLECTED);
     // The deflector.
     WrittenRows.action(rows, DEFLECT_SPAWN, "ActionSpawn")
         .put("SpawnData", DEFLECT_AREA)

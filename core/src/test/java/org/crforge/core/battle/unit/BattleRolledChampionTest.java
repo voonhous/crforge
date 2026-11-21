@@ -248,9 +248,114 @@ class BattleRolledChampionTest {
         .doesNotContain(REROLL);
   }
 
+  @Test
+  @DisplayName(
+      "a reroll an enemy's deflecting area effect turns takes the hero over to the deflector's side"
+          + " on the step its run sees the turn, carrying that side's summoner's cast and no play,"
+          + " so its own slot no longer follows it; as the turned roll ends the hero takes the"
+          + " deflected row for that side and deploys facing that side's forward")
+  void theDeflectedRerollTakesTheHeroOverToTheDeflector(@TempDir Path folder) throws IOException {
+    Scene scene = new Scene(folder);
+    ChampionController slot = scene.slot();
+    CharacterEntity hero = scene.heroReady();
+    TowerEntity summoner = scene.battle.getWorld().kingTower(1);
+    scene.deflectAhead(hero);
+    scene.battle.useAbility(scene.tick(), 0, hero.getId(), "a");
+    int limit = scene.tick() + 100;
+    while (scene.projectiles(REROLL_PROJECTILE).isEmpty()) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    ProjectileEntity barrel = scene.projectiles(REROLL_PROJECTILE).get(0);
+    // The run's step that finds the barrel turned takes the hero over, once it has put the hero on
+    // the barrel's point.
+    while (hero.side() == 0) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(barrel.getDeflections()).isEqualTo(1);
+    assertThat(barrel.side()).isEqualTo(1);
+    assertThat(hero.getData().name()).isEqualTo(ROLL_HERO);
+    assertThat(hero.castId()).isEqualTo(summoner.castId());
+    assertThat(hero.getDeployIndex()).as("no play of the deflector's side").isEqualTo(-1);
+    assertThat(hero.getView().getX()).isEqualTo(barrel.getX());
+    assertThat(hero.getView().getY()).isEqualTo(barrel.getY());
+    scene.step();
+    assertThat(slot.champions()).doesNotContain(hero);
+
+    while (scene.projectiles(REROLL_PROJECTILE).contains(barrel)) {
+      assertThat(scene.tick()).isLessThan(limit);
+      assertThat(hero.side()).isEqualTo(1);
+      scene.step();
+    }
+    // The end: the deploy for the reroll's duration, faced down the arena for side 1, and the
+    // deflected action queued on the hero, which takes the deflected row on a later pending pass.
+    assertThat(hero.getView().getState()).isEqualTo(GridEntityState.DEPLOYING);
+    assertThat(hero.getView().getDeployCountdown()).isEqualTo(REROLL_DEPLOY_DURATION_MS);
+    assertThat(hero.getView().getDirY()).isNegative();
+    while (!hero.getData().name().equals(ROLL_DEFLECTED)) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(hero.side()).isEqualTo(1);
+    scene.step();
+    scene.step();
+    assertThat(slot.champions()).isEmpty();
+    assertThat(summoner.championSlot(1).champions()).doesNotContain(hero);
+    assertThat(hero.actionHolder().running())
+        .extracting(run -> run.getAction().name())
+        .doesNotContain(REROLL);
+  }
+
+  @Test
+  @DisplayName(
+      "a reroll turned over to a side whose champion slot follows the hero's ability is refused:"
+          + " which copy that slot follows would rest on the play the hero carries there, that"
+          + " side's summoner's, which no recording holds")
+  void aRerollTurnedToASideFollowingTheSameAbilityIsRefused(@TempDir Path folder)
+      throws IOException {
+    Scene scene = new Scene(folder, true);
+    // Side 1's own roll hero first, so its slot follows the same ability.
+    scene.waitToPlay();
+    while (scene.match.side(1).wholeElixir() < CARD_COST) {
+      scene.step();
+    }
+    scene.battle.play(
+        scene.tick(),
+        scene.battle.getWorld().getRecords().card(ROLL_CARD),
+        LEVEL,
+        1,
+        X,
+        Y + 14000,
+        "r1");
+    int limit = scene.tick() + 200;
+    while (scene.named(ROLL_HERO).isEmpty()) {
+      assertThat(scene.tick()).isLessThan(limit);
+      scene.step();
+    }
+    assertThat(scene.battle.getWorld().kingTower(1).championSlot(1).getChampion().name())
+        .isEqualTo(ROLL_HERO);
+    CharacterEntity hero = scene.heroReady();
+    scene.deflectAhead(hero);
+    scene.battle.useAbility(scene.tick(), 0, hero.getId(), "a");
+    int end = scene.tick() + 100;
+    UnsupportedOperationException refused = null;
+    try {
+      while (scene.tick() < end) {
+        scene.step();
+      }
+    } catch (UnsupportedOperationException e) {
+      refused = e;
+    }
+    assertThat(refused).isNotNull();
+    assertThat(refused).hasMessageContaining(REROLL).hasMessageContaining("follows");
+    assertThat(hero.side()).as("refused before the hero is taken over").isEqualTo(0);
+  }
+
   /**
    * A Ladder match of side 0's roll card in its hero slot and seven filler cards, the roll card in
-   * the hand; side 1 holds the eight filler cards and plays nothing. The towers fight.
+   * the hand; side 1 holds the eight filler cards and plays nothing, or the roll card in its hero
+   * slot as well. The towers fight.
    */
   private static final class Scene {
 
@@ -262,24 +367,87 @@ class BattleRolledChampionTest {
      * @param folder the folder the tables are written into
      */
     Scene(Path folder) throws IOException {
+      this(folder, false);
+    }
+
+    /**
+     * @param folder the folder the tables are written into
+     * @param sideOneRolls true to give side 1 the roll card in its hero slot too, in its hand
+     */
+    Scene(Path folder, boolean sideOneRolls) throws IOException {
       tables = HeroFormTables.write(folder);
       int[] slots = new int[8];
       slots[0] = MatchSide.HERO_SLOT;
       Standard1v1Battle made = null;
       LadderMatch started = null;
-      for (int word = 0; started == null || !inHand(started, ROLL_CARD); word++) {
+      for (int word = 0;
+          started == null
+              || !inHand(started, 0, ROLL_CARD)
+              || (sideOneRolls && !inHand(started, 1, ROLL_CARD));
+          word++) {
         made = new Standard1v1Battle(tables);
         started =
             made.startLadderMatch(
                 SpawnedChampionTables.deck(ROLL_CARD),
-                SpawnedChampionTables.fillers(),
+                sideOneRolls
+                    ? SpawnedChampionTables.deck(ROLL_CARD)
+                    : SpawnedChampionTables.fillers(),
                 word,
-                0,
+                word,
                 slots,
-                new int[8]);
+                sideOneRolls ? slots : new int[8]);
       }
       battle = made;
       match = started;
+    }
+
+    /**
+     * Plays side 0's roll card and steps until the hero it leaves has stood a while and its side
+     * can pay for its ability.
+     */
+    CharacterEntity heroReady() {
+      play();
+      int limit = tick() + 200;
+      while (named(ROLL_HERO).stream().noneMatch(unit -> unit.side() == 0)) {
+        assertThat(tick()).isLessThan(limit);
+        step();
+      }
+      CharacterEntity hero =
+          named(ROLL_HERO).stream().filter(unit -> unit.side() == 0).findFirst().orElseThrow();
+      for (int i = 0; i < 40 || match.side(0).wholeElixir() < ROLL_ABILITY_COST; i++) {
+        step();
+      }
+      return hero;
+    }
+
+    /**
+     * Puts side 1's deflector down a little ahead of the hero, in its lane, held still, and steps
+     * until its deflecting area effect is up.
+     */
+    void deflectAhead(CharacterEntity hero) {
+      CharacterEntity deflector =
+          battle.deploy(
+              tick() + 1,
+              battle.getWorld().getRecords().unit(DEFLECTOR),
+              LEVEL,
+              1,
+              hero.getView().getX(),
+              hero.getView().getY() + 2500,
+              "deflector");
+      int limit = tick() + 100;
+      while (deflector.getId() == 0
+          || deflector.getView().getState() == GridEntityState.DEPLOYING
+          || deflector.getView().getState() == GridEntityState.WAITING_TO_DEPLOY) {
+        assertThat(tick()).isLessThan(limit);
+        step();
+      }
+      deflector.setActive(CharacterEntity.MOVEMENT_SLOT, false);
+      deflector.setActive(CharacterEntity.TARGETING_SLOT, false);
+      deflector.requestAbility();
+      while (deflectors() == 0) {
+        assertThat(tick()).isLessThan(limit);
+        step();
+      }
     }
 
     /** The king's first champion slot of side 0. */
@@ -336,9 +504,9 @@ class BattleRolledChampionTest {
     }
   }
 
-  private static boolean inHand(LadderMatch match, String card) {
-    List<MatchCard> deck = match.side(0).deck();
-    return Arrays.stream(match.side(0).getHand().slots())
+  private static boolean inHand(LadderMatch match, int side, String card) {
+    List<MatchCard> deck = match.side(side).deck();
+    return Arrays.stream(match.side(side).getHand().slots())
         .anyMatch(index -> index >= 0 && deck.get(index).name().equals(card));
   }
 }

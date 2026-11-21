@@ -36,8 +36,20 @@ import org.crforge.core.fidelity.FidelityStatus;
  * duration and faces forward. The deploy animation, the health bar hiding and the target indicator
  * columns are read only by the views.
  *
+ * <p>An enemy's deflection may turn the projectile back. The first step of the run that finds the
+ * projectile's count of deflections changed since its last step, after it has put the character on
+ * the projectile's point, takes the character over to the other side: the character takes the side
+ * of the summoner facing its own (that side's king), that summoner's cast and no play, so no
+ * champion slot follows it from then on; the run keeps the new count, so a count that went up by
+ * two in one step turns it over once. Nothing else changes: it rolls on with the projectile, and
+ * its row, runs and lock stay. As a projectile turned an odd number of times leaves, the deflected
+ * action is scheduled on the character after the end action, its cause the summoner facing the
+ * character's side as it is then; the deploy and the facing follow, for that side.
+ *
  * <p>Refused as the row is built: tags while the spawn delay runs, which the run does not raise. As
- * it starts: an owner other than a character, and a clone. As it runs: a deflected projectile.
+ * it starts: an owner other than a character, and a clone. As it runs: a turn over to a side whose
+ * champion slot follows the character's ability, where which copy the slot follows would rest on
+ * the play the character carries over, the summoner's, which no recording holds.
  */
 @Fidelity(
     status = FidelityStatus.TRACED,
@@ -46,8 +58,10 @@ import org.crforge.core.fidelity.FidelityStatus;
             + " alive and CAPTURED gates, the backing off by the offset's share, the start action"
             + " and the projectile's launch at its range, the follow and the rolling tags, the end"
             + " on the projectile's leaving (end action, deploy duration, facing) and the finish"
-            + " with the release and the relocation; held by ability_hero_barb_log. Refused: a"
-            + " deflected projectile, whose deflected action and re-stamp no reference holds, a"
+            + " with the release and the relocation; held by ability_hero_barb_log. A turned"
+            + " roll: the character taken over to the facing summoner's side and the deflected"
+            + " action as it ends, held by reroll_deflected_t316 and reroll_deflected_t327."
+            + " Refused: a turn over to a side whose champion slot follows the same ability, a"
             + " clone, and tags while the spawn delay runs.")
 public final class BarbBarrelHeroReRoll extends RowAction {
 

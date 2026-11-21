@@ -33,11 +33,17 @@ import org.crforge.core.pathfinding.move.MovementState;
             + " CAPTURED gates, the facing, the backing off in 32-bit arithmetic, the launch and"
             + " the start action, the follow and the rolling tags), the end as the projectile"
             + " leaves and the finish's release and relocation; held by ability_hero_barb_log."
-            + " Refused: a deflection.")
+            + " The turn over to the facing summoner's side as the run sees a new deflection"
+            + " count, and the deflected action, its cause that summoner, as a roll turned an odd"
+            + " number of times ends; held by reroll_deflected_t316 and reroll_deflected_t327."
+            + " Refused: a turn over to a side whose champion slot follows the same ability.")
 final class BarbReRollRun extends ActionInstance {
 
   /** Milliseconds one step takes off the counter. */
   private static final int STEP_MS = 50;
+
+  /** The deploy index of a unit no card play made, which no champion slot follows. */
+  private static final int NO_PLAY = -1;
 
   /** The lock channel the run asks on, and the priority and flags of its request. */
   private static final int CHANNEL = 0;
@@ -57,7 +63,7 @@ final class BarbReRollRun extends ActionInstance {
   /** True once the projectile was launched. */
   private boolean launched;
 
-  /** The projectile's deflections at the last step. */
+  /** The projectile's deflections as the run last saw them, 0 before the first turn. */
   private int deflections;
 
   /**
@@ -107,14 +113,57 @@ final class BarbReRollRun extends ActionInstance {
     view.setY(projectile.getY());
     unit.raiseWatched(columns.rollingTags());
     if (projectile.getDeflections() != deflections) {
-      // A deflection re-stamps the barbarian from its side's summoner and changes its row; no
-      // reference holds one.
-      throw new UnsupportedOperationException(
-          row.name()
-              + "'s "
-              + projectile.getData().name()
-              + " is deflected, which is not modelled");
+      // The projectile was turned since the last step, once or more: the barbarian goes over to
+      // the other side once, whatever the count, and the count is kept.
+      turnOver();
+      deflections = projectile.getDeflections();
     }
+  }
+
+  /**
+   * The barbarian taken over as its projectile was turned: it takes the side of the summoner facing
+   * its own, that summoner's cast and no play, so no champion slot follows it from then on. Nothing
+   * else changes: it goes on rolling where the projectile is, its runs, target lock and row kept.
+   *
+   * <p>Refused: a battle with no summoner on the other side, and a side whose champion slot follows
+   * the barbarian's ability, where which copy the slot follows would rest on the play the barbarian
+   * carries over, the summoner's, which no recording holds.
+   */
+  private void turnOver() {
+    TowerEntity summoner = facingSummoner();
+    AbilityData ability = unit.getData().ability();
+    for (int slot = 1; slot <= 2 && ability != null; slot++) {
+      ChampionController controller = summoner.championSlot(slot);
+      UnitData followed = controller == null ? null : controller.getChampion();
+      if (followed != null
+          && followed.ability() != null
+          && followed.ability().name().equals(ability.name())) {
+        throw new UnsupportedOperationException(
+            row.name()
+                + "'s "
+                + projectile.getData().name()
+                + " is turned over to a side whose champion slot follows "
+                + ability.name()
+                + ", which is not modelled");
+      }
+    }
+    unit.getView().setSide(summoner.side());
+    unit.setCastId(summoner.castId());
+    unit.setDeployIndex(NO_PLAY);
+  }
+
+  /**
+   * The summoner facing the barbarian's side as it stands now: the other side's king.
+   *
+   * @return the summoner
+   */
+  private TowerEntity facingSummoner() {
+    TowerEntity summoner = unit.world().kingTower(WorldEntity.opposing(unit.side()));
+    if (summoner == null) {
+      throw new UnsupportedOperationException(
+          row.name() + "'s turned roll in a battle with no summoner facing its side, not modelled");
+    }
+    return summoner;
   }
 
   /**
@@ -139,23 +188,30 @@ final class BarbReRollRun extends ActionInstance {
 
   /**
    * As the projectile leaves the battle: the run forgets it and the roll ends, the end action
-   * scheduled on the character, its own cause, the character deploying for the deploy duration and
-   * faced forward.
+   * scheduled on the character, its own cause, then for a projectile turned an odd number of times
+   * the deflected action, its cause the summoner facing the character's side, the character
+   * deploying for the deploy duration and faced forward for the side it is on now.
    */
   @Override
   protected void objectLeft(int leftId) {
     if (projectile == null || projectile.getId() != leftId) {
       return;
     }
-    if (projectile.getDeflections() >= 1 && (projectile.getDeflections() & 1) != 0) {
-      throw new UnsupportedOperationException(
-          row.name() + " ends a deflected roll, which is not modelled");
-    }
+    // A roll turned an odd number of times ends on the other side.
+    boolean turned = projectile.getDeflections() >= 1 && (projectile.getDeflections() & 1) != 0;
     projectile = null;
     BarbBarrelHeroReRoll.Columns columns = row.getColumns();
     ActionHolder holder = unit.actionHolder();
     if (columns.onReRollEndAction() != null) {
       holder.schedule(columns.onReRollEndAction(), ActionHolder.OWN_DELAY, false, holder);
+    }
+    if (turned && columns.onDeflectedAction() != null) {
+      // Its cause the summoner facing the barbarian's side as it stands now.
+      holder.schedule(
+          columns.onDeflectedAction(),
+          ActionHolder.OWN_DELAY,
+          false,
+          facingSummoner().actionHolder());
     }
     if (columns.deployDurationMs() >= 1) {
       unit.deployFor(columns.deployDurationMs());
