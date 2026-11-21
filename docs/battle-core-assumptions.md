@@ -542,7 +542,9 @@ These are supplied answers, recorded on the classes that carry them and listed h
 
   The barbarian its roll leaves carries the play, so the slot follows it, and starts its actions as the holder admits it. The barbarian's ability rerolls it. It backs off toward its own side over the spawn delay, then rolls forward in a barrel it launches and follows a step behind, healed by half its missing hit points and raising NO_DAMAGE, UNTARGETABLE and NO_ATTACK among its rolling tags each step. It deploys again where the barrel ends, its path and target reset.
 
-  The damage entry refuses an entity whose tag word holds NO_DAMAGE. A deflected roll is refused.
+  The damage entry refuses an entity whose tag word holds NO_DAMAGE.
+
+  An enemy's Deflect may turn the reroll's barrel back. The barbarian then goes over to the other side: on the first step its run finds the barrel's count of deflections changed, it takes the side of the other side's summoner (its king), that summoner's cast and no play, so no champion slot follows it, and it rolls back with the barrel. A count that went up by two in one step turns it over once. As a barrel turned an odd number of times ends, the reroll's deflected action runs on the barbarian after its end action, its cause the summoner facing it: the hero Barbarian Barrel's turns it into the naked barbarian, for the side it is on now, which deploys there and faces that side's forward. A turn over to a side whose champion slot follows the barbarian's ability is refused.
 
   Refused:
 
