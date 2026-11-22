@@ -44,6 +44,14 @@ application {
 // memory (about 27 kilobytes a row since schema version 3), more than the default test heap.
 tasks.test { maxHeapSize = "2g" }
 
+// The committed snapshot of the field registry's metadata (Fields, FieldsTest), shared with the
+// Python tests: an input of the tests, so a change of it runs them again.
+val fieldsSnapshot = rootProject.file("python/tests/data/fields_v1.json")
+tasks.test {
+    inputs.file(fieldsSnapshot)
+    systemProperty("crforge.fieldsSnapshot", fieldsSnapshot.absolutePath)
+}
+
 // The benchmarks are compiled with every check, so they keep compiling as the environment moves.
 tasks.check { dependsOn(tasks.named(jmh.classesTaskName)) }
 

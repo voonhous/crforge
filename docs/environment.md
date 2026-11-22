@@ -451,6 +451,7 @@ The buffs an entity row names are numbered in a list of their own, `buff_names`:
 An id is stable within a data version only: a row another version adds moves every later id. So `VectorEnv.metadataJson()` (or `writeMetadata(path)`) is to be kept with every run and checkpoint. It holds:
 
 - the schema's version, sizes, field names, flag, refusal, fault and state names (`state_names`);
+- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema (`version`, major.minor): the fields the field export will hold, one block of `ints` integers per environment, each field's `name`, `offset`, `shape`, `tag` (`public`, `seat` with a leading seat axis, or `hidden` for a value a seat is not shown, named with `.true`), `units`, `frame` and `alias_of` (a hidden alias of a seat field read at the other seat), and an entity table of `entity_capacity` rows. Only the registry is published so far, not the export; its snapshot is `python/tests/data/fields_v1.json`;
 - the scales (`scales`);
 - the configuration;
 - the vocabulary keyed by name (`names`, the name of each id) with the tables' `data_version`, `content_sha` and a `hash` of the list;
