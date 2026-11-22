@@ -119,7 +119,7 @@ def test_reading_an_undeclared_field_is_refused(registry):
 
 def test_bind_checks_the_version_and_every_read(registry):
     class Newer(ElixirLead):
-        registry_version = "1.1"
+        registry_version = "1.2"
 
     with pytest.raises(RegistryVersionError):
         Newer().bind(registry)
@@ -194,7 +194,7 @@ def test_provenance_is_json_and_deterministic(registry):
     unfair.bind(registry)
     record = provenance({"opponent": [unfair], "learner": [fair]}, registry)
     assert record == {
-        "registry": "1.0",
+        "registry": "1.1",
         "roles": {
             "learner": {
                 "adapters": ["elixir_lead"],
@@ -242,9 +242,9 @@ def test_provenance_refuses_an_adapter_not_bound(registry):
 
 def test_provenance_refuses_an_adapter_bound_to_another_registry_version(registry):
     node = json.loads(SNAPSHOT.read_text())
-    node["version"] = "1.1"
+    node["version"] = "1.2"
     other = Registry.from_metadata(node)
     lead = ElixirLead()
     lead.bind(other)
-    with pytest.raises(ValueError, match=r"elixir_lead.*1\.1.*1\.0"):
+    with pytest.raises(ValueError, match=r"elixir_lead.*1\.2.*1\.1"):
         provenance({"policy": [lead]}, registry)

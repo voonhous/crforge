@@ -2786,6 +2786,16 @@ public final class LadderEnv extends BufferedEnv {
   private static final int PLAY_FORM = Fields.ENEMY_PLAYS_FORM_TRUE.offset();
   private static final int PLAY_X = Fields.ENEMY_PLAYS_X_TRUE.offset();
   private static final int PLAY_Y = Fields.ENEMY_PLAYS_Y_TRUE.offset();
+  private static final int OWN_PLAYS_COUNT = Fields.OWN_PLAYS_COUNT.offset();
+  private static final int OWN_CARD = Fields.OWN_PLAYS_CARD.offset();
+  private static final int OWN_CAST = Fields.OWN_PLAYS_CAST.offset();
+  private static final int OWN_FORM = Fields.OWN_PLAYS_FORM.offset();
+  private static final int OWN_TICKS = Fields.OWN_PLAYS_TICKS.offset();
+  private static final int OWN_X = Fields.OWN_PLAYS_X.offset();
+  private static final int OWN_Y = Fields.OWN_PLAYS_Y.offset();
+  private static final int OWN_KIND = Fields.OWN_PLAYS_KIND.offset();
+  private static final int OWN_FLAGS = Fields.OWN_PLAYS_FLAGS.offset();
+  private static final int OWN_POINT_TICKS = Fields.OWN_PLAYS_POINT_TICKS.offset();
 
   /**
    * Finishes the environment's block of the field export ({@link Fields}), whose seat and public
@@ -2929,7 +2939,10 @@ public final class LadderEnv extends BufferedEnv {
     block[ABILITY_TICKS + row] = -1;
   }
 
-  /** Writes each seat's enemy's last plays as they were placed, newest first, shown or not. */
+  /**
+   * Writes each seat's enemy's last plays as they were placed, newest first, shown or not, and each
+   * seat's own.
+   */
   private void exportPlays(int[] block) {
     for (int seat = 0; seat < 2; seat++) {
       List<SeenPlay> placed = playsPlaced.get(1 - seat);
@@ -2950,6 +2963,47 @@ public final class LadderEnv extends BufferedEnv {
         block[PLAY_X + at] = play.placedX;
         block[PLAY_Y + at] = play.placedY;
       }
+      ownPlays(block, seat);
+    }
+  }
+
+  /**
+   * Writes a seat's own last plays, newest first, as the enemy's are written ({@link #enemyRows})
+   * but all of each play from its run: its card, its cast and its form, the placed point in the
+   * seat's frame, known since the run. The evolution cycle diamond shows on the tick the other seat
+   * is shown it.
+   */
+  private void ownPlays(int[] block, int seat) {
+    int tick = battle.getTick();
+    List<SeenPlay> placed = playsPlaced.get(seat);
+    block[OWN_PLAYS_COUNT + seat] = placedCount[seat];
+    for (int r = 0; r < Schema.ENEMY_PLAY_ROWS; r++) {
+      int at = seat * Schema.ENEMY_PLAY_ROWS + r;
+      if (r >= placed.size()) {
+        block[OWN_CARD + at] = -1;
+        block[OWN_CAST + at] = -1;
+        block[OWN_FORM + at] = 0;
+        block[OWN_TICKS + at] = 0;
+        block[OWN_X + at] = 0;
+        block[OWN_Y + at] = 0;
+        block[OWN_KIND + at] = 0;
+        block[OWN_FLAGS + at] = 0;
+        block[OWN_POINT_TICKS + at] = 0;
+        continue;
+      }
+      SeenPlay play = placed.get(placed.size() - 1 - r);
+      int flags = Schema.PLAY_CARD_SHOWN | Schema.PLAY_POINT_SHOWN;
+      flags |= play.mirror ? Schema.PLAY_MIRROR : 0;
+      flags |= play.diamondShown ? Schema.PLAY_EVOLUTION_DIAMOND : 0;
+      block[OWN_CARD + at] = play.card;
+      block[OWN_CAST + at] = play.cast;
+      block[OWN_FORM + at] = play.form;
+      block[OWN_TICKS + at] = tick - play.tick;
+      block[OWN_X + at] = Schema.toSeatX(seat, play.placedX);
+      block[OWN_Y + at] = Schema.toSeatY(seat, play.placedY);
+      block[OWN_KIND + at] = play.kind;
+      block[OWN_FLAGS + at] = flags;
+      block[OWN_POINT_TICKS + at] = tick - play.tick;
     }
   }
 

@@ -1,10 +1,12 @@
 {
-  "version": "1.0",
-  "ints": 26871,
+  "version": "1.1",
+  "ints": 27017,
   "entity_capacity": 256,
   "enums": {
     "ability_refusal": {"0": "none", "8": "not_champion", "10": "clone", "1004": "king_gone", "1005": "cooldown", "1006": "no_champion", "1009": "pending", "1011": "frozen", "1013": "disabled", "1014": "no_charges", "1050": "elixir"},
     "ability_state": {"0": "ChampionUnknown", "1": "ChampionAbsent", "2": "Ready", "3": "ChampionDeploying", "4": "LimitedAvailability", "5": "ERR_START", "6": "AllChargesConsumed", "7": "ChampionPending", "8": "OnCooldown", "9": "NotEnoughElixir", "10": "ChampionCasting", "11": "Disabled", "12": "TemporarilyUnavailable", "13": "NoYetAvailable", "14": "ERR_MAX"},
+    "attack_traits": {"0": "load_first_hit", "1": "charge", "2": "dash", "3": "special"},
+    "bar_rule": {"0": "not_unit", "1": "never", "2": "always", "3": "damaged", "4": "damaged_rolling"},
     "entity": {"0": "alive", "1": "hidden", "2": "invisible", "3": "underground", "4": "air", "5": "building", "6": "king", "7": "clone", "8": "awake", "9": "no_move", "10": "no_attack", "11": "charged"},
     "entity_kind": {"1": "character", "2": "tower", "3": "projectile", "4": "area"},
     "form": {"0": "plain", "1": "evolved", "2": "hero"},
@@ -18,6 +20,14 @@
     "side": {"0": "side_0", "1": "side_1", "2": "neither"},
     "slot": {"0": "evolution", "1": "hero"},
     "state": {"0": "standing", "1": "moving", "2": "attacking", "3": "dashing", "4": "deploying", "5": "jumping", "6": "spawn_pathfind", "7": "ingame_pathfind", "8": "clone_setup", "9": "morphing", "10": "casting", "11": "waiting_to_deploy", "12": "following_removed", "13": "following_removed_building", "14": "components_disabled", "15": "route_following_alternate", "16": "ability_follow_up"}
+  },
+  "rows": {
+    "bar_rule": {"units": "enum:bar_rule", "values": []},
+    "hit_speed_ms": {"units": "ms", "values": []},
+    "load_time_ms": {"units": "ms", "values": []},
+    "attack_step_ms": {"units": "ms", "values": []},
+    "attack_start_delay_ms": {"units": "ms", "values": []},
+    "attack_traits": {"units": "flags:attack_traits", "values": []}
   },
   "fields": [
     {"name": "game.tick", "offset": 0, "shape": [], "tag": "public", "units": "ticks", "frame": "none", "alias_of": null, "v4": {"region": "header", "indices": [0]}},
@@ -175,6 +185,16 @@
     {"name": "enemy.last_refusal.true", "offset": 189, "shape": [2], "tag": "hidden", "units": "enum:refusal", "frame": "none", "alias_of": "own.last_refusal", "v4": null},
     {"name": "enemy.last_run_refusal.true", "offset": 191, "shape": [2], "tag": "hidden", "units": "enum:run_refusal", "frame": "none", "alias_of": "own.last_run_refusal", "v4": null},
     {"name": "enemy.last_ability_run_refusal.true", "offset": 193, "shape": [2], "tag": "hidden", "units": "enum:ability_refusal", "frame": "none", "alias_of": "own.last_ability_run_refusal", "v4": null},
-    {"name": "enemy.illegal.true", "offset": 195, "shape": [2], "tag": "hidden", "units": "count", "frame": "none", "alias_of": "own.illegal", "v4": null}
+    {"name": "enemy.illegal.true", "offset": 195, "shape": [2], "tag": "hidden", "units": "count", "frame": "none", "alias_of": "own.illegal", "v4": null},
+    {"name": "own.plays.count", "offset": 26871, "shape": [2], "tag": "seat", "units": "count", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.card", "offset": 26873, "shape": [2, 8], "tag": "seat", "units": "vocabulary id", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.cast", "offset": 26889, "shape": [2, 8], "tag": "seat", "units": "vocabulary id", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.form", "offset": 26905, "shape": [2, 8], "tag": "seat", "units": "enum:form", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.ticks", "offset": 26921, "shape": [2, 8], "tag": "seat", "units": "ticks", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.x", "offset": 26937, "shape": [2, 8], "tag": "seat", "units": "game units", "frame": "seat", "alias_of": null, "v4": null},
+    {"name": "own.plays.y", "offset": 26953, "shape": [2, 8], "tag": "seat", "units": "game units", "frame": "seat", "alias_of": null, "v4": null},
+    {"name": "own.plays.kind", "offset": 26969, "shape": [2, 8], "tag": "seat", "units": "enum:play_kind", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.flags", "offset": 26985, "shape": [2, 8], "tag": "seat", "units": "flags:play", "frame": "none", "alias_of": null, "v4": null},
+    {"name": "own.plays.point_ticks", "offset": 27001, "shape": [2, 8], "tag": "seat", "units": "ticks", "frame": "none", "alias_of": null, "v4": null}
   ]
 }

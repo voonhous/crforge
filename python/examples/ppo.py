@@ -30,7 +30,10 @@ What it does, in the order of the file:
 - **The evaluation**: every ``--eval-every`` updates ``crforge_env.evaluate`` plays the policy
   against ``--eval-opponent`` on battles of its own, and the win rate goes to ``curve.csv``. The
   checkpoint (``policy.pt``) holds the weights, the settings and the vector's metadata, the
-  schema and vocabulary a model must be read with.
+  schema and vocabulary a model must be read with, and the run's provenance record: which fields
+  each role read (``crforge_env.adapters.provenance``). The policy and its value head read the
+  learner seat's own v4 observation and nothing else, so both are recorded as the ``v4``
+  adapter's reads; neither reads a field the seat is not shown.
 """
 
 from __future__ import annotations
@@ -46,6 +49,9 @@ from torch import nn
 from torch.distributions import Categorical
 
 from crforge_env import ScriptedBot, VectorBattle, evaluate, random_opponent, wait_opponent
+from crforge_env.adapters import V4Adapter, provenance
+from crforge_env.evaluation import policy_adapters
+from crforge_env.fields import Registry
 
 DECK = "Knight,Archer,Musketeer,Giant,MiniPekka,Fireball,Arrows,Zap"
 OPPONENTS = {
@@ -257,6 +263,23 @@ def train(args: argparse.Namespace) -> None:
         opponent_rngs = [np.random.default_rng([args.seed, i]) for i in range(args.envs)]
         eval_opponent = OPPONENTS[args.eval_opponent]()
 
+        # What each role reads, kept in the checkpoint. The model is handed the learner seat's
+        # own v4 observation (its first `entities` rows), the policy and the value head alike,
+        # so both read the v4 adapter's fields; the opponent in self-play is the same model on
+        # the other seat's own observation. The other opponents name what they read.
+        registry = Registry.from_metadata(vector.metadata["fields"])
+        v4 = V4Adapter(s)
+        v4.bind(registry)
+        record = provenance(
+            {
+                "learner": [v4],
+                "critic": [v4],
+                "opponent": [v4] if self_play else policy_adapters(opponent, registry),
+                "eval_opponent": policy_adapters(eval_opponent, registry),
+            },
+            registry,
+        )
+
         def read() -> tuple[torch.Tensor, torch.Tensor, np.ndarray]:
             """The learner seats' observations and masks now, copied out of the JVM's buffers."""
             observations = vector.observations[env_at, seat_at, :obs_ints]
@@ -270,7 +293,8 @@ def train(args: argparse.Namespace) -> None:
         def save(update: int, decisions: int) -> None:
             torch.save(
                 {"model": model.state_dict(), "args": vars(args), "metadata": vector.metadata,
-                 "entities": entities, "update": update, "decisions": decisions},
+                 "entities": entities, "update": update, "decisions": decisions,
+                 "provenance": record},
                 out / "policy.pt",
             )  # fmt: skip
 

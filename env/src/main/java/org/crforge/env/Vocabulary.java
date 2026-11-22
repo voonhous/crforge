@@ -82,6 +82,12 @@ public final class Vocabulary {
   private final String buffHash;
   private final int maxElixir;
 
+  /** The tables the names come from, kept for the row facts. */
+  private final GameTables tables;
+
+  /** The row facts, worked out on first use. */
+  private RowFacts rowFacts;
+
   /**
    * The vocabulary of a data version's tables.
    *
@@ -123,6 +129,18 @@ public final class Vocabulary {
     }
     buffHash = hash(buffNames);
     maxElixir = tables.table(GLOBALS).row(MAX_MANA).intValue("NumberValue");
+    this.tables = tables;
+  }
+
+  /**
+   * The static facts of each row, by id ({@link Fields#rowFacts()}): worked out from the tables on
+   * first use, then kept.
+   */
+  synchronized RowFacts rowFacts() {
+    if (rowFacts == null) {
+      rowFacts = new RowFacts(tables, this);
+    }
+    return rowFacts;
   }
 
   /** The names, by id. */

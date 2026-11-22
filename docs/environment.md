@@ -21,7 +21,7 @@ The battle core holds no code of the environment. The environment reads the obse
 ```
 env/                     org.crforge.env
   Schema                 the flat layout: header, entity rows, mask, action codec, seat frames, codes, state names, scales (version 4)
-  Fields                 the field registry: every exported field's name, place, shape, tag (public, seat, hidden), units and frame (version 1.0)
+  Fields                 the field registry: every exported field's name, place, shape, tag (public, seat, hidden), units and frame, and the static facts per vocabulary row (version 1.1)
   FieldExport            writes a Ladder environment's block of the field export beside its observations
   Vocabulary             every card, character, building, projectile and area effect row named by number, and the buffs in a list of their own
   SeatView               what a seat's player sees of the field's characters and towers, and their health bars: the one place that rule lives
@@ -455,7 +455,7 @@ The buffs an entity row names are numbered in a list of their own, `buff_names`:
 An id is stable within a data version only: a row another version adds moves every later id. So `VectorEnv.metadataJson()` (or `writeMetadata(path)`) is to be kept with every run and checkpoint. It holds:
 
 - the schema's version, sizes, field names, flag, refusal, fault and state names (`state_names`);
-- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema: its `version` (major.minor), the block's size `ints`, the entity table's `entity_capacity`, `enums` and every field's `name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of` and `v4`, as [The field registry and adapters](#the-field-registry-and-adapters) gives them. It is published whether the vector exports its fields or not; its committed snapshot is `python/tests/data/fields_v1.json`, so any change of it shows in review;
+- the field registry (`fields`, `org.crforge.env.Fields`), versioned apart from the schema: its `version` (major.minor), the block's size `ints`, the entity table's `entity_capacity`, `enums`, the static facts per vocabulary row (`rows`, [The row facts](#the-row-facts)) and every field's `name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of` and `v4`, as [The field registry and adapters](#the-field-registry-and-adapters) gives them. It is published whether the vector exports its fields or not; its committed snapshot is `python/tests/data/fields_v1.json`, so any change of it shows in review, and `python/tests/data/fields_v1_0.json` keeps version 1.0's, which every 1.x registry holds unchanged;
 - the scales (`scales`);
 - the configuration;
 - the vocabulary keyed by name (`names`, the name of each id) with the tables' `data_version`, `content_sha` and a `hash` of the list;
@@ -824,11 +824,11 @@ The action count is `schema.actions` (the metadata's `actions`), the first abili
 
 ### The field registry and adapters
 
-The field export holds one block of `ints` 32-bit integers per environment (a numpy array of shape `(count, ints)`, int32), and the field registry (`org.crforge.env.Fields`, the metadata's `fields`) names every field in it: field `f` is `f.shape` integers at `f.offset`, row-major, the fields end to end in registry order. `crforge_env.fields.Registry` reads the registry from the metadata (`Registry.from_metadata(vector.metadata["fields"])`) or from a saved copy of that node (`Registry.from_file(path)`, the snapshot `python/tests/data/fields_v1.json` for one). It gives `version`, `ints`, `entity_capacity`, `enums` (per `enum:<name>` or `flags:<name>` unit, the labels by integer code or bit index, bit k being `1 << k`; the metadata writes the codes as strings, ascending) and `fields`, each a `Field` (`name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of`, `v4`, and `size`, the integers it takes, 0 for an alias), in registry order; `registry.field(name)` gives one and raises `KeyError` for a name it lacks.
+The field export holds one block of `ints` 32-bit integers per environment (a numpy array of shape `(count, ints)`, int32), and the field registry (`org.crforge.env.Fields`, the metadata's `fields`) names every field in it: field `f` is `f.shape` integers at `f.offset`, row-major, the fields end to end in registry order. `crforge_env.fields.Registry` reads the registry from the metadata (`Registry.from_metadata(vector.metadata["fields"])`) or from a saved copy of that node (`Registry.from_file(path)`, the snapshot `python/tests/data/fields_v1.json` for one). It gives `version`, `ints`, `entity_capacity`, `enums` (per `enum:<name>` or `flags:<name>` unit, the labels by integer code or bit index, bit k being `1 << k`; the metadata writes the codes as strings, ascending) and `fields`, each a `Field` (`name`, `offset`, `shape`, `tag`, `units`, `frame`, `alias_of`, `v4`, and `size`, the integers it takes, 0 for an alias), in registry order; `registry.field(name)` gives one and raises `KeyError` for a name it lacks. Since 1.1 it also gives `rows`, the row facts ([The row facts](#the-row-facts)): per fact a read-only int32 array of one value per vocabulary id, empty where the node lists no values (the snapshot, a synthetic vector), and no facts at all for a 1.0 node; `row_units` gives each fact's units. Facts of different lengths, or a unit naming an enum the registry lacks, raise `ValueError`.
 
 The registry is checked as it is read, and a registry that fails raises `ValueError` naming the field: no two fields share an integer and every field lies inside the block; each tag is `public`, `seat` or `hidden`; a seat field's first axis is the seat (2); an `enum:<name>` or `flags:<name>` unit names an enum the registry has; an alias names a stored seat field of the same shape and offset, and is itself tagged `hidden`.
 
-`registry.check("1.0")` states the version a reader needs: it raises `RegistryVersionError` (a `ValueError`) unless the registry has the same major version and at least that minor version. Adding a field moves the minor version, so a reader of 1.0 still reads 1.1; renaming or removing a field, or changing its meaning, moves the major version.
+`registry.check("1.0")` states the version a reader needs: it raises `RegistryVersionError` (a `ValueError`) unless the registry has the same major version and at least that minor version. Adding a field moves the minor version, so a reader of 1.0 still reads 1.1; renaming or removing a field, or changing its meaning, moves the major version. A field added in a minor version takes integers after every field of the versions before it, so their offsets hold, and the registry's list keeps the older fields first, in their order. Version 1.1 (2026-11-22) added the seat's own last plays and the row facts; every 1.0 field kept its name, offset, shape, units and frame.
 
 The tags make the honest choice the default:
 
@@ -844,7 +844,7 @@ A seat or public field with a `v4` source names where its values sit in the v4 o
 
 `registry.views(block)` gives every field as a view of the block, shape `(count, *shape)`. Nothing is copied: views made once follow a block refreshed in place each step. The block must be a C-contiguous int32 array in the machine's byte order, of shape `(count, ints)`; anything else raises `ValueError`. `registry.view(block, names)` gives a `FieldView` of the named fields only: a read-only mapping whose arrays cannot be written, and where any other name, even one the registry has, raises `UndeclaredFieldError` (a `KeyError`) saying the field was not declared.
 
-An adapter (`crforge_env.adapters.Adapter`) builds a model's inputs from declared fields. It sets `name`, `registry_version`, `reads` (the fields it reads) and `outputs` (per output, the shape and dtype of one environment's array), and implements `observe(fields, seat)`, which gets a `FieldView` of its reads and returns one array per output, `(count, *shape)`, vectorised over the environments. `bind(registry)` checks the version and that every read exists (a `ValueError` names the missing ones), and `hidden_fields` lists the reads tagged `hidden` (`hidden` is true when there is any). `reset(done, seat)` lets an adapter with state forget the environments that ended; it does nothing by default. `adapter.view(block)` is `registry.view(block, adapter.reads)`.
+An adapter (`crforge_env.adapters.Adapter`) builds a model's inputs from declared fields. It sets `name`, `registry_version`, `reads` (the fields it reads) and `outputs` (per output, the shape and dtype of one environment's array), and implements `observe(fields, seat)`, which gets a `FieldView` of its reads and returns one array per output, `(count, *shape)`, vectorised over the environments. `bind(registry)` checks the version and that every read exists (a `ValueError` names the missing ones), and `hidden_fields` lists the reads tagged `hidden` (`hidden` is true when there is any; `hidden_reads(registry)` works them out, and an adapter that reads its fields at another seat than the one it observes overrides it, as `OtherSeat` does, [Adapter sets and the run-level guard](#adapter-sets-and-the-run-level-guard)). `reset(done, seat)` lets an adapter with state forget the environments that ended; it does nothing by default. `adapter.view(block)` is `registry.view(block, adapter.reads)`.
 
 ```python
 import numpy as np
@@ -867,17 +867,47 @@ require_fair(lead)  # raises HiddenFieldError if it read enemy.elixir.true
 out = lead.observe(lead.view(vector.fields), seat=0)["lead"]  # (count,)
 ```
 
+This is the shared `crforge_env.adapters.ElixirLead` ([The shared adapters](#the-shared-adapters)), written out.
+
 `require_fair(*adapters)` raises `HiddenFieldError` (a `ValueError`) naming every adapter that reads a hidden field and the fields it reads, for a model that must play only on what its seat is shown. An adapter that reads hidden fields is still allowed elsewhere, a teacher or an analysis, say; the check is where fair play is required.
 
 `provenance(roles, registry)` records which fields each role of a run read, as data ready for JSON, to keep with the run and its checkpoints. Every adapter must be bound to a registry of the same version (an adapter may work out its reads as it binds); one that is not raises `ValueError`:
 
 ```python
 provenance({"learner": [lead]}, registry)
-# {"registry": "1.0", "roles": {"learner": {"adapters": ["elixir_lead"],
+# {"registry": "1.1", "roles": {"learner": {"adapters": ["elixir_lead"],
 #   "reads": ["enemy.elixir", "own.elixir"], "hidden": False, "hidden_fields": []}}}
 ```
 
 The roles and every role's reads and hidden fields are sorted, so the same adapters give the same record; a role's adapters stay in the order given.
+
+### The own plays and the row facts
+
+`own.plays.*` and `own.plays.count` (seat fields, since 1.1) are the seat's own last plays, the same rows, columns, units and frames as `enemy.plays.*` and `enemy.plays.count`: newest first, 8 rows, the point in the seat's frame. A seat sees all of its own plays, so each row holds the play from its run (card, cast, form, the placed point, `point_ticks` from the run) and has no `.true` counterpart; its flags hold `card_shown` and `point_shown` always, `mirror` for a Mirror's play, and `evolution_diamond` from the tick the other seat is shown the diamond. Past the plays the card and cast are -1 and every other column 0, as the enemy's rows. They are no part of the v4 observation. A test holds them to the battle's play records, to the other seat's hidden `enemy.plays.*.true` in full, and to the other seat's `enemy.plays.*` for every column it is shown, the frames turned.
+
+#### The row facts
+
+The metadata's `fields.rows` holds static facts of the data version, one integer per vocabulary id as `entity.row` names a row, per fact `{"units": ..., "values": [...]}`. They are read from the tables the environment loads, the rows as the battle core loads them, the same for every step and battle on those tables; a metadata without a vocabulary (the synthetic engine's, the snapshot) lists each fact with no values. A row of neither the characters nor the buildings table has the bar rule `not_unit` and every other fact 0; a character or building row the battle core refuses to load (no unit of a battle can be of it) has every attack fact -1.
+
+| Fact | Units | Value |
+|---|---|---|
+| `bar_rule` | `enum:bar_rule` | when an enemy unit of the row shows its health bar: `never`, `always`, `damaged` (from its first damage on, for its life) or `damaged_rolling` (as `damaged`, hidden while it runs an action that hides the bar while it rolls, as the Barb Log hero's roll) |
+| `hit_speed_ms` | ms | the row's HitSpeed, H; 0 for a row that does not attack |
+| `load_time_ms` | ms | the row's LoadTime, T |
+| `attack_step_ms` | ms | b, the attack time a tick adds at 100 percent hit speed: half the hit speed multiplier of the row's attack sequence step, 50 without one; -1 when the row's steps differ |
+| `attack_start_delay_ms` | ms | D, the time an attack that starts from another state is held at 0, 0 for most rows; -1 when the steps differ |
+| `attack_traits` | `flags:attack_traits` | `load_first_hit` (the timer restarts from 0 and the load from T after each hit; never a crown tower), `charge` (a charged unit, flag `charged`, hits on its first attack tick), `dash`, `special` |
+
+Where `entity.hp` is -1 on a character row, its hit points are known in one case: the bar rule is `damaged`, the row is not a trail (`entity.row` not -1) and the flags do not hold `underground`. The unit is undamaged, so its hit points are `entity.max_hp` exactly (its shield is its starting shield, which no fact gives). They are not known for the rule `never`, for `damaged_rolling` (undamaged, or rolling: the roll hides the bar whatever the damage) or for a unit underground (the screen shows no bar of it; an enemy ground unit travelling underground is its trail, its row, maximum hit points and level -1).
+
+The time until a unit can attack next, from A = `entity.attack_ms`, L = `entity.load_ms` and p = `entity.hit_speed_percent`. Each tick (50 ms) its targeting runs (not while it deploys) the unit's targeting first takes 50 off the load countdown, to no less than 0, whatever its buffs; then, on a tick it attacks, the attack time advances, and the next hit fires on the tick it crosses a multiple of H. If the unit attacks on every tick from the next one on, the ticks n until that tick are:
+
+1. s = floor(b * p / 100), the attack time a tick adds; with H = 0, s below 1 (a stun or a freeze) or b = -1 there is no next hit to count.
+2. Flag `charged` with A = 0: n = 1. The flag is still set on the tick of the charge's hit, when A already holds H, and the next step counts that tick.
+3. A above 0: n = ceil(((floor(A / H) + 1) * H - A) / s).
+4. A = 0: k = ceil(D / 50) when `entity.state` is not `attacking`, else 0, and Lc = max(L - 50 * (k + 1), 0). For T at most H, n = k + max(1, ceil((H - T + Lc) / s)); for T above H, with j = max(k + 1, ceil((L - H) / 50)), n = j - 1 + ceil(H / s).
+
+The time is 50 * n ms. It is exact while the unit keeps a target in range, nothing resets its timers (taking a new target or losing one may) and its hit speed percent stays, but for three limits: under a speed-up and a slow-down at once the battle scales the step twice and s may be 1 ms off; a row with `dash` or `special` attacks otherwise in its dash or special range; an action that makes a hit land at once is not shown. A unit still deploying does not attack yet, nor run its load countdown; one underground does not attack yet, its countdown running; a king tower attacks only once awake, and once the match is over every attack timer is held at 0. `org.crforge.env.Fields.rowFacts()` documents the facts and the formula in full.
 
 ### The v4 adapter
 
@@ -894,6 +924,111 @@ v4.observe_both(view, out=out)  # equal to vector.observations
 ```
 
 The migration gate, `python/tests/test_v4_gate.py`, holds it so at every decision, for both seats, with `entity.export_overflow` 0 everywhere and no decision left out: random mask-legal battles on several decks (evolution and hero slots, a champion) on one thread and three, played until episodes end and autoreset starts new ones; forks moved in, as the battle is and as each seat knows it; starts on replays the vector wrote and on the example battles; `reset_env` mid-run; and a faulted battle, cleared. Rebuilding both seats costs about 0.9 ms a call on 64 environments and 3 ms on 256 ([Performance](#performance)), on top of a Ladder step; the Java v4 packer stays beside it, unchanged.
+
+### The shared adapters
+
+`crforge_env.adapters` holds adapters any model may use, each derived from fields its seat is shown, as the seat's player works them out. Each reads seat and public fields only, so `hidden` is false and `require_fair` accepts it, and each is vectorised over the environments. `observe(fields, seat)` gives the outputs of one seat.
+
+**`ElixirLead`** (`elixir_lead`, registry 1.0, stateless) reads `own.elixir` and `enemy.elixir`. Its output `lead`, int32 per environment, is the seat's elixir less the enemy's elixir as the seat counts it ([The enemy's elixir as a player counts it](#the-enemys-elixir-as-a-player-counts-it)), in ten-thousandths of an elixir. It never reads the enemy's own count.
+
+**`EnemyCycle`** (`enemy_cycle`, registry 1.0, stateless) is the enemy's card cycle as the seat's player tracks it from the plays the screen shows. It reads `enemy.plays.kind`, `enemy.plays.card` and `enemy.seen.card`, and nothing of the enemy's own hand, queue or deck.
+
+A card played goes to the back of the queue and the queue's first card fills its hand slot, so the queue is always the last 4 cards played, the oldest of them coming back first, and the hand is the deck's other 4 cards. So:
+
+- a queue place holds the card of its play when the screen has shown that card. It is unknown while the screen has not (a tunnelling card before its unit comes up) and, before the enemy's 4th play, for a place holding a card the enemy has not played yet;
+- a card seen is known to be in the hand when it is not in the queue and every one of the last 4 plays is shown: every card seen was played, and a played card is either among the last 4 plays or back in the hand. While one of the last 4 plays is not shown it may have been any card seen, so none is known to be in the hand;
+- with all 8 cards seen and the last 4 plays shown, the whole hand is known;
+- a Mirror's play cycles the Mirror (its play's `card`), not the card it repeated (its `cast`);
+- a play enters the play rows on the tick it runs, so a card the enemy has placed and that has not run yet counts in its hand, as on the player's screen. The enemy's own hand and queue refill the played card's slot a moment after the run; the adapter gives the cycle that refill settles.
+
+Its outputs, per environment:
+
+| Output | Shape and type | What it is |
+|---|---|---|
+| `queue` | `(4,)` int32 | the queue's cards by vocabulary id in the order they come back (the first is the enemy's next card), -1 for a place not known |
+| `hand` | `(4,)` int32 | the cards known to be in the hand by vocabulary id, in the order of `enemy.seen.card`, -1 beyond |
+| `hand_known` | int32 | how many cards of the hand are known |
+| `all_seen` | bool | all 8 of the enemy's cards have been seen |
+| `settled` | bool | every one of the enemy's last 4 plays is shown (or was never made): the condition for any card to be known in the hand |
+
+The sizes come from the registry at `bind`: the deck is `enemy.seen.card`'s 8 places, the hand `own.hand.card`'s 4, the queue the rest.
+
+**`UnitAge`** (`unit_age`, registry 1.0, stateful) reads `game.tick`, `entity.visible` and `entity.id`. Its output `age`, `(entity_capacity,)` int32 per environment and aligned with the entity table, is per row the ticks since the seat was first shown the row's entity: `game.tick` now less the tick of the first observation that showed it (0 at that observation), and -1 on a row the seat is not shown. An entity the seat was shown and no longer sees keeps its first tick, as its id stays the same ([Entity ids](#entity-ids)).
+
+It keeps, per environment and seat, the tick each of the seat's entity ids was first shown, from the observations it is given, so the age counts from the first observation that showed the entity: less than a decision's ticks after it appeared on the screen.
+
+- `reset(done, seat)` forgets the seat's ids in the environments `done` marks. Call it for both seats after reading the last observation of an episode (the `dones` of a step) and for an environment whose battle was replaced (`reset_env`, `fork_from`, a replay's start), as their ids are numbered afresh. A battle whose clock went back since the last observation is started afresh too, as after an autoreset.
+- `bind` forgets every state, and one adapter keeps the state of one vector's environments: observing fields of another number of environments raises `ValueError`.
+- Its state does not follow forks or look aheads. It is the adapter's own record of the observations it was given, and nothing of it is in the battle. A fork moved into an environment or a look ahead's observation is a battle whose earlier observations the adapter did not see there, so an age read on it counts from whatever that environment's record holds. Reset an environment a fork is moved into, and read a look ahead's ages with an adapter of its own, knowing they count from the fork.
+
+The adapters of registry 1.1 also read the row facts, static facts of the data version the registry holds ([The row facts](#the-row-facts)). They are no field of a step and are the same for every seat, so they are no read and no hidden field; `bind` takes them and refuses a registry whose facts hold no values (the snapshot, a synthetic vector) with `ValueError`. Each output is per entity row, `(entity_capacity,)` per environment and aligned with the entity table, and its rows not shown, and the projectiles and area effects, read -1 and false.
+
+**`AttackCooldown`** (`attack_cooldown`, registry 1.1, stateless) reads `entity.visible`, `entity.kind`, `entity.row`, `entity.state`, `entity.flags`, `entity.attack_ms`, `entity.load_ms`, `entity.hit_speed_percent`, `entity.deploy_ms`, `entity.id`, `entity.target` and `own.result`, with the facts `hit_speed_ms`, `load_time_ms`, `attack_step_ms`, `attack_start_delay_ms` and `attack_traits`. Per character or tower row it counts the ms until the next hit by the rule of [The row facts](#the-row-facts), if the unit attacks on every tick from the next one on:
+
+| Output | Type | What it is |
+|---|---|---|
+| `ms` | int32 | 50 * n, the ms until the next hit; -1 where no count is made: a trail, a row that does not attack or that the battle core refused, a row whose steps differ (b, or D for an attack starting from 0, -1), a stunned or frozen unit (the step below 1) |
+| `known` | bool | `ms` was counted |
+| `exact` | bool | counted, and none of the cases the rule does not cover: a row with the `dash` or `special` trait, a unit still deploying or underground, a king tower not awake, a unit whose tags forbid it to attack (`no_attack`) or that is not alive, a unit attacking with no target or a target the seat is not shown alive (its `entity.target` among the `entity.id` of the shown rows alive), a match over (`own.result` not running) |
+
+Even exact, the count holds while the unit attacks the same target in range from the next tick on, nothing resets its timers and its hit speed stays, and the step may be 1 ms off under a speed-up and a slow-down together. A unit attacking with no target, or one whose target has fallen, holds its timers, so its count would never run down: it is not exact.
+
+On one-tick decisions over Ladder battles of random plays (16.635.8), every exact count of a unit that then attacked the same living target at the same hit speed until the count ran out was the tick its timer next crossed a multiple of its hit speed: 21886 of 21886 counts over 2000 ticks of 4 battles in the test below, and 32312 of 32338 (99.9 percent) over 3000 ticks, where the misses were one princess tower whose timer restarted while it kept a living target. Held to the same target whether it lived or not, 32436 of 32466 (99.9 percent) agreed.
+
+**`EnemyHitPoints`** (`enemy_hit_points`, registry 1.1, stateless) reads `entity.visible`, `entity.kind`, `entity.row`, `entity.hp`, `entity.max_hp` and `entity.flags`, with the fact `bar_rule`, and never the true hit points. A character's or tower's hit points are known where `entity.hp` shows them (0 or more: the seat's own, every tower, an enemy unit whose health bar the screen draws), and where it is -1 and the bar rule says no bar means undamaged ([The row facts](#the-row-facts)): the rule `damaged`, not a trail and not `underground`, the hit points being `entity.max_hp`. Not known: the rules `never` and `damaged_rolling`, a unit underground, a trail.
+
+| Output | Type | What it is |
+|---|---|---|
+| `hp` | int32 | the hit points where known, -1 elsewhere |
+| `known` | bool | `hp` is known |
+| `fill` | float32 | the health bar's fill, `hp / max_hp`, where known and `max_hp` is above 0; -1 elsewhere |
+
+Over 1200 decisions of 4 Ladder battles of random plays on a deck with the Dark Prince and the Miner (16.635.8), every known value equalled the true hit points (85980 rows, no mismatch): 99.7 percent of the character and tower rows shown were known, 98.6 percent of the enemy characters, and 751 of the 1007 enemy characters whose bar the screen did not draw.
+
+**`OwnPlays`** (`own_plays`, registry 1.1, stateless) reads `own.plays.count` and `own.plays.*` ([The own plays and the row facts](#the-own-plays-and-the-row-facts)) and gives them for one seat: `count` (int32) and per column `card`, `cast`, `form`, `ticks`, `x`, `y`, `kind`, `flags` and `point_ticks` an int32 array of the 8 play rows, newest first, in the seat's frame.
+
+### Adapter sets and the run-level guard
+
+`AdapterSet(adapters, forbid_hidden=False)` binds, resets and observes several adapters as one model's inputs:
+
+- `bind(registry)` binds every adapter; `reads` is every adapter's reads, each once, in the adapters' order; `view(block)` is the `FieldView` of them;
+- `observe(fields, seat)` gives every adapter's outputs keyed `"<adapter name>.<output>"`, in the order of the adapters and of their outputs, and `outputs` declares them the same way. Each adapter is handed a `FieldView` of its own reads only, so it cannot read a field another adapter of the set declared;
+- `reset(done, seat)` resets every adapter;
+- `hidden_fields` and `hidden` say what any adapter reads that the seat is not shown;
+- `provenance(role)` is the provenance record of one role reading the set (`provenance({role: adapters}, registry)`).
+
+Two adapters of one name, or two output keys that clash, raise `ValueError`.
+
+`forbid_hidden=True` is the run-level guard: the set refuses every adapter that reads a hidden field, with `HiddenFieldError` naming each and its hidden fields. It checks the adapters already bound when the set is made, and every adapter at `bind`, since an adapter may work out its reads as it binds. A run that builds its inputs on such a set cannot read a field its seat is not shown by mistake.
+
+```python
+from crforge_env.adapters import AdapterSet, ElixirLead, EnemyCycle, UnitAge, V4Adapter
+
+inputs = AdapterSet([V4Adapter(vector.schema), ElixirLead(), EnemyCycle(), UnitAge()], forbid_hidden=True)
+inputs.bind(Registry.from_metadata(vector.metadata["fields"]))
+view = inputs.view(vector.fields)
+out = inputs.observe(view, seat=0)  # out["v4.observation"], out["enemy_cycle.queue"], ...
+```
+
+`OtherSeat(adapter)` observes an adapter at the other seat of each environment: `observe(fields, s)` is the inner adapter's at seat `1 - s`, as a critic that reads the other seat's observation reads it, and `reset(done, s)` resets the inner adapter's seat `1 - s`. Its name is the inner adapter's with `@other_seat` after it (`v4@other_seat`), and its reads and outputs are the inner adapter's. A seat field read at the other seat is what the other seat is shown, not this one, so its hidden fields are all its reads but the public ones: the guard refuses it, and a provenance record lists it as hidden.
+
+### Provenance records
+
+A run keeps what each role of it read as a provenance record, the format of `provenance` ([The field registry and adapters](#the-field-registry-and-adapters)): the registry's version and, per role, its adapters in order, the sorted reads, whether any is hidden and the sorted hidden fields.
+
+`evaluate` records the roles `policy` and `opponent` in its result (`EvaluationResult.provenance`). A policy is handed its seat's v4 observation, so it is recorded as the `v4` adapter's reads, unless it names the adapters it reads in an `adapters` attribute (`crforge_env.evaluation.policy_adapters(policy, registry)` gives them, bound). `random_opponent` and `wait_opponent` name none (`adapters = ()`), as they read no field: the random opponent reads its mask alone. A policy that reads the other seat's observation names `OtherSeat` among its adapters and is recorded as hidden.
+
+The example trainer ([A minimal PPO trainer](#a-minimal-ppo-trainer)) keeps its record in the checkpoint, `policy.pt`'s `provenance`, with the roles `learner` (the policy), `critic` (the value head), `opponent` and `eval_opponent`. Its model is handed the learner seat's own v4 observation, its first `--entities` rows, for the policy and the value head alike, so both are the `v4` adapter's reads. The opponent in self-play is the same model on the other seat's own observation, also `v4`; the scripted bot reads the v4 observation (`v4`), the random and wait opponents nothing:
+
+```python
+{"registry": "1.0", "roles": {
+  "critic": {"adapters": ["v4"], "reads": ["enemy.crowns", ...], "hidden": False, "hidden_fields": []},
+  "eval_opponent": {"adapters": [], "reads": [], "hidden": False, "hidden_fields": []},
+  "learner": {"adapters": ["v4"], "reads": ["enemy.crowns", ...], "hidden": False, "hidden_fields": []},
+  "opponent": {"adapters": [], "reads": [], "hidden": False, "hidden_fields": []}}}
+```
+
+The model uses only some of the fields of the observation it is handed (the header amounts it scales, the towers, the cards, the entity columns it embeds). The record lists every field of that observation, as the model could read any of them.
 
 ### The wrappers
 
@@ -997,7 +1132,8 @@ result.wins, result.losses, result.draws, result.truncated, result.win_rate
 - `truncated` (cut short by the tick limit or a fault);
 - `faults` by kind;
 - `illegal` (the policy's actions refused as illegal);
-- `win_rate` (wins over all episodes).
+- `win_rate` (wins over all episodes);
+- `provenance`, what the policy and the opponent read ([Provenance records](#provenance-records)).
 
 The policy plays seat 0 in the even environments and seat 1 in the odd ones, so an even `envs` gives each side half the episodes. Each environment plays a fixed share of the episodes, so which ones count does not depend on which end first. The battle seeds and each seat's generator are drawn from `seed`, so a run is reproduced by it.
 
@@ -1064,7 +1200,7 @@ uv run --with torch python examples/ppo.py --install ../env/build/install/env --
 - **The seats.** The learner plays one seat of each battle, seat 0 in even battles and seat 1 in odd ones, against `--opponent` (`random` by default, `scripted` or `wait`), or both seats of every battle with `--opponent self`. Both sides play one deck (`--deck`, eight card row names).
 - **The reward.** The match's result (+1, -1, 0 for a draw), plus `--shaping` (0.5) times the change of the tower balance: the seat's share of tower hit points left less the enemy's.
 - **Episode ends.** The step after a battle's end restarts it and ignores its actions, so that step's sample is left out of the loss. An episode cut short by a fault or a tick limit takes no shaping on its last step and bootstraps from the value of that step's own observation, as [Faults are truncations](#faults-are-truncations) asks.
-- **The run folder.** Every `--eval-every` updates (20) `evaluate` plays the policy against `--eval-opponent` and adds a row to `curve.csv`; `policy.pt` holds the weights, the settings and the vector's metadata, and `metadata.json` the metadata alone. `runs/` is ignored by git.
+- **The run folder.** Every `--eval-every` updates (20) `evaluate` plays the policy against `--eval-opponent` and adds a row to `curve.csv`; `policy.pt` holds the weights, the settings, the vector's metadata and the run's provenance record ([Provenance records](#provenance-records)), and `metadata.json` the metadata alone. `runs/` is ignored by git.
 
 `--help` lists the rest (the battles and their threads, the rollout length, the PPO coefficients, the device).
 
@@ -1122,6 +1258,8 @@ Schema version 3 adds:
 - the entity columns read by name.
 
 The field export's tests: in Java (`FieldsTest`, `FieldExportTest`), the registry against its committed snapshot and every exported field against the observations; in Python, the registry read and checked (`tests/test_field_registry.py`), the read-only views and the declared reads, `require_fair` and provenance (`tests/test_adapters.py`), the block of a vector (`tests/test_field_export.py`), the v4 adapter on random, capped and overflowing blocks made by its inverse (`tests/test_adapter_v4.py`), and the migration gate ([The v4 adapter](#the-v4-adapter), `tests/test_v4_gate.py`).
+
+The shared adapters' tests: on blocks written by hand (`tests/test_derived_adapters.py`), each reads no hidden field, the elixir lead, the cycle's queue and known hand before any play, before the 4th play, with all 8 cards seen, with a play not shown among the last 4 and before them, and a Mirror's play, and the ages of entities shown, hidden and shown again, per seat, reset, and after a clock that goes back; `AdapterSet`, its guard and `OtherSeat` (`tests/test_adapter_set.py`); and on Ladder battles of random plays (`tests/test_derived_ladder.py`), the lead equal to the v4 header's elixir less the enemy's, the cycle's cards seen equal to `enemy_seen` and `enemy_unseen_slots` and its queue and known hand equal to the enemy's own wherever known (on a deck with a tunnelling card and a Mirror), and each age growing by the decision ticks, through episode ends. The registry 1.1 adapters: on blocks written by hand with hand-written row facts (`tests/test_fact_adapters.py`), the cooldown of an attack under way, a hit just fired, a load to run first, a tower's first hit, half hit speed, a stun, a charge and its hit, a load above the hit speed, a start delay, rows whose steps or delays differ, a refused row, a trail and a projectile, and the cases it marks not exact; the hit points shown, a fallen tower, no bar under each bar rule, underground, a trail and a projectile; the own plays; and a 1.0 registry or one without facts refused. On Ladder battles (`tests/test_fact_ladder.py`), each cooldown held to the tick the next hit fires on one-tick decisions (99.5 percent at least), every hit point known equal to `entity.hp.true`, and the own plays equal to the other seat's true record of them, the frames turned, and to points of their side's commands in the battle's replay. The evaluation's provenance records are held on synthetic battles (`tests/test_provenance_records.py`), and the example trainer's tests read the checkpoint's.
 
 Schema version 4 adds the play kinds and flags, the unknown value (-1) and the new fields against the Java `Schema`, and the bounds of the enemy plays' kinds, flags and forms not yet shown. The scripted bot leaves an enemy hidden or underground out of its spells' targets and takes an enemy whose health bar the screen does not draw as unhurt.
 

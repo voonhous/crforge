@@ -113,14 +113,14 @@ final class SeatView {
    */
   static final class Bars {
 
-    /** A row with no health bar shown to the other side. */
-    private static final byte NONE = 1;
+    /** A row with no health bar shown to the other side: the registry's bar rule code. */
+    private static final byte NONE = (byte) Fields.BAR_NEVER;
 
     /** A row whose health bar shows to the other side always. */
-    private static final byte ALWAYS = 2;
+    private static final byte ALWAYS = (byte) Fields.BAR_ALWAYS;
 
     /** A row that sets HideHealthbar and builds its own bar: shown from its first damage on. */
-    private static final byte DAMAGED = 3;
+    private static final byte DAMAGED = (byte) Fields.BAR_DAMAGED;
 
     private static final String CHARACTERS = "characters";
     private static final String BUILDINGS = "buildings";
@@ -166,6 +166,21 @@ final class SeatView {
           hideWhileRunning.add(name);
         }
       }
+    }
+
+    /**
+     * A row's rule, as the registry's bar rule codes it: {@link Fields#BAR_NEVER}, {@link
+     * Fields#BAR_ALWAYS} or {@link Fields#BAR_DAMAGED} for a character or building row, {@link
+     * Fields#BAR_NOT_UNIT} for any other name.
+     */
+    int rule(String rowName) {
+      Byte rule = rules.get(rowName);
+      return rule == null ? Fields.BAR_NOT_UNIT : rule;
+    }
+
+    /** Whether an action row hides the bar of the unit running it while it runs. */
+    boolean hidesWhileRunning(String actionName) {
+      return hideWhileRunning.contains(actionName);
     }
 
     /** Whether a row's starting client actions name a health bar. */

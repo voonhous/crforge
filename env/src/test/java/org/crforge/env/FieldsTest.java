@@ -43,6 +43,112 @@ class FieldsTest {
     assertThat(Fields.toNode()).isEqualTo(committed);
   }
 
+  /** The snapshot of registry 1.0, as committed with it: what every 1.x registry keeps. */
+  private static Path snapshotOneZero() {
+    return snapshot().resolveSibling("fields_v1_0.json");
+  }
+
+  @Test
+  void everyOneZeroFieldKeepsItsNameOffsetShapeUnitsAndFrame() throws IOException {
+    JsonNode before = JSON.readTree(Files.readString(snapshotOneZero()));
+    JsonNode now = Fields.toNode();
+    assertThat(before.get("version").asText()).isEqualTo("1.0");
+    // The same major version, a later minor one.
+    String[] version = Fields.VERSION.split("\\.");
+    assertThat(version[0]).isEqualTo("1");
+    assertThat(Integer.parseInt(version[1])).isPositive();
+    assertThat(now.get("entity_capacity")).isEqualTo(before.get("entity_capacity"));
+    // Every 1.0 field as it was, in the same place of the list: the 1.0 list is a prefix.
+    JsonNode fields = now.get("fields");
+    int oneZero = before.get("fields").size();
+    assertThat(fields.size()).isGreaterThan(oneZero);
+    for (int k = 0; k < oneZero; k++) {
+      assertThat(fields.get(k)).as("1.0 field %d", k).isEqualTo(before.get("fields").get(k));
+    }
+    // The fields added hold integers past the 1.0 block only, so a 1.0 reader's offsets hold.
+    int ints = before.get("ints").asInt();
+    for (int k = oneZero; k < fields.size(); k++) {
+      JsonNode field = fields.get(k);
+      assertThat(field.get("alias_of").isNull()).as(field.get("name").asText()).isTrue();
+      assertThat(field.get("offset").asInt())
+          .as(field.get("name").asText())
+          .isGreaterThanOrEqualTo(ints);
+    }
+    // Every 1.0 code and bit keeps its label.
+    before
+        .get("enums")
+        .fields()
+        .forEachRemaining(
+            entry -> assertThat(now.get("enums").get(entry.getKey())).isEqualTo(entry.getValue()));
+  }
+
+  @Test
+  void theSeatsOwnPlaysMirrorTheEnemysPlays() {
+    List<String> columns = new ArrayList<>();
+    for (Fields.Field field : Fields.fields()) {
+      String name = field.name();
+      if (!name.startsWith("enemy.plays.") || field.tag() != Fields.Tag.SEAT) {
+        continue;
+      }
+      String column = name.substring("enemy.plays.".length());
+      columns.add(column);
+      Fields.Field own = Fields.field("own.plays." + column);
+      assertThat(own).as("own.plays.%s", column).isNotNull();
+      assertThat(own.tag()).isEqualTo(Fields.Tag.SEAT);
+      assertThat(own.shape()).isEqualTo(field.shape());
+      assertThat(own.units()).isEqualTo(field.units());
+      assertThat(own.frame()).isEqualTo(field.frame());
+      assertThat(own.aliasOf()).isNull();
+      // Not in the v4 observation, and nothing hides it: a seat sees all of its own plays.
+      assertThat(Fields.v4Source(own.name())).isNull();
+      assertThat(Fields.field(own.name() + ".true")).isNull();
+    }
+    assertThat(columns)
+        .containsExactly(
+            "count", "card", "cast", "form", "ticks", "x", "y", "kind", "flags", "point_ticks");
+    int own = 0;
+    for (Fields.Field field : Fields.fields()) {
+      own += field.name().startsWith("own.plays.") ? 1 : 0;
+    }
+    assertThat(own).isEqualTo(columns.size());
+  }
+
+  @Test
+  void theRowFactsAreListedWithTheirUnitsAndNoValuesWithoutAVocabulary() {
+    JsonNode rows = Fields.toNode().get("rows");
+    assertThat(rows).isNotNull();
+    List<String> names = new ArrayList<>();
+    rows.fieldNames().forEachRemaining(names::add);
+    assertThat(names)
+        .containsExactly(
+            "bar_rule",
+            "hit_speed_ms",
+            "load_time_ms",
+            "attack_step_ms",
+            "attack_start_delay_ms",
+            "attack_traits");
+    for (Fields.RowFact fact : Fields.rowFacts()) {
+      JsonNode node = rows.get(fact.name());
+      assertThat(node.get("units").asText()).isEqualTo(fact.units());
+      assertThat(node.get("values").isArray()).isTrue();
+      assertThat(node.get("values")).isEmpty();
+      knownUnits(fact.units());
+    }
+    assertThat(Fields.enums().get("bar_rule"))
+        .containsEntry(Fields.BAR_NOT_UNIT, "not_unit")
+        .containsEntry(Fields.BAR_NEVER, "never")
+        .containsEntry(Fields.BAR_ALWAYS, "always")
+        .containsEntry(Fields.BAR_DAMAGED, "damaged")
+        .containsEntry(Fields.BAR_DAMAGED_ROLLING, "damaged_rolling")
+        .hasSize(5);
+    assertThat(Fields.enums().get("attack_traits"))
+        .containsEntry(Integer.numberOfTrailingZeros(Fields.TRAIT_LOAD_FIRST_HIT), "load_first_hit")
+        .containsEntry(Integer.numberOfTrailingZeros(Fields.TRAIT_CHARGE), "charge")
+        .containsEntry(Integer.numberOfTrailingZeros(Fields.TRAIT_DASH), "dash")
+        .containsEntry(Integer.numberOfTrailingZeros(Fields.TRAIT_SPECIAL), "special")
+        .hasSize(4);
+  }
+
   @Test
   void theMetadataPublishesTheRegistry() throws IOException {
     JsonNode metadata = JSON.readTree(VectorEnv.metadataJson(null, null));
@@ -297,12 +403,23 @@ class FieldsTest {
         used.add(name);
       }
     }
+    // The row facts' units name labels too.
+    for (Fields.RowFact fact : Fields.rowFacts()) {
+      String units = fact.units();
+      if (units.startsWith("enum:") || units.startsWith("flags:")) {
+        String name = units.substring(units.indexOf(':') + 1);
+        assertThat(enums).as("labels of %s", units).containsKey(name);
+        used.add(name);
+      }
+    }
     // Every list is a unit's, and no name is both an enum's and a flags'.
     assertThat(enums.keySet()).isEqualTo(used);
     Set<String> enumNames = new HashSet<>();
     Set<String> flagsNames = new HashSet<>();
-    for (Fields.Field field : Fields.fields()) {
-      String units = field.units();
+    List<String> allUnits = new ArrayList<>();
+    Fields.fields().forEach(field -> allUnits.add(field.units()));
+    Fields.rowFacts().forEach(fact -> allUnits.add(fact.units()));
+    for (String units : allUnits) {
       String name = units.substring(units.indexOf(':') + 1);
       if (units.startsWith("enum:")) {
         enumNames.add(name);

@@ -318,3 +318,45 @@ def test_a_field_view_is_read_only_and_follows_the_block(registry):
 def test_a_view_of_an_unknown_field_is_a_key_error(registry):
     with pytest.raises(KeyError, match=r"no\.such\.field"):
         registry.view(block_of(registry), ["own.elixir", "no.such.field"])
+
+
+SNAPSHOT_1_0 = Path(__file__).parent / "data" / "fields_v1_0.json"
+
+
+def test_the_row_facts_are_int32_arrays_and_empty_without_values(registry):
+    assert list(registry.rows) == [
+        "bar_rule",
+        "hit_speed_ms",
+        "load_time_ms",
+        "attack_step_ms",
+        "attack_start_delay_ms",
+        "attack_traits",
+    ]
+    for name, values in registry.rows.items():
+        assert values.dtype == np.int32 and values.shape == (0,), name
+    assert registry.row_units["bar_rule"] == "enum:bar_rule"
+    assert registry.row_units["hit_speed_ms"] == "ms"
+    # A 1.0 node has no row facts.
+    assert Registry.from_file(SNAPSHOT_1_0).rows == {}
+
+
+def test_the_row_facts_hold_one_value_per_vocabulary_row(registry):
+    node = json.loads(SNAPSHOT.read_text())
+    for k, entry in enumerate(node["rows"].values()):
+        entry["values"] = [k, k + 1, -1]
+    rows = Registry.from_metadata(node).rows
+    np.testing.assert_array_equal(rows["bar_rule"], [0, 1, -1])
+    np.testing.assert_array_equal(rows["attack_traits"], [5, 6, -1])
+    assert not rows["bar_rule"].flags.writeable
+
+
+def test_row_facts_of_different_lengths_or_a_missing_enum_are_refused():
+    node = json.loads(SNAPSHOT.read_text())
+    node["rows"]["bar_rule"]["values"] = [0, 1]
+    node["rows"]["hit_speed_ms"]["values"] = [0, 1, 2]
+    with pytest.raises(ValueError, match="row facts"):
+        Registry.from_metadata(node)
+    node = json.loads(SNAPSHOT.read_text())
+    node["rows"]["bar_rule"]["units"] = "enum:no_such_enum"
+    with pytest.raises(ValueError, match="no_such_enum"):
+        Registry.from_metadata(node)
