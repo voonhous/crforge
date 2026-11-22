@@ -866,6 +866,10 @@ provenance({"learner": [lead]}, registry)
 
 The roles and every role's reads and hidden fields are sorted, so the same adapters give the same record; a role's adapters stay in the order given.
 
+### The v4 adapter
+
+`crforge_env.adapters.v4.V4Adapter` rebuilds each seat's schema version 4 observation, bit for bit, from the exported fields (the registry `Fields`, the metadata's `fields`). It reads every field the registry gives a `v4` source, plus `entity.visible` and `entity.count`, and no hidden field: a seat's v4 rows are the first `entity.count[s]` table rows whose `entity.visible[s]` is 1, in row order, and every header int no source names is 0. Seat fields are already in the seat's frame, so nothing is mirrored. `observe(fields, seat)` gives one seat, `observe_both(fields)` both, equal to `vector.observations` while `entity.export_overflow` is 0. All its indices come from the registry at bind, and it is vectorised over environments and rows: about 7 ms a call on 256 environments with 200 rows a seat, 3 ms with 60. Its inverse, `python/tests/fieldgen.py`, makes a field block from v4 observations for the tests.
+
 ### The wrappers
 
 Two wrappers over a vector of one battle, both with autoreset off:
