@@ -57,6 +57,21 @@ env = ClashGymEnv(deck, deck, install=install, tables=tables, opponent_setup=can
 # start mid-match on a replay's battle, at a decision's tick: a state the game reached
 vector.start_from_replay(0, replay_json_text, 1200)
 observation, info = env.reset(options={"replay": replay_json_text, "start_tick": 1200})
+
+# the field export: every field by name and tag (public, seat, hidden), read through adapters
+from crforge_env.adapters import provenance, require_fair
+from crforge_env.adapters.v4 import V4Adapter
+from crforge_env.fields import Registry
+
+with VectorBattle(64, 4, install=install, tables=tables, fields=True) as vector:
+    registry = Registry.from_metadata(vector.metadata["fields"])
+    v4 = V4Adapter(vector.schema)
+    v4.bind(registry)
+    require_fair(v4)  # it reads no hidden field
+    record = provenance({"policy": [v4]}, registry)  # keep it with the run
+    vector.reset(list(range(64)), deck, deck)
+    vector.step()
+    observations = v4.observe_both(v4.view(vector.fields))  # == vector.observations
 ```
 
 Neither folder has a default and no environment variable is read: every entry point takes `install` (the env module's installed distribution) and, for Ladder battles, `tables`. A faulted episode ends as truncated with no reward, the fault named in the info; it is never a result.

@@ -456,6 +456,14 @@ public final class LadderEnv extends BufferedEnv {
   /** The number of the observation being written, counted over the environment's life. */
   private int observation;
 
+  /**
+   * Per seat, by v4 entity row: the row of the field export ({@link Fields}) the entity the packer
+   * wrote there stands in, as the export orders the battle's entities. Kept as the packer writes,
+   * whether the fields are exported or not, so the export can be written from the observations at
+   * any time: a fork's, which writes no observation of its own until it steps.
+   */
+  private final int[][] exportRows = new int[2][Schema.MAX_ENTITIES];
+
   /** Per seat, the game grid's tile of each tile of the seat's frame. */
   private static final int[][] GAME_TILES = gameTiles();
 
@@ -1148,6 +1156,9 @@ public final class LadderEnv extends BufferedEnv {
         ByteBuffer.allocate(2 * Schema.ACTIONS),
         FloatBuffer.allocate(2),
         IntBuffer.allocate(Schema.INFO_INTS));
+    // The copy shares this environment's block of the field export, as it shares every buffer: a
+    // fork exports nothing until it is moved into a vector that exports fields (moveTo).
+    fork.bindFields(null);
     if (seat != -1) {
       int enemy = 1 - seat;
       for (Waiting w : List.copyOf(fork.waiting)) {
@@ -1541,14 +1552,38 @@ public final class LadderEnv extends BufferedEnv {
 
   /**
    * Binds this environment to other buffers, first copying into them what it last wrote: a fork
-   * moved into a vector's share of its buffers ({@link VectorEnv#forkFrom}).
+   * moved into a vector's share of its buffers ({@link VectorEnv#forkFrom}). Given a block of the
+   * field export, it writes its fields there from what it last wrote and its battle as it stands,
+   * as its last observation would have written them, whether it exported fields before or not.
+   *
+   * @param fields the block of the field export, or null for none
    */
-  void moveTo(IntBuffer observations, ByteBuffer masks, FloatBuffer rewards, IntBuffer info) {
+  void moveTo(
+      IntBuffer observations,
+      ByteBuffer masks,
+      FloatBuffer rewards,
+      IntBuffer info,
+      IntBuffer fields) {
     observations.put(0, this.observations, 0, 2 * Schema.SEAT_INTS);
     masks.put(0, this.masks, 0, 2 * Schema.ACTIONS);
     rewards.put(0, this.rewards, 0, 2);
     info.put(0, this.info, 0, Schema.INFO_INTS);
     bind(observations, masks, rewards, info);
+    bindFields(fields);
+    if (fields != null) {
+      // The seat fields from the observations as last written, both seats at once.
+      FieldExport.Scratch export = FieldExport.begin();
+      observations.get(0, export.seats, 0, 2 * Schema.SEAT_INTS);
+      for (int seat = 0; seat < 2; seat++) {
+        export.scatter(seat, export.seats, seat * Schema.SEAT_INTS, exportRows[seat]);
+      }
+      exportFields(export);
+    }
+  }
+
+  /** The battle id a seat's id names, or -1 for an id the seat has not given: for a test. */
+  int battleIdOf(int seat, int id) {
+    return seatIds.battleId(seat, id);
   }
 
   /** A seat's observation as last written, {@link Schema#SEAT_INTS} integers, into an array. */
@@ -2238,11 +2273,16 @@ public final class LadderEnv extends BufferedEnv {
   /** Writes both seats' observations and masks, the rewards and the info record. */
   private void observe() {
     observation++;
+    FieldExport.Scratch export = fields == null ? null : FieldExport.begin();
     for (int seat = 0; seat < 2; seat++) {
       clearSeatScratch();
       header(seat);
       entities(seat);
       flushSeat(seat);
+      if (export != null) {
+        // The seat's fields are the values just written, copied from the seat's scratch.
+        export.scatter(seat, seatScratch, 0, exportRows[seat]);
+      }
       mask(seat);
       rewards.put(seat, reward(seat));
     }
@@ -2262,6 +2302,9 @@ public final class LadderEnv extends BufferedEnv {
     info.put(Schema.I_TRUNCATED, truncated ? 1 : 0);
     info.put(Schema.I_FIRST_SIDE, firstSide);
     info.put(Schema.I_NOT_MODELLED, notModelled);
+    if (export != null) {
+      exportFields(export);
+    }
   }
 
   private float reward(int seat) {
@@ -2442,13 +2485,19 @@ public final class LadderEnv extends BufferedEnv {
     List<BattleEntity> list = battle.getHolder().entities();
     int rows = 0;
     int overflow = 0;
+    // The export's row of each entity, in the export's order, this order: every character and
+    // tower, then the others newest first (exportFields).
+    int exportRow = 0;
+    int[] from = exportRows[seat];
     for (BattleEntity entity : list) {
       if (entity instanceof WorldEntity world) {
         if (rows == Schema.MAX_ENTITIES) {
           overflow += SeatView.sees(seat, world) ? 1 : 0;
         } else if (writeWorld(seat, rows, world)) {
+          from[rows] = exportRow;
           rows++;
         }
+        exportRow++;
       }
     }
     for (int i = list.size() - 1; i >= 0; i--) {
@@ -2460,8 +2509,10 @@ public final class LadderEnv extends BufferedEnv {
         overflow++;
       } else {
         writeOther(seat, rows, entity);
+        from[rows] = exportRow;
         rows++;
       }
+      exportRow++;
     }
     seatScratch[Schema.H_ENTITY_COUNT] = rows;
     seatScratch[Schema.H_ENTITY_OVERFLOW] = overflow;
@@ -2477,25 +2528,8 @@ public final class LadderEnv extends BufferedEnv {
       return true;
     }
     GridEntity view = world.getView();
-    EntityFlags bits = view.getFlagBits();
-    long tags = view.getFlags();
     CharacterEntity character = world instanceof CharacterEntity c ? c : null;
-    int flags = 0;
-    flags |= view.isAlive() ? Schema.F_ALIVE : 0;
-    flags |= world.getData().air() ? Schema.F_AIR : 0;
-    flags |= world.getData().building() ? Schema.F_BUILDING : 0;
-    flags |= world.getData().king() ? Schema.F_KING : 0;
-    flags |= (tags & bits.noMove()) != 0 ? Schema.F_NO_MOVE : 0;
-    flags |= (tags & bits.noAttack()) != 0 ? Schema.F_NO_ATTACK : 0;
-    flags |= (tags & bits.charging()) != 0 ? Schema.F_CHARGED : 0;
-    if (character != null) {
-      flags |= character.hidden() ? Schema.F_HIDDEN : 0;
-      flags |= character.invisible() ? Schema.F_INVISIBLE : 0;
-      flags |= character.underground() ? Schema.F_UNDERGROUND : 0;
-      flags |= character.isClone() ? Schema.F_CLONE : 0;
-    } else if (world instanceof TowerEntity tower) {
-      flags |= tower.isInactive() ? 0 : Schema.F_AWAKE;
-    }
+    int flags = flags(world);
     int at = Schema.HEADER_INTS + row * Schema.ENTITY_INTS;
     int[] o = seatScratch;
     int x = Schema.toSeatX(seat, view.getX());
@@ -2546,6 +2580,30 @@ public final class LadderEnv extends BufferedEnv {
     Integer ran = abilityRan.get(world.getId());
     o[at + Schema.E_ABILITY_TICKS] = ran == null ? -1 : battle.getTick() - ran;
     return true;
+  }
+
+  /** A character's or tower's flags, the {@code F_*} bits of {@link Schema}, as shown in full. */
+  private static int flags(WorldEntity world) {
+    GridEntity view = world.getView();
+    EntityFlags bits = view.getFlagBits();
+    long tags = view.getFlags();
+    int flags = 0;
+    flags |= view.isAlive() ? Schema.F_ALIVE : 0;
+    flags |= world.getData().air() ? Schema.F_AIR : 0;
+    flags |= world.getData().building() ? Schema.F_BUILDING : 0;
+    flags |= world.getData().king() ? Schema.F_KING : 0;
+    flags |= (tags & bits.noMove()) != 0 ? Schema.F_NO_MOVE : 0;
+    flags |= (tags & bits.noAttack()) != 0 ? Schema.F_NO_ATTACK : 0;
+    flags |= (tags & bits.charging()) != 0 ? Schema.F_CHARGED : 0;
+    if (world instanceof CharacterEntity character) {
+      flags |= character.hidden() ? Schema.F_HIDDEN : 0;
+      flags |= character.invisible() ? Schema.F_INVISIBLE : 0;
+      flags |= character.underground() ? Schema.F_UNDERGROUND : 0;
+      flags |= character.isClone() ? Schema.F_CLONE : 0;
+    } else if (world instanceof TowerEntity tower) {
+      flags |= tower.isInactive() ? 0 : Schema.F_AWAKE;
+    }
+    return flags;
   }
 
   /**
@@ -2688,6 +2746,211 @@ public final class LadderEnv extends BufferedEnv {
 
   private static int relative(int seat, int side) {
     return side == seat ? 0 : side == 1 - seat ? 1 : 2;
+  }
+
+  // The field export (Fields): written after both seats' observations, from them and the battle.
+
+  private static final int CAP = Fields.ENTITY_CAPACITY;
+  private static final int VISIBLE = Fields.ENTITY_VISIBLE.offset();
+  private static final int BATTLE_ID = Fields.ENTITY_BATTLE_ID.offset();
+  private static final int PRESENT = Fields.ENTITY_PRESENT.offset();
+  private static final int KIND = Fields.ENTITY_KIND_TRUE.offset();
+  private static final int SIDE = Fields.ENTITY_SIDE_TRUE.offset();
+  private static final int ROW = Fields.ENTITY_ROW_TRUE.offset();
+  private static final int X = Fields.ENTITY_X_TRUE.offset();
+  private static final int Y = Fields.ENTITY_Y_TRUE.offset();
+  private static final int HP = Fields.ENTITY_HP_TRUE.offset();
+  private static final int MAX_HP = Fields.ENTITY_MAX_HP_TRUE.offset();
+  private static final int SHIELD = Fields.ENTITY_SHIELD_TRUE.offset();
+  private static final int STATE = Fields.ENTITY_STATE_TRUE.offset();
+  private static final int FLAGS = Fields.ENTITY_FLAGS_TRUE.offset();
+  private static final int LEVEL = Fields.ENTITY_LEVEL_TRUE.offset();
+  private static final int TARGET = Fields.ENTITY_TARGET_TRUE.offset();
+  private static final int TARGET_X = Fields.ENTITY_TARGET_X_TRUE.offset();
+  private static final int TARGET_Y = Fields.ENTITY_TARGET_Y_TRUE.offset();
+  private static final int DEPLOY_MS = Fields.ENTITY_DEPLOY_MS_TRUE.offset();
+  private static final int ATTACK_MS = Fields.ENTITY_ATTACK_MS_TRUE.offset();
+  private static final int LOAD_MS = Fields.ENTITY_LOAD_MS_TRUE.offset();
+  private static final int SPEED = Fields.ENTITY_SPEED_PERCENT_TRUE.offset();
+  private static final int HIT_SPEED = Fields.ENTITY_HIT_SPEED_PERCENT_TRUE.offset();
+  private static final int BUFF_COUNT = Fields.ENTITY_BUFF_COUNT_TRUE.offset();
+  private static final int BUFF = Fields.ENTITY_BUFF_TRUE.offset();
+  private static final int BUFF_MS = Fields.ENTITY_BUFF_MS_TRUE.offset();
+  private static final int AIM_X = Fields.ENTITY_AIM_X_TRUE.offset();
+  private static final int AIM_Y = Fields.ENTITY_AIM_Y_TRUE.offset();
+  private static final int TIME_LEFT_MS = Fields.ENTITY_TIME_LEFT_MS_TRUE.offset();
+  private static final int RADIUS = Fields.ENTITY_RADIUS_TRUE.offset();
+  private static final int ABILITY_TICKS = Fields.ENTITY_ABILITY_TICKS_TRUE.offset();
+  private static final int PLAY_CARD = Fields.ENEMY_PLAYS_CARD_TRUE.offset();
+  private static final int PLAY_CAST = Fields.ENEMY_PLAYS_CAST_TRUE.offset();
+  private static final int PLAY_FORM = Fields.ENEMY_PLAYS_FORM_TRUE.offset();
+  private static final int PLAY_X = Fields.ENEMY_PLAYS_X_TRUE.offset();
+  private static final int PLAY_Y = Fields.ENEMY_PLAYS_Y_TRUE.offset();
+
+  /**
+   * Finishes the environment's block of the field export ({@link Fields}), whose seat and public
+   * fields the export holds already: the observations' own values, copied ({@link
+   * FieldExport.Scratch#scatter}) into the export rows the packer kept ({@link #exportRows}). This
+   * adds the visibility, by the seat rule ({@link SeatView#sees}), and the hidden fields, read off
+   * the battle and the plays as placed, and writes the block. Nothing here gives a seat's id,
+   * counts an observation or moves what a later one compares with: the export changes no state, so
+   * the observations are the same with it or without it.
+   */
+  private void exportFields(FieldExport.Scratch export) {
+    int[] block = export.block;
+    List<BattleEntity> list = battle.getHolder().entities();
+    int row = 0;
+    int total = 0;
+    for (BattleEntity entity : list) {
+      if (entity instanceof WorldEntity world) {
+        if (row < CAP) {
+          exportWorld(block, row++, world);
+        }
+        total++;
+      }
+    }
+    for (int i = list.size() - 1; i >= 0; i--) {
+      BattleEntity entity = list.get(i);
+      if (!(entity instanceof WorldEntity)) {
+        if (row < CAP) {
+          exportOther(block, row++, entity);
+        }
+        total++;
+      }
+    }
+    block[Fields.ENTITY_COUNT_TRUE.offset()] = row;
+    block[Fields.ENTITY_EXPORT_OVERFLOW.offset()] = total - row;
+    exportPlays(block);
+    fieldRows = export.end(fields, row, fieldRows);
+  }
+
+  /** The game side of an entity's side, or {@link Fields#SIDE_NEITHER} for neither side's. */
+  private static int trueSide(int side) {
+    return side == 0 || side == 1 ? side : Fields.SIDE_NEITHER;
+  }
+
+  /** Writes a character's or tower's export row: who sees it and its true values. */
+  private void exportWorld(int[] block, int row, WorldEntity world) {
+    block[VISIBLE + row] = SeatView.sees(0, world) ? 1 : 0;
+    block[VISIBLE + CAP + row] = SeatView.sees(1, world) ? 1 : 0;
+    GridEntity view = world.getView();
+    CharacterEntity character = world instanceof CharacterEntity c ? c : null;
+    block[BATTLE_ID + row] = world.getId();
+    block[PRESENT + row] = 1;
+    block[KIND + row] = world instanceof TowerEntity ? Schema.KIND_TOWER : Schema.KIND_CHARACTER;
+    block[SIDE + row] = trueSide(world.side());
+    block[ROW + row] = vocabulary.id(world.getData().name());
+    block[X + row] = view.getX();
+    block[Y + row] = view.getY();
+    HitPoints points = world.getHitPoints();
+    if (points != null) {
+      block[HP + row] = points.getHitPoints();
+      block[MAX_HP + row] = points.getMaximum();
+      block[SHIELD + row] = points.getShield();
+    }
+    block[STATE + row] = view.getState();
+    block[FLAGS + row] = flags(world);
+    block[LEVEL + row] = world.level();
+    TargetingState targeting = world.getTargeting();
+    TargetView reference = targeting.getReference();
+    exportTarget(
+        block, row, reference == null ? null : standard.getWorld().entityOf(reference.getEntity()));
+    block[DEPLOY_MS + row] = character != null ? view.getDeployCountdown() : 0;
+    block[ATTACK_MS + row] = targeting.getAttackTimerMs();
+    block[LOAD_MS + row] = targeting.getLoadTimerMs();
+    BuffComponent buffs = world.getBuffs();
+    block[SPEED + row] = buffs.speed(100);
+    block[HIT_SPEED + row] = buffs.hitSpeed(100);
+    List<BuffInstance> items = buffs.items();
+    block[BUFF_COUNT + row] = items.size();
+    int listed = BuffSlots.fill(items, buffSlots);
+    for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
+      int slot = row * Schema.BUFF_SLOTS + b;
+      if (b < listed) {
+        BuffInstance item = items.get(buffSlots[b]);
+        block[BUFF + slot] = vocabulary.buffId(item.getBuff().name());
+        block[BUFF_MS + slot] = item.getRemaining();
+      } else {
+        block[BUFF + slot] = -1;
+      }
+    }
+    Integer ran = abilityRan.get(world.getId());
+    block[ABILITY_TICKS + row] = ran == null ? -1 : battle.getTick() - ran;
+  }
+
+  /** Writes a row's true target: its battle id and position, -1 and 0 for none. */
+  private static void exportTarget(int[] block, int row, WorldEntity target) {
+    if (target == null) {
+      block[TARGET + row] = -1;
+      return;
+    }
+    block[TARGET + row] = target.getId();
+    block[TARGET_X + row] = target.getView().getX();
+    block[TARGET_Y + row] = target.getView().getY();
+  }
+
+  /** Writes a projectile's or area effect's export row: shown to both seats, its true values. */
+  private void exportOther(int[] block, int row, BattleEntity entity) {
+    block[VISIBLE + row] = 1;
+    block[VISIBLE + CAP + row] = 1;
+    int flags = Schema.F_ALIVE;
+    if (entity instanceof ProjectileEntity projectile) {
+      block[KIND + row] = Schema.KIND_PROJECTILE;
+      block[SIDE + row] = trueSide(projectile.side());
+      block[ROW + row] = vocabulary.id(projectile.getData().name());
+      block[X + row] = projectile.x();
+      block[Y + row] = projectile.y();
+      block[LEVEL + row] = PackedLevel.level(projectile.getPackedLevel());
+      block[AIM_X + row] = projectile.getAimX();
+      block[AIM_Y + row] = projectile.getAimY();
+      exportTarget(block, row, projectile.getTarget());
+    } else if (entity instanceof AreaEffectEntity area) {
+      block[KIND + row] = Schema.KIND_AREA;
+      block[SIDE + row] = trueSide(area.side());
+      block[ROW + row] = vocabulary.id(area.getData().name());
+      block[X + row] = area.getX();
+      block[Y + row] = area.getY();
+      flags |= area.isClone() ? Schema.F_CLONE : 0;
+      block[LEVEL + row] = PackedLevel.level(area.getPackedLevel());
+      block[TIME_LEFT_MS + row] = area.getCountdown();
+      block[RADIUS + row] = area.radius();
+      block[TARGET + row] = -1;
+    } else {
+      throw new IllegalStateException(
+          "no encoding for an entity of " + entity.getClass().getSimpleName());
+    }
+    block[BATTLE_ID + row] = entity.getId();
+    block[PRESENT + row] = 1;
+    block[STATE + row] = Schema.NO_STATE;
+    block[FLAGS + row] = flags;
+    for (int b = 0; b < Schema.BUFF_SLOTS; b++) {
+      block[BUFF + row * Schema.BUFF_SLOTS + b] = -1;
+    }
+    block[ABILITY_TICKS + row] = -1;
+  }
+
+  /** Writes each seat's enemy's last plays as they were placed, newest first, shown or not. */
+  private void exportPlays(int[] block) {
+    for (int seat = 0; seat < 2; seat++) {
+      List<SeenPlay> placed = playsPlaced.get(1 - seat);
+      for (int r = 0; r < Schema.ENEMY_PLAY_ROWS; r++) {
+        int at = seat * Schema.ENEMY_PLAY_ROWS + r;
+        if (r >= placed.size()) {
+          block[PLAY_CARD + at] = -1;
+          block[PLAY_CAST + at] = -1;
+          block[PLAY_FORM + at] = -1;
+          block[PLAY_X + at] = -1;
+          block[PLAY_Y + at] = -1;
+          continue;
+        }
+        SeenPlay play = placed.get(placed.size() - 1 - r);
+        block[PLAY_CARD + at] = play.card;
+        block[PLAY_CAST + at] = play.cast;
+        block[PLAY_FORM + at] = play.form;
+        block[PLAY_X + at] = play.placedX;
+        block[PLAY_Y + at] = play.placedY;
+      }
+    }
   }
 
   /**

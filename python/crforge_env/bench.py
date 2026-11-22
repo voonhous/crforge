@@ -4,7 +4,11 @@ One trial steps a :class:`VectorBattle` of ``count`` environments for a fixed nu
 with random open actions drawn in numpy, as a trainer would draw them, and times the whole loop:
 the action draw, the JVM call and the reads of the results. The ``synthetic`` engine measures the
 bridge with no battle behind it; the ``ladder`` engine measures Ladder battles on the game tables
-(``--tables``, required for it).
+(``--tables``, required for it); ``--fields`` makes the Ladder vectors export their fields too
+(``VectorBattle(fields=True)``), to measure what the export costs, and ``--adapter v4`` (which
+implies ``--fields``) rebuilds both seats' v4 observations from the fields after every step
+(:meth:`~crforge_env.adapters.v4.V4Adapter.observe_both` into one array made once), inside the
+timed loop, and reports what that call costs on its own.
 
 Run it with ``crforge-env-bench --install <env/build/install/env> --tables <folder>`` or
 ``python -m crforge_env.bench``; ``--json`` writes the rows to a file beside the table it prints.
@@ -22,7 +26,12 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
+from .adapters.v4 import V4Adapter
+from .fields import Registry
 from .vector import ENGINES, LadderConfig, VectorBattle
+
+ADAPTERS = ("v4",)
+"""The adapters ``--adapter`` times."""
 
 BLUE = ["Knight", "Archer", "Musketeer", "Giant", "MiniPekka", "Fireball", "Arrows", "Zap"]
 """Side 0's deck: card row names of the tables."""
@@ -45,6 +54,9 @@ class Row:
     obs_mb_per_step: float
     repeats: int
     spread_pct: float
+    fields: bool = False
+    adapter: str | None = None
+    adapter_us_per_call: float | None = None
 
 
 def draw_actions(masks: np.ndarray, rng: np.random.Generator, play_rate: float) -> np.ndarray:
@@ -80,13 +92,29 @@ def _priority(n: int) -> np.ndarray:
     return _PRIORITY[n]
 
 
+def v4_rebuild(vector: VectorBattle):
+    """A call that rebuilds both seats' v4 observations from the vector's fields, as a trainer
+    reading them through the v4 adapter would each step: the view and one array made once."""
+    registry = Registry.from_metadata(vector.metadata["fields"])
+    adapter = V4Adapter(vector.schema)
+    adapter.bind(registry)
+    view = registry.view(vector.fields, adapter.reads)
+    out = np.zeros(vector.observations.shape, dtype=np.int32)
+    return lambda: adapter.observe_both(view, out=out)
+
+
 def trial(
-    vector: VectorBattle, steps: int, rng: np.random.Generator, play_rate: float
-) -> tuple[float, float, int]:
-    """Seconds for ``steps`` decisions, the seconds of that spent drawing actions, and the battle
-    ticks stepped."""
+    vector: VectorBattle,
+    steps: int,
+    rng: np.random.Generator,
+    play_rate: float,
+    rebuild=None,
+) -> tuple[float, float, int, float]:
+    """Seconds for ``steps`` decisions, the seconds of that spent drawing actions, the battle
+    ticks stepped, and the seconds spent in ``rebuild`` (called after each step when given)."""
     tick = vector.schema.info["tick"]
     drawing = 0.0
+    adapting = 0.0
     ticks = 0
     before = vector.infos[:, tick].astype(np.int64)
     start = time.perf_counter()
@@ -98,10 +126,14 @@ def trial(
         # The reads a trainer makes every step: the rewards and dones, and here the ticks.
         _ = vector.rewards.sum()
         _ = vector.dones.any()
+        if rebuild is not None:
+            t = time.perf_counter()
+            rebuild()
+            adapting += time.perf_counter() - t
         after = vector.infos[:, tick].astype(np.int64)
         ticks += int(np.where(after >= before, after - before, after).sum())
         before = after
-    return time.perf_counter() - start, drawing, ticks
+    return time.perf_counter() - start, drawing, ticks, adapting
 
 
 def run(
@@ -114,8 +146,14 @@ def run(
     install: str,
     tables: str | None,
     config: LadderConfig | None,
+    fields: bool = False,
+    adapter: str | None = None,
 ) -> list[Row]:
     rows: list[Row] = []
+    if adapter is not None and adapter not in ADAPTERS:
+        raise ValueError(f"the adapters timed are {ADAPTERS}, not {adapter!r}")
+    adapter = adapter if engine == "ladder" else None
+    fields = (fields or adapter is not None) and engine == "ladder"
     for count in counts:
         with VectorBattle(
             count,
@@ -124,12 +162,14 @@ def run(
             engine=engine,
             tables=tables if engine == "ladder" else None,
             config=config if engine == "ladder" else None,
+            fields=fields,
         ) as vector:
             rng = np.random.default_rng(1)
             vector.reset(list(range(1, count + 1)), BLUE, RED)
+            rebuild = v4_rebuild(vector) if adapter == "v4" else None
             # Warm the JIT and the caches on the first decisions.
-            trial(vector, max(steps // 5, 10), rng, play_rate)
-            results = [trial(vector, steps, rng, play_rate) for _ in range(repeats)]
+            trial(vector, max(steps // 5, 10), rng, play_rate, rebuild)
+            results = [trial(vector, steps, rng, play_rate, rebuild) for _ in range(repeats)]
             seconds = [r[0] for r in results]
             best = min(range(repeats), key=lambda i: seconds[i])
             spread = (max(seconds) - seconds[best]) / seconds[best] * 100
@@ -149,6 +189,11 @@ def run(
                     obs_mb_per_step=vector.observations.nbytes / 1e6,
                     repeats=repeats,
                     spread_pct=spread,
+                    fields=fields,
+                    adapter=adapter,
+                    adapter_us_per_call=(
+                        min(r[3] for r in results) / steps * 1e6 if adapter is not None else None
+                    ),
                 )
             )
             print(format_row(rows[-1]), flush=True)
@@ -158,17 +203,21 @@ def run(
 def format_header() -> str:
     return (
         "| engine | envs | threads | env steps/s | ticks/s | us per call | us per env step "
-        "| draw us per call | obs MB | spread |\n"
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+        "| draw us per call | adapter us per call | obs MB | spread |\n"
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
     )
 
 
 def format_row(r: Row) -> str:
     ticks = f"{r.ticks_per_s:,.0f}" if r.engine == "ladder" else "-"
+    engine = f"{r.engine} + fields" if r.fields else r.engine
+    if r.adapter is not None:
+        engine += f" + {r.adapter}"
+    adapting = f"{r.adapter_us_per_call:,.1f}" if r.adapter_us_per_call is not None else "-"
     return (
-        f"| {r.engine} | {r.count} | {r.threads} | {r.env_steps_per_s:,.0f} | {ticks} "
+        f"| {engine} | {r.count} | {r.threads} | {r.env_steps_per_s:,.0f} | {ticks} "
         f"| {r.us_per_call:,.1f} | {r.us_per_env_step:,.2f} | {r.draw_us_per_call:,.1f} "
-        f"| {r.obs_mb_per_step:.2f} | {r.spread_pct:.0f}% |"
+        f"| {adapting} | {r.obs_mb_per_step:.2f} | {r.spread_pct:.0f}% |"
     )
 
 
@@ -190,6 +239,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeats", type=int, default=3, help="trials; the best is reported")
     parser.add_argument("--play-rate", type=float, default=0.3)
     parser.add_argument("--decision-ticks", type=int, default=None)
+    parser.add_argument(
+        "--fields", action="store_true", help="the ladder vectors export their fields too"
+    )
+    parser.add_argument(
+        "--adapter",
+        choices=ADAPTERS,
+        default=None,
+        help="rebuild the observations through this adapter after every step (implies --fields)",
+    )
     parser.add_argument("--json", default=None, help="write the rows to this file")
     args = parser.parse_args(argv)
     if "ladder" in args.engine and args.tables is None:
@@ -197,7 +255,9 @@ def main(argv: list[str] | None = None) -> int:
     config = LadderConfig(decision_ticks=args.decision_ticks)
     print(
         f"# crforge-env bench: {' and '.join(args.engine)}, threads {args.threads}, "
-        f"{args.steps} steps x {args.repeats}, play rate {args.play_rate}, python "
+        f"{args.steps} steps x {args.repeats}, play rate {args.play_rate}, "
+        f"fields {'on' if args.fields or args.adapter else 'off'}, "
+        f"adapter {args.adapter or 'none'}, python "
         f"{platform.python_version()} numpy {np.__version__} on {platform.machine()}"
     )
     print(format_header())
@@ -213,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
             args.install,
             args.tables,
             config,
+            args.fields,
+            args.adapter,
         )
     if args.json:
         with open(args.json, "w", encoding="utf-8") as out:

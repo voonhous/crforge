@@ -55,7 +55,9 @@ import org.crforge.core.battle.unit.Standard1v1Battle;
  *   <li>{@link #rewards()}: {@code count x 2} 32-bit floats;
  *   <li>{@link #dones()}: {@code count} bytes, 1 for an environment whose episode ended in the last
  *       step (or reset);
- *   <li>{@link #infos()}: {@code count x} {@link Schema#INFO_INTS} 32-bit integers.
+ *   <li>{@link #infos()}: {@code count x} {@link Schema#INFO_INTS} 32-bit integers;
+ *   <li>{@link #fields()}: {@code count x} {@link Fields#INTS} 32-bit integers, the field export
+ *       ({@link Fields}), for a vector made to export its fields; none otherwise.
  * </ul>
  *
  * <p>An episode that ends is reported with its terminal observation and {@code done} set; the next
@@ -95,6 +97,10 @@ public final class VectorEnv implements AutoCloseable {
   private final ByteBuffer rewards;
   private final ByteBuffer dones;
   private final ByteBuffer infos;
+
+  /** The field export, or null for a vector that exports no fields. */
+  private final ByteBuffer fields;
+
   private final IntBuffer actionInts;
   private final IntBuffer infoInts;
   private final SplittableRandom[] seeds;
@@ -140,7 +146,7 @@ public final class VectorEnv implements AutoCloseable {
    * @param threads threads the environments are stepped on, 1 for the caller's own
    */
   public VectorEnv(Supplier<BattleEnv> factory, int count, int threads) {
-    this(factory, count, threads, null, null);
+    this(factory, count, threads, null, null, false);
   }
 
   private VectorEnv(
@@ -148,7 +154,8 @@ public final class VectorEnv implements AutoCloseable {
       int count,
       int threads,
       Vocabulary vocabulary,
-      EnvConfig config) {
+      EnvConfig config,
+      boolean exportFields) {
     if (count < 1) {
       throw new IllegalArgumentException("a vector of at least one environment, got " + count);
     }
@@ -174,6 +181,8 @@ public final class VectorEnv implements AutoCloseable {
     rewards = direct(count * 2L * 4);
     dones = direct(count);
     infos = direct(count * (long) Schema.INFO_INTS * 4);
+    // Opt in: a vector that exports no fields holds no block and binds none.
+    fields = exportFields ? direct(count * (long) Fields.INTS * 4) : null;
     actionInts = actions.asIntBuffer();
     infoInts = infos.asIntBuffer();
     envs = new BattleEnv[count];
@@ -222,7 +231,22 @@ public final class VectorEnv implements AutoCloseable {
    * @param threads threads the battles are stepped on
    */
   public static VectorEnv ladder(Path folder, EnvConfig config, int count, int threads) {
-    return ladder(tables(folder), config, count, threads);
+    return ladder(tables(folder), config, count, threads, false);
+  }
+
+  /**
+   * A vector of Ladder battles on the tables of a folder, loaded once per process, exporting their
+   * fields or not.
+   *
+   * @param folder a data version's tables folder, as the build makes it
+   * @param config how the battles are played
+   * @param count how many battles
+   * @param threads threads the battles are stepped on
+   * @param fields whether the battles export their fields ({@link #fields()})
+   */
+  public static VectorEnv ladder(
+      Path folder, EnvConfig config, int count, int threads, boolean fields) {
+    return ladder(tables(folder), config, count, threads, fields);
   }
 
   /**
@@ -234,9 +258,30 @@ public final class VectorEnv implements AutoCloseable {
    * @param threads threads the battles are stepped on
    */
   public static VectorEnv ladder(GameTables tables, EnvConfig config, int count, int threads) {
+    return ladder(tables, config, count, threads, false);
+  }
+
+  /**
+   * A vector of Ladder battles on a data version's tables, exporting their fields or not.
+   *
+   * @param tables the game tables
+   * @param config how the battles are played
+   * @param count how many battles
+   * @param threads threads the battles are stepped on
+   * @param fields whether the battles export their fields ({@link #fields()}): each environment's
+   *     block written beside its observations at every decision; without it no block is made and
+   *     nothing is written
+   */
+  public static VectorEnv ladder(
+      GameTables tables, EnvConfig config, int count, int threads, boolean fields) {
     Vocabulary vocabulary = vocabulary(tables);
     return new VectorEnv(
-        () -> new LadderEnv(tables, vocabulary, config), count, threads, vocabulary, config);
+        () -> new LadderEnv(tables, vocabulary, config),
+        count,
+        threads,
+        vocabulary,
+        config,
+        fields);
   }
 
   /**
@@ -296,6 +341,15 @@ public final class VectorEnv implements AutoCloseable {
 
   public ByteBuffer infos() {
     return infos;
+  }
+
+  /**
+   * The field export ({@link Fields}): each environment's block of {@link Fields#INTS} integers,
+   * written with its observations at every decision, a fork's or a replay's start included, and
+   * zero while its observations are cleared; or null for a vector that exports no fields.
+   */
+  public ByteBuffer fields() {
+    return fields;
   }
 
   /** Whether a finished environment is reset by the next step; on by default. */
@@ -645,6 +699,17 @@ public final class VectorEnv implements AutoCloseable {
             .slice(i * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
             .order(ByteOrder.nativeOrder())
             .asIntBuffer());
+    if (fields != null) {
+      env.bindFields(fieldsOf(i));
+    }
+  }
+
+  /** An environment's block of the field export; the vector must export its fields. */
+  private IntBuffer fieldsOf(int i) {
+    return fields
+        .slice(i * Fields.INTS * 4, Fields.INTS * 4)
+        .order(ByteOrder.nativeOrder())
+        .asIntBuffer();
   }
 
   /**
@@ -806,7 +871,8 @@ public final class VectorEnv implements AutoCloseable {
   }
 
   /**
-   * Moves a Ladder environment's last written results into an environment's share of the buffers.
+   * Moves a Ladder environment's last written results into an environment's share of the buffers,
+   * with its fields written there when this vector exports them.
    */
   private void moveInto(LadderEnv env, int target) {
     IntBuffer o =
@@ -821,7 +887,7 @@ public final class VectorEnv implements AutoCloseable {
             .slice(target * Schema.INFO_INTS * 4, Schema.INFO_INTS * 4)
             .order(ByteOrder.nativeOrder())
             .asIntBuffer();
-    env.moveTo(o, m, w, i);
+    env.moveTo(o, m, w, i, fields == null ? null : fieldsOf(target));
   }
 
   /**
@@ -1188,9 +1254,10 @@ public final class VectorEnv implements AutoCloseable {
 
   /**
    * The vector's metadata as JSON, to be kept with every run: the schema's version, sizes, field
-   * names and codes, the configuration, for Ladder battles the vocabulary with its data version,
-   * content sha and hash ({@link Vocabulary#toJson()}), and the range autoreset seeds are drawn
-   * from ({@code autoreset_seeds}, {@code min} and {@code max} included, as set now).
+   * names and codes, the field registry ({@link Fields#toNode()}, as {@code fields}), the
+   * configuration, for Ladder battles the vocabulary with its data version, content sha and hash
+   * ({@link Vocabulary#toJson()}), and the range autoreset seeds are drawn from ({@code
+   * autoreset_seeds}, {@code min} and {@code max} included, as set now).
    */
   public String metadataJson() {
     ObjectNode root = metadataNode(config, vocabulary);
@@ -1245,6 +1312,10 @@ public final class VectorEnv implements AutoCloseable {
     list(schema, "play_flag_names", Schema.playFlagNames());
     ObjectNode scales = schema.putObject("scales");
     new TreeMap<>(Schema.scales()).forEach(scales::put);
+    // The field registry, versioned apart from the schema: what the field export holds, its tags
+    // and units. Published whether the vector exports its fields or not, so the metadata of a run
+    // does not depend on it.
+    root.set("fields", Fields.toNode());
     if (config != null) {
       // The mask rule stands apart from the schema and the configuration: a model trained under
       // one rule reads the same observations and actions under the other.
