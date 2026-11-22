@@ -42,6 +42,12 @@ def random_opponent(observation: np.ndarray, mask: np.ndarray, rng: np.random.Ge
     return int(rng.choice(open_actions)) if open_actions.size else 0
 
 
+# Neither reads a field of the observation (the random opponent reads its mask alone), so an
+# evaluation's provenance record lists no adapter for them.
+wait_opponent.adapters = ()
+random_opponent.adapters = ()
+
+
 def observation_space(vector: VectorBattle) -> spaces.Box:
     """A seat's observation as Gymnasium sees it: the flat int32 vector of the schema, with the
     bounds of :meth:`Schema.observation_bounds`. Its values are categories (vocabulary ids, codes,

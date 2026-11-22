@@ -844,7 +844,7 @@ A seat or public field with a `v4` source names where its values sit in the v4 o
 
 `registry.views(block)` gives every field as a view of the block, shape `(count, *shape)`. Nothing is copied: views made once follow a block refreshed in place each step. The block must be a C-contiguous int32 array in the machine's byte order, of shape `(count, ints)`; anything else raises `ValueError`. `registry.view(block, names)` gives a `FieldView` of the named fields only: a read-only mapping whose arrays cannot be written, and where any other name, even one the registry has, raises `UndeclaredFieldError` (a `KeyError`) saying the field was not declared.
 
-An adapter (`crforge_env.adapters.Adapter`) builds a model's inputs from declared fields. It sets `name`, `registry_version`, `reads` (the fields it reads) and `outputs` (per output, the shape and dtype of one environment's array), and implements `observe(fields, seat)`, which gets a `FieldView` of its reads and returns one array per output, `(count, *shape)`, vectorised over the environments. `bind(registry)` checks the version and that every read exists (a `ValueError` names the missing ones), and `hidden_fields` lists the reads tagged `hidden` (`hidden` is true when there is any). `reset(done, seat)` lets an adapter with state forget the environments that ended; it does nothing by default. `adapter.view(block)` is `registry.view(block, adapter.reads)`.
+An adapter (`crforge_env.adapters.Adapter`) builds a model's inputs from declared fields. It sets `name`, `registry_version`, `reads` (the fields it reads) and `outputs` (per output, the shape and dtype of one environment's array), and implements `observe(fields, seat)`, which gets a `FieldView` of its reads and returns one array per output, `(count, *shape)`, vectorised over the environments. `bind(registry)` checks the version and that every read exists (a `ValueError` names the missing ones), and `hidden_fields` lists the reads tagged `hidden` (`hidden` is true when there is any; `hidden_reads(registry)` works them out, and an adapter that reads its fields at another seat than the one it observes overrides it, as `OtherSeat` does, [Adapter sets and the run-level guard](#adapter-sets-and-the-run-level-guard)). `reset(done, seat)` lets an adapter with state forget the environments that ended; it does nothing by default. `adapter.view(block)` is `registry.view(block, adapter.reads)`.
 
 ```python
 import numpy as np
@@ -866,6 +866,8 @@ lead.bind(registry)
 require_fair(lead)  # raises HiddenFieldError if it read enemy.elixir.true
 out = lead.observe(lead.view(vector.fields), seat=0)["lead"]  # (count,)
 ```
+
+This is the shared `crforge_env.adapters.ElixirLead` ([The shared adapters](#the-shared-adapters)), written out.
 
 `require_fair(*adapters)` raises `HiddenFieldError` (a `ValueError`) naming every adapter that reads a hidden field and the fields it reads, for a model that must play only on what its seat is shown. An adapter that reads hidden fields is still allowed elsewhere, a teacher or an analysis, say; the check is where fair play is required.
 
@@ -894,6 +896,85 @@ v4.observe_both(view, out=out)  # equal to vector.observations
 ```
 
 The migration gate, `python/tests/test_v4_gate.py`, holds it so at every decision, for both seats, with `entity.export_overflow` 0 everywhere and no decision left out: random mask-legal battles on several decks (evolution and hero slots, a champion) on one thread and three, played until episodes end and autoreset starts new ones; forks moved in, as the battle is and as each seat knows it; starts on replays the vector wrote and on the example battles; `reset_env` mid-run; and a faulted battle, cleared. Rebuilding both seats costs about 0.9 ms a call on 64 environments and 3 ms on 256 ([Performance](#performance)), on top of a Ladder step; the Java v4 packer stays beside it, unchanged.
+
+### The shared adapters
+
+`crforge_env.adapters` holds adapters any model may use, each derived from fields its seat is shown, as the seat's player works them out. Each reads seat and public fields only, so `hidden` is false and `require_fair` accepts it, and each is vectorised over the environments. `observe(fields, seat)` gives the outputs of one seat.
+
+**`ElixirLead`** (`elixir_lead`, registry 1.0, stateless) reads `own.elixir` and `enemy.elixir`. Its output `lead`, int32 per environment, is the seat's elixir less the enemy's elixir as the seat counts it ([The enemy's elixir as a player counts it](#the-enemys-elixir-as-a-player-counts-it)), in ten-thousandths of an elixir. It never reads the enemy's own count.
+
+**`EnemyCycle`** (`enemy_cycle`, registry 1.0, stateless) is the enemy's card cycle as the seat's player tracks it from the plays the screen shows. It reads `enemy.plays.kind`, `enemy.plays.card` and `enemy.seen.card`, and nothing of the enemy's own hand, queue or deck.
+
+A card played goes to the back of the queue and the queue's first card fills its hand slot, so the queue is always the last 4 cards played, the oldest of them coming back first, and the hand is the deck's other 4 cards. So:
+
+- a queue place holds the card of its play when the screen has shown that card. It is unknown while the screen has not (a tunnelling card before its unit comes up) and, before the enemy's 4th play, for a place holding a card the enemy has not played yet;
+- a card seen is known to be in the hand when it is not in the queue and every one of the last 4 plays is shown: every card seen was played, and a played card is either among the last 4 plays or back in the hand. While one of the last 4 plays is not shown it may have been any card seen, so none is known to be in the hand;
+- with all 8 cards seen and the last 4 plays shown, the whole hand is known;
+- a Mirror's play cycles the Mirror (its play's `card`), not the card it repeated (its `cast`);
+- a play enters the play rows on the tick it runs, so a card the enemy has placed and that has not run yet counts in its hand, as on the player's screen. The enemy's own hand and queue refill the played card's slot a moment after the run; the adapter gives the cycle that refill settles.
+
+Its outputs, per environment:
+
+| Output | Shape and type | What it is |
+|---|---|---|
+| `queue` | `(4,)` int32 | the queue's cards by vocabulary id in the order they come back (the first is the enemy's next card), -1 for a place not known |
+| `hand` | `(4,)` int32 | the cards known to be in the hand by vocabulary id, in the order of `enemy.seen.card`, -1 beyond |
+| `hand_known` | int32 | how many cards of the hand are known |
+| `all_seen` | bool | all 8 of the enemy's cards have been seen |
+| `settled` | bool | every one of the enemy's last 4 plays is shown (or was never made): the condition for any card to be known in the hand |
+
+The sizes come from the registry at `bind`: the deck is `enemy.seen.card`'s 8 places, the hand `own.hand.card`'s 4, the queue the rest.
+
+**`UnitAge`** (`unit_age`, registry 1.0, stateful) reads `game.tick`, `entity.visible` and `entity.id`. Its output `age`, `(entity_capacity,)` int32 per environment and aligned with the entity table, is per row the ticks since the seat was first shown the row's entity: `game.tick` now less the tick of the first observation that showed it (0 at that observation), and -1 on a row the seat is not shown. An entity the seat was shown and no longer sees keeps its first tick, as its id stays the same ([Entity ids](#entity-ids)).
+
+It keeps, per environment and seat, the tick each of the seat's entity ids was first shown, from the observations it is given, so the age counts from the first observation that showed the entity: less than a decision's ticks after it appeared on the screen.
+
+- `reset(done, seat)` forgets the seat's ids in the environments `done` marks. Call it for both seats after reading the last observation of an episode (the `dones` of a step) and for an environment whose battle was replaced (`reset_env`, `fork_from`, a replay's start), as their ids are numbered afresh. A battle whose clock went back since the last observation is started afresh too, as after an autoreset.
+- `bind` forgets every state, and one adapter keeps the state of one vector's environments: observing fields of another number of environments raises `ValueError`.
+- Its state does not follow forks or look aheads. It is the adapter's own record of the observations it was given, and nothing of it is in the battle. A fork moved into an environment or a look ahead's observation is a battle whose earlier observations the adapter did not see there, so an age read on it counts from whatever that environment's record holds. Reset an environment a fork is moved into, and read a look ahead's ages with an adapter of its own, knowing they count from the fork.
+
+### Adapter sets and the run-level guard
+
+`AdapterSet(adapters, forbid_hidden=False)` binds, resets and observes several adapters as one model's inputs:
+
+- `bind(registry)` binds every adapter; `reads` is every adapter's reads, each once, in the adapters' order; `view(block)` is the `FieldView` of them;
+- `observe(fields, seat)` gives every adapter's outputs keyed `"<adapter name>.<output>"`, in the order of the adapters and of their outputs, and `outputs` declares them the same way. Each adapter is handed a `FieldView` of its own reads only, so it cannot read a field another adapter of the set declared;
+- `reset(done, seat)` resets every adapter;
+- `hidden_fields` and `hidden` say what any adapter reads that the seat is not shown;
+- `provenance(role)` is the provenance record of one role reading the set (`provenance({role: adapters}, registry)`).
+
+Two adapters of one name, or two output keys that clash, raise `ValueError`.
+
+`forbid_hidden=True` is the run-level guard: the set refuses every adapter that reads a hidden field, with `HiddenFieldError` naming each and its hidden fields. It checks the adapters already bound when the set is made, and every adapter at `bind`, since an adapter may work out its reads as it binds. A run that builds its inputs on such a set cannot read a field its seat is not shown by mistake.
+
+```python
+from crforge_env.adapters import AdapterSet, ElixirLead, EnemyCycle, UnitAge, V4Adapter
+
+inputs = AdapterSet([V4Adapter(vector.schema), ElixirLead(), EnemyCycle(), UnitAge()], forbid_hidden=True)
+inputs.bind(Registry.from_metadata(vector.metadata["fields"]))
+view = inputs.view(vector.fields)
+out = inputs.observe(view, seat=0)  # out["v4.observation"], out["enemy_cycle.queue"], ...
+```
+
+`OtherSeat(adapter)` observes an adapter at the other seat of each environment: `observe(fields, s)` is the inner adapter's at seat `1 - s`, as a critic that reads the other seat's observation reads it, and `reset(done, s)` resets the inner adapter's seat `1 - s`. Its name is the inner adapter's with `@other_seat` after it (`v4@other_seat`), and its reads and outputs are the inner adapter's. A seat field read at the other seat is what the other seat is shown, not this one, so its hidden fields are all its reads but the public ones: the guard refuses it, and a provenance record lists it as hidden.
+
+### Provenance records
+
+A run keeps what each role of it read as a provenance record, the format of `provenance` ([The field registry and adapters](#the-field-registry-and-adapters)): the registry's version and, per role, its adapters in order, the sorted reads, whether any is hidden and the sorted hidden fields.
+
+`evaluate` records the roles `policy` and `opponent` in its result (`EvaluationResult.provenance`). A policy is handed its seat's v4 observation, so it is recorded as the `v4` adapter's reads, unless it names the adapters it reads in an `adapters` attribute (`crforge_env.evaluation.policy_adapters(policy, registry)` gives them, bound). `random_opponent` and `wait_opponent` name none (`adapters = ()`), as they read no field: the random opponent reads its mask alone. A policy that reads the other seat's observation names `OtherSeat` among its adapters and is recorded as hidden.
+
+The example trainer ([A minimal PPO trainer](#a-minimal-ppo-trainer)) keeps its record in the checkpoint, `policy.pt`'s `provenance`, with the roles `learner` (the policy), `critic` (the value head), `opponent` and `eval_opponent`. Its model is handed the learner seat's own v4 observation, its first `--entities` rows, for the policy and the value head alike, so both are the `v4` adapter's reads. The opponent in self-play is the same model on the other seat's own observation, also `v4`; the scripted bot reads the v4 observation (`v4`), the random and wait opponents nothing:
+
+```python
+{"registry": "1.0", "roles": {
+  "critic": {"adapters": ["v4"], "reads": ["enemy.crowns", ...], "hidden": False, "hidden_fields": []},
+  "eval_opponent": {"adapters": [], "reads": [], "hidden": False, "hidden_fields": []},
+  "learner": {"adapters": ["v4"], "reads": ["enemy.crowns", ...], "hidden": False, "hidden_fields": []},
+  "opponent": {"adapters": [], "reads": [], "hidden": False, "hidden_fields": []}}}
+```
+
+The model uses only some of the fields of the observation it is handed (the header amounts it scales, the towers, the cards, the entity columns it embeds). The record lists every field of that observation, as the model could read any of them.
 
 ### The wrappers
 
@@ -997,7 +1078,8 @@ result.wins, result.losses, result.draws, result.truncated, result.win_rate
 - `truncated` (cut short by the tick limit or a fault);
 - `faults` by kind;
 - `illegal` (the policy's actions refused as illegal);
-- `win_rate` (wins over all episodes).
+- `win_rate` (wins over all episodes);
+- `provenance`, what the policy and the opponent read ([Provenance records](#provenance-records)).
 
 The policy plays seat 0 in the even environments and seat 1 in the odd ones, so an even `envs` gives each side half the episodes. Each environment plays a fixed share of the episodes, so which ones count does not depend on which end first. The battle seeds and each seat's generator are drawn from `seed`, so a run is reproduced by it.
 
@@ -1064,7 +1146,7 @@ uv run --with torch python examples/ppo.py --install ../env/build/install/env --
 - **The seats.** The learner plays one seat of each battle, seat 0 in even battles and seat 1 in odd ones, against `--opponent` (`random` by default, `scripted` or `wait`), or both seats of every battle with `--opponent self`. Both sides play one deck (`--deck`, eight card row names).
 - **The reward.** The match's result (+1, -1, 0 for a draw), plus `--shaping` (0.5) times the change of the tower balance: the seat's share of tower hit points left less the enemy's.
 - **Episode ends.** The step after a battle's end restarts it and ignores its actions, so that step's sample is left out of the loss. An episode cut short by a fault or a tick limit takes no shaping on its last step and bootstraps from the value of that step's own observation, as [Faults are truncations](#faults-are-truncations) asks.
-- **The run folder.** Every `--eval-every` updates (20) `evaluate` plays the policy against `--eval-opponent` and adds a row to `curve.csv`; `policy.pt` holds the weights, the settings and the vector's metadata, and `metadata.json` the metadata alone. `runs/` is ignored by git.
+- **The run folder.** Every `--eval-every` updates (20) `evaluate` plays the policy against `--eval-opponent` and adds a row to `curve.csv`; `policy.pt` holds the weights, the settings, the vector's metadata and the run's provenance record ([Provenance records](#provenance-records)), and `metadata.json` the metadata alone. `runs/` is ignored by git.
 
 `--help` lists the rest (the battles and their threads, the rollout length, the PPO coefficients, the device).
 
@@ -1122,6 +1204,8 @@ Schema version 3 adds:
 - the entity columns read by name.
 
 The field export's tests: in Java (`FieldsTest`, `FieldExportTest`), the registry against its committed snapshot and every exported field against the observations; in Python, the registry read and checked (`tests/test_field_registry.py`), the read-only views and the declared reads, `require_fair` and provenance (`tests/test_adapters.py`), the block of a vector (`tests/test_field_export.py`), the v4 adapter on random, capped and overflowing blocks made by its inverse (`tests/test_adapter_v4.py`), and the migration gate ([The v4 adapter](#the-v4-adapter), `tests/test_v4_gate.py`).
+
+The shared adapters' tests: on blocks written by hand (`tests/test_derived_adapters.py`), each reads no hidden field, the elixir lead, the cycle's queue and known hand before any play, before the 4th play, with all 8 cards seen, with a play not shown among the last 4 and before them, and a Mirror's play, and the ages of entities shown, hidden and shown again, per seat, reset, and after a clock that goes back; `AdapterSet`, its guard and `OtherSeat` (`tests/test_adapter_set.py`); and on Ladder battles of random plays (`tests/test_derived_ladder.py`), the lead equal to the v4 header's elixir less the enemy's, the cycle's cards seen equal to `enemy_seen` and `enemy_unseen_slots` and its queue and known hand equal to the enemy's own wherever known (on a deck with a tunnelling card and a Mirror), and each age growing by the decision ticks, through episode ends. The evaluation's provenance records are held on synthetic battles (`tests/test_provenance_records.py`), and the example trainer's tests read the checkpoint's.
 
 Schema version 4 adds the play kinds and flags, the unknown value (-1) and the new fields against the Java `Schema`, and the bounds of the enemy plays' kinds, flags and forms not yet shown. The scripted bot leaves an enemy hidden or underground out of its spells' targets and takes an enemy whose health bar the screen does not draw as unhurt.
 

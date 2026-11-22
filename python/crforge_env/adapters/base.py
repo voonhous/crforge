@@ -59,10 +59,17 @@ class Adapter(ABC):
             raise RuntimeError(f"adapter {self.name!r} is not bound: call bind(registry) first")
         return self.registry
 
+    def hidden_reads(self, registry: Registry) -> tuple[str, ...]:
+        """The reads that are hidden from the seat observed, in read order: by default those
+        ``registry`` tags ``hidden``. An adapter that reads fields at another seat than the one it
+        observes (:class:`~crforge_env.adapters.OtherSeat`) says so here."""
+        return tuple(name for name in self.reads if registry.field(name).tag == "hidden")
+
     @property
     def hidden_fields(self) -> tuple[str, ...]:
-        """The reads tagged ``hidden``, in read order; RuntimeError before :meth:`bind`."""
-        return _hidden_reads(self, self._bound())
+        """The reads hidden from the seat (:meth:`hidden_reads`), in read order; RuntimeError
+        before :meth:`bind`."""
+        return self.hidden_reads(self._bound())
 
     @property
     def hidden(self) -> bool:
@@ -84,6 +91,12 @@ class Adapter(ABC):
         """The outputs for ``seat`` of every environment: per name an array ``(count, *shape)``."""
 
 
+def check_seat(seat: int) -> None:
+    """Refuse a seat other than 0 or 1 (ValueError)."""
+    if seat not in (0, 1):
+        raise ValueError(f"seat is 0 or 1, not {seat}")
+
+
 def _check_reads(adapter: Adapter, registry: Registry) -> None:
     missing = [name for name in adapter.reads if name not in registry.fields]
     if missing:
@@ -91,10 +104,6 @@ def _check_reads(adapter: Adapter, registry: Registry) -> None:
             f"adapter {adapter.name!r} reads fields the field registry {registry.version} "
             f"lacks: {', '.join(missing)}"
         )
-
-
-def _hidden_reads(adapter: Adapter, registry: Registry) -> tuple[str, ...]:
-    return tuple(name for name in adapter.reads if registry.field(name).tag == "hidden")
 
 
 def _check_bound_to(adapter: Adapter, registry: Registry) -> None:
@@ -129,7 +138,7 @@ def provenance(roles: Mapping[str, Sequence[Adapter]], registry: Registry) -> di
             _check_bound_to(adapter, registry)
             _check_reads(adapter, registry)
             reads.update(adapter.reads)
-            hidden.update(_hidden_reads(adapter, registry))
+            hidden.update(adapter.hidden_reads(registry))
         record[role] = {
             "adapters": [adapter.name for adapter in adapters],
             "reads": sorted(reads),

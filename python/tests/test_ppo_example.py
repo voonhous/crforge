@@ -48,6 +48,18 @@ def test_a_tiny_training_writes_its_curve_and_checkpoint(install, tmp_path, oppo
     assert checkpoint["metadata"]["schema"]["actions"] > 0
     assert all(torch.isfinite(weights).all() for weights in checkpoint["model"].values())
     assert (tmp_path / "metadata.json").is_file()
+    # The provenance record: every role reads the v4 observation as its seat is shown it, but the
+    # random opponent, which reads no field.
+    record = checkpoint["provenance"]
+    assert record["registry"] == checkpoint["metadata"]["fields"]["version"]
+    roles = record["roles"]
+    assert set(roles) == {"critic", "eval_opponent", "learner", "opponent"}
+    for role in ("learner", "critic"):
+        assert roles[role]["adapters"] == ["v4"] and roles[role]["hidden"] is False
+        assert "entity.hp" in roles[role]["reads"]
+    assert roles["eval_opponent"]["adapters"] == []
+    assert roles["opponent"]["adapters"] == (["v4"] if opponent == "self" else [])
+    assert not any(role["hidden"] for role in roles.values())
 
 
 def test_episode_ends_are_left_out_of_the_decisions(install, tmp_path):

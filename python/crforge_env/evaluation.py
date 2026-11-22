@@ -5,6 +5,13 @@ battles and returns an :class:`EvaluationResult`. Both are policies of the oppon
 ``policy(observation, mask, rng) -> action`` for one seat (a trained model is wrapped in such a
 function); one with a ``bind(vector)`` method, such as :class:`ScriptedBot`, is bound to the
 vector first.
+
+The result keeps a provenance record of what each role read (``provenance``, the format of
+:func:`crforge_env.adapters.provenance`), roles ``policy`` and ``opponent``. A policy is handed
+its seat's v4 observation, so it is recorded as the ``v4`` adapter's reads, unless it names the
+adapters it reads in an ``adapters`` attribute (:func:`policy_adapters`): ``random_opponent`` and
+``wait_opponent`` name none, as they read no field, and a policy that reads the other seat's
+observation names :class:`~crforge_env.adapters.OtherSeat` and is recorded as hidden.
 """
 
 from __future__ import annotations
@@ -17,6 +24,8 @@ from typing import Any
 
 import numpy as np
 
+from .adapters import Adapter, V4Adapter, provenance
+from .fields import Registry
 from .vector import LadderConfig, VectorBattle
 
 Policy = Callable[[np.ndarray, np.ndarray, np.random.Generator], int]
@@ -37,11 +46,27 @@ class EvaluationResult:
     """the faulted episodes by kind (``refusal``, ``bug``, ``env_bug``); they are also truncated"""
     illegal: int = 0
     """the policy's actions refused as illegal, over all episodes"""
+    provenance: dict = field(default_factory=dict)
+    """what each role read, roles ``policy`` and ``opponent``
+    (:func:`crforge_env.adapters.provenance`)"""
 
     @property
     def win_rate(self) -> float:
         """Wins over all episodes, truncated ones included (0 for none)."""
         return self.wins / self.episodes if self.episodes else 0.0
+
+
+def policy_adapters(policy: Policy, registry: Registry) -> list[Adapter]:
+    """The adapters ``policy`` reads, bound to ``registry``: its ``adapters`` attribute, else the
+    ``v4`` adapter, the v4 observation every policy is handed. An adapter not bound yet is bound
+    here; one already bound is left as it is (:func:`~crforge_env.adapters.provenance` refuses one
+    bound to another registry version)."""
+    named = getattr(policy, "adapters", None)
+    adapters = [V4Adapter()] if named is None else list(named)
+    for adapter in adapters:
+        if adapter.registry is None:
+            adapter.bind(registry)
+    return adapters
 
 
 def _bind(policy: Policy, vector: VectorBattle) -> None:
@@ -98,6 +123,11 @@ def evaluate(
     ) as vector:
         _bind(policy, vector)
         _bind(opponent, vector)
+        registry = Registry.from_metadata(vector.metadata["fields"])
+        roles = {"policy": policy, "opponent": opponent}
+        result.provenance = provenance(
+            {role: policy_adapters(player, registry) for role, player in roles.items()}, registry
+        )
         s = vector.schema
         illegal_field = [s.info["illegal_0"], s.info["illegal_1"]]
         vector.reset([int(x) for x in seeds], decks[0], decks[1])
