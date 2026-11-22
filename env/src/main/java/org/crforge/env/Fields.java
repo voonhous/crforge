@@ -26,8 +26,10 @@ import org.crforge.core.battle.unit.ChampionController;
  * The registry of the fields an environment exports, version {@link #VERSION}: every field's name,
  * place, shape, visibility tag, units and frame. It is the public contract of the field export,
  * kept apart from the observation layout of {@link Schema} (its own version, {@link
- * Schema#VERSION}). The export itself is not written yet: this is the registry it will be written
- * by, published in the vector's metadata as {@code fields} ({@link #toNode()}).
+ * Schema#VERSION}), published in the vector's metadata as {@code fields} ({@link #toNode()}). A
+ * vector made to export its fields (a Ladder vector made with {@code fields} true) writes each
+ * environment's block by it beside the observations ({@link VectorEnv#fields()}); the export is
+ * opt-in, and a vector without it holds no block.
  *
  * <p>The block. Each environment exports one block of {@link #INTS} 32-bit integers a decision, in
  * the machine's byte order as every buffer of {@link Schema}. A field is {@code shape} integers at

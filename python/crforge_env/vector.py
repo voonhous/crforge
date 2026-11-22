@@ -262,6 +262,10 @@ class VectorBattle:
     - ``rewards``: float32 ``(count, 2)``
     - ``dones``: uint8 ``(count,)``
     - ``infos``: int32 ``(count, info_ints)``
+    - ``fields``: int32 ``(count, ints)``, the field export, each environment's block of the
+      registry's ``ints`` (``metadata["fields"]``), refreshed in place with the observations; None
+      unless the vector was made with ``fields=True`` (Ladder battles only). Without it no block is
+      made and nothing changes
 
     At start the schema is read from the vector's metadata and its version checked; ``metadata``
     holds the export (schema, configuration and, for Ladder battles, the vocabulary by name with
@@ -282,9 +286,12 @@ class VectorBattle:
         synthetic_fault_at: int = -1,
         synthetic_fault_kind: str = "bug",
         jvm_args: Sequence[str] = (),
+        fields: bool = False,
     ):
         if engine not in ENGINES:
             raise ValueError(f"engine is one of {ENGINES}, not {engine!r}")
+        if fields and engine != "ladder":
+            raise ValueError("only a ladder vector exports fields: a synthetic one has no battle")
         _jvm.start(install, jvm_args)
         vector_env = _jvm.java_class("org.crforge.env.VectorEnv")
         self._illegal_argument = _jvm.java_class("java.lang.IllegalArgumentException")
@@ -303,7 +310,9 @@ class VectorBattle:
             game_tables = vector_env.tables(java_folder)
             self._tables = game_tables
             self._vocabulary = vector_env.vocabulary(game_tables)
-            self._env = vector_env.ladder(game_tables, self._java_config(config), count, threads)
+            self._env = vector_env.ladder(
+                game_tables, self._java_config(config), count, threads, bool(fields)
+            )
         else:
             if config is not None:
                 raise ValueError("a synthetic vector plays no battle: it takes no LadderConfig")
@@ -358,6 +367,10 @@ class VectorBattle:
         self.rewards = _view(self._env.rewards(), np.float32).reshape(count, 2)
         self.dones = _view(self._env.dones(), np.uint8)
         self.infos = _view(self._env.infos(), np.int32).reshape(count, s.info_ints)
+        self.fields: np.ndarray | None = None
+        if fields:
+            ints = int(self.metadata["fields"]["ints"])
+            self.fields = _view(self._env.fields(), np.int32).reshape(count, ints)
         self._closed = False
 
     @staticmethod

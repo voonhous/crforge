@@ -4,7 +4,8 @@ One trial steps a :class:`VectorBattle` of ``count`` environments for a fixed nu
 with random open actions drawn in numpy, as a trainer would draw them, and times the whole loop:
 the action draw, the JVM call and the reads of the results. The ``synthetic`` engine measures the
 bridge with no battle behind it; the ``ladder`` engine measures Ladder battles on the game tables
-(``--tables``, required for it).
+(``--tables``, required for it); ``--fields`` makes the Ladder vectors export their fields too
+(``VectorBattle(fields=True)``), to measure what the export costs.
 
 Run it with ``crforge-env-bench --install <env/build/install/env> --tables <folder>`` or
 ``python -m crforge_env.bench``; ``--json`` writes the rows to a file beside the table it prints.
@@ -45,6 +46,7 @@ class Row:
     obs_mb_per_step: float
     repeats: int
     spread_pct: float
+    fields: bool = False
 
 
 def draw_actions(masks: np.ndarray, rng: np.random.Generator, play_rate: float) -> np.ndarray:
@@ -114,8 +116,10 @@ def run(
     install: str,
     tables: str | None,
     config: LadderConfig | None,
+    fields: bool = False,
 ) -> list[Row]:
     rows: list[Row] = []
+    fields = fields and engine == "ladder"
     for count in counts:
         with VectorBattle(
             count,
@@ -124,6 +128,7 @@ def run(
             engine=engine,
             tables=tables if engine == "ladder" else None,
             config=config if engine == "ladder" else None,
+            fields=fields,
         ) as vector:
             rng = np.random.default_rng(1)
             vector.reset(list(range(1, count + 1)), BLUE, RED)
@@ -149,6 +154,7 @@ def run(
                     obs_mb_per_step=vector.observations.nbytes / 1e6,
                     repeats=repeats,
                     spread_pct=spread,
+                    fields=fields,
                 )
             )
             print(format_row(rows[-1]), flush=True)
@@ -165,8 +171,9 @@ def format_header() -> str:
 
 def format_row(r: Row) -> str:
     ticks = f"{r.ticks_per_s:,.0f}" if r.engine == "ladder" else "-"
+    engine = f"{r.engine} + fields" if r.fields else r.engine
     return (
-        f"| {r.engine} | {r.count} | {r.threads} | {r.env_steps_per_s:,.0f} | {ticks} "
+        f"| {engine} | {r.count} | {r.threads} | {r.env_steps_per_s:,.0f} | {ticks} "
         f"| {r.us_per_call:,.1f} | {r.us_per_env_step:,.2f} | {r.draw_us_per_call:,.1f} "
         f"| {r.obs_mb_per_step:.2f} | {r.spread_pct:.0f}% |"
     )
@@ -190,6 +197,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repeats", type=int, default=3, help="trials; the best is reported")
     parser.add_argument("--play-rate", type=float, default=0.3)
     parser.add_argument("--decision-ticks", type=int, default=None)
+    parser.add_argument(
+        "--fields", action="store_true", help="the ladder vectors export their fields too"
+    )
     parser.add_argument("--json", default=None, help="write the rows to this file")
     args = parser.parse_args(argv)
     if "ladder" in args.engine and args.tables is None:
@@ -197,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
     config = LadderConfig(decision_ticks=args.decision_ticks)
     print(
         f"# crforge-env bench: {' and '.join(args.engine)}, threads {args.threads}, "
-        f"{args.steps} steps x {args.repeats}, play rate {args.play_rate}, python "
+        f"{args.steps} steps x {args.repeats}, play rate {args.play_rate}, "
+        f"fields {'on' if args.fields else 'off'}, python "
         f"{platform.python_version()} numpy {np.__version__} on {platform.machine()}"
     )
     print(format_header())
@@ -213,6 +224,7 @@ def main(argv: list[str] | None = None) -> int:
             args.install,
             args.tables,
             config,
+            args.fields,
         )
     if args.json:
         with open(args.json, "w", encoding="utf-8") as out:

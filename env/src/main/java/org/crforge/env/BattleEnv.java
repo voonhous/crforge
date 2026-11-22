@@ -36,6 +36,17 @@ public interface BattleEnv {
   void bind(IntBuffer observations, ByteBuffer masks, FloatBuffer rewards, IntBuffer info);
 
   /**
+   * Gives the environment its view of the vector's field export, after {@link #bind}, for a vector
+   * that exports its fields ({@link Fields}); never called for one that does not. An environment
+   * that exports no fields ignores it, and its block stays as the vector made it, zero.
+   *
+   * @param fields the environment's block, {@link Fields#INTS} integers, or null for none
+   */
+  default void bindFields(IntBuffer fields) {
+    // No field export.
+  }
+
+  /**
    * Refuses a deck this environment cannot play, before any environment of the vector is reset: the
    * check touches no state.
    *
