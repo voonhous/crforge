@@ -14,6 +14,8 @@ import pytest
 from crforge_env import VectorBattle
 
 SNAPSHOT = Path(__file__).parent / "data" / "fields_v1.json"
+SNAPSHOT_1_0 = Path(__file__).parent / "data" / "fields_v1_0.json"
+"""Registry 1.0 as it was committed: every later 1.x registry keeps all of it."""
 
 
 @pytest.fixture(scope="module")
@@ -88,9 +90,44 @@ def test_the_v4_sources_and_the_enums_need_no_jvm():
     assert len(enums["ability_refusal"]) == 11
 
 
+def test_every_1_0_field_is_kept_and_the_fields_added_follow_its_block():
+    before = json.loads(SNAPSHOT_1_0.read_text())
+    now = json.loads(SNAPSHOT.read_text())
+    assert before["version"] == "1.0"
+    major, minor = (int(n) for n in now["version"].split("."))
+    assert major == 1 and minor >= 1
+    # The 1.0 list is the first part of the list, field for field.
+    assert now["fields"][: len(before["fields"])] == before["fields"]
+    for f in now["fields"][len(before["fields"]) :]:
+        assert f["alias_of"] is None, f["name"]
+        assert f["offset"] >= before["ints"], f["name"]
+    for name, labels in before["enums"].items():
+        assert now["enums"][name] == labels, name
+    # The own plays mirror the enemy's: the same shapes, units and frames, and no v4 source.
+    by_name = {f["name"]: f for f in now["fields"]}
+    for name, f in by_name.items():
+        if name.startswith("enemy.plays.") and f["tag"] == "seat":
+            own = by_name["own.plays." + name.removeprefix("enemy.plays.")]
+            assert (own["shape"], own["units"], own["frame"], own["tag"]) == (
+                f["shape"],
+                f["units"],
+                f["frame"],
+                "seat",
+            )
+            assert own["v4"] is None
+    # The row facts, each with its units; no values without the tables.
+    assert list(now["rows"]) == [
+        "bar_rule",
+        "hit_speed_ms",
+        "load_time_ms",
+        "attack_step_ms",
+        "attack_start_delay_ms",
+        "attack_traits",
+    ]
+    assert all(entry["values"] == [] for entry in now["rows"].values())
+
+
 def by_unit_names(registry):
-    return {
-        f["units"].partition(":")[2]
-        for f in registry["fields"]
-        if f["units"].startswith(("enum:", "flags:"))
-    }
+    units = [f["units"] for f in registry["fields"]]
+    units += [entry["units"] for entry in registry.get("rows", {}).values()]
+    return {u.partition(":")[2] for u in units if u.startswith(("enum:", "flags:"))}

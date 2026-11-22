@@ -50,7 +50,14 @@ def test_the_fields_are_a_view_refreshed_in_place_holding_the_v4_values(install,
     by_name = {f["name"]: f for f in registry["fields"]}
     count = 3
     with VectorBattle(count, 1, install=install, tables=tables, fields=True) as v:
-        assert v.metadata["fields"] == registry
+        # The snapshot's registry, the row facts' values those of the vector's tables.
+        node = v.metadata["fields"]
+        assert {k: x for k, x in node.items() if k != "rows"} == {
+            k: x for k, x in registry.items() if k != "rows"
+        }
+        assert {k: x["units"] for k, x in node["rows"].items()} == {
+            k: x["units"] for k, x in registry["rows"].items()
+        }
         assert v.fields.shape == (count, registry["ints"])
         assert v.fields.dtype == np.int32
         assert not v.fields.flags["OWNDATA"]

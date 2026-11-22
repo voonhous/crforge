@@ -159,7 +159,15 @@ def rollout(vector, steps, every, rng):
 @pytest.mark.ladder
 def test_ladder_observations_are_rebuilt_from_their_fields(install, tables):
     with VectorBattle(4, 1, install=install, tables=tables) as v:
-        assert v.metadata["fields"] == NODE
+        # The snapshot's registry, with the row facts of the vector's tables filled in.
+        node = v.metadata["fields"]
+        assert {k: x for k, x in node.items() if k != "rows"} == {
+            k: x for k, x in NODE.items() if k != "rows"
+        }
+        names = v.metadata["vocabulary"]["names"]
+        for fact, entry in NODE["rows"].items():
+            assert node["rows"][fact]["units"] == entry["units"]
+            assert len(node["rows"][fact]["values"]) == len(names)
         registry = Registry.from_metadata(v.metadata["fields"])
         adapter = V4Adapter(v.schema)
         adapter.bind(registry)

@@ -1254,7 +1254,7 @@ public final class VectorEnv implements AutoCloseable {
 
   /**
    * The vector's metadata as JSON, to be kept with every run: the schema's version, sizes, field
-   * names and codes, the field registry ({@link Fields#toNode()}, as {@code fields}), the
+   * names and codes, the field registry ({@link Fields#toNode(Vocabulary)}, as {@code fields}), the
    * configuration, for Ladder battles the vocabulary with its data version, content sha and hash
    * ({@link Vocabulary#toJson()}), and the range autoreset seeds are drawn from ({@code
    * autoreset_seeds}, {@code min} and {@code max} included, as set now).
@@ -1313,9 +1313,9 @@ public final class VectorEnv implements AutoCloseable {
     ObjectNode scales = schema.putObject("scales");
     new TreeMap<>(Schema.scales()).forEach(scales::put);
     // The field registry, versioned apart from the schema: what the field export holds, its tags
-    // and units. Published whether the vector exports its fields or not, so the metadata of a run
-    // does not depend on it.
-    root.set("fields", Fields.toNode());
+    // and units, and the row facts of the vocabulary's tables. Published whether the vector
+    // exports its fields or not, so the metadata of a run does not depend on it.
+    root.set("fields", Fields.toNode(vocabulary));
     if (config != null) {
       // The mask rule stands apart from the schema and the configuration: a model trained under
       // one rule reads the same observations and actions under the other.
